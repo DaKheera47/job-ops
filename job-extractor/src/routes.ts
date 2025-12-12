@@ -21,7 +21,7 @@ router.addHandler(
     log.info(`Processing: ${request.url}`);
 
     // Wait until the job cards are rendered
-    await page.waitForSelector("article[wire\\:key]", { timeout: 30000 });
+    await page.waitForSelector("article[wire\\:key]", { timeout: 10000 });
 
     // Add delay to see the page load
     await page.waitForTimeout(3000);
@@ -38,6 +38,9 @@ router.addHandler(
     const articles = await page.locator("article[wire\\:key]").all();
     const jobs: Job[] = [];
 
+    console.log(`${articles.length} jobs found`);
+
+    let idx = 1;
     for (const article of articles) {
       const titleLocator = article.locator("h2 a");
       const title = (await titleLocator.textContent())?.trim() ?? null;
@@ -49,8 +52,13 @@ router.addHandler(
       const employerAnchor = article.locator("figure a");
       const employerUrl = toAbsolute(await employerAnchor.getAttribute("href"));
 
-      const disciplinesEl = article.locator("h3");
-      const disciplines = (await disciplinesEl.textContent())?.trim() ?? null;
+      let disciplines: string | null = null;
+      try {
+        const disciplinesEl = article.locator("h3");
+        disciplines = (await disciplinesEl.textContent({ timeout: 1000 }))?.trim() ?? null;
+      } catch {
+        // h3 not found or timed out - that's okay, disciplines is optional
+      }
 
       // Find the "Deadline: ..." pill
       const deadlineLocator = article
@@ -90,6 +98,8 @@ router.addHandler(
       const degreeRequired = await getDdText("Degree required");
       const starting = await getDdText("Starting");
 
+      console.log(`Got job ${idx}/${articles.length}: ${title}`);
+
       jobs.push({
         title,
         jobUrl,
@@ -102,6 +112,8 @@ router.addHandler(
         degreeRequired,
         starting,
       });
+
+      idx++;
 
       // append more links to crawl: single job pages
       if (jobUrl) {
@@ -126,7 +138,7 @@ router.addHandler(
     log.info(`Processing single job page: ${request.url}`);
 
     // Wait for job content to be present
-    await page.waitForSelector(".body-content", { timeout: 30000 });
+    await page.waitForSelector(".body-content", { timeout: 10000 });
 
     // Optional delay if you want to visually see it while debugging
     await page.waitForTimeout(2000);
