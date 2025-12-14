@@ -67,6 +67,52 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
   const [progress, setProgress] = useState<PipelineProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
+  const percentage = useMemo(() => {
+    if (!progress) return 0;
+
+    switch (progress.step) {
+      case "crawling": {
+        if (progress.crawlingListPagesTotal > 0) {
+          return clamp(
+            (progress.crawlingListPagesProcessed / progress.crawlingListPagesTotal) * 15,
+            0,
+            15
+          );
+        }
+        if (progress.crawlingListPagesProcessed > 0) return 8;
+        return 5;
+      }
+      case "importing":
+        return 20;
+      case "scoring": {
+        if (progress.jobsScored > 0) {
+          return clamp(
+            20 + (progress.jobsScored / Math.max(progress.jobsDiscovered, 1)) * 30,
+            20,
+            50
+          );
+        }
+        return 25;
+      }
+      case "processing": {
+        if (progress.totalToProcess > 0) {
+          return clamp(
+            50 + (progress.jobsProcessed / progress.totalToProcess) * 50,
+            50,
+            100
+          );
+        }
+        return 55;
+      }
+      case "completed":
+      case "failed":
+        return 100;
+      case "idle":
+      default:
+        return 0;
+    }
+  }, [progress]);
+
   useEffect(() => {
     if (!isRunning) {
       setProgress(null);
@@ -104,40 +150,6 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
 
   const step = progress?.step ?? "idle";
   const isActive = step !== "idle" && step !== "completed" && step !== "failed";
-
-  const percentage = useMemo(() => {
-    if (!progress) return 0;
-
-    switch (progress.step) {
-      case "crawling": {
-        if (progress.crawlingListPagesTotal > 0) {
-          return clamp((progress.crawlingListPagesProcessed / progress.crawlingListPagesTotal) * 15, 0, 15);
-        }
-        if (progress.crawlingListPagesProcessed > 0) return 8;
-        return 5;
-      }
-      case "importing":
-        return 20;
-      case "scoring": {
-        if (progress.jobsScored > 0) {
-          return clamp(20 + (progress.jobsScored / Math.max(progress.jobsDiscovered, 1)) * 30, 20, 50);
-        }
-        return 25;
-      }
-      case "processing": {
-        if (progress.totalToProcess > 0) {
-          return clamp(50 + (progress.jobsProcessed / progress.totalToProcess) * 50, 50, 100);
-        }
-        return 55;
-      }
-      case "completed":
-      case "failed":
-        return 100;
-      case "idle":
-      default:
-        return 0;
-    }
-  }, [progress]);
 
   const showStats = !!progress && ["crawling", "scoring", "processing", "completed"].includes(step);
 
@@ -235,4 +247,3 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
     </Card>
   );
 };
-
