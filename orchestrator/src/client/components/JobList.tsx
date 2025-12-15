@@ -96,13 +96,16 @@ const compareJobs = (a: Job, b: Job, sort: JobSort) => {
       value = statusRank[a.status] - statusRank[b.status];
       break;
     case "score":
-      if (a.suitabilityScore == null && b.suitabilityScore == null) {
+      const aScore = a.suitabilityScore;
+      const bScore = b.suitabilityScore;
+
+      if (aScore == null && bScore == null) {
         value = 0;
         break;
       }
-      if (a.suitabilityScore == null) return 1;
-      if (b.suitabilityScore == null) return -1;
-      value = compareNumber(a.suitabilityScore, b.suitabilityScore);
+      if (aScore == null) return 1;
+      if (bScore == null) return -1;
+      value = compareNumber(aScore, bScore);
       break;
     case "discoveredAt":
       value = compareNullable(dateValue(a.discoveredAt), dateValue(b.discoveredAt), compareNumber);

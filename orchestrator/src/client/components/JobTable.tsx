@@ -181,12 +181,12 @@ export const JobTable: React.FC<JobTableProps> = ({
 
           return (
             <TableRow key={job.id}>
-              <TableCell className="max-w-[520px]">
+              <TableCell className="align-top">
                 <Button
                   asChild
                   variant="link"
                   size="sm"
-                  className="h-auto justify-start p-0 text-left leading-snug"
+                  className="h-auto justify-start p-0 text-left leading-snug whitespace-normal break-words"
                 >
                   <a href={jobLink} target="_blank" rel="noopener noreferrer">
                     {job.title}
@@ -194,8 +194,8 @@ export const JobTable: React.FC<JobTableProps> = ({
                 </Button>
               </TableCell>
 
-              <TableCell className="max-w-[320px] truncate">
-                <span className="truncate">{job.employer}</span>
+              <TableCell className="align-top whitespace-normal break-words">
+                {job.employer}
               </TableCell>
 
               <TableCell>
@@ -204,7 +204,7 @@ export const JobTable: React.FC<JobTableProps> = ({
                 </Badge>
               </TableCell>
 
-              <TableCell className="max-w-[260px] truncate text-muted-foreground">
+              <TableCell className="align-top whitespace-normal break-words text-muted-foreground">
                 {job.location || "—"}
               </TableCell>
 
