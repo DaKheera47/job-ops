@@ -2,7 +2,7 @@
  * Job repository - data access layer for jobs.
  */
 
-import { eq, desc, sql, and, inArray } from 'drizzle-orm';
+import { eq, desc, sql, and, inArray, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { db, schema } from '../db/index.js';
 import type { Job, CreateJobInput, UpdateJobInput, JobStatus } from '../../shared/types.js';
@@ -192,6 +192,20 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
     .orderBy(desc(jobs.discoveredAt))
     .limit(limit);
   
+  return rows.map(mapRowToJob);
+}
+
+/**
+ * Get discovered jobs missing a suitability score.
+ */
+export async function getUnscoredDiscoveredJobs(limit?: number): Promise<Job[]> {
+  const query = db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.status, 'discovered'), isNull(jobs.suitabilityScore)))
+    .orderBy(desc(jobs.discoveredAt));
+
+  const rows = typeof limit === 'number' ? await query.limit(limit) : await query;
   return rows.map(mapRowToJob);
 }
 

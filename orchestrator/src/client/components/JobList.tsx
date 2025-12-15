@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { LayoutGrid, Loader2, RefreshCcw, Search, Table2 } from "lucide-react";
+import { LayoutGrid, Search, Table2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,9 +19,7 @@ interface JobListProps {
   onApply: (id: string) => void;
   onReject: (id: string) => void;
   onProcess: (id: string) => void;
-  onProcessAll: () => void;
   processingJobId: string | null;
-  isProcessingAll: boolean;
 }
 
 type FilterTab = "ready" | "discovered" | "applied" | "all";
@@ -156,9 +154,7 @@ export const JobList: React.FC<JobListProps> = ({
   onApply,
   onReject,
   onProcess,
-  onProcessAll,
   processingJobId,
-  isProcessingAll,
 }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>("ready");
   const [searchQuery, setSearchQuery] = useState("");
@@ -252,22 +248,6 @@ export const JobList: React.FC<JobListProps> = ({
           </TabsList>
 
           <div className="flex items-center justify-between gap-2 sm:justify-end">
-            {activeTab === "discovered" && counts.discovered > 0 && (
-              <Button onClick={onProcessAll} disabled={isProcessingAll} size="sm">
-                {isProcessingAll ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                    Process All ({counts.discovered})
-                  </>
-                )}
-              </Button>
-            )}
-
             <div className="flex items-center rounded-md border bg-muted/20 p-0.5">
               <Button
                 type="button"

@@ -215,12 +215,14 @@ export const progressHelpers = {
     jobsScored: index,
   }),
   
-  scoringComplete: (totalScored: number, topN: number) => updateProgress({
-    step: 'processing',
-    message: `Scored ${totalScored} jobs. Processing top ${topN}...`,
-    detail: 'Generating tailored resumes',
+  scoringComplete: (totalScored: number) => updateProgress({
+    step: 'scoring',
+    message: `Scored ${totalScored} jobs.`,
+    detail: 'Ready for manual processing',
     jobsScored: totalScored,
-    totalToProcess: topN,
+    totalToProcess: 0,
+    jobsProcessed: 0,
+    currentJob: undefined,
   }),
   
   processingJob: (index: number, total: number, job: { id: string; title: string; employer: string }) => updateProgress({

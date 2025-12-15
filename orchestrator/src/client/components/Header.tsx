@@ -112,62 +112,60 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Refresh</span>
           </Button>
 
-          <div className="flex items-center">
-            <Button
-              size="sm"
-              onClick={onRunPipeline}
-              disabled={isPipelineRunning}
-              className="rounded-r-none"
-            >
-              {isPipelineRunning ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Running...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Run Pipeline
-                </>
-              )}
-            </Button>
+          <Button
+            size="sm"
+            onClick={onRunPipeline}
+            disabled={isPipelineRunning}
+            className="rounded-r-none"
+          >
+            {isPipelineRunning ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Run Pipeline
+              </>
+            )}
+          </Button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="sm"
-                  disabled={isPipelineRunning}
-                  className="rounded-l-none border-l border-primary-foreground/20 px-2"
-                  aria-label="Select pipeline sources"
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm"
+                disabled={isPipelineRunning}
+                className="rounded-l-none border-l border-primary-foreground/20 px-2"
+                aria-label="Select pipeline sources"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Sources</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {orderedSources.map((source) => (
+                <DropdownMenuCheckboxItem
+                  key={source}
+                  checked={pipelineSources.includes(source)}
+                  onCheckedChange={(checked) => toggleSource(source, Boolean(checked))}
                 >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Sources</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {orderedSources.map((source) => (
-                  <DropdownMenuCheckboxItem
-                    key={source}
-                    checked={pipelineSources.includes(source)}
-                    onCheckedChange={(checked) => toggleSource(source, Boolean(checked))}
-                  >
-                    {sourceLabel[source]}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(orderedSources)}>
-                  All sources
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["gradcracker"])}>
-                  Gradcracker only
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["indeed", "linkedin"])}>
-                  Indeed + LinkedIn only
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  {sourceLabel[source]}
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => onPipelineSourcesChange(orderedSources)}>
+                All sources
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["gradcracker"])}>
+                Gradcracker only
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => onPipelineSourcesChange(["indeed", "linkedin"])}>
+                Indeed + LinkedIn only
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </header>

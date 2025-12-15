@@ -170,39 +170,6 @@ apiRouter.post('/jobs/:id/reject', async (req: Request, res: Response) => {
   }
 });
 
-/**
- * POST /api/jobs/process-discovered - Process all discovered jobs (generate PDFs)
- */
-apiRouter.post('/jobs/process-discovered', async (req: Request, res: Response) => {
-  try {
-    const discoveredJobs = await jobsRepo.getAllJobs(['discovered']);
-    
-    // Process each job in background
-    const processInBackground = async () => {
-      for (const job of discoveredJobs.filter(j => j.status === 'discovered')) {
-        try {
-          await processJob(job.id);
-        } catch (error) {
-          console.error(`Failed to process job ${job.id}:`, error);
-        }
-      }
-    };
-    
-    processInBackground().catch(console.error);
-    
-    res.json({ 
-      success: true, 
-      data: { 
-        message: `Processing ${discoveredJobs.length} jobs`,
-        count: discoveredJobs.length,
-      } 
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
-  }
-});
-
 // ============================================================================
 // Pipeline API
 // ============================================================================

@@ -4,10 +4,7 @@
  * Flow:
  * 1. Run crawler to discover new jobs
  * 2. Score jobs for suitability
- * 3. Pick top N jobs
- * 4. Generate tailored summaries
- * 5. Generate PDF resumes
- * 6. Mark as "ready" for user review
+ * 3. Leave all jobs in "discovered" for manual processing
  */
 
 import { readFile } from 'fs/promises';
@@ -15,7 +12,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { runCrawler } from '../services/crawler.js';
 import { runJobSpy } from '../services/jobspy.js';
-import { scoreAndRankJobs, scoreJobSuitability } from '../services/scorer.js';
+import { scoreJobSuitability } from '../services/scorer.js';
 import { generateSummary } from '../services/summary.js';
 import { generatePdf } from '../services/pdf.js';
 import * as jobsRepo from '../repositories/jobs.js';
@@ -63,7 +60,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
   const pipelineRun = await pipelineRepo.createPipelineRun();
   
   console.log('🚀 Starting job pipeline...');
-  console.log(`   Config: topN=${mergedConfig.topN}, minScore=${mergedConfig.minSuitabilityScore}`);
+  console.log(`   Config: topN=${mergedConfig.topN}, minScore=${mergedConfig.minSuitabilityScore} (manual processing)`);
   
   try {
     // Step 1: Load profile
@@ -141,9 +138,18 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       jobsDiscovered: created,
     });
     
-    // Step 4: Get unprocessed jobs and score them
+    // Step 4: Score all discovered jobs missing a score
     console.log('\n🎯 Scoring jobs for suitability...');
-    const unprocessedJobs = await jobsRepo.getJobsForProcessing(50);
+    const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
+
+    updateProgress({
+      step: 'scoring',
+      jobsDiscovered: unprocessedJobs.length,
+      jobsScored: 0,
+      jobsProcessed: 0,
+      totalToProcess: 0,
+      currentJob: undefined,
+    });
     
     // Score jobs with progress updates
     const scoredJobs: Array<Job & { suitabilityScore: number; suitabilityReason: string }> = [];
@@ -175,106 +181,27 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       });
     }
     
-    // Sort by score
-    scoredJobs.sort((a, b) => b.suitabilityScore - a.suitabilityScore);
-    
-    // Step 5: Pick top N jobs above threshold
-    const topJobs = scoredJobs
-      .filter(j => j.suitabilityScore >= mergedConfig.minSuitabilityScore)
-      .slice(0, mergedConfig.topN);
-    
-    progressHelpers.scoringComplete(scoredJobs.length, topJobs.length);
-    
-    console.log(`\n📊 Selected ${topJobs.length} top jobs for processing:`);
-    for (const job of topJobs) {
-      console.log(`   - ${job.title} @ ${job.employer} (score: ${job.suitabilityScore})`);
-    }
-    
-    // Step 6: Process each top job
-    let processed = 0;
-    
-    for (let i = 0; i < topJobs.length; i++) {
-      const job = topJobs[i];
-      console.log(`\n📝 Processing: ${job.title} @ ${job.employer}`);
-      
-      progressHelpers.processingJob(i + 1, topJobs.length, {
-        id: job.id,
-        title: job.title,
-        employer: job.employer,
-      });
-      
-      try {
-        // Mark as processing
-        await jobsRepo.updateJob(job.id, { status: 'processing' });
-        
-        // Generate tailored summary
-        console.log('   Generating summary...');
-        progressHelpers.generatingSummary({ title: job.title, employer: job.employer });
-        
-        const summaryResult = await generateSummary(
-          job.jobDescription || '',
-          profile
-        );
-        
-        if (!summaryResult.success) {
-          console.warn(`   ⚠️ Summary generation failed: ${summaryResult.error}`);
-          continue;
-        }
-        
-        // Update job with summary
-        await jobsRepo.updateJob(job.id, {
-          tailoredSummary: summaryResult.summary,
-        });
-        
-        // Generate PDF
-        console.log('   Generating PDF...');
-        progressHelpers.generatingPdf({ title: job.title, employer: job.employer });
-        
-        const pdfResult = await generatePdf(
-          job.id,
-          summaryResult.summary!,
-          mergedConfig.profilePath
-        );
-        
-        if (!pdfResult.success) {
-          console.warn(`   ⚠️ PDF generation failed: ${pdfResult.error}`);
-          // Still mark as ready even if PDF failed - user can regenerate
-        }
-        
-        // Mark as ready
-        await jobsRepo.updateJob(job.id, {
-          status: 'ready',
-          pdfPath: pdfResult.pdfPath ?? undefined,
-        });
-        
-        processed++;
-        progressHelpers.jobComplete(processed, topJobs.length);
-        console.log(`   ✅ Ready for review!`);
-        
-      } catch (error) {
-        console.error(`   ❌ Failed to process job: ${error}`);
-        // Continue with next job
-      }
-    }
+    progressHelpers.scoringComplete(scoredJobs.length);
+    console.log(`\n📊 Scored ${scoredJobs.length} jobs. Ready for manual processing.`);
     
     // Update pipeline run as completed
     await pipelineRepo.updatePipelineRun(pipelineRun.id, {
       status: 'completed',
       completedAt: new Date().toISOString(),
-      jobsProcessed: processed,
+      jobsProcessed: 0,
     });
     
     console.log('\n🎉 Pipeline completed!');
     console.log(`   Jobs discovered: ${created}`);
-    console.log(`   Jobs processed: ${processed}`);
+    console.log('   Jobs processed: 0 (manual)');
     
-    progressHelpers.complete(created, processed);
+    progressHelpers.complete(created, 0);
     isPipelineRunning = false;
     
     return {
       success: true,
       jobsDiscovered: created,
-      jobsProcessed: processed,
+      jobsProcessed: 0,
     };
     
   } catch (error) {

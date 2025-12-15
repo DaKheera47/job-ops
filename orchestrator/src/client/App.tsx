@@ -26,7 +26,6 @@ export const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
-  const [isProcessingAll, setIsProcessingAll] = useState(false);
   const [pipelineSources, setPipelineSources] = useState<JobSource[]>(() => {
     try {
       const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
@@ -159,35 +158,6 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleProcessAll = async () => {
-    try {
-      setIsProcessingAll(true);
-      const result = await api.processAllDiscovered();
-      toast.message("Processing jobs", { description: `Processing ${result.count} jobs in background...` });
-
-      const pollInterval = setInterval(async () => {
-        try {
-          const data = await api.getJobs();
-          setJobs(data.jobs);
-          setStats(data.byStatus);
-
-          const stillDiscovered = data.byStatus.discovered + data.byStatus.processing;
-          if (stillDiscovered === 0) {
-            clearInterval(pollInterval);
-            setIsProcessingAll(false);
-            toast.success("All jobs processed");
-          }
-        } catch {
-          // Ignore errors
-        }
-      }, 3000);
-    } catch (error) {
-      setIsProcessingAll(false);
-      const message = error instanceof Error ? error.message : "Failed to process jobs";
-      toast.error(message);
-    }
-  };
-
   return (
     <>
       <Header
@@ -208,9 +178,7 @@ export const App: React.FC = () => {
           onApply={handleApply}
           onReject={handleReject}
           onProcess={handleProcess}
-          onProcessAll={handleProcessAll}
           processingJobId={processingJobId}
-          isProcessingAll={isProcessingAll}
         />
       </main>
 
