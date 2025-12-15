@@ -88,6 +88,13 @@ const migrations = [
     error_message TEXT
   )`,
 
+  `CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
   // Add source column for existing databases (safe to skip if already present)
   `ALTER TABLE jobs ADD COLUMN source TEXT NOT NULL DEFAULT 'gradcracker'`,
   `UPDATE jobs SET source = 'gradcracker' WHERE source IS NULL OR source = ''`,

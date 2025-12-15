@@ -4,11 +4,13 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Route, Routes } from "react-router-dom";
 
 import { Toaster } from "@/components/ui/sonner";
 import type { Job, JobSource, JobStatus } from "../shared/types";
 import { Header, JobList, PipelineProgress, Stats } from "./components";
 import * as api from "./api";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin"];
 const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
@@ -170,17 +172,25 @@ export const App: React.FC = () => {
         onPipelineSourcesChange={setPipelineSources}
       />
 
-      <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
-        <PipelineProgress isRunning={isPipelineRunning} />
-        <Stats stats={stats} />
-        <JobList
-          jobs={jobs}
-          onApply={handleApply}
-          onReject={handleReject}
-          onProcess={handleProcess}
-          processingJobId={processingJobId}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
+              <PipelineProgress isRunning={isPipelineRunning} />
+              <Stats stats={stats} />
+              <JobList
+                jobs={jobs}
+                onApply={handleApply}
+                onReject={handleReject}
+                onProcess={handleProcess}
+                processingJobId={processingJobId}
+              />
+            </main>
+          }
         />
-      </main>
+        <Route path="/settings" element={<SettingsPage />} />
+      </Routes>
 
       <Toaster position="bottom-right" richColors closeButton />
     </>

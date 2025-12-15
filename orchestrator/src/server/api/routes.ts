@@ -6,6 +6,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
+import * as settingsRepo from '../repositories/settings.js';
 import { runPipeline, processJob, getPipelineStatus, subscribeToProgress, getProgress } from '../pipeline/index.js';
 import { createNotionEntry } from '../services/notion.js';
 import { clearDatabase } from '../db/clear.js';
@@ -173,6 +174,63 @@ apiRouter.post('/jobs/:id/reject', async (req: Request, res: Response) => {
 // ============================================================================
 // Pipeline API
 // ============================================================================
+
+/**
+ * GET /api/settings - Get app settings (effective + defaults)
+ */
+apiRouter.get('/settings', async (_req: Request, res: Response) => {
+  try {
+    const overrideModel = await settingsRepo.getSetting('model');
+    const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
+    const model = overrideModel || defaultModel;
+
+    res.json({
+      success: true,
+      data: {
+        model,
+        defaultModel,
+        overrideModel,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+const updateSettingsSchema = z.object({
+  model: z.string().trim().min(1).max(200).nullable().optional(),
+});
+
+/**
+ * PATCH /api/settings - Update settings overrides
+ */
+apiRouter.patch('/settings', async (req: Request, res: Response) => {
+  try {
+    const input = updateSettingsSchema.parse(req.body);
+
+    if ('model' in input) {
+      const model = input.model ?? null;
+      await settingsRepo.setSetting('model', model);
+    }
+
+    const overrideModel = await settingsRepo.getSetting('model');
+    const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
+    const model = overrideModel || defaultModel;
+
+    res.json({
+      success: true,
+      data: {
+        model,
+        defaultModel,
+        overrideModel,
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(400).json({ success: false, error: message });
+  }
+});
 
 /**
  * GET /api/pipeline/status - Get pipeline status

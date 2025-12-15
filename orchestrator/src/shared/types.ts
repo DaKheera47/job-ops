@@ -171,3 +171,9 @@ export interface PipelineStatusResponse {
   lastRun: PipelineRun | null;
   nextScheduledRun: string | null;
 }
+
+export interface AppSettings {
+  model: string;
+  defaultModel: string;
+  overrideModel: string | null;
+}

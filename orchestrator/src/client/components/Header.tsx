@@ -3,7 +3,8 @@
  */
 
 import React from "react";
-import { ChevronDown, Loader2, Play, RefreshCcw, Rocket, Trash2 } from "lucide-react";
+import { ChevronDown, Loader2, Play, RefreshCcw, Rocket, Settings, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +111,13 @@ export const Header: React.FC<HeaderProps> = ({
           <Button variant="outline" size="sm" onClick={onRefresh} disabled={isLoading}>
             <RefreshCcw className="h-4 w-4" />
             <span className="hidden sm:inline">Refresh</span>
+          </Button>
+
+          <Button asChild variant="outline" size="sm">
+            <Link to="/settings">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Settings</span>
+            </Link>
           </Button>
 
           <Button

@@ -3,6 +3,7 @@
  */
 
 import type { Job } from '../../shared/types.js';
+import { getSetting } from '../repositories/settings.js';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -24,7 +25,8 @@ export async function scoreJobSuitability(
     return mockScore(job);
   }
 
-  const model = process.env.MODEL || 'openai/gpt-4o-mini';
+  const overrideModel = await getSetting('model');
+  const model = overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
   
   const prompt = buildScoringPrompt(job, profile);
   

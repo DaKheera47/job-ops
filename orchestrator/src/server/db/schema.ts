@@ -82,7 +82,16 @@ export const pipelineRuns = sqliteTable('pipeline_runs', {
   errorMessage: text('error_message'),
 });
 
+export const settings = sqliteTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  createdAt: text('created_at').notNull().default(sql`(datetime('now'))`),
+  updatedAt: text('updated_at').notNull().default(sql`(datetime('now'))`),
+});
+
 export type JobRow = typeof jobs.$inferSelect;
 export type NewJobRow = typeof jobs.$inferInsert;
 export type PipelineRunRow = typeof pipelineRuns.$inferSelect;
 export type NewPipelineRunRow = typeof pipelineRuns.$inferInsert;
+export type SettingsRow = typeof settings.$inferSelect;
+export type NewSettingsRow = typeof settings.$inferInsert;

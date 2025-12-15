@@ -8,7 +8,8 @@ import type {
   JobsListResponse, 
   PipelineStatusResponse,
   JobSource,
-  PipelineRun 
+  PipelineRun,
+  AppSettings,
 } from '../../shared/types';
 
 const API_BASE = '/api';
@@ -89,6 +90,18 @@ export async function runPipeline(config?: {
   return fetchApi<{ message: string }>('/pipeline/run', {
     method: 'POST',
     body: JSON.stringify(config || {}),
+  });
+}
+
+// Settings API
+export async function getSettings(): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/settings');
+}
+
+export async function updateSettings(update: { model?: string | null }): Promise<AppSettings> {
+  return fetchApi<AppSettings>('/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(update),
   });
 }
 
