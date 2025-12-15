@@ -4,6 +4,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpDown, LayoutGrid, Search, Table2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,9 +27,9 @@ import { JobTable, type JobSort } from "./JobTable";
 
 interface JobListProps {
   jobs: Job[];
-  onApply: (id: string) => void;
-  onReject: (id: string) => void;
-  onProcess: (id: string) => void;
+  onApply: (id: string) => void | Promise<void>;
+  onReject: (id: string) => void | Promise<void>;
+  onProcess: (id: string) => void | Promise<void>;
   processingJobId: string | null;
 }
 
@@ -179,6 +180,8 @@ export const JobList: React.FC<JobListProps> = ({
   const [activeTab, setActiveTab] = useState<FilterTab>("ready");
   const [searchQuery, setSearchQuery] = useState("");
   const [sort, setSort] = useState<JobSort>(DEFAULT_SORT);
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(() => new Set());
+  const [batchAction, setBatchAction] = useState<null | "process" | "reject" | "apply">(null);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     try {
       const raw = localStorage.getItem(JOB_LIST_VIEW_STORAGE_KEY);
@@ -196,6 +199,10 @@ export const JobList: React.FC<JobListProps> = ({
       // Ignore localStorage errors
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    setSelectedJobIds(new Set());
+  }, [activeTab, viewMode]);
 
   const counts = useMemo(() => {
     const byTab: Record<FilterTab, number> = {
@@ -242,11 +249,62 @@ export const JobList: React.FC<JobListProps> = ({
     return map;
   }, [jobsForTab, searchQuery, sort]);
 
+  const activeTabJobs = visibleJobsForTab.get(activeTab) ?? [];
+
+  useEffect(() => {
+    setSelectedJobIds((current) => {
+      const visibleIds = new Set(activeTabJobs.map((job) => job.id));
+      const next = new Set<string>();
+      for (const id of current) {
+        if (visibleIds.has(id)) next.add(id);
+      }
+      return next.size === current.size ? current : next;
+    });
+  }, [activeTabJobs]);
+
   const activeResultsCount = visibleJobsForTab.get(activeTab)?.length ?? 0;
   const hasActiveFilters =
     searchQuery.trim().length > 0 ||
     sort.key !== DEFAULT_SORT.key ||
     sort.direction !== DEFAULT_SORT.direction;
+
+  const selectedJobs = useMemo(() => {
+    if (selectedJobIds.size === 0) return [];
+    return activeTabJobs.filter((job) => selectedJobIds.has(job.id));
+  }, [activeTabJobs, selectedJobIds]);
+
+  const selectedCount = selectedJobIds.size;
+
+  const runBatch = async (action: "process" | "reject" | "apply") => {
+    if (selectedJobs.length === 0) return;
+
+    const eligible = selectedJobs.filter((job) => {
+      if (action === "process") return job.status === "discovered";
+      if (action === "apply") return job.status === "ready";
+      return job.status === "discovered" || job.status === "ready";
+    });
+
+    const skipped = selectedJobs.length - eligible.length;
+    if (eligible.length === 0) {
+      toast.message("No eligible jobs selected");
+      return;
+    }
+
+    setBatchAction(action);
+    try {
+      for (const job of eligible) {
+        if (action === "process") await Promise.resolve(onProcess(job.id));
+        if (action === "apply") await Promise.resolve(onApply(job.id));
+        if (action === "reject") await Promise.resolve(onReject(job.id));
+      }
+
+      setSelectedJobIds(new Set());
+      const actionLabel = action === "process" ? "Processed" : action === "apply" ? "Applied" : "Skipped";
+      toast.success(`${actionLabel} ${eligible.length} jobs`, skipped > 0 ? { description: `Skipped ${skipped} ineligible.` } : undefined);
+    } finally {
+      setBatchAction(null);
+    }
+  };
 
   return (
     <Tabs
@@ -387,19 +445,65 @@ export const JobList: React.FC<JobListProps> = ({
             ) : (
               <>
                 {viewMode === "table" ? (
-                  <Card>
-                    <CardContent className="p-0">
-                      <JobTable
-                        jobs={filteredJobs}
-                        sort={sort}
-                        onSortChange={setSort}
-                        onApply={onApply}
-                        onReject={onReject}
-                        onProcess={onProcess}
-                        processingJobId={processingJobId}
-                      />
-                    </CardContent>
-                  </Card>
+                  <div className="space-y-2">
+                    {tab.id === activeTab && selectedCount > 0 && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2">
+                        <div className="text-sm">
+                          <span className="font-medium">{selectedCount}</span>{" "}
+                          <span className="text-muted-foreground">selected</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => runBatch("process")}
+                            disabled={batchAction !== null}
+                          >
+                            Generate Resumes
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => runBatch("reject")}
+                            disabled={batchAction !== null}
+                          >
+                            Skip
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => runBatch("apply")}
+                            disabled={batchAction !== null}
+                          >
+                            Mark Applied
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setSelectedJobIds(new Set())}
+                            disabled={batchAction !== null}
+                          >
+                            Clear
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <Card>
+                      <CardContent className="p-0">
+                        <JobTable
+                          jobs={filteredJobs}
+                          sort={sort}
+                          onSortChange={setSort}
+                          selectedJobIds={selectedJobIds}
+                          onSelectedJobIdsChange={setSelectedJobIds}
+                          onApply={onApply}
+                          onReject={onReject}
+                          onProcess={onProcess}
+                          processingJobId={processingJobId}
+                        />
+                      </CardContent>
+                    </Card>
+                  </div>
                 ) : (
                   <div className="grid gap-4">
                     {filteredJobs.map((job) => (

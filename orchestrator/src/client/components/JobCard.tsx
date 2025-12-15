@@ -25,9 +25,9 @@ import { StatusBadge } from "./StatusBadge";
 
 interface JobCardProps {
   job: Job;
-  onApply: (id: string) => void;
-  onReject: (id: string) => void;
-  onProcess: (id: string) => void;
+  onApply: (id: string) => void | Promise<void>;
+  onReject: (id: string) => void | Promise<void>;
+  onProcess: (id: string) => void | Promise<void>;
   isProcessing: boolean;
 }
 

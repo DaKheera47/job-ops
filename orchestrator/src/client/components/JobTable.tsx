@@ -17,6 +17,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,9 +50,11 @@ export interface JobTableProps {
   jobs: Job[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
-  onApply: (id: string) => void;
-  onReject: (id: string) => void;
-  onProcess: (id: string) => void;
+  selectedJobIds: Set<string>;
+  onSelectedJobIdsChange: (ids: Set<string>) => void;
+  onApply: (id: string) => void | Promise<void>;
+  onReject: (id: string) => void | Promise<void>;
+  onProcess: (id: string) => void | Promise<void>;
   processingJobId: string | null;
 }
 
@@ -123,15 +126,36 @@ export const JobTable: React.FC<JobTableProps> = ({
   jobs,
   sort,
   onSortChange,
+  selectedJobIds,
+  onSelectedJobIdsChange,
   onApply,
   onReject,
   onProcess,
   processingJobId,
 }) => {
+  const selectedCount = jobs.reduce((count, job) => count + (selectedJobIds.has(job.id) ? 1 : 0), 0);
+  const allSelected = jobs.length > 0 && selectedCount === jobs.length;
+  const someSelected = selectedCount > 0 && selectedCount < jobs.length;
+
   return (
     <Table className="table-fixed">
       <TableHeader>
         <TableRow>
+          <TableHead className="w-10">
+            <Checkbox
+              aria-label="Select all rows"
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
+              onCheckedChange={(checked) => {
+                const next = new Set(selectedJobIds);
+                if (checked) {
+                  for (const job of jobs) next.add(job.id);
+                } else {
+                  for (const job of jobs) next.delete(job.id);
+                }
+                onSelectedJobIdsChange(next);
+              }}
+            />
+          </TableHead>
           <TableHead className="w-[28%]">
             <SortButton label="Title" sortKey="title" sort={sort} onSortChange={onSortChange} />
           </TableHead>
@@ -178,9 +202,22 @@ export const JobTable: React.FC<JobTableProps> = ({
           const canProcess = job.status === "discovered";
           const canReject = ["discovered", "ready"].includes(job.status);
           const isProcessing = processingJobId === job.id;
+          const isSelected = selectedJobIds.has(job.id);
 
           return (
-            <TableRow key={job.id}>
+            <TableRow key={job.id} data-state={isSelected ? "selected" : undefined}>
+              <TableCell className="align-top">
+                <Checkbox
+                  aria-label={`Select ${job.title}`}
+                  checked={isSelected}
+                  onCheckedChange={(checked) => {
+                    const next = new Set(selectedJobIds);
+                    if (checked) next.add(job.id);
+                    else next.delete(job.id);
+                    onSelectedJobIdsChange(next);
+                  }}
+                />
+              </TableCell>
               <TableCell className="align-top">
                 <Button
                   asChild
