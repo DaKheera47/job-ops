@@ -8,12 +8,14 @@ import {
   ArrowUp,
   ArrowUpDown,
   CheckCircle2,
+  Copy,
   Download,
   ExternalLink,
   MoreHorizontal,
   RefreshCcw,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { copyTextToClipboard, formatJobForLlmContext } from "@client/lib/jobCopy";
 import type { Job } from "../../shared/types";
 import { StatusBadge } from "./StatusBadge";
 
@@ -136,6 +139,15 @@ export const JobTable: React.FC<JobTableProps> = ({
   const selectedCount = jobs.reduce((count, job) => count + (selectedJobIds.has(job.id) ? 1 : 0), 0);
   const allSelected = jobs.length > 0 && selectedCount === jobs.length;
   const someSelected = selectedCount > 0 && selectedCount < jobs.length;
+
+  const handleCopyInfo = async (job: Job) => {
+    try {
+      await copyTextToClipboard(formatJobForLlmContext(job));
+      toast.success("Copied job info", { description: "LLM-ready context copied to clipboard." });
+    } catch {
+      toast.error("Could not copy job info");
+    }
+  };
 
   return (
     <Table className="table-fixed">
@@ -271,6 +283,11 @@ export const JobTable: React.FC<JobTableProps> = ({
                         <ExternalLink className="mr-2 h-4 w-4" />
                         View Job
                       </a>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem onSelect={() => void handleCopyInfo(job)}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy info
                     </DropdownMenuItem>
 
                     {hasPdf && (

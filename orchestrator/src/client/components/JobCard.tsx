@@ -6,6 +6,7 @@ import React from "react";
 import {
   Calendar,
   CheckCircle2,
+  Copy,
   DollarSign,
   Download,
   ExternalLink,
@@ -15,10 +16,12 @@ import {
   RefreshCcw,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { copyTextToClipboard, formatJobForLlmContext } from "@client/lib/jobCopy";
 import type { Job } from "../../shared/types";
 import { ScoreIndicator } from "./ScoreIndicator";
 import { StatusBadge } from "./StatusBadge";
@@ -67,6 +70,15 @@ export const JobCard: React.FC<JobCardProps> = ({
   const jobLink = job.applicationLink || job.jobUrl;
   const pdfHref = `/pdfs/resume_${job.id}.pdf`;
   const deadline = formatDate(job.deadline);
+
+  const handleCopyInfo = async () => {
+    try {
+      await copyTextToClipboard(formatJobForLlmContext(job));
+      toast.success("Copied job info", { description: "LLM-ready context copied to clipboard." });
+    } catch {
+      toast.error("Could not copy job info");
+    }
+  };
 
   return (
     <Card>
@@ -130,6 +142,11 @@ export const JobCard: React.FC<JobCardProps> = ({
             <ExternalLink className="mr-2 h-4 w-4" />
             View Job
           </a>
+        </Button>
+
+        <Button variant="outline" size="sm" onClick={handleCopyInfo}>
+          <Copy className="mr-2 h-4 w-4" />
+          Copy info
         </Button>
 
         {hasPdf && (
