@@ -98,7 +98,10 @@ export async function getSettings(): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings');
 }
 
-export async function updateSettings(update: { model?: string | null }): Promise<AppSettings> {
+export async function updateSettings(update: {
+  model?: string | null
+  pipelineWebhookUrl?: string | null
+}): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {
     method: 'PATCH',
     body: JSON.stringify(update),

@@ -8,6 +8,7 @@ import { db, schema } from '../db/index.js'
 const { settings } = schema
 
 export type SettingKey = 'model'
+  | 'pipelineWebhookUrl'
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   const [row] = await db.select().from(settings).where(eq(settings.key, key))
@@ -39,4 +40,3 @@ export async function setSetting(key: SettingKey, value: string | null): Promise
     updatedAt: now,
   })
 }
-

@@ -176,4 +176,7 @@ export interface AppSettings {
   model: string;
   defaultModel: string;
   overrideModel: string | null;
+  pipelineWebhookUrl: string;
+  defaultPipelineWebhookUrl: string;
+  overridePipelineWebhookUrl: string | null;
 }

@@ -184,12 +184,19 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
     const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
     const model = overrideModel || defaultModel;
 
+    const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl');
+    const defaultPipelineWebhookUrl = process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || '';
+    const pipelineWebhookUrl = overridePipelineWebhookUrl || defaultPipelineWebhookUrl;
+
     res.json({
       success: true,
       data: {
         model,
         defaultModel,
         overrideModel,
+        pipelineWebhookUrl,
+        defaultPipelineWebhookUrl,
+        overridePipelineWebhookUrl,
       },
     });
   } catch (error) {
@@ -200,6 +207,7 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
 
 const updateSettingsSchema = z.object({
   model: z.string().trim().min(1).max(200).nullable().optional(),
+  pipelineWebhookUrl: z.string().trim().min(1).max(2000).nullable().optional(),
 });
 
 /**
@@ -214,9 +222,18 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
       await settingsRepo.setSetting('model', model);
     }
 
+    if ('pipelineWebhookUrl' in input) {
+      const pipelineWebhookUrl = input.pipelineWebhookUrl ?? null;
+      await settingsRepo.setSetting('pipelineWebhookUrl', pipelineWebhookUrl);
+    }
+
     const overrideModel = await settingsRepo.getSetting('model');
     const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
     const model = overrideModel || defaultModel;
+
+    const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl');
+    const defaultPipelineWebhookUrl = process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || '';
+    const pipelineWebhookUrl = overridePipelineWebhookUrl || defaultPipelineWebhookUrl;
 
     res.json({
       success: true,
@@ -224,6 +241,9 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
         model,
         defaultModel,
         overrideModel,
+        pipelineWebhookUrl,
+        defaultPipelineWebhookUrl,
+        overridePipelineWebhookUrl,
       },
     });
   } catch (error) {

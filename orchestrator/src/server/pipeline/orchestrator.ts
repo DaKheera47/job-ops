@@ -17,6 +17,7 @@ import { generateSummary } from '../services/summary.js';
 import { generatePdf } from '../services/pdf.js';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
+import * as settingsRepo from '../repositories/settings.js';
 import { progressHelpers, resetProgress, updateProgress } from './progress.js';
 import type { CreateJobInput, Job, JobSource, PipelineConfig } from '../../shared/types.js';
 
@@ -33,6 +34,42 @@ const DEFAULT_CONFIG: PipelineConfig = {
 
 // Track if pipeline is currently running
 let isPipelineRunning = false;
+
+async function notifyPipelineWebhook(
+  event: 'pipeline.completed' | 'pipeline.failed',
+  payload: Record<string, unknown>
+) {
+  const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl')
+  const pipelineWebhookUrl = (
+    overridePipelineWebhookUrl ||
+    process.env.PIPELINE_WEBHOOK_URL ||
+    process.env.WEBHOOK_URL ||
+    ''
+  ).trim()
+  if (!pipelineWebhookUrl) return
+
+  try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const secret = process.env.WEBHOOK_SECRET
+    if (secret) headers.Authorization = `Bearer ${secret}`
+
+    const response = await fetch(pipelineWebhookUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        event,
+        sentAt: new Date().toISOString(),
+        ...payload,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn(`⚠️ Pipeline webhook POST failed (${response.status}): ${await response.text()}`)
+    }
+  } catch (error) {
+    console.warn('⚠️ Pipeline webhook POST failed:', error)
+  }
+}
 
 /**
  * Run the full job discovery and processing pipeline.
@@ -196,6 +233,13 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     console.log('   Jobs processed: 0 (manual)');
     
     progressHelpers.complete(created, 0);
+
+    await notifyPipelineWebhook('pipeline.completed', {
+      pipelineRunId: pipelineRun.id,
+      jobsDiscovered: created,
+      jobsScored: unprocessedJobs.length,
+      jobsProcessed: 0,
+    })
     isPipelineRunning = false;
     
     return {
@@ -214,6 +258,11 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     });
     
     progressHelpers.failed(message);
+
+    await notifyPipelineWebhook('pipeline.failed', {
+      pipelineRunId: pipelineRun.id,
+      error: message,
+    })
     isPipelineRunning = false;
     
     console.error('\n❌ Pipeline failed:', message);

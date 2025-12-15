@@ -95,6 +95,11 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  // Rename settings key: webhookUrl -> pipelineWebhookUrl (safe to re-run)
+  `INSERT OR REPLACE INTO settings(key, value, created_at, updated_at)
+   SELECT 'pipelineWebhookUrl', value, created_at, updated_at FROM settings WHERE key = 'webhookUrl'`,
+  `DELETE FROM settings WHERE key = 'webhookUrl'`,
+
   // Add source column for existing databases (safe to skip if already present)
   `ALTER TABLE jobs ADD COLUMN source TEXT NOT NULL DEFAULT 'gradcracker'`,
   `UPDATE jobs SET source = 'gradcracker' WHERE source IS NULL OR source = ''`,
