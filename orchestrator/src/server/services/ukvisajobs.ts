@@ -57,7 +57,8 @@ export async function runUkVisaJobs(options: RunUkVisaJobsOptions = {}): Promise
     const allJobs: CreateJobInput[] = [];
     const seenIds = new Set<string>();
 
-    for (const term of terms) {
+    for (let i = 0; i < terms.length; i++) {
+        const term = terms[i];
         const termLabel = term ? `"${term}"` : 'all jobs';
         console.log(`   Running for ${termLabel}...`);
 
@@ -105,6 +106,12 @@ export async function runUkVisaJobs(options: RunUkVisaJobsOptions = {}): Promise
             const message = error instanceof Error ? error.message : 'Unknown error';
             console.error(`❌ UK Visa Jobs failed for ${termLabel}: ${message}`);
             // Continue to next term instead of failing completely
+        }
+
+        // Delay between terms
+        if (i < terms.length - 1) {
+            console.log('   Waiting 5s before next search term...');
+            await new Promise((resolve) => setTimeout(resolve, 5000));
         }
     }
 
