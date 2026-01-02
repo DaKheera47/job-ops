@@ -60,9 +60,10 @@ export const Header: React.FC<HeaderProps> = ({
     gradcracker: "Gradcracker",
     indeed: "Indeed",
     linkedin: "LinkedIn",
+    ukvisajobs: "UK Visa Jobs",
   };
 
-  const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin"];
+  const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
 
   const toggleSource = (source: JobSource, checked: boolean) => {
     const next = checked

@@ -1,0 +1,22 @@
+{
+    "name": "ukvisajobs-extractor",
+    "version": "0.0.1",
+    "type": "module",
+    "description": "UK Visa Jobs extractor - fetches job listings that may sponsor work visas",
+    "main": "dist/main.js",
+    "dependencies": {},
+    "devDependencies": {
+        "@apify/tsconfig": "^0.1.0",
+        "@types/node": "^24.0.0",
+        "tsx": "^4.4.0",
+        "typescript": "~5.9.0"
+    },
+    "scripts": {
+        "start": "npm run start:dev",
+        "start:prod": "node dist/main.js",
+        "start:dev": "tsx src/main.ts",
+        "build": "tsc"
+    },
+    "author": "",
+    "license": "ISC"
+}

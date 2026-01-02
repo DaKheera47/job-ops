@@ -2,10 +2,10 @@
  * API client for the orchestrator backend.
  */
 
-import type { 
-  Job, 
-  ApiResponse, 
-  JobsListResponse, 
+import type {
+  Job,
+  ApiResponse,
+  JobsListResponse,
   PipelineStatusResponse,
   JobSource,
   PipelineRun,
@@ -26,13 +26,13 @@ async function fetchApi<T>(
       ...options?.headers,
     },
   });
-  
+
   const data: ApiResponse<T> = await response.json();
-  
+
   if (!data.success) {
     throw new Error(data.error || 'API request failed');
   }
-  
+
   return data.data as T;
 }
 
@@ -47,7 +47,7 @@ export async function getJob(id: string): Promise<Job> {
 }
 
 export async function updateJob(
-  id: string, 
+  id: string,
   update: Partial<Job>
 ): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}`, {
@@ -105,6 +105,13 @@ export async function updateSettings(update: {
   pipelineWebhookUrl?: string | null
   jobCompleteWebhookUrl?: string | null
   resumeProjects?: ResumeProjectsSettings | null
+  ukvisajobsMaxJobs?: number | null
+  searchTerms?: string[] | null
+  jobspyLocation?: string | null
+  jobspyResultsWanted?: number | null
+  jobspyHoursOld?: number | null
+  jobspyCountryIndeed?: string | null
+  jobspyLinkedinFetchDescription?: boolean | null
 }): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {
     method: 'PATCH',

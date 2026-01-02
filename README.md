@@ -75,6 +75,7 @@ job-ops/
     src/shared/                 # shared types (Job, PipelineRun, etc.)
   extractors/gradcracker/       # Crawlee crawler (Gradcracker)
   extractors/jobspy/            # JobSpy wrapper (Indeed/LinkedIn/etc)
+  extractors/ukvisajobs/        # UK Visa Jobs API extractor
   resume-generator/             # Python Playwright automation for rxresu.me
     base.json                   # your exported base resume (template)
   data/                         # persisted runtime artifacts (Docker default)
@@ -87,7 +88,7 @@ job-ops/
 ## Data model (SQLite)
 
 - `jobs`
-  - from crawl: `title`, `employer`, `jobUrl`, `applicationLink`, `deadline`, `salary`, `location`, `jobDescription`, etc.
+  - from crawl: `title`, `employer`, `jobUrl`, `applicationLink`, `deadline`, `salary`, `location`, `jobDescription`, `source` (gradcracker/indeed/linkedin/ukvisajobs), etc.
   - enrichments: `status` (`discovered` -> `processing` -> `ready` -> `applied`/`rejected`), `suitabilityScore`, `suitabilityReason`, `tailoredSummary`, `pdfPath`, `notionPageId`
 - `pipeline_runs`: audit log of runs (`running`/`completed`/`failed`, counts, error)
 

@@ -17,10 +17,29 @@ const locations = [
 ];
 
 // roles
-const roles = [
+const defaultRoles = [
   "web-development",
   "software-systems",
 ];
+
+let roles = defaultRoles;
+const envRolesRaw = process.env.GRADCRACKER_SEARCH_TERMS;
+
+if (envRolesRaw) {
+  try {
+    const parsed = JSON.parse(envRolesRaw) as string[];
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      roles = parsed.map(term =>
+        term.toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+      );
+      console.log(`Using configured search terms: ${roles.join(', ')}`);
+    }
+  } catch (e) {
+    console.warn('Failed to parse GRADCRACKER_SEARCH_TERMS', e);
+  }
+}
 
 // combo of locations and roles
 const gradcrackerUrls = locations.flatMap((location) => {

@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Crawlee storage
+storage/
+
+# Logs
+*.log

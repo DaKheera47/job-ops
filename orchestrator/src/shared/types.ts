@@ -2,7 +2,7 @@
  * Shared types for the job-ops orchestrator.
  */
 
-export type JobStatus = 
+export type JobStatus =
   | 'discovered'      // Crawled but not processed
   | 'processing'      // Currently generating resume
   | 'ready'           // PDF generated, waiting for user to apply
@@ -13,11 +13,12 @@ export type JobStatus =
 export type JobSource =
   | 'gradcracker'
   | 'indeed'
-  | 'linkedin';
+  | 'linkedin'
+  | 'ukvisajobs';
 
 export interface Job {
   id: string;
-  
+
   // Source / provenance
   source: JobSource;
   sourceJobId: string | null;        // External ID (if provided)
@@ -37,7 +38,7 @@ export interface Job {
   degreeRequired: string | null;
   starting: string | null;
   jobDescription: string | null;
-  
+
   // Orchestrator enrichments
   status: JobStatus;
   suitabilityScore: number | null;   // 0-100 AI-generated score
@@ -71,7 +72,7 @@ export interface Job {
   companyReviewsCount: number | null;
   vacancyCount: number | null;
   workFromHomeType: string | null;
-  
+
   // Timestamps
   discoveredAt: string;
   processedAt: string | null;
@@ -200,4 +201,25 @@ export interface AppSettings {
   resumeProjects: ResumeProjectsSettings;
   defaultResumeProjects: ResumeProjectsSettings;
   overrideResumeProjects: ResumeProjectsSettings | null;
+  ukvisajobsMaxJobs: number;
+  defaultUkvisajobsMaxJobs: number;
+  overrideUkvisajobsMaxJobs: number | null;
+  searchTerms: string[];
+  defaultSearchTerms: string[];
+  overrideSearchTerms: string[] | null;
+  jobspyLocation: string;
+  defaultJobspyLocation: string;
+  overrideJobspyLocation: string | null;
+  jobspyResultsWanted: number;
+  defaultJobspyResultsWanted: number;
+  overrideJobspyResultsWanted: number | null;
+  jobspyHoursOld: number;
+  defaultJobspyHoursOld: number;
+  overrideJobspyHoursOld: number | null;
+  jobspyCountryIndeed: string;
+  defaultJobspyCountryIndeed: string;
+  overrideJobspyCountryIndeed: string | null;
+  jobspyLinkedinFetchDescription: boolean;
+  defaultJobspyLinkedinFetchDescription: boolean;
+  overrideJobspyLinkedinFetchDescription: boolean | null;
 }

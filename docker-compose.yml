@@ -34,7 +34,7 @@ services:
       - PIPELINE_MIN_SCORE=${PIPELINE_MIN_SCORE:-50}
 
       # JobSpy (Indeed/LinkedIn scraping) - optional
-      - JOBSPY_SITES=${JOBSPY_SITES:-indeed,linkedin}
+
       # Preferred: pipe-separated list, e.g. "web developer|frontend developer|react developer"
       - JOBSPY_SEARCH_TERMS=${JOBSPY_SEARCH_TERMS:-web developer|graduate web developer|react developer|graduate software engineer|graduate react developer|next js developer|graduate front end developer}
       - JOBSPY_LOCATION=${JOBSPY_LOCATION:-UK}
@@ -50,6 +50,13 @@ services:
       # Optional: Webhook secret for n8n
       - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
 
+      # UKVisaJobs (UK visa sponsorship jobs) - optional
+      - UKVISAJOBS_TOKEN=${UKVISAJOBS_TOKEN:-}
+      - UKVISAJOBS_AUTH_TOKEN=${UKVISAJOBS_AUTH_TOKEN:-}
+      - UKVISAJOBS_CSRF_TOKEN=${UKVISAJOBS_CSRF_TOKEN:-}
+      - UKVISAJOBS_CI_SESSION=${UKVISAJOBS_CI_SESSION:-}
+      - UKVISAJOBS_SEARCH_KEYWORD=${UKVISAJOBS_SEARCH_KEYWORD:-}
+
       # Python path (uses system python in container)
       - PYTHON_PATH=/usr/bin/python3
     restart: unless-stopped
@@ -59,6 +66,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    develop:
+      watch:
+        # Rebuild container when package.json changes
+        - path: ./orchestrator/package.json
+          action: rebuild
+        - path: ./orchestrator/package-lock.json
+          action: rebuild
+        # Sync source code changes and rebuild inside container
+        - path: ./orchestrator/src
+          target: /app/orchestrator/src
+          action: sync+restart
+        # Sync extractor changes
+        - path: ./extractors/gradcracker/src
+          target: /app/extractors/gradcracker/src
+          action: sync+restart
+        - path: ./extractors/ukvisajobs/src
+          target: /app/extractors/ukvisajobs/src
+          action: sync+restart
+        - path: ./extractors/jobspy
+          target: /app/extractors/jobspy
+          action: sync+restart
 
 # Volumes for data persistence
 volumes:

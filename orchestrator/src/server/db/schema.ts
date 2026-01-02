@@ -7,9 +7,9 @@ import { sql } from 'drizzle-orm';
 
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
-  
+
   // From crawler
-  source: text('source', { enum: ['gradcracker', 'indeed', 'linkedin'] }).notNull().default('gradcracker'),
+  source: text('source', { enum: ['gradcracker', 'indeed', 'linkedin', 'ukvisajobs'] }).notNull().default('gradcracker'),
   sourceJobId: text('source_job_id'),
   jobUrlDirect: text('job_url_direct'),
   datePosted: text('date_posted'),
@@ -51,17 +51,17 @@ export const jobs = sqliteTable('jobs', {
   companyReviewsCount: integer('company_reviews_count'),
   vacancyCount: integer('vacancy_count'),
   workFromHomeType: text('work_from_home_type'),
-  
+
   // Orchestrator enrichments
-  status: text('status', { 
-    enum: ['discovered', 'processing', 'ready', 'applied', 'rejected', 'expired'] 
+  status: text('status', {
+    enum: ['discovered', 'processing', 'ready', 'applied', 'rejected', 'expired']
   }).notNull().default('discovered'),
   suitabilityScore: real('suitability_score'),
   suitabilityReason: text('suitability_reason'),
   tailoredSummary: text('tailored_summary'),
   pdfPath: text('pdf_path'),
   notionPageId: text('notion_page_id'),
-  
+
   // Timestamps
   discoveredAt: text('discovered_at').notNull().default(sql`(datetime('now'))`),
   processedAt: text('processed_at'),

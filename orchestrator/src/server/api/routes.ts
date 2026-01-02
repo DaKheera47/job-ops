@@ -60,10 +60,10 @@ apiRouter.get('/jobs', async (req: Request, res: Response) => {
   try {
     const statusFilter = req.query.status as string | undefined;
     const statuses = statusFilter?.split(',').filter(Boolean) as JobStatus[] | undefined;
-    
+
     const jobs = await jobsRepo.getAllJobs(statuses);
     const stats = await jobsRepo.getJobStats();
-    
+
     const response: ApiResponse<JobsListResponse> = {
       success: true,
       data: {
@@ -72,7 +72,7 @@ apiRouter.get('/jobs', async (req: Request, res: Response) => {
         byStatus: stats,
       },
     };
-    
+
     res.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -86,11 +86,11 @@ apiRouter.get('/jobs', async (req: Request, res: Response) => {
 apiRouter.get('/jobs/:id', async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.getJobById(req.params.id);
-    
+
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-    
+
     res.json({ success: true, data: job });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -113,11 +113,11 @@ apiRouter.patch('/jobs/:id', async (req: Request, res: Response) => {
   try {
     const input = updateJobSchema.parse(req.body);
     const job = await jobsRepo.updateJob(req.params.id, input);
-    
+
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-    
+
     res.json({ success: true, data: job });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -137,11 +137,11 @@ apiRouter.post('/jobs/:id/process', async (req: Request, res: Response) => {
     const force = forceRaw === '1' || forceRaw === 'true';
 
     const result = await processJob(req.params.id, { force });
-    
+
     if (!result.success) {
       return res.status(400).json({ success: false, error: result.error });
     }
-    
+
     const job = await jobsRepo.getJobById(req.params.id);
     res.json({ success: true, data: job });
   } catch (error) {
@@ -156,13 +156,13 @@ apiRouter.post('/jobs/:id/process', async (req: Request, res: Response) => {
 apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.getJobById(req.params.id);
-    
+
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-    
+
     const appliedAt = new Date().toISOString();
-    
+
     // Sync to Notion
     const notionResult = await createNotionEntry({
       id: job.id,
@@ -175,7 +175,7 @@ apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
       pdfPath: job.pdfPath,
       appliedAt,
     });
-    
+
     // Update job status
     const updatedJob = await jobsRepo.updateJob(job.id, {
       status: 'applied',
@@ -186,7 +186,7 @@ apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
     if (updatedJob) {
       notifyJobCompleteWebhook(updatedJob).catch(console.warn)
     }
-    
+
     res.json({ success: true, data: updatedJob });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -200,11 +200,11 @@ apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
 apiRouter.post('/jobs/:id/reject', async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.updateJob(req.params.id, { status: 'rejected' });
-    
+
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-    
+
     res.json({ success: true, data: job });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -238,6 +238,43 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
     const overrideResumeProjectsRaw = await settingsRepo.getSetting('resumeProjects');
     const resumeProjectsData = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
 
+    const overrideUkvisajobsMaxJobsRaw = await settingsRepo.getSetting('ukvisajobsMaxJobs');
+    const defaultUkvisajobsMaxJobs = 50;
+    const overrideUkvisajobsMaxJobs = overrideUkvisajobsMaxJobsRaw ? parseInt(overrideUkvisajobsMaxJobsRaw, 10) : null;
+    const ukvisajobsMaxJobs = overrideUkvisajobsMaxJobs ?? defaultUkvisajobsMaxJobs;
+
+    const overrideSearchTermsRaw = await settingsRepo.getSetting('searchTerms');
+    const defaultSearchTermsEnv = process.env.JOBSPY_SEARCH_TERMS || 'web developer';
+    const defaultSearchTerms = defaultSearchTermsEnv.split('|').map(s => s.trim()).filter(Boolean);
+    const overrideSearchTerms = overrideSearchTermsRaw ? JSON.parse(overrideSearchTermsRaw) as string[] : null;
+    const searchTerms = overrideSearchTerms ?? defaultSearchTerms;
+
+    // JobSpy settings
+    const overrideJobspyLocation = await settingsRepo.getSetting('jobspyLocation');
+    const defaultJobspyLocation = process.env.JOBSPY_LOCATION || 'UK';
+    const jobspyLocation = overrideJobspyLocation || defaultJobspyLocation;
+
+    const overrideJobspyResultsWantedRaw = await settingsRepo.getSetting('jobspyResultsWanted');
+    const defaultJobspyResultsWanted = parseInt(process.env.JOBSPY_RESULTS_WANTED || '200', 10);
+    const overrideJobspyResultsWanted = overrideJobspyResultsWantedRaw ? parseInt(overrideJobspyResultsWantedRaw, 10) : null;
+    const jobspyResultsWanted = overrideJobspyResultsWanted ?? defaultJobspyResultsWanted;
+
+    const overrideJobspyHoursOldRaw = await settingsRepo.getSetting('jobspyHoursOld');
+    const defaultJobspyHoursOld = parseInt(process.env.JOBSPY_HOURS_OLD || '72', 10);
+    const overrideJobspyHoursOld = overrideJobspyHoursOldRaw ? parseInt(overrideJobspyHoursOldRaw, 10) : null;
+    const jobspyHoursOld = overrideJobspyHoursOld ?? defaultJobspyHoursOld;
+
+    const overrideJobspyCountryIndeed = await settingsRepo.getSetting('jobspyCountryIndeed');
+    const defaultJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED || 'UK';
+    const jobspyCountryIndeed = overrideJobspyCountryIndeed || defaultJobspyCountryIndeed;
+
+    const overrideJobspyLinkedinFetchDescriptionRaw = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
+    const defaultJobspyLinkedinFetchDescription = (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || '1') === '1';
+    const overrideJobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescriptionRaw
+      ? overrideJobspyLinkedinFetchDescriptionRaw === 'true' || overrideJobspyLinkedinFetchDescriptionRaw === '1'
+      : null;
+    const jobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescription ?? defaultJobspyLinkedinFetchDescription;
+
     res.json({
       success: true,
       data: {
@@ -251,6 +288,27 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
         defaultJobCompleteWebhookUrl,
         overrideJobCompleteWebhookUrl,
         ...resumeProjectsData,
+        ukvisajobsMaxJobs,
+        defaultUkvisajobsMaxJobs,
+        overrideUkvisajobsMaxJobs,
+        searchTerms,
+        defaultSearchTerms,
+        overrideSearchTerms,
+        jobspyLocation,
+        defaultJobspyLocation,
+        overrideJobspyLocation,
+        jobspyResultsWanted,
+        defaultJobspyResultsWanted,
+        overrideJobspyResultsWanted,
+        jobspyHoursOld,
+        defaultJobspyHoursOld,
+        overrideJobspyHoursOld,
+        jobspyCountryIndeed,
+        defaultJobspyCountryIndeed,
+        overrideJobspyCountryIndeed,
+        jobspyLinkedinFetchDescription,
+        defaultJobspyLinkedinFetchDescription,
+        overrideJobspyLinkedinFetchDescription,
       },
     });
   } catch (error) {
@@ -268,6 +326,13 @@ const updateSettingsSchema = z.object({
     lockedProjectIds: z.array(z.string().trim().min(1)).max(200),
     aiSelectableProjectIds: z.array(z.string().trim().min(1)).max(200),
   }).nullable().optional(),
+  ukvisajobsMaxJobs: z.number().int().min(1).max(200).nullable().optional(),
+  searchTerms: z.array(z.string().trim().min(1).max(200)).max(50).nullable().optional(),
+  jobspyLocation: z.string().trim().min(1).max(100).nullable().optional(),
+  jobspyResultsWanted: z.number().int().min(1).max(500).nullable().optional(),
+  jobspyHoursOld: z.number().int().min(1).max(168).nullable().optional(),
+  jobspyCountryIndeed: z.string().trim().min(1).max(100).nullable().optional(),
+  jobspyLinkedinFetchDescription: z.boolean().nullable().optional(),
 });
 
 /**
@@ -306,6 +371,41 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
       }
     }
 
+    if ('ukvisajobsMaxJobs' in input) {
+      const ukvisajobsMaxJobs = input.ukvisajobsMaxJobs ?? null;
+      await settingsRepo.setSetting('ukvisajobsMaxJobs', ukvisajobsMaxJobs !== null ? String(ukvisajobsMaxJobs) : null);
+    }
+
+    if ('searchTerms' in input) {
+      const searchTerms = input.searchTerms ?? null;
+      await settingsRepo.setSetting('searchTerms', searchTerms !== null ? JSON.stringify(searchTerms) : null);
+    }
+
+    if ('jobspyLocation' in input) {
+      const value = input.jobspyLocation ?? null;
+      await settingsRepo.setSetting('jobspyLocation', value);
+    }
+
+    if ('jobspyResultsWanted' in input) {
+      const value = input.jobspyResultsWanted ?? null;
+      await settingsRepo.setSetting('jobspyResultsWanted', value !== null ? String(value) : null);
+    }
+
+    if ('jobspyHoursOld' in input) {
+      const value = input.jobspyHoursOld ?? null;
+      await settingsRepo.setSetting('jobspyHoursOld', value !== null ? String(value) : null);
+    }
+
+    if ('jobspyCountryIndeed' in input) {
+      const value = input.jobspyCountryIndeed ?? null;
+      await settingsRepo.setSetting('jobspyCountryIndeed', value);
+    }
+
+    if ('jobspyLinkedinFetchDescription' in input) {
+      const value = input.jobspyLinkedinFetchDescription ?? null;
+      await settingsRepo.setSetting('jobspyLinkedinFetchDescription', value !== null ? (value ? '1' : '0') : null);
+    }
+
     const overrideModel = await settingsRepo.getSetting('model');
     const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
     const model = overrideModel || defaultModel;
@@ -323,6 +423,44 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
     const overrideResumeProjectsRaw = await settingsRepo.getSetting('resumeProjects');
     const resumeProjectsData = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
 
+    const overrideUkvisajobsMaxJobsRaw = await settingsRepo.getSetting('ukvisajobsMaxJobs');
+    const defaultUkvisajobsMaxJobs = 50;
+    const overrideUkvisajobsMaxJobs = overrideUkvisajobsMaxJobsRaw ? parseInt(overrideUkvisajobsMaxJobsRaw, 10) : null;
+    const ukvisajobsMaxJobs = overrideUkvisajobsMaxJobs ?? defaultUkvisajobsMaxJobs;
+
+    // Search terms - stored as JSON array, default from env var (pipe-separated)
+    const overrideSearchTermsRaw = await settingsRepo.getSetting('searchTerms');
+    const defaultSearchTermsEnv = process.env.JOBSPY_SEARCH_TERMS || 'web developer';
+    const defaultSearchTerms = defaultSearchTermsEnv.split('|').map(s => s.trim()).filter(Boolean);
+    const overrideSearchTerms = overrideSearchTermsRaw ? JSON.parse(overrideSearchTermsRaw) as string[] : null;
+    const searchTerms = overrideSearchTerms ?? defaultSearchTerms;
+
+    // JobSpy settings (re-fetch to update response)
+    const overrideJobspyLocation = await settingsRepo.getSetting('jobspyLocation');
+    const defaultJobspyLocation = process.env.JOBSPY_LOCATION || 'UK';
+    const jobspyLocation = overrideJobspyLocation || defaultJobspyLocation;
+
+    const overrideJobspyResultsWantedRaw = await settingsRepo.getSetting('jobspyResultsWanted');
+    const defaultJobspyResultsWanted = parseInt(process.env.JOBSPY_RESULTS_WANTED || '200', 10);
+    const overrideJobspyResultsWanted = overrideJobspyResultsWantedRaw ? parseInt(overrideJobspyResultsWantedRaw, 10) : null;
+    const jobspyResultsWanted = overrideJobspyResultsWanted ?? defaultJobspyResultsWanted;
+
+    const overrideJobspyHoursOldRaw = await settingsRepo.getSetting('jobspyHoursOld');
+    const defaultJobspyHoursOld = parseInt(process.env.JOBSPY_HOURS_OLD || '72', 10);
+    const overrideJobspyHoursOld = overrideJobspyHoursOldRaw ? parseInt(overrideJobspyHoursOldRaw, 10) : null;
+    const jobspyHoursOld = overrideJobspyHoursOld ?? defaultJobspyHoursOld;
+
+    const overrideJobspyCountryIndeed = await settingsRepo.getSetting('jobspyCountryIndeed');
+    const defaultJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED || 'UK';
+    const jobspyCountryIndeed = overrideJobspyCountryIndeed || defaultJobspyCountryIndeed;
+
+    const overrideJobspyLinkedinFetchDescriptionRaw = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
+    const defaultJobspyLinkedinFetchDescription = (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || '1') === '1';
+    const overrideJobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescriptionRaw
+      ? overrideJobspyLinkedinFetchDescriptionRaw === 'true' || overrideJobspyLinkedinFetchDescriptionRaw === '1'
+      : null;
+    const jobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescription ?? defaultJobspyLinkedinFetchDescription;
+
     res.json({
       success: true,
       data: {
@@ -336,6 +474,27 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
         defaultJobCompleteWebhookUrl,
         overrideJobCompleteWebhookUrl,
         ...resumeProjectsData,
+        ukvisajobsMaxJobs,
+        defaultUkvisajobsMaxJobs,
+        overrideUkvisajobsMaxJobs,
+        searchTerms,
+        defaultSearchTerms,
+        overrideSearchTerms,
+        jobspyLocation,
+        defaultJobspyLocation,
+        overrideJobspyLocation,
+        jobspyResultsWanted,
+        defaultJobspyResultsWanted,
+        overrideJobspyResultsWanted,
+        jobspyHoursOld,
+        defaultJobspyHoursOld,
+        overrideJobspyHoursOld,
+        jobspyCountryIndeed,
+        defaultJobspyCountryIndeed,
+        overrideJobspyCountryIndeed,
+        jobspyLinkedinFetchDescription,
+        defaultJobspyLinkedinFetchDescription,
+        overrideJobspyLinkedinFetchDescription,
       },
     });
   } catch (error) {
@@ -351,7 +510,7 @@ apiRouter.get('/pipeline/status', async (req: Request, res: Response) => {
   try {
     const { isRunning } = getPipelineStatus();
     const lastRun = await pipelineRepo.getLatestPipelineRun();
-    
+
     const response: ApiResponse<PipelineStatusResponse> = {
       success: true,
       data: {
@@ -360,7 +519,7 @@ apiRouter.get('/pipeline/status', async (req: Request, res: Response) => {
         nextScheduledRun: null, // Would come from n8n
       },
     };
-    
+
     res.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -377,20 +536,20 @@ apiRouter.get('/pipeline/progress', (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Disable Nginx buffering
-  
+
   // Send initial progress
   const sendProgress = (data: unknown) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
-  
+
   // Subscribe to progress updates
   const unsubscribe = subscribeToProgress(sendProgress);
-  
+
   // Send heartbeat every 30 seconds to keep connection alive
   const heartbeat = setInterval(() => {
     res.write(': heartbeat\n\n');
   }, 30000);
-  
+
   // Cleanup on close
   req.on('close', () => {
     clearInterval(heartbeat);
@@ -417,19 +576,19 @@ apiRouter.get('/pipeline/runs', async (req: Request, res: Response) => {
 const runPipelineSchema = z.object({
   topN: z.number().min(1).max(50).optional(),
   minSuitabilityScore: z.number().min(0).max(100).optional(),
-  sources: z.array(z.enum(['gradcracker', 'indeed', 'linkedin'])).min(1).optional(),
+  sources: z.array(z.enum(['gradcracker', 'indeed', 'linkedin', 'ukvisajobs'])).min(1).optional(),
 });
 
 apiRouter.post('/pipeline/run', async (req: Request, res: Response) => {
   try {
     const config = runPipelineSchema.parse(req.body);
-    
+
     // Start pipeline in background
     runPipeline(config).catch(console.error);
-    
-    res.json({ 
-      success: true, 
-      data: { message: 'Pipeline started' } 
+
+    res.json({
+      success: true,
+      data: { message: 'Pipeline started' }
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -451,21 +610,21 @@ apiRouter.post('/webhook/trigger', async (req: Request, res: Response) => {
   // Optional: Add authentication check
   const authHeader = req.headers.authorization;
   const expectedToken = process.env.WEBHOOK_SECRET;
-  
+
   if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
-  
+
   try {
     // Start pipeline in background
     runPipeline().catch(console.error);
-    
-    res.json({ 
-      success: true, 
-      data: { 
+
+    res.json({
+      success: true,
+      data: {
         message: 'Pipeline triggered',
         triggeredAt: new Date().toISOString(),
-      } 
+      }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -483,14 +642,14 @@ apiRouter.post('/webhook/trigger', async (req: Request, res: Response) => {
 apiRouter.delete('/database', async (req: Request, res: Response) => {
   try {
     const result = clearDatabase();
-    
-    res.json({ 
-      success: true, 
-      data: { 
+
+    res.json({
+      success: true,
+      data: {
         message: 'Database cleared',
         jobsDeleted: result.jobsDeleted,
         runsDeleted: result.runsDeleted,
-      } 
+      }
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

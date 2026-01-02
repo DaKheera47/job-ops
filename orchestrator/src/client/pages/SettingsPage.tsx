@@ -42,6 +42,13 @@ export const SettingsPage: React.FC = () => {
   const [pipelineWebhookUrlDraft, setPipelineWebhookUrlDraft] = useState("")
   const [jobCompleteWebhookUrlDraft, setJobCompleteWebhookUrlDraft] = useState("")
   const [resumeProjectsDraft, setResumeProjectsDraft] = useState<ResumeProjectsSettings | null>(null)
+  const [ukvisajobsMaxJobsDraft, setUkvisajobsMaxJobsDraft] = useState<number | null>(null)
+  const [searchTermsDraft, setSearchTermsDraft] = useState<string[] | null>(null)
+  const [jobspyLocationDraft, setJobspyLocationDraft] = useState<string | null>(null)
+  const [jobspyResultsWantedDraft, setJobspyResultsWantedDraft] = useState<number | null>(null)
+  const [jobspyHoursOldDraft, setJobspyHoursOldDraft] = useState<number | null>(null)
+  const [jobspyCountryIndeedDraft, setJobspyCountryIndeedDraft] = useState<string | null>(null)
+  const [jobspyLinkedinFetchDescriptionDraft, setJobspyLinkedinFetchDescriptionDraft] = useState<boolean | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -57,6 +64,13 @@ export const SettingsPage: React.FC = () => {
         setPipelineWebhookUrlDraft(data.overridePipelineWebhookUrl ?? "")
         setJobCompleteWebhookUrlDraft(data.overrideJobCompleteWebhookUrl ?? "")
         setResumeProjectsDraft(data.resumeProjects)
+        setUkvisajobsMaxJobsDraft(data.overrideUkvisajobsMaxJobs)
+        setSearchTermsDraft(data.overrideSearchTerms)
+        setJobspyLocationDraft(data.overrideJobspyLocation)
+        setJobspyResultsWantedDraft(data.overrideJobspyResultsWanted)
+        setJobspyHoursOldDraft(data.overrideJobspyHoursOld)
+        setJobspyCountryIndeedDraft(data.overrideJobspyCountryIndeed)
+        setJobspyLinkedinFetchDescriptionDraft(data.overrideJobspyLinkedinFetchDescription)
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : "Failed to load settings"
@@ -81,6 +95,27 @@ export const SettingsPage: React.FC = () => {
   const effectiveJobCompleteWebhookUrl = settings?.jobCompleteWebhookUrl ?? ""
   const defaultJobCompleteWebhookUrl = settings?.defaultJobCompleteWebhookUrl ?? ""
   const overrideJobCompleteWebhookUrl = settings?.overrideJobCompleteWebhookUrl
+  const effectiveUkvisajobsMaxJobs = settings?.ukvisajobsMaxJobs ?? 50
+  const defaultUkvisajobsMaxJobs = settings?.defaultUkvisajobsMaxJobs ?? 50
+  const overrideUkvisajobsMaxJobs = settings?.overrideUkvisajobsMaxJobs
+  const effectiveSearchTerms = settings?.searchTerms ?? []
+  const defaultSearchTerms = settings?.defaultSearchTerms ?? []
+  const overrideSearchTerms = settings?.overrideSearchTerms
+  const effectiveJobspyLocation = settings?.jobspyLocation ?? ""
+  const defaultJobspyLocation = settings?.defaultJobspyLocation ?? ""
+  const overrideJobspyLocation = settings?.overrideJobspyLocation
+  const effectiveJobspyResultsWanted = settings?.jobspyResultsWanted ?? 200
+  const defaultJobspyResultsWanted = settings?.defaultJobspyResultsWanted ?? 200
+  const overrideJobspyResultsWanted = settings?.overrideJobspyResultsWanted
+  const effectiveJobspyHoursOld = settings?.jobspyHoursOld ?? 72
+  const defaultJobspyHoursOld = settings?.defaultJobspyHoursOld ?? 72
+  const overrideJobspyHoursOld = settings?.overrideJobspyHoursOld
+  const effectiveJobspyCountryIndeed = settings?.jobspyCountryIndeed ?? ""
+  const defaultJobspyCountryIndeed = settings?.defaultJobspyCountryIndeed ?? ""
+  const overrideJobspyCountryIndeed = settings?.overrideJobspyCountryIndeed
+  const effectiveJobspyLinkedinFetchDescription = settings?.jobspyLinkedinFetchDescription ?? true
+  const defaultJobspyLinkedinFetchDescription = settings?.defaultJobspyLinkedinFetchDescription ?? true
+  const overrideJobspyLinkedinFetchDescription = settings?.overrideJobspyLinkedinFetchDescription
   const profileProjects = settings?.profileProjects ?? []
   const maxProjectsTotal = profileProjects.length
   const lockedCount = resumeProjectsDraft?.lockedProjectIds.length ?? 0
@@ -93,11 +128,20 @@ export const SettingsPage: React.FC = () => {
     const currentWebhook = (overridePipelineWebhookUrl ?? "").trim()
     const nextJobCompleteWebhook = jobCompleteWebhookUrlDraft.trim()
     const currentJobCompleteWebhook = (overrideJobCompleteWebhookUrl ?? "").trim()
+    const ukvisajobsChanged = ukvisajobsMaxJobsDraft !== (overrideUkvisajobsMaxJobs ?? null)
+    const searchTermsChanged = JSON.stringify(searchTermsDraft) !== JSON.stringify(overrideSearchTerms ?? null)
     return (
       next !== current ||
       nextWebhook !== currentWebhook ||
       nextJobCompleteWebhook !== currentJobCompleteWebhook ||
-      !resumeProjectsEqual(resumeProjectsDraft, settings.resumeProjects)
+      !resumeProjectsEqual(resumeProjectsDraft, settings.resumeProjects) ||
+      ukvisajobsChanged ||
+      searchTermsChanged ||
+      jobspyLocationDraft !== (overrideJobspyLocation ?? null) ||
+      jobspyResultsWantedDraft !== (overrideJobspyResultsWanted ?? null) ||
+      jobspyHoursOldDraft !== (overrideJobspyHoursOld ?? null) ||
+      jobspyCountryIndeedDraft !== (overrideJobspyCountryIndeed ?? null) ||
+      jobspyLinkedinFetchDescriptionDraft !== (overrideJobspyLinkedinFetchDescription ?? null)
     )
   }, [
     settings,
@@ -108,6 +152,20 @@ export const SettingsPage: React.FC = () => {
     overridePipelineWebhookUrl,
     overrideJobCompleteWebhookUrl,
     resumeProjectsDraft,
+    ukvisajobsMaxJobsDraft,
+    overrideUkvisajobsMaxJobs,
+    searchTermsDraft,
+    overrideSearchTerms,
+    jobspyLocationDraft,
+    jobspyResultsWantedDraft,
+    jobspyHoursOldDraft,
+    jobspyCountryIndeedDraft,
+    jobspyLinkedinFetchDescriptionDraft,
+    overrideJobspyLocation,
+    overrideJobspyResultsWanted,
+    overrideJobspyHoursOld,
+    overrideJobspyCountryIndeed,
+    overrideJobspyLinkedinFetchDescription,
   ])
 
   const handleSave = async () => {
@@ -120,17 +178,38 @@ export const SettingsPage: React.FC = () => {
       const resumeProjectsOverride = resumeProjectsEqual(resumeProjectsDraft, settings.defaultResumeProjects)
         ? null
         : resumeProjectsDraft
+      const ukvisajobsMaxJobsOverride = ukvisajobsMaxJobsDraft === defaultUkvisajobsMaxJobs ? null : ukvisajobsMaxJobsDraft
+      const searchTermsOverride = arraysEqual(searchTermsDraft ?? [], defaultSearchTerms) ? null : searchTermsDraft
+      const jobspyLocationOverride = jobspyLocationDraft === defaultJobspyLocation ? null : jobspyLocationDraft
+      const jobspyResultsWantedOverride = jobspyResultsWantedDraft === defaultJobspyResultsWanted ? null : jobspyResultsWantedDraft
+      const jobspyHoursOldOverride = jobspyHoursOldDraft === defaultJobspyHoursOld ? null : jobspyHoursOldDraft
+      const jobspyCountryIndeedOverride = jobspyCountryIndeedDraft === defaultJobspyCountryIndeed ? null : jobspyCountryIndeedDraft
+      const jobspyLinkedinFetchDescriptionOverride = jobspyLinkedinFetchDescriptionDraft === defaultJobspyLinkedinFetchDescription ? null : jobspyLinkedinFetchDescriptionDraft
       const updated = await api.updateSettings({
         model: trimmed.length > 0 ? trimmed : null,
         pipelineWebhookUrl: webhookTrimmed.length > 0 ? webhookTrimmed : null,
         jobCompleteWebhookUrl: jobCompleteTrimmed.length > 0 ? jobCompleteTrimmed : null,
         resumeProjects: resumeProjectsOverride,
+        ukvisajobsMaxJobs: ukvisajobsMaxJobsOverride,
+        searchTerms: searchTermsOverride,
+        jobspyLocation: jobspyLocationOverride,
+        jobspyResultsWanted: jobspyResultsWantedOverride,
+        jobspyHoursOld: jobspyHoursOldOverride,
+        jobspyCountryIndeed: jobspyCountryIndeedOverride,
+        jobspyLinkedinFetchDescription: jobspyLinkedinFetchDescriptionOverride,
       })
       setSettings(updated)
       setModelDraft(updated.overrideModel ?? "")
       setPipelineWebhookUrlDraft(updated.overridePipelineWebhookUrl ?? "")
       setJobCompleteWebhookUrlDraft(updated.overrideJobCompleteWebhookUrl ?? "")
       setResumeProjectsDraft(updated.resumeProjects)
+      setUkvisajobsMaxJobsDraft(updated.overrideUkvisajobsMaxJobs)
+      setSearchTermsDraft(updated.overrideSearchTerms)
+      setJobspyLocationDraft(updated.overrideJobspyLocation)
+      setJobspyResultsWantedDraft(updated.overrideJobspyResultsWanted)
+      setJobspyHoursOldDraft(updated.overrideJobspyHoursOld)
+      setJobspyCountryIndeedDraft(updated.overrideJobspyCountryIndeed)
+      setJobspyLinkedinFetchDescriptionDraft(updated.overrideJobspyLinkedinFetchDescription)
       toast.success("Settings saved")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save settings"
@@ -148,12 +227,26 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: null,
         jobCompleteWebhookUrl: null,
         resumeProjects: null,
+        ukvisajobsMaxJobs: null,
+        searchTerms: null,
+        jobspyLocation: null,
+        jobspyResultsWanted: null,
+        jobspyHoursOld: null,
+        jobspyCountryIndeed: null,
+        jobspyLinkedinFetchDescription: null,
       })
       setSettings(updated)
       setModelDraft("")
       setPipelineWebhookUrlDraft("")
       setJobCompleteWebhookUrlDraft("")
       setResumeProjectsDraft(updated.resumeProjects)
+      setUkvisajobsMaxJobsDraft(null)
+      setSearchTermsDraft(null)
+      setJobspyLocationDraft(null)
+      setJobspyResultsWantedDraft(null)
+      setJobspyHoursOldDraft(null)
+      setJobspyCountryIndeedDraft(null)
+      setJobspyLinkedinFetchDescriptionDraft(null)
       toast.success("Reset to default")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reset settings"
@@ -267,6 +360,220 @@ export const SettingsPage: React.FC = () => {
             <div>
               <div className="text-xs text-muted-foreground">Default (env)</div>
               <div className="break-words font-mono text-xs">{defaultJobCompleteWebhookUrl || "—"}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">UKVisaJobs Extractor</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Max jobs to fetch</div>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={200}
+              value={ukvisajobsMaxJobsDraft ?? defaultUkvisajobsMaxJobs}
+              onChange={(event) => {
+                const value = parseInt(event.target.value, 10)
+                if (Number.isNaN(value)) {
+                  setUkvisajobsMaxJobsDraft(null)
+                } else {
+                  setUkvisajobsMaxJobsDraft(Math.min(200, Math.max(1, value)))
+                }
+              }}
+              disabled={isLoading || isSaving}
+            />
+            <div className="text-xs text-muted-foreground">
+              Maximum number of jobs to fetch from UKVisaJobs per pipeline run. Range: 1-200.
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Effective</div>
+              <div className="break-words font-mono text-xs">{effectiveUkvisajobsMaxJobs}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Default</div>
+              <div className="break-words font-mono text-xs">{defaultUkvisajobsMaxJobs}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Search Terms</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Global search terms</div>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              value={searchTermsDraft ? searchTermsDraft.join('\n') : (defaultSearchTerms ?? []).join('\n')}
+              onChange={(event) => {
+                const text = event.target.value
+                const terms = text.split('\n') // Don't filter here to allow empty lines while typing
+                setSearchTermsDraft(terms)
+              }}
+              onBlur={() => {
+                // Clean up on blur
+                if (searchTermsDraft) {
+                  setSearchTermsDraft(searchTermsDraft.map(t => t.trim()).filter(Boolean))
+                }
+              }}
+              placeholder="e.g. web developer"
+              disabled={isLoading || isSaving}
+              rows={5}
+            />
+            <div className="text-xs text-muted-foreground">
+              One term per line. Applies to UKVisaJobs and other supported extractors.
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Effective</div>
+              <div className="break-words font-mono text-xs">{(effectiveSearchTerms || []).join(', ') || "—"}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Default (env)</div>
+              <div className="break-words font-mono text-xs">{(defaultSearchTerms || []).join(', ') || "—"}</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">JobSpy Scraper</CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Location</div>
+              <Input
+                value={jobspyLocationDraft ?? defaultJobspyLocation}
+                onChange={(event) => setJobspyLocationDraft(event.target.value)}
+                placeholder={defaultJobspyLocation || "UK"}
+                disabled={isLoading || isSaving}
+              />
+              <div className="text-xs text-muted-foreground">
+                Location to search for jobs (e.g. "UK", "London", "Remote").
+              </div>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {effectiveJobspyLocation || "—"}</span>
+                <span>Default: {defaultJobspyLocation || "—"}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Results Wanted</div>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={500}
+                value={jobspyResultsWantedDraft ?? defaultJobspyResultsWanted}
+                onChange={(event) => {
+                  const value = parseInt(event.target.value, 10)
+                  if (Number.isNaN(value)) {
+                    setJobspyResultsWantedDraft(null)
+                  } else {
+                    setJobspyResultsWantedDraft(Math.min(500, Math.max(1, value)))
+                  }
+                }}
+                disabled={isLoading || isSaving}
+              />
+              <div className="text-xs text-muted-foreground">
+                Number of results to fetch per term per site. Max 500.
+              </div>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {effectiveJobspyResultsWanted}</span>
+                <span>Default: {defaultJobspyResultsWanted}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Hours Old</div>
+              <Input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                max={168}
+                value={jobspyHoursOldDraft ?? defaultJobspyHoursOld}
+                onChange={(event) => {
+                  const value = parseInt(event.target.value, 10)
+                  if (Number.isNaN(value)) {
+                    setJobspyHoursOldDraft(null)
+                  } else {
+                    setJobspyHoursOldDraft(Math.min(168, Math.max(1, value)))
+                  }
+                }}
+                disabled={isLoading || isSaving}
+              />
+              <div className="text-xs text-muted-foreground">
+                Max age of jobs in hours (e.g. 72 for 3 days).
+              </div>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {effectiveJobspyHoursOld}h</span>
+                <span>Default: {defaultJobspyHoursOld}h</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">Indeed Country</div>
+              <Input
+                value={jobspyCountryIndeedDraft ?? defaultJobspyCountryIndeed}
+                onChange={(event) => setJobspyCountryIndeedDraft(event.target.value)}
+                placeholder={defaultJobspyCountryIndeed || "UK"}
+                disabled={isLoading || isSaving}
+              />
+              <div className="text-xs text-muted-foreground">
+                Country domain for Indeed (e.g. "UK" for indeed.co.uk).
+              </div>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {effectiveJobspyCountryIndeed || "—"}</span>
+                <span>Default: {defaultJobspyCountryIndeed || "—"}</span>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="linkedin-desc"
+              checked={jobspyLinkedinFetchDescriptionDraft ?? defaultJobspyLinkedinFetchDescription}
+              onCheckedChange={(checked) => setJobspyLinkedinFetchDescriptionDraft(!!checked)}
+              disabled={isLoading || isSaving}
+            />
+            <div className="grid gap-1.5 leading-none">
+              <label
+                htmlFor="linkedin-desc"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Fetch LinkedIn Description
+              </label>
+              <p className="text-xs text-muted-foreground">
+                If enabled, JobSpy will make extra requests to fetch full descriptions. Slower but better data.
+              </p>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {effectiveJobspyLinkedinFetchDescription ? "Yes" : "No"}</span>
+                <span>Default: {defaultJobspyLinkedinFetchDescription ? "Yes" : "No"}</span>
+              </div>
             </div>
           </div>
         </CardContent>

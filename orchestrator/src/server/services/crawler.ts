@@ -32,6 +32,11 @@ export interface RunCrawlerOptions {
    * Optional callback for live crawl progress emitted by the Gradcracker extractor.
    */
   onProgress?: (update: JobExtractorProgress) => void;
+
+  /**
+   * List of search terms to be used as roles for URL generation.
+   */
+  searchTerms?: string[];
 }
 
 interface JobExtractorProgress {
@@ -61,13 +66,13 @@ async function writeExistingJobUrlsFile(existingJobUrls: string[] | undefined): 
  */
 export async function runCrawler(options: RunCrawlerOptions = {}): Promise<CrawlerResult> {
   console.log('🕷️ Starting job crawler...');
-  
+
   try {
     // Clear previous results
     await clearStorageDataset();
 
     const existingJobUrlsFile = await writeExistingJobUrlsFile(options.existingJobUrls);
-    
+
     // Run the crawler
     await new Promise<void>((resolve, reject) => {
       const child = spawn('npm', ['run', 'start'], {
@@ -78,6 +83,7 @@ export async function runCrawler(options: RunCrawlerOptions = {}): Promise<Crawl
           ...process.env,
           JOBOPS_SKIP_APPLY_FOR_EXISTING: '1',
           JOBOPS_EMIT_PROGRESS: '1',
+          GRADCRACKER_SEARCH_TERMS: options.searchTerms ? JSON.stringify(options.searchTerms) : '',
           ...(existingJobUrlsFile ? { JOBOPS_EXISTING_JOB_URLS_FILE: existingJobUrlsFile } : {}),
         },
       });
@@ -101,7 +107,7 @@ export async function runCrawler(options: RunCrawlerOptions = {}): Promise<Crawl
 
       stdoutRl?.on('line', (line) => handleLine(line, process.stdout));
       stderrRl?.on('line', (line) => handleLine(line, process.stderr));
-      
+
       child.on('close', (code) => {
         stdoutRl?.close();
         stderrRl?.close();
@@ -111,15 +117,15 @@ export async function runCrawler(options: RunCrawlerOptions = {}): Promise<Crawl
           reject(new Error(`Crawler exited with code ${code}`));
         }
       });
-      
+
       child.on('error', reject);
     });
-    
+
     // Read crawled jobs from storage
     const jobs = await readCrawledJobs();
-    
+
     console.log(`✅ Crawler completed. Found ${jobs.length} jobs.`);
-    
+
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -135,13 +141,13 @@ async function readCrawledJobs(): Promise<CreateJobInput[]> {
   try {
     const files = await readdir(STORAGE_DIR);
     const jsonFiles = files.filter(f => f.endsWith('.json'));
-    
+
     const jobs: CreateJobInput[] = [];
-    
+
     for (const file of jsonFiles) {
       const content = await readFile(join(STORAGE_DIR, file), 'utf-8');
       const data = JSON.parse(content);
-      
+
       // Map crawler output to our job input format
       jobs.push({
         source: 'gradcracker',
@@ -159,7 +165,7 @@ async function readCrawledJobs(): Promise<CreateJobInput[]> {
         jobDescription: data.jobDescription,
       });
     }
-    
+
     return jobs;
   } catch (error) {
     console.error('Failed to read crawled jobs:', error);

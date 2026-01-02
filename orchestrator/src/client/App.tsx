@@ -12,7 +12,7 @@ import { Header, JobList, PipelineProgress, Stats } from "./components";
 import * as api from "./api";
 import { SettingsPage } from "./pages/SettingsPage";
 
-const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin"];
+const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
 const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 
 export const App: React.FC = () => {
@@ -33,7 +33,7 @@ export const App: React.FC = () => {
       const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
       if (!raw) return DEFAULT_PIPELINE_SOURCES;
       const parsed = JSON.parse(raw) as unknown;
-      const allowed: JobSource[] = ["gradcracker", "indeed", "linkedin"];
+      const allowed: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
       if (!Array.isArray(parsed)) return DEFAULT_PIPELINE_SOURCES;
       const next = parsed.filter((value): value is JobSource => allowed.includes(value));
       return next.length > 0 ? next : DEFAULT_PIPELINE_SOURCES;
