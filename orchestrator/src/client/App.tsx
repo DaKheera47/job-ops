@@ -151,23 +151,11 @@ export const App: React.FC = () => {
     }
   };
 
-  const handleClearDatabase = async () => {
-    try {
-      const result = await api.clearDatabase();
-      toast.success("Database cleared", { description: `Deleted ${result.jobsDeleted} jobs.` });
-      await loadJobs();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to clear database";
-      toast.error(message);
-    }
-  };
-
   return (
     <>
       <Header
         onRunPipeline={handleRunPipeline}
         onRefresh={loadJobs}
-        onClearDatabase={handleClearDatabase}
         isPipelineRunning={isPipelineRunning}
         isLoading={isLoading}
         pipelineSources={pipelineSources}

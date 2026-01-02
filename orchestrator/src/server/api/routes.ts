@@ -632,6 +632,27 @@ apiRouter.post('/webhook/trigger', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * DELETE /api/jobs/status/:status - Clear jobs with a specific status
+ */
+apiRouter.delete('/jobs/status/:status', async (req: Request, res: Response) => {
+  try {
+    const status = req.params.status as JobStatus;
+    const count = await jobsRepo.deleteJobsByStatus(status);
+
+    res.json({
+      success: true,
+      data: {
+        message: `Cleared ${count} ${status} jobs`,
+        count,
+      }
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 // ============================================================================
 // Database Management
 // ============================================================================

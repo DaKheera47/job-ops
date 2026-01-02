@@ -3,10 +3,22 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react"
+import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -218,7 +230,31 @@ export const SettingsPage: React.FC = () => {
       setIsSaving(false)
     }
   }
+  const handleClearDatabase = async () => {
+    try {
+      setIsSaving(true)
+      const result = await api.clearDatabase()
+      toast.success("Database cleared", { description: `Deleted ${result.jobsDeleted} jobs.` })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to clear database"
+      toast.error(message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
+  const handleClearDiscovered = async () => {
+    try {
+      setIsSaving(true)
+      const result = await api.deleteJobsByStatus("discovered")
+      toast.success("Discovered jobs cleared", { description: `Deleted ${result.count} jobs.` })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to clear discovered jobs"
+      toast.error(message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
   const handleReset = async () => {
     try {
       setIsSaving(true)
@@ -703,6 +739,80 @@ export const SettingsPage: React.FC = () => {
           Reset to default
         </Button>
       </div>
+
+      <Card className="border-destructive/20 bg-destructive/5">
+        <CardHeader>
+          <CardTitle className="text-destructive">Danger Zone</CardTitle>
+          <CardDescription>
+            Irreversible actions that modify your database.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">Clear Discovered Jobs</div>
+              <div className="text-xs text-muted-foreground">
+                Delete all jobs with the status "discovered". Ready, applied, and rejected jobs are kept.
+              </div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isLoading || isSaving}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear Discovered
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear discovered jobs?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This deletes all jobs with the status "discovered". This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearDiscovered} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Clear discovered
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+
+          <Separator className="bg-destructive/10" />
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">Clear Database</div>
+              <div className="text-xs text-muted-foreground">
+                Delete all jobs and pipeline runs from the database.
+              </div>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={isLoading || isSaving}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Clear Database
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all jobs?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This deletes all jobs and pipeline runs from the database. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearDatabase} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Clear database
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </CardContent>
+      </Card>
     </main>
   )
 }

@@ -209,6 +209,14 @@ export async function getUnscoredDiscoveredJobs(limit?: number): Promise<Job[]> 
   return rows.map(mapRowToJob);
 }
 
+/**
+ * Delete jobs by status.
+ */
+export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
+  const result = await db.delete(jobs).where(eq(jobs.status, status)).run();
+  return result.changes;
+}
+
 // Helper to map database row to Job type
 function mapRowToJob(row: typeof jobs.$inferSelect): Job {
   return {

@@ -40,7 +40,6 @@ import type { JobSource } from "../../shared/types";
 interface HeaderProps {
   onRunPipeline: () => void;
   onRefresh: () => void;
-  onClearDatabase: () => void;
   isPipelineRunning: boolean;
   isLoading: boolean;
   pipelineSources: JobSource[];
@@ -50,7 +49,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onRunPipeline,
   onRefresh,
-  onClearDatabase,
   isPipelineRunning,
   isLoading,
   pipelineSources,
@@ -91,35 +89,6 @@ export const Header: React.FC<HeaderProps> = ({
         </Link>
 
         <div className='flex flex-wrap items-center gap-1.5'>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant='outline'
-                size='sm'
-                disabled={isLoading}
-                title='Clear all jobs from database'
-              >
-                <Trash2 className='h-4 w-4' />
-                <span className='hidden sm:inline'>Clear DB</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear all jobs?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This deletes all jobs from the database. This action cannot be
-                  undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onClearDatabase}>
-                  Clear database
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
           <Button
             variant='outline'
             size='sm'

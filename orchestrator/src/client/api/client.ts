@@ -134,4 +134,16 @@ export async function clearDatabase(): Promise<{
   });
 }
 
+export async function deleteJobsByStatus(status: string): Promise<{
+  message: string;
+  count: number;
+}> {
+  return fetchApi<{
+    message: string;
+    count: number;
+  }>(`/jobs/status/${status}`, {
+    method: 'DELETE',
+  });
+}
+
 // Bulk operations (intentionally none - processing is manual)
