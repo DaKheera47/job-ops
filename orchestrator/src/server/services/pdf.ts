@@ -34,12 +34,14 @@ export interface PdfResult {
  * @param tailoredSummary - The AI-generated summary to inject
  * @param jobDescription - Job description text for project selection
  * @param baseResumePath - Path to the base resume JSON (optional)
+ * @param selectedProjectIds - Comma-separated list of selected project IDs (optional manual override)
  */
 export async function generatePdf(
   jobId: string,
   tailoredSummary: string,
   jobDescription: string,
-  baseResumePath?: string
+  baseResumePath?: string,
+  selectedProjectIds?: string | null
 ): Promise<PdfResult> {
   console.log(`📄 Generating PDF for job ${jobId}...`);
   
@@ -61,24 +63,31 @@ export async function generatePdf(
       baseResume.basics.summary = tailoredSummary;
     }
 
-    // Select projects (locked + AI-picked) and set visibility for RXResume
+    // Select projects (manual override OR locked + AI-picked) and set visibility for RXResume
     try {
-      const { catalog, selectionItems } = extractProjectsFromProfile(baseResume);
-      const overrideResumeProjectsRaw = await getSetting('resumeProjects');
-      const { resumeProjects } = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
+      let selectedSet: Set<string>;
 
-      const locked = resumeProjects.lockedProjectIds;
-      const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
-      const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-      const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
+      if (selectedProjectIds) {
+        selectedSet = new Set(selectedProjectIds.split(',').map(s => s.trim()).filter(Boolean));
+      } else {
+        const { catalog, selectionItems } = extractProjectsFromProfile(baseResume);
+        const overrideResumeProjectsRaw = await getSetting('resumeProjects');
+        const { resumeProjects } = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
 
-      const picked = await pickProjectIdsForJob({
-        jobDescription,
-        eligibleProjects,
-        desiredCount,
-      });
+        const locked = resumeProjects.lockedProjectIds;
+        const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
+        const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
+        const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
 
-      const selectedSet = new Set([...locked, ...picked]);
+        const picked = await pickProjectIdsForJob({
+          jobDescription,
+          eligibleProjects,
+          desiredCount,
+        });
+
+        selectedSet = new Set([...locked, ...picked]);
+      }
+
       const projectsSection = (baseResume as any)?.sections?.projects;
       const projectItems = projectsSection?.items;
       if (Array.isArray(projectItems)) {
@@ -90,8 +99,8 @@ export async function generatePdf(
         }
         projectsSection.visible = selectedSet.size > 0;
       }
-    } catch {
-      // Non-fatal: fall back to whatever visibility is in base.json
+    } catch (err) {
+      console.warn(`   ⚠️ Project visibility step failed for job ${jobId}:`, err);
     }
     
     // Write modified resume to temp file

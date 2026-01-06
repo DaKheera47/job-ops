@@ -26,12 +26,14 @@ import { cn } from "@/lib/utils";
 import type { Job, JobStatus, JobSource } from "../../shared/types";
 import { JobCard } from "./JobCard";
 import { JobTable, type JobSort } from "./JobTable";
+import { TailoringEditor } from "./TailoringEditor";
 
 interface JobListProps {
   jobs: Job[];
   onApply: (id: string) => void | Promise<void>;
   onReject: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
+  onUpdate: () => void | Promise<void>;
   processingJobId: string | null;
 }
 
@@ -186,6 +188,7 @@ export const JobList: React.FC<JobListProps> = ({
   onApply,
   onReject,
   onProcess,
+  onUpdate,
   processingJobId,
 }) => {
   const [activeTab, setActiveTab] = useState<FilterTab>("ready");
@@ -407,6 +410,8 @@ export const JobList: React.FC<JobListProps> = ({
                 highlightedJobId={highlightedJobId}
                 onHighlightChange={setHighlightedJobId}
               />
+
+              <TailoringEditor job={highlightedJob} onUpdate={onUpdate} />
 
               <Card>
                 <CardHeader className="space-y-1">

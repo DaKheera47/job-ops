@@ -16,6 +16,9 @@ import { runUkVisaJobs } from '../services/ukvisajobs.js';
 import { scoreJobSuitability } from '../services/scorer.js';
 import { generateSummary } from '../services/summary.js';
 import { generatePdf } from '../services/pdf.js';
+import { getSetting } from '../repositories/settings.js';
+import { pickProjectIdsForJob } from '../services/projectSelection.js';
+import { extractProjectsFromProfile, resolveResumeProjectsSettings } from '../services/resumeProjects.js';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
 import * as settingsRepo from '../repositories/settings.js';
@@ -371,7 +374,117 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
 }
 
 /**
- * Process a single job (for manual processing).
+ * Step 1: Generate AI summary and suggest projects.
+ */
+export async function summarizeJob(
+  jobId: string,
+  options?: { force?: boolean }
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  console.log(`📝 Summarizing job ${jobId}...`);
+
+  try {
+    const job = await jobsRepo.getJobById(jobId);
+    if (!job) return { success: false, error: 'Job not found' };
+
+    const profile = await loadProfile(DEFAULT_PROFILE_PATH);
+
+    // 1. Generate Summary
+    let tailoredSummary = job.tailoredSummary;
+    if (!tailoredSummary || options?.force) {
+      console.log('   Generating summary...');
+      const summaryResult = await generateSummary(job.jobDescription || '', profile);
+      if (summaryResult.success) {
+        tailoredSummary = summaryResult.summary ?? null;
+      }
+    }
+
+    // 2. Suggest Projects
+    let selectedProjectIds = job.selectedProjectIds;
+    if (!selectedProjectIds || options?.force) {
+      console.log('   Suggesting projects...');
+      try {
+        const { catalog, selectionItems } = extractProjectsFromProfile(profile);
+        const overrideResumeProjectsRaw = await getSetting('resumeProjects');
+        const { resumeProjects } = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
+
+        const locked = resumeProjects.lockedProjectIds;
+        const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
+        const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
+        const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
+
+        const picked = await pickProjectIdsForJob({
+          jobDescription: job.jobDescription || '',
+          eligibleProjects,
+          desiredCount,
+        });
+
+        selectedProjectIds = [...locked, ...picked].join(',');
+      } catch (err) {
+        console.warn('   ⚠️ Failed to suggest projects, leaving empty');
+      }
+    }
+
+    await jobsRepo.updateJob(job.id, {
+      tailoredSummary: tailoredSummary ?? undefined,
+      selectedProjectIds: selectedProjectIds ?? undefined,
+    });
+
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Step 2: Generate PDF using current summary and project selection.
+ */
+export async function generateFinalPdf(
+  jobId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  console.log(`📄 Generating final PDF for job ${jobId}...`);
+
+  try {
+    const job = await jobsRepo.getJobById(jobId);
+    if (!job) return { success: false, error: 'Job not found' };
+
+    // Mark as processing
+    await jobsRepo.updateJob(job.id, { status: 'processing' });
+
+    const pdfResult = await generatePdf(
+      job.id,
+      job.tailoredSummary || '',
+      job.jobDescription || '',
+      DEFAULT_PROFILE_PATH,
+      job.selectedProjectIds
+    );
+
+    if (!pdfResult.success) {
+      // Revert status if failed
+      await jobsRepo.updateJob(job.id, { status: 'discovered' });
+      return { success: false, error: pdfResult.error };
+    }
+
+    await jobsRepo.updateJob(job.id, {
+      status: 'ready',
+      pdfPath: pdfResult.pdfPath,
+    });
+
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Process a single job (runs both steps in sequence).
  */
 export async function processJob(
   jobId: string,
@@ -380,56 +493,14 @@ export async function processJob(
   success: boolean;
   error?: string;
 }> {
-  console.log(`📝 Processing job ${jobId}...`);
-
   try {
-    const job = await jobsRepo.getJobById(jobId);
-    if (!job) {
-      return { success: false, error: 'Job not found' };
-    }
+    // Step 1: Summarize & Select Projects
+    const sumResult = await summarizeJob(jobId, options);
+    if (!sumResult.success) return sumResult;
 
-    if (job.status !== 'discovered' && job.status !== 'ready') {
-      return { success: false, error: `Job cannot be processed from status: ${job.status}` };
-    }
-
-    const profile = await loadProfile(DEFAULT_PROFILE_PATH);
-
-    // Mark as processing
-    await jobsRepo.updateJob(job.id, { status: 'processing' });
-
-    // Generate summary (AI) if missing
-    if (!job.tailoredSummary) {
-      console.log('   Generating summary...');
-      const summaryResult = await generateSummary(
-        job.jobDescription || '',
-        profile
-      );
-
-      if (summaryResult.success) {
-        await jobsRepo.updateJob(job.id, {
-          tailoredSummary: summaryResult.summary,
-        });
-        job.tailoredSummary = summaryResult.summary ?? null;
-      }
-    }
-
-    // Generate PDF
-    console.log('   Generating PDF...');
-    const pdfResult = await generatePdf(
-      job.id,
-      job.tailoredSummary || '',
-      job.jobDescription || '',
-      DEFAULT_PROFILE_PATH
-    );
-
-    // Mark as ready
-    await jobsRepo.updateJob(job.id, {
-      status: 'ready',
-      pdfPath: pdfResult.pdfPath ?? undefined,
-    });
-
-    console.log('   ✅ Done!');
-    return { success: true };
+    // Step 2: Generate PDF
+    const pdfResult = await generateFinalPdf(jobId);
+    return pdfResult;
 
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

@@ -132,6 +132,7 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN company_reviews_count INTEGER`,
   `ALTER TABLE jobs ADD COLUMN vacancy_count INTEGER`,
   `ALTER TABLE jobs ADD COLUMN work_from_home_type TEXT`,
+  `ALTER TABLE jobs ADD COLUMN selected_project_ids TEXT`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,

@@ -6,3 +6,5 @@ export { JobCard } from './JobCard';
 export { JobTable } from './JobTable';
 export { JobList } from './JobList';
 export { PipelineProgress } from './PipelineProgress';
+export { TailoringEditor } from './TailoringEditor';
+

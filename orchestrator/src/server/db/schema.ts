@@ -59,6 +59,7 @@ export const jobs = sqliteTable('jobs', {
   suitabilityScore: real('suitability_score'),
   suitabilityReason: text('suitability_reason'),
   tailoredSummary: text('tailored_summary'),
+  selectedProjectIds: text('selected_project_ids'),
   pdfPath: text('pdf_path'),
   notionPageId: text('notion_page_id'),
 

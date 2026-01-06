@@ -174,6 +174,7 @@ export const App: React.FC = () => {
                 onApply={handleApply}
                 onReject={handleReject}
                 onProcess={handleProcess}
+                onUpdate={loadJobs}
                 processingJobId={processingJobId}
               />
             </main>

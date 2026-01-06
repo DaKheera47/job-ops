@@ -63,6 +63,19 @@ export async function processJob(id: string, options?: { force?: boolean }): Pro
   });
 }
 
+export async function summarizeJob(id: string, options?: { force?: boolean }): Promise<Job> {
+  const query = options?.force ? '?force=1' : '';
+  return fetchApi<Job>(`/jobs/${id}/summarize${query}`, {
+    method: 'POST',
+  });
+}
+
+export async function generateJobPdf(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/generate-pdf`, {
+    method: 'POST',
+  });
+}
+
 export async function markAsApplied(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/apply`, {
     method: 'POST',
@@ -95,10 +108,15 @@ export async function runPipeline(config?: {
   });
 }
 
-// Settings API
+// Settings & Profile API
 export async function getSettings(): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings');
 }
+
+export async function getProfileProjects(): Promise<ResumeProjectCatalogItem[]> {
+  return fetchApi<ResumeProjectCatalogItem[]>('/profile/projects');
+}
+
 
 export async function updateSettings(update: {
   model?: string | null

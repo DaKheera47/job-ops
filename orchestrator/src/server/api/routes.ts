@@ -7,7 +7,7 @@ import { z } from 'zod';
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
 import * as settingsRepo from '../repositories/settings.js';
-import { runPipeline, processJob, getPipelineStatus, subscribeToProgress, getProgress } from '../pipeline/index.js';
+import { runPipeline, processJob, summarizeJob, generateFinalPdf, getPipelineStatus, subscribeToProgress, getProgress } from '../pipeline/index.js';
 import { createNotionEntry } from '../services/notion.js';
 import { clearDatabase } from '../db/clear.js';
 import {
@@ -106,6 +106,7 @@ const updateJobSchema = z.object({
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
   tailoredSummary: z.string().optional(),
+  selectedProjectIds: z.string().optional(),
   pdfPath: z.string().optional(),
 });
 
@@ -123,6 +124,47 @@ apiRouter.patch('/jobs/:id', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });
     }
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/summarize - Generate AI summary and suggest projects
+ */
+apiRouter.post('/jobs/:id/summarize', async (req: Request, res: Response) => {
+  try {
+    const forceRaw = req.query.force as string | undefined;
+    const force = forceRaw === '1' || forceRaw === 'true';
+
+    const result = await summarizeJob(req.params.id, { force });
+
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+
+    const job = await jobsRepo.getJobById(req.params.id);
+    res.json({ success: true, data: job });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/generate-pdf - Generate PDF using current manual overrides
+ */
+apiRouter.post('/jobs/:id/generate-pdf', async (req: Request, res: Response) => {
+  try {
+    const result = await generateFinalPdf(req.params.id);
+
+    if (!result.success) {
+      return res.status(400).json({ success: false, error: result.error });
+    }
+
+    const job = await jobsRepo.getJobById(req.params.id);
+    res.json({ success: true, data: job });
+  } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
   }
@@ -652,6 +694,21 @@ apiRouter.delete('/jobs/status/:status', async (req: Request, res: Response) => 
     res.status(500).json({ success: false, error: message });
   }
 });
+
+/**
+ * GET /api/profile/projects - Get all projects available in the base resume
+ */
+apiRouter.get('/profile/projects', async (req: Request, res: Response) => {
+  try {
+    const profile = await loadResumeProfile();
+    const { catalog } = extractProjectsFromProfile(profile);
+    res.json({ success: true, data: catalog });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
 
 // ============================================================================
 // Database Management
