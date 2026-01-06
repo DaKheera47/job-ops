@@ -99,9 +99,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
   const tooManyProjects = selectedIds.size > maxProjects;
 
   return (
-    <Card className="border-primary/20">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-lg font-bold">Tailoring Editor</CardTitle>
+    <div className="space-y-4">
+      <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <h3 className="text-sm font-semibold text-muted-foreground">Editor</h3>
         <div className="flex gap-2">
           <Button
             size="sm"
@@ -121,8 +121,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
             Generate PDF
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
+      </div>
+      
+      <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
         <div className="space-y-2">
           <label className="text-sm font-medium">Tailored Summary</label>
           <textarea
@@ -175,7 +176,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
                 Save Selection
             </Button>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };

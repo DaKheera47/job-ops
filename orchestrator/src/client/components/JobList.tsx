@@ -3,7 +3,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowUpDown, Filter, LayoutGrid, Search, Table2, X } from "lucide-react";
+import { ArrowUpDown, Filter, LayoutGrid, Search, Sparkles, Table2, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -22,6 +22,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import type { Job, JobStatus, JobSource } from "../../shared/types";
 import { JobCard } from "./JobCard";
@@ -411,7 +417,19 @@ export const JobList: React.FC<JobListProps> = ({
                 onHighlightChange={setHighlightedJobId}
               />
 
-              <TailoringEditor job={highlightedJob} onUpdate={onUpdate} />
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="tailoring" className="border-none">
+                  <AccordionTrigger className="flex h-12 w-full items-center justify-between rounded-lg border bg-card px-4 py-0 hover:bg-muted/50 hover:no-underline">
+                    <div className="flex items-center gap-2 font-semibold">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Resume Tailoring
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="pt-4 pb-0">
+                    <TailoringEditor job={highlightedJob} onUpdate={onUpdate} />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               <Card>
                 <CardHeader className="space-y-1">
