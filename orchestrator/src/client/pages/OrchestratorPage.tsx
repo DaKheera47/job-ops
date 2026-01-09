@@ -2,7 +2,7 @@
  * Orchestrator layout with a split list/detail experience.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
   Calendar,
@@ -304,6 +304,8 @@ export const OrchestratorPage: React.FC = () => {
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState("");
   const [isSavingDescription, setIsSavingDescription] = useState(false);
+  const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
+  const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
   const [pipelineSources, setPipelineSources] = useState<JobSource[]>(() => {
     try {
       const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
@@ -390,11 +392,21 @@ export const OrchestratorPage: React.FC = () => {
 
   const handleProcess = async (jobId: string) => {
     try {
-      setProcessingJobId(jobId);
       const job = jobs.find((item) => item.id === jobId);
-      const force = job?.status === "ready";
-      await api.processJob(jobId, { force });
-      toast.success(force ? "Resume regenerated successfully" : "Resume generated successfully");
+      if (!job) throw new Error("Job not found");
+
+      const shouldProceed = await confirmAndSaveEdits({ includeTailoring: true });
+      if (!shouldProceed) return;
+
+      setProcessingJobId(jobId);
+
+      if (job.status === "ready") {
+        await api.generateJobPdf(jobId);
+        toast.success("Resume regenerated successfully");
+      } else {
+        await api.processJob(jobId);
+        toast.success("Resume generated successfully");
+      }
       await loadJobs();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to process job";
@@ -472,6 +484,11 @@ export const OrchestratorPage: React.FC = () => {
     [jobs, selectedJobId],
   );
 
+  useEffect(() => {
+    setHasUnsavedTailoring(false);
+    saveTailoringRef.current = null;
+  }, [selectedJob?.id]);
+
   const description = useMemo(() => {
     if (!selectedJob?.jobDescription) return "No description available.";
     const jd = selectedJob.jobDescription;
@@ -512,11 +529,56 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
+  const hasUnsavedDescription =
+    !!selectedJob &&
+    isEditingDescription &&
+    editedDescription !== (selectedJob.jobDescription || "");
+
+  const confirmAndSaveEdits = useCallback(
+    async ({ includeTailoring = true }: { includeTailoring?: boolean } = {}) => {
+      const pendingDescription = hasUnsavedDescription;
+      const pendingTailoring = includeTailoring && hasUnsavedTailoring;
+
+      if (!pendingDescription && !pendingTailoring) return true;
+
+      const parts = [];
+      if (pendingDescription) parts.push("job description");
+      if (pendingTailoring) parts.push("tailoring changes");
+
+      const message = `You have unsaved ${parts.join(" and ")}. Save before generating the PDF?`;
+      if (!window.confirm(message)) return false;
+
+      try {
+        if (pendingDescription && selectedJob) {
+          await api.updateJob(selectedJob.id, { jobDescription: editedDescription });
+        }
+
+        if (pendingTailoring) {
+          const saveTailoring = saveTailoringRef.current;
+          if (!saveTailoring) {
+            toast.error("Could not save tailoring changes");
+            return false;
+          }
+          await saveTailoring();
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to save changes";
+        toast.error(errorMessage);
+        return false;
+      }
+
+      return true;
+    },
+    [editedDescription, hasUnsavedDescription, hasUnsavedTailoring, selectedJob],
+  );
+
   const totalJobs = Object.values(stats).reduce((a, b) => a + b, 0);
   const activeResultsCount = activeJobs.length;
   const selectedHasPdf = !!selectedJob?.pdfPath;
   const selectedJobLink = selectedJob ? selectedJob.applicationLink || selectedJob.jobUrl : "#";
-  const selectedPdfHref = selectedJob ? `/pdfs/resume_${selectedJob.id}.pdf` : "#";
+  const selectedPdfHref = selectedJob
+    ? `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`
+    : "#";
   const selectedDeadline = selectedJob ? formatDate(selectedJob.deadline) : null;
   const selectedDiscoveredAt = selectedJob ? formatDateTime(selectedJob.discoveredAt) : null;
   const canApply = selectedJob?.status === "ready";
@@ -1024,7 +1086,15 @@ export const OrchestratorPage: React.FC = () => {
                   </TabsContent>
 
                   <TabsContent value="tailoring" className="pt-3">
-                    <TailoringEditor job={selectedJob} onUpdate={loadJobs} />
+                    <TailoringEditor
+                      job={selectedJob}
+                      onUpdate={loadJobs}
+                      onDirtyChange={setHasUnsavedTailoring}
+                      onRegisterSave={(save) => {
+                        saveTailoringRef.current = save;
+                      }}
+                      onBeforeGenerate={() => confirmAndSaveEdits({ includeTailoring: false })}
+                    />
                   </TabsContent>
 
                   <TabsContent value="description" className="space-y-3 pt-3">

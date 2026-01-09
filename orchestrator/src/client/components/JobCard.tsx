@@ -95,7 +95,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   const canReject = ["discovered", "ready"].includes(job.status);
 
   const jobLink = job.applicationLink || job.jobUrl;
-  const pdfHref = `/pdfs/resume_${job.id}.pdf`;
+  const pdfHref = `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`;
   const deadline = formatDate(job.deadline);
   const discoveredAt = formatDateTime(job.discoveredAt);
   const isHighlighted = highlightedJobId === job.id;

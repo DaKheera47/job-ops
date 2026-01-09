@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Loader2, Sparkles, FileText, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,15 +12,43 @@ import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 interface TailoringEditorProps {
   job: Job;
   onUpdate: () => void | Promise<void>;
+  onDirtyChange?: (isDirty: boolean) => void;
+  onRegisterSave?: (save: () => Promise<void>) => void;
+  onBeforeGenerate?: () => boolean | Promise<boolean>;
 }
 
-export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate }) => {
+export const TailoringEditor: React.FC<TailoringEditorProps> = ({
+  job,
+  onUpdate,
+  onDirtyChange,
+  onRegisterSave,
+  onBeforeGenerate,
+}) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const savedSelectedIds = useMemo(() => {
+    const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
+    return new Set(saved);
+  }, [job.selectedProjectIds]);
+
+  const hasSelectionDiff = useMemo(() => {
+    if (selectedIds.size !== savedSelectedIds.size) return true;
+    for (const id of selectedIds) {
+      if (!savedSelectedIds.has(id)) return true;
+    }
+    return false;
+  }, [selectedIds, savedSelectedIds]);
+
+  const isDirty = summary !== (job.tailoredSummary || "") || hasSelectionDiff;
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     // Load project catalog
@@ -36,6 +64,30 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
     setSummary(job.tailoredSummary || "");
   }, [job.tailoredSummary]);
 
+  const saveChanges = useCallback(
+    async ({ showToast = true }: { showToast?: boolean } = {}) => {
+      try {
+        setIsSaving(true);
+        await api.updateJob(job.id, {
+          tailoredSummary: summary,
+          selectedProjectIds: Array.from(selectedIds).join(","),
+        });
+        if (showToast) toast.success("Changes saved");
+        await onUpdate();
+      } catch (error) {
+        if (showToast) toast.error("Failed to save changes");
+        throw error;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [job.id, onUpdate, selectedIds, summary],
+  );
+
+  useEffect(() => {
+    onRegisterSave?.(() => saveChanges({ showToast: false }));
+  }, [onRegisterSave, saveChanges]);
+
   const handleToggleProject = (id: string) => {
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
@@ -45,17 +97,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
 
   const handleSave = async () => {
     try {
-      setIsSaving(true);
-      await api.updateJob(job.id, {
-        tailoredSummary: summary,
-        selectedProjectIds: Array.from(selectedIds).join(','),
-      });
-      toast.success("Changes saved");
-      await onUpdate();
-    } catch (error) {
-      toast.error("Failed to save changes");
-    } finally {
-      setIsSaving(false);
+      await saveChanges();
+    } catch {
+      // Toast handled in saveChanges
     }
   };
 
@@ -78,12 +122,12 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({ job, onUpdate 
 
   const handleGeneratePdf = async () => {
     try {
+      const shouldProceed = onBeforeGenerate ? await onBeforeGenerate() : true;
+      if (shouldProceed === false) return;
+
       setIsGeneratingPdf(true);
       // Save current state first to ensure PDF uses latest
-      await api.updateJob(job.id, {
-        tailoredSummary: summary,
-        selectedProjectIds: Array.from(selectedIds).join(','),
-      });
+      await saveChanges({ showToast: false });
       
       await api.generateJobPdf(job.id);
       toast.success("Resume PDF generated");

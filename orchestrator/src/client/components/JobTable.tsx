@@ -221,7 +221,7 @@ export const JobTable: React.FC<JobTableProps> = ({
         {jobs.map((job) => {
           const jobLink = job.applicationLink || job.jobUrl;
           const hasPdf = !!job.pdfPath;
-          const pdfHref = `/pdfs/resume_${job.id}.pdf`;
+          const pdfHref = `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`;
 
           const canApply = job.status === "ready";
           const canProcess = ["discovered", "ready"].includes(job.status);
