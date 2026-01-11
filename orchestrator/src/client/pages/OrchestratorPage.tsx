@@ -11,6 +11,7 @@ import {
   Clock,
   Copy,
   DollarSign,
+  Edit2,
   ExternalLink,
   FileText,
   Filter,
@@ -20,6 +21,7 @@ import {
   MoreHorizontal,
   Play,
   RefreshCcw,
+  Save,
   Search,
   Settings,
   Sparkles,
@@ -1016,6 +1018,15 @@ export const OrchestratorPage: React.FC = () => {
                               : "Generate PDF"}
                         </DropdownMenuItem>
                       )}
+                      <DropdownMenuItem
+                        onSelect={() => {
+                          setDetailTab("description");
+                          setIsEditingDescription(true);
+                        }}
+                      >
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Edit description
+                      </DropdownMenuItem>
                       <DropdownMenuItem onSelect={() => void handleCopyInfo(selectedJob)}>
                         <Copy className="mr-2 h-4 w-4" />
                         Copy info
@@ -1088,6 +1099,39 @@ export const OrchestratorPage: React.FC = () => {
                         <div className="font-medium">{selectedJob.jobType || "Not set"}</div>
                       </div>
                     </div>
+
+                    <Separator className="my-2" />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          Description Preview
+                        </div>
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0 text-xs text-primary"
+                          onClick={() => {
+                            setDetailTab("description");
+                            setIsEditingDescription(true);
+                          }}
+                        >
+                          <Edit2 className="mr-1 h-3 w-3" />
+                          Edit full JD
+                        </Button>
+                      </div>
+                      <div className="rounded-md border border-border/40 bg-muted/5 p-3 text-xs text-muted-foreground line-clamp-6 whitespace-pre-wrap leading-relaxed">
+                        {description}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full h-8 text-xs text-muted-foreground"
+                        onClick={() => setDetailTab("description")}
+                      >
+                        Read full description
+                      </Button>
+                    </div>
                   </TabsContent>
 
                   <TabsContent value="tailoring" className="pt-3">
@@ -1107,45 +1151,103 @@ export const OrchestratorPage: React.FC = () => {
                       <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Job description
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="icon" variant="ghost" aria-label="Description actions">
-                            <MoreHorizontal className="h-4 w-4" />
+                      <div className="flex items-center gap-1">
+                        {!isEditingDescription ? (
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => setIsEditingDescription(true)}
+                            className="h-8 px-2 text-xs"
+                          >
+                            <Edit2 className="mr-1.5 h-3.5 w-3.5" />
+                            Edit
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {!isEditingDescription ? (
-                            <DropdownMenuItem onSelect={() => setIsEditingDescription(true)}>
-                              Edit description
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setIsEditingDescription(false);
+                                setEditedDescription(selectedJob.jobDescription || "");
+                              }}
+                              className="h-8 px-2 text-xs text-muted-foreground"
+                              disabled={isSavingDescription}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={handleSaveDescription}
+                              className="h-8 px-3 text-xs"
+                              disabled={isSavingDescription}
+                            >
+                              {isSavingDescription ? (
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Save className="mr-1.5 h-3.5 w-3.5" />
+                              )}
+                              Save Changes
+                            </Button>
+                          </>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-8 w-8" aria-label="Description actions">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onSelect={() => {
+                                void copyTextToClipboard(selectedJob.jobDescription || "");
+                                toast.success("Copied raw description");
+                              }}
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copy raw text
                             </DropdownMenuItem>
-                          ) : (
-                            <>
-                              <DropdownMenuItem onSelect={handleSaveDescription} disabled={isSavingDescription}>
-                                {isSavingDescription ? "Saving..." : "Save changes"}
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={() => {
-                                  setIsEditingDescription(false);
-                                  setEditedDescription(selectedJob.jobDescription || "");
-                                }}
-                                disabled={isSavingDescription}
-                              >
-                                Cancel edit
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
 
                     <div className="rounded-lg border border-border/60 bg-muted/10 p-3 text-sm text-muted-foreground">
                       {isEditingDescription ? (
-                        <Textarea
-                          value={editedDescription}
-                          onChange={(event) => setEditedDescription(event.target.value)}
-                          className="min-h-[240px] font-mono text-sm leading-relaxed"
-                          placeholder="Enter job description..."
-                        />
+                        <div className="space-y-3">
+                          <Textarea
+                            value={editedDescription}
+                            onChange={(event) => setEditedDescription(event.target.value)}
+                            className="min-h-[400px] font-mono text-sm leading-relaxed focus-visible:ring-1"
+                            placeholder="Enter job description..."
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setIsEditingDescription(false);
+                                setEditedDescription(selectedJob.jobDescription || "");
+                              }}
+                              disabled={isSavingDescription}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={handleSaveDescription}
+                              disabled={isSavingDescription}
+                            >
+                              {isSavingDescription ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <CheckCircle2 className="mr-2 h-4 w-4" />
+                              )}
+                              Save Description
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
                         <div className="whitespace-pre-wrap leading-relaxed">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>

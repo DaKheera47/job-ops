@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Copy,
   Download,
+  Edit2,
   ExternalLink,
   MoreHorizontal,
   RefreshCcw,
@@ -58,6 +59,7 @@ export interface JobTableProps {
   onApply: (id: string) => void | Promise<void>;
   onReject: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
+  onEditDescription?: (id: string) => void;
   processingJobId: string | null;
   highlightedJobId?: string | null;
   onHighlightChange?: (jobId: string | null) => void;
@@ -145,6 +147,7 @@ export const JobTable: React.FC<JobTableProps> = ({
   onApply,
   onReject,
   onProcess,
+  onEditDescription,
   processingJobId,
   highlightedJobId,
   onHighlightChange,
@@ -303,6 +306,13 @@ export const JobTable: React.FC<JobTableProps> = ({
                       <Copy className="mr-2 h-4 w-4" />
                       Copy info
                     </DropdownMenuItem>
+
+                    {onEditDescription && (
+                      <DropdownMenuItem onSelect={() => onEditDescription(job.id)}>
+                        <Edit2 className="mr-2 h-4 w-4" />
+                        Edit description
+                      </DropdownMenuItem>
+                    )}
 
                     {onHighlightChange && (
                       <DropdownMenuItem

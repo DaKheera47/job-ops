@@ -10,6 +10,7 @@ import {
   Copy,
   DollarSign,
   Download,
+  Edit2,
   ExternalLink,
   GraduationCap,
   Loader2,
@@ -32,6 +33,7 @@ interface JobCardProps {
   onApply: (id: string) => void | Promise<void>;
   onReject: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
+  onEditDescription?: (id: string) => void;
   isProcessing: boolean;
   highlightedJobId?: string | null;
   onHighlightChange?: (jobId: string | null) => void;
@@ -78,6 +80,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   onApply,
   onReject,
   onProcess,
+  onEditDescription,
   isProcessing,
   highlightedJobId,
   onHighlightChange,
@@ -183,6 +186,13 @@ export const JobCard: React.FC<JobCardProps> = ({
           <Copy className="mr-2 h-4 w-4" />
           Copy info
         </Button>
+
+        {onEditDescription && (
+          <Button variant="outline" size="sm" onClick={() => onEditDescription(job.id)}>
+            <Edit2 className="mr-2 h-4 w-4" />
+            Edit JD
+          </Button>
+        )}
 
         {onHighlightChange && (
           <Button
