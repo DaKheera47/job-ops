@@ -155,6 +155,7 @@ export async function updateSettings(update: {
   jobspyResultsWanted?: number | null
   jobspyHoursOld?: number | null
   jobspyCountryIndeed?: string | null
+  jobspySites?: string[] | null
   jobspyLinkedinFetchDescription?: boolean | null
 }): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {

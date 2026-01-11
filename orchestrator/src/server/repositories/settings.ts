@@ -20,6 +20,7 @@ export type SettingKey = 'model'
   | 'jobspyResultsWanted'
   | 'jobspyHoursOld'
   | 'jobspyCountryIndeed'
+  | 'jobspySites'
   | 'jobspyLinkedinFetchDescription'
 
 export async function getSetting(key: SettingKey): Promise<string | null> {

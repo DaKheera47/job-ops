@@ -69,6 +69,7 @@ export const SettingsPage: React.FC = () => {
   const [jobspyResultsWantedDraft, setJobspyResultsWantedDraft] = useState<number | null>(null)
   const [jobspyHoursOldDraft, setJobspyHoursOldDraft] = useState<number | null>(null)
   const [jobspyCountryIndeedDraft, setJobspyCountryIndeedDraft] = useState<string | null>(null)
+  const [jobspySitesDraft, setJobspySitesDraft] = useState<string[] | null>(null)
   const [jobspyLinkedinFetchDescriptionDraft, setJobspyLinkedinFetchDescriptionDraft] = useState<boolean | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -94,6 +95,7 @@ export const SettingsPage: React.FC = () => {
         setJobspyResultsWantedDraft(data.overrideJobspyResultsWanted)
         setJobspyHoursOldDraft(data.overrideJobspyHoursOld)
         setJobspyCountryIndeedDraft(data.overrideJobspyCountryIndeed)
+        setJobspySitesDraft(data.overrideJobspySites)
         setJobspyLinkedinFetchDescriptionDraft(data.overrideJobspyLinkedinFetchDescription)
       })
       .catch((error) => {
@@ -143,6 +145,9 @@ export const SettingsPage: React.FC = () => {
   const effectiveJobspyCountryIndeed = settings?.jobspyCountryIndeed ?? ""
   const defaultJobspyCountryIndeed = settings?.defaultJobspyCountryIndeed ?? ""
   const overrideJobspyCountryIndeed = settings?.overrideJobspyCountryIndeed
+  const effectiveJobspySites = settings?.jobspySites ?? ["indeed", "linkedin"]
+  const defaultJobspySites = settings?.defaultJobspySites ?? ["indeed", "linkedin"]
+  const overrideJobspySites = settings?.overrideJobspySites
   const effectiveJobspyLinkedinFetchDescription = settings?.jobspyLinkedinFetchDescription ?? true
   const defaultJobspyLinkedinFetchDescription = settings?.defaultJobspyLinkedinFetchDescription ?? true
   const overrideJobspyLinkedinFetchDescription = settings?.overrideJobspyLinkedinFetchDescription
@@ -180,6 +185,7 @@ export const SettingsPage: React.FC = () => {
       jobspyResultsWantedDraft !== (overrideJobspyResultsWanted ?? null) ||
       jobspyHoursOldDraft !== (overrideJobspyHoursOld ?? null) ||
       jobspyCountryIndeedDraft !== (overrideJobspyCountryIndeed ?? null) ||
+      JSON.stringify((jobspySitesDraft ?? []).slice().sort()) !== JSON.stringify((overrideJobspySites ?? []).slice().sort()) ||
       jobspyLinkedinFetchDescriptionDraft !== (overrideJobspyLinkedinFetchDescription ?? null)
     )
   }, [
@@ -205,11 +211,13 @@ export const SettingsPage: React.FC = () => {
     jobspyResultsWantedDraft,
     jobspyHoursOldDraft,
     jobspyCountryIndeedDraft,
+    jobspySitesDraft,
     jobspyLinkedinFetchDescriptionDraft,
     overrideJobspyLocation,
     overrideJobspyResultsWanted,
     overrideJobspyHoursOld,
     overrideJobspyCountryIndeed,
+    overrideJobspySites,
     overrideJobspyLinkedinFetchDescription,
   ])
 
@@ -232,6 +240,7 @@ export const SettingsPage: React.FC = () => {
       const jobspyResultsWantedOverride = jobspyResultsWantedDraft === defaultJobspyResultsWanted ? null : jobspyResultsWantedDraft
       const jobspyHoursOldOverride = jobspyHoursOldDraft === defaultJobspyHoursOld ? null : jobspyHoursOldDraft
       const jobspyCountryIndeedOverride = jobspyCountryIndeedDraft === defaultJobspyCountryIndeed ? null : jobspyCountryIndeedDraft
+      const jobspySitesOverride = arraysEqual((jobspySitesDraft ?? []).slice().sort(), (defaultJobspySites ?? []).slice().sort()) ? null : jobspySitesDraft
       const jobspyLinkedinFetchDescriptionOverride = jobspyLinkedinFetchDescriptionDraft === defaultJobspyLinkedinFetchDescription ? null : jobspyLinkedinFetchDescriptionDraft
       const updated = await api.updateSettings({
         model: trimmed.length > 0 ? trimmed : null,
@@ -247,6 +256,7 @@ export const SettingsPage: React.FC = () => {
         jobspyResultsWanted: jobspyResultsWantedOverride,
         jobspyHoursOld: jobspyHoursOldOverride,
         jobspyCountryIndeed: jobspyCountryIndeedOverride,
+        jobspySites: jobspySitesOverride,
         jobspyLinkedinFetchDescription: jobspyLinkedinFetchDescriptionOverride,
       })
       setSettings(updated)
@@ -263,6 +273,7 @@ export const SettingsPage: React.FC = () => {
       setJobspyResultsWantedDraft(updated.overrideJobspyResultsWanted)
       setJobspyHoursOldDraft(updated.overrideJobspyHoursOld)
       setJobspyCountryIndeedDraft(updated.overrideJobspyCountryIndeed)
+      setJobspySitesDraft(updated.overrideJobspySites)
       setJobspyLinkedinFetchDescriptionDraft(updated.overrideJobspyLinkedinFetchDescription)
       toast.success("Settings saved")
     } catch (error) {
@@ -314,6 +325,7 @@ export const SettingsPage: React.FC = () => {
         jobspyResultsWanted: null,
         jobspyHoursOld: null,
         jobspyCountryIndeed: null,
+        jobspySites: null,
         jobspyLinkedinFetchDescription: null,
       })
       setSettings(updated)
@@ -330,6 +342,7 @@ export const SettingsPage: React.FC = () => {
       setJobspyResultsWantedDraft(null)
       setJobspyHoursOldDraft(null)
       setJobspyCountryIndeedDraft(null)
+      setJobspySitesDraft(null)
       setJobspyLinkedinFetchDescriptionDraft(null)
       toast.success("Reset to default")
     } catch (error) {
@@ -598,6 +611,55 @@ export const SettingsPage: React.FC = () => {
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <div className="space-y-6">
+              <div className="space-y-3">
+                  <div className="text-sm font-medium">Scraped Sites</div>
+                  <div className="flex gap-6">
+                    <div className="flex items-center space-x-2">
+                        <Checkbox 
+                            id="site-indeed" 
+                            checked={jobspySitesDraft?.includes('indeed') ?? defaultJobspySites.includes('indeed')}
+                            onCheckedChange={(checked) => {
+                                const current = jobspySitesDraft ?? defaultJobspySites
+                                let next = [...current]
+                                if (checked) {
+                                    if (!next.includes('indeed')) next.push('indeed')
+                                } else {
+                                    next = next.filter(s => s !== 'indeed')
+                                }
+                                setJobspySitesDraft(next)
+                            }}
+                            disabled={isLoading || isSaving}
+                        />
+                        <label htmlFor="site-indeed" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Indeed</label>
+                    </div>
+                     <div className="flex items-center space-x-2">
+                        <Checkbox 
+                            id="site-linkedin" 
+                            checked={jobspySitesDraft?.includes('linkedin') ?? defaultJobspySites.includes('linkedin')}
+                            onCheckedChange={(checked) => {
+                                const current = jobspySitesDraft ?? defaultJobspySites
+                                let next = [...current]
+                                if (checked) {
+                                    if (!next.includes('linkedin')) next.push('linkedin')
+                                } else {
+                                    next = next.filter(s => s !== 'linkedin')
+                                }
+                                setJobspySitesDraft(next)
+                            }}
+                            disabled={isLoading || isSaving}
+                        />
+                        <label htmlFor="site-linkedin" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">LinkedIn</label>
+                    </div>
+                  </div>
+                   <div className="text-xs text-muted-foreground">
+                    Select which sites JobSpy should scrape.
+                  </div>
+                   <div className="flex gap-2 text-xs text-muted-foreground">
+                    <span>Effective: {(effectiveJobspySites || []).join(', ') || "None"}</span>
+                    <span>Default: {(defaultJobspySites || []).join(', ')}</span>
+                  </div>
+              </div>
+
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="text-sm font-medium">Location</div>

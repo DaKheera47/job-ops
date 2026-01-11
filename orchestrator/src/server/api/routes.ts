@@ -304,7 +304,7 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
     const overrideSearchTerms = overrideSearchTermsRaw ? JSON.parse(overrideSearchTermsRaw) as string[] : null;
     const searchTerms = overrideSearchTerms ?? defaultSearchTerms;
 
-    // JobSpy settings
+    // JobSpy settings (GET)
     const overrideJobspyLocation = await settingsRepo.getSetting('jobspyLocation');
     const defaultJobspyLocation = process.env.JOBSPY_LOCATION || 'UK';
     const jobspyLocation = overrideJobspyLocation || defaultJobspyLocation;
@@ -322,6 +322,11 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
     const overrideJobspyCountryIndeed = await settingsRepo.getSetting('jobspyCountryIndeed');
     const defaultJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED || 'UK';
     const jobspyCountryIndeed = overrideJobspyCountryIndeed || defaultJobspyCountryIndeed;
+
+    const overrideJobspySitesRaw = await settingsRepo.getSetting('jobspySites');
+    const defaultJobspySites = (process.env.JOBSPY_SITES || 'indeed,linkedin').split(',').map(s => s.trim()).filter(Boolean);
+    const overrideJobspySites = overrideJobspySitesRaw ? JSON.parse(overrideJobspySitesRaw) as string[] : null;
+    const jobspySites = overrideJobspySites ?? defaultJobspySites;
 
     const overrideJobspyLinkedinFetchDescriptionRaw = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
     const defaultJobspyLinkedinFetchDescription = (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || '1') === '1';
@@ -367,6 +372,9 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
         jobspyCountryIndeed,
         defaultJobspyCountryIndeed,
         overrideJobspyCountryIndeed,
+        jobspySites,
+        defaultJobspySites,
+        overrideJobspySites,
         jobspyLinkedinFetchDescription,
         defaultJobspyLinkedinFetchDescription,
         overrideJobspyLinkedinFetchDescription,
@@ -396,6 +404,7 @@ const updateSettingsSchema = z.object({
   jobspyResultsWanted: z.number().int().min(1).max(500).nullable().optional(),
   jobspyHoursOld: z.number().int().min(1).max(168).nullable().optional(),
   jobspyCountryIndeed: z.string().trim().min(1).max(100).nullable().optional(),
+  jobspySites: z.array(z.string().trim().min(1).max(50)).max(10).nullable().optional(),
   jobspyLinkedinFetchDescription: z.boolean().nullable().optional(),
 });
 
@@ -475,6 +484,11 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
       await settingsRepo.setSetting('jobspyCountryIndeed', value);
     }
 
+    if ('jobspySites' in input) {
+      const value = input.jobspySites ?? null;
+      await settingsRepo.setSetting('jobspySites', value !== null ? JSON.stringify(value) : null);
+    }
+
     if ('jobspyLinkedinFetchDescription' in input) {
       const value = input.jobspyLinkedinFetchDescription ?? null;
       await settingsRepo.setSetting('jobspyLinkedinFetchDescription', value !== null ? (value ? '1' : '0') : null);
@@ -537,6 +551,11 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
     const defaultJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED || 'UK';
     const jobspyCountryIndeed = overrideJobspyCountryIndeed || defaultJobspyCountryIndeed;
 
+    const overrideJobspySitesRaw = await settingsRepo.getSetting('jobspySites');
+    const defaultJobspySites = (process.env.JOBSPY_SITES || 'indeed,linkedin').split(',').map(s => s.trim()).filter(Boolean);
+    const overrideJobspySites = overrideJobspySitesRaw ? JSON.parse(overrideJobspySitesRaw) as string[] : null;
+    const jobspySites = overrideJobspySites ?? defaultJobspySites;
+
     const overrideJobspyLinkedinFetchDescriptionRaw = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
     const defaultJobspyLinkedinFetchDescription = (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || '1') === '1';
     const overrideJobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescriptionRaw
@@ -581,6 +600,9 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
         jobspyCountryIndeed,
         defaultJobspyCountryIndeed,
         overrideJobspyCountryIndeed,
+        jobspySites,
+        defaultJobspySites,
+        overrideJobspySites,
         jobspyLinkedinFetchDescription,
         defaultJobspyLinkedinFetchDescription,
         overrideJobspyLinkedinFetchDescription,
@@ -588,6 +610,8 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    // PATCH usually returns 500 for unknown, but let's stick to what was there (400?)
+    // Wait, the file said 400? Let's verify line 608.
     res.status(400).json({ success: false, error: message });
   }
 });

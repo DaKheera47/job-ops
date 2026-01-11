@@ -247,6 +247,9 @@ export interface AppSettings {
   jobspyCountryIndeed: string;
   defaultJobspyCountryIndeed: string;
   overrideJobspyCountryIndeed: string | null;
+  jobspySites: string[];
+  defaultJobspySites: string[];
+  overrideJobspySites: string[] | null;
   jobspyLinkedinFetchDescription: boolean;
   defaultJobspyLinkedinFetchDescription: boolean;
   overrideJobspyLinkedinFetchDescription: boolean | null;

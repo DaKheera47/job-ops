@@ -127,9 +127,22 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     }
 
     // Run JobSpy (Indeed/LinkedIn) if selected
-    const jobSpySites = mergedConfig.sources.filter(
+    let jobSpySites = mergedConfig.sources.filter(
       (s): s is 'indeed' | 'linkedin' => s === 'indeed' || s === 'linkedin'
     );
+
+    // Apply setting override for JobSpy sites
+    const jobspySitesSettingRaw = await settingsRepo.getSetting('jobspySites');
+    if (jobspySitesSettingRaw) {
+      try {
+        const allowed = JSON.parse(jobspySitesSettingRaw);
+        if (Array.isArray(allowed)) {
+          jobSpySites = jobSpySites.filter((s) => allowed.includes(s));
+        }
+      } catch {
+        // ignore JSON parse error
+      }
+    }
 
     if (jobSpySites.length > 0) {
       updateProgress({
