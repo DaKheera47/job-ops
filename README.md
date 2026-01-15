@@ -1,103 +1,37 @@
-# Job Ops
+# Job-Ops
 
-Automated job discovery -> AI suitability scoring -> tailored resume PDFs -> a dashboard to review/apply (with optional Notion sync).
+AI-powered job discovery and application pipeline. Automatically finds jobs, scores them against your profile, and generates tailored resumes.
 
-## How it works (pipeline)
+## Workflow
+1. **Search**: Scrapes Gradcracker, Indeed, LinkedIn, and UK Visa Sponsorship jobs.
+2. **Score**: AI ranks jobs by suitability using OpenRouter.
+3. **Tailor**: Generates a custom resume summary for top-tier matches.
+4. **Export**: Automates [RxResume](https://rxresu.me) to create tailored PDFs.
+5. **Manage**: Review and mark jobs as "Applied" via the dashboard (syncs to Notion).
 
-1. **Crawl**: `extractors/gradcracker` (Crawlee + Playwright + Camoufox) visits Gradcracker search pages, opens each job page, extracts structured fields + the job description, and captures the real application URL by clicking the apply button (skipped for already-known jobs).
-2. **Import + dedupe**: `orchestrator` reads the Crawlee dataset (`extractors/gradcracker/storage/datasets/default/*.json`) and inserts new jobs into SQLite (`jobs.job_url` is unique).
-3. **Score**: `orchestrator` scores up to 50 unprocessed jobs via OpenRouter (cached as `suitabilityScore`/`suitabilityReason`).
-4. **Select**: take the top `N` jobs above `minSuitabilityScore`.
-5. **Process**: for each selected job:
-   - generate a tailored resume summary via OpenRouter (stored on the job)
-   - generate a PDF by injecting the summary into `resume-generator/base.json`, writing a temp resume JSON, then running `resume-generator/rxresume_automation.py` (Playwright automates `rxresu.me` import -> export)
-6. **Review/apply**: the React dashboard shows job status, score, links, and PDFs; clicking `Mark Applied` optionally creates a Notion page.
+## Quick Start
+```bash
+# 1. Setup environment
+cp .env.example .env
 
-Live progress is streamed to the UI via Server-Sent Events at `GET /api/pipeline/progress` (the crawler emits stdout lines prefixed with `JOBOPS_PROGRESS`; the orchestrator forwards them).
+# 2. Run with Docker
+docker compose up -d --build
 
-## Architecture (Mermaid)
-
-```mermaid
-flowchart LR
-  subgraph UI["User Interface"]
-    DASH["React Dashboard"]
-  end
-
-  subgraph ORCH["Orchestrator (Node/TS)"]
-    API["Express API<br/>/api/*"]
-    PIPE["Pipeline Runner"]
-    DB[(SQLite<br/>jobs.db)]
-    PDFS[(PDFs<br/>pdfs/)]
-  end
-
-  subgraph CRAWL["extractors/gradcracker (Crawlee/Playwright)"]
-    C1["Seed search URLs<br/>(locations x roles)"]
-    C2["Parse list pages<br/>enqueue job pages"]
-    C3["Parse job pages<br/>extract JD + apply URL"]
-    DS[(Crawlee dataset<br/>storage/datasets/default)]
-  end
-
-  subgraph EXT["External Services"]
-    GC["Gradcracker"]
-    OR["OpenRouter"]
-    RX["rxresu.me"]
-    NO["Notion (optional)"]
-    N8N["n8n / cron (optional)"]
-  end
-
-  N8N -->|"POST /api/webhook/trigger"| API
-  DASH <-->|"REST"| API
-  DASH <-->|"SSE progress"| API
-
-  PIPE -->|"spawn"| CRAWL
-  C1 --> GC
-  C2 --> GC
-  C3 --> GC
-  CRAWL --> DS
-  API -->|"read"| DS
-  API --> DB
-
-  PIPE -->|"score + summary"| OR
-  PIPE -->|"spawn python"| RX
-  RX -->|"export"| PDFS
-  API -->|"serve /pdfs/*"| PDFS
-
-  API -->|"create page"| NO
+# 3. Access Dashboard
+# http://localhost:3005
 ```
 
-## Repo layout
+## Setup
+Essential variables in `.env`:
+- `OPENROUTER_API_KEY`: For job scoring and tailoring.
+- `RXRESUME_EMAIL`/`PASSWORD`: To automate PDF exports.
+- `JOBSPY_SEARCH_TERMS`: Keywords for Indeed/LinkedIn scraping.
 
-```
-job-ops/
-  orchestrator/                 # Express API + React dashboard + pipeline
-    src/server/                 # API routes, pipeline, DB, services
-    src/client/                 # UI (polls jobs, listens to SSE progress)
-    src/shared/                 # shared types (Job, PipelineRun, etc.)
-  extractors/gradcracker/       # Crawlee crawler (Gradcracker)
-  extractors/jobspy/            # JobSpy wrapper (Indeed/LinkedIn/etc)
-  extractors/ukvisajobs/        # UK Visa Jobs API extractor
-  resume-generator/             # Python Playwright automation for rxresu.me
-    base.json                   # your exported base resume (template)
-  data/                         # persisted runtime artifacts (Docker default)
-    jobs.db                     # SQLite database
-    pdfs/                       # generated PDFs (resume_<jobId>.pdf)
-  docker-compose.yml            # single-container deployment
-  Dockerfile                    # builds orchestrator + installs browsers
-```
-
-## Data model (SQLite)
-
-- `jobs`
-  - from crawl: `title`, `employer`, `jobUrl`, `applicationLink`, `deadline`, `salary`, `location`, `jobDescription`, `source` (gradcracker/indeed/linkedin/ukvisajobs), etc.
-  - enrichments: `status` (`discovered` -> `processing` -> `ready` -> `applied`/`skipped`), `suitabilityScore`, `suitabilityReason`, `tailoredSummary`, `pdfPath`, `notionPageId`
-- `pipeline_runs`: audit log of runs (`running`/`completed`/`failed`, counts, error)
-
-## Running (Docker)
-
-1. Create `.env` at repo root (`cp .env.example .env`) and set:
-   - `OPENROUTER_API_KEY`
-   - `RXRESUME_EMAIL`, `RXRESUME_PASSWORD`
-   - optional: `NOTION_API_KEY`, `NOTION_DATABASE_ID`, `WEBHOOK_SECRET`
+## Structure
+- `/orchestrator`: React frontend + Node.js backend & pipeline.
+- `/extractors`: Specialized scrapers (Gradcracker, JobSpy, UKVisaJobs).
+- `/resume-generator`: Python script for RxResume PDF automation.
+- `/data`: Persistent storage for SQLite DB and generated PDFs.
 2. Put your exported RXResume JSON at `resume-generator/base.json`.
 3. Start: `docker compose up -d --build`
 4. Open:
