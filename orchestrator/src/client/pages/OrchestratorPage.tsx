@@ -900,7 +900,7 @@ export const OrchestratorPage: React.FC = () => {
           </div>
 
           {/* Inspector panel: visually subordinate to list */}
-          <div className="rounded-lg border border-border/40 bg-muted/5 p-4 lg:sticky lg:top-24 lg:self-start">
+          <div className="rounded-lg border border-border/40 bg-muted/5 p-4 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
             {!selectedJob ? (
               <div className="flex h-full min-h-[200px] flex-col items-center justify-center gap-1 text-center">
                 <div className="text-sm font-medium text-muted-foreground">No job selected</div>
