@@ -78,6 +78,7 @@ export const SettingsPage: React.FC = () => {
   const [jobCompleteWebhookUrlDraft, setJobCompleteWebhookUrlDraft] = useState("")
   const [resumeProjectsDraft, setResumeProjectsDraft] = useState<ResumeProjectsSettings | null>(null)
   const [ukvisajobsMaxJobsDraft, setUkvisajobsMaxJobsDraft] = useState<number | null>(null)
+  const [gradcrackerMaxJobsPerTermDraft, setGradcrackerMaxJobsPerTermDraft] = useState<number | null>(null)
   const [searchTermsDraft, setSearchTermsDraft] = useState<string[] | null>(null)
   const [jobspyLocationDraft, setJobspyLocationDraft] = useState<string | null>(null)
   const [jobspyResultsWantedDraft, setJobspyResultsWantedDraft] = useState<number | null>(null)
@@ -105,6 +106,7 @@ export const SettingsPage: React.FC = () => {
         setJobCompleteWebhookUrlDraft(data.overrideJobCompleteWebhookUrl ?? "")
         setResumeProjectsDraft(data.resumeProjects)
         setUkvisajobsMaxJobsDraft(data.overrideUkvisajobsMaxJobs)
+        setGradcrackerMaxJobsPerTermDraft(data.overrideGradcrackerMaxJobsPerTerm)
         setSearchTermsDraft(data.overrideSearchTerms)
         setJobspyLocationDraft(data.overrideJobspyLocation)
         setJobspyResultsWantedDraft(data.overrideJobspyResultsWanted)
@@ -145,6 +147,9 @@ export const SettingsPage: React.FC = () => {
   const effectiveUkvisajobsMaxJobs = settings?.ukvisajobsMaxJobs ?? 50
   const defaultUkvisajobsMaxJobs = settings?.defaultUkvisajobsMaxJobs ?? 50
   const overrideUkvisajobsMaxJobs = settings?.overrideUkvisajobsMaxJobs
+  const effectiveGradcrackerMaxJobsPerTerm = settings?.gradcrackerMaxJobsPerTerm ?? 50
+  const defaultGradcrackerMaxJobsPerTerm = settings?.defaultGradcrackerMaxJobsPerTerm ?? 50
+  const overrideGradcrackerMaxJobsPerTerm = settings?.overrideGradcrackerMaxJobsPerTerm
   const effectiveSearchTerms = settings?.searchTerms ?? []
   const defaultSearchTerms = settings?.defaultSearchTerms ?? []
   const overrideSearchTerms = settings?.overrideSearchTerms
@@ -185,6 +190,7 @@ export const SettingsPage: React.FC = () => {
     const nextJobCompleteWebhook = jobCompleteWebhookUrlDraft.trim()
     const currentJobCompleteWebhook = (overrideJobCompleteWebhookUrl ?? "").trim()
     const ukvisajobsChanged = ukvisajobsMaxJobsDraft !== (overrideUkvisajobsMaxJobs ?? null)
+    const gradcrackerChanged = gradcrackerMaxJobsPerTermDraft !== (overrideGradcrackerMaxJobsPerTerm ?? null)
     const searchTermsChanged = JSON.stringify(searchTermsDraft) !== JSON.stringify(overrideSearchTerms ?? null)
     return (
       next !== current ||
@@ -195,6 +201,7 @@ export const SettingsPage: React.FC = () => {
       nextJobCompleteWebhook !== currentJobCompleteWebhook ||
       !resumeProjectsEqual(resumeProjectsDraft, settings.resumeProjects) ||
       ukvisajobsChanged ||
+      gradcrackerChanged ||
       searchTermsChanged ||
       jobspyLocationDraft !== (overrideJobspyLocation ?? null) ||
       jobspyResultsWantedDraft !== (overrideJobspyResultsWanted ?? null) ||
@@ -220,6 +227,8 @@ export const SettingsPage: React.FC = () => {
     resumeProjectsDraft,
     ukvisajobsMaxJobsDraft,
     overrideUkvisajobsMaxJobs,
+    gradcrackerMaxJobsPerTermDraft,
+    overrideGradcrackerMaxJobsPerTerm,
     searchTermsDraft,
     overrideSearchTerms,
     jobspyLocationDraft,
@@ -250,6 +259,7 @@ export const SettingsPage: React.FC = () => {
         ? null
         : resumeProjectsDraft
       const ukvisajobsMaxJobsOverride = ukvisajobsMaxJobsDraft === defaultUkvisajobsMaxJobs ? null : ukvisajobsMaxJobsDraft
+      const gradcrackerMaxJobsPerTermOverride = gradcrackerMaxJobsPerTermDraft === defaultGradcrackerMaxJobsPerTerm ? null : gradcrackerMaxJobsPerTermDraft
       const searchTermsOverride = arraysEqual(searchTermsDraft ?? [], defaultSearchTerms) ? null : searchTermsDraft
       const jobspyLocationOverride = jobspyLocationDraft === defaultJobspyLocation ? null : jobspyLocationDraft
       const jobspyResultsWantedOverride = jobspyResultsWantedDraft === defaultJobspyResultsWanted ? null : jobspyResultsWantedDraft
@@ -266,6 +276,7 @@ export const SettingsPage: React.FC = () => {
         jobCompleteWebhookUrl: jobCompleteTrimmed.length > 0 ? jobCompleteTrimmed : null,
         resumeProjects: resumeProjectsOverride,
         ukvisajobsMaxJobs: ukvisajobsMaxJobsOverride,
+        gradcrackerMaxJobsPerTerm: gradcrackerMaxJobsPerTermOverride,
         searchTerms: searchTermsOverride,
         jobspyLocation: jobspyLocationOverride,
         jobspyResultsWanted: jobspyResultsWantedOverride,
@@ -283,6 +294,7 @@ export const SettingsPage: React.FC = () => {
       setJobCompleteWebhookUrlDraft(updated.overrideJobCompleteWebhookUrl ?? "")
       setResumeProjectsDraft(updated.resumeProjects)
       setUkvisajobsMaxJobsDraft(updated.overrideUkvisajobsMaxJobs)
+      setGradcrackerMaxJobsPerTermDraft(updated.overrideGradcrackerMaxJobsPerTerm)
       setSearchTermsDraft(updated.overrideSearchTerms)
       setJobspyLocationDraft(updated.overrideJobspyLocation)
       setJobspyResultsWantedDraft(updated.overrideJobspyResultsWanted)
@@ -365,6 +377,7 @@ export const SettingsPage: React.FC = () => {
         jobCompleteWebhookUrl: null,
         resumeProjects: null,
         ukvisajobsMaxJobs: null,
+        gradcrackerMaxJobsPerTerm: null,
         searchTerms: null,
         jobspyLocation: null,
         jobspyResultsWanted: null,
@@ -382,6 +395,7 @@ export const SettingsPage: React.FC = () => {
       setJobCompleteWebhookUrlDraft("")
       setResumeProjectsDraft(updated.resumeProjects)
       setUkvisajobsMaxJobsDraft(null)
+      setGradcrackerMaxJobsPerTermDraft(null)
       setSearchTermsDraft(null)
       setJobspyLocationDraft(null)
       setJobspyResultsWantedDraft(null)
@@ -573,20 +587,20 @@ export const SettingsPage: React.FC = () => {
                   type="number"
                   inputMode="numeric"
                   min={1}
-                  max={200}
+                  max={1000}
                   value={ukvisajobsMaxJobsDraft ?? defaultUkvisajobsMaxJobs}
                   onChange={(event) => {
                     const value = parseInt(event.target.value, 10)
                     if (Number.isNaN(value)) {
                       setUkvisajobsMaxJobsDraft(null)
                     } else {
-                      setUkvisajobsMaxJobsDraft(Math.min(200, Math.max(1, value)))
+                      setUkvisajobsMaxJobsDraft(Math.min(1000, Math.max(1, value)))
                     }
                   }}
                   disabled={isLoading || isSaving}
                 />
                 <div className="text-xs text-muted-foreground">
-                  Maximum number of jobs to fetch from UKVisaJobs per pipeline run. Range: 1-200.
+                  Maximum number of jobs to fetch from UKVisaJobs per pipeline run. Range: 1-1000.
                 </div>
               </div>
 
@@ -599,7 +613,52 @@ export const SettingsPage: React.FC = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Default</div>
-                  <div className="break-words font-mono text-xs">{defaultUkvisajobsMaxJobs}</div>
+                  <div className="break-words font-mono text-xs font-semibold">{defaultUkvisajobsMaxJobs}</div>
+                </div>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="gradcracker" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline py-4">
+            <span className="text-base font-semibold">Gradcracker Extractor</span>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Max jobs per search term</div>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={1000}
+                  value={gradcrackerMaxJobsPerTermDraft ?? defaultGradcrackerMaxJobsPerTerm}
+                  onChange={(event) => {
+                    const value = parseInt(event.target.value, 10)
+                    if (Number.isNaN(value)) {
+                      setGradcrackerMaxJobsPerTermDraft(null)
+                    } else {
+                      setGradcrackerMaxJobsPerTermDraft(Math.min(1000, Math.max(1, value)))
+                    }
+                  }}
+                  disabled={isLoading || isSaving}
+                />
+                <div className="text-xs text-muted-foreground">
+                  Maximum number of jobs to fetch for EACH search term from Gradcracker. Range: 1-1000.
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                <div>
+                  <div className="text-xs text-muted-foreground">Effective</div>
+                  <div className="break-words font-mono text-xs">{effectiveGradcrackerMaxJobsPerTerm}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">Default</div>
+                  <div className="break-words font-mono text-xs font-semibold">{defaultGradcrackerMaxJobsPerTerm}</div>
                 </div>
               </div>
             </div>

@@ -44,6 +44,10 @@ function getExistingJobUrlSet(): Set<string> {
 const SKIP_APPLY_FOR_EXISTING = process.env.JOBOPS_SKIP_APPLY_FOR_EXISTING === "1";
 const EXISTING_JOB_URLS = getExistingJobUrlSet();
 
+// Global counters for max jobs per search term
+const jobCounts = new Map<string, number>();
+const MAX_JOBS_PER_TERM = parseInt(process.env.GRADCRACKER_MAX_JOBS_PER_TERM || "0", 10);
+
 interface Job {
   title: string | null;
   jobUrl: string | null;
@@ -62,7 +66,22 @@ export const router = createPlaywrightRouter();
 router.addHandler(
   "gradcracker-list-page",
   async ({ page, request, enqueueLinks }) => {
-    log.info(`Processing: ${request.url}`);
+    const { role } = request.userData;
+    log.info(`Processing: ${request.url} (Role: ${role})`);
+
+    if (MAX_JOBS_PER_TERM > 0) {
+      const currentCount = jobCounts.get(role) || 0;
+      if (currentCount >= MAX_JOBS_PER_TERM) {
+        log.info(`Max jobs (${MAX_JOBS_PER_TERM}) already enqueued for role "${role}". Skipping list page.`);
+        markListPageDone({
+          currentUrl: request.url,
+          jobCardsFound: 0,
+          jobPagesEnqueued: 0,
+          jobPagesSkipped: 0,
+        });
+        return;
+      }
+    }
 
     // Wait until the job cards are rendered
     await page.waitForSelector("article[wire\\:key]", { timeout: 10000 });
@@ -172,6 +191,16 @@ router.addHandler(
         if (isKnownJob) {
           skippedKnownJobs++;
         } else {
+          // Check if we reached the limit for this search term
+          if (MAX_JOBS_PER_TERM > 0) {
+            const currentCount = jobCounts.get(role) || 0;
+            if (currentCount >= MAX_JOBS_PER_TERM) {
+              log.info(`Reached max jobs limit (${MAX_JOBS_PER_TERM}) for role "${role}" while processing list. Stopping.`);
+              break; 
+            }
+            jobCounts.set(role, currentCount + 1);
+          }
+
           await enqueueLinks({
             urls: [jobUrl],
             userData: {

@@ -37,6 +37,11 @@ export interface RunCrawlerOptions {
    * List of search terms to be used as roles for URL generation.
    */
   searchTerms?: string[];
+
+  /**
+   * Max jobs to fetch per search term.
+   */
+  maxJobsPerTerm?: number;
 }
 
 interface JobExtractorProgress {
@@ -84,6 +89,7 @@ export async function runCrawler(options: RunCrawlerOptions = {}): Promise<Crawl
           JOBOPS_SKIP_APPLY_FOR_EXISTING: '1',
           JOBOPS_EMIT_PROGRESS: '1',
           GRADCRACKER_SEARCH_TERMS: options.searchTerms ? JSON.stringify(options.searchTerms) : '',
+          GRADCRACKER_MAX_JOBS_PER_TERM: options.maxJobsPerTerm ? String(options.maxJobsPerTerm) : '',
           ...(existingJobUrlsFile ? { JOBOPS_EXISTING_JOB_URLS_FILE: existingJobUrlsFile } : {}),
         },
       });

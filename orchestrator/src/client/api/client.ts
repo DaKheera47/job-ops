@@ -154,6 +154,7 @@ export async function updateSettings(update: {
   jobCompleteWebhookUrl?: string | null
   resumeProjects?: ResumeProjectsSettings | null
   ukvisajobsMaxJobs?: number | null
+  gradcrackerMaxJobsPerTerm?: number | null
   searchTerms?: string[] | null
   jobspyLocation?: string | null
   jobspyResultsWanted?: number | null

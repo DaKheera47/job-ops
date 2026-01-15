@@ -299,6 +299,11 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
     const overrideUkvisajobsMaxJobs = overrideUkvisajobsMaxJobsRaw ? parseInt(overrideUkvisajobsMaxJobsRaw, 10) : null;
     const ukvisajobsMaxJobs = overrideUkvisajobsMaxJobs ?? defaultUkvisajobsMaxJobs;
 
+    const overrideGradcrackerMaxJobsPerTermRaw = await settingsRepo.getSetting('gradcrackerMaxJobsPerTerm');
+    const defaultGradcrackerMaxJobsPerTerm = 50;
+    const overrideGradcrackerMaxJobsPerTerm = overrideGradcrackerMaxJobsPerTermRaw ? parseInt(overrideGradcrackerMaxJobsPerTermRaw, 10) : null;
+    const gradcrackerMaxJobsPerTerm = overrideGradcrackerMaxJobsPerTerm ?? defaultGradcrackerMaxJobsPerTerm;
+
     const overrideSearchTermsRaw = await settingsRepo.getSetting('searchTerms');
     const defaultSearchTermsEnv = process.env.JOBSPY_SEARCH_TERMS || 'web developer';
     const defaultSearchTerms = defaultSearchTermsEnv.split('|').map(s => s.trim()).filter(Boolean);
@@ -358,6 +363,9 @@ apiRouter.get('/settings', async (_req: Request, res: Response) => {
         ukvisajobsMaxJobs,
         defaultUkvisajobsMaxJobs,
         overrideUkvisajobsMaxJobs,
+        gradcrackerMaxJobsPerTerm,
+        defaultGradcrackerMaxJobsPerTerm,
+        overrideGradcrackerMaxJobsPerTerm,
         searchTerms,
         defaultSearchTerms,
         overrideSearchTerms,
@@ -400,6 +408,7 @@ const updateSettingsSchema = z.object({
     aiSelectableProjectIds: z.array(z.string().trim().min(1)).max(200),
   }).nullable().optional(),
   ukvisajobsMaxJobs: z.number().int().min(1).max(200).nullable().optional(),
+  gradcrackerMaxJobsPerTerm: z.number().int().min(1).max(200).nullable().optional(),
   searchTerms: z.array(z.string().trim().min(1).max(200)).max(50).nullable().optional(),
   jobspyLocation: z.string().trim().min(1).max(100).nullable().optional(),
   jobspyResultsWanted: z.number().int().min(1).max(500).nullable().optional(),
@@ -458,6 +467,11 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
     if ('ukvisajobsMaxJobs' in input) {
       const ukvisajobsMaxJobs = input.ukvisajobsMaxJobs ?? null;
       await settingsRepo.setSetting('ukvisajobsMaxJobs', ukvisajobsMaxJobs !== null ? String(ukvisajobsMaxJobs) : null);
+    }
+
+    if ('gradcrackerMaxJobsPerTerm' in input) {
+      const gradcrackerMaxJobsPerTerm = input.gradcrackerMaxJobsPerTerm ?? null;
+      await settingsRepo.setSetting('gradcrackerMaxJobsPerTerm', gradcrackerMaxJobsPerTerm !== null ? String(gradcrackerMaxJobsPerTerm) : null);
     }
 
     if ('searchTerms' in input) {
@@ -526,6 +540,11 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
     const overrideUkvisajobsMaxJobs = overrideUkvisajobsMaxJobsRaw ? parseInt(overrideUkvisajobsMaxJobsRaw, 10) : null;
     const ukvisajobsMaxJobs = overrideUkvisajobsMaxJobs ?? defaultUkvisajobsMaxJobs;
 
+    const overrideGradcrackerMaxJobsPerTermRaw = await settingsRepo.getSetting('gradcrackerMaxJobsPerTerm');
+    const defaultGradcrackerMaxJobsPerTerm = 50;
+    const overrideGradcrackerMaxJobsPerTerm = overrideGradcrackerMaxJobsPerTermRaw ? parseInt(overrideGradcrackerMaxJobsPerTermRaw, 10) : null;
+    const gradcrackerMaxJobsPerTerm = overrideGradcrackerMaxJobsPerTerm ?? defaultGradcrackerMaxJobsPerTerm;
+
     // Search terms - stored as JSON array, default from env var (pipe-separated)
     const overrideSearchTermsRaw = await settingsRepo.getSetting('searchTerms');
     const defaultSearchTermsEnv = process.env.JOBSPY_SEARCH_TERMS || 'web developer';
@@ -586,6 +605,9 @@ apiRouter.patch('/settings', async (req: Request, res: Response) => {
         ukvisajobsMaxJobs,
         defaultUkvisajobsMaxJobs,
         overrideUkvisajobsMaxJobs,
+        gradcrackerMaxJobsPerTerm,
+        defaultGradcrackerMaxJobsPerTerm,
+        overrideGradcrackerMaxJobsPerTerm,
         searchTerms,
         defaultSearchTerms,
         overrideSearchTerms,

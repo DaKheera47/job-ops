@@ -44,15 +44,18 @@ if (envRolesRaw) {
 // combo of locations and roles
 const gradcrackerUrls = locations.flatMap((location) => {
   return roles.map((role) => {
-    return `https://www.gradcracker.com/search/computing-technology/${role}-graduate-jobs-in-${location}?order=dateAdded`;
+    return {
+      url: `https://www.gradcracker.com/search/computing-technology/${role}-graduate-jobs-in-${location}?order=dateAdded`,
+      role
+    };
   });
 });
 
 console.log(`Total gradcracker URLs: ${gradcrackerUrls.length}`)
 
-const startUrls = gradcrackerUrls.map((url) => ({
+const startUrls = gradcrackerUrls.map(({ url, role }) => ({
   url,
-  userData: { label: "gradcracker-list-page" },
+  userData: { label: "gradcracker-list-page", role },
 }));
 
 initJobOpsProgress(startUrls.length);

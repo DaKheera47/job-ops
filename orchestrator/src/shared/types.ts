@@ -262,6 +262,9 @@ export interface AppSettings {
   ukvisajobsMaxJobs: number;
   defaultUkvisajobsMaxJobs: number;
   overrideUkvisajobsMaxJobs: number | null;
+  gradcrackerMaxJobsPerTerm: number;
+  defaultGradcrackerMaxJobsPerTerm: number;
+  overrideGradcrackerMaxJobsPerTerm: number | null;
   searchTerms: string[];
   defaultSearchTerms: string[];
   overrideSearchTerms: string[] | null;

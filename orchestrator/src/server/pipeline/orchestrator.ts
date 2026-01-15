@@ -182,9 +182,13 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       // Pass existing URLs to avoid clicking "Apply" on jobs we already have
       const existingJobUrls = await jobsRepo.getAllJobUrls();
 
+      const gradcrackerMaxJobsSetting = await settingsRepo.getSetting('gradcrackerMaxJobsPerTerm');
+      const gradcrackerMaxJobs = gradcrackerMaxJobsSetting ? parseInt(gradcrackerMaxJobsSetting, 10) : 50;
+
       const crawlerResult = await runCrawler({
         existingJobUrls,
         searchTerms,
+        maxJobsPerTerm: gradcrackerMaxJobs,
         onProgress: (progress) => {
           // Calculate overall progress based on list pages processed vs total
           // This is rough but better than nothing
