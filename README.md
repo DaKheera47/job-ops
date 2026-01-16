@@ -34,6 +34,7 @@ Essential variables in `.env`:
 - `/data`: Persistent storage for SQLite DB and generated PDFs.
 
 Technical breakdowns here: `documentation/extractors/README.md`
+Orchestrator docs here: `documentation/orchestrator.md`
 2. Put your exported RXResume JSON at `resume-generator/base.json`.
 3. Start: `docker compose up -d --build`
 4. Open:
