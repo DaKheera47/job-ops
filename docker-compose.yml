@@ -16,45 +16,12 @@ services:
       - ./data:/app/data
       # Base resume JSON (read-only)
       - ./resume-generator/base.json:/app/resume-generator/base.json:ro
+    env_file:
+      - .env
     environment:
       # Server config
       - NODE_ENV=production
       - PORT=3001
-
-      # OpenRouter API for AI scoring and summaries
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - MODEL=${MODEL:-openai/gpt-4o-mini}
-
-      # RXResume credentials for PDF generation
-      - RXRESUME_EMAIL=${RXRESUME_EMAIL}
-      - RXRESUME_PASSWORD=${RXRESUME_PASSWORD}
-
-      # Pipeline configuration
-      - PIPELINE_TOP_N=${PIPELINE_TOP_N:-10}
-      - PIPELINE_MIN_SCORE=${PIPELINE_MIN_SCORE:-50}
-
-      # JobSpy (Indeed/LinkedIn scraping) - optional
-
-      # Preferred: pipe-separated list, e.g. "web developer|frontend developer|react developer"
-      - JOBSPY_SEARCH_TERMS=${JOBSPY_SEARCH_TERMS:-web developer|graduate web developer|react developer|graduate software engineer|graduate react developer|next js developer|graduate front end developer}
-      - JOBSPY_LOCATION=${JOBSPY_LOCATION:-UK}
-      - JOBSPY_RESULTS_WANTED=${JOBSPY_RESULTS_WANTED:-200}
-      - JOBSPY_HOURS_OLD=${JOBSPY_HOURS_OLD:-72}
-      - JOBSPY_COUNTRY_INDEED=${JOBSPY_COUNTRY_INDEED:-UK}
-      - JOBSPY_LINKEDIN_FETCH_DESCRIPTION=${JOBSPY_LINKEDIN_FETCH_DESCRIPTION:-1}
-
-      # Optional: Notion integration
-      - NOTION_API_KEY=${NOTION_API_KEY:-}
-      - NOTION_DATABASE_ID=${NOTION_DATABASE_ID:-}
-
-      # Optional: Webhook secret for n8n
-      - WEBHOOK_SECRET=${WEBHOOK_SECRET:-}
-
-      # UKVisaJobs (UK visa sponsorship jobs) - optional
-      - UKVISAJOBS_EMAIL=${UKVISAJOBS_EMAIL:-}
-      - UKVISAJOBS_PASSWORD=${UKVISAJOBS_PASSWORD:-}
-      - UKVISAJOBS_HEADLESS=${UKVISAJOBS_HEADLESS:-true}
-      - UKVISAJOBS_SEARCH_KEYWORD=${UKVISAJOBS_SEARCH_KEYWORD:-}
 
       # Python path (uses system python in container)
       - PYTHON_PATH=/usr/bin/python3
