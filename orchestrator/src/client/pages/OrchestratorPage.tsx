@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
+  Activity,
   Briefcase,
   Calendar,
   CheckCircle2,
@@ -61,7 +62,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
-import { PipelineProgress, DiscoveredPanel, JobFlowModal } from "../components";
+import { PipelineProgress, DiscoveredPanel, JobFlowModal, JobTimelineModal } from "../components";
 import { ReadyPanel } from "../components/ReadyPanel";
 import * as api from "../api";
 import { TailoringEditor } from "../components/TailoringEditor";
@@ -346,6 +347,7 @@ export const OrchestratorPage: React.FC = () => {
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isFlowOpen, setIsFlowOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false),
   );
@@ -567,6 +569,7 @@ export const OrchestratorPage: React.FC = () => {
   useEffect(() => {
     if (!selectedJob) {
       setIsFlowOpen(false);
+      setIsTimelineOpen(false);
     }
   }, [selectedJob]);
 
@@ -767,6 +770,15 @@ export const OrchestratorPage: React.FC = () => {
               View
             </a>
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setIsTimelineOpen(true)}
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Timeline
+          </Button>
 
           {showReadyPdf &&
             (selectedHasPdf ? (
@@ -937,6 +949,14 @@ export const OrchestratorPage: React.FC = () => {
                 >
                   Expand
                 </button>
+                <span className="text-muted-foreground/40">|</span>
+                <button
+                  type="button"
+                  className="hover:text-muted-foreground transition-colors"
+                  onClick={() => setIsTimelineOpen(true)}
+                >
+                  Timeline
+                </button>
               </div>
             </div>
           </TabsContent>
@@ -967,6 +987,15 @@ export const OrchestratorPage: React.FC = () => {
                 >
                   <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
                   Expand
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsTimelineOpen(true)}
+                  className="h-8 px-2 text-xs"
+                >
+                  <Activity className="mr-1.5 h-3.5 w-3.5" />
+                  Timeline
                 </Button>
                 {!isEditingDescription ? (
                   <Button
@@ -1468,6 +1497,11 @@ export const OrchestratorPage: React.FC = () => {
         job={selectedJob}
         open={isFlowOpen}
         onOpenChange={setIsFlowOpen}
+      />
+      <JobTimelineModal
+        job={selectedJob}
+        open={isTimelineOpen}
+        onOpenChange={setIsTimelineOpen}
       />
     </>
   );
