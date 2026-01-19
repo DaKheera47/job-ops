@@ -17,7 +17,7 @@ import {
   NodeProps,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Spider, Database, Target, FileText, Play } from 'lucide-react';
+import { Search, Database, Target, FileText, Play } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
@@ -160,7 +160,7 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onChange, classN
       data: {
         label: 'Job Crawler',
         description: 'Discover new jobs from multiple sources',
-        icon: Spider,
+        icon: Search,
         toggleable: true,
         enabled: config.enableCrawling,
         configKey: 'enableCrawling',

@@ -380,7 +380,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     await notifyPipelineWebhook('pipeline.completed', {
       pipelineRunId: pipelineRun.id,
       jobsDiscovered: created,
-      jobsScored: unprocessedJobs.length,
+      jobsScored: scoredJobs.length,
       jobsProcessed: processedCount,
     })
     isPipelineRunning = false;
