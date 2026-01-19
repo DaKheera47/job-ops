@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
-import { PipelineProgress, DiscoveredPanel } from "../components";
+import { PipelineProgress, DiscoveredPanel, PipelineEditor, usePipelineConfig } from "../components";
 import { ReadyPanel } from "../components/ReadyPanel";
 import * as api from "../api";
 import { TailoringEditor } from "../components/TailoringEditor";
@@ -316,6 +316,9 @@ export const OrchestratorPage: React.FC = () => {
     expired: 0,
   });
 
+  // Get pipeline configuration from PipelineEditor
+  const pipelineConfig = usePipelineConfig();
+
   const navLinks = [
     { to: "/", label: "Dashboard", icon: Home },
     { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
@@ -399,7 +402,13 @@ export const OrchestratorPage: React.FC = () => {
   const handleRunPipeline = async () => {
     try {
       setIsPipelineRunning(true);
-      await api.runPipeline({ sources: pipelineSources });
+      await api.runPipeline({
+        sources: pipelineSources,
+        enableCrawling: pipelineConfig.enableCrawling,
+        enableScoring: pipelineConfig.enableScoring,
+        enableImporting: pipelineConfig.enableImporting,
+        enableAutoTailoring: pipelineConfig.enableAutoTailoring,
+      });
       toast.message("Pipeline started", {
         description: `Sources: ${pipelineSources.join(", ")}. This may take a few minutes.`,
       });
@@ -1196,6 +1205,19 @@ export const OrchestratorPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold tracking-tight">Jobs</h1>
           </div>
+
+          {/* Pipeline Editor - Visual configuration */}
+          {!isPipelineRunning && (
+            <div className="max-w-4xl">
+              <div className="mb-3">
+                <h2 className="text-lg font-semibold mb-1">Pipeline Configuration</h2>
+                <p className="text-sm text-muted-foreground">
+                  Toggle pipeline steps to customize job processing. Changes are saved automatically.
+                </p>
+              </div>
+              <PipelineEditor />
+            </div>
+          )}
 
           {isPipelineRunning && (
             <div className="max-w-3xl">
