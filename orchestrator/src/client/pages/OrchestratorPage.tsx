@@ -5,6 +5,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
+  Activity,
   Briefcase,
   Calendar,
   CheckCircle2,
@@ -18,6 +19,7 @@ import {
   Home,
   Loader2,
   MapPin,
+  Maximize2,
   Menu,
   MoreHorizontal,
   Play,
@@ -60,7 +62,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
-import { PipelineProgress, DiscoveredPanel } from "../components";
+import { PipelineProgress, DiscoveredPanel, JobFlowModal, JobTimelineModal } from "../components";
 import { ReadyPanel } from "../components/ReadyPanel";
 import * as api from "../api";
 import { TailoringEditor } from "../components/TailoringEditor";
@@ -68,6 +70,12 @@ import type { Job, JobSource, JobStatus } from "../../shared/types";
 
 const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
 const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
+const DEFAULT_PIPELINE_CONFIG = {
+  enableCrawling: true,
+  enableImporting: true,
+  enableScoring: true,
+  enableAutoTailoring: true,
+};
 
 const sourceLabel: Record<JobSource, string> = {
   gradcracker: "Gradcracker",
@@ -316,6 +324,8 @@ export const OrchestratorPage: React.FC = () => {
     expired: 0,
   });
 
+  const pipelineConfig = DEFAULT_PIPELINE_CONFIG;
+
   const navLinks = [
     { to: "/", label: "Dashboard", icon: Home },
     { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
@@ -336,6 +346,8 @@ export const OrchestratorPage: React.FC = () => {
   const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [isFlowOpen, setIsFlowOpen] = useState(false);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false),
   );
@@ -399,7 +411,13 @@ export const OrchestratorPage: React.FC = () => {
   const handleRunPipeline = async () => {
     try {
       setIsPipelineRunning(true);
-      await api.runPipeline({ sources: pipelineSources });
+      await api.runPipeline({
+        sources: pipelineSources,
+        enableCrawling: pipelineConfig.enableCrawling,
+        enableScoring: pipelineConfig.enableScoring,
+        enableImporting: pipelineConfig.enableImporting,
+        enableAutoTailoring: pipelineConfig.enableAutoTailoring,
+      });
       toast.message("Pipeline started", {
         description: `Sources: ${pipelineSources.join(", ")}. This may take a few minutes.`,
       });
@@ -548,6 +566,13 @@ export const OrchestratorPage: React.FC = () => {
     saveTailoringRef.current = null;
   }, [selectedJob?.id]);
 
+  useEffect(() => {
+    if (!selectedJob) {
+      setIsFlowOpen(false);
+      setIsTimelineOpen(false);
+    }
+  }, [selectedJob]);
+
   const description = useMemo(() => {
     if (!selectedJob?.jobDescription) return "No description available.";
     const jd = selectedJob.jobDescription;
@@ -666,6 +691,7 @@ export const OrchestratorPage: React.FC = () => {
           const nextJob = activeJobs[currentIndex + 1] || activeJobs[currentIndex - 1];
           setSelectedJobId(nextJob?.id ?? null);
         }}
+        onExpandFlow={() => setIsFlowOpen(true)}
       />
     ) : activeTab === "ready" ? (
       /* ReadyPanel for Ready tab - shipping lane workflow: verify + download + apply + mark applied */
@@ -743,6 +769,15 @@ export const OrchestratorPage: React.FC = () => {
               <ExternalLink className="h-3.5 w-3.5" />
               View
             </a>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setIsTimelineOpen(true)}
+          >
+            <Activity className="h-3.5 w-3.5" />
+            Timeline
           </Button>
 
           {showReadyPdf &&
@@ -898,13 +933,29 @@ export const OrchestratorPage: React.FC = () => {
               >
                 {description}
               </button>
-              <div className="text-center">
+              <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/60">
                 <button
                   type="button"
-                  className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  className="hover:text-muted-foreground transition-colors"
                   onClick={() => setDetailTab("description")}
                 >
-                  View full description →
+                  View full description
+                </button>
+                <span className="text-muted-foreground/40">|</span>
+                <button
+                  type="button"
+                  className="hover:text-muted-foreground transition-colors"
+                  onClick={() => setIsFlowOpen(true)}
+                >
+                  Expand
+                </button>
+                <span className="text-muted-foreground/40">|</span>
+                <button
+                  type="button"
+                  className="hover:text-muted-foreground transition-colors"
+                  onClick={() => setIsTimelineOpen(true)}
+                >
+                  Timeline
                 </button>
               </div>
             </div>
@@ -928,6 +979,24 @@ export const OrchestratorPage: React.FC = () => {
                 Job description
               </div>
               <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsFlowOpen(true)}
+                  className="h-8 px-2 text-xs"
+                >
+                  <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
+                  Expand
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setIsTimelineOpen(true)}
+                  className="h-8 px-2 text-xs"
+                >
+                  <Activity className="mr-1.5 h-3.5 w-3.5" />
+                  Timeline
+                </Button>
                 {!isEditingDescription ? (
                   <Button
                     size="sm"
@@ -1423,6 +1492,20 @@ export const OrchestratorPage: React.FC = () => {
           </div>
         </DrawerContent>
       </Drawer>
+
+      <JobFlowModal
+        job={selectedJob}
+        open={isFlowOpen}
+        onOpenChange={setIsFlowOpen}
+        onJobUpdated={loadJobs}
+      />
+      <JobTimelineModal
+        job={selectedJob}
+        open={isTimelineOpen}
+        onOpenChange={setIsTimelineOpen}
+        onJobUpdated={loadJobs}
+        onShowFlow={() => setIsFlowOpen(true)}
+      />
     </>
   );
 };

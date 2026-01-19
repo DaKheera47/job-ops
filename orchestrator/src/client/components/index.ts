@@ -7,4 +7,7 @@ export { PipelineProgress } from './PipelineProgress';
 export { TailoringEditor } from './TailoringEditor';
 export { DiscoveredPanel } from './DiscoveredPanel';
 export { ReadyPanel } from './ReadyPanel';
+export { PipelineEditor, usePipelineConfig } from './PipelineEditor';
+export { JobFlowModal } from './JobFlowModal';
+export { JobTimelineModal } from './JobTimelineModal';
 export * from './layout';

@@ -43,6 +43,7 @@ interface DiscoveredPanelProps {
   job: Job | null;
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
+  onExpandFlow?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ interface DecideModeProps {
   onTailor: () => void;
   onSkip: () => void;
   isSkipping: boolean;
+  onExpandFlow?: () => void;
 }
 
 const DecideMode: React.FC<DecideModeProps> = ({
@@ -91,6 +93,7 @@ const DecideMode: React.FC<DecideModeProps> = ({
   onTailor,
   onSkip,
   isSkipping,
+  onExpandFlow,
 }) => {
   const [showDescription, setShowDescription] = useState(false);
   const deadline = formatDate(job.deadline);
@@ -184,18 +187,32 @@ const DecideMode: React.FC<DecideModeProps> = ({
 
         {/* Collapsible full description */}
         <div className='space-y-2'>
-          <button
-            type='button'
-            onClick={() => setShowDescription(!showDescription)}
-            className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full'
-          >
-            {showDescription ? (
-              <ChevronUp className='h-3.5 w-3.5' />
-            ) : (
-              <ChevronDown className='h-3.5 w-3.5' />
+          <div className='flex items-center justify-between gap-2'>
+            <button
+              type='button'
+              onClick={() => setShowDescription(!showDescription)}
+              className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors'
+            >
+              {showDescription ? (
+                <ChevronUp className='h-3.5 w-3.5' />
+              ) : (
+                <ChevronDown className='h-3.5 w-3.5' />
+              )}
+              {showDescription ? "Hide" : "View"} full job description
+            </button>
+            {onExpandFlow && (
+              <button
+                type='button'
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onExpandFlow();
+                }}
+                className='text-[10px] text-muted-foreground hover:text-foreground transition-colors'
+              >
+                Expand
+              </button>
             )}
-            {showDescription ? "Hide" : "View"} full job description
-          </button>
+          </div>
 
           {showDescription && (
             <div className='rounded-lg border border-border/40 bg-muted/5 p-3 max-h-[300px] overflow-y-auto'>
@@ -237,6 +254,7 @@ interface TailorModeProps {
   onBack: () => void;
   onFinalize: () => void;
   isFinalizing: boolean;
+  onExpandFlow?: () => void;
 }
 
 const TailorMode: React.FC<TailorModeProps> = ({
@@ -244,6 +262,7 @@ const TailorMode: React.FC<TailorModeProps> = ({
   onBack,
   onFinalize,
   isFinalizing,
+  onExpandFlow,
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
@@ -461,18 +480,32 @@ const TailorMode: React.FC<TailorModeProps> = ({
 
         {/* Job Description - collapsible */}
         <div className='space-y-2'>
-          <button
-            type='button'
-            onClick={() => setShowDescription(!showDescription)}
-            className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full'
-          >
-            {showDescription ? (
-              <ChevronUp className='h-3.5 w-3.5' />
-            ) : (
-              <ChevronDown className='h-3.5 w-3.5' />
+          <div className='flex items-center justify-between gap-2'>
+            <button
+              type='button'
+              onClick={() => setShowDescription(!showDescription)}
+              className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors'
+            >
+              {showDescription ? (
+                <ChevronUp className='h-3.5 w-3.5' />
+              ) : (
+                <ChevronDown className='h-3.5 w-3.5' />
+              )}
+              {showDescription ? "Hide" : "Edit"} job description
+            </button>
+            {onExpandFlow && (
+              <button
+                type='button'
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onExpandFlow();
+                }}
+                className='text-[10px] text-muted-foreground hover:text-foreground transition-colors'
+              >
+                Expand
+              </button>
             )}
-            {showDescription ? "Hide" : "Edit"} job description
-          </button>
+          </div>
 
           {showDescription && (
             <div className='space-y-1'>
@@ -601,6 +634,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   job,
   onJobUpdated,
   onJobMoved,
+  onExpandFlow,
 }) => {
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
@@ -694,6 +728,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           onTailor={() => setMode("tailor")}
           onSkip={handleSkip}
           isSkipping={isSkipping}
+          onExpandFlow={onExpandFlow}
         />
       ) : (
         <TailorMode
@@ -701,6 +736,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           onBack={() => setMode("decide")}
           onFinalize={handleFinalize}
           isFinalizing={isFinalizing}
+          onExpandFlow={onExpandFlow}
         />
       )}
     </div>
