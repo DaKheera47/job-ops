@@ -60,7 +60,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
-import { PipelineProgress, DiscoveredPanel } from "../components";
+import { PipelineProgress, DiscoveredPanel, ManualImportSheet } from "../components";
 import { ReadyPanel } from "../components/ReadyPanel";
 import * as api from "../api";
 import { TailoringEditor } from "../components/TailoringEditor";
@@ -74,6 +74,7 @@ const sourceLabel: Record<JobSource, string> = {
   indeed: "Indeed",
   linkedin: "LinkedIn",
   ukvisajobs: "UK Visa Jobs",
+  manual: "Manual",
 };
 
 const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
@@ -324,6 +325,7 @@ export const OrchestratorPage: React.FC = () => {
   ];
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const [isManualImportOpen, setIsManualImportOpen] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<FilterTab>("ready");
   const [searchQuery, setSearchQuery] = useState("");
@@ -383,6 +385,16 @@ export const OrchestratorPage: React.FC = () => {
       // Ignore errors
     }
   }, []);
+
+  const handleManualImported = useCallback(
+    async (jobId: string) => {
+      setActiveTab("discovered");
+      setSourceFilter("all");
+      await loadJobs();
+      setSelectedJobId(jobId);
+    },
+    [loadJobs],
+  );
 
   useEffect(() => {
     loadJobs();
@@ -1123,6 +1135,15 @@ export const OrchestratorPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsManualImportOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Manual import</span>
+            </Button>
             <div className="flex items-center gap-1">
               <Button
                 size="sm"
@@ -1407,6 +1428,12 @@ export const OrchestratorPage: React.FC = () => {
           </div>
         </section>
       </main>
+
+      <ManualImportSheet
+        open={isManualImportOpen}
+        onOpenChange={setIsManualImportOpen}
+        onImported={handleManualImported}
+      />
 
       <Drawer open={isDetailDrawerOpen} onOpenChange={setIsDetailDrawerOpen}>
         <DrawerContent className="max-h-[90vh]">

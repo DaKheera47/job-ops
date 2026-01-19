@@ -7,4 +7,5 @@ export { PipelineProgress } from './PipelineProgress';
 export { TailoringEditor } from './TailoringEditor';
 export { DiscoveredPanel } from './DiscoveredPanel';
 export { ReadyPanel } from './ReadyPanel';
+export { ManualImportSheet } from './ManualImportSheet';
 export * from './layout';

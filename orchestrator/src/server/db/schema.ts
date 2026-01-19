@@ -9,7 +9,7 @@ export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
 
   // From crawler
-  source: text('source', { enum: ['gradcracker', 'indeed', 'linkedin', 'ukvisajobs'] }).notNull().default('gradcracker'),
+  source: text('source', { enum: ['gradcracker', 'indeed', 'linkedin', 'ukvisajobs', 'manual'] }).notNull().default('gradcracker'),
   sourceJobId: text('source_job_id'),
   jobUrlDirect: text('job_url_direct'),
   datePosted: text('date_posted'),

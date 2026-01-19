@@ -60,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
     indeed: "Indeed",
     linkedin: "LinkedIn",
     ukvisajobs: "UK Visa Jobs",
+    manual: "Manual",
   };
 
   const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];

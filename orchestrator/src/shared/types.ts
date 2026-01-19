@@ -14,7 +14,8 @@ export type JobSource =
   | 'gradcracker'
   | 'indeed'
   | 'linkedin'
-  | 'ukvisajobs';
+  | 'ukvisajobs'
+  | 'manual';
 
 export interface Job {
   id: string;
@@ -127,6 +128,28 @@ export interface CreateJobInput {
   companyReviewsCount?: number;
   vacancyCount?: number;
   workFromHomeType?: string;
+}
+
+export interface ManualJobDraft {
+  title?: string;
+  employer?: string;
+  jobUrl?: string;
+  applicationLink?: string;
+  location?: string;
+  salary?: string;
+  deadline?: string;
+  jobDescription?: string;
+  jobType?: string;
+  jobLevel?: string;
+  jobFunction?: string;
+  disciplines?: string;
+  degreeRequired?: string;
+  starting?: string;
+}
+
+export interface ManualJobInferenceResponse {
+  job: ManualJobDraft;
+  warning?: string | null;
 }
 
 export interface UpdateJobInput {

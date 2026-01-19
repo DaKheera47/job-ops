@@ -15,6 +15,8 @@ import type {
   UkVisaJobsSearchResponse,
   UkVisaJobsImportResponse,
   CreateJobInput,
+  ManualJobDraft,
+  ManualJobInferenceResponse,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
   VisaSponsor,
@@ -133,6 +135,25 @@ export async function importUkVisaJobs(input: {
   jobs: CreateJobInput[];
 }): Promise<UkVisaJobsImportResponse> {
   return fetchApi<UkVisaJobsImportResponse>('/ukvisajobs/import', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+// Manual Job Import API
+export async function inferManualJob(input: {
+  jobDescription: string;
+}): Promise<ManualJobInferenceResponse> {
+  return fetchApi<ManualJobInferenceResponse>('/manual-jobs/infer', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function importManualJob(input: {
+  job: ManualJobDraft;
+}): Promise<Job> {
+  return fetchApi<Job>('/manual-jobs/import', {
     method: 'POST',
     body: JSON.stringify(input),
   });

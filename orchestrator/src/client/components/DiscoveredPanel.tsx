@@ -73,6 +73,7 @@ const sourceLabel: Record<Job["source"], string> = {
   indeed: "Indeed",
   linkedin: "LinkedIn",
   ukvisajobs: "UK Visa Jobs",
+  manual: "Manual",
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
