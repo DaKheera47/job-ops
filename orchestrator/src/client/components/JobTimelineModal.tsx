@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Activity,
   Calendar,
@@ -13,6 +13,9 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Timeline9 } from "@/components/timeline9";
+import { toast } from "sonner";
+import { copyTextToClipboard } from "@client/lib/jobCopy";
+import * as api from "../api";
 import type { Job } from "../../shared/types";
 
 type TimelineStatus = "done" | "in-progress" | "pending";
@@ -41,6 +44,8 @@ const formatDateTime = (dateStr: string | null) => {
     return dateStr;
   }
 };
+
+const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 const statusDot = (status: TimelineStatus) => {
   switch (status) {
@@ -88,9 +93,96 @@ interface JobTimelineModalProps {
   job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onJobUpdated?: () => void | Promise<void>;
+  onShowFlow?: () => void;
 }
 
-export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, onOpenChange }) => {
+export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({
+  job,
+  open,
+  onOpenChange,
+  onJobUpdated,
+  onShowFlow,
+}) => {
+  const [isMarkingEvent, setIsMarkingEvent] = useState(false);
+  const [isCopyingApply, setIsCopyingApply] = useState(false);
+  const [isCopyingSource, setIsCopyingSource] = useState(false);
+  const [isCopyingDescription, setIsCopyingDescription] = useState(false);
+  const applyLink = job?.applicationLink || job?.jobUrl || null;
+  const sourceUrl = job?.jobUrlDirect || job?.jobUrl || null;
+  const descriptionText = job?.jobDescription
+    ? job.jobDescription.includes("<")
+      ? stripHtml(job.jobDescription)
+      : job.jobDescription
+    : "";
+
+  const handleMarkEvent = useCallback(async () => {
+    if (!job || isMarkingEvent) return;
+    if (job.status === "applied") {
+      toast.message("Outcome events are not wired yet.");
+      return;
+    }
+    try {
+      setIsMarkingEvent(true);
+      await api.markAsApplied(job.id);
+      toast.success("Marked as applied");
+      await onJobUpdated?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to mark applied";
+      toast.error(message);
+    } finally {
+      setIsMarkingEvent(false);
+    }
+  }, [job, isMarkingEvent, onJobUpdated]);
+
+  const handleShowFlow = useCallback(() => {
+    if (!onShowFlow) return;
+    onShowFlow();
+    onOpenChange(false);
+  }, [onShowFlow, onOpenChange]);
+
+  const handleCopyApplyLink = useCallback(async () => {
+    if (!applyLink || isCopyingApply) return;
+    try {
+      setIsCopyingApply(true);
+      await copyTextToClipboard(applyLink);
+      toast.success("Apply link copied");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to copy apply link";
+      toast.error(message);
+    } finally {
+      setIsCopyingApply(false);
+    }
+  }, [applyLink, isCopyingApply]);
+
+  const handleCopySourceLink = useCallback(async () => {
+    if (!sourceUrl || isCopyingSource) return;
+    try {
+      setIsCopyingSource(true);
+      await copyTextToClipboard(sourceUrl);
+      toast.success("Source link copied");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to copy source link";
+      toast.error(message);
+    } finally {
+      setIsCopyingSource(false);
+    }
+  }, [sourceUrl, isCopyingSource]);
+
+  const handleCopyDescription = useCallback(async () => {
+    if (!descriptionText || isCopyingDescription) return;
+    try {
+      setIsCopyingDescription(true);
+      await copyTextToClipboard(descriptionText);
+      toast.success("Job description copied");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to copy description";
+      toast.error(message);
+    } finally {
+      setIsCopyingDescription(false);
+    }
+  }, [descriptionText, isCopyingDescription]);
+
   const view = useMemo(() => {
     if (!job) return null;
 
@@ -144,7 +236,6 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
 
   if (!job || !view) return null;
 
-  const applyLink = job.applicationLink || job.jobUrl;
   const pdfLink = job.pdfPath
     ? `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`
     : null;
@@ -192,7 +283,8 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs"
-                      disabled
+                      onClick={handleShowFlow}
+                      disabled={!onShowFlow}
                     >
                       Show pipeline details
                     </Button>
@@ -222,14 +314,19 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
-                      asChild
                       size="sm"
                       variant="outline"
                       className="h-8 text-xs"
+                      disabled={!applyLink}
+                      asChild={Boolean(applyLink)}
                     >
-                      <a href={applyLink} target="_blank" rel="noopener noreferrer">
-                        Open apply link
-                      </a>
+                      {applyLink ? (
+                        <a href={applyLink} target="_blank" rel="noopener noreferrer">
+                          Open apply link
+                        </a>
+                      ) : (
+                        <span>Open apply link</span>
+                      )}
                     </Button>
                     <Button
                       size="sm"
@@ -246,8 +343,13 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
                         <span>View CV</span>
                       )}
                     </Button>
-                    <Button size="sm" className="h-8 text-xs">
-                      Mark event
+                    <Button
+                      size="sm"
+                      className="h-8 text-xs"
+                      onClick={handleMarkEvent}
+                      disabled={isMarkingEvent}
+                    >
+                      {isMarkingEvent ? "Marking..." : "Mark event"}
                     </Button>
                   </div>
                 </div>
@@ -282,6 +384,41 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
                           <div className="text-[11px] text-muted-foreground/70">{sourceLabel[job.source]}</div>
                         </div>
                         <ExternalLink className="h-4 w-4 text-muted-foreground/60" />
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px]"
+                          disabled={!sourceUrl}
+                          asChild={Boolean(sourceUrl)}
+                        >
+                          {sourceUrl ? (
+                            <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+                              Open original
+                            </a>
+                          ) : (
+                            <span>Open original</span>
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={handleCopySourceLink}
+                          disabled={!sourceUrl || isCopyingSource}
+                        >
+                          {isCopyingSource ? "Copying..." : "Copy URL"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[11px]"
+                          onClick={handleCopyDescription}
+                          disabled={!descriptionText || isCopyingDescription}
+                        >
+                          {isCopyingDescription ? "Copying..." : "Copy JD"}
+                        </Button>
                       </div>
                     </div>
                     <div className="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
@@ -360,6 +497,32 @@ export const JobTimelineModal: React.FC<JobTimelineModalProps> = ({ job, open, o
                     </div>
                     <div className="text-[11px] text-muted-foreground/70 mt-1">
                       {job.applicationLink ? "Final application URL saved." : "Using listing URL."}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px]"
+                        disabled={!applyLink}
+                        asChild={Boolean(applyLink)}
+                      >
+                        {applyLink ? (
+                          <a href={applyLink} target="_blank" rel="noopener noreferrer">
+                            Open link
+                          </a>
+                        ) : (
+                          <span>Open link</span>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={handleCopyApplyLink}
+                        disabled={!applyLink || isCopyingApply}
+                      >
+                        {isCopyingApply ? "Copying..." : "Copy link"}
+                      </Button>
                     </div>
                   </div>
                 </div>

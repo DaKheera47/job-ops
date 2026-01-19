@@ -1497,11 +1497,14 @@ export const OrchestratorPage: React.FC = () => {
         job={selectedJob}
         open={isFlowOpen}
         onOpenChange={setIsFlowOpen}
+        onJobUpdated={loadJobs}
       />
       <JobTimelineModal
         job={selectedJob}
         open={isTimelineOpen}
         onOpenChange={setIsTimelineOpen}
+        onJobUpdated={loadJobs}
+        onShowFlow={() => setIsFlowOpen(true)}
       />
     </>
   );

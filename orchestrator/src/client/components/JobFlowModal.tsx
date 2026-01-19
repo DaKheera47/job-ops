@@ -15,6 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   Activity,
+  CheckCircle2,
   Clipboard,
   Copy,
   Download,
@@ -31,7 +32,8 @@ import { toast } from "sonner";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { copyTextToClipboard } from "@client/lib/jobCopy";
+import { copyTextToClipboard, formatJobForWebhook } from "@client/lib/jobCopy";
+import * as api from "../api";
 import type { Job } from "../../shared/types";
 
 type NodeStatus = "missing" | "in-progress" | "ready" | "failed";
@@ -189,10 +191,19 @@ const getEdgeStroke = (status: NodeStatus) => {
   }
 };
 
+interface SponsorCheckState {
+  status: NodeStatus;
+  name: string | null;
+  route: string | null;
+  lastChecked: string | null;
+  matchedName: string | null;
+  score: number | null;
+}
+
 const ActionPill: React.FC<{ action: NodeAction }> = ({ action }) => {
   const Icon = action.icon;
   const className = cn(
-    "inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground",
+    "nodrag nopan inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground/80 transition-colors hover:border-border hover:text-foreground",
     action.disabled && "pointer-events-none opacity-50"
   );
 
@@ -437,7 +448,18 @@ const InspectorPanel: React.FC<{ data?: InspectorData }> = ({ data }) => {
   );
 };
 
-const buildFlow = (job: Job, onAction: (message: string) => void) => {
+interface FlowActions {
+  sponsorCheck?: SponsorCheckState | null;
+  onSponsorCheck?: () => void;
+  onGenerateCv?: () => void;
+  onMarkApplied?: () => void;
+  onSendWebhook?: () => void;
+  isGeneratingCv?: boolean;
+  isApplying?: boolean;
+  isSendingWebhook?: boolean;
+}
+
+const buildFlow = (job: Job, onAction: (message: string) => void, actions: FlowActions) => {
   const sourceUrl = job.jobUrlDirect || job.jobUrl;
   const applyUrl = job.applicationLink || job.jobUrl;
   const pdfHref = job.pdfPath
@@ -452,20 +474,35 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
   const remoteLabel =
     job.isRemote === true ? "Remote" : job.isRemote === false ? "On-site" : job.workFromHomeType || "Remote unknown";
   const locationLabel = job.location ? `${job.location} / ${remoteLabel}` : `Location unknown / ${remoteLabel}`;
-  const visaLabel = "Unknown";
+  const sponsorInfo = actions.sponsorCheck;
+  const sponsorStatus: NodeStatus = sponsorInfo?.status ?? "missing";
+  const visaLabel =
+    sponsorStatus === "ready"
+      ? "Licensed sponsor"
+      : sponsorStatus === "failed"
+        ? "Not in register"
+        : "Unknown";
+  const visaChip = sponsorInfo?.route ? `${visaLabel} (${sponsorInfo.route})` : visaLabel;
+  const sponsorUpdatedAt = sponsorInfo?.lastChecked ? formatDateTime(sponsorInfo.lastChecked) : "Not run";
   const scoreLabel = job.suitabilityScore != null ? `${job.suitabilityScore}% match` : "No score";
   const sourceStatus: NodeStatus = sourceUrl ? "ready" : "missing";
   const descriptionStatus: NodeStatus = job.jobDescription ? "ready" : "missing";
-  const sponsorStatus: NodeStatus = "missing";
   const metadataStatus: NodeStatus = job.deadline || job.salary || job.jobType ? "ready" : "missing";
-  const cvStatus: NodeStatus =
-    job.pdfPath ? "ready" : job.status === "processing" ? "in-progress" : "missing";
-  const coverStatus: NodeStatus = "missing";
-  const applyStatus: NodeStatus = applyUrl
-    ? job.status === "applied"
+  const cvStatus: NodeStatus = actions.isGeneratingCv
+    ? "in-progress"
+    : job.pdfPath
       ? "ready"
-      : "in-progress"
-    : "missing";
+      : job.status === "processing"
+        ? "in-progress"
+        : "missing";
+  const coverStatus: NodeStatus = "missing";
+  const applyStatus: NodeStatus = actions.isApplying
+    ? "in-progress"
+    : applyUrl
+      ? job.status === "applied"
+        ? "ready"
+        : "in-progress"
+      : "missing";
   const notionStatus: NodeStatus = job.notionPageId ? "ready" : "missing";
   const oaStatus: NodeStatus = "missing";
 
@@ -497,7 +534,7 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
         chips: [
           `Source: ${sourceLabel[job.source]}`,
           `Location: ${locationLabel}`,
-          `Visa: ${visaLabel}`,
+          `Visa: ${visaChip}`,
           `Match: ${job.suitabilityScore ?? "--"}%`,
         ],
         scoreLabel,
@@ -631,7 +668,7 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
         title: "Sponsor check",
         subtitle: "Home Office lookup",
         status: sponsorStatus,
-        updatedAt: "Not run",
+        updatedAt: sponsorUpdatedAt,
         icon: Rocket,
         outputHandle: true,
         actions: [
@@ -639,26 +676,47 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
             id: "run-sponsor",
             label: "Run check",
             icon: RefreshCcw,
-            onClick: () => onAction("Sponsor check queued."),
+            onClick: actions.onSponsorCheck,
+            disabled: !actions.onSponsorCheck || sponsorStatus === "in-progress",
           },
           {
             id: "open-directory",
             label: "Open directory",
             icon: ExternalLink,
-            onClick: () => onAction("Sponsor directory link not configured."),
+            href: "/visa-sponsors",
           },
         ],
         inspector: {
           title: "Sponsor check",
           subtitle: "Home Office register",
           status: sponsorStatus,
-          summary: "Verify sponsor status and route.",
+          summary:
+            sponsorStatus === "ready"
+              ? "Sponsor found in the register."
+              : sponsorStatus === "failed"
+                ? "No sponsor match found."
+                : "Verify sponsor status and route.",
           meta: [
-            { label: "Status", value: "Unknown" },
-            { label: "Route", value: "-" },
+            { label: "Status", value: sponsorStatus === "ready" ? "Licensed sponsor" : sponsorStatus === "failed" ? "Not found" : "Unknown" },
+            { label: "Route", value: sponsorInfo?.route || "-" },
+            { label: "Matched name", value: sponsorInfo?.matchedName || sponsorInfo?.name || "-" },
+            { label: "Score", value: sponsorInfo?.score != null ? sponsorInfo.score.toFixed(0) : "-" },
           ],
-          logs: ["Sponsor check not run yet."],
-          raw: {},
+          logs:
+            sponsorStatus === "ready"
+              ? ["Sponsor check completed."]
+              : sponsorStatus === "failed"
+                ? ["Sponsor check completed with no matches."]
+                : ["Sponsor check not run yet."],
+          raw: sponsorInfo
+            ? {
+                name: sponsorInfo.name,
+                matchedName: sponsorInfo.matchedName,
+                route: sponsorInfo.route,
+                score: sponsorInfo.score,
+                lastChecked: sponsorInfo.lastChecked,
+              }
+            : {},
         },
       },
     },
@@ -746,7 +804,8 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
             id: "regen-cv",
             label: "Regenerate",
             icon: RefreshCcw,
-            onClick: () => onAction("CV generation queued."),
+            onClick: actions.onGenerateCv,
+            disabled: !actions.onGenerateCv || actions.isGeneratingCv,
           },
         ],
         inspector: {
@@ -835,6 +894,13 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
             },
             disabled: !applyUrl,
           },
+          {
+            id: "mark-applied",
+            label: job.status === "applied" ? "Applied" : "Mark applied",
+            icon: CheckCircle2,
+            onClick: actions.onMarkApplied,
+            disabled: job.status === "applied" || !actions.onMarkApplied || actions.isApplying,
+          },
         ],
         inspector: {
           title: "Apply node",
@@ -870,7 +936,8 @@ const buildFlow = (job: Job, onAction: (message: string) => void) => {
             id: "send-webhook",
             label: "Send webhook",
             icon: Send,
-            onClick: () => onAction("Notion webhook queued."),
+            onClick: actions.onSendWebhook,
+            disabled: !actions.onSendWebhook || actions.isSendingWebhook,
           },
         ],
         inspector: {
@@ -1030,19 +1097,166 @@ interface JobFlowModalProps {
   job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onJobUpdated?: () => void | Promise<void>;
 }
 
-export const JobFlowModal: React.FC<JobFlowModalProps> = ({ job, open, onOpenChange }) => {
+export const JobFlowModal: React.FC<JobFlowModalProps> = ({
+  job,
+  open,
+  onOpenChange,
+  onJobUpdated,
+}) => {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
+  const [sponsorCheck, setSponsorCheck] = useState<SponsorCheckState | null>(null);
+  const [isGeneratingCv, setIsGeneratingCv] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  const [isSendingWebhook, setIsSendingWebhook] = useState(false);
 
   const handleAction = useCallback((message: string) => {
     toast.message(message);
   }, []);
 
+  useEffect(() => {
+    setSponsorCheck(null);
+    setIsGeneratingCv(false);
+    setIsApplying(false);
+    setIsSendingWebhook(false);
+  }, [job?.id]);
+
+  const handleSponsorCheck = useCallback(async () => {
+    if (!job?.employer) return;
+    const startedAt = new Date().toISOString();
+    setSponsorCheck({
+      status: "in-progress",
+      name: null,
+      route: null,
+      lastChecked: startedAt,
+      matchedName: null,
+      score: null,
+    });
+    try {
+      const result = await api.searchVisaSponsors({
+        query: job.employer,
+        limit: 5,
+        minScore: 0.7,
+      });
+      const top = result.results[0];
+      if (!top) {
+        setSponsorCheck({
+          status: "failed",
+          name: null,
+          route: null,
+          lastChecked: startedAt,
+          matchedName: null,
+          score: null,
+        });
+        toast.message("No sponsor match found");
+        return;
+      }
+      setSponsorCheck({
+        status: "ready",
+        name: top.sponsor.organisationName,
+        route: top.sponsor.route || top.sponsor.typeRating || null,
+        lastChecked: startedAt,
+        matchedName: top.matchedName,
+        score: top.score,
+      });
+      toast.success(`Sponsor match: ${top.sponsor.organisationName}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Sponsor check failed";
+      setSponsorCheck({
+        status: "failed",
+        name: null,
+        route: null,
+        lastChecked: startedAt,
+        matchedName: null,
+        score: null,
+      });
+      toast.error(message);
+    }
+  }, [job]);
+
+  const handleGenerateCv = useCallback(async () => {
+    if (!job || isGeneratingCv) return;
+    if (job.status === "processing") {
+      toast.message("Resume generation already in progress.");
+      return;
+    }
+    try {
+      setIsGeneratingCv(true);
+      if (job.status === "ready") {
+        await api.generateJobPdf(job.id);
+        toast.success("PDF regenerated");
+      } else {
+        await api.processJob(job.id);
+        toast.success("Resume generated");
+      }
+      await onJobUpdated?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate resume";
+      toast.error(message);
+    } finally {
+      setIsGeneratingCv(false);
+    }
+  }, [job, isGeneratingCv, onJobUpdated]);
+
+  const handleMarkApplied = useCallback(async () => {
+    if (!job || isApplying) return;
+    if (job.status === "applied") {
+      toast.message("Job already marked applied.");
+      return;
+    }
+    try {
+      setIsApplying(true);
+      await api.markAsApplied(job.id);
+      toast.success("Marked as applied");
+      await onJobUpdated?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to mark applied";
+      toast.error(message);
+    } finally {
+      setIsApplying(false);
+    }
+  }, [job, isApplying, onJobUpdated]);
+
+  const handleSendWebhook = useCallback(async () => {
+    if (!job || isSendingWebhook) return;
+    try {
+      setIsSendingWebhook(true);
+      await copyTextToClipboard(formatJobForWebhook(job));
+      toast.success("Webhook payload copied");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to copy webhook payload";
+      toast.error(message);
+    } finally {
+      setIsSendingWebhook(false);
+    }
+  }, [job, isSendingWebhook]);
+
   const flow = useMemo(() => {
     if (!job) return { nodes: [] as Array<Node<FlowNodeData>>, edges: [] as Edge[] };
-    return buildFlow(job, handleAction);
-  }, [job, handleAction]);
+    return buildFlow(job, handleAction, {
+      sponsorCheck,
+      onSponsorCheck: handleSponsorCheck,
+      onGenerateCv: handleGenerateCv,
+      onMarkApplied: handleMarkApplied,
+      onSendWebhook: handleSendWebhook,
+      isGeneratingCv,
+      isApplying,
+      isSendingWebhook,
+    });
+  }, [
+    job,
+    handleAction,
+    sponsorCheck,
+    handleSponsorCheck,
+    handleGenerateCv,
+    handleMarkApplied,
+    handleSendWebhook,
+    isGeneratingCv,
+    isApplying,
+    isSendingWebhook,
+  ]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNodeData>(flow.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(flow.edges);
@@ -1063,6 +1277,8 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({ job, open, onOpenCha
 
   if (!job) return null;
 
+  const applyUrl = job.applicationLink || job.jobUrl;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[min(96vw,1400px)] p-0">
@@ -1075,9 +1291,9 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({ job, open, onOpenCha
               <div className="text-xs text-muted-foreground">{job.employer}</div>
             </div>
             <div className="flex items-center gap-2">
-              {job.applicationLink && (
+              {applyUrl && (
                 <Button asChild size="sm" variant="outline" className="h-8 text-xs">
-                  <a href={job.applicationLink} target="_blank" rel="noopener noreferrer">
+                  <a href={applyUrl} target="_blank" rel="noopener noreferrer">
                     Open apply link
                   </a>
                 </Button>
