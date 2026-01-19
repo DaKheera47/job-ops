@@ -149,6 +149,10 @@ export interface PipelineConfig {
   sources: JobSource[];              // Job sources to crawl
   profilePath: string;               // Path to profile JSON
   outputDir: string;                 // Directory for generated PDFs
+  enableCrawling: boolean;           // Enable/disable job crawling step
+  enableScoring: boolean;            // Enable/disable job scoring step
+  enableImporting: boolean;          // Enable/disable job importing step
+  enableAutoTailoring: boolean;      // Enable/disable auto-tailoring/PDF generation step
 }
 
 export interface PipelineRun {

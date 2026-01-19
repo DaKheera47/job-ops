@@ -34,6 +34,10 @@ const DEFAULT_CONFIG: PipelineConfig = {
   sources: ['gradcracker', 'indeed', 'linkedin', 'ukvisajobs'],
   profilePath: DEFAULT_PROFILE_PATH,
   outputDir: join(__dirname, '../../../data/pdfs'),
+  enableCrawling: true,
+  enableScoring: true,
+  enableImporting: true,
+  enableAutoTailoring: true,
 };
 
 // Track if pipeline is currently running
@@ -113,6 +117,8 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     progressHelpers.startCrawling();
     const discoveredJobs: CreateJobInput[] = [];
     const sourceErrors: string[] = [];
+
+    if (mergedConfig.enableCrawling) {
 
     // Read search terms setting
     const searchTermsSetting = await settingsRepo.getSetting('searchTerms');
@@ -235,16 +241,30 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       throw new Error(`All sources failed: ${sourceErrors.join('; ')}`);
     }
 
-    if (sourceErrors.length > 0) {
-      console.warn(`ƒsÿ‹,? Some sources failed: ${sourceErrors.join('; ')}`);
+      if (sourceErrors.length > 0) {
+        console.warn(`⚠️ Some sources failed: ${sourceErrors.join('; ')}`);
+      }
+    } else {
+      console.log('   ⏭️  Crawling disabled - skipping');
     }
 
     progressHelpers.crawlingComplete(discoveredJobs.length);
 
     // Step 3: Import discovered jobs
     console.log('\n💾 Importing jobs to database...');
-    const { created, skipped } = await jobsRepo.bulkCreateJobs(discoveredJobs);
-    console.log(`   Created: ${created}, Skipped (duplicates): ${skipped}`);
+    let created = 0;
+    let skipped = 0;
+    
+    if (mergedConfig.enableImporting && discoveredJobs.length > 0) {
+      const result = await jobsRepo.bulkCreateJobs(discoveredJobs);
+      created = result.created;
+      skipped = result.skipped;
+      console.log(`   Created: ${created}, Skipped (duplicates): ${skipped}`);
+    } else if (!mergedConfig.enableImporting) {
+      console.log('   ⏭️  Importing disabled - skipping');
+    } else {
+      console.log('   No jobs to import');
+    }
 
     progressHelpers.importComplete(created, skipped);
 
@@ -254,85 +274,94 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
 
     // Step 4: Score all discovered jobs missing a score
     console.log('\n🎯 Scoring jobs for suitability...');
-    const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
-
-    updateProgress({
-      step: 'scoring',
-      jobsDiscovered: unprocessedJobs.length,
-      jobsScored: 0,
-      jobsProcessed: 0,
-      totalToProcess: 0,
-      currentJob: undefined,
-    });
-
-    // Score jobs with progress updates
     const scoredJobs: Array<Job & { suitabilityScore: number; suitabilityReason: string }> = [];
-    for (let i = 0; i < unprocessedJobs.length; i++) {
-      const job = unprocessedJobs[i];
-      const hasCachedScore = typeof job.suitabilityScore === 'number' && !Number.isNaN(job.suitabilityScore);
-      progressHelpers.scoringJob(i + 1, unprocessedJobs.length, hasCachedScore ? `${job.title} (cached)` : job.title);
+    
+    if (mergedConfig.enableScoring) {
+      const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
 
-      if (hasCachedScore) {
+      updateProgress({
+        step: 'scoring',
+        jobsDiscovered: unprocessedJobs.length,
+        jobsScored: 0,
+        jobsProcessed: 0,
+        totalToProcess: 0,
+        currentJob: undefined,
+      });
+
+      // Score jobs with progress updates
+      for (let i = 0; i < unprocessedJobs.length; i++) {
+        const job = unprocessedJobs[i];
+        const hasCachedScore = typeof job.suitabilityScore === 'number' && !Number.isNaN(job.suitabilityScore);
+        progressHelpers.scoringJob(i + 1, unprocessedJobs.length, hasCachedScore ? `${job.title} (cached)` : job.title);
+
+        if (hasCachedScore) {
+          scoredJobs.push({
+            ...job,
+            suitabilityScore: job.suitabilityScore as number,
+            suitabilityReason: job.suitabilityReason ?? '',
+          });
+          continue;
+        }
+
+        const { score, reason } = await scoreJobSuitability(job, profile);
         scoredJobs.push({
           ...job,
-          suitabilityScore: job.suitabilityScore as number,
-          suitabilityReason: job.suitabilityReason ?? '',
+          suitabilityScore: score,
+          suitabilityReason: reason,
         });
-        continue;
+
+        // Update score in database
+        await jobsRepo.updateJob(job.id, {
+          suitabilityScore: score,
+          suitabilityReason: reason,
+        });
       }
 
-      const { score, reason } = await scoreJobSuitability(job, profile);
-      scoredJobs.push({
-        ...job,
-        suitabilityScore: score,
-        suitabilityReason: reason,
-      });
-
-      // Update score in database
-      await jobsRepo.updateJob(job.id, {
-        suitabilityScore: score,
-        suitabilityReason: reason,
-      });
+      progressHelpers.scoringComplete(scoredJobs.length);
+      console.log(`\n📊 Scored ${scoredJobs.length} jobs.`);
+    } else {
+      console.log('   ⏭️  Scoring disabled - skipping');
+      progressHelpers.scoringComplete(0);
     }
-
-    progressHelpers.scoringComplete(scoredJobs.length);
-    console.log(`\n📊 Scored ${scoredJobs.length} jobs.`);
 
     // Step 5: Auto-process top jobs
     console.log('\n🏭 Auto-processing top jobs...');
-
-    const jobsToProcess = scoredJobs
-      .filter(j => (j.suitabilityScore ?? 0) >= mergedConfig.minSuitabilityScore)
-      .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0))
-      .slice(0, mergedConfig.topN);
-
-    console.log(`   Found ${jobsToProcess.length} candidates (score >= ${mergedConfig.minSuitabilityScore}, top ${mergedConfig.topN})`);
-
     let processedCount = 0;
 
-    if (jobsToProcess.length > 0) {
-      updateProgress({
-        step: 'processing',
-        jobsProcessed: 0,
-        totalToProcess: jobsToProcess.length,
-      });
+    if (mergedConfig.enableAutoTailoring) {
+      const jobsToProcess = scoredJobs
+        .filter(j => (j.suitabilityScore ?? 0) >= mergedConfig.minSuitabilityScore)
+        .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0))
+        .slice(0, mergedConfig.topN);
 
-      for (let i = 0; i < jobsToProcess.length; i++) {
-        const job = jobsToProcess[i];
-        progressHelpers.processingJob(i + 1, jobsToProcess.length, job);
+      console.log(`   Found ${jobsToProcess.length} candidates (score >= ${mergedConfig.minSuitabilityScore}, top ${mergedConfig.topN})`);
 
-        // Process job (Generate Summary + PDF)
-        // We catch errors here to ensure one failure doesn't stop the whole batch
-        const result = await processJob(job.id);
+      if (jobsToProcess.length > 0) {
+        updateProgress({
+          step: 'processing',
+          jobsProcessed: 0,
+          totalToProcess: jobsToProcess.length,
+        });
 
-        if (result.success) {
-          processedCount++;
-        } else {
-          console.warn(`   ⚠️ Failed to process job ${job.id}: ${result.error}`);
+        for (let i = 0; i < jobsToProcess.length; i++) {
+          const job = jobsToProcess[i];
+          progressHelpers.processingJob(i + 1, jobsToProcess.length, job);
+
+          // Process job (Generate Summary + PDF)
+          // We catch errors here to ensure one failure doesn't stop the whole batch
+          const result = await processJob(job.id);
+
+          if (result.success) {
+            processedCount++;
+          } else {
+            console.warn(`   ⚠️ Failed to process job ${job.id}: ${result.error}`);
+          }
+
+          progressHelpers.jobComplete(i + 1, jobsToProcess.length);
         }
-
-        progressHelpers.jobComplete(i + 1, jobsToProcess.length);
       }
+    } else {
+      console.log('   ⏭️  Auto-tailoring disabled - skipping');
     }
 
     // Update pipeline run as completed
