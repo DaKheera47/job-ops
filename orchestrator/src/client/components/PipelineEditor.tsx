@@ -112,6 +112,9 @@ interface PipelineEditorProps {
 export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onChange, className }) => {
   // Load initial config from localStorage
   const [config, setConfig] = useState<PipelineEditorConfig>(() => {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return DEFAULT_CONFIG;
+    }
     try {
       const saved = localStorage.getItem(PIPELINE_CONFIG_KEY);
       if (saved) {
@@ -125,6 +128,9 @@ export const PipelineEditor: React.FC<PipelineEditorProps> = ({ onChange, classN
 
   // Save config to localStorage whenever it changes
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
     try {
       localStorage.setItem(PIPELINE_CONFIG_KEY, JSON.stringify(config));
       onChange?.(config);
@@ -355,6 +361,9 @@ export const usePipelineConfig = (): PipelineEditorConfig => {
   const [config, setConfig] = useState<PipelineEditorConfig>(DEFAULT_CONFIG);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.localStorage) {
+      return;
+    }
     try {
       const saved = localStorage.getItem(PIPELINE_CONFIG_KEY);
       if (saved) {

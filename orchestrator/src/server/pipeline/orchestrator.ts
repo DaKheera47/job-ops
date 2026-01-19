@@ -329,10 +329,22 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     let processedCount = 0;
 
     if (mergedConfig.enableAutoTailoring) {
-      const jobsToProcess = scoredJobs
-        .filter(j => (j.suitabilityScore ?? 0) >= mergedConfig.minSuitabilityScore)
-        .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0))
-        .slice(0, mergedConfig.topN);
+      // If scoring was disabled, fetch already-scored jobs from the database
+      let jobsToProcess;
+      if (scoredJobs.length === 0 && !mergedConfig.enableScoring) {
+        // Scoring was disabled, but we may have already-scored jobs to process
+        const alreadyScoredJobs = await jobsRepo.getUnscoredDiscoveredJobs();
+        jobsToProcess = alreadyScoredJobs
+          .filter(j => typeof j.suitabilityScore === 'number' && !Number.isNaN(j.suitabilityScore))
+          .filter(j => (j.suitabilityScore ?? 0) >= mergedConfig.minSuitabilityScore)
+          .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0))
+          .slice(0, mergedConfig.topN);
+      } else {
+        jobsToProcess = scoredJobs
+          .filter(j => (j.suitabilityScore ?? 0) >= mergedConfig.minSuitabilityScore)
+          .sort((a, b) => (b.suitabilityScore ?? 0) - (a.suitabilityScore ?? 0))
+          .slice(0, mergedConfig.topN);
+      }
 
       console.log(`   Found ${jobsToProcess.length} candidates (score >= ${mergedConfig.minSuitabilityScore}, top ${mergedConfig.topN})`);
 
