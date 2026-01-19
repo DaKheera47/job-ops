@@ -138,7 +138,6 @@ function normalizeDraft(parsed: Record<string, unknown>): ManualJobDraft {
     'disciplines',
     'degreeRequired',
     'starting',
-    'jobDescription',
   ];
 
   const out: ManualJobDraft = {};
