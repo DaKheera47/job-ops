@@ -105,6 +105,10 @@ export async function runPipeline(config?: {
   topN?: number;
   minSuitabilityScore?: number;
   sources?: JobSource[];
+  enableCrawling?: boolean;
+  enableScoring?: boolean;
+  enableImporting?: boolean;
+  enableAutoTailoring?: boolean;
 }): Promise<{ message: string }> {
   return fetchApi<{ message: string }>('/pipeline/run', {
     method: 'POST',
