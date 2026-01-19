@@ -23,7 +23,6 @@ import {
   ExternalLink,
   FileText,
   RefreshCcw,
-  Rocket,
   ScrollText,
   Send,
   Sparkles,
@@ -198,15 +197,6 @@ const getEdgeStroke = (status: NodeStatus) => {
   }
 };
 
-interface SponsorCheckState {
-  status: NodeStatus;
-  name: string | null;
-  route: string | null;
-  lastChecked: string | null;
-  matchedName: string | null;
-  score: number | null;
-}
-
 const ActionPill: React.FC<{ action: NodeAction }> = ({ action }) => {
   const Icon = action.icon;
   const className = cn(
@@ -247,8 +237,7 @@ const JobHubNode: React.FC<NodeProps<JobHubNodeData>> = ({ data, selected }) => 
   const inPorts = [
     { id: "in-cv", label: "CV", top: 54 },
     { id: "in-cover", label: "Cover", top: 78 },
-    { id: "in-sponsor", label: "Sponsor", top: 102 },
-    { id: "in-meta", label: "Metadata", top: 126 },
+    { id: "in-meta", label: "Metadata", top: 102 },
   ];
   const outPorts = [
     { id: "out-notion", label: "Notion", top: 76 },
@@ -469,8 +458,6 @@ const InspectorPanel: React.FC<{ data?: InspectorData }> = ({ data }) => {
 };
 
 interface FlowActions {
-  sponsorCheck?: SponsorCheckState | null;
-  onSponsorCheck?: () => void;
   onGenerateCv?: () => void;
   onMarkApplied?: () => void;
   onSendWebhook?: () => void;
@@ -494,16 +481,7 @@ const buildFlow = (job: Job, onAction: (message: string) => void, actions: FlowA
   const remoteLabel =
     job.isRemote === true ? "Remote" : job.isRemote === false ? "On-site" : job.workFromHomeType || "Remote unknown";
   const locationLabel = job.location ? `${job.location} / ${remoteLabel}` : `Location unknown / ${remoteLabel}`;
-  const sponsorInfo = actions.sponsorCheck;
-  const sponsorStatus: NodeStatus = sponsorInfo?.status ?? "missing";
-  const visaLabel =
-    sponsorStatus === "ready"
-      ? "Licensed sponsor"
-      : sponsorStatus === "failed"
-        ? "Not in register"
-        : "Unknown";
-  const visaChip = sponsorInfo?.route ? `${visaLabel} (${sponsorInfo.route})` : visaLabel;
-  const sponsorUpdatedAt = sponsorInfo?.lastChecked ? formatDateTime(sponsorInfo.lastChecked) : "Not run";
+  const visaChip = "Unknown";
   const scoreLabel = job.suitabilityScore != null ? `${job.suitabilityScore}% match` : "No score";
   const sourceStatus: NodeStatus = sourceUrl ? "ready" : "missing";
   const descriptionStatus: NodeStatus = job.jobDescription ? "ready" : "missing";
@@ -528,7 +506,6 @@ const buildFlow = (job: Job, onAction: (message: string) => void, actions: FlowA
     headerOutcomes: { x: 1060, y: 40 },
     source: { x: 40, y: 120 },
     description: { x: 40, y: 240 },
-    sponsor: { x: 40, y: 360 },
     metadata: { x: 40, y: 480 },
     cv: { x: 380, y: 140 },
     cover: { x: 380, y: 260 },
@@ -727,67 +704,6 @@ const buildFlow = (job: Job, onAction: (message: string) => void, actions: FlowA
           raw: {
             description: descriptionText.slice(0, 200),
           },
-        },
-      },
-    },
-    {
-      id: "sponsor",
-      type: "jobPlugin",
-      position: nodePositions.sponsor,
-      data: {
-        kind: "plugin",
-        title: "Sponsor check",
-        subtitle: "Home Office lookup",
-        status: sponsorStatus,
-        updatedAt: sponsorUpdatedAt,
-        icon: Rocket,
-        outputHandle: true,
-        actions: [
-          {
-            id: "run-sponsor",
-            label: "Run check",
-            icon: RefreshCcw,
-            onClick: actions.onSponsorCheck,
-            disabled: !actions.onSponsorCheck || sponsorStatus === "in-progress",
-          },
-          {
-            id: "open-directory",
-            label: "Open directory",
-            icon: ExternalLink,
-            href: "/visa-sponsors",
-          },
-        ],
-        inspector: {
-          title: "Sponsor check",
-          subtitle: "Home Office register",
-          status: sponsorStatus,
-          summary:
-            sponsorStatus === "ready"
-              ? "Sponsor found in the register."
-              : sponsorStatus === "failed"
-                ? "No sponsor match found."
-                : "Verify sponsor status and route.",
-          meta: [
-            { label: "Status", value: sponsorStatus === "ready" ? "Licensed sponsor" : sponsorStatus === "failed" ? "Not found" : "Unknown" },
-            { label: "Route", value: sponsorInfo?.route || "-" },
-            { label: "Matched name", value: sponsorInfo?.matchedName || sponsorInfo?.name || "-" },
-            { label: "Score", value: sponsorInfo?.score != null ? sponsorInfo.score.toFixed(0) : "-" },
-          ],
-          logs:
-            sponsorStatus === "ready"
-              ? ["Sponsor check completed."]
-              : sponsorStatus === "failed"
-                ? ["Sponsor check completed with no matches."]
-                : ["Sponsor check not run yet."],
-          raw: sponsorInfo
-            ? {
-                name: sponsorInfo.name,
-                matchedName: sponsorInfo.matchedName,
-                route: sponsorInfo.route,
-                score: sponsorInfo.score,
-                lastChecked: sponsorInfo.lastChecked,
-              }
-            : {},
         },
       },
     },
@@ -1046,16 +962,6 @@ const buildFlow = (job: Job, onAction: (message: string) => void, actions: FlowA
       markerEnd: { type: MarkerType.ArrowClosed, color: getEdgeStroke(metadataStatus) },
     },
     {
-      id: "e-sponsor-hub",
-      source: "sponsor",
-      sourceHandle: "out",
-      target: "hub",
-      targetHandle: "in-sponsor",
-      animated: sponsorStatus !== "missing",
-      style: { stroke: getEdgeStroke(sponsorStatus), strokeWidth: 1.5 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: getEdgeStroke(sponsorStatus) },
-    },
-    {
       id: "e-cv-hub",
       source: "cv",
       sourceHandle: "out",
@@ -1114,7 +1020,6 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({
   onJobUpdated,
 }) => {
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
-  const [sponsorCheck, setSponsorCheck] = useState<SponsorCheckState | null>(null);
   const [isGeneratingCv, setIsGeneratingCv] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [isSendingWebhook, setIsSendingWebhook] = useState(false);
@@ -1124,64 +1029,10 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({
   }, []);
 
   useEffect(() => {
-    setSponsorCheck(null);
     setIsGeneratingCv(false);
     setIsApplying(false);
     setIsSendingWebhook(false);
   }, [job?.id]);
-
-  const handleSponsorCheck = useCallback(async () => {
-    if (!job?.employer) return;
-    const startedAt = new Date().toISOString();
-    setSponsorCheck({
-      status: "in-progress",
-      name: null,
-      route: null,
-      lastChecked: startedAt,
-      matchedName: null,
-      score: null,
-    });
-    try {
-      const result = await api.searchVisaSponsors({
-        query: job.employer,
-        limit: 5,
-        minScore: 0.7,
-      });
-      const top = result.results[0];
-      if (!top) {
-        setSponsorCheck({
-          status: "failed",
-          name: null,
-          route: null,
-          lastChecked: startedAt,
-          matchedName: null,
-          score: null,
-        });
-        toast.message("No sponsor match found");
-        return;
-      }
-      setSponsorCheck({
-        status: "ready",
-        name: top.sponsor.organisationName,
-        route: top.sponsor.route || top.sponsor.typeRating || null,
-        lastChecked: startedAt,
-        matchedName: top.matchedName,
-        score: top.score,
-      });
-      toast.success(`Sponsor match: ${top.sponsor.organisationName}`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Sponsor check failed";
-      setSponsorCheck({
-        status: "failed",
-        name: null,
-        route: null,
-        lastChecked: startedAt,
-        matchedName: null,
-        score: null,
-      });
-      toast.error(message);
-    }
-  }, [job]);
 
   const handleGenerateCv = useCallback(async () => {
     if (!job || isGeneratingCv) return;
@@ -1243,8 +1094,6 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({
   const flow = useMemo(() => {
     if (!job) return { nodes: [] as Array<Node<FlowNodeData>>, edges: [] as Edge[] };
     return buildFlow(job, handleAction, {
-      sponsorCheck,
-      onSponsorCheck: handleSponsorCheck,
       onGenerateCv: handleGenerateCv,
       onMarkApplied: handleMarkApplied,
       onSendWebhook: handleSendWebhook,
@@ -1255,8 +1104,6 @@ export const JobFlowModal: React.FC<JobFlowModalProps> = ({
   }, [
     job,
     handleAction,
-    sponsorCheck,
-    handleSponsorCheck,
     handleGenerateCv,
     handleMarkApplied,
     handleSendWebhook,
