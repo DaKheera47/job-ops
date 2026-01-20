@@ -50,7 +50,6 @@ interface ReadyPanelProps {
   onJobMoved: (jobId: string) => void;
   onEditTailoring: () => void;
   onEditDescription: () => void;
-  showSponsorInfo?: boolean;
 }
 
 const safeFilenamePart = (value: string | null | undefined) =>
@@ -62,7 +61,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   onJobMoved,
   onEditTailoring,
   onEditDescription,
-  showSponsorInfo,
 }) => {
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
@@ -224,7 +222,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           await api.checkSponsor(job.id);
           await onJobUpdated();
         }}
-        showSponsorInfo={showSponsorInfo}
       />
 
       {/* ─────────────────────────────────────────────────────────────────────

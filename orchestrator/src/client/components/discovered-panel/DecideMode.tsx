@@ -15,7 +15,6 @@ interface DecideModeProps {
   onSkip: () => void;
   isSkipping: boolean;
   onCheckSponsor?: () => Promise<void>;
-  showSponsorInfo?: boolean;
 }
 
 export const DecideMode: React.FC<DecideModeProps> = ({
@@ -24,7 +23,6 @@ export const DecideMode: React.FC<DecideModeProps> = ({
   onSkip,
   isSkipping,
   onCheckSponsor,
-  showSponsorInfo,
 }) => {
   const [showDescription, setShowDescription] = useState(false);
   const jobLink = job.applicationLink || job.jobUrl;
@@ -40,7 +38,6 @@ export const DecideMode: React.FC<DecideModeProps> = ({
         <JobHeader
           job={job}
           onCheckSponsor={onCheckSponsor}
-          showSponsorInfo={showSponsorInfo}
         />
 
         <div className='flex flex-col gap-2.5 pt-2 sm:flex-row'>

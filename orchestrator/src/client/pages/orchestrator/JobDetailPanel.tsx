@@ -41,7 +41,6 @@ interface JobDetailPanelProps {
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
   onSetActiveTab: (tab: FilterTab) => void;
-  showSponsorInfo?: boolean;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -51,7 +50,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onSelectJobId,
   onJobUpdated,
   onSetActiveTab,
-  showSponsorInfo,
 }) => {
   const [detailTab, setDetailTab] = useState<"overview" | "tailoring" | "description">("overview");
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -235,7 +233,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         job={selectedJob}
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
-        showSponsorInfo={showSponsorInfo}
       />
     );
   }
@@ -257,7 +254,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             setIsEditingDescription(true);
           }, 50);
         }}
-        showSponsorInfo={showSponsorInfo}
       />
     );
   }
@@ -279,7 +275,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           await api.checkSponsor(selectedJob.id);
           await onJobUpdated();
         }}
-        showSponsorInfo={showSponsorInfo}
       />
 
       <div className="flex flex-wrap items-center gap-1.5">

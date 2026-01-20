@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import type { Job, JobStatus, AppSettings } from "../../../shared/types";
+import type { Job, JobStatus } from "../../../shared/types";
 import * as api from "../../api";
 
 const initialStats: Record<JobStatus, number> = {
@@ -16,20 +16,15 @@ const initialStats: Record<JobStatus, number> = {
 export const useOrchestratorData = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [stats, setStats] = useState<Record<JobStatus, number>>(initialStats);
-  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
 
   const loadJobs = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [jobsData, settingsData] = await Promise.all([
-        api.getJobs(),
-        api.getSettings(),
-      ]);
-      setJobs(jobsData.jobs);
-      setStats(jobsData.byStatus);
-      setSettings(settingsData);
+      const data = await api.getJobs();
+      setJobs(data.jobs);
+      setStats(data.byStatus);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to load jobs";
       toast.error(message);
@@ -59,5 +54,5 @@ export const useOrchestratorData = () => {
     return () => clearInterval(interval);
   }, [loadJobs, checkPipelineStatus]);
 
-  return { jobs, stats, settings, isLoading, isPipelineRunning, setIsPipelineRunning, loadJobs, checkPipelineStatus };
+  return { jobs, stats, isLoading, isPipelineRunning, setIsPipelineRunning, loadJobs, checkPipelineStatus };
 };

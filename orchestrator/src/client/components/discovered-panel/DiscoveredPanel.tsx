@@ -14,14 +14,12 @@ interface DiscoveredPanelProps {
   job: Job | null;
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
-  showSponsorInfo?: boolean;
 }
 
 export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   job,
   onJobUpdated,
   onJobMoved,
-  showSponsorInfo,
 }) => {
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
@@ -91,7 +89,6 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
             await api.checkSponsor(job.id);
             await onJobUpdated();
           }}
-          showSponsorInfo={showSponsorInfo}
         />
       ) : (
         <TailorMode

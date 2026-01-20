@@ -7,10 +7,11 @@ import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import type { Job, JobStatus } from "../../shared/types";
 import { defaultStatusToken, statusTokens } from "../pages/orchestrator/constants";
 
+import { useSettings } from "../hooks/useSettings";
+
 interface JobHeaderProps {
   job: Job;
   className?: string;
-  showSponsorInfo?: boolean;
   onCheckSponsor?: () => Promise<void>;
 }
 
@@ -83,16 +84,16 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
             <Button
               size="sm"
               variant="ghost"
-              className="h-5 px-1.5 text-[9px] font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+              className="h-5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
               onClick={handleCheck}
               disabled={isChecking}
             >
               {isChecking ? (
-                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                <Loader2 className="h-2 w-2 animate-spin" />
               ) : (
-                <Search className="h-2.5 w-2.5" />
+                <Search className="h-2 w-2" />
               )}
-              <span>{isChecking ? "Checking..." : "Check Visa"}</span>
+              <span>{isChecking ? "Checking..." : "Check Sponsorship Status"}</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
@@ -133,7 +134,8 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   );
 };
 
-export const JobHeader: React.FC<JobHeaderProps> = ({ job, className, showSponsorInfo = true, onCheckSponsor }) => {
+export const JobHeader: React.FC<JobHeaderProps> = ({ job, className, onCheckSponsor }) => {
+  const { showSponsorInfo } = useSettings();
   const deadline = formatDate(job.deadline);
 
   return (
