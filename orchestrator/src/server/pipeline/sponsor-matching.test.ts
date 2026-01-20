@@ -11,6 +11,7 @@ import type { Job } from '../../shared/types.js';
 // Mock the visa-sponsors module
 vi.mock('../services/visa-sponsors/index.js', () => ({
     searchSponsors: vi.fn(),
+    calculateSponsorMatchSummary: vi.fn(),
 }));
 
 // Mock the scorer module
@@ -115,6 +116,7 @@ const createMockJob = (overrides: Partial<Job> = {}): Job => ({
 
 describe('Sponsor Match Calculation', () => {
     let searchSponsors: ReturnType<typeof vi.fn>;
+    let calculateSponsorMatchSummary: ReturnType<typeof vi.fn>;
     let scoreJobSuitability: ReturnType<typeof vi.fn>;
     let updateJob: ReturnType<typeof vi.fn>;
     let getUnscoredDiscoveredJobs: ReturnType<typeof vi.fn>;
@@ -129,6 +131,7 @@ describe('Sponsor Match Calculation', () => {
         const jobsRepo = await import('../repositories/jobs.js');
 
         searchSponsors = visaSponsors.searchSponsors as ReturnType<typeof vi.fn>;
+        calculateSponsorMatchSummary = visaSponsors.calculateSponsorMatchSummary as ReturnType<typeof vi.fn>;
         scoreJobSuitability = scorer.scoreJobSuitability as ReturnType<typeof vi.fn>;
         updateJob = jobsRepo.updateJob as ReturnType<typeof vi.fn>;
         getUnscoredDiscoveredJobs = jobsRepo.getUnscoredDiscoveredJobs as ReturnType<typeof vi.fn>;
@@ -138,6 +141,17 @@ describe('Sponsor Match Calculation', () => {
         scoreJobSuitability.mockResolvedValue({ score: 75, reason: 'Good match' });
         bulkCreateJobs.mockResolvedValue({ created: 0, skipped: 0 });
         updateJob.mockResolvedValue(undefined);
+
+        calculateSponsorMatchSummary.mockImplementation((results: any[]) => {
+            if (results.length === 0) return { sponsorMatchScore: 0, sponsorMatchNames: null };
+            const topScore = results[0].score;
+            const perfectMatches = results.filter((r: any) => r.score === 100);
+            const matchesToReport = perfectMatches.length >= 2 ? perfectMatches.slice(0, 2) : [results[0]];
+            return {
+                sponsorMatchScore: topScore,
+                sponsorMatchNames: JSON.stringify(matchesToReport.map((r: any) => r.sponsor.organisationName)),
+            };
+        });
     });
 
     afterEach(() => {

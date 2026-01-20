@@ -304,17 +304,9 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
           minScore: 50,
         });
 
-        if (sponsorResults.length > 0) {
-          const topScore = sponsorResults[0].score;
-          // Get all 100% matches, or just the top match
-          const perfectMatches = sponsorResults.filter(r => r.score === 100);
-          const matchesToReport = perfectMatches.length >= 2
-            ? perfectMatches.slice(0, 2)
-            : [sponsorResults[0]];
-
-          sponsorMatchScore = topScore;
-          sponsorMatchNames = JSON.stringify(matchesToReport.map(r => r.sponsor.organisationName));
-        }
+        const summary = visaSponsors.calculateSponsorMatchSummary(sponsorResults);
+        sponsorMatchScore = summary.sponsorMatchScore;
+        sponsorMatchNames = summary.sponsorMatchNames ?? undefined;
       }
 
       // Update score and sponsor match in database

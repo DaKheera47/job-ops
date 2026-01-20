@@ -57,20 +57,20 @@ let updateError: string | null = null;
  */
 export function normalizeCompanyName(name: string): string {
   let normalized = name.toLowerCase().trim();
-  
+
   // Remove common punctuation and special chars
   normalized = normalized.replace(/[.,'"()[\]{}!?@#$%^&*+=|\\/<>:;`~]/g, ' ');
-  
+
   // Remove suffixes
   for (const suffix of COMPANY_SUFFIXES) {
     // Word boundary matching
     const regex = new RegExp(`\\b${suffix}\\b`, 'gi');
     normalized = normalized.replace(regex, '');
   }
-  
+
   // Collapse whitespace
   normalized = normalized.replace(/\s+/g, ' ').trim();
-  
+
   return normalized;
 }
 
@@ -81,27 +81,27 @@ export function normalizeCompanyName(name: string): string {
 export function calculateSimilarity(str1: string, str2: string): number {
   const s1 = str1.toLowerCase();
   const s2 = str2.toLowerCase();
-  
+
   if (s1 === s2) return 100;
   if (s1.length === 0 || s2.length === 0) return 0;
-  
+
   // Check if one contains the other
   if (s1.includes(s2) || s2.includes(s1)) {
     const longerLen = Math.max(s1.length, s2.length);
     const shorterLen = Math.min(s1.length, s2.length);
     return Math.round((shorterLen / longerLen) * 100);
   }
-  
+
   // Levenshtein distance
   const matrix: number[][] = [];
-  
+
   for (let i = 0; i <= s1.length; i++) {
     matrix[i] = [i];
   }
   for (let j = 0; j <= s2.length; j++) {
     matrix[0][j] = j;
   }
-  
+
   for (let i = 1; i <= s1.length; i++) {
     for (let j = 1; j <= s2.length; j++) {
       const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
@@ -112,10 +112,10 @@ export function calculateSimilarity(str1: string, str2: string): number {
       );
     }
   }
-  
+
   const distance = matrix[s1.length][s2.length];
   const maxLen = Math.max(s1.length, s2.length);
-  
+
   return Math.round(((maxLen - distance) / maxLen) * 100);
 }
 
@@ -125,12 +125,12 @@ export function calculateSimilarity(str1: string, str2: string): number {
 export function parseCsv(content: string): VisaSponsor[] {
   const lines = content.split('\n');
   const sponsors: VisaSponsor[] = [];
-  
+
   // Skip header
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    
+
     // Parse CSV with proper quote handling
     const fields = parseCSVLine(line);
     if (fields.length >= 5) {
@@ -143,7 +143,7 @@ export function parseCsv(content: string): VisaSponsor[] {
       });
     }
   }
-  
+
   return sponsors;
 }
 
@@ -154,11 +154,11 @@ function parseCSVLine(line: string): string[] {
   const fields: string[] = [];
   let current = '';
   let inQuotes = false;
-  
+
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
     const nextChar = line[i + 1];
-    
+
     if (char === '"' && !inQuotes) {
       inQuotes = true;
     } else if (char === '"' && inQuotes) {
@@ -176,7 +176,7 @@ function parseCSVLine(line: string): string[] {
       current += char;
     }
   }
-  
+
   fields.push(current.trim());
   return fields;
 }
@@ -186,7 +186,7 @@ function parseCSVLine(line: string): string[] {
  */
 function getCsvFiles(): string[] {
   if (!fs.existsSync(DATA_DIR)) return [];
-  
+
   return fs.readdirSync(DATA_DIR)
     .filter(f => f.endsWith('.csv'))
     .sort()
@@ -245,25 +245,25 @@ function cleanupOldCsvFiles(): void {
  */
 async function extractCsvUrl(): Promise<string> {
   const pageUrl = 'https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers';
-  
+
   console.log('📄 Fetching gov.uk page to find CSV link...');
   const response = await fetch(pageUrl);
-  
+
   if (!response.ok) {
     throw new Error(`Failed to fetch gov.uk page: ${response.status} ${response.statusText}`);
   }
-  
+
   const html = await response.text();
-  
+
   // Look for the Worker and Temporary Worker CSV link
   const csvMatch = html.match(
     /href="(https:\/\/assets\.publishing\.service\.gov\.uk\/media\/[^"]+Worker_and_Temporary_Worker\.csv)"/
   );
-  
+
   if (!csvMatch) {
     throw new Error('Could not find Worker and Temporary Worker CSV link on gov.uk page');
   }
-  
+
   return csvMatch[1];
 }
 
@@ -274,52 +274,52 @@ export async function downloadLatestCsv(): Promise<{ success: boolean; message: 
   if (isUpdating) {
     return { success: false, message: 'Update already in progress' };
   }
-  
+
   isUpdating = true;
   updateError = null;
-  
+
   try {
     // Extract the CSV URL from the page
     const csvUrl = await extractCsvUrl();
     console.log(`📥 Downloading CSV from: ${csvUrl}`);
-    
+
     const response = await fetch(csvUrl);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to download CSV: ${response.status} ${response.statusText}`);
     }
-    
+
     const csvContent = await response.text();
-    
+
     // Validate CSV has content
     const sponsors = parseCsv(csvContent);
     if (sponsors.length === 0) {
       throw new Error('Downloaded CSV appears to be empty or invalid');
     }
-    
+
     // Generate filename with date
     const dateStr = new Date().toISOString().split('T')[0];
     const filename = `visa_sponsors_${dateStr}.csv`;
     const filepath = path.join(DATA_DIR, filename);
-    
+
     // Save the CSV
     fs.writeFileSync(filepath, csvContent);
-    
+
     // Update metadata
     writeMetadata({
       lastUpdated: new Date().toISOString(),
       csvFile: filename,
     });
-    
+
     // Cleanup old files
     cleanupOldCsvFiles();
-    
+
     // Clear cache so next search loads new data
     sponsorsCache = null;
     cacheLoadedAt = null;
-    
+
     console.log(`✅ Downloaded visa sponsor list: ${sponsors.length} sponsors`);
-    
+
     return {
       success: true,
       message: `Successfully downloaded ${sponsors.length} sponsors`,
@@ -345,17 +345,17 @@ export function loadSponsors(): VisaSponsor[] {
       return sponsorsCache;
     }
   }
-  
+
   const metadata = readMetadata();
   if (!metadata.csvFile) {
     return [];
   }
-  
+
   const csvPath = path.join(DATA_DIR, metadata.csvFile);
   if (!fs.existsSync(csvPath)) {
     return [];
   }
-  
+
   try {
     const content = fs.readFileSync(csvPath, 'utf-8');
     sponsorsCache = parseCsv(content);
@@ -375,26 +375,26 @@ export function searchSponsors(
   options: { limit?: number; minScore?: number } = {}
 ): VisaSponsorSearchResult[] {
   const { limit = 50, minScore = 30 } = options;
-  
+
   const sponsors = loadSponsors();
   if (sponsors.length === 0 || !query.trim()) {
     return [];
   }
-  
+
   const normalizedQuery = normalizeCompanyName(query);
   const results: VisaSponsorSearchResult[] = [];
   const seen = new Set<string>(); // Dedupe by org name
-  
+
   for (const sponsor of sponsors) {
     // Skip if we've already seen this org name
     if (seen.has(sponsor.organisationName)) continue;
     seen.add(sponsor.organisationName);
-    
+
     const normalizedSponsor = normalizeCompanyName(sponsor.organisationName);
-    
+
     // Calculate similarity
     const score = calculateSimilarity(normalizedQuery, normalizedSponsor);
-    
+
     if (score >= minScore) {
       results.push({
         sponsor,
@@ -403,11 +403,34 @@ export function searchSponsors(
       });
     }
   }
-  
+
   // Sort by score descending
   results.sort((a, b) => b.score - a.score);
-  
+
   return results.slice(0, limit);
+}
+
+/**
+ * Calculate match summary from search results
+ */
+export function calculateSponsorMatchSummary(
+  results: VisaSponsorSearchResult[]
+): { sponsorMatchScore: number; sponsorMatchNames: string | null } {
+  if (results.length === 0) {
+    return { sponsorMatchScore: 0, sponsorMatchNames: null };
+  }
+
+  const topScore = results[0].score;
+  // Get all 100% matches, or just the top match
+  const perfectMatches = results.filter(r => r.score === 100);
+  const matchesToReport = perfectMatches.length >= 2
+    ? perfectMatches.slice(0, 2)
+    : [results[0]];
+
+  return {
+    sponsorMatchScore: topScore,
+    sponsorMatchNames: JSON.stringify(matchesToReport.map(r => r.sponsor.organisationName)),
+  };
 }
 
 /**
@@ -416,7 +439,7 @@ export function searchSponsors(
 export function getStatus(): VisaSponsorStatus {
   const metadata = readMetadata();
   const sponsors = loadSponsors();
-  
+
   return {
     lastUpdated: metadata.lastUpdated,
     csvPath: metadata.csvFile ? path.join(DATA_DIR, metadata.csvFile) : null,
@@ -449,12 +472,12 @@ function calculateNextUpdateTime(hour = 2): Date {
   const now = new Date();
   const next = new Date(now);
   next.setHours(hour, 0, 0, 0);
-  
+
   // If we've passed the time today, schedule for tomorrow
   if (next <= now) {
     next.setDate(next.getDate() + 1);
   }
-  
+
   return next;
 }
 
@@ -472,12 +495,12 @@ function scheduleNextUpdate(hour = 2): void {
   if (scheduledTimer) {
     clearTimeout(scheduledTimer);
   }
-  
+
   nextScheduledUpdateTime = calculateNextUpdateTime(hour);
   const delay = nextScheduledUpdateTime.getTime() - Date.now();
-  
+
   console.log(`⏰ Next visa sponsor update scheduled for: ${nextScheduledUpdateTime.toISOString()}`);
-  
+
   scheduledTimer = setTimeout(async () => {
     console.log('🔄 Running scheduled visa sponsor update...');
     await downloadLatestCsv();
@@ -510,7 +533,7 @@ export function stopScheduler(): void {
  */
 export async function initialize(): Promise<void> {
   const metadata = readMetadata();
-  
+
   if (!metadata.csvFile) {
     console.log('📥 No visa sponsor data found, downloading...');
     await downloadLatestCsv();
@@ -518,7 +541,7 @@ export async function initialize(): Promise<void> {
     const sponsors = loadSponsors();
     console.log(`✅ Visa sponsor service initialized with ${sponsors.length} sponsors`);
   }
-  
+
   // Start the scheduler for automatic daily updates at 2 AM
   startScheduler(2);
 }

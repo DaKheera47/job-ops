@@ -160,20 +160,7 @@ jobsRouter.post('/:id/check-sponsor', async (req: Request, res: Response) => {
       minScore: 50,
     });
 
-    let sponsorMatchScore = 0;
-    let sponsorMatchNames: string | null = null;
-
-    if (sponsorResults.length > 0) {
-      const topScore = sponsorResults[0].score;
-      // Get all 100% matches, or just the top match
-      const perfectMatches = sponsorResults.filter(r => r.score === 100);
-      const matchesToReport = perfectMatches.length >= 2
-        ? perfectMatches.slice(0, 2)
-        : [sponsorResults[0]];
-
-      sponsorMatchScore = topScore;
-      sponsorMatchNames = JSON.stringify(matchesToReport.map(r => r.sponsor.organisationName));
-    }
+    const { sponsorMatchScore, sponsorMatchNames } = visaSponsors.calculateSponsorMatchSummary(sponsorResults);
 
     // Update job with sponsor match info
     const updatedJob = await jobsRepo.updateJob(job.id, {
