@@ -33,6 +33,8 @@ const jobFixture: Job = {
   selectedProjectIds: null,
   pdfPath: null,
   notionPageId: null,
+  sponsorMatchScore: null,
+  sponsorMatchNames: null,
   jobType: null,
   salarySource: null,
   salaryInterval: null,
@@ -198,7 +200,7 @@ describe("OrchestratorPage", () => {
     // Clicking job-2 should update URL
     const job2Button = screen.getByTestId("select-job-2");
     fireEvent.click(job2Button);
-    
+
     // Wait for URL to update
     await waitFor(() => {
       expect(locationText()).toContain("/all/job-2");

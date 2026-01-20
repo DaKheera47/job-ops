@@ -14,6 +14,7 @@ interface DecideModeProps {
   onTailor: () => void;
   onSkip: () => void;
   isSkipping: boolean;
+  onCheckSponsor?: () => Promise<void>;
 }
 
 export const DecideMode: React.FC<DecideModeProps> = ({
@@ -21,6 +22,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
   onTailor,
   onSkip,
   isSkipping,
+  onCheckSponsor,
 }) => {
   const [showDescription, setShowDescription] = useState(false);
   const jobLink = job.applicationLink || job.jobUrl;
@@ -33,7 +35,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
   return (
     <div className='flex flex-col h-full'>
       <div className='space-y-4 pb-4'>
-        <JobHeader job={job} />
+        <JobHeader job={job} onCheckSponsor={onCheckSponsor} />
 
         <div className='flex flex-col gap-2.5 pt-2 sm:flex-row'>
           <Button

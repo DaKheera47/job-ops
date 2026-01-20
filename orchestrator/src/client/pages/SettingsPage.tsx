@@ -14,6 +14,7 @@ import * as api from "../api"
 import { arraysEqual } from "@/lib/utils"
 import { resumeProjectsEqual } from "./settings/utils"
 import { DangerZoneSection } from "./settings/components/DangerZoneSection"
+import { DisplaySettingsSection } from "./settings/components/DisplaySettingsSection"
 import { GradcrackerSection } from "./settings/components/GradcrackerSection"
 import { JobCompleteWebhookSection } from "./settings/components/JobCompleteWebhookSection"
 import { JobspySection } from "./settings/components/JobspySection"
@@ -41,6 +42,7 @@ export const SettingsPage: React.FC = () => {
   const [jobspyCountryIndeedDraft, setJobspyCountryIndeedDraft] = useState<string | null>(null)
   const [jobspySitesDraft, setJobspySitesDraft] = useState<string[] | null>(null)
   const [jobspyLinkedinFetchDescriptionDraft, setJobspyLinkedinFetchDescriptionDraft] = useState<boolean | null>(null)
+  const [showSponsorInfoDraft, setShowSponsorInfoDraft] = useState<boolean | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>(['discovered'])
@@ -69,6 +71,7 @@ export const SettingsPage: React.FC = () => {
         setJobspyCountryIndeedDraft(data.overrideJobspyCountryIndeed)
         setJobspySitesDraft(data.overrideJobspySites)
         setJobspyLinkedinFetchDescriptionDraft(data.overrideJobspyLinkedinFetchDescription)
+        setShowSponsorInfoDraft(data.overrideShowSponsorInfo)
       })
       .catch((error) => {
         const message = error instanceof Error ? error.message : "Failed to load settings"
@@ -126,6 +129,9 @@ export const SettingsPage: React.FC = () => {
   const effectiveJobspyLinkedinFetchDescription = settings?.jobspyLinkedinFetchDescription ?? true
   const defaultJobspyLinkedinFetchDescription = settings?.defaultJobspyLinkedinFetchDescription ?? true
   const overrideJobspyLinkedinFetchDescription = settings?.overrideJobspyLinkedinFetchDescription
+  const effectiveShowSponsorInfo = settings?.showSponsorInfo ?? true
+  const defaultShowSponsorInfo = settings?.defaultShowSponsorInfo ?? true
+  const overrideShowSponsorInfo = settings?.overrideShowSponsorInfo
   const profileProjects = settings?.profileProjects ?? []
   const maxProjectsTotal = profileProjects.length
   const lockedCount = resumeProjectsDraft?.lockedProjectIds.length ?? 0
@@ -163,7 +169,8 @@ export const SettingsPage: React.FC = () => {
       jobspyHoursOldDraft !== (overrideJobspyHoursOld ?? null) ||
       jobspyCountryIndeedDraft !== (overrideJobspyCountryIndeed ?? null) ||
       JSON.stringify((jobspySitesDraft ?? []).slice().sort()) !== JSON.stringify((overrideJobspySites ?? []).slice().sort()) ||
-      jobspyLinkedinFetchDescriptionDraft !== (overrideJobspyLinkedinFetchDescription ?? null)
+      jobspyLinkedinFetchDescriptionDraft !== (overrideJobspyLinkedinFetchDescription ?? null) ||
+      showSponsorInfoDraft !== (overrideShowSponsorInfo ?? null)
     )
   }, [
     settings,
@@ -192,12 +199,14 @@ export const SettingsPage: React.FC = () => {
     jobspyCountryIndeedDraft,
     jobspySitesDraft,
     jobspyLinkedinFetchDescriptionDraft,
+    showSponsorInfoDraft,
     overrideJobspyLocation,
     overrideJobspyResultsWanted,
     overrideJobspyHoursOld,
     overrideJobspyCountryIndeed,
     overrideJobspySites,
     overrideJobspyLinkedinFetchDescription,
+    overrideShowSponsorInfo,
   ])
 
   const handleSave = async () => {
@@ -222,6 +231,7 @@ export const SettingsPage: React.FC = () => {
       const jobspyCountryIndeedOverride = jobspyCountryIndeedDraft === defaultJobspyCountryIndeed ? null : jobspyCountryIndeedDraft
       const jobspySitesOverride = arraysEqual((jobspySitesDraft ?? []).slice().sort(), (defaultJobspySites ?? []).slice().sort()) ? null : jobspySitesDraft
       const jobspyLinkedinFetchDescriptionOverride = jobspyLinkedinFetchDescriptionDraft === defaultJobspyLinkedinFetchDescription ? null : jobspyLinkedinFetchDescriptionDraft
+      const showSponsorInfoOverride = showSponsorInfoDraft === defaultShowSponsorInfo ? null : showSponsorInfoDraft
       const updated = await api.updateSettings({
         model: trimmed.length > 0 ? trimmed : null,
         modelScorer: trimmedScorer.length > 0 ? trimmedScorer : null,
@@ -239,6 +249,7 @@ export const SettingsPage: React.FC = () => {
         jobspyCountryIndeed: jobspyCountryIndeedOverride,
         jobspySites: jobspySitesOverride,
         jobspyLinkedinFetchDescription: jobspyLinkedinFetchDescriptionOverride,
+        showSponsorInfo: showSponsorInfoOverride,
       })
       setSettings(updated)
       setModelDraft(updated.overrideModel ?? "")
@@ -257,6 +268,7 @@ export const SettingsPage: React.FC = () => {
       setJobspyCountryIndeedDraft(updated.overrideJobspyCountryIndeed)
       setJobspySitesDraft(updated.overrideJobspySites)
       setJobspyLinkedinFetchDescriptionDraft(updated.overrideJobspyLinkedinFetchDescription)
+      setShowSponsorInfoDraft(updated.overrideShowSponsorInfo)
       toast.success("Settings saved")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to save settings"
@@ -340,6 +352,7 @@ export const SettingsPage: React.FC = () => {
         jobspyCountryIndeed: null,
         jobspySites: null,
         jobspyLinkedinFetchDescription: null,
+        showSponsorInfo: null,
       })
       setSettings(updated)
       setModelDraft("")
@@ -358,6 +371,7 @@ export const SettingsPage: React.FC = () => {
       setJobspyCountryIndeedDraft(null)
       setJobspySitesDraft(null)
       setJobspyLinkedinFetchDescriptionDraft(null)
+      setShowSponsorInfoDraft(null)
       toast.success("Reset to default")
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reset settings"
@@ -468,6 +482,14 @@ export const SettingsPage: React.FC = () => {
             profileProjects={profileProjects}
             lockedCount={lockedCount}
             maxProjectsTotal={maxProjectsTotal}
+            isLoading={isLoading}
+            isSaving={isSaving}
+          />
+          <DisplaySettingsSection
+            showSponsorInfoDraft={showSponsorInfoDraft}
+            setShowSponsorInfoDraft={setShowSponsorInfoDraft}
+            defaultShowSponsorInfo={defaultShowSponsorInfo}
+            effectiveShowSponsorInfo={effectiveShowSponsorInfo}
             isLoading={isLoading}
             isSaving={isSaving}
           />

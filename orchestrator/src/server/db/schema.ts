@@ -64,6 +64,8 @@ export const jobs = sqliteTable('jobs', {
   selectedProjectIds: text('selected_project_ids'),
   pdfPath: text('pdf_path'),
   notionPageId: text('notion_page_id'),
+  sponsorMatchScore: real('sponsor_match_score'),
+  sponsorMatchNames: text('sponsor_match_names'),
 
   // Timestamps
   discoveredAt: text('discovered_at').notNull().default(sql`(datetime('now'))`),

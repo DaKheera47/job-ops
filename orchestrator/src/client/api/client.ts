@@ -86,6 +86,12 @@ export async function generateJobPdf(id: string): Promise<Job> {
   });
 }
 
+export async function checkSponsor(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/check-sponsor`, {
+    method: 'POST',
+  });
+}
+
 export async function markAsApplied(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/apply`, {
     method: 'POST',
@@ -186,6 +192,7 @@ export async function updateSettings(update: {
   jobspyCountryIndeed?: string | null
   jobspySites?: string[] | null
   jobspyLinkedinFetchDescription?: boolean | null
+  showSponsorInfo?: boolean | null
 }): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {
     method: 'PATCH',

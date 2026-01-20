@@ -85,6 +85,10 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           onTailor={() => setMode("tailor")}
           onSkip={handleSkip}
           isSkipping={isSkipping}
+          onCheckSponsor={async () => {
+            await api.checkSponsor(job.id);
+            await onJobUpdated();
+          }}
         />
       ) : (
         <TailorMode

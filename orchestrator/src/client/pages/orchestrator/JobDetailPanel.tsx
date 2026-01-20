@@ -269,7 +269,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   return (
     <div className="space-y-3">
-      <JobHeader job={selectedJob} />
+      <JobHeader
+        job={selectedJob}
+        onCheckSponsor={async () => {
+          await api.checkSponsor(selectedJob.id);
+          await onJobUpdated();
+        }}
+      />
 
       <div className="flex flex-wrap items-center gap-1.5">
         <Button asChild size="sm" variant="ghost" className="h-8 gap-1.5 text-xs">

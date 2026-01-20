@@ -141,7 +141,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         // Revert to ready status
         await api.updateJob(jobId, { status: "ready" });
         toast.success("Reverted to Ready");
-        
+
         if (recentlyApplied?.timeoutId) {
           clearTimeout(recentlyApplied.timeoutId);
         }
@@ -215,7 +215,14 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
 
   return (
     <div className="flex flex-col h-full">
-      <JobHeader job={job} className="pb-4 border-b border-border/40" />
+      <JobHeader
+        job={job}
+        className="pb-4 border-b border-border/40"
+        onCheckSponsor={async () => {
+          await api.checkSponsor(job.id);
+          await onJobUpdated();
+        }}
+      />
 
       {/* ─────────────────────────────────────────────────────────────────────
           PRIMARY ACTION CLUSTER

@@ -70,7 +70,7 @@ describe.sequential('Jobs API routes', () => {
 
   it('applies a job and syncs to Notion', async () => {
     const { createNotionEntry } = await import('../../services/notion.js');
-    vi.mocked(createNotionEntry).mockResolvedValue({ pageId: 'page-123' });
+    vi.mocked(createNotionEntry).mockResolvedValue({ success: true, pageId: 'page-123' });
 
     const { createJob } = await import('../../repositories/jobs.js');
     const job = await createJob({

@@ -50,6 +50,8 @@ export interface Job {
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null;            // Path to generated PDF
   notionPageId: string | null;       // Notion page ID if synced
+  sponsorMatchScore: number | null;  // 0-100 fuzzy match score with visa sponsors
+  sponsorMatchNames: string | null;  // JSON array of matched sponsor names (when 100% matches or top match)
 
   // JobSpy fields (nullable for non-JobSpy sources)
   jobType: string | null;
@@ -164,6 +166,8 @@ export interface UpdateJobInput {
   pdfPath?: string;
   notionPageId?: string;
   appliedAt?: string;
+  sponsorMatchScore?: number;
+  sponsorMatchNames?: string;
 }
 
 export interface PipelineConfig {
@@ -275,7 +279,7 @@ export interface AppSettings {
   overrideModelTailoring: string | null;
   modelProjectSelection: string; // resolved
   overrideModelProjectSelection: string | null;
-  
+
   pipelineWebhookUrl: string;
   defaultPipelineWebhookUrl: string;
   overridePipelineWebhookUrl: string | null;
@@ -313,4 +317,7 @@ export interface AppSettings {
   jobspyLinkedinFetchDescription: boolean;
   defaultJobspyLinkedinFetchDescription: boolean;
   overrideJobspyLinkedinFetchDescription: boolean | null;
+  showSponsorInfo: boolean;
+  defaultShowSponsorInfo: boolean;
+  overrideShowSponsorInfo: boolean | null;
 }

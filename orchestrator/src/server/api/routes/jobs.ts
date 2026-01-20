@@ -4,6 +4,7 @@ import * as jobsRepo from '../../repositories/jobs.js';
 import * as settingsRepo from '../../repositories/settings.js';
 import { processJob, summarizeJob, generateFinalPdf } from '../../pipeline/index.js';
 import { createNotionEntry } from '../../services/notion.js';
+import * as visaSponsors from '../../services/visa-sponsors/index.js';
 import type { Job, JobStatus, ApiResponse, JobsListResponse } from '../../../shared/types.js';
 
 export const jobsRouter = Router();
@@ -47,6 +48,8 @@ const updateJobSchema = z.object({
   tailoredSummary: z.string().optional(),
   selectedProjectIds: z.string().optional(),
   pdfPath: z.string().optional(),
+  sponsorMatchScore: z.number().min(0).max(100).optional(),
+  sponsorMatchNames: z.string().optional(),
 });
 
 /**
@@ -130,6 +133,62 @@ jobsRouter.post('/:id/summarize', async (req: Request, res: Response) => {
 
     const job = await jobsRepo.getJobById(req.params.id);
     res.json({ success: true, data: job });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/check-sponsor - Check if employer is a visa sponsor
+ */
+jobsRouter.post('/:id/check-sponsor', async (req: Request, res: Response) => {
+  try {
+    const job = await jobsRepo.getJobById(req.params.id);
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    if (!job.employer) {
+      return res.status(400).json({ success: false, error: 'Job has no employer name' });
+    }
+
+    // Search for sponsor matches
+    const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+      limit: 10,
+      minScore: 50,
+    });
+
+    let sponsorMatchScore: number | null = null;
+    let sponsorMatchNames: string | null = null;
+
+    if (sponsorResults.length > 0) {
+      const topScore = sponsorResults[0].score;
+      // Get all 100% matches, or just the top match
+      const perfectMatches = sponsorResults.filter(r => r.score === 100);
+      const matchesToReport = perfectMatches.length >= 2
+        ? perfectMatches.slice(0, 2)
+        : [sponsorResults[0]];
+
+      sponsorMatchScore = topScore;
+      sponsorMatchNames = JSON.stringify(matchesToReport.map(r => r.sponsor.organisationName));
+    }
+
+    // Update job with sponsor match info
+    const updatedJob = await jobsRepo.updateJob(job.id, {
+      sponsorMatchScore: sponsorMatchScore ?? undefined,
+      sponsorMatchNames: sponsorMatchNames ?? undefined,
+    });
+
+    res.json({
+      success: true,
+      data: updatedJob,
+      matchResults: sponsorResults.slice(0, 5).map(r => ({
+        name: r.sponsor.organisationName,
+        score: r.score,
+      })),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });

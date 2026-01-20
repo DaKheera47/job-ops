@@ -31,6 +31,8 @@ const createJob = (overrides: Partial<Job> = {}): Job => ({
   selectedProjectIds: null,
   pdfPath: null,
   notionPageId: null,
+  sponsorMatchScore: null,
+  sponsorMatchNames: null,
   jobType: null,
   salarySource: null,
   salaryInterval: null,

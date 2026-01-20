@@ -21,13 +21,13 @@ settingsRouter.get('/', async (_req: Request, res: Response) => {
 
     // Specific AI models
     const overrideModelScorer = await settingsRepo.getSetting('modelScorer');
-    const modelScorer = overrideModelScorer || model; 
+    const modelScorer = overrideModelScorer || model;
 
     const overrideModelTailoring = await settingsRepo.getSetting('modelTailoring');
-    const modelTailoring = overrideModelTailoring || model; 
+    const modelTailoring = overrideModelTailoring || model;
 
     const overrideModelProjectSelection = await settingsRepo.getSetting('modelProjectSelection');
-    const modelProjectSelection = overrideModelProjectSelection || model; 
+    const modelProjectSelection = overrideModelProjectSelection || model;
 
     const overridePipelineWebhookUrl = await settingsRepo.getSetting('pipelineWebhookUrl');
     const defaultPipelineWebhookUrl = process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || '';
@@ -89,6 +89,14 @@ settingsRouter.get('/', async (_req: Request, res: Response) => {
       : null;
     const jobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescription ?? defaultJobspyLinkedinFetchDescription;
 
+    // Show Sponsor Info setting (on by default)
+    const overrideShowSponsorInfoRaw = await settingsRepo.getSetting('showSponsorInfo');
+    const defaultShowSponsorInfo = true;
+    const overrideShowSponsorInfo = overrideShowSponsorInfoRaw
+      ? overrideShowSponsorInfoRaw === 'true' || overrideShowSponsorInfoRaw === '1'
+      : null;
+    const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
+
     res.json({
       success: true,
       data: {
@@ -135,6 +143,9 @@ settingsRouter.get('/', async (_req: Request, res: Response) => {
         jobspyLinkedinFetchDescription,
         defaultJobspyLinkedinFetchDescription,
         overrideJobspyLinkedinFetchDescription,
+        showSponsorInfo,
+        defaultShowSponsorInfo,
+        overrideShowSponsorInfo,
       },
     });
   } catch (error) {
@@ -164,6 +175,7 @@ const updateSettingsSchema = z.object({
   jobspyCountryIndeed: z.string().trim().min(1).max(100).nullable().optional(),
   jobspySites: z.array(z.string().trim().min(1).max(50)).max(10).nullable().optional(),
   jobspyLinkedinFetchDescription: z.boolean().nullable().optional(),
+  showSponsorInfo: z.boolean().nullable().optional(),
 });
 
 /**
@@ -263,15 +275,20 @@ settingsRouter.patch('/', async (req: Request, res: Response) => {
       await settingsRepo.setSetting('jobspyLinkedinFetchDescription', value !== null ? (value ? '1' : '0') : null);
     }
 
+    if ('showSponsorInfo' in input) {
+      const value = input.showSponsorInfo ?? null;
+      await settingsRepo.setSetting('showSponsorInfo', value !== null ? (value ? '1' : '0') : null);
+    }
+
     const overrideModel = await settingsRepo.getSetting('model');
     const defaultModel = process.env.MODEL || 'openai/gpt-4o-mini';
     const model = overrideModel || defaultModel;
 
     const overrideModelScorer = await settingsRepo.getSetting('modelScorer');
-    const modelScorer = overrideModelScorer || model; 
+    const modelScorer = overrideModelScorer || model;
 
     const overrideModelTailoring = await settingsRepo.getSetting('modelTailoring');
-    const modelTailoring = overrideModelTailoring || model; 
+    const modelTailoring = overrideModelTailoring || model;
 
     const overrideModelProjectSelection = await settingsRepo.getSetting('modelProjectSelection');
     const modelProjectSelection = overrideModelProjectSelection || model;
@@ -337,6 +354,14 @@ settingsRouter.patch('/', async (req: Request, res: Response) => {
       : null;
     const jobspyLinkedinFetchDescription = overrideJobspyLinkedinFetchDescription ?? defaultJobspyLinkedinFetchDescription;
 
+    // Show Sponsor Info setting
+    const overrideShowSponsorInfoRaw = await settingsRepo.getSetting('showSponsorInfo');
+    const defaultShowSponsorInfo = true;
+    const overrideShowSponsorInfo = overrideShowSponsorInfoRaw
+      ? overrideShowSponsorInfoRaw === 'true' || overrideShowSponsorInfoRaw === '1'
+      : null;
+    const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
+
     res.json({
       success: true,
       data: {
@@ -383,6 +408,9 @@ settingsRouter.patch('/', async (req: Request, res: Response) => {
         jobspyLinkedinFetchDescription,
         defaultJobspyLinkedinFetchDescription,
         overrideJobspyLinkedinFetchDescription,
+        showSponsorInfo,
+        defaultShowSponsorInfo,
+        overrideShowSponsorInfo,
       },
     });
   } catch (error) {

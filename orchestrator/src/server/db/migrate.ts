@@ -132,6 +132,10 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN tailored_headline TEXT`,
   `ALTER TABLE jobs ADD COLUMN tailored_skills TEXT`,
 
+  // Add sponsor match columns for visa sponsor matching feature
+  `ALTER TABLE jobs ADD COLUMN sponsor_match_score REAL`,
+  `ALTER TABLE jobs ADD COLUMN sponsor_match_names TEXT`,
+
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,

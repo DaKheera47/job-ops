@@ -38,6 +38,8 @@ const mockJob: Job = {
     selectedProjectIds: null,
     pdfPath: null,
     notionPageId: null,
+    sponsorMatchScore: null,
+    sponsorMatchNames: null,
     jobType: null,
     salarySource: null,
     salaryInterval: null,
@@ -103,15 +105,15 @@ describe('AI Service Resilience', () => {
 
         it('should fallback to mock scoring if API Key is missing', async () => {
             delete process.env.OPENROUTER_API_KEY;
-            
+
             // Should NOT call fetch
             const result = await scoreJobSuitability(mockJob, mockProfile);
-            
+
             expect(global.fetch).not.toHaveBeenCalled();
             // Mock score logic gives 50 + points for keywords. 
             // 'TypeScript' and 'React' are in JD (5+5) -> 60?
             // "Senior" is bad keyword (-10)? -> 50?
-             // Let's just check it didn't crash and returned a number
+            // Let's just check it didn't crash and returned a number
             expect(typeof result.score).toBe('number');
             expect(result.reason).toContain('keyword matching');
         });
@@ -124,7 +126,7 @@ describe('AI Service Resilience', () => {
             } as any);
 
             // Spy on console.error to keep test output clean
-            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
             const result = await scoreJobSuitability(mockJob, mockProfile);
 
@@ -134,22 +136,22 @@ describe('AI Service Resilience', () => {
         });
 
         it('should handle Malformed/Invalid JSON in API response', async () => {
-             const mockResponse = {
+            const mockResponse = {
                 ok: true,
                 json: async () => ({
                     choices: [{ message: { content: 'This is not JSON at all, just text.' } }]
                 })
             };
             vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
-            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
             const result = await scoreJobSuitability(mockJob, mockProfile);
-            
+
             expect(result.reason).toContain('keyword matching'); // Fell back
         });
 
         it('should extract JSON from markdown code blocks', async () => {
-             const mockResponse = {
+            const mockResponse = {
                 ok: true,
                 json: async () => ({
                     choices: [{ message: { content: 'Here is the score: ```json\n{ "score": 90, "reason": "Good" }\n```' } }]
@@ -169,7 +171,7 @@ describe('AI Service Resilience', () => {
         ];
 
         it('should return projects selected by AI', async () => {
-             const mockResponse = {
+            const mockResponse = {
                 ok: true,
                 json: async () => ({
                     choices: [{ message: { content: JSON.stringify({ selectedProjectIds: ['p1'] }) } }]
@@ -187,9 +189,9 @@ describe('AI Service Resilience', () => {
         });
 
         it('should fallback if API fails', async () => {
-             vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
+            vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
 
-             const result = await pickProjectIdsForJob({
+            const result = await pickProjectIdsForJob({
                 jobDescription: 'React dev', // Should match p1 due to keyword 'React'
                 eligibleProjects: mockProjects,
                 desiredCount: 1
@@ -218,18 +220,18 @@ describe('AI Service Resilience', () => {
             expect(result).toEqual(['p2']);
         });
 
-         it('should validate returned IDs exist in eligible list', async () => {
+        it('should validate returned IDs exist in eligible list', async () => {
             // AI returns an ID that doesn't exist ('p999')
             const mockResponse = {
                 ok: true,
                 json: async () => ({
-                     choices: [{ message: { content: JSON.stringify({ selectedProjectIds: ['p999', 'p1'] }) } }]
+                    choices: [{ message: { content: JSON.stringify({ selectedProjectIds: ['p999', 'p1'] }) } }]
                 })
             };
             vi.mocked(global.fetch).mockResolvedValue(mockResponse as any);
 
             const result = await pickProjectIdsForJob({
-                jobDescription: 'stuff', 
+                jobDescription: 'stuff',
                 eligibleProjects: mockProjects,
                 desiredCount: 2
             });

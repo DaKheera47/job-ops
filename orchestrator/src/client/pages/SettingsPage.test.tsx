@@ -92,6 +92,9 @@ const baseSettings: AppSettings = {
   jobspyLinkedinFetchDescription: true,
   defaultJobspyLinkedinFetchDescription: true,
   overrideJobspyLinkedinFetchDescription: null,
+  showSponsorInfo: true,
+  defaultShowSponsorInfo: true,
+  overrideShowSponsorInfo: null,
 }
 
 const renderPage = () => {

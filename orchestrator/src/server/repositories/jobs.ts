@@ -16,7 +16,7 @@ export async function getAllJobs(statuses?: JobStatus[]): Promise<Job[]> {
   const query = statuses && statuses.length > 0
     ? db.select().from(jobs).where(inArray(jobs.status, statuses)).orderBy(desc(jobs.discoveredAt))
     : db.select().from(jobs).orderBy(desc(jobs.discoveredAt));
-  
+
   const rows = await query;
   return rows.map(mapRowToJob);
 }
@@ -54,10 +54,10 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
   if (existing) {
     return existing;
   }
-  
+
   const id = randomUUID();
   const now = new Date().toISOString();
-  
+
   await db.insert(jobs).values({
     id,
     source: input.source,
@@ -105,7 +105,7 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
     createdAt: now,
     updatedAt: now,
   });
-  
+
   return (await getJobById(id))!;
 }
 
@@ -114,7 +114,7 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
  */
 export async function updateJob(id: string, input: UpdateJobInput): Promise<Job | null> {
   const now = new Date().toISOString();
-  
+
   await db.update(jobs)
     .set({
       ...input,
@@ -123,7 +123,7 @@ export async function updateJob(id: string, input: UpdateJobInput): Promise<Job 
       ...(input.status === 'applied' && !input.appliedAt ? { appliedAt: now } : {}),
     })
     .where(eq(jobs.id, id));
-  
+
   return getJobById(id);
 }
 
@@ -133,18 +133,18 @@ export async function updateJob(id: string, input: UpdateJobInput): Promise<Job 
 export async function bulkCreateJobs(inputs: CreateJobInput[]): Promise<{ created: number; skipped: number }> {
   let created = 0;
   let skipped = 0;
-  
+
   for (const input of inputs) {
     const existing = await getJobByUrl(input.jobUrl);
     if (existing) {
       skipped++;
       continue;
     }
-    
+
     await createJob(input);
     created++;
   }
-  
+
   return { created, skipped };
 }
 
@@ -159,7 +159,7 @@ export async function getJobStats(): Promise<Record<JobStatus, number>> {
     })
     .from(jobs)
     .groupBy(jobs.status);
-  
+
   const stats: Record<JobStatus, number> = {
     discovered: 0,
     processing: 0,
@@ -168,11 +168,11 @@ export async function getJobStats(): Promise<Record<JobStatus, number>> {
     skipped: 0,
     expired: 0,
   };
-  
+
   for (const row of result) {
     stats[row.status as JobStatus] = row.count;
   }
-  
+
   return stats;
 }
 
@@ -191,7 +191,7 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
     )
     .orderBy(desc(jobs.discoveredAt))
     .limit(limit);
-  
+
   return rows.map(mapRowToJob);
 }
 
@@ -246,6 +246,8 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     selectedProjectIds: row.selectedProjectIds ?? null,
     pdfPath: row.pdfPath,
     notionPageId: row.notionPageId,
+    sponsorMatchScore: row.sponsorMatchScore ?? null,
+    sponsorMatchNames: row.sponsorMatchNames ?? null,
     jobType: row.jobType ?? null,
     salarySource: row.salarySource ?? null,
     salaryInterval: row.salaryInterval ?? null,

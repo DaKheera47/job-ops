@@ -22,6 +22,7 @@ import { extractProjectsFromProfile, resolveResumeProjectsSettings } from '../se
 import * as jobsRepo from '../repositories/jobs.js';
 import * as pipelineRepo from '../repositories/pipeline.js';
 import * as settingsRepo from '../repositories/settings.js';
+import * as visaSponsors from '../services/visa-sponsors/index.js';
 import { progressHelpers, resetProgress, updateProgress } from './progress.js';
 import type { CreateJobInput, Job, JobSource, PipelineConfig } from '../../shared/types.js';
 import { getDataDir } from '../config/dataDir.js';
@@ -293,10 +294,35 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         suitabilityReason: reason,
       });
 
-      // Update score in database
+      // Calculate sponsor match score using fuzzy search
+      let sponsorMatchScore: number | undefined;
+      let sponsorMatchNames: string | undefined;
+
+      if (job.employer) {
+        const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+          limit: 10,
+          minScore: 50,
+        });
+
+        if (sponsorResults.length > 0) {
+          const topScore = sponsorResults[0].score;
+          // Get all 100% matches, or just the top match
+          const perfectMatches = sponsorResults.filter(r => r.score === 100);
+          const matchesToReport = perfectMatches.length >= 2
+            ? perfectMatches.slice(0, 2)
+            : [sponsorResults[0]];
+
+          sponsorMatchScore = topScore;
+          sponsorMatchNames = JSON.stringify(matchesToReport.map(r => r.sponsor.organisationName));
+        }
+      }
+
+      // Update score and sponsor match in database
       await jobsRepo.updateJob(job.id, {
         suitabilityScore: score,
         suitabilityReason: reason,
+        ...(sponsorMatchScore !== undefined && { sponsorMatchScore }),
+        ...(sponsorMatchNames !== undefined && { sponsorMatchNames }),
       });
     }
 
