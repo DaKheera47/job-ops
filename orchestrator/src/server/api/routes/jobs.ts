@@ -160,7 +160,7 @@ jobsRouter.post('/:id/check-sponsor', async (req: Request, res: Response) => {
       minScore: 50,
     });
 
-    let sponsorMatchScore: number | null = null;
+    let sponsorMatchScore = 0;
     let sponsorMatchNames: string | null = null;
 
     if (sponsorResults.length > 0) {
@@ -177,7 +177,7 @@ jobsRouter.post('/:id/check-sponsor', async (req: Request, res: Response) => {
 
     // Update job with sponsor match info
     const updatedJob = await jobsRepo.updateJob(job.id, {
-      sponsorMatchScore: sponsorMatchScore ?? undefined,
+      sponsorMatchScore: sponsorMatchScore,
       sponsorMatchNames: sponsorMatchNames ?? undefined,
     });
 

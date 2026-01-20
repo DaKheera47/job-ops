@@ -103,31 +103,15 @@ const SponsorBadge: React.FC<SponsorBadgeProps> = ({ score, names, onCheck }) =>
     );
   }
 
-  // If no score (and no callback), show nothing
-  if (score == null || score < 50) {
+  // If no score (and no callback), or error in score, show nothing
+  if (score == null) {
     return null;
   }
 
-  // Color tokens based on score
-  const getScoreTokens = (s: number) => {
-    if (s >= 90) return {
-      badge: "border-emerald-500/40 bg-emerald-500/15 text-emerald-300",
-      label: "Visa Sponsor"
-    };
-    if (s >= 70) return {
-      badge: "border-amber-500/40 bg-amber-500/15 text-amber-300",
-      label: "Likely Sponsor"
-    };
-    return {
-      badge: "border-orange-500/40 bg-orange-500/15 text-orange-300",
-      label: "Possible Sponsor"
-    };
-  };
-
-  const tokens = getScoreTokens(score);
-  const tooltipContent = parsedNames.length > 0
-    ? `${score}% match: ${parsedNames.join(", ")}`
-    : `${score}% match with visa sponsor list`;
+  const isFound = score >= 95;
+  const tooltipContent = isFound
+    ? `Confirmed Visa Sponsor (${score}% match: ${parsedNames.join(", ")})`
+    : `Sponsor Not Found (${score}% match${parsedNames.length > 0 ? `: ${parsedNames.join(", ")}` : ""})`;
 
   return (
     <TooltipProvider>
@@ -135,16 +119,18 @@ const SponsorBadge: React.FC<SponsorBadgeProps> = ({ score, names, onCheck }) =>
         <TooltipTrigger asChild>
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide cursor-help",
-              tokens.badge
+              "inline-flex items-center gap-1 rounded-full border px-1 py-1 text-[9px] font-semibold uppercase tracking-wide cursor-help transition-colors",
+              isFound
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                : "border-slate-500/40 bg-slate-500/15 text-slate-400"
             )}
           >
-            <Shield className="h-2.5 w-2.5" />
-            {score}%
+            <Shield className={cn("h-3 w-3", isFound ? "fill-emerald-400/20" : "")} />
           </span>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
-          <p className="text-xs">{tooltipContent}</p>
+          <p className="text-xs font-medium">{isFound ? "Found" : "Not Found"}</p>
+          <p className="text-[10px] opacity-80 mt-1">{tooltipContent}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

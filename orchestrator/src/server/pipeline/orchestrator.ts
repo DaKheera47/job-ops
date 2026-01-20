@@ -295,7 +295,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       });
 
       // Calculate sponsor match score using fuzzy search
-      let sponsorMatchScore: number | undefined;
+      let sponsorMatchScore = 0;
       let sponsorMatchNames: string | undefined;
 
       if (job.employer) {
