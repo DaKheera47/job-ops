@@ -85,7 +85,7 @@ Keys:
 - starting
 
 JOB DESCRIPTION:
-${jd.slice(0, 8000)}${jd.length > 8000 ? '... (truncated)' : ''}
+${jd}
 
 OUTPUT FORMAT (JSON ONLY):
 {

@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
-import { cn } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import {
   PageHeader,
   StatusIndicator,
@@ -42,26 +42,6 @@ import type {
   VisaSponsorSearchResult,
   VisaSponsorStatusResponse,
 } from "../../shared/types";
-
-const formatDateTime = (dateStr?: string | null) => {
-  if (!dateStr) return "Never";
-  try {
-    const parsed = new Date(dateStr);
-    if (Number.isNaN(parsed.getTime())) return dateStr;
-    const date = parsed.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-    const time = parsed.toLocaleTimeString("en-GB", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    return `${date} ${time}`;
-  } catch {
-    return dateStr;
-  }
-};
 
 const getScoreTokens = (score: number) => {
   if (score >= 90)
@@ -329,7 +309,7 @@ export const VisaSponsorsPage: React.FC = () => {
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatDateTime(status.lastUpdated)}
+                  {formatDateTime(status.lastUpdated) || "Never"}
                 </span>
               </div>
             )}

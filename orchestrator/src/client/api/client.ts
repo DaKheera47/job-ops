@@ -21,7 +21,7 @@ import type {
   VisaSponsorStatusResponse,
   VisaSponsor,
 } from '../../shared/types';
-import { trackEvent } from '../lib/analytics';
+import { trackEvent } from "@/lib/analytics";
 
 const API_BASE = '/api';
 

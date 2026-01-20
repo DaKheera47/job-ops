@@ -3,7 +3,7 @@
  */
 
 import React, { useRef } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -16,11 +16,20 @@ export const App: React.FC = () => {
   const location = useLocation();
   const nodeRef = useRef<HTMLDivElement>(null);
 
+  // Determine a stable key for transitions to avoid unnecessary unmounts when switching sub-tabs
+  const pageKey = React.useMemo(() => {
+    const firstSegment = location.pathname.split("/")[1] || "ready";
+    if (["ready", "discovered", "applied", "all"].includes(firstSegment)) {
+      return "orchestrator";
+    }
+    return firstSegment;
+  }, [location.pathname]);
+
   return (
     <>
       <SwitchTransition mode="out-in">
         <CSSTransition
-          key={location.pathname}
+          key={pageKey}
           nodeRef={nodeRef}
           timeout={100}
           classNames="page"
@@ -28,10 +37,12 @@ export const App: React.FC = () => {
         >
           <div ref={nodeRef}>
             <Routes location={location}>
-              <Route path="/" element={<OrchestratorPage />} />
+              <Route path="/" element={<Navigate to="/ready" replace />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
               <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
+              <Route path="/:tab" element={<OrchestratorPage />} />
+              <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
             </Routes>
           </div>
         </CSSTransition>

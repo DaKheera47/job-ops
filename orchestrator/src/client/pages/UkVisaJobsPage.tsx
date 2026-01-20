@@ -37,12 +37,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
-import { formatDate, formatDateTime } from "../lib/dateUtils";
+import { cn, formatDate, formatDateTime, stripHtml } from "@/lib/utils";
 import * as api from "../api";
 import type { CreateJobInput } from "../../shared/types";
-
-const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 const clampText = (value: string, max = 160) => (value.length > max ? `${value.slice(0, max).trim()}...` : value);
 
@@ -347,7 +344,7 @@ export const UkVisaJobsPage: React.FC = () => {
                       }}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                        location.pathname === to
+                        location.pathname === to || (to === "/" && ["/ready", "/discovered", "/applied", "/all"].includes(location.pathname))
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground"
                       )}

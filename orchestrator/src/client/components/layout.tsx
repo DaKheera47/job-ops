@@ -81,7 +81,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     onClick={() => handleNavClick(to)}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                      location.pathname === to
+                      location.pathname === to || (to === "/" && ["/ready", "/discovered", "/applied", "/all"].includes(location.pathname))
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground"
                     )}

@@ -33,6 +33,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { sourceLabel } from "@/lib/utils";
 import type { JobSource } from "../../shared/types";
 
 interface HeaderProps {
@@ -54,14 +55,6 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = React.useState(false);
-
-  const sourceLabel: Record<JobSource, string> = {
-    gradcracker: "Gradcracker",
-    indeed: "Indeed",
-    linkedin: "LinkedIn",
-    ukvisajobs: "UK Visa Jobs",
-    manual: "Manual",
-  };
 
   const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
 
