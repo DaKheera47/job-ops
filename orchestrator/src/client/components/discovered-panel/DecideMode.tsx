@@ -4,7 +4,7 @@ import { ExternalLink, Loader2, Sparkles, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
-import { FitAssessment, JobHeader } from "..";
+import { FitAssessment, JobHeader, TailoredSummary } from "..";
 import type { Job } from "../../../shared/types";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { getPlainDescription } from "./helpers";
@@ -65,6 +65,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
 
       <div className='flex-1 py-6 space-y-6 overflow-y-auto'>
         <FitAssessment job={job} />
+        <TailoredSummary job={job} />
 
         <CollapsibleSection
           isOpen={showDescription}

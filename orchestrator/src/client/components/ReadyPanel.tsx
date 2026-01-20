@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/accordion";
 import { cn, copyTextToClipboard, formatJobForWebhook } from "@/lib/utils";
 import * as api from "../api";
-import { FitAssessment, JobHeader } from ".";
+import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 
 interface ReadyPanelProps {
@@ -94,8 +94,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       .map(id => catalog.find(p => p.id === id)?.name)
       .filter(Boolean) as string[];
   }, [catalog, selectedProjectIds]);
-
-  const tailoredSummary = job?.tailoredSummary || null;
 
   // Handle mark as applied with undo capability
   const handleMarkApplied = useCallback(async () => {
@@ -277,18 +275,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         {/* Job identity - confirm this is the right role */}
         <div className="space-y-3">
           <FitAssessment job={job} />
-
-          {/* Tailored summary snippet - shows what's in the PDF */}
-          {tailoredSummary && (
-            <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
-              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground mb-1.5">
-                Tailored Summary
-              </div>
-              <p className="text-xs text-foreground/80 leading-relaxed italic whitespace-pre-wrap">
-                "{tailoredSummary}"
-              </p>
-            </div>
-          )}
+          <TailoredSummary job={job} />
 
           {/* Project selection - expandable accordion */}
           <Accordion type="single" collapsible className="w-full">

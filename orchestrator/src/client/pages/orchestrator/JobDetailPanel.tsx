@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, copyTextToClipboard, formatJobForWebhook, safeFilenamePart, stripHtml } from "@/lib/utils";
 
-import { DiscoveredPanel, JobHeader } from "../../components";
+import { DiscoveredPanel, FitAssessment, JobHeader, TailoredSummary } from "../../components";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
 import * as api from "../../api";
@@ -401,11 +401,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </TabsList>
 
         <TabsContent value="overview" className="space-y-3 pt-2">
-          {selectedJob.suitabilityReason && (
-            <div className="rounded border border-border/30 bg-muted/10 px-3 py-2 text-xs text-muted-foreground italic">
-              "{selectedJob.suitabilityReason}"
-            </div>
-          )}
+          <FitAssessment job={selectedJob} />
+          <TailoredSummary job={selectedJob} />
 
           <div className="grid gap-2 text-xs sm:grid-cols-2">
             <div>
