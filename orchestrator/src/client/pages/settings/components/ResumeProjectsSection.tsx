@@ -58,7 +58,7 @@ export const ResumeProjectsSection: React.FC<ResumeProjectsSectionProps> = ({
             />
             {errors.resumeProjects?.maxProjects && <p className="text-xs text-destructive">{errors.resumeProjects.maxProjects.message}</p>}
             <div className="text-xs text-muted-foreground">
-              Locked projects always count towards this cap. Locked: {lockedCount} · Total projects: {maxProjectsTotal}
+              AI pool (max projects AI can use): {maxProjectsTotal}. Locked projects always count towards this cap. Locked: {lockedCount} · Total profile projects: {profileProjects.length}
             </div>
           </div>
 
