@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import type { AppSettings, JobStatus } from "@shared/types"
 import { updateSettingsSchema, type UpdateSettingsInput } from "@shared/settings-schema"
 import * as api from "@client/api"
+import { arraysEqual } from "@/lib/utils"
 import { resumeProjectsEqual } from "@client/pages/settings/utils"
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection"
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection"
@@ -82,6 +83,99 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   showSponsorInfo: data.overrideShowSponsorInfo,
 })
 
+const normalizeString = (value: string | null | undefined) => {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+const isSameStringList = (left: string[] | null | undefined, right: string[] | null | undefined) => {
+  if (!left && !right) return true
+  if (!left || !right) return false
+  return arraysEqual(left, right)
+}
+
+const isSameSortedStringList = (left: string[] | null | undefined, right: string[] | null | undefined) => {
+  if (!left && !right) return true
+  if (!left || !right) return false
+  return arraysEqual(left.slice().sort(), right.slice().sort())
+}
+
+const nullIfSame = <T,>(value: T | null | undefined, defaultValue: T) =>
+  value === defaultValue ? null : value ?? null
+
+const nullIfSameList = (value: string[] | null | undefined, defaultValue: string[]) =>
+  isSameStringList(value, defaultValue) ? null : value ?? null
+
+const nullIfSameSortedList = (value: string[] | null | undefined, defaultValue: string[]) =>
+  isSameSortedStringList(value, defaultValue) ? null : value ?? null
+
+const getDerivedSettings = (settings: AppSettings | null) => {
+  const profileProjects = settings?.profileProjects ?? []
+
+  return {
+    model: {
+      effective: settings?.model ?? "",
+      default: settings?.defaultModel ?? "",
+      scorer: settings?.modelScorer ?? "",
+      tailoring: settings?.modelTailoring ?? "",
+      projectSelection: settings?.modelProjectSelection ?? "",
+    },
+    pipelineWebhook: {
+      effective: settings?.pipelineWebhookUrl ?? "",
+      default: settings?.defaultPipelineWebhookUrl ?? "",
+    },
+    jobCompleteWebhook: {
+      effective: settings?.jobCompleteWebhookUrl ?? "",
+      default: settings?.defaultJobCompleteWebhookUrl ?? "",
+    },
+    ukvisajobs: {
+      effectiveMaxJobs: settings?.ukvisajobsMaxJobs ?? 50,
+      defaultMaxJobs: settings?.defaultUkvisajobsMaxJobs ?? 50,
+    },
+    gradcracker: {
+      effectiveMaxJobsPerTerm: settings?.gradcrackerMaxJobsPerTerm ?? 50,
+      defaultMaxJobsPerTerm: settings?.defaultGradcrackerMaxJobsPerTerm ?? 50,
+    },
+    searchTerms: {
+      effective: settings?.searchTerms ?? [],
+      default: settings?.defaultSearchTerms ?? [],
+    },
+    jobspy: {
+      location: {
+        effective: settings?.jobspyLocation ?? "",
+        default: settings?.defaultJobspyLocation ?? "",
+      },
+      resultsWanted: {
+        effective: settings?.jobspyResultsWanted ?? 200,
+        default: settings?.defaultJobspyResultsWanted ?? 200,
+      },
+      hoursOld: {
+        effective: settings?.jobspyHoursOld ?? 72,
+        default: settings?.defaultJobspyHoursOld ?? 72,
+      },
+      countryIndeed: {
+        effective: settings?.jobspyCountryIndeed ?? "",
+        default: settings?.defaultJobspyCountryIndeed ?? "",
+      },
+      sites: {
+        effective: settings?.jobspySites ?? ["indeed", "linkedin"],
+        default: settings?.defaultJobspySites ?? ["indeed", "linkedin"],
+      },
+      linkedinFetchDescription: {
+        effective: settings?.jobspyLinkedinFetchDescription ?? true,
+        default: settings?.defaultJobspyLinkedinFetchDescription ?? true,
+      },
+    },
+    display: {
+      effectiveShowSponsorInfo: settings?.showSponsorInfo ?? true,
+      defaultShowSponsorInfo: settings?.defaultShowSponsorInfo ?? true,
+    },
+    defaultResumeProjects: settings?.defaultResumeProjects ?? null,
+    profileProjects,
+    maxProjectsTotal: profileProjects.length,
+  }
+}
+
 export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -120,37 +214,20 @@ export const SettingsPage: React.FC = () => {
     }
   }, [reset])
 
-  const effectiveModel = settings?.model ?? ""
-  const defaultModel = settings?.defaultModel ?? ""
-  const effectiveModelScorer = settings?.modelScorer ?? ""
-  const effectiveModelTailoring = settings?.modelTailoring ?? ""
-  const effectiveModelProjectSelection = settings?.modelProjectSelection ?? ""
-  const effectivePipelineWebhookUrl = settings?.pipelineWebhookUrl ?? ""
-  const defaultPipelineWebhookUrl = settings?.defaultPipelineWebhookUrl ?? ""
-  const effectiveJobCompleteWebhookUrl = settings?.jobCompleteWebhookUrl ?? ""
-  const defaultJobCompleteWebhookUrl = settings?.defaultJobCompleteWebhookUrl ?? ""
-  const effectiveUkvisajobsMaxJobs = settings?.ukvisajobsMaxJobs ?? 50
-  const defaultUkvisajobsMaxJobs = settings?.defaultUkvisajobsMaxJobs ?? 50
-  const effectiveGradcrackerMaxJobsPerTerm = settings?.gradcrackerMaxJobsPerTerm ?? 50
-  const defaultGradcrackerMaxJobsPerTerm = settings?.defaultGradcrackerMaxJobsPerTerm ?? 50
-  const effectiveSearchTerms = settings?.searchTerms ?? []
-  const defaultSearchTerms = settings?.defaultSearchTerms ?? []
-  const effectiveJobspyLocation = settings?.jobspyLocation ?? ""
-  const defaultJobspyLocation = settings?.defaultJobspyLocation ?? ""
-  const effectiveJobspyResultsWanted = settings?.jobspyResultsWanted ?? 200
-  const defaultJobspyResultsWanted = settings?.defaultJobspyResultsWanted ?? 200
-  const effectiveJobspyHoursOld = settings?.jobspyHoursOld ?? 72
-  const defaultJobspyHoursOld = settings?.defaultJobspyHoursOld ?? 72
-  const effectiveJobspyCountryIndeed = settings?.jobspyCountryIndeed ?? ""
-  const defaultJobspyCountryIndeed = settings?.defaultJobspyCountryIndeed ?? ""
-  const effectiveJobspySites = settings?.jobspySites ?? ["indeed", "linkedin"]
-  const defaultJobspySites = settings?.defaultJobspySites ?? ["indeed", "linkedin"]
-  const effectiveJobspyLinkedinFetchDescription = settings?.jobspyLinkedinFetchDescription ?? true
-  const defaultJobspyLinkedinFetchDescription = settings?.defaultJobspyLinkedinFetchDescription ?? true
-  const effectiveShowSponsorInfo = settings?.showSponsorInfo ?? true
-  const defaultShowSponsorInfo = settings?.defaultShowSponsorInfo ?? true
-  const profileProjects = settings?.profileProjects ?? []
-  const maxProjectsTotal = profileProjects.length
+  const derived = getDerivedSettings(settings)
+  const {
+    model,
+    pipelineWebhook,
+    jobCompleteWebhook,
+    ukvisajobs,
+    gradcracker,
+    searchTerms,
+    jobspy,
+    display,
+    defaultResumeProjects,
+    profileProjects,
+    maxProjectsTotal,
+  } = derived
 
   const watchedValues = watch()
   const lockedCount = watchedValues.resumeProjects?.lockedProjectIds.length ?? 0
@@ -164,28 +241,31 @@ export const SettingsPage: React.FC = () => {
       
       // Prepare payload: nullify if equal to default
       const resumeProjectsData = data.resumeProjects
-      const resumeProjectsOverride = (resumeProjectsData && settings.defaultResumeProjects && resumeProjectsEqual(resumeProjectsData, settings.defaultResumeProjects))
+      const resumeProjectsOverride = (resumeProjectsData && defaultResumeProjects && resumeProjectsEqual(resumeProjectsData, defaultResumeProjects))
         ? null
         : resumeProjectsData
 
       const payload: UpdateSettingsInput = {
-        model: data.model?.trim() || null,
-        modelScorer: data.modelScorer?.trim() || null,
-        modelTailoring: data.modelTailoring?.trim() || null,
-        modelProjectSelection: data.modelProjectSelection?.trim() || null,
-        pipelineWebhookUrl: data.pipelineWebhookUrl?.trim() || null,
-        jobCompleteWebhookUrl: data.jobCompleteWebhookUrl?.trim() || null,
+        model: normalizeString(data.model),
+        modelScorer: normalizeString(data.modelScorer),
+        modelTailoring: normalizeString(data.modelTailoring),
+        modelProjectSelection: normalizeString(data.modelProjectSelection),
+        pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
+        jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
-        ukvisajobsMaxJobs: data.ukvisajobsMaxJobs === defaultUkvisajobsMaxJobs ? null : data.ukvisajobsMaxJobs,
-        gradcrackerMaxJobsPerTerm: data.gradcrackerMaxJobsPerTerm === defaultGradcrackerMaxJobsPerTerm ? null : data.gradcrackerMaxJobsPerTerm,
-        searchTerms: JSON.stringify(data.searchTerms) === JSON.stringify(defaultSearchTerms) ? null : data.searchTerms,
-        jobspyLocation: data.jobspyLocation === defaultJobspyLocation ? null : data.jobspyLocation,
-        jobspyResultsWanted: data.jobspyResultsWanted === defaultJobspyResultsWanted ? null : data.jobspyResultsWanted,
-        jobspyHoursOld: data.jobspyHoursOld === defaultJobspyHoursOld ? null : data.jobspyHoursOld,
-        jobspyCountryIndeed: data.jobspyCountryIndeed === defaultJobspyCountryIndeed ? null : data.jobspyCountryIndeed,
-        jobspySites: JSON.stringify((data.jobspySites ?? []).slice().sort()) === JSON.stringify((defaultJobspySites ?? []).slice().sort()) ? null : data.jobspySites,
-        jobspyLinkedinFetchDescription: data.jobspyLinkedinFetchDescription === defaultJobspyLinkedinFetchDescription ? null : data.jobspyLinkedinFetchDescription,
-        showSponsorInfo: data.showSponsorInfo === defaultShowSponsorInfo ? null : data.showSponsorInfo,
+        ukvisajobsMaxJobs: nullIfSame(data.ukvisajobsMaxJobs, ukvisajobs.defaultMaxJobs),
+        gradcrackerMaxJobsPerTerm: nullIfSame(data.gradcrackerMaxJobsPerTerm, gradcracker.defaultMaxJobsPerTerm),
+        searchTerms: nullIfSameList(data.searchTerms, searchTerms.default),
+        jobspyLocation: nullIfSame(data.jobspyLocation, jobspy.location.default),
+        jobspyResultsWanted: nullIfSame(data.jobspyResultsWanted, jobspy.resultsWanted.default),
+        jobspyHoursOld: nullIfSame(data.jobspyHoursOld, jobspy.hoursOld.default),
+        jobspyCountryIndeed: nullIfSame(data.jobspyCountryIndeed, jobspy.countryIndeed.default),
+        jobspySites: nullIfSameSortedList(data.jobspySites, jobspy.sites.default),
+        jobspyLinkedinFetchDescription: nullIfSame(
+          data.jobspyLinkedinFetchDescription,
+          jobspy.linkedinFetchDescription.default
+        ),
+        showSponsorInfo: nullIfSame(data.showSponsorInfo, display.defaultShowSponsorInfo),
       }
 
       const updated = await api.updateSettings(payload)
@@ -281,57 +361,57 @@ export const SettingsPage: React.FC = () => {
       <main className="container mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12">
         <Accordion type="multiple" className="w-full space-y-4">
           <ModelSettingsSection
-            effectiveModel={effectiveModel}
-            effectiveModelScorer={effectiveModelScorer}
-            effectiveModelTailoring={effectiveModelTailoring}
-            effectiveModelProjectSelection={effectiveModelProjectSelection}
-            defaultModel={defaultModel}
+            effectiveModel={model.effective}
+            effectiveModelScorer={model.scorer}
+            effectiveModelTailoring={model.tailoring}
+            effectiveModelProjectSelection={model.projectSelection}
+            defaultModel={model.default}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <PipelineWebhookSection
-            defaultPipelineWebhookUrl={defaultPipelineWebhookUrl}
-            effectivePipelineWebhookUrl={effectivePipelineWebhookUrl}
+            defaultPipelineWebhookUrl={pipelineWebhook.default}
+            effectivePipelineWebhookUrl={pipelineWebhook.effective}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <JobCompleteWebhookSection
-            defaultJobCompleteWebhookUrl={defaultJobCompleteWebhookUrl}
-            effectiveJobCompleteWebhookUrl={effectiveJobCompleteWebhookUrl}
+            defaultJobCompleteWebhookUrl={jobCompleteWebhook.default}
+            effectiveJobCompleteWebhookUrl={jobCompleteWebhook.effective}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <UkvisajobsSection
-            defaultUkvisajobsMaxJobs={defaultUkvisajobsMaxJobs}
-            effectiveUkvisajobsMaxJobs={effectiveUkvisajobsMaxJobs}
+            defaultUkvisajobsMaxJobs={ukvisajobs.defaultMaxJobs}
+            effectiveUkvisajobsMaxJobs={ukvisajobs.effectiveMaxJobs}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <GradcrackerSection
-            defaultGradcrackerMaxJobsPerTerm={defaultGradcrackerMaxJobsPerTerm}
-            effectiveGradcrackerMaxJobsPerTerm={effectiveGradcrackerMaxJobsPerTerm}
+            defaultGradcrackerMaxJobsPerTerm={gradcracker.defaultMaxJobsPerTerm}
+            effectiveGradcrackerMaxJobsPerTerm={gradcracker.effectiveMaxJobsPerTerm}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <SearchTermsSection
-            defaultSearchTerms={defaultSearchTerms}
-            effectiveSearchTerms={effectiveSearchTerms}
+            defaultSearchTerms={searchTerms.default}
+            effectiveSearchTerms={searchTerms.effective}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <JobspySection
-            defaultJobspySites={defaultJobspySites}
-            effectiveJobspySites={effectiveJobspySites}
-            defaultJobspyLocation={defaultJobspyLocation}
-            effectiveJobspyLocation={effectiveJobspyLocation}
-            defaultJobspyResultsWanted={defaultJobspyResultsWanted}
-            effectiveJobspyResultsWanted={effectiveJobspyResultsWanted}
-            defaultJobspyHoursOld={defaultJobspyHoursOld}
-            effectiveJobspyHoursOld={effectiveJobspyHoursOld}
-            defaultJobspyCountryIndeed={defaultJobspyCountryIndeed}
-            effectiveJobspyCountryIndeed={effectiveJobspyCountryIndeed}
-            defaultJobspyLinkedinFetchDescription={defaultJobspyLinkedinFetchDescription}
-            effectiveJobspyLinkedinFetchDescription={effectiveJobspyLinkedinFetchDescription}
+            defaultJobspySites={jobspy.sites.default}
+            effectiveJobspySites={jobspy.sites.effective}
+            defaultJobspyLocation={jobspy.location.default}
+            effectiveJobspyLocation={jobspy.location.effective}
+            defaultJobspyResultsWanted={jobspy.resultsWanted.default}
+            effectiveJobspyResultsWanted={jobspy.resultsWanted.effective}
+            defaultJobspyHoursOld={jobspy.hoursOld.default}
+            effectiveJobspyHoursOld={jobspy.hoursOld.effective}
+            defaultJobspyCountryIndeed={jobspy.countryIndeed.default}
+            effectiveJobspyCountryIndeed={jobspy.countryIndeed.effective}
+            defaultJobspyLinkedinFetchDescription={jobspy.linkedinFetchDescription.default}
+            effectiveJobspyLinkedinFetchDescription={jobspy.linkedinFetchDescription.effective}
             isLoading={isLoading}
             isSaving={isSaving}
           />
@@ -343,8 +423,8 @@ export const SettingsPage: React.FC = () => {
             isSaving={isSaving}
           />
           <DisplaySettingsSection
-            defaultShowSponsorInfo={defaultShowSponsorInfo}
-            effectiveShowSponsorInfo={effectiveShowSponsorInfo}
+            defaultShowSponsorInfo={display.defaultShowSponsorInfo}
+            effectiveShowSponsorInfo={display.effectiveShowSponsorInfo}
             isLoading={isLoading}
             isSaving={isSaving}
           />
