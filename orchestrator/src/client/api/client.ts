@@ -20,6 +20,7 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
   VisaSponsor,
+  ResumeProfile,
 } from '../../shared/types';
 import { trackEvent } from "@/lib/analytics";
 
@@ -172,6 +173,10 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function getProfileProjects(): Promise<ResumeProjectCatalogItem[]> {
   return fetchApi<ResumeProjectCatalogItem[]>('/profile/projects');
+}
+
+export async function getProfile(): Promise<ResumeProfile> {
+  return fetchApi<ResumeProfile>('/profile');
 }
 
 

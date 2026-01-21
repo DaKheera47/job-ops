@@ -3,10 +3,10 @@ import { z } from 'zod';
 import * as settingsRepo from '../../repositories/settings.js';
 import {
   extractProjectsFromProfile,
-  loadResumeProfile,
   normalizeResumeProjectsSettings,
   resolveResumeProjectsSettings,
 } from '../../services/resumeProjects.js';
+import { getProfile } from '../../services/profile.js';
 
 export const settingsRouter = Router();
 
@@ -37,7 +37,7 @@ settingsRouter.get('/', async (_req: Request, res: Response) => {
     const defaultJobCompleteWebhookUrl = process.env.JOB_COMPLETE_WEBHOOK_URL || '';
     const jobCompleteWebhookUrl = overrideJobCompleteWebhookUrl || defaultJobCompleteWebhookUrl;
 
-    const profile = await loadResumeProfile();
+    const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
     const overrideResumeProjectsRaw = await settingsRepo.getSetting('resumeProjects');
     const resumeProjectsData = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
@@ -216,7 +216,7 @@ settingsRouter.patch('/', async (req: Request, res: Response) => {
       if (resumeProjects === null) {
         await settingsRepo.setSetting('resumeProjects', null);
       } else {
-        const rawProfile = await loadResumeProfile();
+        const rawProfile = await getProfile();
 
         if (rawProfile === null || typeof rawProfile !== 'object' || Array.isArray(rawProfile)) {
           throw new Error('Invalid resume profile format: expected a non-null object');
@@ -301,7 +301,7 @@ settingsRouter.patch('/', async (req: Request, res: Response) => {
     const defaultJobCompleteWebhookUrl = process.env.JOB_COMPLETE_WEBHOOK_URL || '';
     const jobCompleteWebhookUrl = overrideJobCompleteWebhookUrl || defaultJobCompleteWebhookUrl;
 
-    const profile = await loadResumeProfile();
+    const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
     const overrideResumeProjectsRaw = await settingsRepo.getSetting('resumeProjects');
     const resumeProjectsData = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });

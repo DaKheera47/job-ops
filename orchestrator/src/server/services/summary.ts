@@ -3,13 +3,12 @@
  */
 
 import { getSetting } from '../repositories/settings.js';
-
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+import { callOpenRouter, type JsonSchemaDefinition } from './openrouter.js';
 
 export interface TailoredData {
   summary: string;
   headline: string;
-  skills: any[]; 
+  skills: Array<{ name: string; keywords: string[] }>;
 }
 
 export interface TailoringResult {
@@ -18,6 +17,46 @@ export interface TailoringResult {
   error?: string;
 }
 
+/** JSON schema for resume tailoring response */
+const TAILORING_SCHEMA: JsonSchemaDefinition = {
+  name: 'resume_tailoring',
+  schema: {
+    type: 'object',
+    properties: {
+      headline: {
+        type: 'string',
+        description: 'Job title headline matching the JD exactly',
+      },
+      summary: {
+        type: 'string',
+        description: 'Tailored resume summary paragraph',
+      },
+      skills: {
+        type: 'array',
+        description: 'Skills sections with keywords tailored to the job',
+        items: {
+          type: 'object',
+          properties: {
+            name: {
+              type: 'string',
+              description: 'Skill category name (e.g., Frontend, Backend)',
+            },
+            keywords: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'List of skills/technologies in this category',
+            },
+          },
+          required: ['name', 'keywords'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['headline', 'summary', 'skills'],
+    additionalProperties: false,
+  },
+};
+
 /**
  * Generate tailored resume content (summary, headline, skills) for a job.
  */
@@ -25,65 +64,42 @@ export async function generateTailoring(
   jobDescription: string,
   profile: Record<string, unknown>
 ): Promise<TailoringResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  
-  if (!apiKey) {
+  if (!process.env.OPENROUTER_API_KEY) {
     console.warn('⚠️ OPENROUTER_API_KEY not set, cannot generate tailoring');
     return { success: false, error: 'API key not configured' };
   }
-  
+
   const overrideModel = await getSetting('model');
   const overrideModelTailoring = await getSetting('modelTailoring');
   // Precedence: Tailoring-specific override > Global override > Env var > Default
   const model = overrideModelTailoring || overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
   const prompt = buildTailoringPrompt(profile, jobDescription);
-  
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'JobOpsOrchestrator',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`OpenRouter error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error('No content in response');
-    }
-    
-    const parsed = JSON.parse(content);
-    
-    // Basic validation
-    if (!parsed.summary || !parsed.headline || !Array.isArray(parsed.skills)) {
-      console.warn('⚠️ AI response missing required fields:', parsed);
-    }
 
-    return { 
-      success: true, 
-      data: {
-        summary: sanitizeText(parsed.summary || ''),
-        headline: sanitizeText(parsed.headline || ''),
-        skills: parsed.skills || []
-      } 
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return { success: false, error: message };
+  const result = await callOpenRouter<TailoredData>({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    jsonSchema: TAILORING_SCHEMA,
+  });
+
+  if (!result.success) {
+    return { success: false, error: result.error };
   }
+
+  const { summary, headline, skills } = result.data;
+
+  // Basic validation
+  if (!summary || !headline || !Array.isArray(skills)) {
+    console.warn('⚠️ AI response missing required fields:', result.data);
+  }
+
+  return {
+    success: true,
+    data: {
+      summary: sanitizeText(summary || ''),
+      headline: sanitizeText(headline || ''),
+      skills: skills || []
+    }
+  };
 }
 
 /**
@@ -112,14 +128,14 @@ function buildTailoringPrompt(profile: Record<string, unknown>, jd: string): str
     },
     skills: (profile as any).sections?.skills || (profile as any).skills,
     projects: (profile as any).sections?.projects?.items?.map((p: any) => ({
-        name: p.name,
-        description: p.description,
-        keywords: p.keywords
+      name: p.name,
+      description: p.description,
+      keywords: p.keywords
     })),
     experience: (profile as any).sections?.experience?.items?.map((e: any) => ({
-        company: e.company,
-        position: e.position,
-        summary: e.summary
+      company: e.company,
+      position: e.position,
+      summary: e.summary
     }))
   };
 
@@ -127,8 +143,8 @@ function buildTailoringPrompt(profile: Record<string, unknown>, jd: string): str
 You are an expert resume writer tailoring a profile for a specific job application.
 You must return a JSON object with three fields: "headline", "summary", and "skills".
 
-JOB DESCRIPTION:
-${jd.slice(0, 3000)} ... (truncated if too long)
+JOB DESCRIPTION (JD):
+${jd}
 
 MY PROFILE:
 ${JSON.stringify(relevantProfile, null, 2)}

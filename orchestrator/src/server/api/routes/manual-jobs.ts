@@ -4,7 +4,7 @@ import { z } from 'zod';
 import * as jobsRepo from '../../repositories/jobs.js';
 import { inferManualJobDetails } from '../../services/manualJob.js';
 import { scoreJobSuitability } from '../../services/scorer.js';
-import { loadResumeProfile } from '../../services/resumeProjects.js';
+import { getProfile } from '../../services/profile.js';
 import type { ApiResponse, ManualJobInferenceResponse } from '../../../shared/types.js';
 
 export const manualJobsRouter = Router();
@@ -98,7 +98,7 @@ manualJobsRouter.post('/import', async (req: Request, res: Response) => {
     // Score asynchronously so the import returns immediately.
     (async () => {
       try {
-        const rawProfile = await loadResumeProfile();
+        const rawProfile = await getProfile();
         if (!rawProfile || typeof rawProfile !== 'object' || Array.isArray(rawProfile)) {
           throw new Error('Invalid resume profile format');
         }

@@ -4,18 +4,57 @@
 
 import { getSetting } from '../repositories/settings.js';
 import type { ManualJobDraft } from '../../shared/types.js';
-
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+import { callOpenRouter, type JsonSchemaDefinition } from './openrouter.js';
 
 export interface ManualJobInferenceResult {
   job: ManualJobDraft;
   warning?: string | null;
 }
 
-export async function inferManualJobDetails(jobDescription: string): Promise<ManualJobInferenceResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+/** Raw response type from the API (all fields are strings) */
+interface ManualJobApiResponse {
+  title: string;
+  employer: string;
+  location: string;
+  salary: string;
+  deadline: string;
+  jobUrl: string;
+  applicationLink: string;
+  jobType: string;
+  jobLevel: string;
+  jobFunction: string;
+  disciplines: string;
+  degreeRequired: string;
+  starting: string;
+}
 
-  if (!apiKey) {
+/** JSON schema for manual job extraction response */
+const MANUAL_JOB_SCHEMA: JsonSchemaDefinition = {
+  name: 'manual_job_details',
+  schema: {
+    type: 'object',
+    properties: {
+      title: { type: 'string', description: 'Job title' },
+      employer: { type: 'string', description: 'Company/employer name' },
+      location: { type: 'string', description: 'Job location' },
+      salary: { type: 'string', description: 'Salary information' },
+      deadline: { type: 'string', description: 'Application deadline' },
+      jobUrl: { type: 'string', description: 'URL of the job listing' },
+      applicationLink: { type: 'string', description: 'Direct application URL' },
+      jobType: { type: 'string', description: 'Employment type (full-time, part-time, etc.)' },
+      jobLevel: { type: 'string', description: 'Seniority level (entry, mid, senior, etc.)' },
+      jobFunction: { type: 'string', description: 'Job function/category' },
+      disciplines: { type: 'string', description: 'Required disciplines or fields' },
+      degreeRequired: { type: 'string', description: 'Required degree or education' },
+      starting: { type: 'string', description: 'Start date information' },
+    },
+    required: ['title', 'employer', 'location', 'salary', 'deadline', 'jobUrl', 'applicationLink', 'jobType', 'jobLevel', 'jobFunction', 'disciplines', 'degreeRequired', 'starting'],
+    additionalProperties: false,
+  },
+};
+
+export async function inferManualJobDetails(jobDescription: string): Promise<ManualJobInferenceResult> {
+  if (!process.env.OPENROUTER_API_KEY) {
     return {
       job: {},
       warning: 'OPENROUTER_API_KEY not set. Fill details manually.',
@@ -26,41 +65,21 @@ export async function inferManualJobDetails(jobDescription: string): Promise<Man
   const model = overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
   const prompt = buildInferencePrompt(jobDescription);
 
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'JobOpsOrchestrator',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-      }),
-    });
+  const result = await callOpenRouter<ManualJobApiResponse>({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    jsonSchema: MANUAL_JOB_SCHEMA,
+  });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No content in response');
-    }
-
-    const parsed = parseJsonFromContent(content);
-    return { job: normalizeDraft(parsed) };
-  } catch (error) {
-    console.warn('Manual job inference failed:', error);
+  if (!result.success) {
+    console.warn('Manual job inference failed:', result.error);
     return {
       job: {},
       warning: 'AI inference failed. Fill details manually.',
     };
   }
+
+  return { job: normalizeDraft(result.data) };
 }
 
 function buildInferencePrompt(jd: string): string {
@@ -106,58 +125,23 @@ OUTPUT FORMAT (JSON ONLY):
 `.trim();
 }
 
-function parseJsonFromContent(content: string): Record<string, unknown> {
-  const trimmed = content.trim();
-  const withoutFences = trimmed.replace(/```(?:json)?\s*|```/gi, '').trim();
-
-  try {
-    return JSON.parse(withoutFences);
-  } catch {
-    const firstBrace = withoutFences.indexOf('{');
-    const lastBrace = withoutFences.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const sliced = withoutFences.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(sliced);
-    }
-    throw new Error('Unable to parse JSON from model response');
-  }
-}
-
-function normalizeDraft(parsed: Record<string, unknown>): ManualJobDraft {
-  const fields: Array<keyof ManualJobDraft> = [
-    'title',
-    'employer',
-    'location',
-    'salary',
-    'deadline',
-    'jobUrl',
-    'applicationLink',
-    'jobType',
-    'jobLevel',
-    'jobFunction',
-    'disciplines',
-    'degreeRequired',
-    'starting',
-  ];
-
+function normalizeDraft(parsed: ManualJobApiResponse): ManualJobDraft {
   const out: ManualJobDraft = {};
 
-  for (const field of fields) {
-    const value = toCleanString(parsed[field]);
-    if (value) out[field] = value;
-  }
+  // Map each field, only including non-empty strings
+  if (parsed.title?.trim()) out.title = parsed.title.trim();
+  if (parsed.employer?.trim()) out.employer = parsed.employer.trim();
+  if (parsed.location?.trim()) out.location = parsed.location.trim();
+  if (parsed.salary?.trim()) out.salary = parsed.salary.trim();
+  if (parsed.deadline?.trim()) out.deadline = parsed.deadline.trim();
+  if (parsed.jobUrl?.trim()) out.jobUrl = parsed.jobUrl.trim();
+  if (parsed.applicationLink?.trim()) out.applicationLink = parsed.applicationLink.trim();
+  if (parsed.jobType?.trim()) out.jobType = parsed.jobType.trim();
+  if (parsed.jobLevel?.trim()) out.jobLevel = parsed.jobLevel.trim();
+  if (parsed.jobFunction?.trim()) out.jobFunction = parsed.jobFunction.trim();
+  if (parsed.disciplines?.trim()) out.disciplines = parsed.disciplines.trim();
+  if (parsed.degreeRequired?.trim()) out.degreeRequired = parsed.degreeRequired.trim();
+  if (parsed.starting?.trim()) out.starting = parsed.starting.trim();
 
   return out;
-}
-
-function toCleanString(value: unknown): string | undefined {
-  if (value === null || value === undefined) return undefined;
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-  return undefined;
 }

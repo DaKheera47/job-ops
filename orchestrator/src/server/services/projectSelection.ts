@@ -1,8 +1,27 @@
+/**
+ * Service for AI-powered project selection for resumes.
+ */
+
 import { getSetting } from '../repositories/settings.js';
-
 import type { ResumeProjectSelectionItem } from './resumeProjects.js';
+import { callOpenRouter, type JsonSchemaDefinition } from './openrouter.js';
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+/** JSON schema for project selection response */
+const PROJECT_SELECTION_SCHEMA: JsonSchemaDefinition = {
+  name: 'project_selection',
+  schema: {
+    type: 'object',
+    properties: {
+      selectedProjectIds: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'List of project IDs to include on the resume',
+      },
+    },
+    required: ['selectedProjectIds'],
+    additionalProperties: false,
+  },
+};
 
 export async function pickProjectIdsForJob(args: {
   jobDescription: string;
@@ -15,8 +34,7 @@ export async function pickProjectIdsForJob(args: {
   const eligibleIds = new Set(args.eligibleProjects.map((p) => p.id));
   if (eligibleIds.size === 0) return [];
 
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
   }
 
@@ -31,53 +49,39 @@ export async function pickProjectIdsForJob(args: {
     desiredCount,
   });
 
-  try {
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'JobOpsOrchestrator',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-      }),
-    });
+  const result = await callOpenRouter<{ selectedProjectIds: string[] }>({
+    model,
+    messages: [{ role: 'user', content: prompt }],
+    jsonSchema: PROJECT_SELECTION_SCHEMA,
+  });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    if (!content) throw new Error('No content in response');
-
-    const parsed = JSON.parse(content) as any;
-    const selectedProjectIds = Array.isArray(parsed?.selectedProjectIds) ? parsed.selectedProjectIds : [];
-    const unique: string[] = [];
-    const seen = new Set<string>();
-    for (const id of selectedProjectIds) {
-      if (typeof id !== 'string') continue;
-      const trimmed = id.trim();
-      if (!trimmed) continue;
-      if (!eligibleIds.has(trimmed)) continue;
-      if (seen.has(trimmed)) continue;
-      seen.add(trimmed);
-      unique.push(trimmed);
-      if (unique.length >= desiredCount) break;
-    }
-
-    if (unique.length === 0) {
-      return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
-    }
-
-    return unique;
-  } catch {
+  if (!result.success) {
     return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
   }
+
+  const selectedProjectIds = Array.isArray(result.data?.selectedProjectIds)
+    ? result.data.selectedProjectIds
+    : [];
+
+  // Validate and dedupe the returned IDs
+  const unique: string[] = [];
+  const seen = new Set<string>();
+  for (const id of selectedProjectIds) {
+    if (typeof id !== 'string') continue;
+    const trimmed = id.trim();
+    if (!trimmed) continue;
+    if (!eligibleIds.has(trimmed)) continue;
+    if (seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    unique.push(trimmed);
+    if (unique.length >= desiredCount) break;
+  }
+
+  if (unique.length === 0) {
+    return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
+  }
+
+  return unique;
 }
 
 function buildProjectSelectionPrompt(args: {
@@ -167,4 +171,3 @@ function truncate(input: string, maxChars: number): string {
   if (input.length <= maxChars) return input;
   return `${input.slice(0, maxChars - 1).trimEnd()}…`;
 }
-

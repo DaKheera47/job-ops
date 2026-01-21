@@ -22,4 +22,12 @@ describe.sequential('Profile API routes', () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
   });
+
+  it('returns full base resume profile', async () => {
+    const res = await fetch(`${baseUrl}/api/profile`);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toBeDefined();
+    expect(typeof body.data).toBe('object');
+  });
 });

@@ -268,6 +268,69 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
+export interface ResumeProfile {
+  basics?: {
+    name?: string;
+    label?: string;
+    image?: string;
+    email?: string;
+    phone?: string;
+    url?: string;
+    summary?: string;
+    headline?: string;
+    location?: {
+      address?: string;
+      postalCode?: string;
+      city?: string;
+      countryCode?: string;
+      region?: string;
+    };
+    profiles?: Array<{
+      network?: string;
+      username?: string;
+      url?: string;
+    }>;
+  };
+  sections?: {
+    summary?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      content?: string;
+    };
+    skills?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        name: string;
+        description: string;
+        level: number;
+        keywords: string[];
+        visible: boolean;
+      }>;
+    };
+    projects?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        name: string;
+        description: string;
+        date: string;
+        summary: string;
+        visible: boolean;
+        keywords?: string[];
+        url?: string;
+      }>;
+    };
+    [key: string]: any;
+  };
+  [key: string]: any;
+}
+
 export interface AppSettings {
   model: string;
   defaultModel: string;

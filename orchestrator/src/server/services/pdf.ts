@@ -13,6 +13,7 @@ import { getSetting } from '../repositories/settings.js';
 import { pickProjectIdsForJob } from './projectSelection.js';
 import { extractProjectsFromProfile, resolveResumeProjectsSettings } from './resumeProjects.js';
 import { getDataDir } from '../config/dataDir.js';
+import { getProfile } from './profile.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,18 +50,34 @@ export async function generatePdf(
   selectedProjectIds?: string | null
 ): Promise<PdfResult> {
   console.log(`📄 Generating PDF for job ${jobId}...`);
-  
+
   const resumeJsonPath = baseResumePath || join(RESUME_GEN_DIR, 'base.json');
-  
+
   try {
     // Ensure output directory exists
     if (!existsSync(OUTPUT_DIR)) {
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
-    
+
     // Read base resume
-    const baseResume = JSON.parse(await readFile(resumeJsonPath, 'utf-8'));
-    
+    const baseResume = baseResumePath
+      ? JSON.parse(await readFile(baseResumePath, 'utf-8'))
+      : JSON.parse(JSON.stringify(await getProfile())); // Deep copy from cache
+
+    // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
+    // This fixes issues where the base JSON uses a shorthand format (missing required fields)
+    if (baseResume.sections?.skills?.items && Array.isArray(baseResume.sections.skills.items)) {
+      baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any, index: number) => ({
+        ...skill,
+        id: skill.id || `skill-${index}`,
+        visible: skill.visible ?? true,
+        // Zod schema requires string, default to empty string if missing
+        description: skill.description ?? '',
+        level: skill.level ?? 1,
+        keywords: skill.keywords || [],
+      }));
+    }
+
     // Inject tailored summary
     if (tailoredContent.summary) {
       if (baseResume.sections?.summary) {
@@ -81,14 +98,30 @@ export async function generatePdf(
 
     // Inject tailored skills
     if (tailoredContent.skills) {
-      const newSkills = Array.isArray(tailoredContent.skills) 
-        ? tailoredContent.skills 
-        : typeof tailoredContent.skills === 'string' 
-          ? JSON.parse(tailoredContent.skills) 
+      const newSkills = Array.isArray(tailoredContent.skills)
+        ? tailoredContent.skills
+        : typeof tailoredContent.skills === 'string'
+          ? JSON.parse(tailoredContent.skills)
           : null;
 
       if (newSkills && baseResume.sections?.skills) {
-        baseResume.sections.skills.items = newSkills;
+        // Ensure each skill item has required schema fields
+        const existingSkills = baseResume.sections.skills.items || [];
+        const skillsWithSchema = newSkills.map((newSkill: any, index: number) => {
+          // Try to find matching existing skill to preserve id and other fields
+          const existing = existingSkills.find((s: any) => s.name === newSkill.name);
+
+          return {
+            id: newSkill.id || existing?.id || `skill-${index}`,
+            visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
+            name: newSkill.name || existing?.name || '',
+            description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
+            level: newSkill.level !== undefined ? newSkill.level : (existing?.level ?? 1),
+            keywords: newSkill.keywords || existing?.keywords || [],
+          };
+        });
+
+        baseResume.sections.skills.items = skillsWithSchema;
       }
     }
 
@@ -131,11 +164,11 @@ export async function generatePdf(
     } catch (err) {
       console.warn(`   ⚠️ Project visibility step failed for job ${jobId}:`, err);
     }
-    
+
     // Write modified resume to temp file
     const tempResumePath = join(RESUME_GEN_DIR, `temp_resume_${jobId}.json`);
     await writeFile(tempResumePath, JSON.stringify(baseResume, null, 2));
-    
+
     // Generate PDF using Python script - output directly to our data folder
     const outputFilename = `resume_${jobId}.pdf`;
     const outputPath = join(OUTPUT_DIR, outputFilename);
@@ -146,9 +179,9 @@ export async function generatePdf(
     } catch {
       // Ignore if it doesn't exist or cannot be removed.
     }
-    
+
     await runPythonPdfGenerator(tempResumePath, outputFilename, OUTPUT_DIR);
-    
+
     // Cleanup temp file
     try {
       const { unlink } = await import('fs/promises');
@@ -156,7 +189,7 @@ export async function generatePdf(
     } catch {
       // Ignore cleanup errors
     }
-    
+
     console.log(`✅ PDF generated: ${outputPath}`);
     return { success: true, pdfPath: outputPath };
   } catch (error) {
@@ -177,7 +210,7 @@ async function runPythonPdfGenerator(
   return new Promise((resolve, reject) => {
     // Use the virtual environment's Python (or system python in Docker)
     const pythonPath = process.env.PYTHON_PATH || join(RESUME_GEN_DIR, '.venv', 'bin', 'python');
-    
+
     const child = spawn(pythonPath, ['rxresume_automation.py'], {
       cwd: RESUME_GEN_DIR,
       env: {
@@ -188,7 +221,7 @@ async function runPythonPdfGenerator(
       },
       stdio: 'inherit',
     });
-    
+
     child.on('close', (code) => {
       if (code === 0) {
         resolve();
@@ -196,7 +229,7 @@ async function runPythonPdfGenerator(
         reject(new Error(`Python script exited with code ${code}`));
       }
     });
-    
+
     child.on('error', reject);
   });
 }

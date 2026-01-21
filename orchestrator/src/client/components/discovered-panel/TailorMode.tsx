@@ -15,6 +15,8 @@ interface TailorModeProps {
   onBack: () => void;
   onFinalize: () => void;
   isFinalizing: boolean;
+  /** Variant controls the finalize button text. Default is 'discovered'. */
+  variant?: 'discovered' | 'ready';
 }
 
 export const TailorMode: React.FC<TailorModeProps> = ({
@@ -22,6 +24,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
   onBack,
   onFinalize,
   isFinalizing,
+  variant = 'discovered',
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
@@ -274,7 +277,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
       <div className='space-y-2'>
         {!canFinalize && (
           <p className='text-[10px] text-center text-muted-foreground'>
-            Add a summary and select at least one project to finalize.
+            Add a summary and select at least one project to {variant === 'ready' ? 'regenerate' : 'finalize'}.
           </p>
         )}
         <Button
@@ -285,17 +288,19 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           {isFinalizing ? (
             <>
               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-              Finalizing & generating PDF...
+              {variant === 'ready' ? 'Regenerating PDF...' : 'Finalizing & generating PDF...'}
             </>
           ) : (
             <>
               <Check className='mr-2 h-4 w-4' />
-              Finalize & Move to Ready
+              {variant === 'ready' ? 'Regenerate PDF' : 'Finalize & Move to Ready'}
             </>
           )}
         </Button>
         <p className='text-[10px] text-center text-muted-foreground/70'>
-          This will generate your tailored PDF and move the job to Ready.
+          {variant === 'ready'
+            ? 'This will save your changes and regenerate the tailored PDF.'
+            : 'This will generate your tailored PDF and move the job to Ready.'}
         </p>
       </div>
     </div>

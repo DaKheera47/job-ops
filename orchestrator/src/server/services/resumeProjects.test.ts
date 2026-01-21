@@ -66,7 +66,7 @@ describe('Resume Projects Logic', () => {
         });
 
         it('should ensure maxProjects is at least len(locked)', () => {
-             const input = {
+            const input = {
                 maxProjects: 1, // Too small
                 lockedProjectIds: ['a', 'b'],
                 aiSelectableProjectIds: []
@@ -105,6 +105,7 @@ describe('Resume Projects Logic', () => {
             // p1 is visible in base, so it should be locked by default
             expect(result.resumeProjects.lockedProjectIds).toEqual(['p1']);
             expect(result.resumeProjects.aiSelectableProjectIds).toEqual(['p2', 'p3']);
+            expect(result.resumeProjects.maxProjects).toBe(3);
         });
 
         it('should apply valid overrides', () => {
@@ -126,7 +127,7 @@ describe('Resume Projects Logic', () => {
         });
 
         it('should handle invalid overrides by falling back to defaults', () => {
-             const result = rp.resolveResumeProjectsSettings({
+            const result = rp.resolveResumeProjectsSettings({
                 catalog: mockCatalog,
                 overrideRaw: '{"broken json'
             });
