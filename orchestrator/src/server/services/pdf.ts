@@ -8,7 +8,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFile, writeFile, mkdir, access, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
-import crypto from 'node:crypto';
+import { createId } from '@paralleldrive/cuid2';
 
 import { getSetting } from '../repositories/settings.js';
 import { pickProjectIdsForJob } from './projectSelection.js';
@@ -19,26 +19,6 @@ import { validateAndRepairJson } from './openrouter.js';
 import { resumeDataSchema } from '../../shared/rxresume-schema.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-/**
- * Generate a CUID2-compatible ID for RXResume.
- * CUID2 format: starts with a letter, lowercase alphanumeric, ~24 chars
- */
-function generateCuid2(): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const letters = 'abcdefghijklmnopqrstuvwxyz';
-  const bytes = crypto.randomBytes(24);
-
-  // First char must be a letter
-  let result = letters[bytes[0] % letters.length];
-
-  // Rest can be alphanumeric
-  for (let i = 1; i < 24; i++) {
-    result += alphabet[bytes[i] % alphabet.length];
-  }
-
-  return result;
-}
 
 // Paths - can be overridden via env for Docker
 const RESUME_GEN_DIR = process.env.RESUME_GEN_DIR || join(__dirname, '../../../../resume-generator');
@@ -92,7 +72,7 @@ export async function generatePdf(
     if (baseResume.sections?.skills?.items && Array.isArray(baseResume.sections.skills.items)) {
       baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any) => ({
         ...skill,
-        id: skill.id || generateCuid2(),
+        id: skill.id || createId(),
         visible: skill.visible ?? true,
         // Zod schema requires string, default to empty string if missing
         description: skill.description ?? '',
@@ -135,7 +115,7 @@ export async function generatePdf(
           const existing = existingSkills.find((s: any) => s.name === newSkill.name);
 
           return {
-            id: newSkill.id || existing?.id || generateCuid2(),
+            id: newSkill.id || existing?.id || createId(),
             visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
             name: newSkill.name || existing?.name || '',
             description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
