@@ -17,20 +17,17 @@ https://github.com/user-attachments/assets/06e5e782-47f5-42d0-8b28-b89102d7ea1b
 
 ## Quick Start
 ```bash
-# 1. Setup environment
-cp .env.example .env
-
-# 2. Run with Docker
+# 1. Run with Docker
 docker compose up -d --build
 
-# 3. Access Dashboard
+# 2. Open the dashboard
 # http://localhost:3005
 ```
 
-## Setup
-Essential variables in `.env`:
-- `OPENROUTER_API_KEY`: For job scoring and tailoring.
-- `RXRESUME_EMAIL`/`PASSWORD`: To automate PDF exports.
+The app will guide you through setup on first launch. The onboarding wizard helps you:
+- Connect your OpenRouter API key (for AI scoring/tailoring)
+- Add your RxResume credentials (for PDF export)
+- Upload your base resume JSON (exported from RxResume)
 
 ## Structure
 - `/orchestrator`: React frontend + Node.js backend & pipeline.
@@ -43,14 +40,8 @@ Orchestrator docs here: `documentation/orchestrator.md`
 
 ## Read-only mode (Basic Auth)
 
-Set `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` in `.env` to make the app read-only for the public.
+You can make the app read-only for the public by setting a username and password in the **Settings** page.
 After this, all write actions (POST/PATCH/DELETE) require Basic Auth; browsing and viewing remain public.
-2. Put your exported RXResume JSON at `resume-generator/base.json`.
-3. Start: `docker compose up -d --build`
-4. Open:
-   - Dashboard/UI: `http://localhost:3005`
-   - API: `http://localhost:3005/api`
-   - Health: `http://localhost:3005/health`
 
 Persistent data lives in `./data` (bind-mounted into the container).
 

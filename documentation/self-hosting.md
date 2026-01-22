@@ -1,61 +1,40 @@
 # Self-Hosting (Docker Compose)
 
-This project is designed to be self-hostable with a single Docker Compose command.
+The easiest way to run JobOps is via Docker Compose. The app is self-configuring and will guide you through the setup on your first visit.
 
 ## Prereqs
 
 - Docker Desktop or Docker Engine + Compose v2
-- An OpenRouter API key (required for AI scoring and summaries)
-- RXResume credentials (only if you want PDF exports)
 
-## 1) Clone and set up environment
+## 1) Start the stack
 
-```bash
-cp .env.example .env
-```
-
-Open `.env` and set at least:
-- `OPENROUTER_API_KEY`
-
-Optional but commonly used:
-- `RXRESUME_EMAIL`, `RXRESUME_PASSWORD` (for CV PDF generation)
-- `UKVISAJOBS_EMAIL`, `UKVISAJOBS_PASSWORD` (if you want to scrape UKVisaJobs)
-- `BASIC_AUTH_USER`, `BASIC_AUTH_PASSWORD` (read-only public, auth required for writes)
-
-## 2) Provide a base resume JSON
-
-The container mounts a base resume JSON at `resume-generator/base.json`.
-
-- Create or copy your exported RXResume JSON to:
-  - `resume-generator/base.json`
-
-If you do not plan to generate PDFs, you can still provide a minimal JSON file to satisfy the mount.
-
-## 3) Start the stack
+No environment variables are strictly required to start. Simply run:
 
 ```bash
 docker compose up -d --build
 ```
 
-This will build a single container that runs the API, UI, scrapers, and resume generator.
+This builds a single container that runs the API, UI, scrapers, and resume generator.
 
-## 4) Access the app
+## 2) Access the app and Onboard
 
-- Dashboard: http://localhost:3005
-- API: http://localhost:3005/api
-- Health: http://localhost:3005/health
+Open your browser to:
+- **Dashboard**: http://localhost:3005
+
+On first launch, you will be greeted by an **Onboarding Wizard**. The app will help you validate and save your configuration:
+
+1.  **Connect AI**: Add your OpenRouter API key (required for job scoring and summaries).
+2.  **PDF Export**: Add your RxResume credentials (if you want to generate tailored PDFs).
+3.  **Resume JSON**: Upload your base resume JSON (exported from RxResume).
+
+The app saves these to its persistent database, so you don't need to manage `.env` files for basic setup. All other settings (like search terms, job sources, and more) can also be configured directly in the UI.
 
 ## Persistent data
 
 `./data` is bind-mounted into the container. It stores:
-- SQLite DB: `data/jobs.db`
+- SQLite DB: `data/jobs.db` (contains your API keys and configuration)
 - Generated PDFs: `data/pdfs/`
-
-## Common issues
-
-- First build is slow: Playwright + Camoufox download Firefox during the image build.
-- Scraping can be blocked by target sites (LinkedIn/Indeed/UKVisa). Retry or adjust sources.
-- Missing `resume-generator/base.json` will break PDF generation (and the mount).
+- Resume JSON: Stored internally after upload.
 
 ## Updating
 

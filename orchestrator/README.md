@@ -33,7 +33,7 @@ orchestrator/
 2. **Set up environment:**
    ```bash
    cp .env.example .env
-   # Edit .env with your API keys
+   # The app is self-configuring. You can add keys via the UI Onboarding.
    ```
 
 3. **Initialize database:**
