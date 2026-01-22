@@ -36,6 +36,7 @@ vi.mock('../repositories/pipeline.js', () => ({
 
 vi.mock('../repositories/settings.js', () => ({
     getSetting: vi.fn().mockResolvedValue(null),
+    getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('../services/crawler.js', () => ({

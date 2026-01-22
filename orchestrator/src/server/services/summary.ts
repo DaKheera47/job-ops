@@ -69,8 +69,10 @@ export async function generateTailoring(
     return { success: false, error: 'API key not configured' };
   }
 
-  const overrideModel = await getSetting('model');
-  const overrideModelTailoring = await getSetting('modelTailoring');
+  const [overrideModel, overrideModelTailoring] = await Promise.all([
+    getSetting('model'),
+    getSetting('modelTailoring'),
+  ]);
   // Precedence: Tailoring-specific override > Global override > Env var > Default
   const model = overrideModelTailoring || overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
   const prompt = buildTailoringPrompt(profile, jobDescription);

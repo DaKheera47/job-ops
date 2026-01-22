@@ -4,6 +4,7 @@ import { inferManualJobDetails } from "./manualJob.js";
 
 vi.mock("../repositories/settings.js", () => ({
   getSetting: vi.fn(),
+  getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
 const originalEnv = process.env;

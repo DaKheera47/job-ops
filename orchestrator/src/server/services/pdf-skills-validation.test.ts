@@ -47,6 +47,7 @@ vi.mock('fs', () => ({
 
 vi.mock('../repositories/settings.js', () => ({
     getSetting: vi.fn().mockResolvedValue(null),
+    getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock('./projectSelection.js', () => ({

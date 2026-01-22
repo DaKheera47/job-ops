@@ -121,8 +121,11 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     const discoveredJobs: CreateJobInput[] = [];
     const sourceErrors: string[] = [];
 
+    // Read all settings at once to avoid sequential DB calls
+    const settings = await settingsRepo.getAllSettings();
+
     // Read search terms setting
-    const searchTermsSetting = await settingsRepo.getSetting('searchTerms');
+    const searchTermsSetting = settings.searchTerms;
     let searchTerms: string[] = [];
 
     if (searchTermsSetting) {
@@ -139,7 +142,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
     );
 
     // Apply setting override for JobSpy sites
-    const jobspySitesSettingRaw = await settingsRepo.getSetting('jobspySites');
+    const jobspySitesSettingRaw = settings.jobspySites;
     if (jobspySitesSettingRaw) {
       try {
         const allowed = JSON.parse(jobspySitesSettingRaw);
@@ -157,11 +160,11 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         detail: `JobSpy: scraping ${jobSpySites.join(', ')}...`,
       });
 
-      const jobspyLocationSetting = await settingsRepo.getSetting('jobspyLocation');
-      const jobspyResultsWantedSetting = await settingsRepo.getSetting('jobspyResultsWanted');
-      const jobspyHoursOldSetting = await settingsRepo.getSetting('jobspyHoursOld');
-      const jobspyCountryIndeedSetting = await settingsRepo.getSetting('jobspyCountryIndeed');
-      const jobspyLinkedinFetchDescriptionSetting = await settingsRepo.getSetting('jobspyLinkedinFetchDescription');
+      const jobspyLocationSetting = settings.jobspyLocation;
+      const jobspyResultsWantedSetting = settings.jobspyResultsWanted;
+      const jobspyHoursOldSetting = settings.jobspyHoursOld;
+      const jobspyCountryIndeedSetting = settings.jobspyCountryIndeed;
+      const jobspyLinkedinFetchDescriptionSetting = settings.jobspyLinkedinFetchDescription;
 
       const jobSpyResult = await runJobSpy({
         sites: jobSpySites,
@@ -170,7 +173,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
         resultsWanted: jobspyResultsWantedSetting ? parseInt(jobspyResultsWantedSetting, 10) : undefined,
         hoursOld: jobspyHoursOldSetting ? parseInt(jobspyHoursOldSetting, 10) : undefined,
         countryIndeed: jobspyCountryIndeedSetting ?? undefined,
-        linkedinFetchDescription: jobspyLinkedinFetchDescriptionSetting !== null ? jobspyLinkedinFetchDescriptionSetting === '1' : undefined,
+        linkedinFetchDescription: jobspyLinkedinFetchDescriptionSetting !== null && jobspyLinkedinFetchDescriptionSetting !== undefined ? jobspyLinkedinFetchDescriptionSetting === '1' : undefined,
       });
       if (!jobSpyResult.success) {
         sourceErrors.push(`jobspy: ${jobSpyResult.error ?? 'unknown error'}`);
@@ -189,7 +192,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       // Pass existing URLs to avoid clicking "Apply" on jobs we already have
       const existingJobUrls = await jobsRepo.getAllJobUrls();
 
-      const gradcrackerMaxJobsSetting = await settingsRepo.getSetting('gradcrackerMaxJobsPerTerm');
+      const gradcrackerMaxJobsSetting = settings.gradcrackerMaxJobsPerTerm;
       const gradcrackerMaxJobs = gradcrackerMaxJobsSetting ? parseInt(gradcrackerMaxJobsSetting, 10) : 50;
 
       const crawlerResult = await runCrawler({
@@ -224,7 +227,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
       });
 
       // Read max jobs setting from database (default to 50 if not set)
-      const ukvisajobsMaxJobsSetting = await settingsRepo.getSetting('ukvisajobsMaxJobs');
+      const ukvisajobsMaxJobsSetting = settings.ukvisajobsMaxJobs;
       const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting ? parseInt(ukvisajobsMaxJobsSetting, 10) : 50;
 
       const ukVisaResult = await runUkVisaJobs({

@@ -38,8 +38,10 @@ export async function pickProjectIdsForJob(args: {
     return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
   }
 
-  const overrideModel = await getSetting('model');
-  const overrideModelProjectSelection = await getSetting('modelProjectSelection');
+  const [overrideModel, overrideModelProjectSelection] = await Promise.all([
+    getSetting('model'),
+    getSetting('modelProjectSelection'),
+  ]);
   // Precedence: Project-specific override > Global override > Env var > Default
   const model = overrideModelProjectSelection || overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
 

@@ -44,8 +44,10 @@ export async function scoreJobSuitability(
     return mockScore(job);
   }
 
-  const overrideModel = await getSetting('model');
-  const overrideModelScorer = await getSetting('modelScorer');
+  const [overrideModel, overrideModelScorer] = await Promise.all([
+    getSetting('model'),
+    getSetting('modelScorer'),
+  ]);
   // Precedence: Scorer-specific override > Global override > Env var > Default
   const model = overrideModelScorer || overrideModel || process.env.MODEL || 'openai/gpt-4o-mini';
 
