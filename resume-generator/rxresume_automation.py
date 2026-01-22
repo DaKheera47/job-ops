@@ -38,9 +38,72 @@ def login(page):
 
 def import_resume(page, json_path: Path):
     """Import a resume JSON file."""
+    # Log the JSON file size for debugging
+    try:
+        import json
+        with open(json_path, 'r') as f:
+            data = json.load(f)
+        print(f"   📋 JSON keys: {list(data.keys())}")
+        if 'basics' in data:
+            print(f"   📋 Headline: {data['basics'].get('headline', 'N/A')[:50]}...")
+    except Exception as e:
+        print(f"   ⚠️ Could not read JSON for logging: {e}")
+
     page.click('h4:has-text("Import")')
     page.set_input_files('input[type="file"]', str(json_path))
     page.click('button:has-text("Validate")')
+
+    # Wait for validation to complete - check for either success (Import button) or error
+    try:
+        # Wait for the Import button to become visible (validation succeeded)
+        page.wait_for_selector('button:has-text("Import"):not([disabled])', timeout=10000)
+    except Exception as e:
+        # Save debug files to errors folder (accessible outside Docker)
+        errors_dir = OUTPUT_DIR.parent / "errors"
+        errors_dir.mkdir(parents=True, exist_ok=True)
+
+        # Take a screenshot for debugging
+        try:
+            screenshot_path = errors_dir / f"debug_{json_path.stem}.png"
+            page.screenshot(path=str(screenshot_path))
+            print(f"   📸 Debug screenshot saved: {screenshot_path}")
+        except Exception as screenshot_err:
+            print(f"   ⚠️ Could not save screenshot: {screenshot_err}")
+
+        # Copy the failed JSON to errors folder for inspection
+        try:
+            import shutil
+            failed_json_path = errors_dir / f"{json_path.stem}.json"
+            shutil.copy(str(json_path), str(failed_json_path))
+            print(f"   📋 Failed JSON saved: {failed_json_path}")
+        except Exception as copy_err:
+            print(f"   ⚠️ Could not save failed JSON: {copy_err}")
+
+        # Check for validation error messages in the dialog
+        error_selectors = [
+            'text=/error|invalid|failed/i',
+            '[class*="error"]',
+            '[class*="destructive"]',
+            '.text-red-500',
+            '.text-destructive',
+            '[role="alert"]',
+        ]
+        for selector in error_selectors:
+            error_element = page.query_selector(selector)
+            if error_element:
+                error_text = error_element.inner_text().strip()
+                if error_text:
+                    print(f"   ❌ RXResume validation error: {error_text}")
+                    raise RuntimeError(f"RXResume validation failed: {error_text}")
+
+        # Log what's visible in the dialog for debugging
+        dialog = page.query_selector('[role="dialog"]')
+        if dialog:
+            dialog_text = dialog.inner_text()[:500]
+            print(f"   📋 Dialog content: {dialog_text}")
+
+        raise RuntimeError(f"Import button not found after validation (timeout): {e}")
+
     page.click('button:has-text("Import")')
 
 

@@ -10,7 +10,8 @@ export type FilterKeys<T, Condition> = {
 
 export const idSchema = z
     .string()
-    .describe("Unique identifier for the item");
+    .cuid2()
+    .describe("Unique identifier for the item (CUID2 format)");
 
 export const itemSchema = z.object({
     id: idSchema,

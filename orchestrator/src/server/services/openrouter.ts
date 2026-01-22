@@ -75,6 +75,7 @@ export async function callOpenRouter<T>(
                 body: JSON.stringify({
                     model,
                     messages,
+                    stream: false,
                     response_format: {
                         type: 'json_schema',
                         json_schema: {
@@ -83,6 +84,7 @@ export async function callOpenRouter<T>(
                             schema: jsonSchema.schema,
                         },
                     },
+                    plugins: [{ id: 'response-healing' }],
                 }),
             });
 

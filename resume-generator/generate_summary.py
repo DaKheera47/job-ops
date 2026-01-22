@@ -73,6 +73,8 @@ def _call_openrouter(prompt: str, model: str, api_key: str) -> str:
     payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
+        "stream": False,
+        "plugins": [{"id": "response-healing"}],
     }
 
     response = requests.post(url, headers=headers, json=payload)

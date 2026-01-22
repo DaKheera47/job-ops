@@ -128,7 +128,7 @@ describe('PDF Service Skills Validation', () => {
     });
 
     it('should sanitize base resume even if no skills are tailored', async () => {
-        // Mock profile has an invalid skill (missing visible/description in the raw json implied, 
+        // Mock profile has an invalid skill (missing visible/description in the raw json implied,
         // though our mock above has them. Let's make a truly invalid one locally)
         const invalidProfile = {
             ...mockProfile,
@@ -156,5 +156,102 @@ describe('PDF Service Skills Validation', () => {
         expect(item.visible).toBe(true);
         expect(item.description).toBe('');
         expect(item.id).toBeDefined();
+    });
+
+    it('should generate CUID2-compatible IDs for skills without IDs', async () => {
+        // Profile with skills missing IDs (common when AI generates them)
+        const profileWithoutIds = {
+            ...mockProfile,
+            sections: {
+                ...mockProfile.sections,
+                skills: {
+                    items: [
+                        { name: 'Skill 1', keywords: ['a'] },
+                        { name: 'Skill 2', keywords: ['b'] },
+                        { name: 'Skill 3', keywords: ['c'] }
+                    ]
+                }
+            }
+        };
+        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithoutIds));
+
+        await generatePdf('job-cuid2-test', {}, 'Job Desc', 'dummy.json');
+
+        expect(mocks.writeFile).toHaveBeenCalled();
+        const callArgs = mocks.writeFile.mock.calls[0];
+        const savedResumeJson = JSON.parse(callArgs[1] as string);
+
+        const skillItems = savedResumeJson.sections.skills.items;
+
+        // All skills should have IDs
+        skillItems.forEach((skill: any, index: number) => {
+            expect(skill.id).toBeDefined();
+            expect(typeof skill.id).toBe('string');
+            expect(skill.id.length).toBeGreaterThanOrEqual(20);
+
+            // CUID2 format: starts with a letter, lowercase alphanumeric
+            expect(skill.id).toMatch(/^[a-z][a-z0-9]+$/);
+        });
+
+        // IDs should be unique
+        const ids = skillItems.map((s: any) => s.id);
+        const uniqueIds = new Set(ids);
+        expect(uniqueIds.size).toBe(ids.length);
+    });
+
+    it('should NOT generate IDs like "skill-0" which are invalid CUID2', async () => {
+        const profileWithoutIds = {
+            ...mockProfile,
+            sections: {
+                ...mockProfile.sections,
+                skills: {
+                    items: [
+                        { name: 'Skill Without ID', keywords: ['test'] }
+                    ]
+                }
+            }
+        };
+        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithoutIds));
+
+        await generatePdf('job-no-skill-prefix', {}, 'Job Desc', 'dummy.json');
+
+        expect(mocks.writeFile).toHaveBeenCalled();
+        const callArgs = mocks.writeFile.mock.calls[0];
+        const savedResumeJson = JSON.parse(callArgs[1] as string);
+
+        const skill = savedResumeJson.sections.skills.items[0];
+
+        // ID should NOT be in the old invalid format
+        expect(skill.id).not.toMatch(/^skill-\d+$/);
+
+        // Should be valid CUID2 format
+        expect(skill.id).toMatch(/^[a-z][a-z0-9]+$/);
+    });
+
+    it('should preserve existing valid IDs and not regenerate them', async () => {
+        const validCuid2Id = 'ck9w4ygzq0000xmn5h0jt7l5c';
+        const profileWithValidId = {
+            ...mockProfile,
+            sections: {
+                ...mockProfile.sections,
+                skills: {
+                    items: [
+                        { id: validCuid2Id, name: 'Skill With Valid ID', keywords: ['test'], visible: true, description: '', level: 1 }
+                    ]
+                }
+            }
+        };
+        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithValidId));
+
+        await generatePdf('job-preserve-id', {}, 'Job Desc', 'dummy.json');
+
+        expect(mocks.writeFile).toHaveBeenCalled();
+        const callArgs = mocks.writeFile.mock.calls[0];
+        const savedResumeJson = JSON.parse(callArgs[1] as string);
+
+        const skill = savedResumeJson.sections.skills.items[0];
+
+        // Should preserve the original valid ID
+        expect(skill.id).toBe(validCuid2Id);
     });
 });

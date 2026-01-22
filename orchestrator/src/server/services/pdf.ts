@@ -8,6 +8,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFile, writeFile, mkdir, access, unlink } from 'fs/promises';
 import { existsSync } from 'fs';
+import { createId } from '@paralleldrive/cuid2';
 
 import { getSetting } from '../repositories/settings.js';
 import { pickProjectIdsForJob } from './projectSelection.js';
@@ -67,9 +68,9 @@ export async function generatePdf(
     // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
     // This fixes issues where the base JSON uses a shorthand format (missing required fields)
     if (baseResume.sections?.skills?.items && Array.isArray(baseResume.sections.skills.items)) {
-      baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any, index: number) => ({
+      baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any) => ({
         ...skill,
-        id: skill.id || `skill-${index}`,
+        id: skill.id || createId(),
         visible: skill.visible ?? true,
         // Zod schema requires string, default to empty string if missing
         description: skill.description ?? '',
@@ -107,12 +108,12 @@ export async function generatePdf(
       if (newSkills && baseResume.sections?.skills) {
         // Ensure each skill item has required schema fields
         const existingSkills = baseResume.sections.skills.items || [];
-        const skillsWithSchema = newSkills.map((newSkill: any, index: number) => {
+        const skillsWithSchema = newSkills.map((newSkill: any) => {
           // Try to find matching existing skill to preserve id and other fields
           const existing = existingSkills.find((s: any) => s.name === newSkill.name);
 
           return {
-            id: newSkill.id || existing?.id || `skill-${index}`,
+            id: newSkill.id || existing?.id || createId(),
             visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
             name: newSkill.name || existing?.name || '',
             description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
