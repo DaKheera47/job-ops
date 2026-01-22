@@ -78,6 +78,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   ukvisajobsEmail: null,
   ukvisajobsPassword: null,
   webhookSecret: null,
+  enableBasicAuth: undefined,
 }
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
