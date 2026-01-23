@@ -33,6 +33,8 @@ const mockJob: Job = {
     salary: "£60,000",
     deadline: "2025-12-31",
     status: "discovered",
+    outcome: null,
+    closedAt: null,
     source: "linkedin",
     suitabilityScore: 85,
     suitabilityReason: "Strong match",

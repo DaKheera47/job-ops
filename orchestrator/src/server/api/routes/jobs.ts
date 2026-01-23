@@ -4,7 +4,17 @@ import * as jobsRepo from '../../repositories/jobs.js';
 import * as settingsRepo from '../../repositories/settings.js';
 import { processJob, summarizeJob, generateFinalPdf } from '../../pipeline/index.js';
 import { createNotionEntry } from '../../services/notion.js';
+import {
+  getStageEvents,
+  getTasks,
+  stageEventMetadataSchema,
+  transitionStage,
+} from '../../services/applicationTracking.js';
 import * as visaSponsors from '../../services/visa-sponsors/index.js';
+import {
+  APPLICATION_OUTCOMES,
+  APPLICATION_STAGES,
+} from '../../../shared/types.js';
 import type { Job, JobStatus, ApiResponse, JobsListResponse } from '../../../shared/types.js';
 
 export const jobsRouter = Router();
@@ -42,6 +52,8 @@ async function notifyJobCompleteWebhook(job: Job) {
  */
 const updateJobSchema = z.object({
   status: z.enum(['discovered', 'processing', 'ready', 'applied', 'skipped', 'expired']).optional(),
+  outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
+  closedAt: z.number().int().nullable().optional(),
   jobDescription: z.string().optional(),
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
@@ -50,6 +62,16 @@ const updateJobSchema = z.object({
   pdfPath: z.string().optional(),
   sponsorMatchScore: z.number().min(0).max(100).optional(),
   sponsorMatchNames: z.string().optional(),
+});
+
+const transitionStageSchema = z.object({
+  toStage: z.enum(APPLICATION_STAGES),
+  metadata: stageEventMetadataSchema.nullable().optional(),
+});
+
+const updateOutcomeSchema = z.object({
+  outcome: z.enum(APPLICATION_OUTCOMES).nullable(),
+  closedAt: z.number().int().nullable().optional(),
 });
 
 /**
@@ -93,6 +115,76 @@ jobsRouter.get('/:id', async (req: Request, res: Response) => {
 
     res.json({ success: true, data: job });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * GET /api/jobs/:id/events - Get stage event timeline
+ */
+jobsRouter.get('/:id/events', async (req: Request, res: Response) => {
+  try {
+    const events = await getStageEvents(req.params.id);
+    res.json({ success: true, data: events });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * GET /api/jobs/:id/tasks - Get tasks for an application
+ */
+jobsRouter.get('/:id/tasks', async (req: Request, res: Response) => {
+  try {
+    const includeCompleted = req.query.includeCompleted === '1' || req.query.includeCompleted === 'true';
+    const tasks = await getTasks(req.params.id, includeCompleted);
+    res.json({ success: true, data: tasks });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * POST /api/jobs/:id/stages - Transition stage
+ */
+jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
+  try {
+    const input = transitionStageSchema.parse(req.body);
+    const event = await transitionStage(req.params.id, input.toStage, input.metadata ?? null);
+    res.json({ success: true, data: event });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * PATCH /api/jobs/:id/outcome - Close out application
+ */
+jobsRouter.patch('/:id/outcome', async (req: Request, res: Response) => {
+  try {
+    const input = updateOutcomeSchema.parse(req.body);
+    const closedAt = input.outcome ? (input.closedAt ?? Math.floor(Date.now() / 1000)) : null;
+    const job = await jobsRepo.updateJob(req.params.id, {
+      outcome: input.outcome,
+      closedAt,
+    });
+
+    if (!job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    res.json({ success: true, data: job });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
   }

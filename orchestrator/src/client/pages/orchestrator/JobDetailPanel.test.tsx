@@ -96,6 +96,8 @@ const createJob = (overrides: Partial<Job> = {}): Job => ({
   starting: null,
   jobDescription: "Build APIs",
   status: "ready",
+  outcome: null,
+  closedAt: null,
   suitabilityScore: 82,
   suitabilityReason: "Strong fit",
   tailoredSummary: null,

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
+import { Calendar, DollarSign, Loader2, MapPin, Search, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -154,9 +155,17 @@ export const JobHeader: React.FC<JobHeaderProps> = ({ job, className, onCheckSpo
             <span>{job.employer}</span>
           </div>
         </div>
-        <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50">
-          {sourceLabel[job.source]}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50">
+            {sourceLabel[job.source]}
+          </Badge>
+          <Button asChild size="sm" variant="ghost" className="h-6 px-2 text-[10px] uppercase tracking-wide">
+            <Link to={`/job/${job.id}`}>
+              View
+              <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Tertiary metadata - subdued */}

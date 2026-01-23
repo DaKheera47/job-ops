@@ -238,6 +238,8 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     starting: row.starting,
     jobDescription: row.jobDescription,
     status: row.status as JobStatus,
+    outcome: row.outcome ?? null,
+    closedAt: row.closedAt ?? null,
     suitabilityScore: row.suitabilityScore,
     suitabilityReason: row.suitabilityReason,
     tailoredSummary: row.tailoredSummary,

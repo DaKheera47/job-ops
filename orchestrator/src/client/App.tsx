@@ -11,6 +11,7 @@ import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { UkVisaJobsPage } from "./pages/UkVisaJobsPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
+import { JobPage } from "./pages/JobPage";
 import { OnboardingGate } from "./components/OnboardingGate";
 
 export const App: React.FC = () => {
@@ -40,6 +41,7 @@ export const App: React.FC = () => {
           <div ref={nodeRef}>
             <Routes location={location}>
               <Route path="/" element={<Navigate to="/ready" replace />} />
+              <Route path="/job/:id" element={<JobPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
               <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />

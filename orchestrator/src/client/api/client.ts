@@ -4,6 +4,11 @@
 
 import type {
   Job,
+  JobOutcome,
+  ApplicationStage,
+  ApplicationTask,
+  StageEvent,
+  StageEventMetadata,
   ApiResponse,
   JobsListResponse,
   PipelineStatusResponse,
@@ -103,6 +108,35 @@ export async function markAsApplied(id: string): Promise<Job> {
 export async function skipJob(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/skip`, {
     method: 'POST',
+  });
+}
+
+export async function getJobStageEvents(id: string): Promise<StageEvent[]> {
+  return fetchApi<StageEvent[]>(`/jobs/${id}/events`);
+}
+
+export async function getJobTasks(id: string, options?: { includeCompleted?: boolean }): Promise<ApplicationTask[]> {
+  const query = options?.includeCompleted ? '?includeCompleted=1' : '';
+  return fetchApi<ApplicationTask[]>(`/jobs/${id}/tasks${query}`);
+}
+
+export async function transitionJobStage(
+  id: string,
+  input: { toStage: ApplicationStage; metadata?: StageEventMetadata | null }
+): Promise<StageEvent> {
+  return fetchApi<StageEvent>(`/jobs/${id}/stages`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateJobOutcome(
+  id: string,
+  input: { outcome: JobOutcome | null; closedAt?: number | null }
+): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/outcome`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
   });
 }
 
