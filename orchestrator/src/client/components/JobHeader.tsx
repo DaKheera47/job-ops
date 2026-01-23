@@ -150,7 +150,9 @@ export const JobHeader: React.FC<JobHeaderProps> = ({ job, className, onCheckSpo
       {/* Detail header: lighter weight than list items */}
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold text-foreground/90">{job.title}</div>
+          <Link to={`/job/${job.id}`} className="flex items-center gap-2 text-base font-semibold underline-offset-2 text-foreground/90 hover:underline">
+            {job.title}
+          </Link>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>{job.employer}</span>
           </div>
