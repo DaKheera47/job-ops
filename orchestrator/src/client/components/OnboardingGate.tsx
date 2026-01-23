@@ -96,7 +96,11 @@ export const OnboardingGate: React.FC = () => {
   const hasOpenrouterKey = Boolean(settings?.openrouterApiKeyHint)
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim())
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint)
+  const hasCheckedValidations = openrouterValidation.checked
+    && rxresumeValidation.checked
+    && baseResumeValidation.checked
   const shouldOpen = Boolean(settings && !settingsLoading)
+    && hasCheckedValidations
     && !(openrouterValidation.valid && rxresumeValidation.valid && baseResumeValidation.valid)
 
   const openrouterCurrent = settings?.openrouterApiKeyHint
