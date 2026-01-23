@@ -174,7 +174,6 @@ export interface PipelineConfig {
   topN: number;                      // Number of top jobs to process
   minSuitabilityScore: number;       // Minimum score to auto-process
   sources: JobSource[];              // Job sources to crawl
-  profilePath: string;               // Path to profile JSON
   outputDir: string;                 // Directory for generated PDFs
   enableCrawling?: boolean;
   enableScoring?: boolean;
@@ -363,6 +362,7 @@ export interface AppSettings {
   resumeProjects: ResumeProjectsSettings;
   defaultResumeProjects: ResumeProjectsSettings;
   overrideResumeProjects: ResumeProjectsSettings | null;
+  rxresumeBaseResumeId: string | null;
   ukvisajobsMaxJobs: number;
   defaultUkvisajobsMaxJobs: number;
   overrideUkvisajobsMaxJobs: number | null;

@@ -1,33 +1,56 @@
-import { readFile } from 'fs/promises';
-import { join } from 'path';
+/**
+ * Profile service - fetches resume data from RxResume v4 API.
+ * 
+ * The rxresumeBaseResumeId setting is REQUIRED for the app to function.
+ * There is no local file fallback.
+ */
 
-import { getDataDir } from '../config/dataDir.js';
-
-export const DEFAULT_PROFILE_PATH = process.env.RESUME_PROFILE_PATH || join(getDataDir(), 'resume.json');
+import { getSetting } from '../repositories/settings.js';
+import { getResume, RxResumeCredentialsError } from './rxresume-v4.js';
 
 let cachedProfile: any = null;
-let cachedProfilePath: string | null = null;
+let cachedResumeId: string | null = null;
 
 /**
- * Get the base resume profile from resume.json.
- * Caches the result since it doesn't change often.
- * @param profilePath Optional absolute path to profile JSON. Defaults to base.json.
- * @param forceRefresh Force reload from disk.
+ * Get the base resume profile from RxResume v4 API.
+ * 
+ * Requires rxresumeBaseResumeId to be configured in settings.
+ * Results are cached until clearProfileCache() is called.
+ * 
+ * @param forceRefresh Force reload from API.
+ * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
-export async function getProfile(profilePath?: string, forceRefresh = false): Promise<any> {
-    const targetPath = profilePath || DEFAULT_PROFILE_PATH;
+export async function getProfile(forceRefresh = false): Promise<any> {
+    const rxresumeBaseResumeId = await getSetting('rxresumeBaseResumeId');
 
-    if (cachedProfile && cachedProfilePath === targetPath && !forceRefresh) {
+    if (!rxresumeBaseResumeId) {
+        throw new Error(
+            'Base resume not configured. Please select a base resume from your RxResume account in Settings.'
+        );
+    }
+
+    // Return cached profile if valid
+    if (cachedProfile && cachedResumeId === rxresumeBaseResumeId && !forceRefresh) {
         return cachedProfile;
     }
 
     try {
-        const content = await readFile(targetPath, 'utf-8');
-        cachedProfile = JSON.parse(content);
-        cachedProfilePath = targetPath;
+        console.log(`📋 Fetching profile from RxResume v4 API (resume: ${rxresumeBaseResumeId})...`);
+        const resume = await getResume(rxresumeBaseResumeId);
+
+        if (!resume.data || typeof resume.data !== 'object') {
+            throw new Error('Resume data is empty or invalid');
+        }
+
+        cachedProfile = resume.data;
+        cachedResumeId = rxresumeBaseResumeId;
+        console.log(`✅ Profile loaded from RxResume v4 API`);
         return cachedProfile;
     } catch (error) {
-        console.error(`❌ Failed to load profile from ${targetPath}:`, error);
+        if (error instanceof RxResumeCredentialsError) {
+            throw new Error('RxResume credentials not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD in settings.');
+        }
+        console.error(`❌ Failed to load profile from RxResume v4 API:`, error);
         throw error;
     }
 }
@@ -45,4 +68,5 @@ export async function getPersonName(): Promise<string> {
  */
 export function clearProfileCache(): void {
     cachedProfile = null;
+    cachedResumeId = null;
 }

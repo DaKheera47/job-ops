@@ -1,8 +1,0 @@
-# Temp JSON files (used by orchestrator)
-temp_*.json
-
-# Python virtual environment
-.venv/
-
-# Generated resumes
-resumes/

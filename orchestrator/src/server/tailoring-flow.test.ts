@@ -51,7 +51,7 @@ describe('Tailoring Flow', () => {
                 skills: ['React', 'TypeScript', 'Vitest']
             }),
             'Senior TypeScript Developer', // Original JD
-            expect.any(String), // Profile path
+            undefined, // Deprecated profile path
             'project-a,project-c' // The manually selected projects
         );
     });
@@ -78,7 +78,7 @@ describe('Tailoring Flow', () => {
                 skills: []
             }),
             'Junior Java Developer',
-            expect.any(String),
+            undefined, // Deprecated profile path
             undefined // No projects selected
         );
     });

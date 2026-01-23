@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { PageHeader } from "@client/components/layout"
 import { Accordion } from "@/components/ui/accordion"
 import { Button } from "@/components/ui/button"
-import type { AppSettings, JobStatus } from "@shared/types"
+import type { AppSettings, JobStatus, ResumeProjectCatalogItem, ResumeProjectsSettings } from "@shared/types"
 import { updateSettingsSchema, type UpdateSettingsInput } from "@shared/settings-schema"
 import * as api from "@client/api"
 import { arraysEqual } from "@/lib/utils"
@@ -19,9 +19,9 @@ import { GradcrackerSection } from "@client/pages/settings/components/Gradcracke
 import { JobspySection } from "@client/pages/settings/components/JobspySection"
 import { ModelSettingsSection } from "@client/pages/settings/components/ModelSettingsSection"
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection"
-import { ResumeProjectsSection } from "@client/pages/settings/components/ResumeProjectsSection"
 import { SearchTermsSection } from "@client/pages/settings/components/SearchTermsSection"
 import { UkvisajobsSection } from "@client/pages/settings/components/UkvisajobsSection"
+import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection"
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -31,6 +31,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
+  rxresumeBaseResumeId: null,
   ukvisajobsMaxJobs: null,
   gradcrackerMaxJobsPerTerm: null,
   searchTerms: null,
@@ -60,6 +61,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
+  rxresumeBaseResumeId: null,
   ukvisajobsMaxJobs: null,
   gradcrackerMaxJobsPerTerm: null,
   searchTerms: null,
@@ -89,6 +91,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",
   jobCompleteWebhookUrl: data.overrideJobCompleteWebhookUrl ?? "",
   resumeProjects: data.resumeProjects,
+  rxresumeBaseResumeId: data.rxresumeBaseResumeId ?? null,
   ukvisajobsMaxJobs: data.overrideUkvisajobsMaxJobs,
   gradcrackerMaxJobsPerTerm: data.overrideGradcrackerMaxJobsPerTerm,
   searchTerms: data.overrideSearchTerms,
@@ -138,6 +141,35 @@ const nullIfSame = <T,>(value: T | null | undefined, defaultValue: T) =>
 
 const nullIfSameList = (value: string[] | null | undefined, defaultValue: string[]) =>
   isSameStringList(value, defaultValue) ? null : value ?? null
+
+const normalizeResumeProjectsForCatalog = (
+  catalog: ResumeProjectCatalogItem[],
+  current: ResumeProjectsSettings | null
+): ResumeProjectsSettings | null => {
+  const allowed = new Set(catalog.map((project) => project.id))
+
+  const base = current ?? {
+    maxProjects: 0,
+    lockedProjectIds: catalog.filter((project) => project.isVisibleInBase).map((project) => project.id),
+    aiSelectableProjectIds: [],
+  }
+
+  const lockedProjectIds = base.lockedProjectIds.filter((id) => allowed.has(id))
+  const lockedSet = new Set(lockedProjectIds)
+  const aiSelectableProjectIds = (current
+    ? base.aiSelectableProjectIds
+    : catalog.map((project) => project.id)
+  )
+    .filter((id) => allowed.has(id))
+    .filter((id) => !lockedSet.has(id))
+  const maxProjectsRaw = Number.isFinite(base.maxProjects) ? base.maxProjects : 0
+  const maxProjectsInt = Math.max(0, Math.floor(maxProjectsRaw))
+  const maxProjects = Math.min(
+    catalog.length,
+    Math.max(lockedProjectIds.length, maxProjectsInt, 3)
+  )
+  return { maxProjects, lockedProjectIds, aiSelectableProjectIds }
+}
 
 const nullIfSameSortedList = (value: string[] | null | undefined, defaultValue: string[]) =>
   isSameSortedStringList(value, defaultValue) ? null : value ?? null
@@ -230,6 +262,9 @@ export const SettingsPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>(['discovered'])
+  const [rxResumeBaseResumeIdDraft, setRxResumeBaseResumeIdDraft] = useState<string | null>(null)
+  const [rxResumeProjectsOverride, setRxResumeProjectsOverride] = useState<ResumeProjectCatalogItem[] | null>(null)
+  const [isFetchingRxResumeProjects, setIsFetchingRxResumeProjects] = useState(false)
 
   const methods = useForm<UpdateSettingsInput>({
     resolver: zodResolver(updateSettingsSchema),
@@ -237,7 +272,19 @@ export const SettingsPage: React.FC = () => {
     defaultValues: DEFAULT_FORM_VALUES,
   })
 
-  const { handleSubmit, reset, setError, watch, formState: { isDirty, errors, isValid, dirtyFields } } = methods
+  const {
+    handleSubmit,
+    reset,
+    setError,
+    setValue,
+    getValues,
+    watch,
+    formState: { isDirty, errors, isValid, dirtyFields }
+  } = methods
+
+  const hasRxResumeAccess = Boolean(
+    settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint
+  )
 
   useEffect(() => {
     let isMounted = true
@@ -263,6 +310,62 @@ export const SettingsPage: React.FC = () => {
     }
   }, [reset])
 
+  useEffect(() => {
+    if (!settings) return
+    const storedId = settings.rxresumeBaseResumeId ?? null
+    setRxResumeBaseResumeIdDraft(storedId)
+    setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false })
+    setRxResumeProjectsOverride(null)
+  }, [settings, setValue])
+
+  useEffect(() => {
+    let isMounted = true
+    const controller = new AbortController()
+
+    if (!rxResumeBaseResumeIdDraft) {
+      setRxResumeProjectsOverride(null)
+      return () => {
+        isMounted = false
+        controller.abort()
+      }
+    }
+
+    if (!hasRxResumeAccess) return () => {
+      isMounted = false
+      controller.abort()
+    }
+
+    setIsFetchingRxResumeProjects(true)
+    api
+      .getRxResumeProjects(rxResumeBaseResumeIdDraft, controller.signal)
+      .then((projects) => {
+        if (!isMounted) return
+        setRxResumeProjectsOverride(projects)
+        const normalized = normalizeResumeProjectsForCatalog(
+          projects,
+          getValues("resumeProjects") ?? null
+        )
+        if (normalized) {
+          setValue("resumeProjects", normalized, { shouldDirty: true })
+        }
+      })
+      .catch((error) => {
+        if (!isMounted || error.name === 'AbortError') return
+        const message = error instanceof Error ? error.message : "Failed to load RxResume projects"
+        toast.error(message)
+        setRxResumeProjectsOverride(null)
+      })
+      .finally(() => {
+        if (!isMounted) return
+        setIsFetchingRxResumeProjects(false)
+      })
+
+    return () => {
+      isMounted = false
+      controller.abort()
+    }
+  }, [rxResumeBaseResumeIdDraft, hasRxResumeAccess, getValues, setValue])
+
   const derived = getDerivedSettings(settings)
   const {
     model,
@@ -278,6 +381,9 @@ export const SettingsPage: React.FC = () => {
     profileProjects,
     maxProjectsTotal,
   } = derived
+
+  const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects
+  const effectiveMaxProjectsTotal = effectiveProfileProjects.length
 
   const watchedValues = watch()
   const lockedCount = watchedValues.resumeProjects?.lockedProjectIds.length ?? 0
@@ -357,6 +463,7 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
+        rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         ukvisajobsMaxJobs: nullIfSame(data.ukvisajobsMaxJobs, ukvisajobs.default),
         gradcrackerMaxJobsPerTerm: nullIfSame(data.gradcrackerMaxJobsPerTerm, gradcracker.default),
         searchTerms: nullIfSameList(data.searchTerms, searchTerms.default),
@@ -502,10 +609,17 @@ export const SettingsPage: React.FC = () => {
             isLoading={isLoading}
             isSaving={isSaving}
           />
-          <ResumeProjectsSection
-            profileProjects={profileProjects}
+          <ReactiveResumeSection
+            rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
+            setRxResumeBaseResumeIdDraft={(value) => {
+              setRxResumeBaseResumeIdDraft(value)
+              setValue("rxresumeBaseResumeId", value, { shouldDirty: true })
+            }}
+            hasRxResumeAccess={hasRxResumeAccess}
+            profileProjects={effectiveProfileProjects}
             lockedCount={lockedCount}
-            maxProjectsTotal={maxProjectsTotal}
+            maxProjectsTotal={effectiveMaxProjectsTotal}
+            isProjectsLoading={isFetchingRxResumeProjects}
             isLoading={isLoading}
             isSaving={isSaving}
           />

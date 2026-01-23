@@ -79,7 +79,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
 
   // Load project catalog once
   useEffect(() => {
-    api.getProfileProjects().then(setCatalog).catch(console.error);
+    api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
   }, []);
 
   // Reset mode when job changes

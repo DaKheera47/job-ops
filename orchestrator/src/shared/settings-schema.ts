@@ -14,6 +14,7 @@ export const updateSettingsSchema = z.object({
   pipelineWebhookUrl: z.string().trim().max(2000).nullable().optional(),
   jobCompleteWebhookUrl: z.string().trim().max(2000).nullable().optional(),
   resumeProjects: resumeProjectsSchema.nullable().optional(),
+  rxresumeBaseResumeId: z.string().trim().max(200).nullable().optional(),
   ukvisajobsMaxJobs: z.number().int().min(1).max(1000).nullable().optional(),
   gradcrackerMaxJobsPerTerm: z.number().int().min(1).max(1000).nullable().optional(),
   searchTerms: z.array(z.string().trim().min(1).max(200)).max(100).nullable().optional(),

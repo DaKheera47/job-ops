@@ -1,7 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { Server } from 'http';
-import { writeFile } from 'fs/promises';
-import { join } from 'path';
 import { startServer, stopServer } from './test-utils.js';
 import { RxResumeClient } from '@server/services/rxresume-client.js';
 
@@ -154,67 +152,19 @@ describe.sequential('Onboarding API routes', () => {
     });
 
     describe('GET /api/onboarding/validate/resume', () => {
-        it('returns invalid when no resume file exists', async () => {
+        it('returns invalid when rxresumeBaseResumeId is not configured', async () => {
             const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
             const body = await res.json();
 
             expect(res.ok).toBe(true);
             expect(body.success).toBe(true);
             expect(body.data.valid).toBe(false);
-            expect(body.data.message).toBeTruthy();
+            expect(body.data.message).toContain('No base resume selected');
         });
 
-        it('returns invalid when resume file is empty', async () => {
-            // Create an empty resume file
-            const resumePath = join(tempDir, 'resume.json');
-            await writeFile(resumePath, '');
-
-            const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
-            const body = await res.json();
-
-            expect(res.ok).toBe(true);
-            expect(body.data.valid).toBe(false);
-        });
-
-        it('returns invalid when resume file is invalid JSON', async () => {
-            const resumePath = join(tempDir, 'resume.json');
-            await writeFile(resumePath, 'not valid json {{{');
-
-            const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
-            const body = await res.json();
-
-            expect(res.ok).toBe(true);
-            expect(body.data.valid).toBe(false);
-            expect(body.data.message).toBeTruthy();
-        });
-
-        it('returns invalid with field path when resume does not match schema', async () => {
-            const resumePath = join(tempDir, 'resume.json');
-            // Valid JSON but missing required fields
-            await writeFile(resumePath, JSON.stringify({ foo: 'bar' }));
-
-            const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
-            const body = await res.json();
-
-            expect(res.ok).toBe(true);
-            expect(body.data.valid).toBe(false);
-            // Should include field path in error message
-            expect(body.data.message).toBeTruthy();
-        });
-
-        it('returns valid when resume file is valid and matches schema', async () => {
-            const resumePath = join(tempDir, 'resume.json');
-            const validResume = createMinimalValidResume();
-            await writeFile(resumePath, JSON.stringify(validResume));
-
-            const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
-            const body = await res.json();
-
-            expect(res.ok).toBe(true);
-            expect(body.success).toBe(true);
-            expect(body.data.valid).toBe(true);
-            expect(body.data.message).toBeNull();
-        });
+        // Note: Further validation tests require mocking getSetting and getResume
+        // which is complex in integration tests. The validation logic is covered
+        // by unit tests in profile.test.ts and the service tests.
     });
 });
 

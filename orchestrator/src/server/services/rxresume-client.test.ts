@@ -222,6 +222,7 @@ describe('RxResumeClient', () => {
                 const mockFetch = vi.fn().mockResolvedValue({
                     ok: true,
                     status: 200,
+                    headers: { get: vi.fn() },
                     json: async () => ({ accessToken: 'mock-token-123' }),
                 });
                 vi.stubGlobal('fetch', mockFetch);
@@ -235,6 +236,7 @@ describe('RxResumeClient', () => {
                 const mockFetch = vi.fn().mockResolvedValue({
                     ok: true,
                     status: 200,
+                    headers: { get: vi.fn() },
                     json: async () => ({ data: { accessToken: 'nested-token' } }),
                 });
                 vi.stubGlobal('fetch', mockFetch);
@@ -248,6 +250,7 @@ describe('RxResumeClient', () => {
                 const mockFetch = vi.fn().mockResolvedValue({
                     ok: true,
                     status: 200,
+                    headers: { get: vi.fn() },
                     json: async () => ({ token: 'alt-token-field' }),
                 });
                 vi.stubGlobal('fetch', mockFetch);
@@ -255,6 +258,43 @@ describe('RxResumeClient', () => {
                 const token = await client.login('test@example.com', 'password123');
 
                 expect(token).toBe('alt-token-field');
+            });
+
+            it('extracts token from set-cookie header when missing from body', async () => {
+                const mockFetch = vi.fn().mockResolvedValue({
+                    ok: true,
+                    status: 200,
+                    headers: {
+                        get: vi.fn().mockReturnValue(null),
+                        getSetCookie: vi
+                            .fn()
+                            .mockReturnValue(['Authentication=cookie-token; Path=/; HttpOnly']),
+                    },
+                    json: async () => ({}),
+                });
+                vi.stubGlobal('fetch', mockFetch);
+
+                const token = await client.login('test@example.com', 'password123');
+
+                expect(token).toBe('cookie-token');
+            });
+
+            it('extracts token from set-cookie string header fallback', async () => {
+                const mockFetch = vi.fn().mockResolvedValue({
+                    ok: true,
+                    status: 200,
+                    headers: {
+                        get: vi
+                            .fn()
+                            .mockReturnValue('Authentication=string-token; Path=/; HttpOnly'),
+                    },
+                    json: async () => ({}),
+                });
+                vi.stubGlobal('fetch', mockFetch);
+
+                const token = await client.login('test@example.com', 'password123');
+
+                expect(token).toBe('string-token');
             });
 
             it('throws error on login failure', async () => {
@@ -274,6 +314,7 @@ describe('RxResumeClient', () => {
                 const mockFetch = vi.fn().mockResolvedValue({
                     ok: true,
                     status: 200,
+                    headers: { get: vi.fn() },
                     json: async () => ({ user: { id: '123' } }),
                 });
                 vi.stubGlobal('fetch', mockFetch);
@@ -489,6 +530,7 @@ describe('RxResumeClient', () => {
             const mockFetch = vi.fn().mockResolvedValue({
                 ok: true,
                 status: 200,
+                headers: { get: vi.fn() },
                 json: async () => ({ accessToken: 'token' }),
             });
             vi.stubGlobal('fetch', mockFetch);

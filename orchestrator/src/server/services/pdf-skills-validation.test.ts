@@ -1,9 +1,9 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generatePdf } from './pdf.js';
+import { getProfile } from './profile.js';
 
 // Define mock data in hoisted block
-const { mocks, mockProfile } = vi.hoisted(() => {
+const { mocks, mockProfile, mockRxResumeClient } = vi.hoisted(() => {
     const profile = {
         sections: {
             summary: { content: 'Original Summary' },
@@ -17,6 +17,24 @@ const { mocks, mockProfile } = vi.hoisted(() => {
         basics: { headline: 'Original Headline' }
     };
 
+    // Capture what's passed to create()
+    let lastCreateData: any = null;
+
+    const mockClient = {
+        create: vi.fn().mockImplementation((data: any) => {
+            lastCreateData = JSON.parse(JSON.stringify(data)); // Deep clone
+            return Promise.resolve('mock-resume-id');
+        }),
+        print: vi.fn().mockResolvedValue('https://example.com/pdf/mock.pdf'),
+        delete: vi.fn().mockResolvedValue(undefined),
+        withAutoRefresh: vi.fn().mockImplementation(async (_email: string, _password: string, operation: (token: string) => Promise<any>) => {
+            return operation('mock-token');
+        }),
+        getToken: vi.fn().mockResolvedValue('mock-token'),
+        getLastCreateData: () => lastCreateData,
+        clearLastCreateData: () => { lastCreateData = null; },
+    };
+
     return {
         mockProfile: profile,
         mocks: {
@@ -25,7 +43,8 @@ const { mocks, mockProfile } = vi.hoisted(() => {
             mkdir: vi.fn().mockResolvedValue(undefined),
             access: vi.fn().mockResolvedValue(undefined),
             unlink: vi.fn().mockResolvedValue(undefined),
-        }
+        },
+        mockRxResumeClient: mockClient,
     };
 });
 
@@ -42,12 +61,33 @@ vi.mock('fs/promises', async () => {
 
 vi.mock('fs', () => ({
     existsSync: vi.fn().mockReturnValue(true),
-    default: { existsSync: vi.fn().mockReturnValue(true) }
+    createWriteStream: vi.fn().mockReturnValue({
+        on: vi.fn(),
+        write: vi.fn(),
+        end: vi.fn(),
+    }),
+    default: {
+        existsSync: vi.fn().mockReturnValue(true),
+        createWriteStream: vi.fn().mockReturnValue({
+            on: vi.fn(),
+            write: vi.fn(),
+            end: vi.fn(),
+        }),
+    }
 }));
 
 vi.mock('../repositories/settings.js', () => ({
-    getSetting: vi.fn().mockResolvedValue(null),
+    getSetting: vi.fn().mockImplementation((key: string) => {
+        if (key === 'rxresumeEmail') return Promise.resolve('test@example.com');
+        if (key === 'rxresumePassword') return Promise.resolve('testpassword');
+        return Promise.resolve(null);
+    }),
     getAllSettings: vi.fn().mockResolvedValue({}),
+}));
+
+// Mock the profile service - getProfile now fetches from v4 API
+vi.mock('./profile.js', () => ({
+    getProfile: vi.fn().mockResolvedValue(mockProfile),
 }));
 
 vi.mock('./projectSelection.js', () => ({
@@ -61,31 +101,50 @@ vi.mock('./resumeProjects.js', () => ({
     })
 }));
 
-vi.mock('child_process', () => ({
-    spawn: vi.fn().mockImplementation(() => ({
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() },
-        on: vi.fn().mockImplementation((event, cb) => {
-            if (event === 'close') cb(0);
-            return {};
-        }),
-    })),
-    default: {
-        spawn: vi.fn().mockImplementation(() => ({
-            stdout: { on: vi.fn() },
-            stderr: { on: vi.fn() },
-            on: vi.fn().mockImplementation((event, cb) => {
-                if (event === 'close') cb(0);
-                return {};
-            }),
-        }))
+// Mock the RxResumeClient
+vi.mock('./rxresume-client.js', () => ({
+    RxResumeClient: class {
+        constructor() {
+            return mockRxResumeClient;
+        }
     }
+}));
+
+// Mock stream pipeline for downloading PDF
+vi.mock('stream/promises', () => ({
+    pipeline: vi.fn().mockResolvedValue(undefined),
+    default: {
+        pipeline: vi.fn().mockResolvedValue(undefined),
+    }
+}));
+
+// Mock stream Readable
+vi.mock('stream', () => ({
+    Readable: {
+        fromWeb: vi.fn().mockReturnValue({
+            pipe: vi.fn(),
+        }),
+    },
+    default: {
+        Readable: {
+            fromWeb: vi.fn().mockReturnValue({
+                pipe: vi.fn(),
+            }),
+        },
+    }
+}));
+
+// Mock global fetch for PDF download
+vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+    ok: true,
+    body: {},
 }));
 
 describe('PDF Service Skills Validation', () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        mocks.readFile.mockResolvedValue(JSON.stringify(mockProfile));
+        vi.mocked(getProfile).mockResolvedValue(mockProfile);
+        mockRxResumeClient.clearLastCreateData();
     });
 
     it('should add required schema fields (visible, description) to new skills', async () => {
@@ -99,9 +158,8 @@ describe('PDF Service Skills Validation', () => {
 
         await generatePdf('job-skills-1', tailoredContent, 'Job Desc');
 
-        expect(mocks.writeFile).toHaveBeenCalled();
-        const callArgs = mocks.writeFile.mock.calls[0];
-        const savedResumeJson = JSON.parse(callArgs[1] as string);
+        expect(mockRxResumeClient.create).toHaveBeenCalled();
+        const savedResumeJson = mockRxResumeClient.getLastCreateData();
 
         const skillItems = savedResumeJson.sections.skills.items;
 
@@ -141,14 +199,13 @@ describe('PDF Service Skills Validation', () => {
                 }
             }
         };
-        mocks.readFile.mockResolvedValueOnce(JSON.stringify(invalidProfile));
+        vi.mocked(getProfile).mockResolvedValueOnce(invalidProfile);
 
         // No tailoring, pass dummy path to bypass getProfile cache and use readFile mock
         await generatePdf('job-no-tailor', {}, 'Job Desc', 'dummy.json');
 
-        expect(mocks.writeFile).toHaveBeenCalled();
-        const callArgs = mocks.writeFile.mock.calls[0];
-        const savedResumeJson = JSON.parse(callArgs[1] as string);
+        expect(mockRxResumeClient.create).toHaveBeenCalled();
+        const savedResumeJson = mockRxResumeClient.getLastCreateData();
 
         const item = savedResumeJson.sections.skills.items[0];
 
@@ -173,13 +230,12 @@ describe('PDF Service Skills Validation', () => {
                 }
             }
         };
-        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithoutIds));
+        vi.mocked(getProfile).mockResolvedValueOnce(profileWithoutIds);
 
         await generatePdf('job-cuid2-test', {}, 'Job Desc', 'dummy.json');
 
-        expect(mocks.writeFile).toHaveBeenCalled();
-        const callArgs = mocks.writeFile.mock.calls[0];
-        const savedResumeJson = JSON.parse(callArgs[1] as string);
+        expect(mockRxResumeClient.create).toHaveBeenCalled();
+        const savedResumeJson = mockRxResumeClient.getLastCreateData();
 
         const skillItems = savedResumeJson.sections.skills.items;
 
@@ -211,13 +267,12 @@ describe('PDF Service Skills Validation', () => {
                 }
             }
         };
-        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithoutIds));
+        vi.mocked(getProfile).mockResolvedValueOnce(profileWithoutIds);
 
         await generatePdf('job-no-skill-prefix', {}, 'Job Desc', 'dummy.json');
 
-        expect(mocks.writeFile).toHaveBeenCalled();
-        const callArgs = mocks.writeFile.mock.calls[0];
-        const savedResumeJson = JSON.parse(callArgs[1] as string);
+        expect(mockRxResumeClient.create).toHaveBeenCalled();
+        const savedResumeJson = mockRxResumeClient.getLastCreateData();
 
         const skill = savedResumeJson.sections.skills.items[0];
 
@@ -241,13 +296,12 @@ describe('PDF Service Skills Validation', () => {
                 }
             }
         };
-        mocks.readFile.mockResolvedValueOnce(JSON.stringify(profileWithValidId));
+        vi.mocked(getProfile).mockResolvedValueOnce(profileWithValidId);
 
         await generatePdf('job-preserve-id', {}, 'Job Desc', 'dummy.json');
 
-        expect(mocks.writeFile).toHaveBeenCalled();
-        const callArgs = mocks.writeFile.mock.calls[0];
-        const savedResumeJson = JSON.parse(callArgs[1] as string);
+        expect(mockRxResumeClient.create).toHaveBeenCalled();
+        const savedResumeJson = mockRxResumeClient.getLastCreateData();
 
         const skill = savedResumeJson.sections.skills.items[0];
 

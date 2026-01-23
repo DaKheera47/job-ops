@@ -7,9 +7,7 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
-import { readFile } from 'fs/promises';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 import { runCrawler } from '../services/crawler.js';
 import { runJobSpy } from '../services/jobspy.js';
 import { runUkVisaJobs } from '../services/ukvisajobs.js';
@@ -28,14 +26,10 @@ import { progressHelpers, resetProgress, updateProgress } from './progress.js';
 import type { CreateJobInput, Job, JobSource, PipelineConfig } from '../../shared/types.js';
 import { getDataDir } from '../config/dataDir.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DEFAULT_PROFILE_PATH = join(__dirname, '../../../../resume-generator/base.json');
-
 const DEFAULT_CONFIG: PipelineConfig = {
   topN: 10,
   minSuitabilityScore: 50,
   sources: ['gradcracker', 'indeed', 'linkedin', 'ukvisajobs'],
-  profilePath: DEFAULT_PROFILE_PATH,
   outputDir: join(getDataDir(), 'pdfs'),
   enableCrawling: true,
   enableScoring: true,
@@ -113,7 +107,10 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
   try {
     // Step 1: Load profile
     console.log('\n📋 Loading profile...');
-    const profile = await getProfile(mergedConfig.profilePath);
+    const profile = await getProfile().catch((error) => {
+      console.warn('⚠️ Failed to load profile for scoring, using empty profile:', error);
+      return {} as Record<string, unknown>;
+    });
 
     // Step 2: Run crawler
     console.log('\n🕷️ Running crawler...');
@@ -350,7 +347,7 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
 
         // Process job (Generate Summary + PDF)
         // We catch errors here to ensure one failure doesn't stop the whole batch
-        const result = await processJob(job.id, { profilePath: mergedConfig.profilePath });
+        const result = await processJob(job.id, { force: false });
 
         if (result.success) {
           processedCount++;
@@ -419,7 +416,6 @@ export async function runPipeline(config: Partial<PipelineConfig> = {}): Promise
 
 export type ProcessJobOptions = {
   force?: boolean;
-  profilePath?: string;
 };
 
 /**
@@ -438,7 +434,7 @@ export async function summarizeJob(
     const job = await jobsRepo.getJobById(jobId);
     if (!job) return { success: false, error: 'Job not found' };
 
-    const profile = await getProfile(options?.profilePath);
+    const profile = await getProfile();
 
     // 1. Generate Summary & Tailoring
     let tailoredSummary = job.tailoredSummary;
@@ -522,7 +518,7 @@ export async function generateFinalPdf(
         skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : []
       },
       job.jobDescription || '',
-      options?.profilePath || DEFAULT_PROFILE_PATH,
+      undefined, // deprecated baseResumePath parameter
       job.selectedProjectIds
     );
 
@@ -575,4 +571,3 @@ export async function processJob(
 export function getPipelineStatus(): { isRunning: boolean } {
   return { isRunning: isPipelineRunning };
 }
-

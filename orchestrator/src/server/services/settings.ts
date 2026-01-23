@@ -3,19 +3,38 @@ import * as settingsRepo from '@server/repositories/settings.js';
 import { getEnvSettingsData } from './envSettings.js';
 import { extractProjectsFromProfile, resolveResumeProjectsSettings } from './resumeProjects.js';
 import { getProfile } from './profile.js';
+import { getResume, RxResumeCredentialsError } from './rxresume-v4.js';
 
 /**
  * Get the effective app settings, combining environment variables and database overrides.
  */
 export async function getEffectiveSettings(): Promise<AppSettings> {
-  // Parallelize slow operations
-  const [overrides, profile] = await Promise.all([
-    settingsRepo.getAllSettings(),
-    getProfile().catch((error) => {
+  const overrides = await settingsRepo.getAllSettings();
+
+  const rxresumeBaseResumeId = overrides.rxresumeBaseResumeId ?? null;
+  let profile: Record<string, unknown> = {};
+
+  if (rxresumeBaseResumeId) {
+    try {
+      const resume = await getResume(rxresumeBaseResumeId);
+      if (resume.data && typeof resume.data === 'object') {
+        profile = resume.data as Record<string, unknown>;
+      }
+    } catch (error) {
+      if (error instanceof RxResumeCredentialsError) {
+        console.warn('RxResume credentials missing while loading base resume from settings.');
+      } else {
+        console.warn('Failed to load RxResume base resume for settings:', error);
+      }
+    }
+  }
+
+  if (Object.keys(profile).length === 0) {
+    profile = await getProfile().catch((error) => {
       console.warn('Failed to load base resume profile for settings:', error);
       return {};
-    }),
-  ]);
+    });
+  }
 
   const envSettings = await getEnvSettingsData(overrides);
 
@@ -114,6 +133,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     defaultJobCompleteWebhookUrl,
     overrideJobCompleteWebhookUrl,
     ...resumeProjectsData,
+    rxresumeBaseResumeId,
     ukvisajobsMaxJobs,
     defaultUkvisajobsMaxJobs,
     overrideUkvisajobsMaxJobs,

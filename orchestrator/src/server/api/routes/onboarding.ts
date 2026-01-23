@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { readFile, stat } from 'fs/promises';
 
 import { resumeDataSchema } from '@shared/rxresume-schema.js';
-import { DEFAULT_PROFILE_PATH } from '@server/services/profile.js';
 import { RxResumeClient } from '@server/services/rxresume-client.js';
+import { getSetting } from '@server/repositories/settings.js';
+import { getResume, RxResumeCredentialsError } from '@server/services/rxresume-v4.js';
 
 export const onboardingRouter = Router();
 
@@ -55,29 +55,51 @@ async function validateOpenrouter(apiKey?: string | null): Promise<ValidationRes
   }
 }
 
-async function validateResumeJson(): Promise<ValidationResponse> {
+/**
+ * Validate that a base resume is configured and accessible via RxResume v4 API.
+ */
+async function validateResumeConfig(): Promise<ValidationResponse> {
   try {
-    const fileInfo = await stat(DEFAULT_PROFILE_PATH);
-    if (!fileInfo.isFile() || fileInfo.size === 0) {
-      return { valid: false, message: 'Resume JSON is missing.' };
+    // Check if rxresumeBaseResumeId is configured
+    const rxresumeBaseResumeId = await getSetting('rxresumeBaseResumeId');
+
+    if (!rxresumeBaseResumeId) {
+      return {
+        valid: false,
+        message: 'No base resume selected. Please select a resume from your RxResume account in Settings.'
+      };
     }
 
-    const raw = await readFile(DEFAULT_PROFILE_PATH, 'utf-8');
-    const parsed = JSON.parse(raw);
-    const result = resumeDataSchema.safeParse(parsed);
-    if (!result.success) {
-      const issue = result.error.issues[0];
-      const path = issue?.path?.join('.') || '';
-      const baseMessage = issue?.message ?? 'Resume JSON does not match the expected schema.';
-      const details = path
-        ? `Field "${path}": ${baseMessage}`
-        : baseMessage;
-      return { valid: false, message: details };
-    }
+    // Verify the resume is accessible and valid
+    try {
+      const resume = await getResume(rxresumeBaseResumeId);
 
-    return { valid: true, message: null };
+      if (!resume.data || typeof resume.data !== 'object') {
+        return { valid: false, message: 'Selected resume is empty or invalid.' };
+      }
+
+      // Validate against schema
+      const result = resumeDataSchema.safeParse(resume.data);
+      if (!result.success) {
+        const issue = result.error.issues[0];
+        const path = issue?.path?.join('.') || '';
+        const baseMessage = issue?.message ?? 'Resume does not match the expected schema.';
+        const details = path
+          ? `Field "${path}": ${baseMessage}`
+          : baseMessage;
+        return { valid: false, message: details };
+      }
+
+      return { valid: true, message: null };
+    } catch (error) {
+      if (error instanceof RxResumeCredentialsError) {
+        return { valid: false, message: 'RxResume credentials not configured.' };
+      }
+      const message = error instanceof Error ? error.message : 'Failed to fetch resume from RxResume.';
+      return { valid: false, message };
+    }
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to read resume JSON.';
+    const message = error instanceof Error ? error.message : 'Resume validation failed.';
     return { valid: false, message };
   }
 }
@@ -119,6 +141,6 @@ onboardingRouter.post('/validate/rxresume', async (req: Request, res: Response) 
 });
 
 onboardingRouter.get('/validate/resume', async (_req: Request, res: Response) => {
-  const result = await validateResumeJson();
+  const result = await validateResumeConfig();
   res.json({ success: true, data: result });
 });

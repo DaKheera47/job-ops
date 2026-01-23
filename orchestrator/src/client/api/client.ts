@@ -168,12 +168,37 @@ export async function importManualJob(input: {
 }
 
 // Settings & Profile API
+let settingsPromise: Promise<AppSettings> | null = null;
+
 export async function getSettings(): Promise<AppSettings> {
-  return fetchApi<AppSettings>('/settings');
+  if (settingsPromise) return settingsPromise;
+  
+  settingsPromise = fetchApi<AppSettings>('/settings').finally(() => {
+    // Clear the promise after a short delay to allow subsequent fresh fetches
+    // but coalesce simultaneous requests.
+    setTimeout(() => {
+      settingsPromise = null;
+    }, 100);
+  });
+  
+  return settingsPromise;
 }
 
 export async function getProfileProjects(): Promise<ResumeProjectCatalogItem[]> {
   return fetchApi<ResumeProjectCatalogItem[]>('/profile/projects');
+}
+
+export async function getResumeProjectsCatalog(): Promise<ResumeProjectCatalogItem[]> {
+  try {
+    const settings = await getSettings();
+    if (settings.rxresumeBaseResumeId) {
+      return await getRxResumeProjects(settings.rxresumeBaseResumeId);
+    }
+  } catch {
+    // fall through to profile-based projects
+  }
+
+  return getProfileProjects();
 }
 
 export async function getProfile(): Promise<ResumeProfile> {
@@ -184,10 +209,9 @@ export async function getProfileStatus(): Promise<ProfileStatusResponse> {
   return fetchApi<ProfileStatusResponse>('/profile/status');
 }
 
-export async function uploadProfile(profile: ResumeProfile): Promise<ProfileStatusResponse> {
-  return fetchApi<ProfileStatusResponse>('/profile/upload', {
+export async function refreshProfile(): Promise<ResumeProfile> {
+  return fetchApi<ResumeProfile>('/profile/refresh', {
     method: 'POST',
-    body: JSON.stringify({ profile }),
   });
 }
 
@@ -205,7 +229,7 @@ export async function validateRxresume(email?: string, password?: string): Promi
   });
 }
 
-export async function validateResumeJson(): Promise<ValidationResult> {
+export async function validateResumeConfig(): Promise<ValidationResult> {
   return fetchApi<ValidationResult>('/onboarding/validate/resume');
 }
 
@@ -235,12 +259,27 @@ export async function updateSettings(update: {
   ukvisajobsEmail?: string | null
   ukvisajobsPassword?: string | null
   webhookSecret?: string | null
+  rxresumeBaseResumeId?: string | null
 }): Promise<AppSettings> {
   return fetchApi<AppSettings>('/settings', {
     method: 'PATCH',
     body: JSON.stringify(update),
   });
 }
+
+export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
+  const data = await fetchApi<{ resumes: { id: string; name: string }[] }>('/settings/rx-resumes');
+  return data.resumes;
+}
+
+export async function getRxResumeProjects(resumeId: string, signal?: AbortSignal): Promise<ResumeProjectCatalogItem[]> {
+  const data = await fetchApi<{ projects: ResumeProjectCatalogItem[] }>(
+    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects`,
+    { signal }
+  );
+  return data.projects;
+}
+
 
 // Database API
 export async function clearDatabase(): Promise<{

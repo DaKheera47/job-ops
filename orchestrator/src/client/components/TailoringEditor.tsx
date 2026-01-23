@@ -55,7 +55,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
   useEffect(() => {
     // Load project catalog
-    api.getProfileProjects().then(setCatalog).catch(console.error);
+    api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
     
     // Set initial selection
     if (job.selectedProjectIds) {

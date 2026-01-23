@@ -1,15 +1,6 @@
-import { readFile } from 'fs/promises';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
 import type { ResumeProjectCatalogItem, ResumeProjectsSettings } from '../../shared/types.js';
 
-import { getProfile, DEFAULT_PROFILE_PATH } from './profile.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & { summaryText: string };
-
 export function extractProjectsFromProfile(profile: unknown): {
   catalog: ResumeProjectCatalogItem[];
   selectionItems: ResumeProjectSelectionItem[];
@@ -155,4 +146,3 @@ function uniqueStrings(values: string[]): string[] {
 }
 
 export type { ResumeProjectSelectionItem };
-
