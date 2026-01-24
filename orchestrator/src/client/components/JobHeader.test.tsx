@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { JobHeader } from "./JobHeader";
 import { useSettings } from "../hooks/useSettings";
@@ -55,25 +55,34 @@ describe("JobHeader", () => {
     const renderWithRouter = (ui: React.ReactElement) =>
         render(<MemoryRouter>{ui}</MemoryRouter>);
 
-    it("renders basic job information", () => {
-        renderWithRouter(<JobHeader job={mockJob} />);
-        expect(screen.getByText("Software Engineer")).toBeInTheDocument();
-        expect(screen.getByText("Tech Corp")).toBeInTheDocument();
-        expect(screen.getByText("London")).toBeInTheDocument();
-        expect(screen.getByText("£60,000")).toBeInTheDocument();
+  it("renders basic job information", () => {
+    renderWithRouter(<JobHeader job={mockJob} />);
+    expect(screen.getByText("Software Engineer")).toBeInTheDocument();
+    expect(screen.getByText("Tech Corp")).toBeInTheDocument();
+    expect(screen.getByText("London")).toBeInTheDocument();
+    expect(screen.getByText("£60,000")).toBeInTheDocument();
+  });
+
+  it("links the title and view button to the job page", () => {
+    renderWithRouter(<JobHeader job={mockJob} />);
+
+    expect(screen.getByRole("link", { name: "Software Engineer" })).toHaveAttribute("href", "/job/job-1");
+    expect(screen.getByRole("link", { name: /view/i })).toHaveAttribute("href", "/job/job-1");
+  });
+
+  it("shows 'Check Sponsorship Status' button when sponsorMatchScore is null", async () => {
+    const onCheckSponsor = vi.fn().mockResolvedValue(undefined);
+    renderWithRouter(<JobHeader job={mockJob} onCheckSponsor={onCheckSponsor} />);
+
+    const button = screen.getByText("Check Sponsorship Status");
+    expect(button).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(button);
     });
 
-    it("shows 'Check Sponsorship Status' button when sponsorMatchScore is null", async () => {
-        const onCheckSponsor = vi.fn().mockResolvedValue(undefined);
-        renderWithRouter(<JobHeader job={mockJob} onCheckSponsor={onCheckSponsor} />);
-
-        const button = screen.getByText("Check Sponsorship Status");
-        expect(button).toBeInTheDocument();
-
-        fireEvent.click(button);
-
-        expect(onCheckSponsor).toHaveBeenCalled();
-    });
+    expect(onCheckSponsor).toHaveBeenCalled();
+  });
 
     it("shows 'Confirmed Sponsor' when score >= 95", () => {
         const jobWithSponsor = { ...mockJob, sponsorMatchScore: 98, sponsorMatchNames: '["Tech Corp Ltd"]' };
