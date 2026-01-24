@@ -162,7 +162,7 @@ jobsRouter.get('/:id/tasks', async (req: Request, res: Response) => {
 jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
   try {
     const input = transitionStageSchema.parse(req.body);
-    const event = await transitionStage(
+    const event = transitionStage(
       req.params.id,
       input.toStage,
       input.occurredAt ?? undefined,
@@ -398,6 +398,7 @@ jobsRouter.post('/:id/apply', async (req: Request, res: Response) => {
       null,
       'log_applied',
     );
+
 
     // Update job status + Notion metadata
     const updatedJob = await jobsRepo.updateJob(job.id, {

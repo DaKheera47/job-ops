@@ -11,6 +11,7 @@ import {
   getStageEvents
 } from './applicationTracking.js';
 import { createJob } from '../repositories/jobs.js';
+import { clearDatabase } from '../db/clear.js';
 
 describe.sequential('Application Tracking Service', () => {
   let server: Server;
@@ -23,6 +24,7 @@ describe.sequential('Application Tracking Service', () => {
   });
 
   afterEach(async () => {
+    clearDatabase();
     await stopServer({ server, closeDb, tempDir });
   });
 
@@ -35,7 +37,7 @@ describe.sequential('Application Tracking Service', () => {
     });
 
     // 1. Initial Transition (Applied)
-    const event1 = await transitionStage(job.id, 'applied');
+    const event1 = transitionStage(job.id, 'applied');
 
     expect(event1.toStage).toBe('applied');
 
@@ -45,7 +47,7 @@ describe.sequential('Application Tracking Service', () => {
     expect(jobAfter1?.appliedAt).toBeTruthy();
 
     // 2. Next Transition (Recruiter Screen)
-    const event2 = await transitionStage(job.id, 'recruiter_screen');
+    const event2 = transitionStage(job.id, 'recruiter_screen');
     expect(event2.fromStage).toBe('applied');
     expect(event2.toStage).toBe('recruiter_screen');
 
@@ -63,8 +65,8 @@ describe.sequential('Application Tracking Service', () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const event1 = await transitionStage(job.id, 'applied', now - 100);
-    const event2 = await transitionStage(job.id, 'recruiter_screen', now);
+    const event1 = transitionStage(job.id, 'applied', now - 100);
+    const event2 = transitionStage(job.id, 'recruiter_screen', now);
 
     // Update event2 (latest) to 'offer'
     updateStageEvent(event2.id, { toStage: 'offer' });
@@ -89,10 +91,10 @@ describe.sequential('Application Tracking Service', () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    await transitionStage(job.id, 'applied', now - 100); // event1
+    transitionStage(job.id, 'applied', now - 100); // event1
 
     // Simulate UI sending outcome for rejection
-    const event2 = await transitionStage(
+    const event2 = transitionStage(
       job.id,
       'closed',
       now,
@@ -122,8 +124,8 @@ describe.sequential('Application Tracking Service', () => {
       jobUrl: 'https://example.com/job/4',
     });
 
-    await transitionStage(job.id, 'applied');
-    const noteEvent = await transitionStage(job.id, 'no_change', undefined, { note: 'Just checking in' });
+    transitionStage(job.id, 'applied');
+    const noteEvent = transitionStage(job.id, 'no_change', undefined, { note: 'Just checking in' });
 
     expect(noteEvent.toStage).toBe('applied');
 

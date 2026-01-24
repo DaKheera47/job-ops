@@ -107,7 +107,7 @@ const migrations = [
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,
     type TEXT NOT NULL,
-    title TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
     due_date INTEGER,
     is_completed INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
