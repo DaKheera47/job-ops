@@ -32,7 +32,7 @@ const STAGE_LABELS: Record<ApplicationStage, string> = {
   recruiter_screen: "Recruiter Screen",
   assessment: "Assessment",
   hiring_manager_screen: "Hiring Manager Screen",
-  technical_interview: "Interview Loop",
+  technical_interview: "Technical Interview",
   onsite: "Final Round",
   offer: "Offer",
   closed: "Closed",
@@ -218,8 +218,10 @@ export const JobPage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Current Status</div>
-                <div className="mt-1 text-sm font-medium">{job?.status}</div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Current Stage</div>
+                <div className="mt-1 text-sm font-medium">
+                  {currentStage ? (STAGE_LABELS[currentStage as ApplicationStage] || currentStage) : job?.status}
+                </div>
               </div>
               <div>
                 <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Outcome</div>

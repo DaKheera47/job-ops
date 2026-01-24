@@ -180,9 +180,13 @@ export function updateStageEvent(
       .get();
 
     if (lastEvent && lastEvent.id === eventId) {
+      const metadata = parseMetadata(lastEvent.metadata);
+      const isRejection = lastEvent.toStage === 'closed' && metadata?.reasonCode;
+      
       tx.update(jobs)
         .set({
           status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          outcome: isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
@@ -208,9 +212,13 @@ export function deleteStageEvent(eventId: string): void {
       .get();
 
     if (lastEvent) {
+      const metadata = parseMetadata(lastEvent.metadata);
+      const isRejection = lastEvent.toStage === 'closed' && metadata?.reasonCode;
+
       tx.update(jobs)
         .set({
           status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          outcome: isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
