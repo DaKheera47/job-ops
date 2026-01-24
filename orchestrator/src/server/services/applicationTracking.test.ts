@@ -63,7 +63,7 @@ describe.sequential('Application Tracking Service', () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const event1 = await transitionStage(job.id, 'applied', now - 100);
+    await transitionStage(job.id, 'applied', now - 100);
     const event2 = await transitionStage(job.id, 'recruiter_screen', now);
 
     // Update event2 (latest) to 'offer'
