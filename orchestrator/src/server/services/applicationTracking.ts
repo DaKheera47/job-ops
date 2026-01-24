@@ -33,7 +33,7 @@ export const stageEventMetadataSchema = z.object({
   groupId: z.string().nullable().optional(),
   groupLabel: z.string().nullable().optional(),
   eventLabel: z.string().nullable().optional(),
-  externalUrl: z.string().url().nullable().optional(),
+  externalUrl: z.string().nullable().optional(),
   reasonCode: z.string().nullable().optional(),
   eventType: z.enum(['interview_log', 'status_update', 'note']).nullable().optional(),
 }).strict();
