@@ -396,7 +396,6 @@ jobsRouter.post('/:id/apply', async (req: Request, res: Response) => {
         actor: 'system',
       },
       null,
-      'log_applied',
     );
 
 

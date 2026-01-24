@@ -133,4 +133,39 @@ describe.sequential('Application Tracking Service', () => {
     expect(events).toHaveLength(2);
     expect(events[1].metadata?.note).toBe('Just checking in');
   });
+
+  it('updates closedAt when outcome changes via event update/delete', async () => {
+    const job = await createJob({
+      source: 'manual',
+      title: 'QA Engineer',
+      employer: 'Test Labs',
+      jobUrl: 'https://example.com/job/5',
+    });
+
+    const now = Math.floor(Date.now() / 1000);
+    const event1 = transitionStage(job.id, 'applied', now - 100);
+    const event2 = transitionStage(job.id, 'closed', now, { reasonCode: 'Other' }, 'rejected');
+
+    let jobCheck = await db.select().from(schema.jobs).where(eq(schema.jobs.id, job.id)).get();
+    expect(jobCheck?.outcome).toBe('rejected');
+    expect(jobCheck?.closedAt).toBe(now);
+
+    // 1. Update event2 to not be a closure
+    updateStageEvent(event2.id, { toStage: 'technical_interview' });
+    jobCheck = await db.select().from(schema.jobs).where(eq(schema.jobs.id, job.id)).get();
+    expect(jobCheck?.outcome).toBeNull();
+    expect(jobCheck?.closedAt).toBeNull();
+
+    // 2. Update event2 back to a closure
+    updateStageEvent(event2.id, { toStage: 'offer' });
+    jobCheck = await db.select().from(schema.jobs).where(eq(schema.jobs.id, job.id)).get();
+    expect(jobCheck?.outcome).toBe('offer_accepted');
+    expect(jobCheck?.closedAt).toBe(now);
+
+    // 3. Delete the closure event
+    deleteStageEvent(event2.id);
+    jobCheck = await db.select().from(schema.jobs).where(eq(schema.jobs.id, job.id)).get();
+    expect(jobCheck?.outcome).toBeNull();
+    expect(jobCheck?.closedAt).toBeNull();
+  });
 });

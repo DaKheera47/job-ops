@@ -182,11 +182,13 @@ export function updateStageEvent(
     if (lastEvent && lastEvent.id === eventId) {
       const metadata = parseMetadata(lastEvent.metadata);
       const isRejection = lastEvent.toStage === 'closed' && metadata?.reasonCode;
+      const outcome = isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null);
       
       tx.update(jobs)
         .set({
           status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
-          outcome: isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null),
+          outcome,
+          closedAt: outcome ? lastEvent.occurredAt : null,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
@@ -214,11 +216,13 @@ export function deleteStageEvent(eventId: string): void {
     if (lastEvent) {
       const metadata = parseMetadata(lastEvent.metadata);
       const isRejection = lastEvent.toStage === 'closed' && metadata?.reasonCode;
+      const outcome = isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null);
 
       tx.update(jobs)
         .set({
           status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
-          outcome: isRejection ? 'rejected' : (lastEvent.toStage === 'offer' ? 'offer_accepted' : null),
+          outcome,
+          closedAt: outcome ? lastEvent.occurredAt : null,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
@@ -230,6 +234,8 @@ export function deleteStageEvent(eventId: string): void {
         .set({
           status: 'discovered',
           appliedAt: null,
+          outcome: null,
+          closedAt: null,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
