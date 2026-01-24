@@ -1,6 +1,7 @@
 import React from "react";
 import { ArrowLeft, CalendarClock, ClipboardList, PlusCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,11 +59,11 @@ export const JobPage: React.FC = () => {
 
       api.getJobStageEvents(id)
         .then((data) => setEvents(mergeEvents(data, pendingEventRef.current)))
-        .catch(() => null);
+        .catch(() => toast.error("Failed to load stage events"));
 
       api.getJobTasks(id)
         .then((data) => setTasks(data))
-        .catch(() => null);
+        .catch(() => toast.error("Failed to load tasks"));
     } finally {
       setIsLoading(false);
     }
@@ -125,8 +126,10 @@ export const JobPage: React.FC = () => {
       setEvents(eventData);
       pendingEventRef.current = null;
       setEditingEvent(null);
+      toast.success(eventId ? "Event updated" : "Event logged");
     } catch (error) {
       console.error("Failed to log event:", error);
+      toast.error("Failed to log event");
     }
   };
 
@@ -140,8 +143,10 @@ export const JobPage: React.FC = () => {
       ]);
       setJob(jobData);
       setEvents(eventData);
+      toast.success("Event deleted");
     } catch (error) {
       console.error("Failed to delete event:", error);
+      toast.error("Failed to delete event");
     }
   };
 
