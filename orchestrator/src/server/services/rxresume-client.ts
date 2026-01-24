@@ -401,8 +401,6 @@ export class RxResumeClient {
             },
         });
 
-        console.log(res);
-
         if (!res.ok) {
             const text = await res.text();
             throw new Error(`List resumes failed: HTTP ${res.status} ${text}`);

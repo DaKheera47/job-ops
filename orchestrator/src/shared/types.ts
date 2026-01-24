@@ -14,10 +14,10 @@ export const APPLICATION_STAGES = [
   'applied',
   'recruiter_screen',
   'assessment',
-  'interview',
+  'hiring_manager_screen',
+  'technical_interview',
+  'onsite',
   'offer',
-  'rejected',
-  'withdrawn',
   'closed',
 ] as const;
 
@@ -29,15 +29,16 @@ export const APPLICATION_OUTCOMES = [
   'rejected',
   'withdrawn',
   'no_response',
+  'ghosted',
 ] as const;
 
 export type JobOutcome = (typeof APPLICATION_OUTCOMES)[number];
 
 export const APPLICATION_TASK_TYPES = [
+  'prep',
+  'todo',
   'follow_up',
-  'send_docs',
-  'prep_interview',
-  'custom',
+  'check_status',
 ] as const;
 
 export type ApplicationTaskType = (typeof APPLICATION_TASK_TYPES)[number];
@@ -70,6 +71,7 @@ export interface StageEventMetadata {
   eventLabel?: string | null;
   externalUrl?: string | null;
   reasonCode?: string | null;
+  eventType?: 'interview_log' | 'status_update' | 'note' | null;
 }
 
 export interface StageEvent {
@@ -85,6 +87,7 @@ export interface ApplicationTask {
   id: string;
   applicationId: string;
   type: ApplicationTaskType;
+  title: string;
   dueDate: number | null;
   isCompleted: boolean;
   notes: string | null;

@@ -68,6 +68,8 @@ const transitionStageSchema = z.object({
   toStage: z.enum(APPLICATION_STAGES),
   occurredAt: z.number().int().nullable().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
+  outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
+  actionId: z.string().optional(),
 });
 
 const updateOutcomeSchema = z.object({
@@ -109,17 +111,16 @@ jobsRouter.get('/', async (req: Request, res: Response) => {
 jobsRouter.get('/:id', async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.getJobById(req.params.id);
-
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
-
     res.json({ success: true, data: job });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
   }
 });
+
 
 /**
  * GET /api/jobs/:id/events - Get stage event timeline
@@ -159,6 +160,8 @@ jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
       input.toStage,
       input.occurredAt ?? undefined,
       input.metadata ?? null,
+      input.outcome ?? null,
+      input.actionId,
     );
     res.json({ success: true, data: event });
   } catch (error) {
@@ -332,7 +335,8 @@ jobsRouter.post('/:id/apply', async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
-    const appliedAt = new Date().toISOString();
+    const appliedAtDate = new Date();
+    const appliedAt = appliedAtDate.toISOString();
 
     // Sync to Notion
     const notionResult = await createNotionEntry({
@@ -347,7 +351,19 @@ jobsRouter.post('/:id/apply', async (req: Request, res: Response) => {
       appliedAt,
     });
 
-    // Update job status
+    const appliedEvent = transitionStage(
+      job.id,
+      'applied',
+      Math.floor(appliedAtDate.getTime() / 1000),
+      {
+        eventLabel: 'Applied',
+        actor: 'system',
+      },
+      null,
+      'log_applied',
+    );
+
+    // Update job status + Notion metadata
     const updatedJob = await jobsRepo.updateJob(job.id, {
       status: 'applied',
       appliedAt,
@@ -358,7 +374,7 @@ jobsRouter.post('/:id/apply', async (req: Request, res: Response) => {
       notifyJobCompleteWebhook(updatedJob).catch(console.warn)
     }
 
-    res.json({ success: true, data: updatedJob });
+    res.json({ success: true, data: updatedJob ?? appliedEvent });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });

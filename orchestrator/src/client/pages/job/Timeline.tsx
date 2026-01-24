@@ -5,6 +5,8 @@ import {
   FileText,
   MailCheck,
   PhoneCall,
+  Presentation,
+  UserRound,
   Video,
   XCircle,
 } from "lucide-react";
@@ -17,10 +19,10 @@ const stageLabels: Record<ApplicationStage, string> = {
   applied: "Applied",
   recruiter_screen: "Recruiter screen",
   assessment: "Assessment",
-  interview: "Interview",
+  hiring_manager_screen: "Hiring manager screen",
+  technical_interview: "Technical interview",
+  onsite: "Onsite",
   offer: "Offer",
-  rejected: "Rejected",
-  withdrawn: "Withdrawn",
   closed: "Closed",
 };
 
@@ -28,10 +30,10 @@ const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   applied: <CheckCircle2 className="h-4 w-4" />,
   recruiter_screen: <PhoneCall className="h-4 w-4" />,
   assessment: <FileText className="h-4 w-4" />,
-  interview: <Video className="h-4 w-4" />,
+  hiring_manager_screen: <UserRound className="h-4 w-4" />,
+  technical_interview: <Video className="h-4 w-4" />,
+  onsite: <Presentation className="h-4 w-4" />,
   offer: <MailCheck className="h-4 w-4" />,
-  rejected: <XCircle className="h-4 w-4" />,
-  withdrawn: <XCircle className="h-4 w-4" />,
   closed: <ClipboardList className="h-4 w-4" />,
 };
 
@@ -123,7 +125,10 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
           const title = entry.event.metadata?.eventLabel || stageLabels[entry.event.toStage];
           const note = entry.event.metadata?.note;
           const reason = entry.event.metadata?.reasonCode;
-          const isCurrent = currentStage === entry.event.toStage && entryIndex === entries.length - 1;
+          const isCurrent =
+            currentStage === entry.event.toStage &&
+            entryIndex === entries.length - 1 &&
+            entry.event.toStage !== "applied";
           return (
             <TimelineRow
               key={entry.event.id}

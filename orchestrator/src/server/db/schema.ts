@@ -97,6 +97,7 @@ export const tasks = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   applicationId: text('application_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
   type: text('type', { enum: APPLICATION_TASK_TYPES }).notNull(),
+  title: text('title').notNull(),
   dueDate: integer('due_date', { mode: 'number' }),
   isCompleted: integer('is_completed', { mode: 'boolean' }).notNull().default(false),
   notes: text('notes'),

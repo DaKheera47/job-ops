@@ -107,6 +107,7 @@ const migrations = [
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,
     type TEXT NOT NULL,
+    title TEXT NOT NULL,
     due_date INTEGER,
     is_completed INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
@@ -171,6 +172,7 @@ const migrations = [
   // Add application tracking columns
   `ALTER TABLE jobs ADD COLUMN outcome TEXT`,
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,
+  `ALTER TABLE tasks ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
@@ -191,7 +193,8 @@ for (const migration of migrations) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const isDuplicateColumn =
-      migration.toLowerCase().includes('alter table jobs add column') &&
+      (migration.toLowerCase().includes('alter table jobs add column') ||
+        migration.toLowerCase().includes('alter table tasks add column')) &&
       message.toLowerCase().includes('duplicate column name');
 
     if (isDuplicateColumn) {

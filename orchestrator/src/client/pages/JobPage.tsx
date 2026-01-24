@@ -31,10 +31,10 @@ import type { ApplicationStage, ApplicationTask, Job, JobOutcome, StageEvent } f
 import { APPLICATION_OUTCOMES } from "../../shared/types";
 
 const taskLabels: Record<string, string> = {
+  prep: "Prep",
+  todo: "Todo",
   follow_up: "Follow up",
-  send_docs: "Send documents",
-  prep_interview: "Prep interview",
-  custom: "Task",
+  check_status: "Check status",
 };
 
 const formatTimestamp = (value?: number | null) => {
@@ -62,6 +62,7 @@ export const JobPage: React.FC = () => {
   const [eventDate, setEventDate] = React.useState("");
   const [reasonCode, setReasonCode] = React.useState<string | null>(null);
   const [isLoggingEvent, setIsLoggingEvent] = React.useState(false);
+  const [showArchivePrompt, setShowArchivePrompt] = React.useState(false);
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const pendingEventRef = React.useRef<StageEvent | null>(null);
 
@@ -69,15 +70,18 @@ export const JobPage: React.FC = () => {
     if (!id) return;
     setIsLoading(true);
     try {
-      const [jobData, eventData, taskData] = await Promise.all([
-        api.getJob(id),
-        api.getJobStageEvents(id),
-        api.getJobTasks(id),
-      ]);
+      const jobData = await api.getJob(id);
       setJob(jobData);
-      setEvents(mergeEvents(eventData, pendingEventRef.current));
-      setTasks(taskData);
       setSelectedOutcome(jobData.outcome ?? "none");
+
+      // Load events and tasks separately so failure doesn't block the job header
+      api.getJobStageEvents(id)
+        .then((data) => setEvents(mergeEvents(data, pendingEventRef.current)))
+        .catch(() => null);
+
+      api.getJobTasks(id)
+        .then((data) => setTasks(data))
+        .catch(() => null);
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +114,7 @@ export const JobPage: React.FC = () => {
 
   const handleOpenAction = (action: ActionConfig) => {
     setSelectedAction(action);
-    setEventTitle(action.defaultTitle);
+    setEventTitle(action.defaultTitle ?? "");
     setEventNotes("");
     setReasonCode(null);
     setEventDate(toDateTimeLocal(new Date()));
@@ -129,8 +133,11 @@ export const JobPage: React.FC = () => {
           groupLabel: selectedAction.groupLabel || undefined,
           eventLabel: eventTitle.trim() || undefined,
           reasonCode: reasonCode || undefined,
+          eventType: selectedAction.eventType ?? undefined,
           actor: "user",
         },
+        outcome: selectedAction.outcome,
+        actionId: selectedAction.id,
       });
       pendingEventRef.current = newEvent;
       setEvents((prev) =>
@@ -146,6 +153,9 @@ export const JobPage: React.FC = () => {
       setTasks(taskData);
       pendingEventRef.current = null;
       setSelectedAction(null);
+      if (selectedAction.id === "accept_offer") {
+        setShowArchivePrompt(true);
+      }
     } finally {
       setIsLoggingEvent(false);
     }
@@ -223,11 +233,11 @@ export const JobPage: React.FC = () => {
                 <div className="text-sm text-muted-foreground">No upcoming tasks.</div>
               ) : (
                 <div className="space-y-3">
-                  {tasks.map((task) => (
+              {tasks.map((task) => (
                     <div key={task.id} className="flex items-start justify-between gap-4">
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-foreground/90">
-                          {taskLabels[task.type] ?? task.type}
+                          {task.title || taskLabels[task.type] || task.type}
                         </div>
                         {task.notes && (
                           <div className="text-xs text-muted-foreground">{task.notes}</div>
@@ -261,13 +271,14 @@ export const JobPage: React.FC = () => {
                   className="border-destructive/70 text-destructive hover:text-destructive hover:border-destructive"
                   onClick={() =>
                     handleOpenAction({
-                      id: "rejected",
+                      id: "mark_rejected",
                       label: "Rejected",
-                      toStage: "rejected",
+                      toStage: "closed",
                       defaultTitle: "Rejected",
                       modalTitle: "Mark as rejected",
                       modalDescription: "Capture the rejection and a reason if known.",
-                      variant: "secondary",
+                      tone: "negative",
+                      outcome: "rejected",
                       reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
                     })
                   }
@@ -328,11 +339,20 @@ export const JobPage: React.FC = () => {
               {selectedAction?.modalDescription}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-muted-foreground">Title</div>
-              <Input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} />
-            </div>
+            <div className="space-y-4">
+            {selectedAction?.allowTitleInput ? (
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-muted-foreground">Title</div>
+                <Input value={eventTitle} onChange={(event) => setEventTitle(event.target.value)} />
+              </div>
+            ) : (
+              selectedAction?.defaultTitle && (
+                <div className="space-y-1">
+                  <div className="text-xs font-medium text-muted-foreground">Title</div>
+                  <div className="text-sm text-foreground/80">{selectedAction.defaultTitle}</div>
+                </div>
+              )
+            )}
             <div className="space-y-2">
               <div className="text-xs font-medium text-muted-foreground">Date</div>
               <Input
@@ -379,6 +399,23 @@ export const JobPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showArchivePrompt} onOpenChange={setShowArchivePrompt}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive other applications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You accepted an offer. Would you like to archive the rest of your active applications?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button onClick={() => setShowArchivePrompt(false)}>Got it</Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 };
@@ -387,146 +424,243 @@ interface ActionConfig {
   id: string;
   label: string;
   toStage: ApplicationStage;
-  defaultTitle: string;
+  defaultTitle?: string;
   modalTitle: string;
   modalDescription: string;
   groupLabel?: string;
-  variant: "primary" | "secondary";
+  tone: "primary" | "secondary" | "negative";
   reasonCodes?: string[];
+  eventType?: "interview_log" | "status_update" | "note";
+  outcome?: JobOutcome | null;
+  allowTitleInput?: boolean;
 }
 
-const ACTIONS_BY_STAGE: Record<string, ActionConfig[]> = {
+const ACTIONS_BY_STAGE: Record<ApplicationStage, ActionConfig[]> = {
   applied: [
     {
-      id: "book-recruiter-screen",
-      label: "Recruiter Screen",
+      id: "book_recruiter_screen",
+      label: "Book Recruiter Screen",
       toStage: "recruiter_screen",
       defaultTitle: "Recruiter Screen",
       modalTitle: "Book recruiter screen",
       modalDescription: "Log when the recruiter screen is scheduled.",
-      variant: "primary",
+      tone: "primary",
     },
     {
-      id: "log-assessment",
-      label: "Online Assessment Received",
+      id: "log_oa_received",
+      label: "Log OA Received",
       toStage: "assessment",
-      defaultTitle: "Assessment Received",
-      modalTitle: "Assessment received",
+      defaultTitle: "Online Assessment Received",
+      modalTitle: "Online assessment received",
       modalDescription: "Track the online assessment or take-home.",
-      variant: "primary",
+      tone: "primary",
       groupLabel: "Online assessment",
     },
     {
-      id: "rejected",
+      id: "direct_to_interview",
+      label: "Direct to Interview",
+      toStage: "technical_interview",
+      defaultTitle: "Technical Interview Invite",
+      modalTitle: "Direct to interview",
+      modalDescription: "Log the technical interview invite.",
+      tone: "primary",
+    },
+    {
+      id: "mark_rejected",
       label: "Rejected",
-      toStage: "rejected",
+      toStage: "closed",
       defaultTitle: "Rejected",
       modalTitle: "Mark as rejected",
       modalDescription: "Capture the rejection and a reason if known.",
-      variant: "secondary",
+      tone: "negative",
+      outcome: "rejected",
+      reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
+    },
+  ],
+  recruiter_screen: [
+    {
+      id: "log_screen_completed",
+      label: "Log Screen Completed",
+      toStage: "recruiter_screen",
+      defaultTitle: "Screen Completed",
+      modalTitle: "Recruiter screen completed",
+      modalDescription: "Log completion of the recruiter screen.",
+      tone: "primary",
+      eventType: "interview_log",
+    },
+    {
+      id: "pass_to_hm",
+      label: "Pass to HM Screen",
+      toStage: "hiring_manager_screen",
+      defaultTitle: "Moved to HM Screen",
+      modalTitle: "Move to hiring manager screen",
+      modalDescription: "Advance to the hiring manager screen.",
+      tone: "primary",
+    },
+    {
+      id: "pass_to_technical",
+      label: "Pass to Technical",
+      toStage: "technical_interview",
+      defaultTitle: "Moved to Technical Round",
+      modalTitle: "Move to technical round",
+      modalDescription: "Advance to the technical interview stage.",
+      tone: "primary",
+    },
+    {
+      id: "mark_rejected",
+      label: "Rejected",
+      toStage: "closed",
+      defaultTitle: "Rejected",
+      modalTitle: "Mark as rejected",
+      modalDescription: "Capture the rejection and a reason if known.",
+      tone: "negative",
+      outcome: "rejected",
       reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
     },
   ],
   assessment: [
     {
-      id: "oa-submitted",
-      label: "Log OA Submitted",
+      id: "log_oa_started",
+      label: "Log OA Started",
       toStage: "assessment",
-      defaultTitle: "OA Submitted",
-      modalTitle: "OA submitted",
-      modalDescription: "Log submission of the assessment.",
-      variant: "primary",
+      defaultTitle: "Started Assessment",
+      modalTitle: "Assessment started",
+      modalDescription: "Track when you started the assessment.",
+      tone: "primary",
+      eventType: "status_update",
       groupLabel: "Online assessment",
     },
     {
-      id: "pass-interview",
-      label: "Pass to Interview",
-      toStage: "interview",
-      defaultTitle: "Interview Stage",
-      modalTitle: "Advance to interviews",
-      modalDescription: "Move into the interview stage.",
-      variant: "primary",
+      id: "log_oa_submitted",
+      label: "Log OA Submitted",
+      toStage: "assessment",
+      defaultTitle: "Submitted Assessment",
+      modalTitle: "Assessment submitted",
+      modalDescription: "Log submission of the assessment.",
+      tone: "primary",
+      eventType: "status_update",
+      groupLabel: "Online assessment",
     },
     {
-      id: "rejected",
+      id: "pass_to_interview",
+      label: "Pass to Interview",
+      toStage: "technical_interview",
+      defaultTitle: "Passed Assessment",
+      modalTitle: "Advance to interviews",
+      modalDescription: "Move into the technical interview stage.",
+      tone: "primary",
+    },
+    {
+      id: "fail_assessment",
       label: "Rejected",
-      toStage: "rejected",
+      toStage: "closed",
       defaultTitle: "Rejected",
       modalTitle: "Mark as rejected",
       modalDescription: "Capture the rejection and a reason if known.",
-      variant: "secondary",
+      tone: "negative",
+      outcome: "rejected",
       reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
     },
   ],
-  interview: [
+  hiring_manager_screen: [],
+  technical_interview: [],
+  onsite: [],
+  offer: [
     {
-      id: "next-round",
-      label: "Log Next Round",
-      toStage: "interview",
-      defaultTitle: "Next Round",
-      modalTitle: "Log next round",
-      modalDescription: "Track the next interview round.",
-      variant: "primary",
+      id: "accept_offer",
+      label: "Accept Offer",
+      toStage: "closed",
+      defaultTitle: "Offer Accepted",
+      modalTitle: "Accept offer",
+      modalDescription: "Log acceptance and close the application. You'll be prompted to archive other applications.",
+      tone: "primary",
+      outcome: "offer_accepted",
     },
     {
-      id: "log-offer",
-      label: "Log Offer",
-      toStage: "offer",
-      defaultTitle: "Offer Received",
-      modalTitle: "Log the offer",
-      modalDescription: "Capture the offer stage.",
-      variant: "primary",
+      id: "decline_offer",
+      label: "Decline Offer",
+      toStage: "closed",
+      defaultTitle: "Offer Declined",
+      modalTitle: "Decline offer",
+      modalDescription: "Log that you declined the offer.",
+      tone: "secondary",
+      outcome: "offer_declined",
     },
     {
-      id: "rejected",
-      label: "Rejected",
-      toStage: "rejected",
-      defaultTitle: "Rejected",
-      modalTitle: "Mark as rejected",
-      modalDescription: "Capture the rejection and a reason if known.",
-      variant: "secondary",
-      reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
-    },
-    {
-      id: "withdrawn",
-      label: "Withdrawn",
-      toStage: "withdrawn",
+      id: "withdraw_application",
+      label: "Withdraw",
+      toStage: "closed",
       defaultTitle: "Withdrawn",
       modalTitle: "Withdraw application",
       modalDescription: "Log that you withdrew from the process.",
-      variant: "secondary",
+      tone: "secondary",
+      outcome: "withdrawn",
     },
   ],
+  closed: [],
 };
 
-const ACTIONS_NO_EVENTS: ActionConfig[] = [
+const INTERVIEW_STAGE_ACTIONS: ActionConfig[] = [
   {
-    id: "log-applied",
-    label: "Log Applied",
+    id: "book_interview_round",
+    label: "Book Interview Round",
+    toStage: "technical_interview",
+    defaultTitle: "Technical Round",
+    modalTitle: "Book interview round",
+    modalDescription: "Log the next interview round.",
+    tone: "primary",
+    eventType: "interview_log",
+  },
+  {
+    id: "log_feedback",
+    label: "Log Feedback",
+    toStage: "technical_interview",
+    defaultTitle: "Interview Notes",
+    modalTitle: "Interview notes",
+    modalDescription: "Capture notes without changing the stage.",
+    tone: "secondary",
+    eventType: "note",
+  },
+  {
+    id: "pass_to_onsite",
+    label: "Pass to Onsite",
+    toStage: "onsite",
+    defaultTitle: "Invited to Onsite",
+    modalTitle: "Move to onsite",
+    modalDescription: "Advance to onsite interviews.",
+    tone: "primary",
+  },
+  {
+    id: "offer_received",
+    label: "Offer Received",
+    toStage: "offer",
+    defaultTitle: "Offer Extended",
+    modalTitle: "Offer extended",
+    modalDescription: "Log the offer stage.",
+    tone: "primary",
+  },
+];
+
+const GLOBAL_ACTIONS: ActionConfig[] = [
+  {
+    id: "mark_ghosted",
+    label: "Mark Ghosted",
+    toStage: "closed",
+    defaultTitle: "Ghosted",
+    modalTitle: "Mark as ghosted",
+    modalDescription: "Close out after no response.",
+    tone: "negative",
+    outcome: "ghosted",
+  },
+  {
+    id: "log_ad_hoc_note",
+    label: "Log Note",
     toStage: "applied",
-    defaultTitle: "Applied",
-    modalTitle: "Log application",
-    modalDescription: "Mark when you submitted the application.",
-    variant: "primary",
-  },
-  {
-    id: "rejected",
-    label: "Rejected",
-    toStage: "rejected",
-    defaultTitle: "Rejected",
-    modalTitle: "Mark as rejected",
-    modalDescription: "Capture the rejection and a reason if known.",
-    variant: "secondary",
-    reasonCodes: ["Skills", "Visa", "Timing", "Unknown"],
-  },
-  {
-    id: "withdrawn",
-    label: "Withdrawn",
-    toStage: "withdrawn",
-    defaultTitle: "Withdrawn",
-    modalTitle: "Withdraw application",
-    modalDescription: "Log that you withdrew from the process.",
-    variant: "secondary",
+    modalTitle: "Log a note",
+    modalDescription: "Add an ad-hoc note to the timeline.",
+    tone: "secondary",
+    eventType: "note",
+    allowTitleInput: true,
   },
 ];
 
@@ -535,13 +669,17 @@ const ActionBar: React.FC<{
   events: StageEvent[];
   onAction: (action: ActionConfig) => void;
 }> = ({ job, events, onAction }) => {
-  const hasEvents = events.length > 0;
   const lastEvent = events.at(-1);
-  const currentStage = lastEvent?.toStage ?? (job.status === "applied" ? "applied" : null);
-  const stageKey = normalizeStageKey(currentStage);
-  const actions = hasEvents
-    ? (stageKey ? ACTIONS_BY_STAGE[stageKey] ?? [] : [])
-    : ACTIONS_NO_EVENTS;
+  const currentStage = getCurrentStage(job, lastEvent);
+  const stageActions = currentStage ? getAvailableActions(currentStage) : [];
+  const actions = [
+    ...stageActions,
+    ...GLOBAL_ACTIONS.map((action) =>
+      action.id === "log_ad_hoc_note"
+        ? { ...action, toStage: currentStage ?? action.toStage }
+        : action,
+    ),
+  ];
 
   if (actions.length === 0) {
     return (
@@ -551,43 +689,69 @@ const ActionBar: React.FC<{
     );
   }
 
-  const logActions = actions.filter((action) => action.variant === "primary");
+  const primaryActions = actions.filter((action) => action.tone === "primary");
+  const secondaryActions = actions.filter((action) => action.tone === "secondary");
+  const negativeActions = actions.filter((action) => action.tone === "negative");
 
   return (
     <div className="space-y-3">
-      {!hasEvents && (
-        <div className="text-xs text-muted-foreground">
-          Start tracking by logging the first milestone.
+      {primaryActions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {primaryActions.map((action) => (
+            <Button key={action.id} onClick={() => onAction(action)}>
+              {action.label}
+            </Button>
+          ))}
         </div>
       )}
-      {logActions.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Log</div>
-          <div className="flex flex-wrap gap-2">
-            {logActions.map((action) => (
-              <Button
-                key={action.id}
-                variant="outline"
-                className="border-border/60 text-muted-foreground hover:text-foreground"
-                onClick={() => onAction(action)}
-              >
-                {action.label}
-              </Button>
-            ))}
-          </div>
+      {secondaryActions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {secondaryActions.map((action) => (
+            <Button
+              key={action.id}
+              variant="outline"
+              className="border-border/60 text-muted-foreground hover:text-foreground"
+              onClick={() => onAction(action)}
+            >
+              {action.label}
+            </Button>
+          ))}
+        </div>
+      )}
+      {negativeActions.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {negativeActions.map((action) => (
+            <Button
+              key={action.id}
+              variant="outline"
+              className="border-destructive/70 text-destructive hover:text-destructive hover:border-destructive"
+              onClick={() => onAction(action)}
+            >
+              {action.label}
+            </Button>
+          ))}
         </div>
       )}
     </div>
   );
 };
 
-const normalizeStageKey = (stage: ApplicationStage | null) => {
-  if (!stage) return null;
-  if (stage === "assessment") return "assessment";
-  if (stage === "interview") return "interview";
-  if (stage === "recruiter_screen") return "applied";
-  if (stage === "applied") return "applied";
+const getCurrentStage = (job: Job, lastEvent?: StageEvent) => {
+  if (lastEvent?.toStage) return lastEvent.toStage;
+  if (job.status === "applied") return "applied" as ApplicationStage;
   return null;
+};
+
+const getAvailableActions = (stage: ApplicationStage): ActionConfig[] => {
+  if (stage === "hiring_manager_screen" || stage === "technical_interview" || stage === "onsite") {
+    return INTERVIEW_STAGE_ACTIONS.map((action) => {
+      if (action.id === "book_interview_round" || action.id === "log_feedback") {
+        return { ...action, toStage: stage };
+      }
+      return action;
+    });
+  }
+  return ACTIONS_BY_STAGE[stage] ?? [];
 };
 
 const toGroupId = (value: string) =>
