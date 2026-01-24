@@ -12,7 +12,6 @@ import type {
   StageEvent,
   StageEventMetadata,
 } from '../../shared/types.js';
-import { APPLICATION_STAGES } from '../../shared/types.js';
 
 const { jobs, stageEvents, tasks } = schema;
 

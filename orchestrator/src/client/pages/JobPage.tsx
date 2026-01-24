@@ -17,7 +17,6 @@ import type {
   JobOutcome,
   StageEvent,
 } from "../../shared/types";
-import { APPLICATION_STAGES } from "../../shared/types";
 
 const formatTimestamp = (value?: number | null) => {
   if (!value) return "No due date";
