@@ -91,7 +91,7 @@ describe("JobHeader", () => {
 
     it("shows 'Sponsor Not Found' when score < 80", () => {
         const jobNoSponsor = { ...mockJob, sponsorMatchScore: 40, sponsorMatchNames: '["Other Corp"]' };
-        render(<JobHeader job={jobNoSponsor} />);
+        renderWithRouter(<JobHeader job={jobNoSponsor} />);
 
         expect(screen.getByText("Sponsor Not Found")).toBeInTheDocument();
     });
@@ -102,7 +102,7 @@ describe("JobHeader", () => {
         });
 
         const jobWithSponsor = { ...mockJob, sponsorMatchScore: 98 };
-        render(<JobHeader job={jobWithSponsor} />);
+        renderWithRouter(<JobHeader job={jobWithSponsor} />);
 
         expect(screen.queryByText("Confirmed Sponsor")).not.toBeInTheDocument();
         expect(screen.queryByText("Check Sponsorship Status")).not.toBeInTheDocument();
