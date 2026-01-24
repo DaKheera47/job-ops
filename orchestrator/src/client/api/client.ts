@@ -130,7 +130,6 @@ export async function transitionJobStage(
     occurredAt?: number | null;
     metadata?: StageEventMetadata | null;
     outcome?: JobOutcome | null;
-    actionId?: string | null;
   }
 ): Promise<StageEvent> {
   return fetchApi<StageEvent>(`/jobs/${id}/stages`, {
