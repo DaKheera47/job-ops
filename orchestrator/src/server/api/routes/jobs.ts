@@ -66,6 +66,7 @@ const updateJobSchema = z.object({
 
 const transitionStageSchema = z.object({
   toStage: z.enum(APPLICATION_STAGES),
+  occurredAt: z.number().int().nullable().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
 });
 
@@ -153,7 +154,12 @@ jobsRouter.get('/:id/tasks', async (req: Request, res: Response) => {
 jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
   try {
     const input = transitionStageSchema.parse(req.body);
-    const event = await transitionStage(req.params.id, input.toStage, input.metadata ?? null);
+    const event = await transitionStage(
+      req.params.id,
+      input.toStage,
+      input.occurredAt ?? undefined,
+      input.metadata ?? null,
+    );
     res.json({ success: true, data: event });
   } catch (error) {
     if (error instanceof z.ZodError) {

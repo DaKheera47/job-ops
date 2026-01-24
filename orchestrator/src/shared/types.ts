@@ -69,6 +69,7 @@ export interface StageEventMetadata {
   groupLabel?: string | null;
   eventLabel?: string | null;
   externalUrl?: string | null;
+  reasonCode?: string | null;
 }
 
 export interface StageEvent {

@@ -9,7 +9,6 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { Timeline, TimelineEmpty, TimelineItem } from "@/components/ui/timeline";
 import { Badge } from "@/components/ui/badge";
 import type { ApplicationStage, StageEvent } from "../../../shared/types";
 import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
@@ -36,7 +35,28 @@ const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   closed: <ClipboardList className="h-4 w-4" />,
 };
 
-const formatTimestamp = (value: number) => new Date(value * 1000).toISOString();
+const formatDateOnly = (value: number) =>
+  new Date(value * 1000).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+const formatTimestamp = (value: number) => {
+  const date = new Date(value * 1000);
+  const dateLabel = formatDateOnly(value);
+  const timeLabel = date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dateLabel} ${timeLabel}`;
+};
+
+const formatRange = (start: number, end: number) => {
+  const startLabel = formatDateOnly(start);
+  const endLabel = formatDateOnly(end);
+  return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
+};
 
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
@@ -48,6 +68,8 @@ interface JobTimelineProps {
 
 export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+  const lastEvent = events.at(-1);
+  const currentStage = lastEvent?.toStage ?? null;
 
   const entries = React.useMemo(() => {
     const groups = new Map<string, { label: string; events: StageEvent[] }>();
@@ -87,66 +109,145 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
   }, [events]);
 
   if (entries.length === 0) {
-    return <TimelineEmpty>No stage events yet.</TimelineEmpty>;
+    return (
+      <div className="rounded-md border border-dashed border-border/50 p-6 text-sm text-muted-foreground">
+        No stage events yet.
+      </div>
+    );
   }
 
   return (
-    <Timeline className="max-w-none">
-      {entries.map((entry) => {
+    <div className="space-y-6">
+      {entries.map((entry, entryIndex) => {
         if (entry.kind === "event") {
           const title = entry.event.metadata?.eventLabel || stageLabels[entry.event.toStage];
-          const description = entry.event.metadata?.note || "";
+          const note = entry.event.metadata?.note;
+          const reason = entry.event.metadata?.reasonCode;
+          const isCurrent = currentStage === entry.event.toStage && entryIndex === entries.length - 1;
           return (
-            <TimelineItem
+            <TimelineRow
               key={entry.event.id}
               date={formatTimestamp(entry.event.occurredAt)}
               title={title}
-              description={description}
               icon={stageIcons[entry.event.toStage]}
-              status="completed"
-            />
+              isCurrent={isCurrent}
+              isLast={entryIndex === entries.length - 1}
+            >
+              {note && <div className="text-sm text-muted-foreground">{note}</div>}
+              {reason && (
+                <Badge variant="outline" className="mt-2 text-[10px] uppercase tracking-wide">
+                  {reason}
+                </Badge>
+              )}
+            </TimelineRow>
           );
         }
 
         const groupOpen = Boolean(openGroups[entry.id]);
         const toggleGroup = () =>
           setOpenGroups((prev) => ({ ...prev, [entry.id]: !prev[entry.id] }));
+        const groupStart = entry.events[0]?.occurredAt ?? entry.occurredAt;
+        const groupEnd = entry.events.at(-1)?.occurredAt ?? entry.occurredAt;
+        const groupCompleted = entry.events.some((event) =>
+          /submitted|completed|finished/i.test(event.metadata?.eventLabel ?? ""),
+        );
+        const isCurrentGroup =
+          currentStage === entry.events.at(-1)?.toStage && entryIndex === entries.length - 1;
 
         return (
-          <TimelineItem
-            key={entry.id}
-            date={formatTimestamp(entry.occurredAt)}
-            title={entry.label}
-            description={
+          <div key={entry.id} className="space-y-2">
+            <TimelineRow
+              date={formatRange(groupStart, groupEnd)}
+              title={entry.label}
+              icon={<ClipboardList className="h-4 w-4" />}
+              isCurrent={isCurrentGroup && !groupCompleted}
+              isCompleted={groupCompleted}
+              isLast={entryIndex === entries.length - 1}
+            >
               <CollapsibleSection
                 isOpen={groupOpen}
                 label={groupOpen ? "Hide details" : "View details"}
                 onToggle={toggleGroup}
               >
-                <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 p-3">
+                <div className="space-y-4">
                   {entry.events.map((event) => (
-                    <div key={event.id} className="flex items-start justify-between gap-4 text-xs">
-                      <div className="space-y-1">
-                        <div className="font-medium text-foreground/80">
-                          {event.metadata?.eventLabel || stageLabels[event.toStage]}
-                        </div>
-                        {event.metadata?.note && (
-                          <div className="text-muted-foreground/80">{event.metadata.note}</div>
-                        )}
-                      </div>
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
-                        {stageLabels[event.toStage]}
-                      </Badge>
-                    </div>
+                    <TimelineRow
+                      key={event.id}
+                      date={formatTimestamp(event.occurredAt)}
+                      title={event.metadata?.eventLabel || stageLabels[event.toStage]}
+                      icon={stageIcons[event.toStage]}
+                      isCompact
+                      isLast={false}
+                    >
+                      {event.metadata?.note && (
+                        <div className="text-xs text-muted-foreground">{event.metadata.note}</div>
+                      )}
+                    </TimelineRow>
                   ))}
                 </div>
               </CollapsibleSection>
-            }
-            icon={<ClipboardList className="h-4 w-4" />}
-            status="completed"
-          />
+            </TimelineRow>
+          </div>
         );
       })}
-    </Timeline>
+    </div>
+  );
+};
+
+interface TimelineRowProps {
+  date: string;
+  title: string;
+  icon: React.ReactNode;
+  isCurrent?: boolean;
+  isCompleted?: boolean;
+  isLast?: boolean;
+  isCompact?: boolean;
+  children?: React.ReactNode;
+}
+
+const TimelineRow: React.FC<TimelineRowProps> = ({
+  date,
+  title,
+  icon,
+  isCurrent,
+  isCompleted,
+  isLast,
+  isCompact,
+  children,
+}) => {
+  const isHollow = Boolean(isCurrent) && !isCompleted;
+  const isFilled = !isHollow;
+
+  return (
+    <div className={isCompact ? "pl-8" : ""}>
+      <div
+        className={
+          isCompact
+            ? "grid grid-cols-[80px_20px_1fr] gap-4"
+            : "grid grid-cols-[100px_24px_1fr] gap-4"
+        }
+      >
+        <div className="text-right text-xs font-medium text-muted-foreground">{date}</div>
+        <div className="relative flex flex-col items-center">
+          <span className="absolute inset-y-0 w-px bg-border" />
+          <div
+            className={
+              isCompact
+                ? "relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"
+                : isHollow
+                  ? "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-emerald-500 bg-background text-emerald-600 animate-pulse"
+                  : "relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white"
+            }
+          >
+            {isFilled && icon}
+          </div>
+          {isLast && <span className="absolute bottom-0 h-4 w-px bg-background" />}
+        </div>
+        <div className="space-y-1">
+          <div className={isCompact ? "text-xs font-semibold" : "text-sm font-semibold"}>{title}</div>
+          {children}
+        </div>
+      </div>
+    </div>
   );
 };

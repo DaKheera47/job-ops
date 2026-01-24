@@ -64,7 +64,7 @@ export const jobs = sqliteTable('jobs', {
     enum: ['discovered', 'processing', 'ready', 'applied', 'skipped', 'expired']
   }).notNull().default('discovered'),
   outcome: text('outcome', { enum: APPLICATION_OUTCOMES }),
-  closedAt: integer('closed_at', { mode: 'timestamp' }),
+  closedAt: integer('closed_at', { mode: 'number' }),
   suitabilityScore: real('suitability_score'),
   suitabilityReason: text('suitability_reason'),
   tailoredSummary: text('tailored_summary'),
@@ -89,7 +89,7 @@ export const stageEvents = sqliteTable('stage_events', {
   applicationId: text('application_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
   fromStage: text('from_stage', { enum: APPLICATION_STAGES }),
   toStage: text('to_stage', { enum: APPLICATION_STAGES }).notNull(),
-  occurredAt: integer('occurred_at', { mode: 'timestamp' }).notNull(),
+  occurredAt: integer('occurred_at', { mode: 'number' }).notNull(),
   metadata: text('metadata', { mode: 'json' }),
 });
 
@@ -97,7 +97,7 @@ export const tasks = sqliteTable('tasks', {
   id: text('id').primaryKey(),
   applicationId: text('application_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
   type: text('type', { enum: APPLICATION_TASK_TYPES }).notNull(),
-  dueDate: integer('due_date', { mode: 'timestamp' }),
+  dueDate: integer('due_date', { mode: 'number' }),
   isCompleted: integer('is_completed', { mode: 'boolean' }).notNull().default(false),
   notes: text('notes'),
 });
@@ -105,7 +105,7 @@ export const tasks = sqliteTable('tasks', {
 export const interviews = sqliteTable('interviews', {
   id: text('id').primaryKey(),
   applicationId: text('application_id').notNull().references(() => jobs.id, { onDelete: 'cascade' }),
-  scheduledAt: integer('scheduled_at', { mode: 'timestamp' }).notNull(),
+  scheduledAt: integer('scheduled_at', { mode: 'number' }).notNull(),
   durationMins: integer('duration_mins'),
   type: text('type', { enum: INTERVIEW_TYPES }).notNull(),
   outcome: text('outcome', { enum: INTERVIEW_OUTCOMES }),

@@ -1,6 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { JobHeader } from "./JobHeader";
 import { useSettings } from "../hooks/useSettings";
 import type { Job } from "../../shared/types";
@@ -51,8 +52,11 @@ describe("JobHeader", () => {
         });
     });
 
+    const renderWithRouter = (ui: React.ReactElement) =>
+        render(<MemoryRouter>{ui}</MemoryRouter>);
+
     it("renders basic job information", () => {
-        render(<JobHeader job={mockJob} />);
+        renderWithRouter(<JobHeader job={mockJob} />);
         expect(screen.getByText("Software Engineer")).toBeInTheDocument();
         expect(screen.getByText("Tech Corp")).toBeInTheDocument();
         expect(screen.getByText("London")).toBeInTheDocument();
@@ -61,7 +65,7 @@ describe("JobHeader", () => {
 
     it("shows 'Check Sponsorship Status' button when sponsorMatchScore is null", async () => {
         const onCheckSponsor = vi.fn().mockResolvedValue(undefined);
-        render(<JobHeader job={mockJob} onCheckSponsor={onCheckSponsor} />);
+        renderWithRouter(<JobHeader job={mockJob} onCheckSponsor={onCheckSponsor} />);
 
         const button = screen.getByText("Check Sponsorship Status");
         expect(button).toBeInTheDocument();
@@ -73,14 +77,14 @@ describe("JobHeader", () => {
 
     it("shows 'Confirmed Sponsor' when score >= 95", () => {
         const jobWithSponsor = { ...mockJob, sponsorMatchScore: 98, sponsorMatchNames: '["Tech Corp Ltd"]' };
-        render(<JobHeader job={jobWithSponsor} />);
+        renderWithRouter(<JobHeader job={jobWithSponsor} />);
 
         expect(screen.getByText("Confirmed Sponsor")).toBeInTheDocument();
     });
 
     it("shows 'Potential Sponsor' when score is between 80 and 94", () => {
         const jobWithPotential = { ...mockJob, sponsorMatchScore: 85, sponsorMatchNames: '["Techy Corp"]' };
-        render(<JobHeader job={jobWithPotential} />);
+        renderWithRouter(<JobHeader job={jobWithPotential} />);
 
         expect(screen.getByText("Potential Sponsor")).toBeInTheDocument();
     });

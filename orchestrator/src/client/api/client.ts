@@ -60,7 +60,7 @@ export async function getJobs(statuses?: string[]): Promise<JobsListResponse> {
 }
 
 export async function getJob(id: string): Promise<Job> {
-  return fetchApi<Job>(`/jobs/${id}`);
+  return fetchApi<Job>(`/jobs/${id}?t=${Date.now()}`);
 }
 
 export async function updateJob(
@@ -112,17 +112,20 @@ export async function skipJob(id: string): Promise<Job> {
 }
 
 export async function getJobStageEvents(id: string): Promise<StageEvent[]> {
-  return fetchApi<StageEvent[]>(`/jobs/${id}/events`);
+  return fetchApi<StageEvent[]>(`/jobs/${id}/events?t=${Date.now()}`);
 }
 
 export async function getJobTasks(id: string, options?: { includeCompleted?: boolean }): Promise<ApplicationTask[]> {
-  const query = options?.includeCompleted ? '?includeCompleted=1' : '';
-  return fetchApi<ApplicationTask[]>(`/jobs/${id}/tasks${query}`);
+  const params = new URLSearchParams();
+  if (options?.includeCompleted) params.set('includeCompleted', '1');
+  params.set('t', Date.now().toString());
+  const query = params.toString();
+  return fetchApi<ApplicationTask[]>(`/jobs/${id}/tasks?${query}`);
 }
 
 export async function transitionJobStage(
   id: string,
-  input: { toStage: ApplicationStage; metadata?: StageEventMetadata | null }
+  input: { toStage: ApplicationStage; occurredAt?: number | null; metadata?: StageEventMetadata | null }
 ): Promise<StageEvent> {
   return fetchApi<StageEvent>(`/jobs/${id}/stages`, {
     method: 'POST',
@@ -206,7 +209,7 @@ let settingsPromise: Promise<AppSettings> | null = null;
 
 export async function getSettings(): Promise<AppSettings> {
   if (settingsPromise) return settingsPromise;
-  
+
   settingsPromise = fetchApi<AppSettings>('/settings').finally(() => {
     // Clear the promise after a short delay to allow subsequent fresh fetches
     // but coalesce simultaneous requests.
@@ -214,7 +217,7 @@ export async function getSettings(): Promise<AppSettings> {
       settingsPromise = null;
     }, 100);
   });
-  
+
   return settingsPromise;
 }
 

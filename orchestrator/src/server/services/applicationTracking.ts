@@ -33,6 +33,7 @@ export const stageEventMetadataSchema = z.object({
   groupLabel: z.string().nullable().optional(),
   eventLabel: z.string().nullable().optional(),
   externalUrl: z.string().url().nullable().optional(),
+  reasonCode: z.string().nullable().optional(),
 }).strict();
 
 
@@ -77,6 +78,7 @@ export async function getTasks(applicationId: string, includeCompleted = false):
 export async function transitionStage(
   applicationId: string,
   toStage: ApplicationStage,
+  occurredAt?: number,
   metadata?: StageEventMetadata | null,
 ): Promise<StageEvent> {
   z.object({
@@ -86,31 +88,33 @@ export async function transitionStage(
   const parsedMetadata = metadata ? stageEventMetadataSchema.parse(metadata) : null;
 
   const now = Math.floor(Date.now() / 1000);
+  const timestamp = occurredAt ?? now;
 
-  return db.transaction(async (tx) => {
-    const [job] = await tx.select().from(jobs).where(eq(jobs.id, applicationId));
+  return db.transaction((tx) => {
+    const job = tx.select().from(jobs).where(eq(jobs.id, applicationId)).get();
     if (!job) {
       throw new Error('Job not found');
     }
 
-    const [lastEvent] = await tx
+    const lastEvent = tx
       .select()
       .from(stageEvents)
       .where(eq(stageEvents.applicationId, applicationId))
       .orderBy(desc(stageEvents.occurredAt))
-      .limit(1);
+      .limit(1)
+      .get();
 
     const fromStage = (lastEvent?.toStage as ApplicationStage | undefined) ?? null;
     const eventId = randomUUID();
 
-    await tx.insert(stageEvents).values({
+    tx.insert(stageEvents).values({
       id: eventId,
       applicationId,
       fromStage,
       toStage,
-      occurredAt: now,
+      occurredAt: timestamp,
       metadata: parsedMetadata ?? null,
-    });
+    }).run();
 
     const updates: Partial<typeof jobs.$inferInsert> = {
       status: STAGE_TO_STATUS[toStage],
@@ -120,11 +124,11 @@ export async function transitionStage(
       updates.appliedAt = new Date().toISOString();
     }
 
-    await tx.update(jobs).set(updates).where(eq(jobs.id, applicationId));
+    tx.update(jobs).set(updates).where(eq(jobs.id, applicationId)).run();
 
-    const autoTasks = buildAutoTasks(applicationId, toStage, now);
+    const autoTasks = buildAutoTasks(applicationId, toStage, timestamp);
     if (autoTasks.length > 0) {
-      await tx.insert(tasks).values(autoTasks);
+      tx.insert(tasks).values(autoTasks).run();
     }
 
     return {
@@ -132,7 +136,7 @@ export async function transitionStage(
       applicationId,
       fromStage,
       toStage,
-      occurredAt: now,
+      occurredAt: timestamp,
       metadata: parsedMetadata ?? null,
     };
   });
