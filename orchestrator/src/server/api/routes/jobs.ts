@@ -65,11 +65,10 @@ const updateJobSchema = z.object({
 });
 
 const transitionStageSchema = z.object({
-  toStage: z.enum(APPLICATION_STAGES),
+  toStage: z.enum([...APPLICATION_STAGES, 'no_change']),
   occurredAt: z.number().int().nullable().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
   outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
-  actionId: z.string().optional(),
 });
 
 const updateOutcomeSchema = z.object({
@@ -161,7 +160,6 @@ jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
       input.occurredAt ?? undefined,
       input.metadata ?? null,
       input.outcome ?? null,
-      input.actionId,
     );
     res.json({ success: true, data: event });
   } catch (error) {

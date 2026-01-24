@@ -125,7 +125,13 @@ export async function getJobTasks(id: string, options?: { includeCompleted?: boo
 
 export async function transitionJobStage(
   id: string,
-  input: { toStage: ApplicationStage; occurredAt?: number | null; metadata?: StageEventMetadata | null }
+  input: {
+    toStage: ApplicationStage;
+    occurredAt?: number | null;
+    metadata?: StageEventMetadata | null;
+    outcome?: JobOutcome | null;
+    actionId?: string | null;
+  }
 ): Promise<StageEvent> {
   return fetchApi<StageEvent>(`/jobs/${id}/stages`, {
     method: 'POST',

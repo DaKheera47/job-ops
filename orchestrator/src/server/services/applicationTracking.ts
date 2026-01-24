@@ -38,7 +38,6 @@ export const stageEventMetadataSchema = z.object({
   eventType: z.enum(['interview_log', 'status_update', 'note']).nullable().optional(),
 }).strict();
 
-
 export async function getStageEvents(applicationId: string): Promise<StageEvent[]> {
   const rows = await db
     .select()
@@ -80,16 +79,11 @@ export async function getTasks(applicationId: string, includeCompleted = false):
 
 export function transitionStage(
   applicationId: string,
-  toStage: ApplicationStage,
+  toStage: ApplicationStage | 'no_change',
   occurredAt?: number,
   metadata?: StageEventMetadata | null,
   outcome?: JobOutcome | null,
-  actionId?: string,
 ): StageEvent {
-  z.object({
-    applicationId: z.string().min(1),
-    toStage: z.enum(APPLICATION_STAGES),
-  }).parse({ applicationId, toStage });
   const parsedMetadata = metadata ? stageEventMetadataSchema.parse(metadata) : null;
 
   const now = Math.floor(Date.now() / 1000);
@@ -110,30 +104,28 @@ export function transitionStage(
       .get();
 
     const fromStage = (lastEvent?.toStage as ApplicationStage | undefined) ?? null;
-    const inferredStage = toStage ?? fromStage ?? 'applied';
-    const withGroup = ensureAssessmentGroup({
-      stage: inferredStage,
-      metadata: parsedMetadata,
-      lastAssessmentGroupId: getLastAssessmentGroupId(tx, applicationId),
-      timestamp,
-    });
+    const finalToStage = toStage === 'no_change' ? (fromStage ?? 'applied') : toStage;
     const eventId = randomUUID();
 
     tx.insert(stageEvents).values({
       id: eventId,
       applicationId,
       fromStage,
-      toStage: inferredStage,
+      toStage: finalToStage,
       occurredAt: timestamp,
-      metadata: withGroup,
+      metadata: parsedMetadata,
     }).run();
 
     const updates: Partial<typeof jobs.$inferInsert> = {
-      status: STAGE_TO_STATUS[inferredStage],
+      updatedAt: new Date().toISOString(),
     };
 
-    if (inferredStage === 'applied' && !job.appliedAt) {
-      updates.appliedAt = new Date().toISOString();
+    if (toStage !== 'no_change') {
+      updates.status = STAGE_TO_STATUS[finalToStage];
+
+      if (finalToStage === 'applied' && !job.appliedAt) {
+        updates.appliedAt = new Date().toISOString();
+      }
     }
 
     if (outcome) {
@@ -145,130 +137,15 @@ export function transitionStage(
 
     tx.update(jobs).set(updates).where(eq(jobs.id, applicationId)).run();
 
-    const autoTasks = buildAutoTasks(tx, applicationId, inferredStage, timestamp, metadata, actionId);
-    if (autoTasks.length > 0) {
-      tx.insert(tasks).values(autoTasks).run();
-    }
-
     return {
       id: eventId,
       applicationId,
       fromStage,
-      toStage: inferredStage,
+      toStage: finalToStage,
       occurredAt: timestamp,
-      metadata: withGroup,
+      metadata: parsedMetadata,
     };
   });
-}
-
-function buildAutoTasks(
-  tx: typeof db,
-  applicationId: string,
-  stage: ApplicationStage,
-  timestamp: number,
-  metadata?: StageEventMetadata | null,
-  actionId?: string,
-) {
-  const tasksToCreate: Array<typeof tasks.$inferInsert> = [];
-
-  const createTask = (input: {
-    type: ApplicationTaskType;
-    title: string;
-    dueDate: number | null;
-    notes?: string | null;
-  }) => {
-    if (hasOpenTask(tx, applicationId, input.type)) return;
-    tasksToCreate.push({
-      id: randomUUID(),
-      applicationId,
-      type: input.type,
-      title: input.title,
-      dueDate: input.dueDate,
-      isCompleted: false,
-      notes: input.notes ?? null,
-    });
-  };
-
-  if (actionId === 'book_recruiter_screen') {
-    createTask({
-      type: 'prep',
-      title: 'Prep for Recruiter Call',
-      dueDate: timestamp - 24 * 60 * 60,
-    });
-  }
-
-  if (actionId === 'log_oa_received') {
-    createTask({
-      type: 'todo',
-      title: 'Complete Assessment',
-      dueDate: timestamp + 3 * 24 * 60 * 60,
-    });
-  }
-
-  if (actionId === 'log_screen_completed') {
-    createTask({
-      type: 'follow_up',
-      title: 'Send Thank You Note',
-      dueDate: timestamp + 24 * 60 * 60,
-    });
-  }
-
-  if (actionId === 'log_oa_submitted') {
-    createTask({
-      type: 'check_status',
-      title: 'Check Assessment Status',
-      dueDate: timestamp + 7 * 24 * 60 * 60,
-    });
-  }
-
-  if (actionId === 'book_interview_round') {
-    createTask({
-      type: 'prep',
-      title: 'Prep for Interview',
-      dueDate: timestamp - 2 * 24 * 60 * 60,
-    });
-  }
-
-  return tasksToCreate;
-}
-
-function hasOpenTask(tx: any, applicationId: string, type: ApplicationTaskType) {
-  const task = tx
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.applicationId, applicationId), eq(tasks.type, type), eq(tasks.isCompleted, false)))
-    .get();
-  return Boolean(task);
-}
-
-function getLastAssessmentGroupId(tx: any, applicationId: string) {
-  const row = tx
-    .select({ metadata: stageEvents.metadata })
-    .from(stageEvents)
-    .where(and(eq(stageEvents.applicationId, applicationId), eq(stageEvents.toStage, 'assessment')))
-    .orderBy(desc(stageEvents.occurredAt))
-    .get();
-
-  const metadata = parseMetadata(row?.metadata);
-  return metadata?.groupId ?? null;
-}
-
-function ensureAssessmentGroup(input: {
-  stage: ApplicationStage;
-  metadata: StageEventMetadata | null;
-  lastAssessmentGroupId: string | null;
-  timestamp: number;
-}) {
-  if (input.stage !== 'assessment') {
-    return input.metadata ?? null;
-  }
-
-  const groupId = input.metadata?.groupId ?? input.lastAssessmentGroupId ?? `oa_${input.timestamp}`;
-  return {
-    ...(input.metadata ?? {}),
-    groupId,
-    groupLabel: input.metadata?.groupLabel ?? 'Online assessment',
-  } satisfies StageEventMetadata;
 }
 
 function parseMetadata(raw: unknown): StageEventMetadata | null {
