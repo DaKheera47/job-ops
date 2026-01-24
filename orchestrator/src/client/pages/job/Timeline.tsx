@@ -10,7 +10,6 @@ import {
   Trash2,
   UserRound,
   Video,
-  XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
