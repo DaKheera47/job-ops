@@ -1,5 +1,5 @@
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import type { Server } from 'http';
 import { startServer, stopServer } from '../api/routes/test-utils.js';
 import { db, schema } from '../db/index.js';
