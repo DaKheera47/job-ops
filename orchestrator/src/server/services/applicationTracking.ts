@@ -148,6 +148,88 @@ export function transitionStage(
   });
 }
 
+export function updateStageEvent(
+  eventId: string,
+  payload: {
+    toStage?: ApplicationStage;
+    occurredAt?: number;
+    metadata?: StageEventMetadata | null;
+  },
+): void {
+  const { toStage, occurredAt, metadata } = payload;
+  const parsedMetadata = metadata ? stageEventMetadataSchema.parse(metadata) : undefined;
+
+  db.transaction((tx: any) => {
+    const event = tx.select().from(stageEvents).where(eq(stageEvents.id, eventId)).get();
+    if (!event) throw new Error('Event not found');
+
+    const updates: any = {};
+    if (toStage) updates.toStage = toStage;
+    if (occurredAt) updates.occurredAt = occurredAt;
+    if (parsedMetadata !== undefined) updates.metadata = parsedMetadata;
+
+    tx.update(stageEvents).set(updates).where(eq(stageEvents.id, eventId)).run();
+
+    // If this was the latest event, update the job status
+    const lastEvent = tx
+      .select()
+      .from(stageEvents)
+      .where(eq(stageEvents.applicationId, event.applicationId))
+      .orderBy(desc(stageEvents.occurredAt))
+      .limit(1)
+      .get();
+
+    if (lastEvent && lastEvent.id === eventId) {
+      tx.update(jobs)
+        .set({
+          status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(jobs.id, event.applicationId))
+        .run();
+    }
+  });
+}
+
+export function deleteStageEvent(eventId: string): void {
+  db.transaction((tx: any) => {
+    const event = tx.select().from(stageEvents).where(eq(stageEvents.id, eventId)).get();
+    if (!event) return;
+
+    tx.delete(stageEvents).where(eq(stageEvents.id, eventId)).run();
+
+    // Update job status based on the new latest event
+    const lastEvent = tx
+      .select()
+      .from(stageEvents)
+      .where(eq(stageEvents.applicationId, event.applicationId))
+      .orderBy(desc(stageEvents.occurredAt))
+      .limit(1)
+      .get();
+
+    if (lastEvent) {
+      tx.update(jobs)
+        .set({
+          status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(jobs.id, event.applicationId))
+        .run();
+    } else {
+      // If no events left, maybe revert to discovered? 
+      // For now just keep it as is or set to discovered if it was applied
+      tx.update(jobs)
+        .set({
+          status: 'discovered',
+          appliedAt: null,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(jobs.id, event.applicationId))
+        .run();
+    }
+  });
+}
+
 function parseMetadata(raw: unknown): StageEventMetadata | null {
   if (!raw) return null;
   if (typeof raw === 'string') {

@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
-import { ApplicationStage } from "../../shared/types";
+import { ApplicationStage, StageEvent } from "../../shared/types";
 
 const logEventSchema = z.object({
   stage: z.string(),
@@ -38,8 +38,9 @@ export type LogEventFormValues = z.infer<typeof logEventSchema>;
 interface LogEventModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLog: (values: LogEventFormValues) => Promise<void>;
+  onLog: (values: LogEventFormValues, eventId?: string) => Promise<void>;
   currentStage: ApplicationStage | null;
+  editingEvent?: StageEvent | null;
 }
 
 const STAGE_OPTIONS = [
@@ -68,6 +69,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
   onClose,
   onLog,
   currentStage,
+  editingEvent,
 }) => {
   const {
     register,
@@ -91,28 +93,44 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
-      reset({
-        stage: "no_change",
-        title: "Update",
-        date: toDateTimeLocal(new Date()),
-        notes: "",
-      });
-    }
-  }, [isOpen, reset]);
-
-  React.useEffect(() => {
-    if (selectedStage === "no_change") {
-      setValue("title", "Update");
-    } else {
-      const option = STAGE_OPTIONS.find((o) => o.value === selectedStage);
-      if (option) {
-        setValue("title", option.label);
+      if (editingEvent) {
+        reset({
+          stage: editingEvent.toStage,
+          title: editingEvent.metadata?.eventLabel || "",
+          date: toDateTimeLocal(new Date(editingEvent.occurredAt * 1000)),
+          notes: editingEvent.metadata?.note || "",
+          reasonCode: editingEvent.metadata?.reasonCode || undefined,
+          salary: editingEvent.metadata?.externalUrl?.startsWith("Salary: ") 
+            ? editingEvent.metadata.externalUrl.replace("Salary: ", "") 
+            : undefined,
+        });
+      } else {
+        reset({
+          stage: "no_change",
+          title: "Update",
+          date: toDateTimeLocal(new Date()),
+          notes: "",
+        });
       }
     }
-  }, [selectedStage, setValue]);
+  }, [isOpen, reset, editingEvent]);
+
+  React.useEffect(() => {
+    // Only auto-update title if we're not editing or if the title is empty/default
+    if (!editingEvent) {
+      if (selectedStage === "no_change") {
+        setValue("title", "Update");
+      } else {
+        const option = STAGE_OPTIONS.find((o) => o.value === selectedStage);
+        if (option) {
+          setValue("title", option.label);
+        }
+      }
+    }
+  }, [selectedStage, setValue, editingEvent]);
 
   const onSubmit = async (values: LogEventFormValues) => {
-    await onLog(values);
+    await onLog(values, editingEvent?.id);
     onClose();
   };
 
@@ -120,9 +138,9 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>Log Event</AlertDialogTitle>
+          <AlertDialogTitle>{editingEvent ? "Edit Event" : "Log Event"}</AlertDialogTitle>
           <AlertDialogDescription>
-            Record a new update or stage change for this application.
+            {editingEvent ? "Update the details of this event." : "Record a new update or stage change for this application."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -204,7 +222,7 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
               Cancel
             </AlertDialogCancel>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Logging..." : "Log Event"}
+              {isSubmitting ? "Saving..." : editingEvent ? "Save Changes" : "Log Event"}
             </Button>
           </AlertDialogFooter>
         </form>

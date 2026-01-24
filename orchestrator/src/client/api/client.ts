@@ -139,6 +139,30 @@ export async function transitionJobStage(
   });
 }
 
+export async function updateJobStageEvent(
+  id: string,
+  eventId: string,
+  input: {
+    toStage?: ApplicationStage;
+    occurredAt?: number | null;
+    metadata?: StageEventMetadata | null;
+  }
+): Promise<void> {
+  return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteJobStageEvent(
+  id: string,
+  eventId: string
+): Promise<void> {
+  return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function updateJobOutcome(
   id: string,
   input: { outcome: JobOutcome | null; closedAt?: number | null }

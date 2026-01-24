@@ -9,6 +9,8 @@ import {
   getTasks,
   stageEventMetadataSchema,
   transitionStage,
+  updateStageEvent,
+  deleteStageEvent,
 } from '../../services/applicationTracking.js';
 import * as visaSponsors from '../../services/visa-sponsors/index.js';
 import {
@@ -69,6 +71,12 @@ const transitionStageSchema = z.object({
   occurredAt: z.number().int().nullable().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
   outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
+});
+
+const updateStageEventSchema = z.object({
+  toStage: z.enum(APPLICATION_STAGES).optional(),
+  occurredAt: z.number().int().optional(),
+  metadata: stageEventMetadataSchema.nullable().optional(),
 });
 
 const updateOutcomeSchema = z.object({
@@ -166,6 +174,36 @@ jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });
     }
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * PATCH /api/jobs/:id/events/:eventId - Update an event
+ */
+jobsRouter.patch('/:id/events/:eventId', async (req: Request, res: Response) => {
+  try {
+    const input = updateStageEventSchema.parse(req.body);
+    updateStageEvent(req.params.eventId, input);
+    res.json({ success: true });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * DELETE /api/jobs/:id/events/:eventId - Delete an event
+ */
+jobsRouter.delete('/:id/events/:eventId', async (req: Request, res: Response) => {
+  try {
+    deleteStageEvent(req.params.eventId);
+    res.json({ success: true });
+  } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ success: false, error: message });
   }

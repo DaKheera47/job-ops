@@ -2,16 +2,19 @@ import React from "react";
 import {
   CheckCircle2,
   ClipboardList,
+  Edit2,
   FileText,
   MailCheck,
   PhoneCall,
   Presentation,
+  Trash2,
   UserRound,
   Video,
   XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import type { ApplicationStage, StageEvent } from "../../../shared/types";
 import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
 
@@ -66,9 +69,11 @@ type TimelineEntry =
 
 interface JobTimelineProps {
   events: StageEvent[];
+  onEdit?: (event: StageEvent) => void;
+  onDelete?: (eventId: string) => void;
 }
 
-export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
+export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDelete }) => {
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
   const lastEvent = events.at(-1);
   const currentStage = lastEvent?.toStage ?? null;
@@ -137,6 +142,8 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
               icon={stageIcons[entry.event.toStage]}
               isCurrent={isCurrent}
               isLast={entryIndex === entries.length - 1}
+              onEdit={onEdit ? () => onEdit(entry.event) : undefined}
+              onDelete={onDelete ? () => onDelete(entry.event.id) : undefined}
             >
               {note && <div className="text-sm text-muted-foreground">{note}</div>}
               {reason && (
@@ -183,6 +190,8 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events }) => {
                       icon={stageIcons[event.toStage]}
                       isCompact
                       isLast={false}
+                      onEdit={onEdit ? () => onEdit(event) : undefined}
+                      onDelete={onDelete ? () => onDelete(event.id) : undefined}
                     >
                       {event.metadata?.note && (
                         <div className="text-xs text-muted-foreground">{event.metadata.note}</div>
@@ -207,6 +216,8 @@ interface TimelineRowProps {
   isCompleted?: boolean;
   isLast?: boolean;
   isCompact?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
   children?: React.ReactNode;
 }
 
@@ -218,13 +229,15 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
   isCompleted,
   isLast,
   isCompact,
+  onEdit,
+  onDelete,
   children,
 }) => {
   const isHollow = Boolean(isCurrent) && !isCompleted;
   const isFilled = !isHollow;
 
   return (
-    <div className={isCompact ? "pl-8" : ""}>
+    <div className={cn("group relative", isCompact ? "pl-8" : "")}>
       <div
         className={
           isCompact
@@ -248,9 +261,38 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
           </div>
           {isLast && <span className="absolute bottom-0 h-4 w-px bg-background" />}
         </div>
-        <div className="space-y-1">
-          <div className={isCompact ? "text-xs font-semibold" : "text-sm font-semibold"}>{title}</div>
-          {children}
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className={isCompact ? "text-xs font-semibold" : "text-sm font-semibold"}>{title}</div>
+            {children}
+          </div>
+
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+            {onEdit && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="p-2 cursor-pointer rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                title="Edit event"
+              >
+                <Edit2 className="size-4" />
+              </button>
+            )}
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="p-2 cursor-pointer rounded-md hover:bg-muted text-destructive/70 hover:text-destructive transition-colors"
+                title="Delete event"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

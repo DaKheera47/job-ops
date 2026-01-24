@@ -46,6 +46,7 @@ export const JobPage: React.FC = () => {
   const [tasks, setTasks] = React.useState<ApplicationTask[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
+  const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(null);
   const pendingEventRef = React.useRef<StageEvent | null>(null);
 
   const loadData = React.useCallback(async () => {
@@ -71,7 +72,7 @@ export const JobPage: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleLogEvent = async (values: LogEventFormValues) => {
+  const handleLogEvent = async (values: LogEventFormValues, eventId?: string) => {
     if (!job) return;
 
     let toStage: ApplicationStage | "no_change" = values.stage as ApplicationStage | "no_change";
@@ -86,35 +87,67 @@ export const JobPage: React.FC = () => {
     }
 
     try {
-      const newEvent = await api.transitionJobStage(job.id, {
-        toStage: toStage as ApplicationStage,
-        occurredAt: toTimestamp(values.date),
-        metadata: {
-          note: values.notes?.trim() || undefined,
-          eventLabel: values.title.trim() || undefined,
-          reasonCode: values.reasonCode || undefined,
-          actor: "user",
-          eventType: values.stage === "no_change" ? "note" : "status_update",
-          externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
-        },
-        outcome,
-      });
-
-      pendingEventRef.current = newEvent;
-      setEvents((prev) =>
-        [...prev, newEvent].sort((a, b) => a.occurredAt - b.occurredAt),
-      );
+      if (eventId) {
+        await api.updateJobStageEvent(job.id, eventId, {
+          toStage: toStage === "no_change" ? undefined : toStage,
+          occurredAt: toTimestamp(values.date) ?? undefined,
+          metadata: {
+            note: values.notes?.trim() || undefined,
+            eventLabel: values.title.trim() || undefined,
+            reasonCode: values.reasonCode || undefined,
+            actor: "user",
+            eventType: values.stage === "no_change" ? "note" : "status_update",
+            externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
+          },
+        });
+      } else {
+        const newEvent = await api.transitionJobStage(job.id, {
+          toStage: toStage as ApplicationStage,
+          occurredAt: toTimestamp(values.date),
+          metadata: {
+            note: values.notes?.trim() || undefined,
+            eventLabel: values.title.trim() || undefined,
+            reasonCode: values.reasonCode || undefined,
+            actor: "user",
+            eventType: values.stage === "no_change" ? "note" : "status_update",
+            externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
+          },
+          outcome,
+        });
+        pendingEventRef.current = newEvent;
+      }
 
       const [jobData, eventData] = await Promise.all([
         api.getJob(job.id),
         api.getJobStageEvents(job.id),
       ]);
       setJob(jobData);
-      setEvents(mergeEvents(eventData, newEvent));
+      setEvents(eventData);
       pendingEventRef.current = null;
+      setEditingEvent(null);
     } catch (error) {
       console.error("Failed to log event:", error);
     }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!job || !window.confirm("Are you sure you want to delete this event?")) return;
+    try {
+      await api.deleteJobStageEvent(job.id, eventId);
+      const [jobData, eventData] = await Promise.all([
+        api.getJob(job.id),
+        api.getJobStageEvents(job.id),
+      ]);
+      setJob(jobData);
+      setEvents(eventData);
+    } catch (error) {
+      console.error("Failed to delete event:", error);
+    }
+  };
+
+  const handleEditEvent = (event: StageEvent) => {
+    setEditingEvent(event);
+    setIsLogModalOpen(true);
   };
 
   const currentStage = job ? (events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null)) : null;
@@ -167,7 +200,11 @@ export const JobPage: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <JobTimeline events={events} />
+            <JobTimeline 
+              events={events} 
+              onEdit={handleEditEvent}
+              onDelete={handleDeleteEvent}
+            />
           </CardContent>
         </Card>
 
@@ -233,9 +270,13 @@ export const JobPage: React.FC = () => {
 
       <LogEventModal
         isOpen={isLogModalOpen}
-        onClose={() => setIsLogModalOpen(false)}
+        onClose={() => {
+          setIsLogModalOpen(false);
+          setEditingEvent(null);
+        }}
         onLog={handleLogEvent}
         currentStage={currentStage as ApplicationStage}
+        editingEvent={editingEvent}
       />
     </main>
   );
