@@ -3,6 +3,7 @@ import { useFormContext, Controller } from "react-hook-form"
 
 import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { UpdateSettingsInput } from "@shared/settings-schema"
 import type { JobspyValues } from "@client/pages/settings/types"
@@ -13,6 +14,118 @@ type JobspySectionProps = {
   isLoading: boolean
   isSaving: boolean
 }
+
+const JOBSPY_INDEED_COUNTRIES = [
+  "argentina",
+  "australia",
+  "austria",
+  "bahrain",
+  "bangladesh",
+  "belgium",
+  "bulgaria",
+  "brazil",
+  "canada",
+  "chile",
+  "china",
+  "colombia",
+  "costa rica",
+  "croatia",
+  "cyprus",
+  "czech republic",
+  "czechia",
+  "denmark",
+  "ecuador",
+  "egypt",
+  "estonia",
+  "finland",
+  "france",
+  "germany",
+  "greece",
+  "hong kong",
+  "hungary",
+  "india",
+  "indonesia",
+  "ireland",
+  "israel",
+  "italy",
+  "japan",
+  "kuwait",
+  "latvia",
+  "lithuania",
+  "luxembourg",
+  "malaysia",
+  "malta",
+  "mexico",
+  "morocco",
+  "netherlands",
+  "new zealand",
+  "nigeria",
+  "norway",
+  "oman",
+  "pakistan",
+  "panama",
+  "peru",
+  "philippines",
+  "poland",
+  "portugal",
+  "qatar",
+  "romania",
+  "saudi arabia",
+  "singapore",
+  "slovakia",
+  "slovenia",
+  "south africa",
+  "south korea",
+  "spain",
+  "sweden",
+  "switzerland",
+  "taiwan",
+  "thailand",
+  "türkiye",
+  "turkey",
+  "ukraine",
+  "united arab emirates",
+  "uk",
+  "united kingdom",
+  "usa",
+  "us",
+  "united states",
+  "uruguay",
+  "venezuela",
+  "vietnam",
+  "usa/ca",
+  "worldwide",
+]
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  uk: "united kingdom",
+  us: "united states",
+  usa: "united states",
+  "türkiye": "turkey",
+  "czech republic": "czechia",
+}
+
+const COUNTRY_LABELS: Record<string, string> = {
+  "united kingdom": "United Kingdom",
+  "united states": "United States",
+  "usa/ca": "USA/CA",
+  turkey: "Turkey",
+  czechia: "Czechia",
+}
+
+const normalizeCountryValue = (value: string) => COUNTRY_ALIASES[value] ?? value
+
+const formatCountryLabel = (value: string) =>
+  COUNTRY_LABELS[value] || value.replace(/\b\w/g, (char) => char.toUpperCase())
+
+const JOBSPY_INDEED_COUNTRY_OPTIONS = Array.from(
+  new Map(
+    JOBSPY_INDEED_COUNTRIES.map((country) => {
+      const normalized = normalizeCountryValue(country)
+      return [normalized, normalized]
+    })
+  ).values()
+)
 
 export const JobspySection: React.FC<JobspySectionProps> = ({
   values,
@@ -169,14 +282,58 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
               )}
             />
 
-            <SettingsInput
-              label="Indeed Country"
-              inputProps={register("jobspyCountryIndeed")}
-              placeholder={countryIndeed.default || "UK"}
-              disabled={isLoading || isSaving}
-              error={errors.jobspyCountryIndeed?.message as string | undefined}
-              helper={'Country domain for Indeed (e.g. "UK" for indeed.co.uk).'}
-              current={`Effective: ${countryIndeed.effective || "—"} | Default: ${countryIndeed.default || "—"}`}
+            <Controller
+              name="jobspyCountryIndeed"
+              control={control}
+              render={({ field }) => {
+                const currentValue = (field.value ?? countryIndeed.default ?? "").toLowerCase()
+                const normalizedValue = normalizeCountryValue(currentValue)
+                const displayValue = JOBSPY_INDEED_COUNTRY_OPTIONS.includes(normalizedValue)
+                  ? normalizedValue
+                  : "__default__"
+
+                return (
+                  <div className="space-y-2">
+                    <label htmlFor="jobspyCountryIndeed" className="text-sm font-medium">
+                      Indeed Country
+                    </label>
+                    <Select
+                      value={displayValue}
+                      onValueChange={(value) => {
+                        if (value === "__default__") {
+                          field.onChange(null)
+                        } else {
+                          field.onChange(value)
+                        }
+                      }}
+                      disabled={isLoading || isSaving}
+                    >
+                      <SelectTrigger id="jobspyCountryIndeed">
+                        <SelectValue placeholder="Select a country..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__">
+                          {`Use default (${countryIndeed.default || "UK"})`}
+                        </SelectItem>
+                        {JOBSPY_INDEED_COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {formatCountryLabel(country)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.jobspyCountryIndeed && (
+                      <p className="text-xs text-destructive">{errors.jobspyCountryIndeed.message}</p>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Select one of JobSpy's supported Indeed country values.
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {`Effective: ${countryIndeed.effective || "—"} | Default: ${countryIndeed.default || "—"}`}
+                    </div>
+                  </div>
+                )
+              }}
             />
           </div>
 
