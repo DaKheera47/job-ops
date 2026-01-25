@@ -434,7 +434,8 @@ export async function summarizeJob(
     const job = await jobsRepo.getJobById(jobId);
     if (!job) return { success: false, error: 'Job not found' };
 
-    const profile = await getProfile();
+    // Use fresh profile for manual regenerations (options.force)
+    const profile = await getProfile(options?.force);
 
     // 1. Generate Summary & Tailoring
     let tailoredSummary = job.tailoredSummary;

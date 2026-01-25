@@ -33,18 +33,18 @@ const TAILORING_SCHEMA: JsonSchemaDefinition = {
       },
       skills: {
         type: 'array',
-        description: 'Skills sections with keywords tailored to the job',
+        description: 'Updated keywords for each skill category (matched by name)',
         items: {
           type: 'object',
           properties: {
             name: {
               type: 'string',
-              description: 'Skill category name (e.g., Frontend, Backend)',
+              description: 'The name of the skill category from the profile (e.g., "Frontend", "Backend & Tools")',
             },
             keywords: {
               type: 'array',
               items: { type: 'string' },
-              description: 'List of skills/technologies in this category',
+              description: 'Updated list of skills/technologies - reworded to match JD terminology',
             },
           },
           required: ['name', 'keywords'],
@@ -121,6 +121,14 @@ export async function generateSummary(
 }
 
 function buildTailoringPrompt(profile: Record<string, unknown>, jd: string): string {
+  // Extract skills with their IDs for the AI to reference
+  const skillItems = (profile as any).sections?.skills?.items || (profile as any).skills?.items || [];
+  const skillsForPrompt = skillItems.map((s: any) => ({
+    id: s.id,
+    name: s.name,
+    keywords: s.keywords
+  }));
+
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {
     basics: {
@@ -128,7 +136,7 @@ function buildTailoringPrompt(profile: Record<string, unknown>, jd: string): str
       label: (profile as any).basics?.label, // Original headline
       summary: (profile as any).basics?.summary,
     },
-    skills: (profile as any).sections?.skills || (profile as any).skills,
+    skills: skillsForPrompt,
     projects: (profile as any).sections?.projects?.items?.map((p: any) => ({
       name: p.name,
       description: p.description,
@@ -165,16 +173,22 @@ INSTRUCTIONS:
    - Use the profile to add context.
 
 3. "skills" (Array of Objects):
-   - Review my existing skills section structure.
-   - Keyword Stuffing: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
-   - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.
-   - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
+   - For EACH skill category in my profile, return an object with the category "name" and updated "keywords".
+   - Use the EXACT category name from my profile (e.g., "Frontend", "Backend & Tools").
+   - ONLY include keywords that ALREADY EXIST in my profile. Do NOT add ANY new skills.
+   - Your job is ONLY to reword/rename existing keywords to match JD terminology (e.g., "React" -> "React.js").
+   - You may reorder keywords to prioritize terms mentioned in the JD.
+   - FORBIDDEN: Adding skills I don't have (e.g., if JD wants "Ruby on Rails" but I don't have it, do NOT add it).
+   - The output keywords must be a subset or renaming of my input keywords - nothing new.
 
 OUTPUT FORMAT (JSON):
 {
   "headline": "...",
   "summary": "...",
-  "skills": [ ... ]
+  "skills": [
+    { "name": "Frontend", "keywords": ["Keyword1", "Keyword2", ...] },
+    ...
+  ]
 }
 `;
 }

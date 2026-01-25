@@ -3,7 +3,7 @@
  */
 
 import { join } from 'path';
-import { mkdir, access } from 'fs/promises';
+import { mkdir, access, writeFile } from 'fs/promises';
 import { existsSync, createWriteStream } from 'fs';
 import { createId } from '@paralleldrive/cuid2';
 import { pipeline } from 'stream/promises';
@@ -17,6 +17,7 @@ import { getProfile } from './profile.js';
 import { RxResumeClient } from './rxresume-client.js';
 
 const OUTPUT_DIR = join(getDataDir(), 'pdfs');
+const RESUME_JSON_DIR = join(getDataDir(), 'resumes');
 
 export interface PdfResult {
   success: boolean;
@@ -99,17 +100,20 @@ export async function generatePdf(
   console.log(`📄 Generating PDF for job ${jobId} using RxResume v4 API...`);
 
   try {
-    // Ensure output directory exists
+    // Ensure output directories exist
     if (!existsSync(OUTPUT_DIR)) {
       await mkdir(OUTPUT_DIR, { recursive: true });
+    }
+    if (!existsSync(RESUME_JSON_DIR)) {
+      await mkdir(RESUME_JSON_DIR, { recursive: true });
     }
 
     // Get credentials and initialize client
     const { email, password, baseUrl } = await getCredentials();
     const client = new RxResumeClient(baseUrl);
 
-    // Read base resume from profile (fetches from v4 API if configured)
-    const baseResume = JSON.parse(JSON.stringify(await getProfile()));
+    // Read base resume from profile (force refetch from v4 API to ensure latest data)
+    const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
 
     // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
     // This fixes issues where the base JSON uses a shorthand format (missing required fields)
@@ -142,32 +146,68 @@ export async function generatePdf(
       }
     }
 
-    // Inject tailored skills
+    // Inject tailored skills (keyword updates only - preserves all other fields)
     if (tailoredContent.skills) {
-      const newSkills = Array.isArray(tailoredContent.skills)
+      const keywordUpdates = Array.isArray(tailoredContent.skills)
         ? tailoredContent.skills
         : typeof tailoredContent.skills === 'string'
           ? JSON.parse(tailoredContent.skills)
           : null;
 
-      if (newSkills && baseResume.sections?.skills) {
-        // Ensure each skill item has required schema fields
-        const existingSkills = baseResume.sections.skills.items || [];
-        const skillsWithSchema = newSkills.map((newSkill: any) => {
-          // Try to find matching existing skill to preserve id and other fields
-          const existing = existingSkills.find((s: any) => s.name === newSkill.name);
-
-          return {
-            id: newSkill.id || existing?.id || createId(),
-            visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
-            name: newSkill.name || existing?.name || '',
-            description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
-            level: newSkill.level !== undefined ? newSkill.level : (existing?.level ?? 1),
-            keywords: newSkill.keywords || existing?.keywords || [],
-          };
+      if (keywordUpdates && baseResume.sections?.skills?.items) {
+        // Create maps for matching - try ID first, then fall back to name matching
+        const keywordByIdMap = new Map<string, string[]>();
+        const keywordByNameMap = new Map<string, string[]>();
+        
+        for (const update of keywordUpdates) {
+          if (Array.isArray(update.keywords)) {
+            if (update.id) {
+              keywordByIdMap.set(update.id, update.keywords);
+            }
+            if (update.name) {
+              // Normalize name for fuzzy matching (lowercase, remove extra words)
+              const normalizedName = update.name.toLowerCase().trim();
+              keywordByNameMap.set(normalizedName, update.keywords);
+            }
+          }
+        }
+        
+        // Helper to find matching keywords - tries ID, then exact name, then partial name match
+        const findKeywordsForSkill = (skill: any): string[] | undefined => {
+          // Try exact ID match first
+          if (skill.id && keywordByIdMap.has(skill.id)) {
+            return keywordByIdMap.get(skill.id);
+          }
+          
+          const skillNameLower = skill.name?.toLowerCase().trim() || '';
+          
+          // Try exact name match
+          if (keywordByNameMap.has(skillNameLower)) {
+            return keywordByNameMap.get(skillNameLower);
+          }
+          
+          // Try partial name match (e.g., "Frontend" matches "Frontend Development")
+          for (const [updateName, keywords] of keywordByNameMap) {
+            if (updateName.includes(skillNameLower) || skillNameLower.includes(updateName.split(' ')[0])) {
+              return keywords;
+            }
+          }
+          
+          return undefined;
+        };
+        
+        // Update keywords for each existing skill, preserving everything else
+        baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any) => {
+          const newKeywords = findKeywordsForSkill(skill);
+          
+          if (newKeywords !== undefined) {
+            return {
+              ...skill, // Preserve ALL existing fields (id, name, level, visible, description, etc.)
+              keywords: newKeywords
+            };
+          }
+          return skill; // No update for this skill, keep as-is
         });
-
-        baseResume.sections.skills.items = skillsWithSchema;
       }
     }
 
@@ -210,6 +250,11 @@ export async function generatePdf(
     } catch (err) {
       console.warn(`   ⚠️ Project visibility step failed for job ${jobId}:`, err);
     }
+
+    // Save the resume JSON to file for debugging/reference
+    const jsonPath = join(RESUME_JSON_DIR, `resume_${jobId}.json`);
+    await writeFile(jsonPath, JSON.stringify(baseResume, null, 2));
+    console.log(`   💾 Resume JSON saved to: ${jsonPath}`);
 
     // Use withAutoRefresh to handle token caching and 401 retry automatically
     const outputPath = join(OUTPUT_DIR, `resume_${jobId}.pdf`);
