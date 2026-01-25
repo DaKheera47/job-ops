@@ -112,7 +112,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
           <DropdownMenuContent align="center" className="w-56">
             <DropdownMenuItem onSelect={onRescore} disabled={isRescoring}>
               <RefreshCcw className={isRescoring ? "mr-2 h-4 w-4 animate-spin" : "mr-2 h-4 w-4"} />
-              {isRescoring ? "Re-scoring..." : "Re-run fit assessment"}
+              {isRescoring ? "Recalculating..." : "Recalculate match"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

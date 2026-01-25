@@ -76,11 +76,11 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     try {
       setIsRescoring(true);
       await api.rescoreJob(job.id);
-      toast.success("Fit assessment updated");
+      toast.success("Match recalculated");
       await onJobUpdated();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to re-run fit assessment";
+        error instanceof Error ? error.message : "Failed to recalculate match";
       toast.error(message);
     } finally {
       setIsRescoring(false);

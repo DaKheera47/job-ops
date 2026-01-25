@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DiscoveredPanel } from "./DiscoveredPanel";
 import type { Job } from "../../../shared/types";
 import * as api from "../../api";
+import { toast } from "sonner";
 
 vi.mock("@/components/ui/dropdown-menu", () => {
   return {
@@ -125,9 +126,10 @@ describe("DiscoveredPanel", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("menuitem", { name: /re-run fit assessment/i }));
+    fireEvent.click(screen.getByRole("menuitem", { name: /recalculate match/i }));
 
     await waitFor(() => expect(api.rescoreJob).toHaveBeenCalledWith("job-2"));
     expect(onJobUpdated).toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith("Match recalculated");
   });
 });

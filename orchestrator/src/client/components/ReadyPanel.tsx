@@ -188,10 +188,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     try {
       setIsRescoring(true);
       await api.rescoreJob(job.id);
-      toast.success("Fit assessment updated");
+      toast.success("Match recalculated");
       await onJobUpdated();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to re-run fit assessment";
+      const message = error instanceof Error ? error.message : "Failed to recalculate match";
       toast.error(message);
     } finally {
       setIsRescoring(false);
@@ -407,7 +407,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               disabled={isRescoring}
             >
               <RefreshCcw className={cn("mr-2 h-4 w-4", isRescoring && "animate-spin")} />
-              {isRescoring ? "Re-scoring..." : "Re-run fit assessment"}
+              {isRescoring ? "Recalculating..." : "Recalculate match"}
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
