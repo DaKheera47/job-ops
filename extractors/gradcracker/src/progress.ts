@@ -26,7 +26,7 @@ interface JobOpsCrawlProgressState {
 const PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 const isEnabled = () => process.env.JOBOPS_EMIT_PROGRESS === "1";
 
-let state: JobOpsCrawlProgressState = {
+const state: JobOpsCrawlProgressState = {
   listPagesProcessed: 0,
   jobCardsFound: 0,
   jobPagesEnqueued: 0,
@@ -80,4 +80,3 @@ export function markJobPageDone(params: { currentUrl: string }): void {
   state.currentUrl = params.currentUrl;
   emit();
 }
-
