@@ -162,7 +162,7 @@ export function transitionStage(
       toStage: finalToStage,
       occurredAt: timestamp,
       metadata: parsedMetadata,
-      outcome,
+      outcome: outcome ?? null,
     };
   });
 }
