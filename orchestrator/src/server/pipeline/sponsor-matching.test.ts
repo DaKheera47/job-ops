@@ -73,6 +73,8 @@ const createMockJob = (overrides: Partial<Job> = {}): Job => ({
   starting: null,
   jobDescription: "Looking for a TypeScript developer.",
   status: "discovered",
+  outcome: null,
+  closedAt: null,
   suitabilityScore: null,
   suitabilityReason: null,
   tailoredSummary: null,
