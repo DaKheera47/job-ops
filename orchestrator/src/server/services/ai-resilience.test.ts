@@ -4,6 +4,11 @@ import { pickProjectIdsForJob } from "./projectSelection.js";
 import { scoreJobSuitability } from "./scorer.js";
 
 // --- Mocks ---
+vi.mock("../repositories/settings.js", () => ({
+  getSetting: vi.fn().mockResolvedValue(null),
+  getAllSettings: vi.fn().mockResolvedValue({}),
+}));
+
 // We need to mock 'fetch' globally for these tests
 const globalFetch = global.fetch;
 
