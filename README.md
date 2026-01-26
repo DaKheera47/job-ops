@@ -21,8 +21,8 @@ https://github.com/user-attachments/assets/06e5e782-47f5-42d0-8b28-b89102d7ea1b
 git clone https://github.com/DaKheera47/job-ops.git
 cd job-ops
 
-# 2. Docker up (this will take a while because of Camoufox)
-docker compose up -d --build
+# 2. Start with Docker (pulls pre-built image from GHCR)
+docker compose up -d
 
 # 3. Open the dashboard, the app will onboard your credentials
 open http://localhost:3005

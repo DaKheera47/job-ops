@@ -26,7 +26,8 @@ export const useOrchestratorData = () => {
       setJobs(data.jobs);
       setStats(data.byStatus);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to load jobs";
+      const message =
+        error instanceof Error ? error.message : "Failed to load jobs";
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -54,5 +55,13 @@ export const useOrchestratorData = () => {
     return () => clearInterval(interval);
   }, [loadJobs, checkPipelineStatus]);
 
-  return { jobs, stats, isLoading, isPipelineRunning, setIsPipelineRunning, loadJobs, checkPipelineStatus };
+  return {
+    jobs,
+    stats,
+    isLoading,
+    isPipelineRunning,
+    setIsPipelineRunning,
+    loadJobs,
+    checkPipelineStatus,
+  };
 };

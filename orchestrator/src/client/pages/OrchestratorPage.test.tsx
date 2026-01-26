@@ -1,9 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-
-import { OrchestratorPage } from "./OrchestratorPage";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "../../shared/types";
+import { OrchestratorPage } from "./OrchestratorPage";
 import type { FilterTab } from "./orchestrator/constants";
 
 const jobFixture: Job = {
@@ -139,9 +138,18 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
   }) => (
     <div data-testid="filters">
       <div data-testid="sources-with-jobs">{sourcesWithJobs.join(",")}</div>
-      <button onClick={() => onTabChange("discovered")}>To Discovered</button>
-      <button onClick={() => onSearchQueryChange("test search")}>Set Search</button>
-      <button onClick={() => onSortChange({ key: "title", direction: "asc" })}>Set Sort</button>
+      <button type="button" onClick={() => onTabChange("discovered")}>
+        To Discovered
+      </button>
+      <button type="button" onClick={() => onSearchQueryChange("test search")}>
+        Set Search
+      </button>
+      <button
+        type="button"
+        onClick={() => onSortChange({ key: "title", direction: "asc" })}
+      >
+        Set Sort
+      </button>
     </div>
   ),
 }));
@@ -151,13 +159,27 @@ vi.mock("./orchestrator/JobDetailPanel", () => ({
 }));
 
 vi.mock("./orchestrator/JobListPanel", () => ({
-  JobListPanel: ({ onSelectJob, selectedJobId }: { onSelectJob: (id: string) => void; selectedJobId: string | null }) => (
+  JobListPanel: ({
+    onSelectJob,
+    selectedJobId,
+  }: {
+    onSelectJob: (id: string) => void;
+    selectedJobId: string | null;
+  }) => (
     <div>
       <div data-testid="selected-job">{selectedJobId ?? "none"}</div>
-      <button data-testid="select-job-1" type="button" onClick={() => onSelectJob("job-1")}>
+      <button
+        data-testid="select-job-1"
+        type="button"
+        onClick={() => onSelectJob("job-1")}
+      >
         Select job 1
       </button>
-      <button data-testid="select-job-2" type="button" onClick={() => onSelectJob("job-2")}>
+      <button
+        data-testid="select-job-2"
+        type="button"
+        onClick={() => onSelectJob("job-2")}
+      >
         Select job 2
       </button>
     </div>
@@ -170,7 +192,9 @@ vi.mock("../components", () => ({
 
 const LocationWatcher = () => {
   const location = useLocation();
-  return <div data-testid="location">{location.pathname + location.search}</div>;
+  return (
+    <div data-testid="location">{location.pathname + location.search}</div>
+  );
 };
 
 describe("OrchestratorPage", () => {
@@ -179,7 +203,9 @@ describe("OrchestratorPage", () => {
   });
 
   it("syncs tab selection to the URL", () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready"]}>
@@ -188,7 +214,7 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     fireEvent.click(screen.getByText("To Discovered"));
@@ -196,7 +222,9 @@ describe("OrchestratorPage", () => {
   });
 
   it("syncs job selection to the URL", async () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/all"]}>
@@ -205,7 +233,7 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     // Initial load will auto-select the first matching job (job-1 for all tab)
@@ -223,7 +251,9 @@ describe("OrchestratorPage", () => {
   });
 
   it("syncs search query to URL as a parameter", () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready"]}>
@@ -232,15 +262,19 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     fireEvent.click(screen.getByText("Set Search"));
-    expect(screen.getByTestId("location").textContent).toContain("q=test+search");
+    expect(screen.getByTestId("location").textContent).toContain(
+      "q=test+search",
+    );
   });
 
   it("syncs sorting to URL and removes it when default", () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready"]}>
@@ -249,15 +283,19 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     fireEvent.click(screen.getByText("Set Sort"));
-    expect(screen.getByTestId("location").textContent).toContain("sort=title-asc");
+    expect(screen.getByTestId("location").textContent).toContain(
+      "sort=title-asc",
+    );
   });
 
   it("opens the detail drawer on mobile when a job is selected", () => {
-    window.matchMedia = createMatchMedia(false) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      false,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready"]}>
@@ -265,7 +303,7 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.queryByTestId("detail-panel")).not.toBeInTheDocument();
@@ -276,7 +314,9 @@ describe("OrchestratorPage", () => {
   });
 
   it("renders the detail panel inline on desktop", () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready"]}>
@@ -284,14 +324,16 @@ describe("OrchestratorPage", () => {
           <Route path="/:tab" element={<OrchestratorPage />} />
           <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId("detail-panel")).toBeInTheDocument();
   });
 
   it("clears source filter when no jobs exist for it", async () => {
-    window.matchMedia = createMatchMedia(true) as unknown as typeof window.matchMedia;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
 
     render(
       <MemoryRouter initialEntries={["/ready?source=ukvisajobs"]}>
@@ -299,11 +341,13 @@ describe("OrchestratorPage", () => {
         <Routes>
           <Route path="/:tab" element={<OrchestratorPage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId("location").textContent).not.toContain("source=ukvisajobs");
+      expect(screen.getByTestId("location").textContent).not.toContain(
+        "source=ukvisajobs",
+      );
     });
   });
 });

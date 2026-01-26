@@ -1,5 +1,5 @@
-import { createPlaywrightRouter, log } from "crawlee";
 import { readFileSync } from "node:fs";
+import { createPlaywrightRouter, log } from "crawlee";
 import { markJobPageDone, markListPageDone } from "./progress.js";
 
 function normalizeUrl(raw: string | null | undefined): string | null {
@@ -17,16 +17,15 @@ function normalizeUrl(raw: string | null | undefined): string | null {
 
 function getExistingJobUrlSet(): Set<string> {
   const filePath = process.env.JOBOPS_EXISTING_JOB_URLS_FILE;
-  const raw =
-    filePath
-      ? (() => {
-          try {
-            return readFileSync(filePath, "utf-8");
-          } catch {
-            return null;
-          }
-        })()
-      : process.env.JOBOPS_EXISTING_JOB_URLS;
+  const raw = filePath
+    ? (() => {
+        try {
+          return readFileSync(filePath, "utf-8");
+        } catch {
+          return null;
+        }
+      })()
+    : process.env.JOBOPS_EXISTING_JOB_URLS;
 
   if (!raw) return new Set();
   try {
@@ -41,12 +40,16 @@ function getExistingJobUrlSet(): Set<string> {
   }
 }
 
-const SKIP_APPLY_FOR_EXISTING = process.env.JOBOPS_SKIP_APPLY_FOR_EXISTING === "1";
+const SKIP_APPLY_FOR_EXISTING =
+  process.env.JOBOPS_SKIP_APPLY_FOR_EXISTING === "1";
 const EXISTING_JOB_URLS = getExistingJobUrlSet();
 
 // Global counters for max jobs per search term
 const jobCounts = new Map<string, number>();
-const MAX_JOBS_PER_TERM = parseInt(process.env.GRADCRACKER_MAX_JOBS_PER_TERM || "0", 10);
+const MAX_JOBS_PER_TERM = parseInt(
+  process.env.GRADCRACKER_MAX_JOBS_PER_TERM || "0",
+  10,
+);
 
 interface Job {
   title: string | null;
@@ -72,7 +75,9 @@ router.addHandler(
     if (MAX_JOBS_PER_TERM > 0) {
       const currentCount = jobCounts.get(role) || 0;
       if (currentCount >= MAX_JOBS_PER_TERM) {
-        log.info(`Max jobs (${MAX_JOBS_PER_TERM}) already enqueued for role "${role}". Skipping list page.`);
+        log.info(
+          `Max jobs (${MAX_JOBS_PER_TERM}) already enqueued for role "${role}". Skipping list page.`,
+        );
         markListPageDone({
           currentUrl: request.url,
           jobCardsFound: 0,
@@ -120,7 +125,8 @@ router.addHandler(
       let disciplines: string | null = null;
       try {
         const disciplinesEl = article.locator("h3");
-        disciplines = (await disciplinesEl.textContent({ timeout: 1000 }))?.trim() ?? null;
+        disciplines =
+          (await disciplinesEl.textContent({ timeout: 1000 }))?.trim() ?? null;
       } catch {
         // h3 not found or timed out - that's okay, disciplines is optional
       }
@@ -195,8 +201,10 @@ router.addHandler(
           if (MAX_JOBS_PER_TERM > 0) {
             const currentCount = jobCounts.get(role) || 0;
             if (currentCount >= MAX_JOBS_PER_TERM) {
-              log.info(`Reached max jobs limit (${MAX_JOBS_PER_TERM}) for role "${role}" while processing list. Stopping.`);
-              break; 
+              log.info(
+                `Reached max jobs limit (${MAX_JOBS_PER_TERM}) for role "${role}" while processing list. Stopping.`,
+              );
+              break;
             }
             jobCounts.set(role, currentCount + 1);
           }
@@ -205,7 +213,7 @@ router.addHandler(
             urls: [jobUrl],
             userData: {
               ...jobs[jobs.length - 1],
-              label: "gradcracker-single-job-page"
+              label: "gradcracker-single-job-page",
             },
           });
           enqueuedJobs++;
@@ -216,7 +224,7 @@ router.addHandler(
     log.info(`Extracted ${jobs.length} jobs`);
     if (SKIP_APPLY_FOR_EXISTING && skippedKnownJobs > 0) {
       log.info(
-        `Skipping ${skippedKnownJobs} already-known job pages; enqueued ${enqueuedJobs} new job pages.`
+        `Skipping ${skippedKnownJobs} already-known job pages; enqueued ${enqueuedJobs} new job pages.`,
       );
     }
 
@@ -226,7 +234,7 @@ router.addHandler(
       jobPagesEnqueued: enqueuedJobs,
       jobPagesSkipped: skippedKnownJobs,
     });
-  }
+  },
 );
 
 router.addHandler(
@@ -261,7 +269,9 @@ router.addHandler(
 
       // Prefer page-scoped popup detection. Using the browser context's "page" event
       // can accidentally capture unrelated pages created by other concurrent requests.
-      const popupPromise = page.waitForEvent("popup", { timeout: 8000 }).catch(() => null);
+      const popupPromise = page
+        .waitForEvent("popup", { timeout: 8000 })
+        .catch(() => null);
       const navigationPromise = page
         .waitForNavigation({ timeout: 8000, waitUntil: "domcontentloaded" })
         .catch(() => null);
@@ -271,7 +281,12 @@ router.addHandler(
         await applyButton.click();
 
         // Wait for URL to stabilize (same URL for 3 consecutive checks)
-        const waitForUrlStable = async (targetPage: typeof page, maxWaitMs = 10000, checkIntervalMs = 100, requiredStableChecks = 3) => {
+        const waitForUrlStable = async (
+          targetPage: typeof page,
+          maxWaitMs = 10000,
+          checkIntervalMs = 100,
+          requiredStableChecks = 3,
+        ) => {
           let lastUrl = targetPage.url();
           let stableCount = 0;
           const startTime = Date.now();
@@ -298,11 +313,15 @@ router.addHandler(
         const targetPage = maybePopup ?? page;
 
         if (maybePopup) {
-          await maybePopup.waitForLoadState("domcontentloaded", { timeout: 15000 }).catch(() => null);
+          await maybePopup
+            .waitForLoadState("domcontentloaded", { timeout: 15000 })
+            .catch(() => null);
           // If the popup initially opens as about:blank, give it a moment to redirect.
           if (maybePopup.url() === "about:blank") {
             await maybePopup
-              .waitForURL((u) => u.toString() !== "about:blank", { timeout: 15000 })
+              .waitForURL((u) => u.toString() !== "about:blank", {
+                timeout: 15000,
+              })
               .catch(() => null);
           }
         } else {
@@ -317,7 +336,7 @@ router.addHandler(
 
         if (applicationLink === originalUrl) {
           log.info(
-            `Apply click did not change URL (still Gradcracker): ${applicationLink}`
+            `Apply click did not change URL (still Gradcracker): ${applicationLink}`,
           );
         } else {
           log.info(`Captured application URL: ${applicationLink}`);
@@ -342,5 +361,5 @@ router.addHandler(
     });
 
     markJobPageDone({ currentUrl: request.url });
-  }
+  },
 );

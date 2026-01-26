@@ -1,20 +1,23 @@
-import React from "react"
-import { useFormContext } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Separator } from "@/components/ui/separator"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { WebhookValues } from "@client/pages/settings/types"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
-import { formatSecretHint } from "@client/pages/settings/utils"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { WebhookValues } from "@client/pages/settings/types";
+import { formatSecretHint } from "@client/pages/settings/utils";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
 
 type WebhooksSectionProps = {
-  pipelineWebhook: WebhookValues
-  jobCompleteWebhook: WebhookValues
-  webhookSecretHint: string | null
-  isLoading: boolean
-  isSaving: boolean
-}
+  pipelineWebhook: WebhookValues;
+  jobCompleteWebhook: WebhookValues;
+  webhookSecretHint: string | null;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
 export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   pipelineWebhook,
@@ -23,7 +26,10 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   isLoading,
   isSaving,
 }) => {
-  const { register, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="webhooks" className="border rounded-lg px-4">
@@ -55,7 +61,9 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
                 inputProps={register("jobCompleteWebhookUrl")}
                 placeholder={jobCompleteWebhook.default || "https://..."}
                 disabled={isLoading || isSaving}
-                error={errors.jobCompleteWebhookUrl?.message as string | undefined}
+                error={
+                  errors.jobCompleteWebhookUrl?.message as string | undefined
+                }
                 helper={`When set, the server sends a POST when you mark a job as applied (includes the job description). Default: ${jobCompleteWebhook.default || "—"}.`}
                 current={jobCompleteWebhook.effective || "—"}
               />
@@ -75,5 +83,5 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

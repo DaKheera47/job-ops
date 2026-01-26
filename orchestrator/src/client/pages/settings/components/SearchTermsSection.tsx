@@ -1,24 +1,31 @@
-import React from "react"
-import { useFormContext, Controller } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Separator } from "@/components/ui/separator"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { SearchTermsValues } from "@client/pages/settings/types"
+import type { SearchTermsValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
 
 type SearchTermsSectionProps = {
-  values: SearchTermsValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: SearchTermsValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
 export const SearchTermsSection: React.FC<SearchTermsSectionProps> = ({
   values,
   isLoading,
   isSaving,
 }) => {
-  const { default: defaultSearchTerms, effective: effectiveSearchTerms } = values
-  const { control, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  const { default: defaultSearchTerms, effective: effectiveSearchTerms } =
+    values;
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="search-terms" className="border rounded-lg px-4">
@@ -35,15 +42,21 @@ export const SearchTermsSection: React.FC<SearchTermsSectionProps> = ({
               render={({ field }) => (
                 <textarea
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={field.value ? field.value.join('\n') : (defaultSearchTerms ?? []).join('\n')}
+                  value={
+                    field.value
+                      ? field.value.join("\n")
+                      : (defaultSearchTerms ?? []).join("\n")
+                  }
                   onChange={(event) => {
-                    const text = event.target.value
-                    const terms = text.split('\n')
-                    field.onChange(terms)
+                    const text = event.target.value;
+                    const terms = text.split("\n");
+                    field.onChange(terms);
                   }}
                   onBlur={() => {
                     if (field.value) {
-                      field.onChange(field.value.map(t => t.trim()).filter(Boolean))
+                      field.onChange(
+                        field.value.map((t) => t.trim()).filter(Boolean),
+                      );
                     }
                   }}
                   placeholder="e.g. web developer"
@@ -52,9 +65,14 @@ export const SearchTermsSection: React.FC<SearchTermsSectionProps> = ({
                 />
               )}
             />
-            {errors.searchTerms && <p className="text-xs text-destructive">{errors.searchTerms.message}</p>}
+            {errors.searchTerms && (
+              <p className="text-xs text-destructive">
+                {errors.searchTerms.message}
+              </p>
+            )}
             <div className="text-xs text-muted-foreground">
-              One term per line. Applies to UKVisaJobs and other supported extractors.
+              One term per line. Applies to UKVisaJobs and other supported
+              extractors.
             </div>
           </div>
 
@@ -63,15 +81,19 @@ export const SearchTermsSection: React.FC<SearchTermsSectionProps> = ({
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
               <div className="text-xs text-muted-foreground">Effective</div>
-              <div className="break-words font-mono text-xs">{(effectiveSearchTerms || []).join(', ') || "—"}</div>
+              <div className="break-words font-mono text-xs">
+                {(effectiveSearchTerms || []).join(", ") || "—"}
+              </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Default (env)</div>
-              <div className="break-words font-mono text-xs">{(defaultSearchTerms || []).join(', ') || "—"}</div>
+              <div className="break-words font-mono text-xs">
+                {(defaultSearchTerms || []).join(", ") || "—"}
+              </div>
             </div>
           </div>
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

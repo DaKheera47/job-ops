@@ -1,25 +1,37 @@
-import React from "react"
-import { useFormContext } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Separator } from "@/components/ui/separator"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { ModelValues } from "@client/pages/settings/types"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { ModelValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Separator } from "@/components/ui/separator";
 
 type ModelSettingsSectionProps = {
-  values: ModelValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: ModelValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
 export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   values,
   isLoading,
   isSaving,
 }) => {
-  const { effective, default: defaultModel, scorer, tailoring, projectSelection } = values
-  const { register, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  const {
+    effective,
+    default: defaultModel,
+    scorer,
+    tailoring,
+    projectSelection,
+  } = values;
+  const {
+    register,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="model" className="border rounded-lg px-4">
@@ -67,7 +79,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                 inputProps={register("modelProjectSelection")}
                 placeholder={effective || "inherit"}
                 disabled={isLoading || isSaving}
-                error={errors.modelProjectSelection?.message as string | undefined}
+                error={
+                  errors.modelProjectSelection?.message as string | undefined
+                }
                 current={projectSelection || effective || "—"}
               />
             </div>
@@ -77,16 +91,22 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
 
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
-              <div className="text-xs text-muted-foreground">Global Effective</div>
-              <div className="break-words font-mono text-xs">{effective || "—"}</div>
+              <div className="text-xs text-muted-foreground">
+                Global Effective
+              </div>
+              <div className="break-words font-mono text-xs">
+                {effective || "—"}
+              </div>
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Default (env)</div>
-              <div className="break-words font-mono text-xs">{defaultModel || "—"}</div>
+              <div className="break-words font-mono text-xs">
+                {defaultModel || "—"}
+              </div>
             </div>
           </div>
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

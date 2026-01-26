@@ -1,6 +1,6 @@
 import type { AppSettings, Job, JobSource } from "../../../shared/types";
-import { orderedFilterSources, orderedSources } from "./constants";
 import type { FilterTab, JobSort } from "./constants";
+import { orderedFilterSources, orderedSources } from "./constants";
 
 const dateValue = (value: string | null) => {
   if (!value) return null;
@@ -8,7 +8,8 @@ const dateValue = (value: string | null) => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-const compareString = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
+const compareString = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { sensitivity: "base" });
 const compareNumber = (a: number, b: number) => a - b;
 
 export const compareJobs = (a: Job, b: Job, sort: JobSort) => {
@@ -83,7 +84,8 @@ export const getJobCounts = (jobs: Job[]): Record<FilterTab, number> => {
   for (const job of jobs) {
     if (job.status === "ready") byTab.ready += 1;
     if (job.status === "applied") byTab.applied += 1;
-    if (job.status === "discovered" || job.status === "processing") byTab.discovered += 1;
+    if (job.status === "discovered" || job.status === "processing")
+      byTab.discovered += 1;
   }
 
   return byTab;
@@ -97,13 +99,15 @@ export const getSourcesWithJobs = (jobs: Job[]): JobSource[] => {
   return orderedFilterSources.filter((source) => seen.has(source));
 };
 
-export const getEnabledSources = (settings: AppSettings | null): JobSource[] => {
+export const getEnabledSources = (
+  settings: AppSettings | null,
+): JobSource[] => {
   if (!settings) return [...orderedSources];
 
   const enabled: JobSource[] = [];
   const jobspySites = settings.jobspySites ?? [];
   const hasUkVisaJobsAuth = Boolean(
-    settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint
+    settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint,
   );
 
   for (const source of orderedSources) {

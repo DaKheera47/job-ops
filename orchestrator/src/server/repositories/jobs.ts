@@ -2,10 +2,15 @@
  * Job repository - data access layer for jobs.
  */
 
-import { eq, desc, sql, and, inArray, isNull } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
-import { db, schema } from '../db/index.js';
-import type { Job, CreateJobInput, UpdateJobInput, JobStatus } from '../../shared/types.js';
+import { randomUUID } from "node:crypto";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import type {
+  CreateJobInput,
+  Job,
+  JobStatus,
+  UpdateJobInput,
+} from "../../shared/types.js";
+import { db, schema } from "../db/index.js";
 
 const { jobs } = schema;
 
@@ -13,9 +18,14 @@ const { jobs } = schema;
  * Get all jobs, optionally filtered by status.
  */
 export async function getAllJobs(statuses?: JobStatus[]): Promise<Job[]> {
-  const query = statuses && statuses.length > 0
-    ? db.select().from(jobs).where(inArray(jobs.status, statuses)).orderBy(desc(jobs.discoveredAt))
-    : db.select().from(jobs).orderBy(desc(jobs.discoveredAt));
+  const query =
+    statuses && statuses.length > 0
+      ? db
+          .select()
+          .from(jobs)
+          .where(inArray(jobs.status, statuses))
+          .orderBy(desc(jobs.discoveredAt))
+      : db.select().from(jobs).orderBy(desc(jobs.discoveredAt));
 
   const rows = await query;
   return rows.map(mapRowToJob);
@@ -42,7 +52,7 @@ export async function getJobByUrl(jobUrl: string): Promise<Job | null> {
  */
 export async function getAllJobUrls(): Promise<string[]> {
   const rows = await db.select({ jobUrl: jobs.jobUrl }).from(jobs);
-  return rows.map(r => r.jobUrl);
+  return rows.map((r) => r.jobUrl);
 }
 
 /**
@@ -100,27 +110,37 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
     companyReviewsCount: input.companyReviewsCount ?? null,
     vacancyCount: input.vacancyCount ?? null,
     workFromHomeType: input.workFromHomeType ?? null,
-    status: 'discovered',
+    status: "discovered",
     discoveredAt: now,
     createdAt: now,
     updatedAt: now,
   });
 
-  return (await getJobById(id))!;
+  const job = await getJobById(id);
+  if (!job) {
+    throw new Error(`Failed to retrieve newly created job with ID ${id}`);
+  }
+  return job;
 }
 
 /**
  * Update a job.
  */
-export async function updateJob(id: string, input: UpdateJobInput): Promise<Job | null> {
+export async function updateJob(
+  id: string,
+  input: UpdateJobInput,
+): Promise<Job | null> {
   const now = new Date().toISOString();
 
-  await db.update(jobs)
+  await db
+    .update(jobs)
     .set({
       ...input,
       updatedAt: now,
-      ...(input.status === 'processing' ? { processedAt: now } : {}),
-      ...(input.status === 'applied' && !input.appliedAt ? { appliedAt: now } : {}),
+      ...(input.status === "processing" ? { processedAt: now } : {}),
+      ...(input.status === "applied" && !input.appliedAt
+        ? { appliedAt: now }
+        : {}),
     })
     .where(eq(jobs.id, id));
 
@@ -130,7 +150,9 @@ export async function updateJob(id: string, input: UpdateJobInput): Promise<Job 
 /**
  * Bulk create jobs from crawler results.
  */
-export async function bulkCreateJobs(inputs: CreateJobInput[]): Promise<{ created: number; skipped: number }> {
+export async function bulkCreateJobs(
+  inputs: CreateJobInput[],
+): Promise<{ created: number; skipped: number }> {
   let created = 0;
   let skipped = 0;
 
@@ -185,9 +207,9 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
     .from(jobs)
     .where(
       and(
-        eq(jobs.status, 'discovered'),
-        sql`${jobs.jobDescription} IS NOT NULL`
-      )
+        eq(jobs.status, "discovered"),
+        sql`${jobs.jobDescription} IS NOT NULL`,
+      ),
     )
     .orderBy(desc(jobs.discoveredAt))
     .limit(limit);
@@ -198,14 +220,17 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
 /**
  * Get discovered jobs missing a suitability score.
  */
-export async function getUnscoredDiscoveredJobs(limit?: number): Promise<Job[]> {
+export async function getUnscoredDiscoveredJobs(
+  limit?: number,
+): Promise<Job[]> {
   const query = db
     .select()
     .from(jobs)
-    .where(and(eq(jobs.status, 'discovered'), isNull(jobs.suitabilityScore)))
+    .where(and(eq(jobs.status, "discovered"), isNull(jobs.suitabilityScore)))
     .orderBy(desc(jobs.discoveredAt));
 
-  const rows = typeof limit === 'number' ? await query.limit(limit) : await query;
+  const rows =
+    typeof limit === "number" ? await query.limit(limit) : await query;
   return rows.map(mapRowToJob);
 }
 
@@ -221,7 +246,7 @@ export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
 function mapRowToJob(row: typeof jobs.$inferSelect): Job {
   return {
     id: row.id,
-    source: row.source as Job['source'],
+    source: row.source as Job["source"],
     sourceJobId: row.sourceJobId ?? null,
     jobUrlDirect: row.jobUrlDirect ?? null,
     datePosted: row.datePosted ?? null,

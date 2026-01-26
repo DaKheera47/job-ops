@@ -1,10 +1,9 @@
-import { describe, it, expect } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { useForm, FormProvider } from "react-hook-form"
-
-import { Accordion } from "@/components/ui/accordion"
-import { JobspySection } from "./JobspySection"
-import { UpdateSettingsInput } from "@shared/settings-schema"
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { FormProvider, useForm } from "react-hook-form";
+import { describe, expect, it } from "vitest";
+import { Accordion } from "@/components/ui/accordion";
+import { JobspySection } from "./JobspySection";
 
 const JobspyHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
@@ -15,15 +14,18 @@ const JobspyHarness = () => {
       jobspyHoursOld: 72,
       jobspyCountryIndeed: "UK",
       jobspyLinkedinFetchDescription: true,
-    }
-  })
+    },
+  });
 
   return (
     <FormProvider {...methods}>
       <Accordion type="multiple" defaultValue={["jobspy"]}>
         <JobspySection
           values={{
-            sites: { default: ["indeed", "linkedin"], effective: ["indeed", "linkedin"] },
+            sites: {
+              default: ["indeed", "linkedin"],
+              effective: ["indeed", "linkedin"],
+            },
             location: { default: "UK", effective: "UK" },
             resultsWanted: { default: 200, effective: 200 },
             hoursOld: { default: 72, effective: 72 },
@@ -35,39 +37,38 @@ const JobspyHarness = () => {
         />
       </Accordion>
     </FormProvider>
-  )
-}
-
+  );
+};
 
 describe("JobspySection", () => {
   it("toggles scraped sites and keeps checkboxes in sync", () => {
-    render(<JobspyHarness />)
+    render(<JobspyHarness />);
 
-    const indeedCheckbox = screen.getByLabelText("Indeed")
-    const linkedinCheckbox = screen.getByLabelText("LinkedIn")
+    const indeedCheckbox = screen.getByLabelText("Indeed");
+    const linkedinCheckbox = screen.getByLabelText("LinkedIn");
 
-    expect(indeedCheckbox).toBeChecked()
-    expect(linkedinCheckbox).toBeChecked()
+    expect(indeedCheckbox).toBeChecked();
+    expect(linkedinCheckbox).toBeChecked();
 
-    fireEvent.click(indeedCheckbox)
-    expect(indeedCheckbox).not.toBeChecked()
-    expect(linkedinCheckbox).toBeChecked()
+    fireEvent.click(indeedCheckbox);
+    expect(indeedCheckbox).not.toBeChecked();
+    expect(linkedinCheckbox).toBeChecked();
 
-    fireEvent.click(indeedCheckbox)
-    expect(indeedCheckbox).toBeChecked()
-  })
+    fireEvent.click(indeedCheckbox);
+    expect(indeedCheckbox).toBeChecked();
+  });
 
   it("clamps numeric inputs to allowed ranges", () => {
-    render(<JobspyHarness />)
+    render(<JobspyHarness />);
 
-    const numericInputs = screen.getAllByRole("spinbutton")
-    const resultsWantedInput = numericInputs[0]
-    const hoursOldInput = numericInputs[1]
+    const numericInputs = screen.getAllByRole("spinbutton");
+    const resultsWantedInput = numericInputs[0];
+    const hoursOldInput = numericInputs[1];
 
-    fireEvent.change(resultsWantedInput, { target: { value: "1001" } })
-    expect(resultsWantedInput).toHaveValue(1000)
+    fireEvent.change(resultsWantedInput, { target: { value: "1001" } });
+    expect(resultsWantedInput).toHaveValue(1000);
 
-    fireEvent.change(hoursOldInput, { target: { value: "0" } })
-    expect(hoursOldInput).toHaveValue(1)
-  })
-})
+    fireEvent.change(hoursOldInput, { target: { value: "0" } });
+    expect(hoursOldInput).toHaveValue(1);
+  });
+});

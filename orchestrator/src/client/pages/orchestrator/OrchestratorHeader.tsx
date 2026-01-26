@@ -1,4 +1,3 @@
-import React from "react";
 import {
   Briefcase,
   ChevronDown,
@@ -11,6 +10,7 @@ import {
   Shield,
   Sparkles,
 } from "lucide-react";
+import type React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -66,9 +66,12 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const visibleSources = orderedSources.filter((source) => enabledSources.includes(source));
+  const visibleSources = orderedSources.filter((source) =>
+    enabledSources.includes(source),
+  );
   const allSourcesSelected =
-    visibleSources.length > 0 && visibleSources.every((source) => pipelineSources.includes(source));
+    visibleSources.length > 0 &&
+    visibleSources.every((source) => pipelineSources.includes(source));
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -99,7 +102,16 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
                       setTimeout(() => navigate(to), 150);
                     }}
                     className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left ${
-                      location.pathname === to || (to === "/" && ["/ready", "/discovered", "/applied", "/all"].includes(location.pathname))
+                      location.pathname === to ||
+                      (
+                        to === "/" &&
+                          [
+                            "/ready",
+                            "/discovered",
+                            "/applied",
+                            "/all",
+                          ].includes(location.pathname)
+                      )
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground"
                     }`}
@@ -117,7 +129,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
               <Sparkles className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className="text-sm font-semibold tracking-tight">Job Ops</div>
+              <div className="text-sm font-semibold tracking-tight">
+                Job Ops
+              </div>
               <div className="text-xs text-muted-foreground">Orchestrator</div>
             </div>
           </div>
@@ -147,9 +161,15 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
               disabled={isPipelineRunning}
               className="gap-2"
             >
-              {isPipelineRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+              {isPipelineRunning ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
               <span className="hidden sm:inline">
-                {isPipelineRunning ? `Running (${pipelineSources.length})` : `Run pipeline (${pipelineSources.length})`}
+                {isPipelineRunning
+                  ? `Running (${pipelineSources.length})`
+                  : `Run pipeline (${pipelineSources.length})`}
               </span>
             </Button>
 
@@ -172,7 +192,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
                   <DropdownMenuCheckboxItem
                     key={source}
                     checked={pipelineSources.includes(source)}
-                    onCheckedChange={(checked) => onToggleSource(source, Boolean(checked))}
+                    onCheckedChange={(checked) =>
+                      onToggleSource(source, Boolean(checked))
+                    }
                     onSelect={(event) => event.preventDefault()}
                   >
                     {sourceLabel[source]}
@@ -182,7 +204,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
                 <DropdownMenuCheckboxItem
                   checked={allSourcesSelected}
                   onCheckedChange={(checked) => {
-                    onSetPipelineSources(checked ? visibleSources : visibleSources.slice(0, 1));
+                    onSetPipelineSources(
+                      checked ? visibleSources : visibleSources.slice(0, 1),
+                    );
                   }}
                   onSelect={(event) => event.preventDefault()}
                 >

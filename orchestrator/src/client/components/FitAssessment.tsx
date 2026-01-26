@@ -1,5 +1,5 @@
-import React from "react";
 import { Sparkles } from "lucide-react";
+import type React from "react";
 import { cn } from "@/lib/utils";
 import type { Job } from "../../shared/types";
 
@@ -8,8 +8,8 @@ interface FitAssessmentProps {
   className?: string;
 }
 
-export const FitAssessment: React.FC<FitAssessmentProps> = ({ 
-  job, 
+export const FitAssessment: React.FC<FitAssessmentProps> = ({
+  job,
   className,
 }) => {
   if (!job.suitabilityReason) return null;

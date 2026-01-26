@@ -2,7 +2,7 @@
  * Suitability score display component.
  */
 
-import React from "react";
+import type React from "react";
 
 import { Progress } from "@/components/ui/progress";
 
@@ -18,8 +18,9 @@ export const ScoreIndicator: React.FC<ScoreIndicatorProps> = ({ score }) => {
   return (
     <div className="flex items-center gap-2">
       <Progress value={score} className="h-2 w-20" />
-      <span className="text-sm tabular-nums text-muted-foreground">{score}</span>
+      <span className="text-sm tabular-nums text-muted-foreground">
+        {score}
+      </span>
     </div>
   );
 };
-

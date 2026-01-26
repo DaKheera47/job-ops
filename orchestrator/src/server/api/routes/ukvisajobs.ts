@@ -1,9 +1,13 @@
-import { Router, Request, Response } from 'express';
-import { z } from 'zod';
-import * as jobsRepo from '../../repositories/jobs.js';
-import { fetchUkVisaJobsPage } from '../../services/ukvisajobs.js';
-import { getPipelineStatus } from '../../pipeline/index.js';
-import type { ApiResponse, UkVisaJobsSearchResponse, UkVisaJobsImportResponse } from '../../../shared/types.js';
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
+import type {
+  ApiResponse,
+  UkVisaJobsImportResponse,
+  UkVisaJobsSearchResponse,
+} from "../../../shared/types.js";
+import { getPipelineStatus } from "../../pipeline/index.js";
+import * as jobsRepo from "../../repositories/jobs.js";
+import { fetchUkVisaJobsPage } from "../../services/ukvisajobs.js";
 
 export const ukVisaJobsRouter = Router();
 let isUkVisaJobsSearchRunning = false;
@@ -18,19 +22,26 @@ const ukVisaJobsSearchSchema = z.object({
 /**
  * POST /api/ukvisajobs/search - Run a UKVisaJobs search without importing into the DB
  */
-ukVisaJobsRouter.post('/search', async (req: Request, res: Response) => {
+ukVisaJobsRouter.post("/search", async (req: Request, res: Response) => {
   let lockAcquired = false;
 
   try {
     const input = ukVisaJobsSearchSchema.parse(req.body ?? {});
 
     if (isUkVisaJobsSearchRunning) {
-      return res.status(409).json({ success: false, error: 'UK Visa Jobs search is already running' });
+      return res.status(409).json({
+        success: false,
+        error: "UK Visa Jobs search is already running",
+      });
     }
 
     const { isRunning } = getPipelineStatus();
     if (isRunning) {
-      return res.status(409).json({ success: false, error: 'Pipeline is running. Stop it before running UK Visa Jobs search.' });
+      return res.status(409).json({
+        success: false,
+        error:
+          "Pipeline is running. Stop it before running UK Visa Jobs search.",
+      });
     }
 
     isUkVisaJobsSearchRunning = true;
@@ -38,7 +49,10 @@ ukVisaJobsRouter.post('/search', async (req: Request, res: Response) => {
 
     const rawTerms = input.searchTerms ?? [];
     if (rawTerms.length > 1) {
-      return res.status(400).json({ success: false, error: 'Pagination supports a single search term.' });
+      return res.status(400).json({
+        success: false,
+        error: "Pagination supports a single search term.",
+      });
     }
 
     const searchTerm = input.searchTerm ?? input.query ?? rawTerms[0];
@@ -49,7 +63,10 @@ ukVisaJobsRouter.post('/search', async (req: Request, res: Response) => {
       page,
     });
 
-    const totalPages = Math.max(1, Math.ceil(result.totalJobs / result.pageSize));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(result.totalJobs / result.pageSize),
+    );
 
     const response: ApiResponse<UkVisaJobsSearchResponse> = {
       success: true,
@@ -67,7 +84,7 @@ ukVisaJobsRouter.post('/search', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   } finally {
     if (lockAcquired) {
@@ -77,34 +94,39 @@ ukVisaJobsRouter.post('/search', async (req: Request, res: Response) => {
 });
 
 const ukVisaJobsImportSchema = z.object({
-  jobs: z.array(z.object({
-    title: z.string().trim().min(1).max(500),
-    employer: z.string().trim().min(1).max(500),
-    jobUrl: z.string().trim().min(1).max(2000),
-    sourceJobId: z.string().trim().min(1).max(200).optional(),
-    employerUrl: z.string().trim().min(1).max(2000).optional(),
-    applicationLink: z.string().trim().min(1).max(2000).optional(),
-    location: z.string().trim().max(200).optional(),
-    deadline: z.string().trim().max(100).optional(),
-    salary: z.string().trim().max(200).optional(),
-    jobDescription: z.string().trim().max(20000).optional(),
-    datePosted: z.string().trim().max(100).optional(),
-    degreeRequired: z.string().trim().max(200).optional(),
-    jobType: z.string().trim().max(200).optional(),
-    jobLevel: z.string().trim().max(200).optional(),
-  })).min(1).max(200),
+  jobs: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(500),
+        employer: z.string().trim().min(1).max(500),
+        jobUrl: z.string().trim().min(1).max(2000),
+        sourceJobId: z.string().trim().min(1).max(200).optional(),
+        employerUrl: z.string().trim().min(1).max(2000).optional(),
+        applicationLink: z.string().trim().min(1).max(2000).optional(),
+        location: z.string().trim().max(200).optional(),
+        deadline: z.string().trim().max(100).optional(),
+        salary: z.string().trim().max(200).optional(),
+        jobDescription: z.string().trim().max(20000).optional(),
+        datePosted: z.string().trim().max(100).optional(),
+        degreeRequired: z.string().trim().max(200).optional(),
+        jobType: z.string().trim().max(200).optional(),
+        jobLevel: z.string().trim().max(200).optional(),
+      }),
+    )
+    .min(1)
+    .max(200),
 });
 
 /**
  * POST /api/ukvisajobs/import - Import selected UKVisaJobs results into the DB
  */
-ukVisaJobsRouter.post('/import', async (req: Request, res: Response) => {
+ukVisaJobsRouter.post("/import", async (req: Request, res: Response) => {
   try {
     const input = ukVisaJobsImportSchema.parse(req.body ?? {});
 
     const jobs = input.jobs.map((job) => ({
       ...job,
-      source: 'ukvisajobs' as const,
+      source: "ukvisajobs" as const,
     }));
 
     const result = await jobsRepo.bulkCreateJobs(jobs);
@@ -122,7 +144,7 @@ ukVisaJobsRouter.post('/import', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   }
 });

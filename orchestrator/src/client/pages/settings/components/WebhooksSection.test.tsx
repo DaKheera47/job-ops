@@ -1,9 +1,8 @@
-import { render, screen } from "@testing-library/react"
-import { useForm, FormProvider } from "react-hook-form"
-
-import { Accordion } from "@/components/ui/accordion"
-import { WebhooksSection } from "./WebhooksSection"
-import { UpdateSettingsInput } from "@shared/settings-schema"
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import { render, screen } from "@testing-library/react";
+import { FormProvider, useForm } from "react-hook-form";
+import { Accordion } from "@/components/ui/accordion";
+import { WebhooksSection } from "./WebhooksSection";
 
 const WebhooksHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
@@ -11,8 +10,8 @@ const WebhooksHarness = () => {
       pipelineWebhookUrl: "https://pipeline.com",
       jobCompleteWebhookUrl: "https://job.com",
       webhookSecret: "",
-    }
-  })
+    },
+  });
 
   return (
     <FormProvider {...methods}>
@@ -32,19 +31,21 @@ const WebhooksHarness = () => {
         />
       </Accordion>
     </FormProvider>
-  )
-}
+  );
+};
 
 describe("WebhooksSection", () => {
   it("renders both webhook sections and the secret", () => {
-    render(<WebhooksHarness />)
+    render(<WebhooksHarness />);
 
-    expect(screen.getByText("Pipeline Status")).toBeInTheDocument()
-    expect(screen.getByText("Job Completion")).toBeInTheDocument()
-    
-    expect(screen.getByDisplayValue("https://pipeline.com")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("https://job.com")).toBeInTheDocument()
-    
-    expect(screen.getByText("sec-********")).toBeInTheDocument()
-  })
-})
+    expect(screen.getByText("Pipeline Status")).toBeInTheDocument();
+    expect(screen.getByText("Job Completion")).toBeInTheDocument();
+
+    expect(
+      screen.getByDisplayValue("https://pipeline.com"),
+    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue("https://job.com")).toBeInTheDocument();
+
+    expect(screen.getByText("sec-********")).toBeInTheDocument();
+  });
+});

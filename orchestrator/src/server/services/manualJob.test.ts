@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as settingsRepo from "../repositories/settings.js";
 import { inferManualJobDetails } from "./manualJob.js";
 
@@ -42,7 +42,7 @@ describe("manual job inference", () => {
           {
             message: {
               content:
-                "Here is the data: ```json\n{ \"title\": \"Backend Engineer\", \"employer\": \"Acme\", \"salary\": \" 100k \" }\n```",
+                'Here is the data: ```json\n{ "title": "Backend Engineer", "employer": "Acme", "salary": " 100k " }\n```',
             },
           },
         ],

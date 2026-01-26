@@ -2,21 +2,23 @@
  * Service for generating PDF resumes using RxResume v4 API.
  */
 
-import { join } from 'path';
-import { mkdir, access } from 'fs/promises';
-import { existsSync, createWriteStream } from 'fs';
-import { createId } from '@paralleldrive/cuid2';
-import { pipeline } from 'stream/promises';
-import { Readable } from 'stream';
+import { createWriteStream, existsSync } from "node:fs";
+import { access, mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import { createId } from "@paralleldrive/cuid2";
+import { getDataDir } from "../config/dataDir.js";
+import { getSetting } from "../repositories/settings.js";
+import { getProfile } from "./profile.js";
+import { pickProjectIdsForJob } from "./projectSelection.js";
+import {
+  extractProjectsFromProfile,
+  resolveResumeProjectsSettings,
+} from "./resumeProjects.js";
+import { RxResumeClient } from "./rxresume-client.js";
 
-import { getSetting } from '../repositories/settings.js';
-import { pickProjectIdsForJob } from './projectSelection.js';
-import { extractProjectsFromProfile, resolveResumeProjectsSettings } from './resumeProjects.js';
-import { getDataDir } from '../config/dataDir.js';
-import { getProfile } from './profile.js';
-import { RxResumeClient } from './rxresume-client.js';
-
-const OUTPUT_DIR = join(getDataDir(), 'pdfs');
+const OUTPUT_DIR = join(getDataDir(), "pdfs");
 
 export interface PdfResult {
   success: boolean;
@@ -27,29 +29,33 @@ export interface PdfResult {
 export interface TailoredPdfContent {
   summary?: string | null;
   headline?: string | null;
-  skills?: any | null; // Accept any for flexibility, expected to be items array or parsed JSON
+  skills?: Array<{ name: string; keywords: string[] }> | null;
 }
 
 /**
  * Get RxResume credentials from environment variables or database settings.
  */
-async function getCredentials(): Promise<{ email: string; password: string; baseUrl: string }> {
+async function getCredentials(): Promise<{
+  email: string;
+  password: string;
+  baseUrl: string;
+}> {
   // First check environment variables
-  let email = process.env.RXRESUME_EMAIL || '';
-  let password = process.env.RXRESUME_PASSWORD || '';
-  const baseUrl = process.env.RXRESUME_URL || 'https://v4.rxresu.me';
+  let email = process.env.RXRESUME_EMAIL || "";
+  let password = process.env.RXRESUME_PASSWORD || "";
+  const baseUrl = process.env.RXRESUME_URL || "https://v4.rxresu.me";
 
   // Fall back to database settings if env vars are not set
   if (!email) {
-    email = (await getSetting('rxresumeEmail')) || '';
+    email = (await getSetting("rxresumeEmail")) || "";
   }
   if (!password) {
-    password = (await getSetting('rxresumePassword')) || '';
+    password = (await getSetting("rxresumePassword")) || "";
   }
 
   if (!email || !password) {
     throw new Error(
-      'RxResume credentials not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD environment variables or configure them in settings.'
+      "RxResume credentials not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD environment variables or configure them in settings.",
     );
   }
 
@@ -62,14 +68,17 @@ async function getCredentials(): Promise<{ email: string; password: string; base
 async function downloadFile(url: string, outputPath: string): Promise<void> {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to download PDF: HTTP ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to download PDF: HTTP ${response.status} ${response.statusText}`,
+    );
   }
 
   if (!response.body) {
-    throw new Error('No response body from PDF download');
+    throw new Error("No response body from PDF download");
   }
 
   // Convert Web ReadableStream to Node readable
+  // biome-ignore lint/suspicious/noExplicitAny: response.body is a ReadableStream in the browser environment, but Node.js fetch implementation might have slight differences in types.
   const nodeReadable = Readable.fromWeb(response.body as any);
   const fileStream = createWriteStream(outputPath);
 
@@ -78,7 +87,7 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
 
 /**
  * Generate a tailored PDF resume for a job using the RxResume v4 API.
- * 
+ *
  * Flow:
  * 1. Prepare resume data with tailored content and project selection
  * 2. Get auth token (uses cached token or logs in)
@@ -86,7 +95,7 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
  * 4. Request print to get PDF URL
  * 5. Download PDF locally
  * 6. Delete temporary resume from RxResume
- * 
+ *
  * Token refresh is handled automatically on 401 errors.
  */
 export async function generatePdf(
@@ -94,7 +103,7 @@ export async function generatePdf(
   tailoredContent: TailoredPdfContent,
   jobDescription: string,
   _baseResumePath?: string, // Deprecated: now always uses getProfile() which fetches from v4 API
-  selectedProjectIds?: string | null
+  selectedProjectIds?: string | null,
 ): Promise<PdfResult> {
   console.log(`📄 Generating PDF for job ${jobId} using RxResume v4 API...`);
 
@@ -113,16 +122,21 @@ export async function generatePdf(
 
     // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
     // This fixes issues where the base JSON uses a shorthand format (missing required fields)
-    if (baseResume.sections?.skills?.items && Array.isArray(baseResume.sections.skills.items)) {
-      baseResume.sections.skills.items = baseResume.sections.skills.items.map((skill: any) => ({
-        ...skill,
-        id: skill.id || createId(),
-        visible: skill.visible ?? true,
-        // Zod schema requires string, default to empty string if missing
-        description: skill.description ?? '',
-        level: skill.level ?? 1,
-        keywords: skill.keywords || [],
-      }));
+    if (
+      baseResume.sections?.skills?.items &&
+      Array.isArray(baseResume.sections.skills.items)
+    ) {
+      baseResume.sections.skills.items = baseResume.sections.skills.items.map(
+        (skill: Record<string, unknown>) => ({
+          ...skill,
+          id: (skill.id as string) || createId(),
+          visible: (skill.visible as boolean | undefined) ?? true,
+          // Zod schema requires string, default to empty string if missing
+          description: (skill.description as string | undefined) ?? "",
+          level: (skill.level as number | undefined) ?? 1,
+          keywords: (skill.keywords as string[] | undefined) || [],
+        }),
+      );
     }
 
     // Inject tailored summary
@@ -146,26 +160,47 @@ export async function generatePdf(
     if (tailoredContent.skills) {
       const newSkills = Array.isArray(tailoredContent.skills)
         ? tailoredContent.skills
-        : typeof tailoredContent.skills === 'string'
+        : typeof tailoredContent.skills === "string"
           ? JSON.parse(tailoredContent.skills)
           : null;
 
       if (newSkills && baseResume.sections?.skills) {
         // Ensure each skill item has required schema fields
-        const existingSkills = baseResume.sections.skills.items || [];
-        const skillsWithSchema = newSkills.map((newSkill: any) => {
-          // Try to find matching existing skill to preserve id and other fields
-          const existing = existingSkills.find((s: any) => s.name === newSkill.name);
+        const existingSkills = (baseResume.sections.skills.items ||
+          []) as Array<Record<string, unknown>>;
+        const skillsWithSchema = newSkills.map(
+          (newSkill: Record<string, unknown>) => {
+            // Try to find matching existing skill to preserve id and other fields
+            const existing = existingSkills.find(
+              (s) => s.name === newSkill.name,
+            );
 
-          return {
-            id: newSkill.id || existing?.id || createId(),
-            visible: newSkill.visible !== undefined ? newSkill.visible : (existing?.visible ?? true),
-            name: newSkill.name || existing?.name || '',
-            description: newSkill.description !== undefined ? newSkill.description : (existing?.description || ''),
-            level: newSkill.level !== undefined ? newSkill.level : (existing?.level ?? 1),
-            keywords: newSkill.keywords || existing?.keywords || [],
-          };
-        });
+            return {
+              id:
+                (newSkill.id as string) ||
+                (existing?.id as string) ||
+                createId(),
+              visible:
+                newSkill.visible !== undefined
+                  ? (newSkill.visible as boolean)
+                  : ((existing?.visible as boolean | undefined) ?? true),
+              name:
+                (newSkill.name as string) || (existing?.name as string) || "",
+              description:
+                newSkill.description !== undefined
+                  ? (newSkill.description as string)
+                  : (existing?.description as string) || "",
+              level:
+                newSkill.level !== undefined
+                  ? (newSkill.level as number)
+                  : ((existing?.level as number | undefined) ?? 1),
+              keywords:
+                (newSkill.keywords as string[]) ||
+                (existing?.keywords as string[]) ||
+                [],
+            };
+          },
+        );
 
         baseResume.sections.skills.items = skillsWithSchema;
       }
@@ -176,16 +211,30 @@ export async function generatePdf(
       let selectedSet: Set<string>;
 
       if (selectedProjectIds) {
-        selectedSet = new Set(selectedProjectIds.split(',').map(s => s.trim()).filter(Boolean));
+        selectedSet = new Set(
+          selectedProjectIds
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        );
       } else {
-        const { catalog, selectionItems } = extractProjectsFromProfile(baseResume);
-        const overrideResumeProjectsRaw = await getSetting('resumeProjects');
-        const { resumeProjects } = resolveResumeProjectsSettings({ catalog, overrideRaw: overrideResumeProjectsRaw });
+        const { catalog, selectionItems } =
+          extractProjectsFromProfile(baseResume);
+        const overrideResumeProjectsRaw = await getSetting("resumeProjects");
+        const { resumeProjects } = resolveResumeProjectsSettings({
+          catalog,
+          overrideRaw: overrideResumeProjectsRaw,
+        });
 
         const locked = resumeProjects.lockedProjectIds;
-        const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
+        const desiredCount = Math.max(
+          0,
+          resumeProjects.maxProjects - locked.length,
+        );
         const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-        const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
+        const eligibleProjects = selectionItems.filter((p) =>
+          eligibleSet.has(p.id),
+        );
 
         const picked = await pickProjectIdsForJob({
           jobDescription,
@@ -200,15 +249,19 @@ export async function generatePdf(
       const projectItems = projectsSection?.items;
       if (Array.isArray(projectItems)) {
         for (const item of projectItems) {
-          if (!item || typeof item !== 'object') continue;
-          const id = typeof (item as any).id === 'string' ? (item as any).id : '';
+          if (!item || typeof item !== "object") continue;
+          const typedItem = item as Record<string, unknown>;
+          const id = typeof typedItem.id === "string" ? typedItem.id : "";
           if (!id) continue;
-          (item as any).visible = selectedSet.has(id);
+          typedItem.visible = selectedSet.has(id);
         }
         projectsSection.visible = selectedSet.size > 0;
       }
     } catch (err) {
-      console.warn(`   ⚠️ Project visibility step failed for job ${jobId}:`, err);
+      console.warn(
+        `   ⚠️ Project visibility step failed for job ${jobId}:`,
+        err,
+      );
     }
 
     // Use withAutoRefresh to handle token caching and 401 retry automatically
@@ -254,7 +307,7 @@ export async function generatePdf(
     console.log(`✅ PDF generated successfully: ${outputPath}`);
     return { success: true, pdfPath: outputPath };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error(`❌ PDF generation failed: ${message}`);
     return { success: false, error: message };
   }

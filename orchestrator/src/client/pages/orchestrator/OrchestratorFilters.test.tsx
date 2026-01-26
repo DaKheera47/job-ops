@@ -1,20 +1,25 @@
-import React from "react";
-import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-
 import type { ComponentProps } from "react";
-
-import { OrchestratorFilters } from "./OrchestratorFilters";
+import { describe, expect, it, vi } from "vitest";
 import type { FilterTab, JobSort } from "./constants";
+import { OrchestratorFilters } from "./OrchestratorFilters";
 
 vi.mock("@/components/ui/dropdown-menu", () => {
   const React = require("react") as typeof import("react");
-  const RadioGroupContext = React.createContext<((value: string) => void) | null>(null);
+  const RadioGroupContext = React.createContext<
+    ((value: string) => void) | null
+  >(null);
 
   return {
-    DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div role="menu">{children}</div>,
+    DropdownMenu: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => (
+      <>{children}</>
+    ),
+    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
+      <div role="menu">{children}</div>
+    ),
     DropdownMenuItem: ({
       children,
       onSelect,
@@ -23,12 +28,19 @@ vi.mock("@/components/ui/dropdown-menu", () => {
       children: React.ReactNode;
       onSelect?: () => void;
     }) => (
-      <button type="button" role="menuitem" onClick={() => onSelect?.()} {...props}>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={() => onSelect?.()}
+        {...props}
+      >
         {children}
       </button>
     ),
-    DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuSeparator: () => <div role="separator" />,
+    DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    DropdownMenuSeparator: () => <hr />,
     DropdownMenuRadioGroup: ({
       children,
       onValueChange,
@@ -43,13 +55,20 @@ vi.mock("@/components/ui/dropdown-menu", () => {
     DropdownMenuRadioItem: ({
       children,
       value,
+      checked,
     }: {
       children: React.ReactNode;
       value: string;
+      checked?: boolean;
     }) => {
       const onValueChange = React.useContext(RadioGroupContext);
       return (
-        <button type="button" role="menuitemradio" onClick={() => onValueChange?.(value)}>
+        <button
+          type="button"
+          role="menuitemradio"
+          aria-checked={checked}
+          onClick={() => onValueChange?.(value)}
+        >
           {children}
         </button>
       );
@@ -57,7 +76,9 @@ vi.mock("@/components/ui/dropdown-menu", () => {
   };
 });
 
-const renderFilters = (overrides?: Partial<ComponentProps<typeof OrchestratorFilters>>) => {
+const renderFilters = (
+  overrides?: Partial<ComponentProps<typeof OrchestratorFilters>>,
+) => {
   const props = {
     activeTab: "ready" as FilterTab,
     onTabChange: vi.fn(),
@@ -90,7 +111,9 @@ describe("OrchestratorFilters", () => {
     fireEvent.mouseDown(screen.getByRole("tab", { name: /applied/i }));
     expect(props.onTabChange).toHaveBeenCalledWith("applied");
 
-    fireEvent.change(screen.getByPlaceholderText("Search..."), { target: { value: "Design" } });
+    fireEvent.change(screen.getByPlaceholderText("Search..."), {
+      target: { value: "Design" },
+    });
     expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
   });
 
@@ -98,12 +121,19 @@ describe("OrchestratorFilters", () => {
     const { props } = renderFilters();
 
     fireEvent.pointerDown(screen.getByRole("button", { name: /all sources/i }));
-    fireEvent.click(await screen.findByRole("menuitemradio", { name: /LinkedIn/i }));
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: /LinkedIn/i }),
+    );
     expect(props.onSourceFilterChange).toHaveBeenCalledWith("linkedin");
 
     fireEvent.pointerDown(screen.getByRole("button", { name: /score/i }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: /Direction:/i }));
-    expect(props.onSortChange).toHaveBeenCalledWith({ key: "score", direction: "asc" });
+    fireEvent.click(
+      await screen.findByRole("menuitem", { name: /Direction:/i }),
+    );
+    expect(props.onSortChange).toHaveBeenCalledWith({
+      key: "score",
+      direction: "asc",
+    });
   });
 
   it("only shows sources that exist in jobs", async () => {
@@ -111,9 +141,17 @@ describe("OrchestratorFilters", () => {
 
     fireEvent.pointerDown(screen.getByRole("button", { name: /all sources/i }));
 
-    expect(await screen.findByRole("menuitemradio", { name: /Gradcracker/i })).toBeInTheDocument();
-    expect(screen.queryByRole("menuitemradio", { name: /LinkedIn/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("menuitemradio", { name: /UK Visa Jobs/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: /Manual/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitemradio", { name: /Gradcracker/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitemradio", { name: /LinkedIn/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitemradio", { name: /UK Visa Jobs/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitemradio", { name: /Manual/i }),
+    ).toBeInTheDocument();
   });
 });

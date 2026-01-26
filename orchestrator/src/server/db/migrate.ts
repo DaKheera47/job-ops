@@ -2,13 +2,13 @@
  * Database migration script - creates tables if they don't exist.
  */
 
-import Database from 'better-sqlite3';
-import { join, dirname } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { getDataDir } from '../config/dataDir.js';
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import Database from "better-sqlite3";
+import { getDataDir } from "../config/dataDir.js";
 
 // Database path - can be overridden via env for Docker
-const DB_PATH = join(getDataDir(), 'jobs.db');
+const DB_PATH = join(getDataDir(), "jobs.db");
 
 // Ensure data directory exists
 const dataDir = dirname(DB_PATH);
@@ -184,28 +184,29 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id)`,
 ];
 
-console.log('🔧 Running database migrations...');
+console.log("🔧 Running database migrations...");
 
 for (const migration of migrations) {
   try {
     sqlite.exec(migration);
-    console.log('✅ Migration applied');
+    console.log("✅ Migration applied");
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const isDuplicateColumn =
-      (migration.toLowerCase().includes('alter table jobs add column') ||
-        migration.toLowerCase().includes('alter table tasks add column')) &&
-      message.toLowerCase().includes('duplicate column name');
+      (migration.toLowerCase().includes("alter table jobs add column") ||
+        migration.toLowerCase().includes("alter table tasks add column")) &&
+      message.toLowerCase().includes("duplicate column name");
+
 
     if (isDuplicateColumn) {
-      console.log('↩️ Migration skipped (column already exists)');
+      console.log("↩️ Migration skipped (column already exists)");
       continue;
     }
 
-    console.error('❌ Migration failed:', error);
+    console.error("❌ Migration failed:", error);
     process.exit(1);
   }
 }
 
 sqlite.close();
-console.log('🎉 Database migrations complete!');
+console.log("🎉 Database migrations complete!");

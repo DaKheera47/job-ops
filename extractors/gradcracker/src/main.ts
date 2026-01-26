@@ -2,9 +2,8 @@
 import { launchOptions } from "camoufox-js";
 import { PlaywrightCrawler } from "crawlee";
 import { firefox } from "playwright";
-
-import { router } from "./routes.js";
 import { initJobOpsProgress } from "./progress.js";
+import { router } from "./routes.js";
 
 // locations
 const locations = [
@@ -17,10 +16,7 @@ const locations = [
 ];
 
 // roles
-const defaultRoles = [
-  "web-development",
-  "software-systems",
-];
+const defaultRoles = ["web-development", "software-systems"];
 
 let roles = defaultRoles;
 const envRolesRaw = process.env.GRADCRACKER_SEARCH_TERMS;
@@ -29,15 +25,16 @@ if (envRolesRaw) {
   try {
     const parsed = JSON.parse(envRolesRaw) as string[];
     if (Array.isArray(parsed) && parsed.length > 0) {
-      roles = parsed.map(term =>
-        term.toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
+      roles = parsed.map((term) =>
+        term
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, ""),
       );
-      console.log(`Using configured search terms: ${roles.join(', ')}`);
+      console.log(`Using configured search terms: ${roles.join(", ")}`);
     }
   } catch (e) {
-    console.warn('Failed to parse GRADCRACKER_SEARCH_TERMS', e);
+    console.warn("Failed to parse GRADCRACKER_SEARCH_TERMS", e);
   }
 }
 
@@ -46,12 +43,12 @@ const gradcrackerUrls = locations.flatMap((location) => {
   return roles.map((role) => {
     return {
       url: `https://www.gradcracker.com/search/computing-technology/${role}-graduate-jobs-in-${location}?order=dateAdded`,
-      role
+      role,
     };
   });
 });
 
-console.log(`Total gradcracker URLs: ${gradcrackerUrls.length}`)
+console.log(`Total gradcracker URLs: ${gradcrackerUrls.length}`);
 
 const startUrls = gradcrackerUrls.map(({ url, role }) => ({
   url,

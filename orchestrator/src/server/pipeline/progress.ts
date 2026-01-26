@@ -2,14 +2,14 @@
  * Pipeline progress tracking with Server-Sent Events.
  */
 
-export type PipelineStep = 
-  | 'idle'
-  | 'crawling'
-  | 'importing'
-  | 'scoring'
-  | 'processing'
-  | 'completed'
-  | 'failed';
+export type PipelineStep =
+  | "idle"
+  | "crawling"
+  | "importing"
+  | "scoring"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export interface PipelineProgress {
   step: PipelineStep;
@@ -21,7 +21,7 @@ export interface PipelineProgress {
   crawlingJobPagesEnqueued: number;
   crawlingJobPagesSkipped: number;
   crawlingJobPagesProcessed: number;
-  crawlingPhase?: 'list' | 'job';
+  crawlingPhase?: "list" | "job";
   crawlingCurrentUrl?: string;
   jobsDiscovered: number;
   jobsScored: number;
@@ -42,8 +42,8 @@ type ProgressListener = (progress: PipelineProgress) => void;
 const listeners: Set<ProgressListener> = new Set();
 
 let currentProgress: PipelineProgress = {
-  step: 'idle',
-  message: 'Ready',
+  step: "idle",
+  message: "Ready",
   crawlingListPagesProcessed: 0,
   crawlingListPagesTotal: 0,
   crawlingJobCardsFound: 0,
@@ -61,13 +61,13 @@ let currentProgress: PipelineProgress = {
  */
 export function updateProgress(update: Partial<PipelineProgress>): void {
   currentProgress = { ...currentProgress, ...update };
-  
+
   // Notify all listeners
   for (const listener of listeners) {
     try {
       listener(currentProgress);
     } catch (error) {
-      console.error('Error in progress listener:', error);
+      console.error("Error in progress listener:", error);
     }
   }
 }
@@ -84,10 +84,10 @@ export function getProgress(): PipelineProgress {
  */
 export function subscribeToProgress(listener: ProgressListener): () => void {
   listeners.add(listener);
-  
+
   // Send current state immediately
   listener(currentProgress);
-  
+
   // Return unsubscribe function
   return () => {
     listeners.delete(listener);
@@ -99,8 +99,8 @@ export function subscribeToProgress(listener: ProgressListener): () => void {
  */
 export function resetProgress(): void {
   currentProgress = {
-    step: 'idle',
-    message: 'Ready',
+    step: "idle",
+    message: "Ready",
     crawlingListPagesProcessed: 0,
     crawlingListPagesTotal: 0,
     crawlingJobCardsFound: 0,
@@ -120,24 +120,25 @@ export function resetProgress(): void {
  * Helper to create progress updates for each step.
  */
 export const progressHelpers = {
-  startCrawling: () => updateProgress({
-    step: 'crawling',
-    message: 'Fetching jobs from sources...',
-    detail: 'Starting crawler',
-    startedAt: new Date().toISOString(),
-    crawlingListPagesProcessed: 0,
-    crawlingListPagesTotal: 0,
-    crawlingJobCardsFound: 0,
-    crawlingJobPagesEnqueued: 0,
-    crawlingJobPagesSkipped: 0,
-    crawlingJobPagesProcessed: 0,
-    crawlingPhase: undefined,
-    crawlingCurrentUrl: undefined,
-    jobsDiscovered: 0,
-    jobsScored: 0,
-    jobsProcessed: 0,
-    totalToProcess: 0,
-  }),
+  startCrawling: () =>
+    updateProgress({
+      step: "crawling",
+      message: "Fetching jobs from sources...",
+      detail: "Starting crawler",
+      startedAt: new Date().toISOString(),
+      crawlingListPagesProcessed: 0,
+      crawlingListPagesTotal: 0,
+      crawlingJobCardsFound: 0,
+      crawlingJobPagesEnqueued: 0,
+      crawlingJobPagesSkipped: 0,
+      crawlingJobPagesProcessed: 0,
+      crawlingPhase: undefined,
+      crawlingCurrentUrl: undefined,
+      jobsDiscovered: 0,
+      jobsScored: 0,
+      jobsProcessed: 0,
+      totalToProcess: 0,
+    }),
 
   crawlingUpdate: (update: {
     listPagesProcessed?: number;
@@ -146,18 +147,24 @@ export const progressHelpers = {
     jobPagesEnqueued?: number;
     jobPagesSkipped?: number;
     jobPagesProcessed?: number;
-    phase?: 'list' | 'job';
+    phase?: "list" | "job";
     currentUrl?: string;
   }) => {
     const current = getProgress();
     const next = {
       ...current,
-      crawlingListPagesProcessed: update.listPagesProcessed ?? current.crawlingListPagesProcessed,
-      crawlingListPagesTotal: update.listPagesTotal ?? current.crawlingListPagesTotal,
-      crawlingJobCardsFound: update.jobCardsFound ?? current.crawlingJobCardsFound,
-      crawlingJobPagesEnqueued: update.jobPagesEnqueued ?? current.crawlingJobPagesEnqueued,
-      crawlingJobPagesSkipped: update.jobPagesSkipped ?? current.crawlingJobPagesSkipped,
-      crawlingJobPagesProcessed: update.jobPagesProcessed ?? current.crawlingJobPagesProcessed,
+      crawlingListPagesProcessed:
+        update.listPagesProcessed ?? current.crawlingListPagesProcessed,
+      crawlingListPagesTotal:
+        update.listPagesTotal ?? current.crawlingListPagesTotal,
+      crawlingJobCardsFound:
+        update.jobCardsFound ?? current.crawlingJobCardsFound,
+      crawlingJobPagesEnqueued:
+        update.jobPagesEnqueued ?? current.crawlingJobPagesEnqueued,
+      crawlingJobPagesSkipped:
+        update.jobPagesSkipped ?? current.crawlingJobPagesSkipped,
+      crawlingJobPagesProcessed:
+        update.jobPagesProcessed ?? current.crawlingJobPagesProcessed,
       crawlingPhase: update.phase ?? current.crawlingPhase,
       crawlingCurrentUrl: update.currentUrl ?? current.crawlingCurrentUrl,
     };
@@ -168,19 +175,25 @@ export const progressHelpers = {
         : `${next.crawlingListPagesProcessed}`;
 
     const pagesPart = `${next.crawlingJobPagesProcessed}/${next.crawlingJobPagesEnqueued}`;
-    const skippedPart = next.crawlingJobPagesSkipped > 0 ? `, skipped ${next.crawlingJobPagesSkipped}` : '';
-    const cardsPart = next.crawlingJobCardsFound > 0 ? `, cards ${next.crawlingJobCardsFound}` : '';
+    const skippedPart =
+      next.crawlingJobPagesSkipped > 0
+        ? `, skipped ${next.crawlingJobPagesSkipped}`
+        : "";
+    const cardsPart =
+      next.crawlingJobCardsFound > 0
+        ? `, cards ${next.crawlingJobCardsFound}`
+        : "";
 
     const message = `Crawling jobs (${sourcesPart} sources, pages ${pagesPart}${skippedPart}${cardsPart})...`;
     const detail =
       next.crawlingCurrentUrl && next.crawlingPhase
-        ? `${next.crawlingPhase === 'list' ? 'List' : 'Job'}: ${next.crawlingCurrentUrl}`
+        ? `${next.crawlingPhase === "list" ? "List" : "Job"}: ${next.crawlingCurrentUrl}`
         : next.crawlingCurrentUrl
           ? next.crawlingCurrentUrl
-          : 'Running crawler';
+          : "Running crawler";
 
     updateProgress({
-      step: 'crawling',
+      step: "crawling",
       message,
       detail,
       crawlingListPagesProcessed: next.crawlingListPagesProcessed,
@@ -193,73 +206,87 @@ export const progressHelpers = {
       crawlingCurrentUrl: next.crawlingCurrentUrl,
     });
   },
-  
-  crawlingComplete: (jobsFound: number) => updateProgress({
-    step: 'importing',
-    message: `Found ${jobsFound} jobs, importing to database...`,
-    detail: 'Deduplicating and saving',
-    jobsDiscovered: jobsFound,
-    crawlingCurrentUrl: undefined,
-  }),
-  
-  importComplete: (created: number, skipped: number) => updateProgress({
-    step: 'scoring',
-    message: `Imported ${created} new jobs (${skipped} duplicates). Scoring...`,
-    detail: 'Using AI to evaluate job fit',
-  }),
-  
-  scoringJob: (index: number, total: number, title: string) => updateProgress({
-    step: 'scoring',
-    message: `Scoring jobs (${index}/${total})...`,
-    detail: title,
-    jobsScored: index,
-  }),
-  
-  scoringComplete: (totalScored: number) => updateProgress({
-    step: 'scoring',
-    message: `Scored ${totalScored} jobs.`,
-    detail: 'Ready for manual processing',
-    jobsScored: totalScored,
-    totalToProcess: 0,
-    jobsProcessed: 0,
-    currentJob: undefined,
-  }),
-  
-  processingJob: (index: number, total: number, job: { id: string; title: string; employer: string }) => updateProgress({
-    step: 'processing',
-    message: `Processing job ${index}/${total}...`,
-    detail: `${job.title} @ ${job.employer}`,
-    jobsProcessed: index - 1,
-    totalToProcess: total,
-    currentJob: job,
-  }),
-  
-  generatingSummary: (job: { title: string; employer: string }) => updateProgress({
-    detail: `Generating summary for ${job.title}...`,
-  }),
-  
-  generatingPdf: (job: { title: string; employer: string }) => updateProgress({
-    detail: `Generating PDF for ${job.title}...`,
-  }),
-  
-  jobComplete: (index: number, total: number) => updateProgress({
-    jobsProcessed: index,
-    detail: `Completed ${index}/${total} jobs`,
-  }),
-  
-  complete: (discovered: number, processed: number) => updateProgress({
-    step: 'completed',
-    message: `Pipeline complete! Discovered ${discovered} jobs, processed ${processed}.`,
-    detail: 'Ready for review',
-    completedAt: new Date().toISOString(),
-    currentJob: undefined,
-  }),
-  
-  failed: (error: string) => updateProgress({
-    step: 'failed',
-    message: 'Pipeline failed',
-    detail: error,
-    error,
-    completedAt: new Date().toISOString(),
-  }),
+
+  crawlingComplete: (jobsFound: number) =>
+    updateProgress({
+      step: "importing",
+      message: `Found ${jobsFound} jobs, importing to database...`,
+      detail: "Deduplicating and saving",
+      jobsDiscovered: jobsFound,
+      crawlingCurrentUrl: undefined,
+    }),
+
+  importComplete: (created: number, skipped: number) =>
+    updateProgress({
+      step: "scoring",
+      message: `Imported ${created} new jobs (${skipped} duplicates). Scoring...`,
+      detail: "Using AI to evaluate job fit",
+    }),
+
+  scoringJob: (index: number, total: number, title: string) =>
+    updateProgress({
+      step: "scoring",
+      message: `Scoring jobs (${index}/${total})...`,
+      detail: title,
+      jobsScored: index,
+    }),
+
+  scoringComplete: (totalScored: number) =>
+    updateProgress({
+      step: "scoring",
+      message: `Scored ${totalScored} jobs.`,
+      detail: "Ready for manual processing",
+      jobsScored: totalScored,
+      totalToProcess: 0,
+      jobsProcessed: 0,
+      currentJob: undefined,
+    }),
+
+  processingJob: (
+    index: number,
+    total: number,
+    job: { id: string; title: string; employer: string },
+  ) =>
+    updateProgress({
+      step: "processing",
+      message: `Processing job ${index}/${total}...`,
+      detail: `${job.title} @ ${job.employer}`,
+      jobsProcessed: index - 1,
+      totalToProcess: total,
+      currentJob: job,
+    }),
+
+  generatingSummary: (job: { title: string; employer: string }) =>
+    updateProgress({
+      detail: `Generating summary for ${job.title}...`,
+    }),
+
+  generatingPdf: (job: { title: string; employer: string }) =>
+    updateProgress({
+      detail: `Generating PDF for ${job.title}...`,
+    }),
+
+  jobComplete: (index: number, total: number) =>
+    updateProgress({
+      jobsProcessed: index,
+      detail: `Completed ${index}/${total} jobs`,
+    }),
+
+  complete: (discovered: number, processed: number) =>
+    updateProgress({
+      step: "completed",
+      message: `Pipeline complete! Discovered ${discovered} jobs, processed ${processed}.`,
+      detail: "Ready for review",
+      completedAt: new Date().toISOString(),
+      currentJob: undefined,
+    }),
+
+  failed: (error: string) =>
+    updateProgress({
+      step: "failed",
+      message: "Pipeline failed",
+      detail: error,
+      error,
+      completedAt: new Date().toISOString(),
+    }),
 };

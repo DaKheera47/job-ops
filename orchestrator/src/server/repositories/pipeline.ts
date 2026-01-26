@@ -2,10 +2,10 @@
  * Pipeline run repository.
  */
 
-import { eq, desc } from 'drizzle-orm';
-import { randomUUID } from 'crypto';
-import { db, schema } from '../db/index.js';
-import type { PipelineRun } from '../../shared/types.js';
+import { randomUUID } from "node:crypto";
+import { desc, eq } from "drizzle-orm";
+import type { PipelineRun } from "../../shared/types.js";
+import { db, schema } from "../db/index.js";
 
 const { pipelineRuns } = schema;
 
@@ -15,18 +15,18 @@ const { pipelineRuns } = schema;
 export async function createPipelineRun(): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
-  
+
   await db.insert(pipelineRuns).values({
     id,
     startedAt: now,
-    status: 'running',
+    status: "running",
   });
-  
+
   return {
     id,
     startedAt: now,
     completedAt: null,
-    status: 'running',
+    status: "running",
     jobsDiscovered: 0,
     jobsProcessed: 0,
     errorMessage: null,
@@ -40,11 +40,11 @@ export async function updatePipelineRun(
   id: string,
   update: Partial<{
     completedAt: string;
-    status: 'running' | 'completed' | 'failed';
+    status: "running" | "completed" | "failed";
     jobsDiscovered: number;
     jobsProcessed: number;
     errorMessage: string;
-  }>
+  }>,
 ): Promise<void> {
   await db.update(pipelineRuns).set(update).where(eq(pipelineRuns.id, id));
 }
@@ -58,14 +58,14 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
     .from(pipelineRuns)
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(1);
-  
+
   if (!row) return null;
-  
+
   return {
     id: row.id,
     startedAt: row.startedAt,
     completedAt: row.completedAt,
-    status: row.status as PipelineRun['status'],
+    status: row.status as PipelineRun["status"],
     jobsDiscovered: row.jobsDiscovered,
     jobsProcessed: row.jobsProcessed,
     errorMessage: row.errorMessage,
@@ -75,18 +75,20 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
 /**
  * Get recent pipeline runs.
  */
-export async function getRecentPipelineRuns(limit: number = 10): Promise<PipelineRun[]> {
+export async function getRecentPipelineRuns(
+  limit: number = 10,
+): Promise<PipelineRun[]> {
   const rows = await db
     .select()
     .from(pipelineRuns)
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(limit);
-  
-  return rows.map(row => ({
+
+  return rows.map((row) => ({
     id: row.id,
     startedAt: row.startedAt,
     completedAt: row.completedAt,
-    status: row.status as PipelineRun['status'],
+    status: row.status as PipelineRun["status"],
     jobsDiscovered: row.jobsDiscovered,
     jobsProcessed: row.jobsProcessed,
     errorMessage: row.errorMessage,

@@ -1,14 +1,21 @@
+import { ArrowUpRight, Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
 import React, { useMemo, useState } from "react";
-import { Calendar, DollarSign, Loader2, MapPin, Search, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import type { Job, JobStatus } from "../../shared/types";
-import { defaultStatusToken, statusTokens } from "../pages/orchestrator/constants";
-
 import { useSettings } from "../hooks/useSettings";
+import {
+  defaultStatusToken,
+  statusTokens,
+} from "../pages/orchestrator/constants";
 
 interface JobHeaderProps {
   job: Job;
@@ -94,7 +101,9 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
               ) : (
                 <Search className="h-2 w-2" />
               )}
-              <span>{isChecking ? "Checking..." : "Check Sponsorship Status"}</span>
+              <span>
+                {isChecking ? "Checking..." : "Check Sponsorship Status"}
+              </span>
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
@@ -110,9 +119,23 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   }
 
   const getStatus = (s: number) => {
-    if (s >= 95) return { label: "Confirmed Sponsor", dot: "bg-emerald-500", color: "text-emerald-400" };
-    if (s >= 80) return { label: "Potential Sponsor", dot: "bg-amber-500", color: "text-amber-400" };
-    return { label: "Sponsor Not Found", dot: "bg-slate-500", color: "text-slate-400" };
+    if (s >= 95)
+      return {
+        label: "Confirmed Sponsor",
+        dot: "bg-emerald-500",
+        color: "text-emerald-400",
+      };
+    if (s >= 80)
+      return {
+        label: "Potential Sponsor",
+        dot: "bg-amber-500",
+        color: "text-amber-400",
+      };
+    return {
+      label: "Sponsor Not Found",
+      dot: "bg-slate-500",
+      color: "text-slate-400",
+    };
   };
 
   const status = getStatus(score);
@@ -123,7 +146,9 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
       <Tooltip delayDuration={0}>
         <TooltipTrigger asChild>
           <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80 cursor-help">
-            <span className={cn("h-1.5 w-1.5 rounded-full opacity-80", status.dot)} />
+            <span
+              className={cn("h-1.5 w-1.5 rounded-full opacity-80", status.dot)}
+            />
             {status.label}
           </span>
         </TooltipTrigger>
@@ -141,7 +166,11 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   );
 };
 
-export const JobHeader: React.FC<JobHeaderProps> = ({ job, className, onCheckSponsor }) => {
+export const JobHeader: React.FC<JobHeaderProps> = ({
+  job,
+  className,
+  onCheckSponsor,
+}) => {
   const { showSponsorInfo } = useSettings();
   const deadline = formatDate(job.deadline);
 

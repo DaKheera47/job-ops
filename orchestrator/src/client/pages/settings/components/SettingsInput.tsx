@@ -1,17 +1,17 @@
-import React from "react"
+import type React from "react";
 
-import { Input } from "@/components/ui/input"
+import { Input } from "@/components/ui/input";
 
 type SettingsInputProps = {
-  label: string
-  inputProps: React.InputHTMLAttributes<HTMLInputElement>
-  placeholder?: string
-  type?: React.HTMLInputTypeAttribute
-  disabled?: boolean
-  error?: string
-  helper?: string
-  current?: string | null
-}
+  label: string;
+  inputProps: React.InputHTMLAttributes<HTMLInputElement>;
+  placeholder?: string;
+  type?: React.HTMLInputTypeAttribute;
+  disabled?: boolean;
+  error?: string;
+  helper?: string;
+  current?: string | null;
+};
 
 export const SettingsInput: React.FC<SettingsInputProps> = ({
   label,
@@ -23,7 +23,7 @@ export const SettingsInput: React.FC<SettingsInputProps> = ({
   helper,
   current,
 }) => {
-  const id = inputProps.id || inputProps.name
+  const id = inputProps.id || inputProps.name;
 
   return (
     <div className="space-y-2">
@@ -32,7 +32,13 @@ export const SettingsInput: React.FC<SettingsInputProps> = ({
           {label}
         </label>
       )}
-      <Input {...inputProps} id={id} type={type} placeholder={placeholder} disabled={disabled} />
+      <Input
+        {...inputProps}
+        id={id}
+        type={type}
+        placeholder={placeholder}
+        disabled={disabled}
+      />
       {error && <p className="text-xs text-destructive">{error}</p>}
       {helper && <div className="text-xs text-muted-foreground">{helper}</div>}
       {current !== undefined && (
@@ -41,5 +47,5 @@ export const SettingsInput: React.FC<SettingsInputProps> = ({
         </div>
       )}
     </div>
-  )
-}
+  );
+};

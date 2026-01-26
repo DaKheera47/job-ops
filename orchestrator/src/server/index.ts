@@ -2,10 +2,10 @@
  * Express server entry point.
  */
 
-import './config/env.js';
-import { createApp } from './app.js';
-import { applyStoredEnvOverrides } from './services/envSettings.js';
-import { initialize as initializeVisaSponsors } from './services/visa-sponsors/index.js';
+import "./config/env.js";
+import { createApp } from "./app.js";
+import { applyStoredEnvOverrides } from "./services/envSettings.js";
+import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index.js";
 
 async function startServer() {
   await applyStoredEnvOverrides();
@@ -33,7 +33,7 @@ async function startServer() {
     try {
       await initializeVisaSponsors();
     } catch (error) {
-      console.warn('⚠️ Failed to initialize visa sponsors service:', error);
+      console.warn("⚠️ Failed to initialize visa sponsors service:", error);
     }
   });
 }

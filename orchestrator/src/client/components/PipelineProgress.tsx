@@ -2,8 +2,9 @@
  * Live pipeline progress display component.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +13,14 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
 interface PipelineProgress {
-  step: "idle" | "crawling" | "importing" | "scoring" | "processing" | "completed" | "failed";
+  step:
+    | "idle"
+    | "crawling"
+    | "importing"
+    | "scoring"
+    | "processing"
+    | "completed"
+    | "failed";
   message: string;
   detail?: string;
   crawlingListPagesProcessed: number;
@@ -61,9 +69,12 @@ const stepBadgeClasses: Record<PipelineProgress["step"], string> = {
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
 
-export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning }) => {
+export const PipelineProgress: React.FC<PipelineProgressProps> = ({
+  isRunning,
+}) => {
   const [progress, setProgress] = useState<PipelineProgress | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -74,9 +85,11 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
       case "crawling": {
         if (progress.crawlingListPagesTotal > 0) {
           return clamp(
-            (progress.crawlingListPagesProcessed / progress.crawlingListPagesTotal) * 15,
+            (progress.crawlingListPagesProcessed /
+              progress.crawlingListPagesTotal) *
+              15,
             0,
-            15
+            15,
           );
         }
         if (progress.crawlingListPagesProcessed > 0) return 8;
@@ -87,9 +100,10 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
       case "scoring": {
         if (progress.jobsScored > 0) {
           return clamp(
-            20 + (progress.jobsScored / Math.max(progress.jobsDiscovered, 1)) * 30,
+            20 +
+              (progress.jobsScored / Math.max(progress.jobsDiscovered, 1)) * 30,
             20,
-            50
+            50,
           );
         }
         return 25;
@@ -99,7 +113,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
           return clamp(
             50 + (progress.jobsProcessed / progress.totalToProcess) * 50,
             50,
-            100
+            100,
           );
         }
         return 55;
@@ -107,7 +121,6 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
       case "completed":
       case "failed":
         return 100;
-      case "idle":
       default:
         return 0;
     }
@@ -151,7 +164,9 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
   const step = progress?.step ?? "idle";
   const isActive = step !== "idle" && step !== "completed" && step !== "failed";
 
-  const showStats = !!progress && ["crawling", "scoring", "processing", "completed"].includes(step);
+  const showStats =
+    !!progress &&
+    ["crawling", "scoring", "processing", "completed"].includes(step);
 
   return (
     <Card>
@@ -159,7 +174,10 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <CardTitle className="text-base">Pipeline</CardTitle>
-            <Badge variant="outline" className={cn("uppercase tracking-wide", stepBadgeClasses[step])}>
+            <Badge
+              variant="outline"
+              className={cn("uppercase tracking-wide", stepBadgeClasses[step])}
+            >
               {stepLabels[step]}
             </Badge>
             <span className="truncate text-xs text-muted-foreground">
@@ -180,7 +198,9 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
         <CardContent className="space-y-4">
           <div className="space-y-1">
             <p className="text-sm">{progress.message}</p>
-            {progress.detail && <p className="text-sm text-muted-foreground">{progress.detail}</p>}
+            {progress.detail && (
+              <p className="text-sm text-muted-foreground">{progress.detail}</p>
+            )}
           </div>
 
           {showStats && (
@@ -190,46 +210,73 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({ isRunning })
                 {step === "crawling" ? (
                   <>
                     <div>
-                      <div className="text-xs text-muted-foreground">Sources</div>
+                      <div className="text-xs text-muted-foreground">
+                        Sources
+                      </div>
                       <div className="tabular-nums">
                         {progress.crawlingListPagesProcessed}
-                        {progress.crawlingListPagesTotal > 0 ? `/${progress.crawlingListPagesTotal}` : ""}
+                        {progress.crawlingListPagesTotal > 0
+                          ? `/${progress.crawlingListPagesTotal}`
+                          : ""}
                       </div>
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Pages</div>
                       <div className="tabular-nums">
-                        {progress.crawlingJobPagesProcessed}/{Math.max(progress.crawlingJobPagesEnqueued, 0)}
+                        {progress.crawlingJobPagesProcessed}/
+                        {Math.max(progress.crawlingJobPagesEnqueued, 0)}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Enqueued</div>
-                      <div className="tabular-nums">{progress.crawlingJobPagesEnqueued}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Enqueued
+                      </div>
+                      <div className="tabular-nums">
+                        {progress.crawlingJobPagesEnqueued}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Skipped</div>
-                      <div className="tabular-nums">{progress.crawlingJobPagesSkipped}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Skipped
+                      </div>
+                      <div className="tabular-nums">
+                        {progress.crawlingJobPagesSkipped}
+                      </div>
                     </div>
                   </>
                 ) : (
                   <>
                     <div>
-                      <div className="text-xs text-muted-foreground">Discovered</div>
-                      <div className="tabular-nums">{progress.jobsDiscovered}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Scored</div>
-                      <div className="tabular-nums">{progress.jobsScored}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Processed</div>
+                      <div className="text-xs text-muted-foreground">
+                        Discovered
+                      </div>
                       <div className="tabular-nums">
-                        {progress.totalToProcess > 0 ? `${progress.jobsProcessed}/${progress.totalToProcess}` : progress.jobsProcessed}
+                        {progress.jobsDiscovered}
                       </div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">To process</div>
-                      <div className="tabular-nums">{progress.totalToProcess}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Scored
+                      </div>
+                      <div className="tabular-nums">{progress.jobsScored}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        Processed
+                      </div>
+                      <div className="tabular-nums">
+                        {progress.totalToProcess > 0
+                          ? `${progress.jobsProcessed}/${progress.totalToProcess}`
+                          : progress.jobsProcessed}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">
+                        To process
+                      </div>
+                      <div className="tabular-nums">
+                        {progress.totalToProcess}
+                      </div>
                     </div>
                   </>
                 )}

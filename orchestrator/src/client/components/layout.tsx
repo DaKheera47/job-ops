@@ -2,9 +2,17 @@
  * Shared layout components for consistent page structure.
  */
 
-import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Briefcase, Home, LucideIcon, Menu, Settings, Shield } from "lucide-react";
+import {
+  Briefcase,
+  Home,
+  type LucideIcon,
+  Menu,
+  Settings,
+  Shield,
+} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,9 +89,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                     onClick={() => handleNavClick(to)}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                      location.pathname === to || (to === "/" && ["/ready", "/discovered", "/applied", "/all"].includes(location.pathname))
+                      location.pathname === to ||
+                        (to === "/" &&
+                          [
+                            "/ready",
+                            "/discovered",
+                            "/applied",
+                            "/all",
+                          ].includes(location.pathname))
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
                     )}
                   >
                     <NavIcon className="h-4 w-4" />
@@ -109,9 +124,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           {statusIndicator}
         </div>
 
-        <div className="flex items-center gap-2">
-          {actions}
-        </div>
+        <div className="flex items-center gap-2">{actions}</div>
       </div>
     </header>
   );
@@ -126,7 +139,10 @@ interface StatusIndicatorProps {
   variant?: "amber" | "emerald" | "sky";
 }
 
-export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ label, variant = "amber" }) => {
+export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
+  label,
+  variant = "amber",
+}) => {
   const colorMap = {
     amber: "border-amber-500/30 bg-amber-500/10 text-amber-200",
     emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
@@ -142,10 +158,15 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ label, variant
     <span
       className={cn(
         "inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide",
-        colorMap[variant]
+        colorMap[variant],
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full animate-pulse", dotMap[variant])} />
+      <span
+        className={cn(
+          "h-1.5 w-1.5 rounded-full animate-pulse",
+          dotMap[variant],
+        )}
+      />
       {label}
     </span>
   );
@@ -160,8 +181,16 @@ interface SplitLayoutProps {
   className?: string;
 }
 
-export const SplitLayout: React.FC<SplitLayoutProps> = ({ children, className }) => (
-  <section className={cn("grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]", className)}>
+export const SplitLayout: React.FC<SplitLayoutProps> = ({
+  children,
+  className,
+}) => (
+  <section
+    className={cn(
+      "grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]",
+      className,
+    )}
+  >
     {children}
   </section>
 );
@@ -177,11 +206,27 @@ interface ListPanelProps {
   className?: string;
 }
 
-export const ListPanel: React.FC<ListPanelProps> = ({ children, header, footer, className }) => (
-  <div className={cn("min-w-0 rounded-xl border border-border/60 bg-card/40 flex flex-col", className)}>
-    {header && <div className="border-b border-border/60 px-4 py-3">{header}</div>}
-    <div className="flex-1 divide-y divide-border/60 overflow-y-auto">{children}</div>
-    {footer && <div className="border-t border-border/60 px-4 py-2">{footer}</div>}
+export const ListPanel: React.FC<ListPanelProps> = ({
+  children,
+  header,
+  footer,
+  className,
+}) => (
+  <div
+    className={cn(
+      "min-w-0 rounded-xl border border-border/60 bg-card/40 flex flex-col",
+      className,
+    )}
+  >
+    {header && (
+      <div className="border-b border-border/60 px-4 py-3">{header}</div>
+    )}
+    <div className="flex-1 divide-y divide-border/60 overflow-y-auto">
+      {children}
+    </div>
+    {footer && (
+      <div className="border-t border-border/60 px-4 py-2">{footer}</div>
+    )}
   </div>
 );
 
@@ -196,14 +241,19 @@ interface ListItemProps {
   className?: string;
 }
 
-export const ListItem: React.FC<ListItemProps> = ({ selected, onClick, children, className }) => (
+export const ListItem: React.FC<ListItemProps> = ({
+  selected,
+  onClick,
+  children,
+  className,
+}) => (
   <button
     type="button"
     onClick={onClick}
     className={cn(
       "flex w-full items-start gap-4 px-4 py-3 text-left transition-colors",
       selected ? "bg-muted/40" : "hover:bg-muted/30",
-      className
+      className,
     )}
     aria-pressed={selected}
   >
@@ -221,12 +271,16 @@ interface DetailPanelProps {
   sticky?: boolean;
 }
 
-export const DetailPanel: React.FC<DetailPanelProps> = ({ children, className, sticky = true }) => (
+export const DetailPanel: React.FC<DetailPanelProps> = ({
+  children,
+  className,
+  sticky = true,
+}) => (
   <div
     className={cn(
       "min-w-0 rounded-xl border border-border/60 bg-card/40 p-4",
       sticky && "lg:sticky lg:top-24 lg:self-start",
-      className
+      className,
     )}
   >
     {children}
@@ -244,11 +298,18 @@ interface EmptyStateProps {
   action?: React.ReactNode;
 }
 
-export const EmptyState: React.FC<EmptyStateProps> = ({ icon: Icon, title, description, action }) => (
+export const EmptyState: React.FC<EmptyStateProps> = ({
+  icon: Icon,
+  title,
+  description,
+  action,
+}) => (
   <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
     {Icon && <Icon className="h-10 w-10 text-muted-foreground/50 mb-2" />}
     <div className="text-base font-semibold">{title}</div>
-    {description && <p className="max-w-md text-sm text-muted-foreground">{description}</p>}
+    {description && (
+      <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+    )}
     {action && <div className="mt-2">{action}</div>}
   </div>
 );
@@ -269,7 +330,10 @@ const getScoreTokens = (score: number) => {
   return { bar: "bg-rose-500/80" };
 };
 
-export const ScoreMeter: React.FC<ScoreMeterProps> = ({ score, showLabel = true }) => {
+export const ScoreMeter: React.FC<ScoreMeterProps> = ({
+  score,
+  showLabel = true,
+}) => {
   if (score == null) {
     return <span className="text-xs text-muted-foreground">Not scored</span>;
   }
@@ -283,7 +347,9 @@ export const ScoreMeter: React.FC<ScoreMeterProps> = ({ score, showLabel = true 
           style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
         />
       </div>
-      {showLabel && <span className="tabular-nums text-foreground">{score}%</span>}
+      {showLabel && (
+        <span className="tabular-nums text-foreground">{score}%</span>
+      )}
     </div>
   );
 };
@@ -304,7 +370,14 @@ export const FullHeightSplit: React.FC<FullHeightSplitProps> = ({
   children,
 }) => (
   <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-    <div className={cn("flex w-full flex-col border-b lg:border-b-0 lg:border-r", sidebarWidth)}>{sidebar}</div>
+    <div
+      className={cn(
+        "flex w-full flex-col border-b lg:border-b-0 lg:border-r",
+        sidebarWidth,
+      )}
+    >
+      {sidebar}
+    </div>
     <div className="flex-1 overflow-y-auto">{children}</div>
   </div>
 );
@@ -318,8 +391,16 @@ interface SectionCardProps {
   className?: string;
 }
 
-export const SectionCard: React.FC<SectionCardProps> = ({ children, className }) => (
-  <section className={cn("rounded-xl border border-border/60 bg-card/40 p-4", className)}>
+export const SectionCard: React.FC<SectionCardProps> = ({
+  children,
+  className,
+}) => (
+  <section
+    className={cn(
+      "rounded-xl border border-border/60 bg-card/40 p-4",
+      className,
+    )}
+  >
     {children}
   </section>
 );
@@ -334,7 +415,12 @@ interface PageMainProps {
 }
 
 export const PageMain: React.FC<PageMainProps> = ({ children, className }) => (
-  <main className={cn("container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12", className)}>
+  <main
+    className={cn(
+      "container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12",
+      className,
+    )}
+  >
     {children}
   </main>
 );

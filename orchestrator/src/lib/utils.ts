@@ -1,17 +1,19 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-import type { Job } from "@shared/types"
+import type { Job } from "@shared/types";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 // --- CSS ---
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
 // --- Dates ---
 export const formatDate = (dateStr?: string | null) => {
   if (!dateStr) return null;
   try {
-    const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
+    const normalized = dateStr.includes("T")
+      ? dateStr
+      : dateStr.replace(" ", "T");
     const parsed = new Date(normalized);
     if (Number.isNaN(parsed.getTime())) return dateStr;
     return parsed.toLocaleDateString("en-GB", {
@@ -27,7 +29,9 @@ export const formatDate = (dateStr?: string | null) => {
 export const formatDateTime = (dateStr?: string | null) => {
   if (!dateStr) return null;
   try {
-    const normalized = dateStr.includes("T") ? dateStr : dateStr.replace(" ", "T");
+    const normalized = dateStr.includes("T")
+      ? dateStr
+      : dateStr.replace(" ", "T");
     const parsed = new Date(normalized);
     if (Number.isNaN(parsed.getTime())) return dateStr;
     const date = parsed.toLocaleDateString("en-GB", {
@@ -79,7 +83,8 @@ export const stripHtml = (value: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-export const safeFilenamePart = (value: string) => value.replace(/[^a-z0-9]/gi, "_");
+export const safeFilenamePart = (value: string) =>
+  value.replace(/[^a-z0-9]/gi, "_");
 
 // --- Comparisons & Math ---
 export function arraysEqual(a: string[], b: string[]) {

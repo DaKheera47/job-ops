@@ -1,29 +1,35 @@
-import React from "react"
-import { useFormContext, Controller } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { EnvSettingsValues } from "@client/pages/settings/types"
-import { formatSecretHint } from "@client/pages/settings/utils"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { EnvSettingsValues } from "@client/pages/settings/types";
+import { formatSecretHint } from "@client/pages/settings/utils";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
 
 type EnvironmentSettingsSectionProps = {
-  values: EnvSettingsValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: EnvSettingsValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
-export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProps> = ({
-  values,
-  isLoading,
-  isSaving,
-}) => {
-  const { register, control, watch, formState: { errors } } = useFormContext<UpdateSettingsInput>()
-  const { private: privateValues } = values
+export const EnvironmentSettingsSection: React.FC<
+  EnvironmentSettingsSectionProps
+> = ({ values, isLoading, isSaving }) => {
+  const {
+    register,
+    control,
+    watch,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
+  const { private: privateValues } = values;
 
-  const isBasicAuthEnabled = watch("enableBasicAuth")
+  const isBasicAuthEnabled = watch("enableBasicAuth");
 
   return (
     <AccordionItem value="environment" className="border rounded-lg px-4">
@@ -34,7 +40,9 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
         <div className="space-y-8">
           {/* External Services */}
           <div className="space-y-4">
-            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">External Services</div>
+            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              External Services
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <SettingsInput
                 label="OpenRouter API key"
@@ -52,8 +60,10 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
 
           {/* Service Accounts */}
           <div className="space-y-6">
-            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Service Accounts</div>
-            
+            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Service Accounts
+            </div>
+
             <div className="space-y-4">
               <div className="text-sm font-semibold">RxResume</div>
               <div className="grid gap-4 md:grid-cols-2">
@@ -92,8 +102,12 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
                   type="password"
                   placeholder="Enter new password"
                   disabled={isLoading || isSaving}
-                  error={errors.ukvisajobsPassword?.message as string | undefined}
-                  current={formatSecretHint(privateValues.ukvisajobsPasswordHint)}
+                  error={
+                    errors.ukvisajobsPassword?.message as string | undefined
+                  }
+                  current={formatSecretHint(
+                    privateValues.ukvisajobsPasswordHint,
+                  )}
                 />
               </div>
             </div>
@@ -103,7 +117,9 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
 
           {/* Security */}
           <div className="space-y-4">
-            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Security</div>
+            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              Security
+            </div>
             <div className="flex items-start space-x-3">
               <Controller
                 name="enableBasicAuth"
@@ -146,8 +162,12 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
                   type="password"
                   placeholder="Enter new password"
                   disabled={isLoading || isSaving}
-                  error={errors.basicAuthPassword?.message as string | undefined}
-                  current={formatSecretHint(privateValues.basicAuthPasswordHint)}
+                  error={
+                    errors.basicAuthPassword?.message as string | undefined
+                  }
+                  current={formatSecretHint(
+                    privateValues.basicAuthPasswordHint,
+                  )}
                 />
               </div>
             )}
@@ -155,5 +175,5 @@ export const EnvironmentSettingsSection: React.FC<EnvironmentSettingsSectionProp
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

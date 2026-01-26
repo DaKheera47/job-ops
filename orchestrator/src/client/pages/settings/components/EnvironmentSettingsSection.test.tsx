@@ -1,9 +1,8 @@
-import { render, screen } from "@testing-library/react"
-import { useForm, FormProvider } from "react-hook-form"
-
-import { Accordion } from "@/components/ui/accordion"
-import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection"
-import { UpdateSettingsInput } from "@shared/settings-schema"
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import { render, screen } from "@testing-library/react";
+import { FormProvider, useForm } from "react-hook-form";
+import { Accordion } from "@/components/ui/accordion";
+import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 
 const EnvironmentSettingsHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
@@ -17,8 +16,8 @@ const EnvironmentSettingsHarness = () => {
       basicAuthPassword: "",
       webhookSecret: "",
       enableBasicAuth: true,
-    }
-  })
+    },
+  });
 
   return (
     <FormProvider {...methods}>
@@ -44,28 +43,28 @@ const EnvironmentSettingsHarness = () => {
         />
       </Accordion>
     </FormProvider>
-  )
-}
+  );
+};
 
 describe("EnvironmentSettingsSection", () => {
   it("renders values grouped logically and masks private secrets with hints", () => {
-    render(<EnvironmentSettingsHarness />)
+    render(<EnvironmentSettingsHarness />);
 
-    expect(screen.getByDisplayValue("resume@example.com")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("resume@example.com")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument();
 
-    expect(screen.getByText(/sk-1\*{8}/)).toBeInTheDocument()
-    expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument()
-    expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument()
-    expect(screen.getByText("Not set")).toBeInTheDocument()
+    expect(screen.getByText(/sk-1\*{8}/)).toBeInTheDocument();
+    expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
+    expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument();
+    expect(screen.getByText("Not set")).toBeInTheDocument();
 
     // Basic Auth
-    expect(screen.getByLabelText("Enable basic authentication")).toBeChecked()
-    expect(screen.getByDisplayValue("admin")).toBeInTheDocument()
+    expect(screen.getByLabelText("Enable basic authentication")).toBeChecked();
+    expect(screen.getByDisplayValue("admin")).toBeInTheDocument();
 
     // Sections
-    expect(screen.getByText("External Services")).toBeInTheDocument()
-    expect(screen.getByText("Service Accounts")).toBeInTheDocument()
-    expect(screen.getByText("Security")).toBeInTheDocument()
-  })
-})
+    expect(screen.getByText("External Services")).toBeInTheDocument();
+    expect(screen.getByText("Service Accounts")).toBeInTheDocument();
+    expect(screen.getByText("Security")).toBeInTheDocument();
+  });
+});

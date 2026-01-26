@@ -2,7 +2,6 @@
  * Header component with logo and pipeline trigger.
  */
 
-import React from "react";
 import {
   Briefcase,
   ChevronDown,
@@ -14,6 +13,7 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,12 @@ export const Header: React.FC<HeaderProps> = ({
   const location = useLocation();
   const [sheetOpen, setSheetOpen] = React.useState(false);
 
-  const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
+  const orderedSources: JobSource[] = [
+    "gradcracker",
+    "indeed",
+    "linkedin",
+    "ukvisajobs",
+  ];
 
   const navLinks = [
     { to: "/", label: "Dashboard", icon: Home },
@@ -75,23 +80,21 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   return (
-    <header className='sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
-      <div className='container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4'>
-        <div className='flex items-center gap-3'>
+    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+        <div className="flex items-center gap-3">
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant='ghost' size='icon'>
-                <Menu className='h-5 w-5' />
-                <span className='sr-only'>Open navigation menu</span>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Open navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side='left' className='w-64'>
+            <SheetContent side="left" className="w-64">
               <SheetHeader>
-                <SheetTitle>
-                  JobOps
-                </SheetTitle>
+                <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
-              <nav className='mt-6 flex flex-col gap-2'>
+              <nav className="mt-6 flex flex-col gap-2">
                 {navLinks.map(({ to, label, icon: Icon }) => (
                   <Link
                     key={to}
@@ -103,7 +106,7 @@ export const Header: React.FC<HeaderProps> = ({
                         : "text-muted-foreground"
                     }`}
                   >
-                    <Icon className='h-4 w-4' />
+                    <Icon className="h-4 w-4" />
                     {label}
                   </Link>
                 ))}
@@ -112,49 +115,51 @@ export const Header: React.FC<HeaderProps> = ({
           </Sheet>
 
           <Link
-            to='/'
-            className='flex items-center gap-3 hover:opacity-80 transition-opacity'
+            to="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
           >
-            <div className='flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-transparent shadow-sm'>
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-transparent shadow-sm">
               <img
-                src='/favicon.png'
-                alt='Job Ops Logo'
-                className='h-full w-full object-contain'
+                src="/favicon.png"
+                alt="Job Ops Logo"
+                className="h-full w-full object-contain"
               />
             </div>
-            <div className='leading-tight'>
-              <div className='text-sm font-semibold tracking-tight'>Job Ops</div>
-              <div className='text-xs text-muted-foreground'>Orchestrator</div>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold tracking-tight">
+                Job Ops
+              </div>
+              <div className="text-xs text-muted-foreground">Orchestrator</div>
             </div>
           </Link>
         </div>
 
-        <div className='flex flex-wrap items-center gap-1.5'>
+        <div className="flex flex-wrap items-center gap-1.5">
           <Button
-            variant='outline'
-            size='sm'
+            variant="outline"
+            size="sm"
             onClick={onRefresh}
             disabled={isLoading}
           >
-            <RefreshCcw className='h-4 w-4' />
-            <span className='hidden sm:inline'>Refresh</span>
+            <RefreshCcw className="h-4 w-4" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
 
           <div>
             <Button
-              size='sm'
+              size="sm"
               onClick={onRunPipeline}
               disabled={isPipelineRunning}
-              className='rounded-r-none'
+              className="rounded-r-none"
             >
               {isPipelineRunning ? (
                 <>
-                  <Loader2 className='h-4 w-4 animate-spin' />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Running...
                 </>
               ) : (
                 <>
-                  <Play className='h-4 w-4' />
+                  <Play className="h-4 w-4" />
                   Run Pipeline
                 </>
               )}
@@ -163,18 +168,15 @@ export const Header: React.FC<HeaderProps> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  size='sm'
+                  size="sm"
                   disabled={isPipelineRunning}
-                  className='rounded-l-none border-l border-primary-foreground/20'
-                  aria-label='Select pipeline sources'
+                  className="rounded-l-none border-l border-primary-foreground/20"
+                  aria-label="Select pipeline sources"
                 >
-                  <ChevronDown className='h-4 w-4' />
+                  <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align='end'
-                className='w-56'
-              >
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Sources</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {orderedSources.map((source) => (

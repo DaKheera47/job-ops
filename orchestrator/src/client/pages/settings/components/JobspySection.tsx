@@ -1,18 +1,141 @@
-import React from "react"
-import { useFormContext, Controller } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Separator } from "@/components/ui/separator"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { JobspyValues } from "@client/pages/settings/types"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { JobspyValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 
 type JobspySectionProps = {
-  values: JobspyValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: JobspyValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
+
+const JOBSPY_INDEED_COUNTRIES = [
+  "argentina",
+  "australia",
+  "austria",
+  "bahrain",
+  "bangladesh",
+  "belgium",
+  "bulgaria",
+  "brazil",
+  "canada",
+  "chile",
+  "china",
+  "colombia",
+  "costa rica",
+  "croatia",
+  "cyprus",
+  "czech republic",
+  "czechia",
+  "denmark",
+  "ecuador",
+  "egypt",
+  "estonia",
+  "finland",
+  "france",
+  "germany",
+  "greece",
+  "hong kong",
+  "hungary",
+  "india",
+  "indonesia",
+  "ireland",
+  "israel",
+  "italy",
+  "japan",
+  "kuwait",
+  "latvia",
+  "lithuania",
+  "luxembourg",
+  "malaysia",
+  "malta",
+  "mexico",
+  "morocco",
+  "netherlands",
+  "new zealand",
+  "nigeria",
+  "norway",
+  "oman",
+  "pakistan",
+  "panama",
+  "peru",
+  "philippines",
+  "poland",
+  "portugal",
+  "qatar",
+  "romania",
+  "saudi arabia",
+  "singapore",
+  "slovakia",
+  "slovenia",
+  "south africa",
+  "south korea",
+  "spain",
+  "sweden",
+  "switzerland",
+  "taiwan",
+  "thailand",
+  "türkiye",
+  "turkey",
+  "ukraine",
+  "united arab emirates",
+  "uk",
+  "united kingdom",
+  "usa",
+  "us",
+  "united states",
+  "uruguay",
+  "venezuela",
+  "vietnam",
+  "usa/ca",
+  "worldwide",
+];
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  uk: "united kingdom",
+  us: "united states",
+  usa: "united states",
+  türkiye: "turkey",
+  "czech republic": "czechia",
+};
+
+const COUNTRY_LABELS: Record<string, string> = {
+  "united kingdom": "United Kingdom",
+  "united states": "United States",
+  "usa/ca": "USA/CA",
+  turkey: "Turkey",
+  czechia: "Czechia",
+};
+
+const normalizeCountryValue = (value: string) =>
+  COUNTRY_ALIASES[value] ?? value;
+
+const formatCountryLabel = (value: string) =>
+  COUNTRY_LABELS[value] || value.replace(/\b\w/g, (char) => char.toUpperCase());
+
+const JOBSPY_INDEED_COUNTRY_OPTIONS = Array.from(
+  new Map(
+    JOBSPY_INDEED_COUNTRIES.map((country) => {
+      const normalized = normalizeCountryValue(country);
+      return [normalized, normalized];
+    }),
+  ).values(),
+);
 
 export const JobspySection: React.FC<JobspySectionProps> = ({
   values,
@@ -26,8 +149,12 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
     hoursOld,
     countryIndeed,
     linkedinFetchDescription,
-  } = values
-  const { control, register, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  } = values;
+  const {
+    control,
+    register,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="jobspy" className="border rounded-lg px-4">
@@ -46,22 +173,30 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                   render={({ field }) => (
                     <Checkbox
                       id="site-indeed"
-                      checked={field.value?.includes('indeed') ?? sites.default.includes('indeed')}
+                      checked={
+                        field.value?.includes("indeed") ??
+                        sites.default.includes("indeed")
+                      }
                       onCheckedChange={(checked) => {
-                        const current = field.value ?? sites.default
-                        let next = [...current]
+                        const current = field.value ?? sites.default;
+                        let next = [...current];
                         if (checked) {
-                          if (!next.includes('indeed')) next.push('indeed')
+                          if (!next.includes("indeed")) next.push("indeed");
                         } else {
-                          next = next.filter(s => s !== 'indeed')
+                          next = next.filter((s) => s !== "indeed");
                         }
-                        field.onChange(next)
+                        field.onChange(next);
                       }}
                       disabled={isLoading || isSaving}
                     />
                   )}
                 />
-                <label htmlFor="site-indeed" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Indeed</label>
+                <label
+                  htmlFor="site-indeed"
+                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Indeed
+                </label>
               </div>
               <div className="flex items-center space-x-2">
                 <Controller
@@ -70,31 +205,45 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                   render={({ field }) => (
                     <Checkbox
                       id="site-linkedin"
-                      checked={field.value?.includes('linkedin') ?? sites.default.includes('linkedin')}
+                      checked={
+                        field.value?.includes("linkedin") ??
+                        sites.default.includes("linkedin")
+                      }
                       onCheckedChange={(checked) => {
-                        const current = field.value ?? sites.default
-                        let next = [...current]
+                        const current = field.value ?? sites.default;
+                        let next = [...current];
                         if (checked) {
-                          if (!next.includes('linkedin')) next.push('linkedin')
+                          if (!next.includes("linkedin")) next.push("linkedin");
                         } else {
-                          next = next.filter(s => s !== 'linkedin')
+                          next = next.filter((s) => s !== "linkedin");
                         }
-                        field.onChange(next)
+                        field.onChange(next);
                       }}
                       disabled={isLoading || isSaving}
                     />
                   )}
                 />
-                <label htmlFor="site-linkedin" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">LinkedIn</label>
+                <label
+                  htmlFor="site-linkedin"
+                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  LinkedIn
+                </label>
               </div>
             </div>
-            {errors.jobspySites && <p className="text-xs text-destructive">{errors.jobspySites.message}</p>}
+            {errors.jobspySites && (
+              <p className="text-xs text-destructive">
+                {errors.jobspySites.message}
+              </p>
+            )}
             <div className="text-xs text-muted-foreground">
               Select which sites JobSpy should scrape.
             </div>
             <div className="flex gap-2 text-xs text-muted-foreground">
-              <span>Effective: {(sites.effective || []).join(', ') || "None"}</span>
-              <span>Default: {(sites.default || []).join(', ')}</span>
+              <span>
+                Effective: {(sites.effective || []).join(", ") || "None"}
+              </span>
+              <span>Default: {(sites.default || []).join(", ")}</span>
             </div>
           </div>
 
@@ -105,7 +254,9 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
               placeholder={location.default || "UK"}
               disabled={isLoading || isSaving}
               error={errors.jobspyLocation?.message as string | undefined}
-              helper={'Location to search for jobs (e.g. "UK", "London", "Remote").'}
+              helper={
+                'Location to search for jobs (e.g. "UK", "London", "Remote").'
+              }
               current={`Effective: ${location.effective || "—"} | Default: ${location.default || "—"}`}
             />
 
@@ -123,16 +274,18 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                     max: 1000,
                     value: field.value ?? resultsWanted.default,
                     onChange: (event) => {
-                      const value = parseInt(event.target.value, 10)
+                      const value = parseInt(event.target.value, 10);
                       if (Number.isNaN(value)) {
-                        field.onChange(null)
+                        field.onChange(null);
                       } else {
-                        field.onChange(Math.min(1000, Math.max(1, value)))
+                        field.onChange(Math.min(1000, Math.max(1, value)));
                       }
                     },
                   }}
                   disabled={isLoading || isSaving}
-                  error={errors.jobspyResultsWanted?.message as string | undefined}
+                  error={
+                    errors.jobspyResultsWanted?.message as string | undefined
+                  }
                   helper={`Number of results to fetch per term per site. Default: ${resultsWanted.default}. Max 1000.`}
                   current={`Effective: ${resultsWanted.effective} | Default: ${resultsWanted.default}`}
                 />
@@ -153,11 +306,11 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                     max: 720,
                     value: field.value ?? hoursOld.default,
                     onChange: (event) => {
-                      const value = parseInt(event.target.value, 10)
+                      const value = parseInt(event.target.value, 10);
                       if (Number.isNaN(value)) {
-                        field.onChange(null)
+                        field.onChange(null);
                       } else {
-                        field.onChange(Math.min(720, Math.max(1, value)))
+                        field.onChange(Math.min(720, Math.max(1, value)));
                       }
                     },
                   }}
@@ -169,14 +322,69 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
               )}
             />
 
-            <SettingsInput
-              label="Indeed Country"
-              inputProps={register("jobspyCountryIndeed")}
-              placeholder={countryIndeed.default || "UK"}
-              disabled={isLoading || isSaving}
-              error={errors.jobspyCountryIndeed?.message as string | undefined}
-              helper={'Country domain for Indeed (e.g. "UK" for indeed.co.uk).'}
-              current={`Effective: ${countryIndeed.effective || "—"} | Default: ${countryIndeed.default || "—"}`}
+            <Controller
+              name="jobspyCountryIndeed"
+              control={control}
+              render={({ field }) => {
+                const currentValue = (
+                  field.value ??
+                  countryIndeed.default ??
+                  ""
+                ).toLowerCase();
+                const normalizedValue = normalizeCountryValue(currentValue);
+                const displayValue = JOBSPY_INDEED_COUNTRY_OPTIONS.includes(
+                  normalizedValue,
+                )
+                  ? normalizedValue
+                  : "__default__";
+
+                return (
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="jobspyCountryIndeed"
+                      className="text-sm font-medium"
+                    >
+                      Indeed Country
+                    </label>
+                    <Select
+                      value={displayValue}
+                      onValueChange={(value) => {
+                        if (value === "__default__") {
+                          field.onChange(null);
+                        } else {
+                          field.onChange(value);
+                        }
+                      }}
+                      disabled={isLoading || isSaving}
+                    >
+                      <SelectTrigger id="jobspyCountryIndeed">
+                        <SelectValue placeholder="Select a country..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__default__">
+                          {`Use default (${countryIndeed.default || "UK"})`}
+                        </SelectItem>
+                        {JOBSPY_INDEED_COUNTRY_OPTIONS.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {formatCountryLabel(country)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {errors.jobspyCountryIndeed && (
+                      <p className="text-xs text-destructive">
+                        {errors.jobspyCountryIndeed.message}
+                      </p>
+                    )}
+                    <div className="text-xs text-muted-foreground">
+                      Select one of JobSpy's supported Indeed country values.
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {`Effective: ${countryIndeed.effective || "—"} | Default: ${countryIndeed.default || "—"}`}
+                    </div>
+                  </div>
+                );
+              }}
             />
           </div>
 
@@ -203,16 +411,21 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                 Fetch LinkedIn Description
               </label>
               <p className="text-xs text-muted-foreground">
-                If enabled, JobSpy will make extra requests to fetch full descriptions. Slower but better data.
+                If enabled, JobSpy will make extra requests to fetch full
+                descriptions. Slower but better data.
               </p>
               <div className="flex gap-2 text-xs text-muted-foreground">
-                <span>Effective: {linkedinFetchDescription.effective ? "Yes" : "No"}</span>
-                <span>Default: {linkedinFetchDescription.default ? "Yes" : "No"}</span>
+                <span>
+                  Effective: {linkedinFetchDescription.effective ? "Yes" : "No"}
+                </span>
+                <span>
+                  Default: {linkedinFetchDescription.default ? "Yes" : "No"}
+                </span>
               </div>
             </div>
           </div>
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

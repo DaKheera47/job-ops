@@ -1,32 +1,65 @@
-import * as settingsRepo from '@server/repositories/settings.js';
-import { SettingKey } from '@server/repositories/settings.js';
+import type { SettingKey } from "@server/repositories/settings.js";
+import * as settingsRepo from "@server/repositories/settings.js";
 
 const envDefaults: Record<string, string | undefined> = { ...process.env };
 
-const readableStringConfig: { settingKey: SettingKey, envKey: string }[] = [
-  { settingKey: 'rxresumeEmail', envKey: 'RXRESUME_EMAIL' },
-  { settingKey: 'ukvisajobsEmail', envKey: 'UKVISAJOBS_EMAIL' },
-  { settingKey: 'basicAuthUser', envKey: 'BASIC_AUTH_USER' },
+const readableStringConfig: { settingKey: SettingKey; envKey: string }[] = [
+  { settingKey: "rxresumeEmail", envKey: "RXRESUME_EMAIL" },
+  { settingKey: "ukvisajobsEmail", envKey: "UKVISAJOBS_EMAIL" },
+  { settingKey: "basicAuthUser", envKey: "BASIC_AUTH_USER" },
 ];
 
-const readableBooleanConfig: { settingKey: SettingKey, envKey: string, defaultValue: boolean }[] = [];
+const readableBooleanConfig: {
+  settingKey: SettingKey;
+  envKey: string;
+  defaultValue: boolean;
+}[] = [];
 
-const privateStringConfig: { settingKey: SettingKey, envKey: string, hintKey: string }[] = [
-  { settingKey: 'openrouterApiKey', envKey: 'OPENROUTER_API_KEY', hintKey: 'openrouterApiKeyHint' },
-  { settingKey: 'rxresumePassword', envKey: 'RXRESUME_PASSWORD', hintKey: 'rxresumePasswordHint' },
-  { settingKey: 'ukvisajobsPassword', envKey: 'UKVISAJOBS_PASSWORD', hintKey: 'ukvisajobsPasswordHint' },
-  { settingKey: 'basicAuthPassword', envKey: 'BASIC_AUTH_PASSWORD', hintKey: 'basicAuthPasswordHint' },
-  { settingKey: 'webhookSecret', envKey: 'WEBHOOK_SECRET', hintKey: 'webhookSecretHint' },
+const privateStringConfig: {
+  settingKey: SettingKey;
+  envKey: string;
+  hintKey: string;
+}[] = [
+  {
+    settingKey: "openrouterApiKey",
+    envKey: "OPENROUTER_API_KEY",
+    hintKey: "openrouterApiKeyHint",
+  },
+  {
+    settingKey: "rxresumePassword",
+    envKey: "RXRESUME_PASSWORD",
+    hintKey: "rxresumePasswordHint",
+  },
+  {
+    settingKey: "ukvisajobsPassword",
+    envKey: "UKVISAJOBS_PASSWORD",
+    hintKey: "ukvisajobsPasswordHint",
+  },
+  {
+    settingKey: "basicAuthPassword",
+    envKey: "BASIC_AUTH_PASSWORD",
+    hintKey: "basicAuthPasswordHint",
+  },
+  {
+    settingKey: "webhookSecret",
+    envKey: "WEBHOOK_SECRET",
+    hintKey: "webhookSecretHint",
+  },
 ];
 
-export function normalizeEnvInput(value: string | null | undefined): string | null {
+export function normalizeEnvInput(
+  value: string | null | undefined,
+): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
 
-function parseEnvBoolean(raw: string | null | undefined, defaultValue: boolean): boolean {
-  if (raw === undefined || raw === null || raw === '') return defaultValue;
-  if (raw === 'false' || raw === '0') return false;
+function parseEnvBoolean(
+  raw: string | null | undefined,
+  defaultValue: boolean,
+): boolean {
+  if (raw === undefined || raw === null || raw === "") return defaultValue;
+  if (raw === "false" || raw === "0") return false;
   return true;
 }
 
@@ -46,7 +79,7 @@ export function applyEnvValue(envKey: string, value: string | null): void {
 
 export function serializeEnvBoolean(value: boolean | null): string | null {
   if (value === null) return null;
-  return value ? 'true' : 'false';
+  return value ? "true" : "false";
 }
 
 export async function applyStoredEnvOverrides(): Promise<void> {
@@ -56,12 +89,14 @@ export async function applyStoredEnvOverrides(): Promise<void> {
       if (override === null) return;
       applyEnvValue(envKey, normalizeEnvInput(override));
     }),
-    ...readableBooleanConfig.map(async ({ settingKey, envKey, defaultValue }) => {
-      const override = await settingsRepo.getSetting(settingKey);
-      if (override === null) return;
-      const parsed = parseEnvBoolean(override, defaultValue);
-      applyEnvValue(envKey, serializeEnvBoolean(parsed));
-    }),
+    ...readableBooleanConfig.map(
+      async ({ settingKey, envKey, defaultValue }) => {
+        const override = await settingsRepo.getSetting(settingKey);
+        if (override === null) return;
+        const parsed = parseEnvBoolean(override, defaultValue);
+        applyEnvValue(envKey, serializeEnvBoolean(parsed));
+      },
+    ),
     ...privateStringConfig.map(async ({ settingKey, envKey }) => {
       const override = await settingsRepo.getSetting(settingKey);
       if (override === null) return;
@@ -71,9 +106,9 @@ export async function applyStoredEnvOverrides(): Promise<void> {
 }
 
 export async function getEnvSettingsData(
-  overrides?: Partial<Record<SettingKey, string>>
+  overrides?: Partial<Record<SettingKey, string>>,
 ): Promise<Record<string, string | boolean | number | null>> {
-  const activeOverrides = overrides || await settingsRepo.getAllSettings();
+  const activeOverrides = overrides || (await settingsRepo.getAllSettings());
   const readableValues: Record<string, string | boolean | null> = {};
   const privateValues: Record<string, string | null> = {};
 
@@ -97,12 +132,15 @@ export async function getEnvSettingsData(
       continue;
     }
 
-    const hintLength = rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
+    const hintLength =
+      rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
     privateValues[hintKey] = rawValue.slice(0, hintLength);
   }
 
-  const basicAuthUser = activeOverrides['basicAuthUser'] ?? process.env.BASIC_AUTH_USER;
-  const basicAuthPassword = activeOverrides['basicAuthPassword'] ?? process.env.BASIC_AUTH_PASSWORD;
+  const basicAuthUser =
+    activeOverrides.basicAuthUser ?? process.env.BASIC_AUTH_USER;
+  const basicAuthPassword =
+    activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD;
 
   return {
     ...readableValues,

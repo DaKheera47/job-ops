@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Linting (Biome)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Biome
+        uses: biomejs/setup-biome@v2
+        with:
+          version: 2.3.12
+      - name: Run Biome
+        run: biome ci .
+
+  test-orchestrator:
+    name: Orchestrator Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: orchestrator/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: orchestrator
+      - name: Run Vitest
+        run: npm run test:run
+        working-directory: orchestrator
+
+  build:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project: [orchestrator, extractors/gradcracker, extractors/ukvisajobs]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+      
+      - name: Build ${{ matrix.project }}
+        run: |
+          if [[ "${{ matrix.project }}" == extractors/* ]]; then
+            npm ci --ignore-scripts
+          else
+            npm ci
+          fi
+          npm run build
+        working-directory: ${{ matrix.project }}

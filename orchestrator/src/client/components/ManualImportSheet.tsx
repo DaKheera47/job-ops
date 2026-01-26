@@ -2,8 +2,16 @@
  * Manual job import flow (paste JD -> infer -> review -> import).
  */
 
-import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, FileText, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardPaste,
+  FileText,
+  Link,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -18,8 +26,8 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import * as api from "../api";
 import type { ManualJobDraft } from "../../shared/types";
+import * as api from "../api";
 
 type ManualImportStep = "paste" | "loading" | "review";
 
@@ -57,7 +65,10 @@ const emptyDraft: ManualJobDraftState = {
   starting: "",
 };
 
-const normalizeDraft = (draft?: ManualJobDraft | null, jd?: string): ManualJobDraftState => ({
+const normalizeDraft = (
+  draft?: ManualJobDraft | null,
+  jd?: string,
+): ManualJobDraftState => ({
   ...emptyDraft,
   title: draft?.title ?? "",
   employer: draft?.employer ?? "",
@@ -112,6 +123,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
 }) => {
   const [step, setStep] = useState<ManualImportStep>("paste");
   const [rawDescription, setRawDescription] = useState("");
+  const [fetchUrl, setFetchUrl] = useState("");
+  const [isFetching, setIsFetching] = useState(false);
   const [draft, setDraft] = useState<ManualJobDraftState>(emptyDraft);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -121,6 +134,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
     if (!open) {
       setStep("paste");
       setRawDescription("");
+      setFetchUrl("");
+      setIsFetching(false);
       setDraft(emptyDraft);
       setWarning(null);
       setError(null);
@@ -132,6 +147,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
   const stepLabel = ["Paste JD", "Infer details", "Review & import"][stepIndex];
 
   const canAnalyze = rawDescription.trim().length > 0 && step !== "loading";
+  const canFetch =
+    fetchUrl.trim().length > 0 && !isFetching && step === "paste";
   const canImport = useMemo(() => {
     if (step !== "review") return false;
     return (
@@ -140,6 +157,46 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
       draft.jobDescription.trim().length > 0
     );
   }, [draft, step]);
+
+  const handleFetch = async () => {
+    if (!fetchUrl.trim()) return;
+
+    try {
+      setError(null);
+      setWarning(null);
+      setIsFetching(true);
+
+      // Fetch the URL content
+      const fetchResponse = await api.fetchJobFromUrl({ url: fetchUrl.trim() });
+      const fetchedContent = fetchResponse.content;
+      const fetchedUrl = fetchResponse.url;
+
+      setIsFetching(false);
+
+      // Automatically proceed to analysis
+      setStep("loading");
+      const inferResponse = await api.inferManualJob({
+        jobDescription: fetchedContent,
+      });
+      // Don't pass raw HTML as job description - let user fill it in or use inferred data
+      const normalized = normalizeDraft(inferResponse.job);
+
+      // Preserve the fetched URL
+      if (!normalized.jobUrl) {
+        normalized.jobUrl = fetchedUrl;
+      }
+
+      setDraft(normalized);
+      setWarning(inferResponse.warning ?? null);
+      setStep("review");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch URL";
+      setError(message);
+      setIsFetching(false);
+      setStep("paste");
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!rawDescription.trim()) {
@@ -151,12 +208,22 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
       setError(null);
       setWarning(null);
       setStep("loading");
-      const response = await api.inferManualJob({ jobDescription: rawDescription });
-      setDraft(normalizeDraft(response.job, rawDescription.trim()));
+      const response = await api.inferManualJob({
+        jobDescription: rawDescription,
+      });
+      const normalized = normalizeDraft(response.job, rawDescription.trim());
+      // Preserve the fetched URL if we fetched from a URL
+      if (draft.jobUrl && !normalized.jobUrl) {
+        normalized.jobUrl = draft.jobUrl;
+      }
+      setDraft(normalized);
       setWarning(response.warning ?? null);
       setStep("review");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to analyze job description";
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Failed to analyze job description";
       setError(message);
       setStep("paste");
     }
@@ -175,7 +242,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
       await onImported(created.id);
       onOpenChange(false);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to import job";
+      const message =
+        err instanceof Error ? err.message : "Failed to import job";
       toast.error(message);
     } finally {
       setIsImporting(false);
@@ -194,7 +262,8 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
               Manual Import
             </SheetTitle>
             <SheetDescription>
-              Paste a job description, review the AI draft, then import the role.
+              Paste a job description, review the AI draft, then import the
+              role.
             </SheetDescription>
           </SheetHeader>
 
@@ -218,14 +287,73 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
             {step === "paste" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <label
+                    htmlFor="fetch-url"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
+                    Job URL (optional)
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="fetch-url"
+                      value={fetchUrl}
+                      onChange={(event) => setFetchUrl(event.target.value)}
+                      placeholder="https://example.com/job-posting"
+                      className="flex-1"
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && canFetch) {
+                          event.preventDefault();
+                          handleFetch();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={isFetching}
+                      className="gap-2 shrink-0"
+                      onClick={async () => {
+                        if (fetchUrl.trim()) {
+                          handleFetch();
+                        } else {
+                          try {
+                            const text = await navigator.clipboard.readText();
+                            if (text) setFetchUrl(text.trim());
+                          } catch {
+                            // Clipboard access denied
+                          }
+                        }
+                      }}
+                    >
+                      {isFetching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : fetchUrl.trim() ? (
+                        <Link className="h-4 w-4" />
+                      ) : (
+                        <ClipboardPaste className="h-4 w-4" />
+                      )}
+                      {isFetching
+                        ? "Fetching..."
+                        : fetchUrl.trim()
+                          ? "Fetch"
+                          : "Paste"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="raw-description"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
                     Job description
                   </label>
                   <Textarea
+                    id="raw-description"
                     value={rawDescription}
                     onChange={(event) => setRawDescription(event.target.value)}
-                    placeholder="Paste the full job description here..."
-                    className="min-h-[220px] font-mono text-sm leading-relaxed"
+                    placeholder="Paste the full job description here, or enter a URL above to fetch it..."
+                    className="min-h-[200px] font-mono text-sm leading-relaxed"
                   />
                 </div>
 
@@ -236,12 +364,16 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                 )}
 
                 <Button
-                  onClick={handleAnalyze}
-                  disabled={!canAnalyze}
+                  onClick={fetchUrl.trim() ? handleFetch : handleAnalyze}
+                  disabled={isFetching || (!canFetch && !canAnalyze)}
                   className="w-full h-10 gap-2"
                 >
-                  <Sparkles className="h-4 w-4" />
-                  Analyze JD
+                  {isFetching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  {isFetching ? "Fetching..." : "Analyze JD"}
                 </Button>
               </div>
             )}
@@ -249,7 +381,9 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
             {step === "loading" && (
               <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                <div className="text-sm font-semibold">Analyzing job description</div>
+                <div className="text-sm font-semibold">
+                  Analyzing job description
+                </div>
                 <p className="text-xs text-muted-foreground max-w-xs">
                   Extracting title, company, location, and other details.
                 </p>
@@ -282,118 +416,270 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Title *</label>
+                    <label
+                      htmlFor="draft-title"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Title *
+                    </label>
                     <Input
+                      id="draft-title"
                       value={draft.title}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, title: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          title: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Junior Backend Engineer"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Employer *</label>
+                    <label
+                      htmlFor="draft-employer"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Employer *
+                    </label>
                     <Input
+                      id="draft-employer"
                       value={draft.employer}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, employer: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          employer: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Acme Labs"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Location</label>
+                    <label
+                      htmlFor="draft-location"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Location
+                    </label>
                     <Input
+                      id="draft-location"
                       value={draft.location}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, location: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          location: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. London, UK"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Salary</label>
+                    <label
+                      htmlFor="draft-salary"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Salary
+                    </label>
                     <Input
+                      id="draft-salary"
                       value={draft.salary}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, salary: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          salary: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. GBP 45k-55k"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Deadline</label>
+                    <label
+                      htmlFor="draft-deadline"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Deadline
+                    </label>
                     <Input
+                      id="draft-deadline"
                       value={draft.deadline}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, deadline: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          deadline: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. 30 Sep 2025"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Job type</label>
+                    <label
+                      htmlFor="draft-jobType"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Job type
+                    </label>
                     <Input
+                      id="draft-jobType"
                       value={draft.jobType}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, jobType: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          jobType: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Full-time"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Job level</label>
+                    <label
+                      htmlFor="draft-jobLevel"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Job level
+                    </label>
                     <Input
+                      id="draft-jobLevel"
                       value={draft.jobLevel}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, jobLevel: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          jobLevel: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Graduate"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Job function</label>
+                    <label
+                      htmlFor="draft-jobFunction"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Job function
+                    </label>
                     <Input
+                      id="draft-jobFunction"
                       value={draft.jobFunction}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, jobFunction: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          jobFunction: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Software Engineering"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Disciplines</label>
+                    <label
+                      htmlFor="draft-disciplines"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Disciplines
+                    </label>
                     <Input
+                      id="draft-disciplines"
                       value={draft.disciplines}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, disciplines: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          disciplines: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Computer Science"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Degree required</label>
+                    <label
+                      htmlFor="draft-degreeRequired"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Degree required
+                    </label>
                     <Input
+                      id="draft-degreeRequired"
                       value={draft.degreeRequired}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, degreeRequired: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          degreeRequired: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. BSc or MSc"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Starting</label>
+                    <label
+                      htmlFor="draft-starting"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Starting
+                    </label>
                     <Input
+                      id="draft-starting"
                       value={draft.starting}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, starting: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          starting: event.target.value,
+                        }))
+                      }
                       placeholder="e.g. Summer 2026"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Job URL</label>
+                    <label
+                      htmlFor="draft-jobUrl"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Job URL
+                    </label>
                     <Input
+                      id="draft-jobUrl"
                       value={draft.jobUrl}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, jobUrl: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          jobUrl: event.target.value,
+                        }))
+                      }
                       placeholder="https://..."
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Application link</label>
+                    <label
+                      htmlFor="draft-applicationLink"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
+                      Application link
+                    </label>
                     <Input
+                      id="draft-applicationLink"
                       value={draft.applicationLink}
-                      onChange={(event) => setDraft((prev) => ({ ...prev, applicationLink: event.target.value }))}
+                      onChange={(event) =>
+                        setDraft((prev) => ({
+                          ...prev,
+                          applicationLink: event.target.value,
+                        }))
+                      }
                       placeholder="https://..."
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="draft-jobDescription"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Job description *
                   </label>
                   <Textarea
+                    id="draft-jobDescription"
                     value={draft.jobDescription}
-                    onChange={(event) => setDraft((prev) => ({ ...prev, jobDescription: event.target.value }))}
+                    onChange={(event) =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        jobDescription: event.target.value,
+                      }))
+                    }
                     className="min-h-[200px] font-mono text-sm leading-relaxed"
                     placeholder="Paste the job description..."
                   />
@@ -404,7 +690,10 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                   <Button
                     onClick={handleImport}
                     disabled={!canImport || isImporting}
-                    className={cn("w-full h-10 gap-2", !canImport && "opacity-70")}
+                    className={cn(
+                      "w-full h-10 gap-2",
+                      !canImport && "opacity-70",
+                    )}
                   >
                     {isImporting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />

@@ -1,24 +1,33 @@
-import React from "react"
-import { useFormContext, Controller } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { NumericSettingValues } from "@client/pages/settings/types"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { NumericSettingValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type UkvisajobsSectionProps = {
-  values: NumericSettingValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: NumericSettingValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
 export const UkvisajobsSection: React.FC<UkvisajobsSectionProps> = ({
   values,
   isLoading,
   isSaving,
 }) => {
-  const { effective: effectiveUkvisajobsMaxJobs, default: defaultUkvisajobsMaxJobs } = values
-  const { control, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  const {
+    effective: effectiveUkvisajobsMaxJobs,
+    default: defaultUkvisajobsMaxJobs,
+  } = values;
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="ukvisajobs" className="border rounded-lg px-4">
@@ -41,11 +50,11 @@ export const UkvisajobsSection: React.FC<UkvisajobsSectionProps> = ({
                   max: 1000,
                   value: field.value ?? defaultUkvisajobsMaxJobs,
                   onChange: (event) => {
-                    const value = parseInt(event.target.value, 10)
+                    const value = parseInt(event.target.value, 10);
                     if (Number.isNaN(value)) {
-                      field.onChange(null)
+                      field.onChange(null);
                     } else {
-                      field.onChange(Math.min(1000, Math.max(1, value)))
+                      field.onChange(Math.min(1000, Math.max(1, value)));
                     }
                   },
                 }}
@@ -59,5 +68,5 @@ export const UkvisajobsSection: React.FC<UkvisajobsSectionProps> = ({
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

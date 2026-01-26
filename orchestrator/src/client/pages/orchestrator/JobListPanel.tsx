@@ -1,11 +1,11 @@
-import React from "react";
 import { Loader2 } from "lucide-react";
+import type React from "react";
 
 import { cn } from "@/lib/utils";
 
 import type { Job } from "../../../shared/types";
-import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
 import type { FilterTab } from "./constants";
+import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
 
 interface JobListPanelProps {
   isLoading: boolean;
@@ -36,7 +36,9 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
         <div className="text-base font-semibold">No jobs found</div>
         <p className="max-w-md text-sm text-muted-foreground">
-          {searchQuery.trim() ? `No jobs match "${searchQuery.trim()}".` : emptyStateCopy[activeTab]}
+          {searchQuery.trim()
+            ? `No jobs match "${searchQuery.trim()}".`
+            : emptyStateCopy[activeTab]}
         </p>
       </div>
     ) : (
@@ -81,7 +83,11 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 </div>
                 <div className="truncate text-xs text-muted-foreground mt-0.5">
                   {job.employer}
-                  {job.location && <span className="before:content-['_in_']">{job.location}</span>}
+                  {job.location && (
+                    <span className="before:content-['_in_']">
+                      {job.location}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -91,9 +97,9 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                   <span
                     className={cn(
                       "text-xs tabular-nums",
-                      job.suitabilityScore! >= 70
+                      (job.suitabilityScore ?? 0) >= 70
                         ? "text-emerald-400/90"
-                        : job.suitabilityScore! >= 50
+                        : (job.suitabilityScore ?? 0) >= 50
                           ? "text-foreground/60"
                           : "text-muted-foreground/60",
                     )}

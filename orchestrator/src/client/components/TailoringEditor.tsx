@@ -1,13 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Sparkles, FileText, AlertTriangle } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  FileText,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import * as api from "../api";
 import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
+import * as api from "../api";
 
 interface TailoringEditorProps {
   job: Job;
@@ -26,7 +32,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
-  const [jobDescription, setJobDescription] = useState(job.jobDescription || "");
+  const [jobDescription, setJobDescription] = useState(
+    job.jobDescription || "",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -45,9 +53,10 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
     return false;
   }, [selectedIds, savedSelectedIds]);
 
-  const isDirty = summary !== (job.tailoredSummary || "") || 
-                  jobDescription !== (job.jobDescription || "") ||
-                  hasSelectionDiff;
+  const isDirty =
+    summary !== (job.tailoredSummary || "") ||
+    jobDescription !== (job.jobDescription || "") ||
+    hasSelectionDiff;
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -56,10 +65,12 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
   useEffect(() => {
     // Load project catalog
     api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
-    
+
     // Set initial selection
     if (job.selectedProjectIds) {
-      setSelectedIds(new Set(job.selectedProjectIds.split(',').filter(Boolean)));
+      setSelectedIds(
+        new Set(job.selectedProjectIds.split(",").filter(Boolean)),
+      );
     }
     setJobDescription(job.jobDescription || "");
   }, [job.selectedProjectIds, job.jobDescription]);
@@ -119,11 +130,13 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       setSummary(updatedJob.tailoredSummary || "");
       setJobDescription(updatedJob.jobDescription || "");
       if (updatedJob.selectedProjectIds) {
-        setSelectedIds(new Set(updatedJob.selectedProjectIds.split(',').filter(Boolean)));
+        setSelectedIds(
+          new Set(updatedJob.selectedProjectIds.split(",").filter(Boolean)),
+        );
       }
       toast.success("AI Summary & Projects generated");
       await onUpdate();
-    } catch (error) {
+    } catch (_error) {
       toast.error("AI summarization failed");
     } finally {
       setIsSummarizing(false);
@@ -138,11 +151,11 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       setIsGeneratingPdf(true);
       // Save current state first to ensure PDF uses latest
       await saveChanges({ showToast: false });
-      
+
       await api.generateJobPdf(job.id);
       toast.success("Resume PDF generated");
       await onUpdate();
-    } catch (error) {
+    } catch (_error) {
       toast.error("PDF generation failed");
     } finally {
       setIsGeneratingPdf(false);
@@ -164,7 +177,11 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
             disabled={isSummarizing || isGeneratingPdf || isSaving}
             className="w-full sm:w-auto"
           >
-            {isSummarizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            {isSummarizing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
             AI Summarize
           </Button>
           <Button
@@ -173,16 +190,23 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
             disabled={isSummarizing || isGeneratingPdf || isSaving || !summary}
             className="w-full sm:w-auto"
           >
-            {isGeneratingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
+            {isGeneratingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="mr-2 h-4 w-4" />
+            )}
             Generate PDF
           </Button>
         </div>
       </div>
-      
+
       <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
         <div className="space-y-2">
-          <label className="text-sm font-medium">Job Description (Edit to help AI tailoring)</label>
+          <label htmlFor="tailor-jd" className="text-sm font-medium">
+            Job Description (Edit to help AI tailoring)
+          </label>
           <textarea
+            id="tailor-jd"
             className="w-full min-h-[120px] max-h-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
@@ -193,8 +217,11 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         <Separator />
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Tailored Summary</label>
+          <label htmlFor="tailor-summary" className="text-sm font-medium">
+            Tailored Summary
+          </label>
           <textarea
+            id="tailor-summary"
             className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
@@ -206,11 +233,12 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
-            <label className="text-sm font-medium">Selected Projects</label>
+            <span className="text-sm font-medium">Selected Projects</span>
             {tooManyProjects && (
               <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
                 <AlertTriangle className="h-3 w-3" />
-                Warning: More than {maxProjects} projects might make the resume too long.
+                Warning: More than {maxProjects} projects might make the resume
+                too long.
               </span>
             )}
           </div>
@@ -231,7 +259,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
                   className="flex flex-1 flex-col gap-1 cursor-pointer"
                 >
                   <span className="font-semibold">{project.name}</span>
-                  <span className="text-xs text-muted-foreground line-clamp-2">{project.description}</span>
+                  <span className="text-xs text-muted-foreground line-clamp-2">
+                    {project.description}
+                  </span>
                 </label>
               </div>
             ))}
@@ -239,10 +269,19 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         </div>
 
         <div className="flex justify-end border-t pt-4">
-            <Button variant="ghost" size="sm" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                Save Selection
-            </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            Save Selection
+          </Button>
         </div>
       </div>
     </div>

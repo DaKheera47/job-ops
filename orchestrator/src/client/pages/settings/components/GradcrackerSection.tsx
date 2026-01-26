@@ -1,24 +1,33 @@
-import React from "react"
-import { useFormContext, Controller } from "react-hook-form"
-
-import { AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
-import { UpdateSettingsInput } from "@shared/settings-schema"
-import type { NumericSettingValues } from "@client/pages/settings/types"
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput"
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { NumericSettingValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type GradcrackerSectionProps = {
-  values: NumericSettingValues
-  isLoading: boolean
-  isSaving: boolean
-}
+  values: NumericSettingValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
 
 export const GradcrackerSection: React.FC<GradcrackerSectionProps> = ({
   values,
   isLoading,
   isSaving,
 }) => {
-  const { effective: effectiveGradcrackerMaxJobsPerTerm, default: defaultGradcrackerMaxJobsPerTerm } = values
-  const { control, formState: { errors } } = useFormContext<UpdateSettingsInput>()
+  const {
+    effective: effectiveGradcrackerMaxJobsPerTerm,
+    default: defaultGradcrackerMaxJobsPerTerm,
+  } = values;
+  const {
+    control,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   return (
     <AccordionItem value="gradcracker" className="border rounded-lg px-4">
@@ -41,16 +50,20 @@ export const GradcrackerSection: React.FC<GradcrackerSectionProps> = ({
                   max: 1000,
                   value: field.value ?? defaultGradcrackerMaxJobsPerTerm,
                   onChange: (event) => {
-                    const value = parseInt(event.target.value, 10)
+                    const value = parseInt(event.target.value, 10);
                     if (Number.isNaN(value)) {
-                      field.onChange(null)
+                      field.onChange(null);
                     } else {
-                      field.onChange(Math.min(1000, Math.max(1, value)))
+                      field.onChange(Math.min(1000, Math.max(1, value)));
                     }
                   },
                 }}
                 disabled={isLoading || isSaving}
-                error={errors.gradcrackerMaxJobsPerTerm?.message as string | undefined}
+                error={
+                  errors.gradcrackerMaxJobsPerTerm?.message as
+                    | string
+                    | undefined
+                }
                 helper={`Maximum number of jobs to fetch for EACH search term from Gradcracker. Default: ${defaultGradcrackerMaxJobsPerTerm}. Range: 1-1000.`}
                 current={String(effectiveGradcrackerMaxJobsPerTerm)}
               />
@@ -59,5 +72,5 @@ export const GradcrackerSection: React.FC<GradcrackerSectionProps> = ({
         </div>
       </AccordionContent>
     </AccordionItem>
-  )
-}
+  );
+};

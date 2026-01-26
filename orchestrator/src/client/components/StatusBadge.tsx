@@ -2,8 +2,8 @@
  * Status badge component.
  */
 
-import React from "react";
 import { Loader2 } from "lucide-react";
+import type React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -24,12 +24,18 @@ const statusLabels: Record<JobStatus, string> = {
 
 const statusStyles: Record<
   JobStatus,
-  { variant: "default" | "secondary" | "destructive" | "outline"; className?: string }
+  {
+    variant: "default" | "secondary" | "destructive" | "outline";
+    className?: string;
+  }
 > = {
   discovered: { variant: "secondary" },
   processing: { variant: "secondary" },
   ready: { variant: "default" },
-  applied: { variant: "outline", className: "text-emerald-400 border-emerald-500/30" },
+  applied: {
+    variant: "outline",
+    className: "text-emerald-400 border-emerald-500/30",
+  },
   skipped: { variant: "destructive" },
   expired: { variant: "outline", className: "text-muted-foreground" },
 };
@@ -44,4 +50,3 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     </Badge>
   );
 };
-

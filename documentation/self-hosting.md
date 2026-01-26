@@ -11,10 +11,12 @@ The easiest way to run JobOps is via Docker Compose. The app is self-configuring
 No environment variables are strictly required to start. Simply run:
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 ```
 
-This builds a single container that runs the API, UI, and scrapers.
+This pulls the pre-built image from **GitHub Container Registry (GHCR)** and starts the API, UI, and scrapers in a single container. The image is multi-arch (supports `amd64` and `arm64`), making it compatible with Apple Silicon and Raspberry Pi. 
+
+If you want to build it yourself, you can run `docker compose up -d --build`.
 
 ## 2) Access the app and Onboard
 
@@ -40,5 +42,6 @@ The app saves these to its persistent database, so you don't need to manage `.en
 
 ```bash
 git pull
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```

@@ -1,32 +1,35 @@
 /**
  * ReadyPanel - Optimized "shipping lane" view for Ready jobs.
- * 
+ *
  * Designed for a single, fast, repeatable workflow: verify → download → apply → mark applied.
  * The PDF is the primary artifact, represented abstractly through an Application Kit summary.
- * 
+ *
  * Now includes inline tailoring mode for editing and regenerating PDFs without switching tabs.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
   ChevronUp,
+  Copy,
   Download,
+  Edit2,
   ExternalLink,
   FileText,
+  FolderKanban,
   Loader2,
-  MoreHorizontal,
   RefreshCcw,
   Undo2,
-  Copy,
-  Edit2,
   XCircle,
-  Briefcase,
-  Building2,
-  FolderKanban,
 } from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,18 +38,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { cn, copyTextToClipboard, formatJobForWebhook } from "@/lib/utils";
+import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 import * as api from "../api";
+import { useProfile } from "../hooks/useProfile";
+import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import { TailorMode } from "./discovered-panel/TailorMode";
-import { useProfile } from "../hooks/useProfile";
-import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 
 type PanelMode = "ready" | "tailor";
 
@@ -67,6 +65,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [recentlyApplied, setRecentlyApplied] = useState<{
     jobId: string;
@@ -85,7 +84,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   // Reset mode when job changes
   useEffect(() => {
     setMode("ready");
-  }, [job?.id]);
+  }, []);
 
   // Compute derived values
   const pdfHref = job
@@ -98,12 +97,26 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     return job?.selectedProjectIds?.split(",").filter(Boolean) ?? [];
   }, [job?.selectedProjectIds]);
 
-  const selectedProjectNames = useMemo(() => {
-    if (!catalog.length || !selectedProjectIds.length) return [];
-    return selectedProjectIds
-      .map(id => catalog.find(p => p.id === id)?.name)
-      .filter(Boolean) as string[];
-  }, [catalog, selectedProjectIds]);
+  const handleUndoApplied = useCallback(
+    async (jobId: string) => {
+      try {
+        // Revert to ready status
+        await api.updateJob(jobId, { status: "ready" });
+        toast.success("Reverted to Ready");
+
+        if (recentlyApplied?.timeoutId) {
+          clearTimeout(recentlyApplied.timeoutId);
+        }
+        setRecentlyApplied(null);
+        await onJobUpdated();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to undo";
+        toast.error(message);
+      }
+    },
+    [onJobUpdated, recentlyApplied],
+  );
 
   // Handle mark as applied with undo capability
   const handleMarkApplied = useCallback(async () => {
@@ -138,32 +151,13 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         duration: 6000,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to mark as applied";
+      const message =
+        error instanceof Error ? error.message : "Failed to mark as applied";
       toast.error(message);
     } finally {
       setIsMarkingApplied(false);
     }
-  }, [job, onJobMoved, onJobUpdated]);
-
-  const handleUndoApplied = useCallback(
-    async (jobId: string) => {
-      try {
-        // Revert to ready status
-        await api.updateJob(jobId, { status: "ready" });
-        toast.success("Reverted to Ready");
-
-        if (recentlyApplied?.timeoutId) {
-          clearTimeout(recentlyApplied.timeoutId);
-        }
-        setRecentlyApplied(null);
-        await onJobUpdated();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Failed to undo";
-        toast.error(message);
-      }
-    },
-    [onJobUpdated, recentlyApplied],
-  );
+  }, [job, onJobMoved, onJobUpdated, handleUndoApplied]);
 
   const handleRegenerate = useCallback(async () => {
     if (!job) return;
@@ -174,12 +168,18 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       toast.success("PDF regenerated");
       await onJobUpdated();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to regenerate PDF";
+      const message =
+        error instanceof Error ? error.message : "Failed to regenerate PDF";
       toast.error(message);
     } finally {
       setIsRegenerating(false);
     }
   }, [job, onJobUpdated]);
+
+  const handleRescore = useCallback(
+    () => rescoreJob(job?.id),
+    [job?.id, rescoreJob],
+  );
 
   const handleSkip = useCallback(async () => {
     if (!job) return;
@@ -218,7 +218,8 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       await onJobUpdated();
       setMode("ready");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to regenerate PDF";
+      const message =
+        error instanceof Error ? error.message : "Failed to regenerate PDF";
       toast.error(message);
     } finally {
       setIsRegenerating(false);
@@ -232,7 +233,9 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
           <FileText className="h-5 w-5 text-muted-foreground" />
         </div>
-        <div className="text-sm font-medium text-muted-foreground">No job selected</div>
+        <div className="text-sm font-medium text-muted-foreground">
+          No job selected
+        </div>
         <p className="text-xs text-muted-foreground/70 max-w-[200px]">
           Select a Ready job to view its application kit and take action.
         </p>
@@ -271,7 +274,11 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       <div className="pb-4 border-b border-border/40">
         <div className="grid gap-2 sm:grid-cols-2">
           {/* Show PDF - to verify quickly without download */}
-          <Button asChild variant="outline" className="h-9 w-full gap-1 px-2 text-xs">
+          <Button
+            asChild
+            variant="outline"
+            className="h-9 w-full gap-1 px-2 text-xs"
+          >
             <a href={pdfHref} target="_blank" rel="noopener noreferrer">
               <FileText className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">View PDF</span>
@@ -279,7 +286,11 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           </Button>
 
           {/* Download PDF - primary artifact action */}
-          <Button asChild variant="outline" className="h-9 w-full gap-1 px-2 text-xs">
+          <Button
+            asChild
+            variant="outline"
+            className="h-9 w-full gap-1 px-2 text-xs"
+          >
             <a
               href={pdfHref}
               download={`${safeFilenamePart(personName)}_${safeFilenamePart(job.employer)}.pdf`}
@@ -290,7 +301,11 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           </Button>
 
           {/* Open job - to verify before applying */}
-          <Button asChild variant="outline" className="h-9 w-full gap-1 px-2 text-xs">
+          <Button
+            asChild
+            variant="outline"
+            className="h-9 w-full gap-1 px-2 text-xs"
+          >
             <a href={jobLink} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Open Job Listing</span>
@@ -334,17 +349,21 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
                   </div>
                   <div className="min-w-0 flex-1 text-left">
                     <div className="text-sm font-medium text-foreground leading-tight">
-                      {selectedProjectIds.length} {selectedProjectIds.length === 1 ? "project" : "projects"} selected
+                      {selectedProjectIds.length}{" "}
+                      {selectedProjectIds.length === 1 ? "project" : "projects"}{" "}
+                      selected
                     </div>
                   </div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-1 pl-11">
                 <ul className="list-disc text-xs text-muted-foreground space-y-1">
-                  {selectedProjectNames.map((name, i) => (
-                    <li key={i}>{name}</li>
-                  ))}
-                  {selectedProjectNames.length === 0 && (
+                  {selectedProjectIds.map((id) => {
+                    const name = catalog.find((p) => p.id === id)?.name;
+                    if (!name) return null;
+                    return <li key={id}>{name}</li>;
+                  })}
+                  {selectedProjectIds.length === 0 && (
                     <li className="list-none italic">No projects selected</li>
                   )}
                 </ul>
@@ -381,8 +400,17 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               onSelect={handleRegenerate}
               disabled={isRegenerating}
             >
-              <RefreshCcw className={cn("mr-2 h-4 w-4", isRegenerating && "animate-spin")} />
+              <RefreshCcw
+                className={cn("mr-2 h-4 w-4", isRegenerating && "animate-spin")}
+              />
               {isRegenerating ? "Regenerating..." : "Regenerate PDF"}
+            </DropdownMenuItem>
+
+            <DropdownMenuItem onSelect={handleRescore} disabled={isRescoring}>
+              <RefreshCcw
+                className={cn("mr-2 h-4 w-4", isRescoring && "animate-spin")}
+              />
+              {isRescoring ? "Recalculating..." : "Recalculate match"}
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />

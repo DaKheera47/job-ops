@@ -1,12 +1,25 @@
 import type { JobSource, JobStatus } from "../../../shared/types";
 
-export const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
+export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
+  "gradcracker",
+  "indeed",
+  "linkedin",
+  "ukvisajobs",
+];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 
-export const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
+export const orderedSources: JobSource[] = [
+  "gradcracker",
+  "indeed",
+  "linkedin",
+  "ukvisajobs",
+];
 export const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];
 
-export const statusTokens: Record<JobStatus, { label: string; badge: string; dot: string }> = {
+export const statusTokens: Record<
+  JobStatus,
+  { label: string; badge: string; dot: string }
+> = {
   discovered: {
     label: "Discovered",
     badge: "border-sky-500/30 bg-sky-500/10 text-sky-200",
@@ -71,9 +84,17 @@ export const defaultSortDirection: Record<JobSort["key"], SortDirection> = {
   employer: "asc",
 };
 
-export const tabs: Array<{ id: FilterTab; label: string; statuses: JobStatus[] }> = [
+export const tabs: Array<{
+  id: FilterTab;
+  label: string;
+  statuses: JobStatus[];
+}> = [
   { id: "ready", label: "Ready", statuses: ["ready"] },
-  { id: "discovered", label: "Discovered", statuses: ["discovered", "processing"] },
+  {
+    id: "discovered",
+    label: "Discovered",
+    statuses: ["discovered", "processing"],
+  },
   { id: "applied", label: "Applied", statuses: ["applied"] },
   { id: "all", label: "All Jobs", statuses: [] },
 ];

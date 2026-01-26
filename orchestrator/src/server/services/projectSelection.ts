@@ -2,23 +2,23 @@
  * Service for AI-powered project selection for resumes.
  */
 
-import { getSetting } from '../repositories/settings.js';
-import type { ResumeProjectSelectionItem } from './resumeProjects.js';
-import { callOpenRouter, type JsonSchemaDefinition } from './openrouter.js';
+import { getSetting } from "../repositories/settings.js";
+import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
+import type { ResumeProjectSelectionItem } from "./resumeProjects.js";
 
 /** JSON schema for project selection response */
 const PROJECT_SELECTION_SCHEMA: JsonSchemaDefinition = {
-  name: 'project_selection',
+  name: "project_selection",
   schema: {
-    type: 'object',
+    type: "object",
     properties: {
       selectedProjectIds: {
-        type: 'array',
-        items: { type: 'string' },
-        description: 'List of project IDs to include on the resume',
+        type: "array",
+        items: { type: "string" },
+        description: "List of project IDs to include on the resume",
       },
     },
-    required: ['selectedProjectIds'],
+    required: ["selectedProjectIds"],
     additionalProperties: false,
   },
 };
@@ -35,15 +35,23 @@ export async function pickProjectIdsForJob(args: {
   if (eligibleIds.size === 0) return [];
 
   if (!process.env.OPENROUTER_API_KEY) {
-    return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
+    return fallbackPickProjectIds(
+      args.jobDescription,
+      args.eligibleProjects,
+      desiredCount,
+    );
   }
 
   const [overrideModel, overrideModelProjectSelection] = await Promise.all([
-    getSetting('model'),
-    getSetting('modelProjectSelection'),
+    getSetting("model"),
+    getSetting("modelProjectSelection"),
   ]);
   // Precedence: Project-specific override > Global override > Env var > Default
-  const model = overrideModelProjectSelection || overrideModel || process.env.MODEL || 'google/gemini-3-flash-preview';
+  const model =
+    overrideModelProjectSelection ||
+    overrideModel ||
+    process.env.MODEL ||
+    "google/gemini-3-flash-preview";
 
   const prompt = buildProjectSelectionPrompt({
     jobDescription: args.jobDescription,
@@ -53,12 +61,16 @@ export async function pickProjectIdsForJob(args: {
 
   const result = await callOpenRouter<{ selectedProjectIds: string[] }>({
     model,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: "user", content: prompt }],
     jsonSchema: PROJECT_SELECTION_SCHEMA,
   });
 
   if (!result.success) {
-    return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
+    return fallbackPickProjectIds(
+      args.jobDescription,
+      args.eligibleProjects,
+      desiredCount,
+    );
   }
 
   const selectedProjectIds = Array.isArray(result.data?.selectedProjectIds)
@@ -69,7 +81,7 @@ export async function pickProjectIdsForJob(args: {
   const unique: string[] = [];
   const seen = new Set<string>();
   for (const id of selectedProjectIds) {
-    if (typeof id !== 'string') continue;
+    if (typeof id !== "string") continue;
     const trimmed = id.trim();
     if (!trimmed) continue;
     if (!eligibleIds.has(trimmed)) continue;
@@ -80,7 +92,11 @@ export async function pickProjectIdsForJob(args: {
   }
 
   if (unique.length === 0) {
-    return fallbackPickProjectIds(args.jobDescription, args.eligibleProjects, desiredCount);
+    return fallbackPickProjectIds(
+      args.jobDescription,
+      args.eligibleProjects,
+      desiredCount,
+    );
   }
 
   return unique;
@@ -125,30 +141,30 @@ Respond with JSON only, in this exact shape:
 function fallbackPickProjectIds(
   jobDescription: string,
   eligibleProjects: ResumeProjectSelectionItem[],
-  desiredCount: number
+  desiredCount: number,
 ): string[] {
-  const jd = (jobDescription || '').toLowerCase();
+  const jd = (jobDescription || "").toLowerCase();
 
   const signals = [
-    'react',
-    'typescript',
-    'javascript',
-    'node',
-    'next.js',
-    'nextjs',
-    'python',
-    'c++',
-    'c#',
-    'java',
-    'kotlin',
-    'sql',
-    'mongodb',
-    'aws',
-    'docker',
-    'graphql',
-    'php',
-    'unity',
-    'tailwind',
+    "react",
+    "typescript",
+    "javascript",
+    "node",
+    "next.js",
+    "nextjs",
+    "python",
+    "c++",
+    "c#",
+    "java",
+    "kotlin",
+    "sql",
+    "mongodb",
+    "aws",
+    "docker",
+    "graphql",
+    "php",
+    "unity",
+    "tailwind",
   ];
 
   const activeSignals = signals.filter((s) => jd.includes(s));

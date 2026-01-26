@@ -2,52 +2,64 @@
  * API client for the orchestrator backend.
  */
 
+import { trackEvent } from "@/lib/analytics";
 import type {
-  Job,
-  JobOutcome,
   ApplicationStage,
   ApplicationTask,
+  JobOutcome,
   StageEvent,
   StageEventMetadata,
   ApiResponse,
-  JobsListResponse,
-  PipelineStatusResponse,
-  JobSource,
   AppSettings,
-  ResumeProjectsSettings,
-  ResumeProjectCatalogItem,
-  UkVisaJobsSearchResponse,
-  UkVisaJobsImportResponse,
   CreateJobInput,
+  Job,
+  JobSource,
+  JobsListResponse,
   ManualJobDraft,
+  ManualJobFetchResponse,
   ManualJobInferenceResponse,
+  PipelineStatusResponse,
+  ProfileStatusResponse,
+  ResumeProfile,
+  ResumeProjectCatalogItem,
+  ResumeProjectsSettings,
+  UkVisaJobsImportResponse,
+  UkVisaJobsSearchResponse,
+  ValidationResult,
+  VisaSponsor,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
-  VisaSponsor,
-  ResumeProfile,
-  ProfileStatusResponse,
-  ValidationResult,
-} from '../../shared/types';
-import { trackEvent } from "@/lib/analytics";
+} from "../../shared/types";
 
-const API_BASE = '/api';
+const API_BASE = "/api";
 
 async function fetchApi<T>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<T> {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options?.headers,
     },
   });
 
-  const data: ApiResponse<T> = await response.json();
+  const text = await response.text();
+
+  let data: ApiResponse<T>;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // If the response is not JSON, it's likely an HTML error page
+    console.error("API returned non-JSON response:", text.substring(0, 500));
+    throw new Error(
+      `Server error (${response.status}): Expected JSON but received HTML. Is the backend server running?`,
+    );
+  }
 
   if (!data.success) {
-    throw new Error(data.error || 'API request failed');
+    throw new Error(data.error || "API request failed");
   }
 
   return data.data as T;
@@ -55,7 +67,7 @@ async function fetchApi<T>(
 
 // Jobs API
 export async function getJobs(statuses?: string[]): Promise<JobsListResponse> {
-  const query = statuses?.length ? `?status=${statuses.join(',')}` : '';
+  const query = statuses?.length ? `?status=${statuses.join(",")}` : "";
   return fetchApi<JobsListResponse>(`/jobs${query}`);
 }
 
@@ -65,49 +77,61 @@ export async function getJob(id: string): Promise<Job> {
 
 export async function updateJob(
   id: string,
-  update: Partial<Job>
+  update: Partial<Job>,
 ): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}`, {
-    method: 'PATCH',
+    method: "PATCH",
     body: JSON.stringify(update),
   });
 }
 
-export async function processJob(id: string, options?: { force?: boolean }): Promise<Job> {
-  const query = options?.force ? '?force=1' : '';
+export async function processJob(
+  id: string,
+  options?: { force?: boolean },
+): Promise<Job> {
+  const query = options?.force ? "?force=1" : "";
   return fetchApi<Job>(`/jobs/${id}/process${query}`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
-export async function summarizeJob(id: string, options?: { force?: boolean }): Promise<Job> {
-  const query = options?.force ? '?force=1' : '';
+export async function rescoreJob(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/rescore`, {
+    method: "POST",
+  });
+}
+
+export async function summarizeJob(
+  id: string,
+  options?: { force?: boolean },
+): Promise<Job> {
+  const query = options?.force ? "?force=1" : "";
   return fetchApi<Job>(`/jobs/${id}/summarize${query}`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
 export async function generateJobPdf(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/generate-pdf`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
 export async function checkSponsor(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/check-sponsor`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
 export async function markAsApplied(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/apply`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
 export async function skipJob(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/skip`, {
-    method: 'POST',
+    method: "POST",
   });
 }
 
@@ -174,7 +198,7 @@ export async function updateJobOutcome(
 
 // Pipeline API
 export async function getPipelineStatus(): Promise<PipelineStatusResponse> {
-  return fetchApi<PipelineStatusResponse>('/pipeline/status');
+  return fetchApi<PipelineStatusResponse>("/pipeline/status");
 }
 
 export async function runPipeline(config?: {
@@ -182,8 +206,8 @@ export async function runPipeline(config?: {
   minSuitabilityScore?: number;
   sources?: JobSource[];
 }): Promise<{ message: string }> {
-  return fetchApi<{ message: string }>('/pipeline/run', {
-    method: 'POST',
+  return fetchApi<{ message: string }>("/pipeline/run", {
+    method: "POST",
     body: JSON.stringify(config || {}),
   });
 }
@@ -194,13 +218,13 @@ export async function searchUkVisaJobs(input: {
   page?: number;
 }): Promise<UkVisaJobsSearchResponse> {
   if (input.searchTerm?.trim()) {
-    trackEvent('ukvisajobs_search', {
+    trackEvent("ukvisajobs_search", {
       searchTerm: input.searchTerm.trim(),
       page: input.page ?? 1,
     });
   }
-  return fetchApi<UkVisaJobsSearchResponse>('/ukvisajobs/search', {
-    method: 'POST',
+  return fetchApi<UkVisaJobsSearchResponse>("/ukvisajobs/search", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
@@ -208,18 +232,27 @@ export async function searchUkVisaJobs(input: {
 export async function importUkVisaJobs(input: {
   jobs: CreateJobInput[];
 }): Promise<UkVisaJobsImportResponse> {
-  return fetchApi<UkVisaJobsImportResponse>('/ukvisajobs/import', {
-    method: 'POST',
+  return fetchApi<UkVisaJobsImportResponse>("/ukvisajobs/import", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
 
 // Manual Job Import API
+export async function fetchJobFromUrl(input: {
+  url: string;
+}): Promise<ManualJobFetchResponse> {
+  return fetchApi<ManualJobFetchResponse>("/manual-jobs/fetch", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function inferManualJob(input: {
   jobDescription: string;
 }): Promise<ManualJobInferenceResponse> {
-  return fetchApi<ManualJobInferenceResponse>('/manual-jobs/infer', {
-    method: 'POST',
+  return fetchApi<ManualJobInferenceResponse>("/manual-jobs/infer", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
@@ -227,8 +260,8 @@ export async function inferManualJob(input: {
 export async function importManualJob(input: {
   job: ManualJobDraft;
 }): Promise<Job> {
-  return fetchApi<Job>('/manual-jobs/import', {
-    method: 'POST',
+  return fetchApi<Job>("/manual-jobs/import", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
@@ -239,7 +272,7 @@ let settingsPromise: Promise<AppSettings> | null = null;
 export async function getSettings(): Promise<AppSettings> {
   if (settingsPromise) return settingsPromise;
 
-  settingsPromise = fetchApi<AppSettings>('/settings').finally(() => {
+  settingsPromise = fetchApi<AppSettings>("/settings").finally(() => {
     // Clear the promise after a short delay to allow subsequent fresh fetches
     // but coalesce simultaneous requests.
     setTimeout(() => {
@@ -250,11 +283,15 @@ export async function getSettings(): Promise<AppSettings> {
   return settingsPromise;
 }
 
-export async function getProfileProjects(): Promise<ResumeProjectCatalogItem[]> {
-  return fetchApi<ResumeProjectCatalogItem[]>('/profile/projects');
+export async function getProfileProjects(): Promise<
+  ResumeProjectCatalogItem[]
+> {
+  return fetchApi<ResumeProjectCatalogItem[]>("/profile/projects");
 }
 
-export async function getResumeProjectsCatalog(): Promise<ResumeProjectCatalogItem[]> {
+export async function getResumeProjectsCatalog(): Promise<
+  ResumeProjectCatalogItem[]
+> {
   try {
     const settings = await getSettings();
     if (settings.rxresumeBaseResumeId) {
@@ -268,84 +305,93 @@ export async function getResumeProjectsCatalog(): Promise<ResumeProjectCatalogIt
 }
 
 export async function getProfile(): Promise<ResumeProfile> {
-  return fetchApi<ResumeProfile>('/profile');
+  return fetchApi<ResumeProfile>("/profile");
 }
 
 export async function getProfileStatus(): Promise<ProfileStatusResponse> {
-  return fetchApi<ProfileStatusResponse>('/profile/status');
+  return fetchApi<ProfileStatusResponse>("/profile/status");
 }
 
 export async function refreshProfile(): Promise<ResumeProfile> {
-  return fetchApi<ResumeProfile>('/profile/refresh', {
-    method: 'POST',
+  return fetchApi<ResumeProfile>("/profile/refresh", {
+    method: "POST",
   });
 }
 
-export async function validateOpenrouter(apiKey?: string): Promise<ValidationResult> {
-  return fetchApi<ValidationResult>('/onboarding/validate/openrouter', {
-    method: 'POST',
+export async function validateOpenrouter(
+  apiKey?: string,
+): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>("/onboarding/validate/openrouter", {
+    method: "POST",
     body: JSON.stringify({ apiKey }),
   });
 }
 
-export async function validateRxresume(email?: string, password?: string): Promise<ValidationResult> {
-  return fetchApi<ValidationResult>('/onboarding/validate/rxresume', {
-    method: 'POST',
+export async function validateRxresume(
+  email?: string,
+  password?: string,
+): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>("/onboarding/validate/rxresume", {
+    method: "POST",
     body: JSON.stringify({ email, password }),
   });
 }
 
 export async function validateResumeConfig(): Promise<ValidationResult> {
-  return fetchApi<ValidationResult>('/onboarding/validate/resume');
+  return fetchApi<ValidationResult>("/onboarding/validate/resume");
 }
 
 export async function updateSettings(update: {
-  model?: string | null
-  modelScorer?: string | null
-  modelTailoring?: string | null
-  modelProjectSelection?: string | null
-  pipelineWebhookUrl?: string | null
-  jobCompleteWebhookUrl?: string | null
-  resumeProjects?: ResumeProjectsSettings | null
-  ukvisajobsMaxJobs?: number | null
-  gradcrackerMaxJobsPerTerm?: number | null
-  searchTerms?: string[] | null
-  jobspyLocation?: string | null
-  jobspyResultsWanted?: number | null
-  jobspyHoursOld?: number | null
-  jobspyCountryIndeed?: string | null
-  jobspySites?: string[] | null
-  jobspyLinkedinFetchDescription?: boolean | null
-  showSponsorInfo?: boolean | null
-  openrouterApiKey?: string | null
-  rxresumeEmail?: string | null
-  rxresumePassword?: string | null
-  basicAuthUser?: string | null
-  basicAuthPassword?: string | null
-  ukvisajobsEmail?: string | null
-  ukvisajobsPassword?: string | null
-  webhookSecret?: string | null
-  rxresumeBaseResumeId?: string | null
+  model?: string | null;
+  modelScorer?: string | null;
+  modelTailoring?: string | null;
+  modelProjectSelection?: string | null;
+  pipelineWebhookUrl?: string | null;
+  jobCompleteWebhookUrl?: string | null;
+  resumeProjects?: ResumeProjectsSettings | null;
+  ukvisajobsMaxJobs?: number | null;
+  gradcrackerMaxJobsPerTerm?: number | null;
+  searchTerms?: string[] | null;
+  jobspyLocation?: string | null;
+  jobspyResultsWanted?: number | null;
+  jobspyHoursOld?: number | null;
+  jobspyCountryIndeed?: string | null;
+  jobspySites?: string[] | null;
+  jobspyLinkedinFetchDescription?: boolean | null;
+  showSponsorInfo?: boolean | null;
+  openrouterApiKey?: string | null;
+  rxresumeEmail?: string | null;
+  rxresumePassword?: string | null;
+  basicAuthUser?: string | null;
+  basicAuthPassword?: string | null;
+  ukvisajobsEmail?: string | null;
+  ukvisajobsPassword?: string | null;
+  webhookSecret?: string | null;
+  rxresumeBaseResumeId?: string | null;
 }): Promise<AppSettings> {
-  return fetchApi<AppSettings>('/settings', {
-    method: 'PATCH',
+  return fetchApi<AppSettings>("/settings", {
+    method: "PATCH",
     body: JSON.stringify(update),
   });
 }
 
 export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
-  const data = await fetchApi<{ resumes: { id: string; name: string }[] }>('/settings/rx-resumes');
+  const data = await fetchApi<{ resumes: { id: string; name: string }[] }>(
+    "/settings/rx-resumes",
+  );
   return data.resumes;
 }
 
-export async function getRxResumeProjects(resumeId: string, signal?: AbortSignal): Promise<ResumeProjectCatalogItem[]> {
+export async function getRxResumeProjects(
+  resumeId: string,
+  signal?: AbortSignal,
+): Promise<ResumeProjectCatalogItem[]> {
   const data = await fetchApi<{ projects: ResumeProjectCatalogItem[] }>(
     `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects`,
-    { signal }
+    { signal },
   );
   return data.projects;
 }
-
 
 // Database API
 export async function clearDatabase(): Promise<{
@@ -357,8 +403,8 @@ export async function clearDatabase(): Promise<{
     message: string;
     jobsDeleted: number;
     runsDeleted: number;
-  }>('/database', {
-    method: 'DELETE',
+  }>("/database", {
+    method: "DELETE",
   });
 }
 
@@ -370,13 +416,13 @@ export async function deleteJobsByStatus(status: string): Promise<{
     message: string;
     count: number;
   }>(`/jobs/status/${status}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
 // Visa Sponsors API
 export async function getVisaSponsorStatus(): Promise<VisaSponsorStatusResponse> {
-  return fetchApi<VisaSponsorStatusResponse>('/visa-sponsors/status');
+  return fetchApi<VisaSponsorStatusResponse>("/visa-sponsors/status");
 }
 
 export async function searchVisaSponsors(input: {
@@ -385,20 +431,24 @@ export async function searchVisaSponsors(input: {
   minScore?: number;
 }): Promise<VisaSponsorSearchResponse> {
   if (input.query?.trim()) {
-    trackEvent('visa_sponsor_search', {
+    trackEvent("visa_sponsor_search", {
       query: input.query.trim(),
       limit: input.limit,
       minScore: input.minScore,
     });
   }
-  return fetchApi<VisaSponsorSearchResponse>('/visa-sponsors/search', {
-    method: 'POST',
+  return fetchApi<VisaSponsorSearchResponse>("/visa-sponsors/search", {
+    method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-export async function getVisaSponsorOrganization(name: string): Promise<VisaSponsor[]> {
-  return fetchApi<VisaSponsor[]>(`/visa-sponsors/organization/${encodeURIComponent(name)}`);
+export async function getVisaSponsorOrganization(
+  name: string,
+): Promise<VisaSponsor[]> {
+  return fetchApi<VisaSponsor[]>(
+    `/visa-sponsors/organization/${encodeURIComponent(name)}`,
+  );
 }
 
 export async function updateVisaSponsorList(): Promise<{
@@ -408,8 +458,8 @@ export async function updateVisaSponsorList(): Promise<{
   return fetchApi<{
     message: string;
     status: VisaSponsorStatusResponse;
-  }>('/visa-sponsors/update', {
-    method: 'POST',
+  }>("/visa-sponsors/update", {
+    method: "POST",
   });
 }
 

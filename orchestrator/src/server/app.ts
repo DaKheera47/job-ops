@@ -2,20 +2,20 @@
  * Express app factory (useful for tests).
  */
 
-import express from 'express';
-import cors from 'cors';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { readFile } from 'fs/promises';
-import { apiRouter } from './api/index.js';
-import { getDataDir } from './config/dataDir.js';
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import cors from "cors";
+import express from "express";
+import { apiRouter } from "./api/index.js";
+import { getDataDir } from "./config/dataDir.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 function createBasicAuthGuard() {
   function getAuthConfig() {
-    const user = process.env.BASIC_AUTH_USER || '';
-    const pass = process.env.BASIC_AUTH_PASSWORD || '';
+    const user = process.env.BASIC_AUTH_USER || "";
+    const pass = process.env.BASIC_AUTH_PASSWORD || "";
     return {
       user,
       pass,
@@ -26,16 +26,16 @@ function createBasicAuthGuard() {
   function isAuthorized(req: express.Request): boolean {
     const { user: authUser, pass: authPass, enabled } = getAuthConfig();
     if (!enabled) return false;
-    const authHeader = req.headers.authorization || '';
-    if (!authHeader.startsWith('Basic ')) return false;
-    const encoded = authHeader.slice('Basic '.length).trim();
-    let decoded = '';
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Basic ")) return false;
+    const encoded = authHeader.slice("Basic ".length).trim();
+    let decoded = "";
     try {
-      decoded = Buffer.from(encoded, 'base64').toString('utf-8');
+      decoded = Buffer.from(encoded, "base64").toString("utf-8");
     } catch {
       return false;
     }
-    const separatorIndex = decoded.indexOf(':');
+    const separatorIndex = decoded.indexOf(":");
     if (separatorIndex === -1) return false;
     const user = decoded.slice(0, separatorIndex);
     const pass = decoded.slice(separatorIndex + 1);
@@ -44,22 +44,30 @@ function createBasicAuthGuard() {
 
   function isPublicReadOnlyRoute(method: string, path: string): boolean {
     const normalizedMethod = method.toUpperCase();
-    const normalizedPath = path.split('?')[0] || path;
-    if (normalizedMethod === 'POST' && normalizedPath === '/api/visa-sponsors/search') return true;
+    const normalizedPath = path.split("?")[0] || path;
+    if (
+      normalizedMethod === "POST" &&
+      normalizedPath === "/api/visa-sponsors/search"
+    )
+      return true;
     return false;
   }
 
   function requiresAuth(method: string, path: string): boolean {
     if (isPublicReadOnlyRoute(method, path)) return false;
-    return !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
+    return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   }
 
-  const middleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const middleware = (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) => {
     const { enabled } = getAuthConfig();
     if (!enabled || !requiresAuth(req.method, req.path)) return next();
     if (isAuthorized(req)) return next();
-    res.setHeader('WWW-Authenticate', 'Basic realm="Job Ops"');
-    res.status(401).send('Authentication required');
+    res.setHeader("WWW-Authenticate", 'Basic realm="Job Ops"');
+    res.status(401).send("Authentication required");
   };
 
   return {
@@ -74,14 +82,16 @@ export function createApp() {
   const authGuard = createBasicAuthGuard();
 
   app.use(cors());
-  app.use(express.json({ limit: '5mb' }));
+  app.use(express.json({ limit: "5mb" }));
 
   // Logging middleware
   app.use((req, res, next) => {
     const start = Date.now();
-    res.on('finish', () => {
+    res.on("finish", () => {
       const duration = Date.now() - start;
-      console.log(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
+      console.log(
+        `${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`,
+      );
     });
     next();
   });
@@ -90,34 +100,34 @@ export function createApp() {
   app.use(authGuard.middleware);
 
   // API routes
-  app.use('/api', apiRouter);
+  app.use("/api", apiRouter);
 
   // Serve static files for generated PDFs
-  const pdfDir = join(getDataDir(), 'pdfs');
-  app.use('/pdfs', express.static(pdfDir));
+  const pdfDir = join(getDataDir(), "pdfs");
+  app.use("/pdfs", express.static(pdfDir));
 
   // Health check
-  app.get('/health', (_req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
   // Serve client app in production
-  if (process.env.NODE_ENV === 'production') {
-    const clientDir = join(__dirname, '../../dist/client');
+  if (process.env.NODE_ENV === "production") {
+    const clientDir = join(__dirname, "../../dist/client");
     app.use(express.static(clientDir));
 
     // SPA fallback
-    const indexPath = join(clientDir, 'index.html');
+    const indexPath = join(clientDir, "index.html");
     let cachedIndexHtml: string | null = null;
-    app.get('*', async (req, res) => {
-      if (!req.accepts('html')) {
+    app.get("*", async (req, res) => {
+      if (!req.accepts("html")) {
         res.status(404).end();
         return;
       }
       if (!cachedIndexHtml) {
-        cachedIndexHtml = await readFile(indexPath, 'utf-8');
+        cachedIndexHtml = await readFile(indexPath, "utf-8");
       }
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.send(cachedIndexHtml);
     });
   }

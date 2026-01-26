@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
-
-import { JobListPanel } from "./JobListPanel";
+import { describe, expect, it, vi } from "vitest";
 import type { Job } from "../../../shared/types";
+import { JobListPanel } from "./JobListPanel";
 
 const createJob = (overrides: Partial<Job> = {}): Job => ({
   id: "job-1",
@@ -78,7 +77,7 @@ describe("JobListPanel", () => {
         activeTab="ready"
         searchQuery=""
         onSelectJob={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("Loading jobs...")).toBeInTheDocument();
@@ -94,11 +93,13 @@ describe("JobListPanel", () => {
         activeTab="ready"
         searchQuery=""
         onSelectJob={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText("No jobs found")).toBeInTheDocument();
-    expect(screen.getByText("Run the pipeline to discover and process new jobs.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Run the pipeline to discover and process new jobs."),
+    ).toBeInTheDocument();
   });
 
   it("shows the query-specific empty state when searching", () => {
@@ -111,7 +112,7 @@ describe("JobListPanel", () => {
         activeTab="ready"
         searchQuery="iOS"
         onSelectJob={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByText('No jobs match "iOS".')).toBeInTheDocument();
@@ -121,7 +122,11 @@ describe("JobListPanel", () => {
     const onSelectJob = vi.fn();
     const jobs = [
       createJob({ id: "job-1", title: "Backend Engineer" }),
-      createJob({ id: "job-2", title: "Frontend Engineer", employer: "Globex" }),
+      createJob({
+        id: "job-2",
+        title: "Frontend Engineer",
+        employer: "Globex",
+      }),
     ];
 
     render(
@@ -133,10 +138,12 @@ describe("JobListPanel", () => {
         activeTab="ready"
         searchQuery=""
         onSelectJob={onSelectJob}
-      />
+      />,
     );
 
-    expect(screen.getByRole("button", { name: /Backend Engineer/i })).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: /Backend Engineer/i }),
+    ).toHaveAttribute("aria-pressed", "true");
 
     fireEvent.click(screen.getByRole("button", { name: /Frontend Engineer/i }));
     expect(onSelectJob).toHaveBeenCalledWith("job-2");

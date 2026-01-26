@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-import * as api from "../../api";
 import type { Job } from "../../../shared/types";
+import * as api from "../../api";
+import { useRescoreJob } from "../../hooks/useRescoreJob";
 import { DecideMode } from "./DecideMode";
 import { EmptyState } from "./EmptyState";
 import { ProcessingState } from "./ProcessingState";
@@ -24,12 +25,13 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
 
   useEffect(() => {
     setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);
-  }, [job?.id]);
+  }, []);
 
   const handleSkip = async () => {
     if (!job) return;
@@ -69,6 +71,8 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     }
   };
 
+  const handleRescore = () => rescoreJob(job?.id);
+
   if (!job) {
     return <EmptyState />;
   }
@@ -78,13 +82,15 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   }
 
   return (
-    <div className='h-full'>
+    <div className="h-full">
       {mode === "decide" ? (
         <DecideMode
           job={job}
           onTailor={() => setMode("tailor")}
           onSkip={handleSkip}
           isSkipping={isSkipping}
+          onRescore={handleRescore}
+          isRescoring={isRescoring}
           onCheckSponsor={async () => {
             await api.checkSponsor(job.id);
             await onJobUpdated();

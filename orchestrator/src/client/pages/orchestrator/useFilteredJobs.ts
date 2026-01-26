@@ -17,7 +17,9 @@ export const useFilteredJobs = (
     if (activeTab === "ready") {
       filtered = filtered.filter((job) => job.status === "ready");
     } else if (activeTab === "discovered") {
-      filtered = filtered.filter((job) => job.status === "discovered" || job.status === "processing");
+      filtered = filtered.filter(
+        (job) => job.status === "discovered" || job.status === "processing",
+      );
     } else if (activeTab === "applied") {
       filtered = filtered.filter((job) => job.status === "applied");
     }

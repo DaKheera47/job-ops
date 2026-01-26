@@ -1,19 +1,27 @@
-import { describe, it, expect, vi } from "vitest"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { useState } from "react"
+import type { JobStatus } from "@shared/types";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
+import { describe, expect, it, vi } from "vitest";
+import { Accordion } from "@/components/ui/accordion";
+import { DangerZoneSection } from "./DangerZoneSection";
 
-import { Accordion } from "@/components/ui/accordion"
-import { DangerZoneSection } from "./DangerZoneSection"
-import type { JobStatus } from "@shared/types"
-
-const DangerZoneHarness = ({ initialStatuses = [] as JobStatus[], onClear }: { initialStatuses?: JobStatus[]; onClear?: () => void }) => {
-  const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>(initialStatuses)
+const DangerZoneHarness = ({
+  initialStatuses = [] as JobStatus[],
+  onClear,
+}: {
+  initialStatuses?: JobStatus[];
+  onClear?: () => void;
+}) => {
+  const [statusesToClear, setStatusesToClear] =
+    useState<JobStatus[]>(initialStatuses);
 
   const toggleStatusToClear = (status: JobStatus) => {
     setStatusesToClear((prev) =>
-      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
-    )
-  }
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status],
+    );
+  };
 
   return (
     <Accordion type="multiple" defaultValue={["danger-zone"]}>
@@ -26,33 +34,37 @@ const DangerZoneHarness = ({ initialStatuses = [] as JobStatus[], onClear }: { i
         isSaving={false}
       />
     </Accordion>
-  )
-}
+  );
+};
 
 describe("DangerZoneSection", () => {
   it("disables clear when no statuses are selected", () => {
-    render(<DangerZoneHarness initialStatuses={[]} />)
+    render(<DangerZoneHarness initialStatuses={[]} />);
 
-    const clearButton = screen.getByRole("button", { name: /clear selected/i })
-    expect(clearButton).toBeDisabled()
-  })
+    const clearButton = screen.getByRole("button", { name: /clear selected/i });
+    expect(clearButton).toBeDisabled();
+  });
 
   it("toggles status selection and confirms clear", async () => {
-    const onClear = vi.fn()
-    render(<DangerZoneHarness initialStatuses={["applied"]} onClear={onClear} />)
+    const onClear = vi.fn();
+    render(
+      <DangerZoneHarness initialStatuses={["applied"]} onClear={onClear} />,
+    );
 
-    const appliedButton = screen.getByRole("button", { name: /applied/i })
-    const clearButton = screen.getByRole("button", { name: /clear selected/i })
+    const appliedButton = screen.getByRole("button", { name: /applied/i });
+    const clearButton = screen.getByRole("button", { name: /clear selected/i });
 
-    expect(clearButton).toBeEnabled()
+    expect(clearButton).toBeEnabled();
 
-    fireEvent.click(clearButton)
-    const confirmButton = await screen.findByRole("button", { name: /clear 1 status/i })
-    fireEvent.click(confirmButton)
+    fireEvent.click(clearButton);
+    const confirmButton = await screen.findByRole("button", {
+      name: /clear 1 status/i,
+    });
+    fireEvent.click(confirmButton);
 
-    expect(onClear).toHaveBeenCalledTimes(1)
+    expect(onClear).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(appliedButton)
-    expect(clearButton).toBeDisabled()
-  })
-})
+    fireEvent.click(appliedButton);
+    expect(clearButton).toBeDisabled();
+  });
+});

@@ -1,5 +1,5 @@
-import React from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import type React from "react";
 
 interface CollapsibleSectionProps {
   isOpen: boolean;
@@ -15,16 +15,16 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   children,
 }) => {
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       <button
-        type='button'
+        type="button"
         onClick={onToggle}
-        className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full'
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
       >
         {isOpen ? (
-          <ChevronUp className='h-3.5 w-3.5' />
+          <ChevronUp className="h-3.5 w-3.5" />
         ) : (
-          <ChevronDown className='h-3.5 w-3.5' />
+          <ChevronDown className="h-3.5 w-3.5" />
         )}
         {label}
       </button>

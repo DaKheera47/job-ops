@@ -2,7 +2,6 @@
  * UK Visa Jobs search page.
  */
 
-import React, { useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Calendar,
@@ -21,15 +20,17 @@ import {
   Settings,
   Shield,
 } from "lucide-react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import type React from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import {
   Sheet,
   SheetContent,
@@ -38,10 +39,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn, formatDate, formatDateTime, stripHtml } from "@/lib/utils";
-import * as api from "../api";
 import type { CreateJobInput } from "../../shared/types";
+import * as api from "../api";
 
-const clampText = (value: string, max = 160) => (value.length > max ? `${value.slice(0, max).trim()}...` : value);
+const clampText = (value: string, max = 160) =>
+  value.length > max ? `${value.slice(0, max).trim()}...` : value;
 
 const jobKey = (job: CreateJobInput) => job.sourceJobId || job.jobUrl;
 
@@ -71,8 +73,10 @@ export const UkVisaJobsPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(
-    () => (typeof window !== "undefined" ? window.matchMedia("(min-width: 1024px)").matches : false),
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 1024px)").matches
+      : false,
   );
 
   useEffect(() => {
@@ -81,7 +85,10 @@ export const UkVisaJobsPage: React.FC = () => {
       return;
     }
     const firstKey = jobKey(results[0]);
-    if (!selectedJobId || !results.some((job) => jobKey(job) === selectedJobId)) {
+    if (
+      !selectedJobId ||
+      !results.some((job) => jobKey(job) === selectedJobId)
+    ) {
       setSelectedJobId(firstKey);
     }
   }, [results, selectedJobId]);
@@ -113,10 +120,13 @@ export const UkVisaJobsPage: React.FC = () => {
 
   useEffect(() => {
     setSelectedJobIds(new Set());
-  }, [results]);
+  }, []);
 
   const selectedJob = useMemo(
-    () => (selectedJobId ? results.find((job) => jobKey(job) === selectedJobId) ?? null : null),
+    () =>
+      selectedJobId
+        ? (results.find((job) => jobKey(job) === selectedJobId) ?? null)
+        : null,
     [results, selectedJobId],
   );
 
@@ -129,7 +139,13 @@ export const UkVisaJobsPage: React.FC = () => {
     };
   }, [page, pageSize, totalJobs]);
 
-  const runSearch = async ({ term, pageNumber }: { term: string | null; pageNumber: number }) => {
+  const runSearch = async ({
+    term,
+    pageNumber,
+  }: {
+    term: string | null;
+    pageNumber: number;
+  }) => {
     try {
       setIsSearching(true);
       setErrorMessage(null);
@@ -147,7 +163,8 @@ export const UkVisaJobsPage: React.FC = () => {
         toast.message("No UK Visa Jobs found for this search.");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "UK Visa Jobs search failed";
+      const message =
+        error instanceof Error ? error.message : "UK Visa Jobs search failed";
       setErrorMessage(message);
       toast.error(message);
     } finally {
@@ -184,18 +201,23 @@ export const UkVisaJobsPage: React.FC = () => {
   };
 
   const handleImportSelected = async () => {
-    const selectedJobs = results.filter((job) => selectedJobIds.has(jobKey(job)));
+    const selectedJobs = results.filter((job) =>
+      selectedJobIds.has(jobKey(job)),
+    );
     if (selectedJobs.length === 0) return;
 
     try {
       setIsImporting(true);
       const response = await api.importUkVisaJobs({ jobs: selectedJobs });
       toast.success(`Imported ${response.created} jobs`, {
-        description: response.skipped ? `${response.skipped} skipped (duplicates)` : undefined,
+        description: response.skipped
+          ? `${response.skipped} skipped (duplicates)`
+          : undefined,
       });
       setSelectedJobIds(new Set());
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to import jobs";
+      const message =
+        error instanceof Error ? error.message : "Failed to import jobs";
       toast.error(message);
     } finally {
       setIsImporting(false);
@@ -208,12 +230,24 @@ export const UkVisaJobsPage: React.FC = () => {
     return cleaned || "No description available.";
   }, [selectedJob]);
 
-  const selectedJobLink = selectedJob ? selectedJob.applicationLink || selectedJob.jobUrl : "#";
-  const selectedDeadline = selectedJob ? formatDate(selectedJob.deadline) : null;
-  const selectedPosted = selectedJob ? formatDate(selectedJob.datePosted) : null;
+  const selectedJobLink = selectedJob
+    ? selectedJob.applicationLink || selectedJob.jobUrl
+    : "#";
+  const selectedDeadline = selectedJob
+    ? formatDate(selectedJob.deadline)
+    : null;
+  const selectedPosted = selectedJob
+    ? formatDate(selectedJob.datePosted)
+    : null;
   const selectedCount = selectedJobIds.size;
-  const allSelected = results.length > 0 && results.every((job) => selectedJobIds.has(jobKey(job)));
-  const selectAllState = allSelected ? true : selectedCount > 0 ? "indeterminate" : false;
+  const allSelected =
+    results.length > 0 &&
+    results.every((job) => selectedJobIds.has(jobKey(job)));
+  const selectAllState = allSelected
+    ? true
+    : selectedCount > 0
+      ? "indeterminate"
+      : false;
   const canGoPrev = page > 1;
   const canGoNext = page < totalPages;
 
@@ -227,14 +261,20 @@ export const UkVisaJobsPage: React.FC = () => {
   const detailPanelContent = !selectedJob ? (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <div className="text-base font-semibold">Select a job</div>
-      <p className="text-sm text-muted-foreground">Pick a job from the list to inspect details.</p>
+      <p className="text-sm text-muted-foreground">
+        Pick a job from the list to inspect details.
+      </p>
     </div>
   ) : (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="truncate text-base font-semibold">{selectedJob.title}</div>
-          <div className="text-sm text-muted-foreground">{selectedJob.employer}</div>
+          <div className="truncate text-base font-semibold">
+            {selectedJob.title}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {selectedJob.employer}
+          </div>
         </div>
         <Badge variant="outline" className="uppercase tracking-wide">
           UK Visa Jobs
@@ -295,7 +335,12 @@ export const UkVisaJobsPage: React.FC = () => {
 
       <Separator />
 
-      <Button asChild size="sm" variant="outline" className="w-full gap-2 sm:w-auto">
+      <Button
+        asChild
+        size="sm"
+        variant="outline"
+        className="w-full gap-2 sm:w-auto"
+      >
         <a href={selectedJobLink} target="_blank" rel="noopener noreferrer">
           <ExternalLink className="h-4 w-4" />
           View job
@@ -344,9 +389,16 @@ export const UkVisaJobsPage: React.FC = () => {
                       }}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                        location.pathname === to || (to === "/" && ["/ready", "/discovered", "/applied", "/all"].includes(location.pathname))
+                        location.pathname === to ||
+                          (to === "/" &&
+                            [
+                              "/ready",
+                              "/discovered",
+                              "/applied",
+                              "/all",
+                            ].includes(location.pathname))
                           ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground"
+                          : "text-muted-foreground",
                       )}
                     >
                       <Icon className="h-4 w-4" />
@@ -361,8 +413,12 @@ export const UkVisaJobsPage: React.FC = () => {
               <Briefcase className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className="text-sm font-semibold tracking-tight">UK Visa Jobs</div>
-              <div className="text-xs text-muted-foreground">Live search console</div>
+              <div className="text-sm font-semibold tracking-tight">
+                UK Visa Jobs
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Live search console
+              </div>
             </div>
           </div>
         </div>
@@ -370,22 +426,41 @@ export const UkVisaJobsPage: React.FC = () => {
 
       <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
-          <form className="grid gap-4 md:grid-cols-[minmax(0,1fr)_160px]" onSubmit={handleSearch}>
+          <form
+            className="grid gap-4 md:grid-cols-[minmax(0,1fr)_160px]"
+            onSubmit={handleSearch}
+          >
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor="uk-visa-search"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Job title search term
               </label>
               <Input
+                id="uk-visa-search"
                 value={searchTermInput}
                 onChange={(event) => setSearchTermInput(event.target.value)}
                 placeholder="e.g. data analyst"
                 className="h-10"
               />
+              <p className="text-xs text-muted-foreground">
+                Note: Search is limited to job titles only due to API
+                constraints.
+              </p>
             </div>
 
             <div className="flex items-end">
-              <Button type="submit" className="h-10 w-full gap-2" disabled={isSearching}>
-                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              <Button
+                type="submit"
+                className="h-10 w-full gap-2"
+                disabled={isSearching}
+              >
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
                 {isSearching ? "Searching..." : "Search"}
               </Button>
             </div>
@@ -401,7 +476,8 @@ export const UkVisaJobsPage: React.FC = () => {
 
           <div className="flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
             <div>
-              Last run: {lastRunAt ? formatDateTime(lastRunAt) : "No searches yet"}
+              Last run:{" "}
+              {lastRunAt ? formatDateTime(lastRunAt) : "No searches yet"}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className="text-xs">
@@ -413,7 +489,9 @@ export const UkVisaJobsPage: React.FC = () => {
               <span>
                 Page {page} of {totalPages}
               </span>
-              {lastSearchTerm && <span className="truncate">Term: {lastSearchTerm}</span>}
+              {lastSearchTerm && (
+                <span className="truncate">Term: {lastSearchTerm}</span>
+              )}
             </div>
           </div>
         </section>
@@ -438,7 +516,9 @@ export const UkVisaJobsPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <div className="text-base font-semibold">No results yet</div>
+                    <div className="text-base font-semibold">
+                      No results yet
+                    </div>
                     <p className="max-w-md text-sm text-muted-foreground">
                       Run a search to fetch fresh UK Visa Jobs listings.
                     </p>
@@ -453,7 +533,9 @@ export const UkVisaJobsPage: React.FC = () => {
                       checked={selectAllState}
                       onCheckedChange={(checked) => {
                         if (checked === true) {
-                          setSelectedJobIds(new Set(results.map((job) => jobKey(job))));
+                          setSelectedJobIds(
+                            new Set(results.map((job) => jobKey(job))),
+                          );
                         } else {
                           setSelectedJobIds(new Set());
                         }
@@ -471,7 +553,11 @@ export const UkVisaJobsPage: React.FC = () => {
                     onClick={handleImportSelected}
                     disabled={selectedCount === 0 || isImporting}
                   >
-                    {isImporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+                    {isImporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Database className="h-4 w-4" />
+                    )}
                     {isImporting ? "Importing..." : "Import to DB"}
                   </Button>
                 </div>
@@ -480,32 +566,19 @@ export const UkVisaJobsPage: React.FC = () => {
                     const key = jobKey(job);
                     const isSelected = key === selectedJobId;
                     const isChecked = selectedJobIds.has(key);
-                    const description = job.jobDescription ? clampText(stripHtml(job.jobDescription)) : "No description.";
+                    const description = job.jobDescription
+                      ? clampText(stripHtml(job.jobDescription))
+                      : "No description.";
 
                     return (
                       <div
                         key={key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleSelectJob(key)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            handleSelectJob(key);
-                          }
-                        }}
                         className={cn(
-                          "flex w-full items-start gap-4 px-4 py-3 text-left transition-colors",
+                          "flex w-full items-start gap-4 px-4 py-3 transition-colors",
                           isSelected ? "bg-muted/40" : "hover:bg-muted/30",
                         )}
-                        aria-pressed={isSelected}
                       >
-                        <div
-                          className="mt-1"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                          role="presentation"
-                        >
+                        <div className="mt-1 shrink-0">
                           <Checkbox
                             checked={isChecked}
                             onCheckedChange={(checked) => {
@@ -522,55 +595,75 @@ export const UkVisaJobsPage: React.FC = () => {
                             aria-label={`Select ${job.title}`}
                           />
                         </div>
-                        <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </span>
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="space-y-1">
-                            <div className="truncate text-sm font-semibold">{job.title}</div>
-                            <div className="text-xs text-muted-foreground">{job.employer}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectJob(key)}
+                          className="flex flex-1 items-start gap-4 text-left"
+                          aria-pressed={isSelected}
+                        >
+                          <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30 shrink-0">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="space-y-1">
+                              <div className="truncate text-sm font-semibold">
+                                {job.title}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {job.employer}
+                              </div>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {description}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              {job.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  {job.location}
+                                </span>
+                              )}
+                              {job.salary && (
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                  {job.salary}
+                                </span>
+                              )}
+                              {job.deadline && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {formatDate(job.deadline)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {job.jobType && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] uppercase tracking-wide"
+                                >
+                                  {job.jobType}
+                                </Badge>
+                              )}
+                              {job.jobLevel && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] uppercase tracking-wide"
+                                >
+                                  {job.jobLevel}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">{description}</div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {job.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3.5 w-3.5" />
-                                {job.location}
-                              </span>
-                            )}
-                            {job.salary && (
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-3.5 w-3.5" />
-                                {job.salary}
-                              </span>
-                            )}
-                            {job.deadline && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatDate(job.deadline)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {job.jobType && (
-                              <Badge variant="outline" className="text-[11px] uppercase tracking-wide">
-                                {job.jobType}
-                              </Badge>
-                            )}
-                            {job.jobLevel && (
-                              <Badge variant="outline" className="text-[11px] uppercase tracking-wide">
-                                {job.jobLevel}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                        </button>
                       </div>
                     );
                   })}
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
                   <span>
-                    Showing {summaryCounts.startIndex}-{summaryCounts.endIndex} of {totalJobs}
+                    Showing {summaryCounts.startIndex}-{summaryCounts.endIndex}{" "}
+                    of {totalJobs}
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
@@ -611,7 +704,9 @@ export const UkVisaJobsPage: React.FC = () => {
       <Drawer open={isDetailDrawerOpen} onOpenChange={setIsDetailDrawerOpen}>
         <DrawerContent className="max-h-[90vh]">
           <div className="flex items-center justify-between px-4 pt-2">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Job details</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Job details
+            </div>
             <DrawerClose asChild>
               <Button variant="ghost" size="sm" className="h-8 px-2 text-xs">
                 Close
