@@ -102,6 +102,11 @@ export const JobPage: React.FC = () => {
       outcome = "withdrawn";
     }
 
+    const currentStage =
+      events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null);
+    const effectiveStage =
+      toStage === "no_change" ? (currentStage ?? "applied") : toStage;
+
     try {
       if (eventId) {
         await api.updateJobStageEvent(job.id, eventId, {
@@ -115,10 +120,11 @@ export const JobPage: React.FC = () => {
             eventType: values.stage === "no_change" ? "note" : "status_update",
             externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
           },
+          outcome,
         });
       } else {
         const newEvent = await api.transitionJobStage(job.id, {
-          toStage: toStage as ApplicationStage,
+          toStage: effectiveStage,
           occurredAt: toTimestamp(values.date),
           metadata: {
             note: values.notes?.trim() || undefined,

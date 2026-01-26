@@ -57,6 +57,7 @@ export async function getStageEvents(
     toStage: row.toStage as ApplicationStage,
     occurredAt: row.occurredAt,
     metadata: parseMetadata(row.metadata),
+    outcome: (row.outcome as JobOutcome | null) ?? null,
   }));
 }
 
@@ -121,6 +122,7 @@ export function transitionStage(
     const finalToStage =
       toStage === "no_change" ? (fromStage ?? "applied") : toStage;
     const eventId = randomUUID();
+    const isNoteEvent = parsedMetadata?.eventType === "note";
 
     tx.insert(stageEvents)
       .values({
@@ -130,6 +132,7 @@ export function transitionStage(
         toStage: finalToStage,
         occurredAt: timestamp,
         metadata: parsedMetadata,
+        outcome,
       })
       .run();
 
@@ -137,7 +140,7 @@ export function transitionStage(
       updatedAt: new Date().toISOString(),
     };
 
-    if (toStage !== "no_change") {
+    if (toStage !== "no_change" && !isNoteEvent) {
       updates.status = STAGE_TO_STATUS[finalToStage];
 
       if (finalToStage === "applied" && !job.appliedAt) {
@@ -147,10 +150,7 @@ export function transitionStage(
 
     if (outcome) {
       updates.outcome = outcome;
-      updates.closedAt =
-        outcome === "ghosted"
-          ? getLastEventTimestamp(tx, applicationId)
-          : timestamp;
+      updates.closedAt = timestamp;
     }
 
     tx.update(jobs).set(updates).where(eq(jobs.id, applicationId)).run();
@@ -162,6 +162,7 @@ export function transitionStage(
       toStage: finalToStage,
       occurredAt: timestamp,
       metadata: parsedMetadata,
+      outcome,
     };
   });
 }
@@ -172,12 +173,14 @@ export function updateStageEvent(
     toStage?: ApplicationStage;
     occurredAt?: number;
     metadata?: StageEventMetadata | null;
+    outcome?: JobOutcome | null;
   },
 ): void {
-  const { toStage, occurredAt, metadata } = payload;
+  const { toStage, occurredAt, metadata, outcome } = payload;
   const parsedMetadata = metadata
     ? stageEventMetadataSchema.parse(metadata)
     : undefined;
+  const hasOutcome = Object.hasOwn(payload, "outcome");
 
   db.transaction((tx) => {
     const event = tx
@@ -191,6 +194,10 @@ export function updateStageEvent(
     if (toStage) updates.toStage = toStage;
     if (occurredAt) updates.occurredAt = occurredAt;
     if (parsedMetadata !== undefined) updates.metadata = parsedMetadata;
+    if (hasOutcome) updates.outcome = outcome ?? null;
+    if (toStage && !hasOutcome && !isClosingStage(toStage)) {
+      updates.outcome = null;
+    }
 
     tx.update(stageEvents)
       .set(updates)
@@ -207,20 +214,35 @@ export function updateStageEvent(
       .get();
 
     if (lastEvent && lastEvent.id === eventId) {
+      const job = tx
+        .select()
+        .from(jobs)
+        .where(eq(jobs.id, event.applicationId))
+        .get();
+      if (!job) throw new Error("Job not found");
+
       const metadata = parseMetadata(lastEvent.metadata);
-      const isRejection =
-        lastEvent.toStage === "closed" && metadata?.reasonCode;
-      const outcome = isRejection
-        ? "rejected"
-        : lastEvent.toStage === "offer"
-          ? "offer_accepted"
+      const lastStage = lastEvent.toStage as ApplicationStage;
+      const storedOutcome = (lastEvent.outcome as JobOutcome | null) ?? null;
+      const inferredOutcome = inferOutcome(lastStage, metadata);
+      const closingStage = isClosingStage(lastStage);
+      const outcome =
+        storedOutcome ??
+        inferredOutcome ??
+        (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
+      const closedAt = outcome
+        ? storedOutcome || inferredOutcome
+          ? lastEvent.occurredAt
+          : (job.closedAt ?? null)
+        : closingStage
+          ? (job.closedAt ?? null)
           : null;
 
       tx.update(jobs)
         .set({
-          status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          status: STAGE_TO_STATUS[lastStage],
           outcome,
-          closedAt: outcome ? lastEvent.occurredAt : null,
+          closedAt,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
@@ -250,20 +272,35 @@ export function deleteStageEvent(eventId: string): void {
       .get();
 
     if (lastEvent) {
+      const job = tx
+        .select()
+        .from(jobs)
+        .where(eq(jobs.id, event.applicationId))
+        .get();
+      if (!job) throw new Error("Job not found");
+
       const metadata = parseMetadata(lastEvent.metadata);
-      const isRejection =
-        lastEvent.toStage === "closed" && metadata?.reasonCode;
-      const outcome = isRejection
-        ? "rejected"
-        : lastEvent.toStage === "offer"
-          ? "offer_accepted"
+      const lastStage = lastEvent.toStage as ApplicationStage;
+      const storedOutcome = (lastEvent.outcome as JobOutcome | null) ?? null;
+      const inferredOutcome = inferOutcome(lastStage, metadata);
+      const closingStage = isClosingStage(lastStage);
+      const outcome =
+        storedOutcome ??
+        inferredOutcome ??
+        (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
+      const closedAt = outcome
+        ? storedOutcome || inferredOutcome
+          ? lastEvent.occurredAt
+          : (job.closedAt ?? null)
+        : closingStage
+          ? (job.closedAt ?? null)
           : null;
 
       tx.update(jobs)
         .set({
-          status: STAGE_TO_STATUS[lastEvent.toStage as ApplicationStage],
+          status: STAGE_TO_STATUS[lastStage],
           outcome,
-          closedAt: outcome ? lastEvent.occurredAt : null,
+          closedAt,
           updatedAt: new Date().toISOString(),
         })
         .where(eq(jobs.id, event.applicationId))
@@ -297,15 +334,15 @@ function parseMetadata(raw: unknown): StageEventMetadata | null {
   return raw as StageEventMetadata;
 }
 
-function getLastEventTimestamp(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  applicationId: string,
-) {
-  const row = tx
-    .select({ occurredAt: stageEvents.occurredAt })
-    .from(stageEvents)
-    .where(eq(stageEvents.applicationId, applicationId))
-    .orderBy(desc(stageEvents.occurredAt))
-    .get();
-  return row?.occurredAt ?? Math.floor(Date.now() / 1000);
+function inferOutcome(
+  toStage: ApplicationStage,
+  metadata: StageEventMetadata | null,
+): JobOutcome | null {
+  if (toStage === "offer") return "offer_accepted";
+  if (toStage === "closed" && metadata?.reasonCode) return "rejected";
+  return null;
+}
+
+function isClosingStage(toStage: ApplicationStage): boolean {
+  return toStage === "closed" || toStage === "offer";
 }

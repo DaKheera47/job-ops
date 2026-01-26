@@ -23,6 +23,8 @@ export const APPLICATION_STAGES = [
 
 export type ApplicationStage = (typeof APPLICATION_STAGES)[number];
 
+export type StageTransitionTarget = ApplicationStage | "no_change";
+
 export const APPLICATION_OUTCOMES = [
   "offer_accepted",
   "offer_declined",
@@ -81,6 +83,7 @@ export interface StageEvent {
   toStage: ApplicationStage;
   occurredAt: number;
   metadata: StageEventMetadata | null;
+  outcome: JobOutcome | null;
 }
 
 export interface ApplicationTask {

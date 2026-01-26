@@ -83,11 +83,7 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = applicationTracking.transitionStage(
-      job.id,
-      "applied",
-      now - 100,
-    );
+    applicationTracking.transitionStage(job.id, "applied", now - 100);
     const event2 = applicationTracking.transitionStage(
       job.id,
       "recruiter_screen",
@@ -188,11 +184,7 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = applicationTracking.transitionStage(
-      job.id,
-      "applied",
-      now - 100,
-    );
+    applicationTracking.transitionStage(job.id, "applied", now - 100);
     const event2 = applicationTracking.transitionStage(
       job.id,
       "closed",
@@ -240,6 +232,37 @@ describe.sequential("Application Tracking Service", () => {
       .get();
     expect(jobCheck?.outcome).toBeNull();
     expect(jobCheck?.closedAt).toBeNull();
+  });
+
+  it("preserves explicit outcome when updating metadata", async () => {
+    const job = await jobsRepo.createJob({
+      source: "manual",
+      title: "Support Engineer",
+      employer: "Helpdesk Co",
+      jobUrl: "https://example.com/job/6",
+    });
+
+    const now = Math.floor(Date.now() / 1000);
+    applicationTracking.transitionStage(job.id, "applied", now - 100);
+    const closedEvent = applicationTracking.transitionStage(
+      job.id,
+      "closed",
+      now,
+      { reasonCode: "Other" },
+      "withdrawn",
+    );
+
+    applicationTracking.updateStageEvent(closedEvent.id, {
+      metadata: { note: "Withdrew after offer" },
+    });
+
+    const jobCheck = await db
+      .select()
+      .from(schema.jobs)
+      .where(eq(schema.jobs.id, job.id))
+      .get();
+    expect(jobCheck?.outcome).toBe("withdrawn");
+    expect(jobCheck?.closedAt).toBe(now);
   });
 });
 

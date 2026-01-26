@@ -106,6 +106,7 @@ export const stageEvents = sqliteTable("stage_events", {
   toStage: text("to_stage", { enum: APPLICATION_STAGES }).notNull(),
   occurredAt: integer("occurred_at", { mode: "number" }).notNull(),
   metadata: text("metadata", { mode: "json" }),
+  outcome: text("outcome", { enum: APPLICATION_OUTCOMES }),
 });
 
 export const tasks = sqliteTable("tasks", {

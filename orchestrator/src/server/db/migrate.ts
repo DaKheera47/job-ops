@@ -100,6 +100,7 @@ const migrations = [
     to_stage TEXT NOT NULL,
     occurred_at INTEGER NOT NULL,
     metadata TEXT,
+    outcome TEXT,
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -173,6 +174,7 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN outcome TEXT`,
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,
   `ALTER TABLE tasks ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE stage_events ADD COLUMN outcome TEXT`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
@@ -194,7 +196,10 @@ for (const migration of migrations) {
     const message = error instanceof Error ? error.message : String(error);
     const isDuplicateColumn =
       (migration.toLowerCase().includes("alter table jobs add column") ||
-        migration.toLowerCase().includes("alter table tasks add column")) &&
+        migration.toLowerCase().includes("alter table tasks add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table stage_events add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
     if (isDuplicateColumn) {

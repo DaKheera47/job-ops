@@ -23,6 +23,7 @@ import type {
   ResumeProjectsSettings,
   StageEvent,
   StageEventMetadata,
+  StageTransitionTarget,
   UkVisaJobsImportResponse,
   UkVisaJobsSearchResponse,
   ValidationResult,
@@ -153,7 +154,7 @@ export async function getJobTasks(
 export async function transitionJobStage(
   id: string,
   input: {
-    toStage: ApplicationStage;
+    toStage: StageTransitionTarget;
     occurredAt?: number | null;
     metadata?: StageEventMetadata | null;
     outcome?: JobOutcome | null;
@@ -172,6 +173,7 @@ export async function updateJobStageEvent(
     toStage?: ApplicationStage;
     occurredAt?: number | null;
     metadata?: StageEventMetadata | null;
+    outcome?: JobOutcome | null;
   },
 ): Promise<void> {
   return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {

@@ -105,6 +105,7 @@ const updateStageEventSchema = z.object({
   toStage: z.enum(APPLICATION_STAGES).optional(),
   occurredAt: z.number().int().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
+  outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
 });
 
 const updateOutcomeSchema = z.object({
@@ -472,7 +473,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       appliedAt,
     });
 
-    const appliedEvent = transitionStage(
+    transitionStage(
       job.id,
       "applied",
       Math.floor(appliedAtDate.getTime() / 1000),
@@ -494,7 +495,11 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       notifyJobCompleteWebhook(updatedJob).catch(console.warn);
     }
 
-    res.json({ success: true, data: updatedJob ?? appliedEvent });
+    if (!updatedJob) {
+      return res.status(404).json({ success: false, error: "Job not found" });
+    }
+
+    res.json({ success: true, data: updatedJob });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
