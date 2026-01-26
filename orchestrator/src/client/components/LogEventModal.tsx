@@ -1,17 +1,19 @@
-import React from "react";
-import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import React from "react";
+import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
 import {
   AlertDialog,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -19,10 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, FieldLabel, FieldError } from "@/components/ui/field";
-import { ApplicationStage, StageEvent } from "../../shared/types";
+import type { StageEvent } from "../../shared/types";
 
 const logEventSchema = z.object({
   stage: z.string(),
@@ -39,7 +39,6 @@ interface LogEventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onLog: (values: LogEventFormValues, eventId?: string) => Promise<void>;
-  currentStage: ApplicationStage | null;
   editingEvent?: StageEvent | null;
 }
 
@@ -68,7 +67,6 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
   isOpen,
   onClose,
   onLog,
-  currentStage,
   editingEvent,
 }) => {
   const {
@@ -100,8 +98,8 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
           date: toDateTimeLocal(new Date(editingEvent.occurredAt * 1000)),
           notes: editingEvent.metadata?.note || "",
           reasonCode: editingEvent.metadata?.reasonCode || undefined,
-          salary: editingEvent.metadata?.externalUrl?.startsWith("Salary: ") 
-            ? editingEvent.metadata.externalUrl.replace("Salary: ", "") 
+          salary: editingEvent.metadata?.externalUrl?.startsWith("Salary: ")
+            ? editingEvent.metadata.externalUrl.replace("Salary: ", "")
             : undefined,
         });
       } else {
@@ -138,9 +136,13 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <AlertDialogTitle>{editingEvent ? "Edit Event" : "Log Event"}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {editingEvent ? "Edit Event" : "Log Event"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {editingEvent ? "Update the details of this event." : "Record a new update or stage change for this application."}
+            {editingEvent
+              ? "Update the details of this event."
+              : "Record a new update or stage change for this application."}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
@@ -222,7 +224,11 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
               Cancel
             </AlertDialogCancel>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : editingEvent ? "Save Changes" : "Log Event"}
+              {isSubmitting
+                ? "Saving..."
+                : editingEvent
+                  ? "Save Changes"
+                  : "Log Event"}
             </Button>
           </AlertDialogFooter>
         </form>

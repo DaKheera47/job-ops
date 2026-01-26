@@ -1,10 +1,9 @@
-import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-
-import { OnboardingGate } from "./OnboardingGate";
 import * as api from "@client/api";
 import { useSettings } from "@client/hooks/useSettings";
+import { render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OnboardingGate } from "./OnboardingGate";
 
 vi.mock("@client/api", () => ({
   validateOpenrouter: vi.fn(),
@@ -26,18 +25,34 @@ vi.mock("@client/pages/settings/components/BaseResumeSelection", () => ({
 }));
 
 vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialog: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
 vi.mock("@/components/ui/tabs", () => ({
   Tabs: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsList: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TabsTrigger: ({ children }: { children: React.ReactNode }) => <button type="button">{children}</button>,
+  TabsContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  TabsList: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  TabsTrigger: ({ children }: { children: React.ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
 }));
 
 vi.mock("@/components/ui/progress", () => ({
@@ -70,9 +85,18 @@ describe("OnboardingGate", () => {
   });
 
   it("renders the gate once validations complete and any fail", async () => {
-    vi.mocked(api.validateOpenrouter).mockResolvedValue({ valid: false, message: "Invalid" });
-    vi.mocked(api.validateRxresume).mockResolvedValue({ valid: true, message: null });
-    vi.mocked(api.validateResumeConfig).mockResolvedValue({ valid: true, message: null });
+    vi.mocked(api.validateOpenrouter).mockResolvedValue({
+      valid: false,
+      message: "Invalid",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
 
     render(<OnboardingGate />);
 
@@ -81,9 +105,18 @@ describe("OnboardingGate", () => {
   });
 
   it("hides the gate when all validations succeed", async () => {
-    vi.mocked(api.validateOpenrouter).mockResolvedValue({ valid: true, message: null });
-    vi.mocked(api.validateRxresume).mockResolvedValue({ valid: true, message: null });
-    vi.mocked(api.validateResumeConfig).mockResolvedValue({ valid: true, message: null });
+    vi.mocked(api.validateOpenrouter).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
 
     render(<OnboardingGate />);
 

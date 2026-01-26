@@ -170,39 +170,39 @@ describe.sequential("Jobs API routes", () => {
     expect(body.data.sponsorMatchNames).toContain("ACME CORP SPONSOR");
   });
 
-  describe('Application Tracking', () => {
+  describe("Application Tracking", () => {
     let jobId: string;
 
     beforeEach(async () => {
-      const { createJob } = await import('../../repositories/jobs.js');
+      const { createJob } = await import("../../repositories/jobs.js");
       const job = await createJob({
-        source: 'manual',
-        title: 'Tracking Test',
-        employer: 'Test Corp',
-        jobUrl: 'https://example.com/tracking',
+        source: "manual",
+        title: "Tracking Test",
+        employer: "Test Corp",
+        jobUrl: "https://example.com/tracking",
       });
       jobId = job.id;
     });
 
-    it('transitions stages and retrieves events', async () => {
+    it("transitions stages and retrieves events", async () => {
       // 1. Initial transition to applied
       const trans1 = await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toStage: 'applied' }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toStage: "applied" }),
       });
       const body1 = await trans1.json();
       expect(body1.success).toBe(true);
-      expect(body1.data.toStage).toBe('applied');
+      expect(body1.data.toStage).toBe("applied");
       const eventId = body1.data.id;
 
       // 2. Transition to recruiter_screen with metadata
       await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          toStage: 'recruiter_screen',
-          metadata: { note: 'Called by recruiter' }
+          toStage: "recruiter_screen",
+          metadata: { note: "Called by recruiter" },
         }),
       });
 
@@ -211,26 +211,32 @@ describe.sequential("Jobs API routes", () => {
       const eventsBody = await eventsRes.json();
       expect(eventsBody.success).toBe(true);
       expect(eventsBody.data).toHaveLength(2);
-      expect(eventsBody.data[0].toStage).toBe('applied');
-      expect(eventsBody.data[1].toStage).toBe('recruiter_screen');
-      expect(eventsBody.data[1].metadata.note).toBe('Called by recruiter');
+      expect(eventsBody.data[0].toStage).toBe("applied");
+      expect(eventsBody.data[1].toStage).toBe("recruiter_screen");
+      expect(eventsBody.data[1].metadata.note).toBe("Called by recruiter");
 
       // 4. Patch an event
-      const patchRes = await fetch(`${baseUrl}/api/jobs/${jobId}/events/${eventId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ metadata: { note: 'Updated note' } }),
-      });
+      const patchRes = await fetch(
+        `${baseUrl}/api/jobs/${jobId}/events/${eventId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ metadata: { note: "Updated note" } }),
+        },
+      );
       expect(patchRes.status).toBe(200);
 
       const eventsRes2 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
       const eventsBody2 = await eventsRes2.json();
-      expect(eventsBody2.data[0].metadata.note).toBe('Updated note');
+      expect(eventsBody2.data[0].metadata.note).toBe("Updated note");
 
       // 5. Delete an event
-      const deleteRes = await fetch(`${baseUrl}/api/jobs/${jobId}/events/${eventId}`, {
-        method: 'DELETE',
-      });
+      const deleteRes = await fetch(
+        `${baseUrl}/api/jobs/${jobId}/events/${eventId}`,
+        {
+          method: "DELETE",
+        },
+      );
       expect(deleteRes.status).toBe(200);
 
       const eventsRes3 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
@@ -238,9 +244,9 @@ describe.sequential("Jobs API routes", () => {
       expect(eventsBody3.data).toHaveLength(1);
     });
 
-    it('manages application tasks', async () => {
-      const { db, schema } = await import('../../db/index.js');
-      const { eq } = await import('drizzle-orm');
+    it("manages application tasks", async () => {
+      const { db, schema } = await import("../../db/index.js");
+      const { eq } = await import("drizzle-orm");
       const { tasks } = schema;
 
       // 1. Initial state
@@ -250,40 +256,49 @@ describe.sequential("Jobs API routes", () => {
       expect(body1.data).toEqual([]);
 
       // 2. Insert a task
-      await (db as any).insert(tasks).values({
-        id: 'task-1',
-        applicationId: jobId,
-        type: 'todo',
-        title: 'Complete test task',
-        isCompleted: false,
-      }).run();
+      await (db as any)
+        .insert(tasks)
+        .values({
+          id: "task-1",
+          applicationId: jobId,
+          type: "todo",
+          title: "Complete test task",
+          isCompleted: false,
+        })
+        .run();
 
       const res2 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
       const body2 = await res2.json();
       expect(body2.data).toHaveLength(1);
-      expect(body2.data[0].title).toBe('Complete test task');
+      expect(body2.data[0].title).toBe("Complete test task");
 
       // 3. Test filtering (completed vs non-completed)
-      await (db as any).update(tasks).set({ isCompleted: true }).where(eq(tasks.id, 'task-1')).run();
-      
+      await (db as any)
+        .update(tasks)
+        .set({ isCompleted: true })
+        .where(eq(tasks.id, "task-1"))
+        .run();
+
       const res3 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
       const body3 = await res3.json();
       expect(body3.data).toHaveLength(0); // includeCompleted defaults to false
 
-      const res4 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks?includeCompleted=true`);
+      const res4 = await fetch(
+        `${baseUrl}/api/jobs/${jobId}/tasks?includeCompleted=true`,
+      );
       const body4 = await res4.json();
       expect(body4.data).toHaveLength(1);
     });
 
-    it('updates job outcome', async () => {
+    it("updates job outcome", async () => {
       const res = await fetch(`${baseUrl}/api/jobs/${jobId}/outcome`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ outcome: 'rejected' }),
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ outcome: "rejected" }),
       });
       const body = await res.json();
       expect(body.success).toBe(true);
-      expect(body.data.outcome).toBe('rejected');
+      expect(body.data.outcome).toBe("rejected");
       expect(body.data.closedAt).toBeTruthy();
     });
   });

@@ -1,8 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-
-import { JobTimeline } from "./Timeline";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { StageEvent } from "../../../shared/types";
+import { JobTimeline } from "./Timeline";
 
 const baseEvent: StageEvent = {
   id: "event-1",
@@ -20,7 +19,9 @@ describe("JobTimeline", () => {
     const onEdit = vi.fn();
     const onDelete = vi.fn();
 
-    render(<JobTimeline events={[baseEvent]} onEdit={onEdit} onDelete={onDelete} />);
+    render(
+      <JobTimeline events={[baseEvent]} onEdit={onEdit} onDelete={onDelete} />,
+    );
 
     const editButton = screen.getByTitle("Edit event");
     const deleteButton = screen.getByTitle("Delete event");

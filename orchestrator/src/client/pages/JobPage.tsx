@@ -1,15 +1,15 @@
+import {
+  ArrowLeft,
+  CalendarClock,
+  ClipboardList,
+  PlusCircle,
+} from "lucide-react";
 import React from "react";
-import { ArrowLeft, CalendarClock, ClipboardList, PlusCircle } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { JobHeader } from "../components/JobHeader";
-import { JobTimeline } from "./job/Timeline";
-import { LogEventModal, type LogEventFormValues } from "../components/LogEventModal";
-import * as api from "../api";
 import type {
   ApplicationStage,
   ApplicationTask,
@@ -17,6 +17,13 @@ import type {
   JobOutcome,
   StageEvent,
 } from "../../shared/types";
+import * as api from "../api";
+import { JobHeader } from "../components/JobHeader";
+import {
+  type LogEventFormValues,
+  LogEventModal,
+} from "../components/LogEventModal";
+import { JobTimeline } from "./job/Timeline";
 
 const formatTimestamp = (value?: number | null) => {
   if (!value) return "No due date";
@@ -46,7 +53,9 @@ export const JobPage: React.FC = () => {
   const [tasks, setTasks] = React.useState<ApplicationTask[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
-  const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(null);
+  const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
+    null,
+  );
   const pendingEventRef = React.useRef<StageEvent | null>(null);
 
   const loadData = React.useCallback(async () => {
@@ -56,11 +65,13 @@ export const JobPage: React.FC = () => {
       const jobData = await api.getJob(id);
       setJob(jobData);
 
-      api.getJobStageEvents(id)
+      api
+        .getJobStageEvents(id)
         .then((data) => setEvents(mergeEvents(data, pendingEventRef.current)))
         .catch(() => toast.error("Failed to load stage events"));
 
-      api.getJobTasks(id)
+      api
+        .getJobTasks(id)
         .then((data) => setTasks(data))
         .catch(() => toast.error("Failed to load tasks"));
     } finally {
@@ -72,10 +83,15 @@ export const JobPage: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handleLogEvent = async (values: LogEventFormValues, eventId?: string) => {
+  const handleLogEvent = async (
+    values: LogEventFormValues,
+    eventId?: string,
+  ) => {
     if (!job) return;
 
-    let toStage: ApplicationStage | "no_change" = values.stage as ApplicationStage | "no_change";
+    let toStage: ApplicationStage | "no_change" = values.stage as
+      | ApplicationStage
+      | "no_change";
     let outcome: JobOutcome | null = null;
 
     if (values.stage === "rejected") {
@@ -133,7 +149,8 @@ export const JobPage: React.FC = () => {
   };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!job || !window.confirm("Are you sure you want to delete this event?")) return;
+    if (!job || !window.confirm("Are you sure you want to delete this event?"))
+      return;
     try {
       await api.deleteJobStageEvent(job.id, eventId);
       const [jobData, eventData] = await Promise.all([
@@ -154,7 +171,9 @@ export const JobPage: React.FC = () => {
     setIsLogModalOpen(true);
   };
 
-  const currentStage = job ? (events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null)) : null;
+  const currentStage = job
+    ? (events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null))
+    : null;
 
   if (!id) {
     return null;
@@ -181,7 +200,10 @@ export const JobPage: React.FC = () => {
       </div>
 
       {job ? (
-        <JobHeader job={job} className="rounded-lg border border-border/40 bg-muted/5 p-4" />
+        <JobHeader
+          job={job}
+          className="rounded-lg border border-border/40 bg-muted/5 p-4"
+        />
       ) : (
         <div className="rounded-lg border border-dashed border-border/40 p-6 text-sm text-muted-foreground">
           {isLoading ? "Loading application..." : "Application not found."}
@@ -197,15 +219,19 @@ export const JobPage: React.FC = () => {
                 Stage timeline
               </CardTitle>
               {currentStage && (
-                <Badge variant="secondary" className="px-3 py-1 text-xs font-medium uppercase tracking-wider">
-                  {STAGE_LABELS[currentStage as ApplicationStage] || currentStage}
+                <Badge
+                  variant="secondary"
+                  className="px-3 py-1 text-xs font-medium uppercase tracking-wider"
+                >
+                  {STAGE_LABELS[currentStage as ApplicationStage] ||
+                    currentStage}
                 </Badge>
               )}
             </div>
           </CardHeader>
           <CardContent>
-            <JobTimeline 
-              events={events} 
+            <JobTimeline
+              events={events}
               onEdit={handleEditEvent}
               onDelete={handleDeleteEvent}
             />
@@ -222,21 +248,32 @@ export const JobPage: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Current Stage</div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Current Stage
+                </div>
                 <div className="mt-1 text-sm font-medium">
-                  {currentStage ? (STAGE_LABELS[currentStage as ApplicationStage] || currentStage) : job?.status}
+                  {currentStage
+                    ? STAGE_LABELS[currentStage as ApplicationStage] ||
+                      currentStage
+                    : job?.status}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Outcome</div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Outcome
+                </div>
                 <div className="mt-1 text-sm font-medium">
                   {job?.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
                 </div>
               </div>
               {job?.closedAt && (
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Closed On</div>
-                  <div className="mt-1 text-sm font-medium">{formatTimestamp(job.closedAt)}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Closed On
+                  </div>
+                  <div className="mt-1 text-sm font-medium">
+                    {formatTimestamp(job.closedAt)}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -253,16 +290,24 @@ export const JobPage: React.FC = () => {
               <CardContent>
                 <div className="space-y-3">
                   {tasks.map((task) => (
-                    <div key={task.id} className="flex items-start justify-between gap-4">
+                    <div
+                      key={task.id}
+                      className="flex items-start justify-between gap-4"
+                    >
                       <div className="space-y-1">
                         <div className="text-sm font-medium text-foreground/90">
                           {task.title}
                         </div>
                         {task.notes && (
-                          <div className="text-xs text-muted-foreground">{task.notes}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {task.notes}
+                          </div>
                         )}
                       </div>
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase tracking-wide"
+                      >
                         {formatTimestamp(task.dueDate)}
                       </Badge>
                     </div>

@@ -1,17 +1,34 @@
-import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { LogEventModal } from "./LogEventModal";
 
 vi.mock("@/components/ui/alert-dialog", () => ({
-  AlertDialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  AlertDialogCancel: ({ children, ...props }: { children: React.ReactNode }) => (
+  AlertDialog: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+  }) => (
     <button type="button" {...props}>
       {children}
     </button>
@@ -19,7 +36,15 @@ vi.mock("@/components/ui/alert-dialog", () => ({
 }));
 
 vi.mock("@/components/ui/select", () => ({
-  Select: ({ children, value, onValueChange }: { children: React.ReactNode; value?: string; onValueChange?: (value: string) => void }) => (
+  Select: ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    value?: string;
+    onValueChange?: (value: string) => void;
+  }) => (
     <select
       data-testid="select"
       value={value}
@@ -28,10 +53,16 @@ vi.mock("@/components/ui/select", () => ({
       {children}
     </select>
   ),
-  SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ children, value }: { children: React.ReactNode; value: string }) => (
-    <option value={value}>{children}</option>
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
   ),
+  SelectItem: ({
+    children,
+    value,
+  }: {
+    children: React.ReactNode;
+    value: string;
+  }) => <option value={value}>{children}</option>,
   SelectTrigger: () => null,
   SelectValue: () => null,
 }));
@@ -51,7 +82,7 @@ describe("LogEventModal", () => {
         onClose={onClose}
         onLog={onLog}
         currentStage={"applied"}
-      />
+      />,
     );
 
     const stageSelect = screen.getAllByTestId("select")[0];
@@ -67,8 +98,8 @@ describe("LogEventModal", () => {
     await waitFor(() =>
       expect(onLog).toHaveBeenCalledWith(
         expect.objectContaining({ stage: "rejected", reasonCode: "Visa" }),
-        undefined
-      )
+        undefined,
+      ),
     );
   });
 
@@ -82,7 +113,7 @@ describe("LogEventModal", () => {
         onClose={onClose}
         onLog={onLog}
         currentStage={"applied"}
-      />
+      />,
     );
 
     const titleInput = screen.getByPlaceholderText("e.g. Recruiter Screen");

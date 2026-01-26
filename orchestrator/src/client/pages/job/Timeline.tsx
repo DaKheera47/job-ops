@@ -1,4 +1,3 @@
-import React from "react";
 import {
   CheckCircle2,
   ClipboardList,
@@ -11,6 +10,7 @@ import {
   UserRound,
   Video,
 } from "lucide-react";
+import React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,13 @@ const formatRange = (start: number, end: number) => {
 
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
-  | { kind: "group"; id: string; label: string; events: StageEvent[]; occurredAt: number };
+  | {
+      kind: "group";
+      id: string;
+      label: string;
+      events: StageEvent[];
+      occurredAt: number;
+    };
 
 interface JobTimelineProps {
   events: StageEvent[];
@@ -72,8 +78,14 @@ interface JobTimelineProps {
   onDelete?: (eventId: string) => void;
 }
 
-export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDelete }) => {
-  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>({});
+export const JobTimeline: React.FC<JobTimelineProps> = ({
+  events,
+  onEdit,
+  onDelete,
+}) => {
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(
+    {},
+  );
   const lastEvent = events.at(-1);
   const currentStage = lastEvent?.toStage ?? null;
 
@@ -94,10 +106,15 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
       groups.set(groupId, group);
     });
 
-    const mapped: TimelineEntry[] = standalone.map((event) => ({ kind: "event", event }));
+    const mapped: TimelineEntry[] = standalone.map((event) => ({
+      kind: "event",
+      event,
+    }));
 
     groups.forEach((value, id) => {
-      const sorted = [...value.events].sort((a, b) => a.occurredAt - b.occurredAt);
+      const sorted = [...value.events].sort(
+        (a, b) => a.occurredAt - b.occurredAt,
+      );
       mapped.push({
         kind: "group",
         id,
@@ -126,7 +143,9 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
     <div className="space-y-6">
       {entries.map((entry, entryIndex) => {
         if (entry.kind === "event") {
-          const title = entry.event.metadata?.eventLabel || stageLabels[entry.event.toStage];
+          const title =
+            entry.event.metadata?.eventLabel ||
+            stageLabels[entry.event.toStage];
           const note = entry.event.metadata?.note;
           const reason = entry.event.metadata?.reasonCode;
           const isCurrent =
@@ -144,9 +163,14 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
               onEdit={onEdit ? () => onEdit(entry.event) : undefined}
               onDelete={onDelete ? () => onDelete(entry.event.id) : undefined}
             >
-              {note && <div className="text-sm text-muted-foreground">{note}</div>}
+              {note && (
+                <div className="text-sm text-muted-foreground">{note}</div>
+              )}
               {reason && (
-                <Badge variant="outline" className="mt-2 text-[10px] uppercase tracking-wide">
+                <Badge
+                  variant="outline"
+                  className="mt-2 text-[10px] uppercase tracking-wide"
+                >
                   {reason}
                 </Badge>
               )}
@@ -160,10 +184,13 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
         const groupStart = entry.events[0]?.occurredAt ?? entry.occurredAt;
         const groupEnd = entry.events.at(-1)?.occurredAt ?? entry.occurredAt;
         const groupCompleted = entry.events.some((event) =>
-          /submitted|completed|finished/i.test(event.metadata?.eventLabel ?? ""),
+          /submitted|completed|finished/i.test(
+            event.metadata?.eventLabel ?? "",
+          ),
         );
         const isCurrentGroup =
-          currentStage === entry.events.at(-1)?.toStage && entryIndex === entries.length - 1;
+          currentStage === entry.events.at(-1)?.toStage &&
+          entryIndex === entries.length - 1;
 
         return (
           <div key={entry.id} className="space-y-2">
@@ -185,7 +212,9 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
                     <TimelineRow
                       key={event.id}
                       date={formatTimestamp(event.occurredAt)}
-                      title={event.metadata?.eventLabel || stageLabels[event.toStage]}
+                      title={
+                        event.metadata?.eventLabel || stageLabels[event.toStage]
+                      }
                       icon={stageIcons[event.toStage]}
                       isCompact
                       isLast={false}
@@ -193,7 +222,9 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({ events, onEdit, onDele
                       onDelete={onDelete ? () => onDelete(event.id) : undefined}
                     >
                       {event.metadata?.note && (
-                        <div className="text-xs text-muted-foreground">{event.metadata.note}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {event.metadata.note}
+                        </div>
                       )}
                     </TimelineRow>
                   ))}
@@ -244,7 +275,9 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
             : "grid grid-cols-[100px_24px_1fr] gap-4"
         }
       >
-        <div className="text-right text-xs font-medium text-muted-foreground">{date}</div>
+        <div className="text-right text-xs font-medium text-muted-foreground">
+          {date}
+        </div>
         <div className="relative flex flex-col items-center">
           <span className="absolute inset-y-0 w-px bg-border" />
           <div
@@ -258,17 +291,26 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
           >
             {isFilled && icon}
           </div>
-          {isLast && <span className="absolute bottom-0 h-4 w-px bg-background" />}
+          {isLast && (
+            <span className="absolute bottom-0 h-4 w-px bg-background" />
+          )}
         </div>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1 min-w-0 flex-1">
-            <div className={isCompact ? "text-xs font-semibold" : "text-sm font-semibold"}>{title}</div>
+            <div
+              className={
+                isCompact ? "text-xs font-semibold" : "text-sm font-semibold"
+              }
+            >
+              {title}
+            </div>
             {children}
           </div>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
             {onEdit && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit();
@@ -281,6 +323,7 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
             )}
             {onDelete && (
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete();

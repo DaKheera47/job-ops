@@ -197,7 +197,6 @@ for (const migration of migrations) {
         migration.toLowerCase().includes("alter table tasks add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
-
     if (isDuplicateColumn) {
       console.log("↩️ Migration skipped (column already exists)");
       continue;

@@ -8,11 +8,11 @@ import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
 import { OnboardingGate } from "./components/OnboardingGate";
+import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { UkVisaJobsPage } from "./pages/UkVisaJobsPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
-import { JobPage } from "./pages/JobPage";
 
 export const App: React.FC = () => {
   const location = useLocation();

@@ -95,7 +95,7 @@ const updateJobSchema = z.object({
 });
 
 const transitionStageSchema = z.object({
-  toStage: z.enum([...APPLICATION_STAGES, 'no_change']),
+  toStage: z.enum([...APPLICATION_STAGES, "no_change"]),
   occurredAt: z.number().int().nullable().optional(),
   metadata: stageEventMetadataSchema.nullable().optional(),
   outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
@@ -149,25 +149,24 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.getJobById(req.params.id);
     if (!job) {
-      return res.status(404).json({ success: false, error: 'Job not found' });
+      return res.status(404).json({ success: false, error: "Job not found" });
     }
     res.json({ success: true, data: job });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   }
 });
 
-
 /**
  * GET /api/jobs/:id/events - Get stage event timeline
  */
-jobsRouter.get('/:id/events', async (req: Request, res: Response) => {
+jobsRouter.get("/:id/events", async (req: Request, res: Response) => {
   try {
     const events = await getStageEvents(req.params.id);
     res.json({ success: true, data: events });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -175,13 +174,15 @@ jobsRouter.get('/:id/events', async (req: Request, res: Response) => {
 /**
  * GET /api/jobs/:id/tasks - Get tasks for an application
  */
-jobsRouter.get('/:id/tasks', async (req: Request, res: Response) => {
+jobsRouter.get("/:id/tasks", async (req: Request, res: Response) => {
   try {
-    const includeCompleted = req.query.includeCompleted === '1' || req.query.includeCompleted === 'true';
+    const includeCompleted =
+      req.query.includeCompleted === "1" ||
+      req.query.includeCompleted === "true";
     const tasks = await getTasks(req.params.id, includeCompleted);
     res.json({ success: true, data: tasks });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -189,7 +190,7 @@ jobsRouter.get('/:id/tasks', async (req: Request, res: Response) => {
 /**
  * POST /api/jobs/:id/stages - Transition stage
  */
-jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
+jobsRouter.post("/:id/stages", async (req: Request, res: Response) => {
   try {
     const input = transitionStageSchema.parse(req.body);
     const event = transitionStage(
@@ -204,7 +205,7 @@ jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -212,40 +213,48 @@ jobsRouter.post('/:id/stages', async (req: Request, res: Response) => {
 /**
  * PATCH /api/jobs/:id/events/:eventId - Update an event
  */
-jobsRouter.patch('/:id/events/:eventId', async (req: Request, res: Response) => {
-  try {
-    const input = updateStageEventSchema.parse(req.body);
-    updateStageEvent(req.params.eventId, input);
-    res.json({ success: true });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+jobsRouter.patch(
+  "/:id/events/:eventId",
+  async (req: Request, res: Response) => {
+    try {
+      const input = updateStageEventSchema.parse(req.body);
+      updateStageEvent(req.params.eventId, input);
+      res.json({ success: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ success: false, error: error.message });
+      }
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ success: false, error: message });
     }
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
-  }
-});
+  },
+);
 
 /**
  * DELETE /api/jobs/:id/events/:eventId - Delete an event
  */
-jobsRouter.delete('/:id/events/:eventId', async (req: Request, res: Response) => {
-  try {
-    deleteStageEvent(req.params.eventId);
-    res.json({ success: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    res.status(500).json({ success: false, error: message });
-  }
-});
+jobsRouter.delete(
+  "/:id/events/:eventId",
+  async (req: Request, res: Response) => {
+    try {
+      deleteStageEvent(req.params.eventId);
+      res.json({ success: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ success: false, error: message });
+    }
+  },
+);
 
 /**
  * PATCH /api/jobs/:id/outcome - Close out application
  */
-jobsRouter.patch('/:id/outcome', async (req: Request, res: Response) => {
+jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
   try {
     const input = updateOutcomeSchema.parse(req.body);
-    const closedAt = input.outcome ? (input.closedAt ?? Math.floor(Date.now() / 1000)) : null;
+    const closedAt = input.outcome
+      ? (input.closedAt ?? Math.floor(Date.now() / 1000))
+      : null;
     const job = await jobsRepo.updateJob(req.params.id, {
       outcome: input.outcome,
       closedAt,
@@ -465,15 +474,14 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
 
     const appliedEvent = transitionStage(
       job.id,
-      'applied',
+      "applied",
       Math.floor(appliedAtDate.getTime() / 1000),
       {
-        eventLabel: 'Applied',
-        actor: 'system',
+        eventLabel: "Applied",
+        actor: "system",
       },
       null,
     );
-
 
     // Update job status + Notion metadata
     const updatedJob = await jobsRepo.updateJob(job.id, {
