@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
+import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "../../../shared/types";
 import * as api from "../../api";
-import { MemoryRouter } from "react-router-dom";
 import { DiscoveredPanel } from "./DiscoveredPanel";
 
 vi.mock("@/components/ui/dropdown-menu", () => {

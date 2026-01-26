@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe.sequential("Application Tracking Service", () => {
   let tempDir: string;
@@ -23,7 +23,7 @@ describe.sequential("Application Tracking Service", () => {
     const dbModule = await import("../db/index.js");
     db = dbModule.db;
     schema = dbModule.schema;
-    
+
     applicationTracking = await import("./applicationTracking.js");
     jobsRepo = await import("../repositories/jobs.js");
   });
@@ -58,7 +58,10 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobAfter1?.appliedAt).toBeTruthy();
 
     // 2. Next Transition (Recruiter Screen)
-    const event2 = applicationTracking.transitionStage(job.id, "recruiter_screen");
+    const event2 = applicationTracking.transitionStage(
+      job.id,
+      "recruiter_screen",
+    );
     expect(event2.fromStage).toBe("applied");
     expect(event2.toStage).toBe("recruiter_screen");
 
@@ -80,8 +83,16 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = applicationTracking.transitionStage(job.id, "applied", now - 100);
-    const event2 = applicationTracking.transitionStage(job.id, "recruiter_screen", now);
+    const _event1 = applicationTracking.transitionStage(
+      job.id,
+      "applied",
+      now - 100,
+    );
+    const event2 = applicationTracking.transitionStage(
+      job.id,
+      "recruiter_screen",
+      now,
+    );
 
     // Update event2 (latest) to 'offer'
     applicationTracking.updateStageEvent(event2.id, { toStage: "offer" });
@@ -152,9 +163,14 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     applicationTracking.transitionStage(job.id, "applied");
-    const noteEvent = applicationTracking.transitionStage(job.id, "no_change", undefined, {
-      note: "Just checking in",
-    });
+    const noteEvent = applicationTracking.transitionStage(
+      job.id,
+      "no_change",
+      undefined,
+      {
+        note: "Just checking in",
+      },
+    );
 
     expect(noteEvent.toStage).toBe("applied");
 
@@ -172,7 +188,11 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = applicationTracking.transitionStage(job.id, "applied", now - 100);
+    const _event1 = applicationTracking.transitionStage(
+      job.id,
+      "applied",
+      now - 100,
+    );
     const event2 = applicationTracking.transitionStage(
       job.id,
       "closed",
@@ -190,7 +210,9 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBe(now);
 
     // 1. Update event2 to not be a closure
-    applicationTracking.updateStageEvent(event2.id, { toStage: "technical_interview" });
+    applicationTracking.updateStageEvent(event2.id, {
+      toStage: "technical_interview",
+    });
     jobCheck = await db
       .select()
       .from(schema.jobs)
@@ -222,4 +244,3 @@ describe.sequential("Application Tracking Service", () => {
 });
 
 import { eq } from "drizzle-orm";
-
