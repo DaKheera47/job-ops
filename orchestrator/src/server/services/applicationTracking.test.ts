@@ -1,34 +1,42 @@
-import type { Server } from "node:http";
-import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "../api/routes/test-utils.js";
-import { clearDatabase } from "../db/clear.js";
-import { db, schema } from "../db/index.js";
-import { createJob } from "../repositories/jobs.js";
-import {
-  deleteStageEvent,
-  getStageEvents,
-  transitionStage,
-  updateStageEvent,
-} from "./applicationTracking.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 describe.sequential("Application Tracking Service", () => {
-  let server: Server;
-  let closeDb: () => void;
   let tempDir: string;
+  let db: any;
+  let schema: any;
+  let applicationTracking: any;
+  let jobsRepo: any;
 
   beforeEach(async () => {
-    // We start the server to get the DB connection initialized in the test env
-    ({ server, closeDb, tempDir } = await startServer());
+    vi.resetModules();
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-service-test-"));
+    process.env.DATA_DIR = tempDir;
+    process.env.NODE_ENV = "test";
+
+    // Run migrations
+    await import("../db/migrate.js");
+
+    // Import modules after env is set
+    const dbModule = await import("../db/index.js");
+    db = dbModule.db;
+    schema = dbModule.schema;
+    
+    applicationTracking = await import("./applicationTracking.js");
+    jobsRepo = await import("../repositories/jobs.js");
   });
 
   afterEach(async () => {
-    clearDatabase();
-    await stopServer({ server, closeDb, tempDir });
+    const { closeDb } = await import("../db/index.js");
+    closeDb();
+    await rm(tempDir, { recursive: true, force: true });
+    vi.clearAllMocks();
   });
 
   it("transitions stage and updates job status", async () => {
-    const job = await createJob({
+    const job = await jobsRepo.createJob({
       source: "manual",
       title: "Test Developer",
       employer: "Tech Corp",
@@ -36,7 +44,7 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     // 1. Initial Transition (Applied)
-    const event1 = transitionStage(job.id, "applied");
+    const event1 = applicationTracking.transitionStage(job.id, "applied");
 
     expect(event1.toStage).toBe("applied");
 
@@ -50,7 +58,7 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobAfter1?.appliedAt).toBeTruthy();
 
     // 2. Next Transition (Recruiter Screen)
-    const event2 = transitionStage(job.id, "recruiter_screen");
+    const event2 = applicationTracking.transitionStage(job.id, "recruiter_screen");
     expect(event2.fromStage).toBe("applied");
     expect(event2.toStage).toBe("recruiter_screen");
 
@@ -64,7 +72,7 @@ describe.sequential("Application Tracking Service", () => {
   });
 
   it("updates stage event and reflects in job status if latest", async () => {
-    const job = await createJob({
+    const job = await jobsRepo.createJob({
       source: "manual",
       title: "Frontend Engineer",
       employer: "Web Co",
@@ -72,15 +80,15 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = transitionStage(job.id, "applied", now - 100);
-    const event2 = transitionStage(job.id, "recruiter_screen", now);
+    const _event1 = applicationTracking.transitionStage(job.id, "applied", now - 100);
+    const event2 = applicationTracking.transitionStage(job.id, "recruiter_screen", now);
 
     // Update event2 (latest) to 'offer'
-    updateStageEvent(event2.id, { toStage: "offer" });
+    applicationTracking.updateStageEvent(event2.id, { toStage: "offer" });
 
     // Verify Event Updated
-    const events = await getStageEvents(job.id);
-    const updatedEvent2 = events.find((e) => e.id === event2.id);
+    const events = await applicationTracking.getStageEvents(job.id);
+    const updatedEvent2 = events.find((e: any) => e.id === event2.id);
     expect(updatedEvent2?.toStage).toBe("offer");
 
     // Verify Job Status Updated
@@ -94,7 +102,7 @@ describe.sequential("Application Tracking Service", () => {
   });
 
   it("deletes stage event and reverts job status", async () => {
-    const job = await createJob({
+    const job = await jobsRepo.createJob({
       source: "manual",
       title: "Backend Engineer",
       employer: "Server Co",
@@ -102,10 +110,10 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    transitionStage(job.id, "applied", now - 100); // event1
+    applicationTracking.transitionStage(job.id, "applied", now - 100); // event1
 
     // Simulate UI sending outcome for rejection
-    const event2 = transitionStage(
+    const event2 = applicationTracking.transitionStage(
       job.id,
       "closed",
       now,
@@ -123,7 +131,7 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.outcome).toBe("rejected");
 
     // Delete event2
-    deleteStageEvent(event2.id);
+    applicationTracking.deleteStageEvent(event2.id);
 
     // Verify job status reverted to event1 (applied)
     jobCheck = await db
@@ -136,27 +144,27 @@ describe.sequential("Application Tracking Service", () => {
   });
 
   it('handles "no_change" transitions (notes)', async () => {
-    const job = await createJob({
+    const job = await jobsRepo.createJob({
       source: "manual",
       title: "DevOps",
       employer: "Cloud Inc",
       jobUrl: "https://example.com/job/4",
     });
 
-    transitionStage(job.id, "applied");
-    const noteEvent = transitionStage(job.id, "no_change", undefined, {
+    applicationTracking.transitionStage(job.id, "applied");
+    const noteEvent = applicationTracking.transitionStage(job.id, "no_change", undefined, {
       note: "Just checking in",
     });
 
     expect(noteEvent.toStage).toBe("applied");
 
-    const events = await getStageEvents(job.id);
+    const events = await applicationTracking.getStageEvents(job.id);
     expect(events).toHaveLength(2);
     expect(events[1].metadata?.note).toBe("Just checking in");
   });
 
   it("updates closedAt when outcome changes via event update/delete", async () => {
-    const job = await createJob({
+    const job = await jobsRepo.createJob({
       source: "manual",
       title: "QA Engineer",
       employer: "Test Labs",
@@ -164,8 +172,8 @@ describe.sequential("Application Tracking Service", () => {
     });
 
     const now = Math.floor(Date.now() / 1000);
-    const _event1 = transitionStage(job.id, "applied", now - 100);
-    const event2 = transitionStage(
+    const _event1 = applicationTracking.transitionStage(job.id, "applied", now - 100);
+    const event2 = applicationTracking.transitionStage(
       job.id,
       "closed",
       now,
@@ -182,7 +190,7 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBe(now);
 
     // 1. Update event2 to not be a closure
-    updateStageEvent(event2.id, { toStage: "technical_interview" });
+    applicationTracking.updateStageEvent(event2.id, { toStage: "technical_interview" });
     jobCheck = await db
       .select()
       .from(schema.jobs)
@@ -192,7 +200,7 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBeNull();
 
     // 2. Update event2 back to a closure
-    updateStageEvent(event2.id, { toStage: "offer" });
+    applicationTracking.updateStageEvent(event2.id, { toStage: "offer" });
     jobCheck = await db
       .select()
       .from(schema.jobs)
@@ -202,7 +210,7 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBe(now);
 
     // 3. Delete the closure event
-    deleteStageEvent(event2.id);
+    applicationTracking.deleteStageEvent(event2.id);
     jobCheck = await db
       .select()
       .from(schema.jobs)
@@ -212,3 +220,6 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBeNull();
   });
 });
+
+import { eq } from "drizzle-orm";
+

@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Job } from "../../shared/types";
 import * as api from "../api";
+import { MemoryRouter } from "react-router-dom";
 import { ReadyPanel } from "./ReadyPanel";
 
 vi.mock("@/components/ui/dropdown-menu", () => {
@@ -136,7 +137,9 @@ describe("ReadyPanel", () => {
     vi.mocked(api.rescoreJob).mockResolvedValue(job as Job);
 
     render(
-      <ReadyPanel job={job} onJobUpdated={onJobUpdated} onJobMoved={vi.fn()} />,
+      <MemoryRouter>
+        <ReadyPanel job={job} onJobUpdated={onJobUpdated} onJobMoved={vi.fn()} />
+      </MemoryRouter>,
     );
 
     fireEvent.click(
