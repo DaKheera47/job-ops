@@ -76,13 +76,7 @@ describe("LogEventModal", () => {
     const onLog = vi.fn().mockResolvedValue(undefined);
     const onClose = vi.fn();
 
-    render(
-      <LogEventModal
-        isOpen
-        onClose={onClose}
-        onLog={onLog}
-      />,
-    );
+    render(<LogEventModal isOpen onClose={onClose} onLog={onLog} />);
 
     const stageSelect = screen.getAllByTestId("select")[0];
     fireEvent.change(stageSelect, { target: { value: "rejected" } });
@@ -106,13 +100,7 @@ describe("LogEventModal", () => {
     const onLog = vi.fn().mockResolvedValue(undefined);
     const onClose = vi.fn();
 
-    render(
-      <LogEventModal
-        isOpen
-        onClose={onClose}
-        onLog={onLog}
-      />,
-    );
+    render(<LogEventModal isOpen onClose={onClose} onLog={onLog} />);
 
     const titleInput = screen.getByPlaceholderText("e.g. Recruiter Screen");
     fireEvent.change(titleInput, { target: { value: "" } });

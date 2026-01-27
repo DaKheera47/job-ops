@@ -242,7 +242,7 @@ export const JobPage: React.FC = () => {
                 <div className="mt-1 text-sm font-medium">
                   {currentStage
                     ? STAGE_LABELS[currentStage as ApplicationStage] ||
-                    currentStage
+                      currentStage
                     : job?.status}
                 </div>
               </div>
