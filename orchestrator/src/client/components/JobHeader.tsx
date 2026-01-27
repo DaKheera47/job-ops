@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -180,6 +180,8 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   onCheckSponsor,
 }) => {
   const { showSponsorInfo } = useSettings();
+  const { pathname } = useLocation();
+  const isJobPage = pathname.startsWith("/job/");
   const deadline = formatDate(job.deadline);
 
   return (
@@ -204,17 +206,19 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           >
             {sourceLabel[job.source]}
           </Badge>
-          <Button
-            asChild
-            size="sm"
-            variant="ghost"
-            className="h-6 px-2 text-[10px] uppercase tracking-wide"
-          >
-            <Link to={`/job/${job.id}`}>
-              View
-              <ArrowUpRight className="h-3 w-3" />
-            </Link>
-          </Button>
+          {!isJobPage && (
+            <Button
+              asChild
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] uppercase tracking-wide"
+            >
+              <Link to={`/job/${job.id}`}>
+                View
+                <ArrowUpRight className="h-3 w-3" />
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

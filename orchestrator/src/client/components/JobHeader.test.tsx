@@ -141,4 +141,16 @@ describe("JobHeader", () => {
       screen.queryByText("Check Sponsorship Status"),
     ).not.toBeInTheDocument();
   });
+
+  it("hides the view button when already on a job page", () => {
+    render(
+      <MemoryRouter initialEntries={["/job/job-1"]}>
+        <JobHeader job={mockJob} />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.queryByRole("link", { name: /view/i }),
+    ).not.toBeInTheDocument();
+  });
 });
