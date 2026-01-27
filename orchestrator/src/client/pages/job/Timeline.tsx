@@ -149,9 +149,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
               )}
               {salary && (
                 <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50">
-                    {salary}
-                  </span>
+                  {salary}
                 </div>
               )}
               {reason && (
