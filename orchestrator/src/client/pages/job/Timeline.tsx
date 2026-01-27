@@ -14,7 +14,11 @@ import React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
-import { type ApplicationStage, type StageEvent, STAGE_LABELS } from "../../../shared/types";
+import {
+  type ApplicationStage,
+  STAGE_LABELS,
+  type StageEvent,
+} from "../../../shared/types";
 import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
 
 const stageIcons: Record<ApplicationStage, React.ReactNode> = {
@@ -34,17 +38,15 @@ const formatRange = (start: number, end: number) => {
   return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
 };
 
-
-
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
   | {
-    kind: "group";
-    id: string;
-    label: string;
-    events: StageEvent[];
-    occurredAt: number;
-  };
+      kind: "group";
+      id: string;
+      label: string;
+      events: StageEvent[];
+      occurredAt: number;
+    };
 
 interface JobTimelineProps {
   events: StageEvent[];
@@ -187,7 +189,8 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
                       key={event.id}
                       date={formatTimestampWithTime(event.occurredAt)}
                       title={
-                        event.metadata?.eventLabel || STAGE_LABELS[event.toStage]
+                        event.metadata?.eventLabel ||
+                        STAGE_LABELS[event.toStage]
                       }
                       icon={stageIcons[event.toStage]}
                       isCompact

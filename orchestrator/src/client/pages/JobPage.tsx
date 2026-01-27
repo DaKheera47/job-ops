@@ -10,13 +10,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatTimestamp } from "@/lib/utils";
 import {
   type ApplicationStage,
   type ApplicationTask,
   type Job,
   type JobOutcome,
-  type StageEvent,
   STAGE_LABELS,
+  type StageEvent,
 } from "../../shared/types";
 import * as api from "../api";
 import { JobHeader } from "../components/JobHeader";
@@ -24,10 +25,7 @@ import {
   type LogEventFormValues,
   LogEventModal,
 } from "../components/LogEventModal";
-import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
 import { JobTimeline } from "./job/Timeline";
-
-
 
 export const JobPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
