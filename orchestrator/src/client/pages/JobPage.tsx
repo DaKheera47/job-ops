@@ -1,7 +1,9 @@
+import confetti from "canvas-confetti";
 import {
   ArrowLeft,
   CalendarClock,
   ClipboardList,
+  DollarSign,
   PlusCircle,
 } from "lucide-react";
 import React from "react";
@@ -130,6 +132,15 @@ export const JobPage: React.FC = () => {
       pendingEventRef.current = null;
       setEditingEvent(null);
       toast.success(eventId ? "Event updated" : "Event logged");
+
+      if (effectiveStage === "offer") {
+        confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#10b981", "#34d399", "#6ee7b7", "#ffffff"],
+        });
+      }
     } catch (error) {
       console.error("Failed to log event:", error);
       toast.error("Failed to log event");
@@ -206,15 +217,26 @@ export const JobPage: React.FC = () => {
                 <ClipboardList className="h-4 w-4" />
                 Stage timeline
               </CardTitle>
-              {currentStage && (
-                <Badge
-                  variant="secondary"
-                  className="px-3 py-1 text-xs font-medium uppercase tracking-wider"
-                >
-                  {STAGE_LABELS[currentStage as ApplicationStage] ||
-                    currentStage}
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {job?.salary && (
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+                  >
+                    <DollarSign className="mr-1 h-3.5 w-3.5" />
+                    {job.salary}
+                  </Badge>
+                )}
+                {currentStage && (
+                  <Badge
+                    variant="secondary"
+                    className="px-3 py-1 text-xs font-medium uppercase tracking-wider"
+                  >
+                    {STAGE_LABELS[currentStage as ApplicationStage] ||
+                      currentStage}
+                  </Badge>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent>

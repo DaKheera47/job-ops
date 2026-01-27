@@ -41,12 +41,12 @@ const formatRange = (start: number, end: number) => {
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
   | {
-      kind: "group";
-      id: string;
-      label: string;
-      events: StageEvent[];
-      occurredAt: number;
-    };
+    kind: "group";
+    id: string;
+    label: string;
+    events: StageEvent[];
+    occurredAt: number;
+  };
 
 interface JobTimelineProps {
   events: StageEvent[];
@@ -126,6 +126,12 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
             currentStage === entry.event.toStage &&
             entryIndex === entries.length - 1 &&
             entry.event.toStage !== "applied";
+          const isOffer = entry.event.toStage === "offer";
+          const salary = entry.event.metadata?.externalUrl?.startsWith(
+            "Salary: ",
+          )
+            ? entry.event.metadata.externalUrl.replace("Salary: ", "")
+            : null;
           return (
             <TimelineRow
               key={entry.event.id}
@@ -133,12 +139,20 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
               title={title}
               icon={stageIcons[entry.event.toStage]}
               isCurrent={isCurrent}
+              isOffer={isOffer}
               isLast={entryIndex === entries.length - 1}
               onEdit={onEdit ? () => onEdit(entry.event) : undefined}
               onDelete={onDelete ? () => onDelete(entry.event.id) : undefined}
             >
               {note && (
                 <div className="text-sm text-muted-foreground">{note}</div>
+              )}
+              {salary && (
+                <div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/50">
+                  </span>
+                  {salary}
+                </div>
               )}
               {reason && (
                 <Badge
@@ -213,6 +227,7 @@ interface TimelineRowProps {
   title: string;
   icon: React.ReactNode;
   isCurrent?: boolean;
+  isOffer?: boolean;
   isCompleted?: boolean;
   isLast?: boolean;
   isCompact?: boolean;
@@ -226,6 +241,7 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
   title,
   icon,
   isCurrent,
+  isOffer,
   isCompleted,
   isLast,
   isCompact,
@@ -237,7 +253,13 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
   const isFilled = !isHollow;
 
   return (
-    <div className={cn("group relative", isCompact ? "pl-8" : "")}>
+    <div
+      className={cn(
+        "group relative",
+        isCompact ? "pl-8" : "",
+        isOffer && "rounded-lg border border-amber-500/20 bg-amber-500/5 p-4",
+      )}
+    >
       <div
         className={
           isCompact
@@ -256,7 +278,9 @@ const TimelineRow: React.FC<TimelineRowProps> = ({
                 ? "relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"
                 : isHollow
                   ? "relative z-10 flex h-6 w-6 items-center justify-center rounded-full border-2 border-emerald-500 bg-background text-emerald-600 animate-pulse"
-                  : "relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white"
+                  : isOffer
+                    ? "relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.5)]"
+                    : "relative z-10 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white"
             }
           >
             {isFilled && icon}

@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe.sequential("Application Tracking Service", () => {
@@ -265,5 +266,3 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBe(now);
   });
 });
-
-import { eq } from "drizzle-orm";
