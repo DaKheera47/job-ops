@@ -41,12 +41,12 @@ const formatRange = (start: number, end: number) => {
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
   | {
-    kind: "group";
-    id: string;
-    label: string;
-    events: StageEvent[];
-    occurredAt: number;
-  };
+      kind: "group";
+      id: string;
+      label: string;
+      events: StageEvent[];
+      occurredAt: number;
+    };
 
 interface JobTimelineProps {
   events: StageEvent[];
