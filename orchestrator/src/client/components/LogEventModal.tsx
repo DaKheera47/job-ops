@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { StageEvent } from "../../shared/types";
+import { STAGE_LABELS } from "../../shared/types";
 
 const logEventSchema = z.object({
   stage: z.string(),
@@ -44,14 +45,16 @@ interface LogEventModalProps {
 
 const STAGE_OPTIONS = [
   { label: "No Stage Change (Keep current status)", value: "no_change" },
-  { label: "Applied", value: "applied" },
-  { label: "Recruiter Screen", value: "recruiter_screen" },
-  { label: "Assessment", value: "assessment" },
-  { label: "Interview", value: "technical_interview" },
-  { label: "Offer", value: "offer" },
+  { label: STAGE_LABELS.applied, value: "applied" },
+  { label: STAGE_LABELS.recruiter_screen, value: "recruiter_screen" },
+  { label: STAGE_LABELS.assessment, value: "assessment" },
+  { label: STAGE_LABELS.hiring_manager_screen, value: "hiring_manager_screen" },
+  { label: STAGE_LABELS.technical_interview, value: "technical_interview" },
+  { label: STAGE_LABELS.onsite, value: "onsite" },
+  { label: STAGE_LABELS.offer, value: "offer" },
   { label: "Rejected", value: "rejected" },
   { label: "Withdrawn", value: "withdrawn" },
-  { label: "Closed", value: "closed" },
+  { label: STAGE_LABELS.closed, value: "closed" },
 ];
 
 const REASON_CODES = ["Skills", "Visa", "Timing", "Culture", "Unknown"];
