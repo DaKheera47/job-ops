@@ -188,6 +188,20 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_tasks_application_id ON tasks(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
   `CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id)`,
+
+  // Backfill: Create "Applied" events for legacy jobs that have applied_at set but no event entry
+  `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata)
+   SELECT
+     'backfill-applied-' || id,
+     id,
+     'Applied',
+     NULL,
+     'applied',
+     CAST(strftime('%s', applied_at) AS INTEGER),
+     '{"eventLabel":"Applied","actor":"system"}'
+   FROM jobs
+   WHERE applied_at IS NOT NULL
+     AND id NOT IN (SELECT application_id FROM stage_events WHERE to_stage = 'applied')`,
 ];
 
 console.log("🔧 Running database migrations...");
