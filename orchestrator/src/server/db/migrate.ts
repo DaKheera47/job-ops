@@ -96,6 +96,8 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS stage_events (
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    group_id TEXT,
     from_stage TEXT,
     to_stage TEXT NOT NULL,
     occurred_at INTEGER NOT NULL,
@@ -175,6 +177,8 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,
   `ALTER TABLE tasks ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN outcome TEXT`,
+  `ALTER TABLE stage_events ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
+  `ALTER TABLE stage_events ADD COLUMN group_id TEXT`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,

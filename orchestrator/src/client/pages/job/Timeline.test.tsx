@@ -8,6 +8,8 @@ const baseEvent: StageEvent = {
   applicationId: "app-1",
   fromStage: null,
   toStage: "applied",
+  title: "Applied",
+  groupId: null,
   occurredAt: 1735689600,
   metadata: {
     eventLabel: "Applied",

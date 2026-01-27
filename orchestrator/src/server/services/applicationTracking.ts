@@ -53,6 +53,8 @@ export async function getStageEvents(
   return rows.map((row) => ({
     id: row.id,
     applicationId: row.applicationId,
+    title: row.title,
+    groupId: row.groupId ?? null,
     fromStage: row.fromStage as ApplicationStage | null,
     toStage: row.toStage as ApplicationStage,
     occurredAt: row.occurredAt,
@@ -128,6 +130,8 @@ export function transitionStage(
       .values({
         id: eventId,
         applicationId,
+        title: parsedMetadata?.eventLabel ?? finalToStage,
+        groupId: parsedMetadata?.groupId ?? null,
         fromStage,
         toStage: finalToStage,
         occurredAt: timestamp,
@@ -158,6 +162,8 @@ export function transitionStage(
     return {
       id: eventId,
       applicationId,
+      title: parsedMetadata?.eventLabel ?? finalToStage,
+      groupId: parsedMetadata?.groupId ?? null,
       fromStage,
       toStage: finalToStage,
       occurredAt: timestamp,
@@ -193,7 +199,12 @@ export function updateStageEvent(
     const updates: Partial<typeof stageEvents.$inferInsert> = {};
     if (toStage) updates.toStage = toStage;
     if (occurredAt) updates.occurredAt = occurredAt;
-    if (parsedMetadata !== undefined) updates.metadata = parsedMetadata;
+    if (parsedMetadata !== undefined) {
+      updates.metadata = parsedMetadata;
+      if (parsedMetadata?.eventLabel) updates.title = parsedMetadata.eventLabel;
+      if (parsedMetadata?.groupId !== undefined)
+        updates.groupId = parsedMetadata.groupId;
+    }
     if (hasOutcome) updates.outcome = outcome ?? null;
     if (toStage && !hasOutcome && !isClosingStage(toStage)) {
       updates.outcome = null;

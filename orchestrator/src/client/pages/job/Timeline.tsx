@@ -70,7 +70,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
     const standalone: StageEvent[] = [];
 
     events.forEach((event) => {
-      const groupId = event.metadata?.groupId ?? null;
+      const groupId = event.groupId;
       if (!groupId) {
         standalone.push(event);
         return;
@@ -119,9 +119,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
     <div className="space-y-6">
       {entries.map((entry, entryIndex) => {
         if (entry.kind === "event") {
-          const title =
-            entry.event.metadata?.eventLabel ||
-            STAGE_LABELS[entry.event.toStage];
+          const title = entry.event.title || STAGE_LABELS[entry.event.toStage];
           const note = entry.event.metadata?.note;
           const reason = entry.event.metadata?.reasonCode;
           const isCurrent =
@@ -160,9 +158,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
         const groupStart = entry.events[0]?.occurredAt ?? entry.occurredAt;
         const groupEnd = entry.events.at(-1)?.occurredAt ?? entry.occurredAt;
         const groupCompleted = entry.events.some((event) =>
-          /submitted|completed|finished/i.test(
-            event.metadata?.eventLabel ?? "",
-          ),
+          /submitted|completed|finished/i.test(event.title || ""),
         );
         const isCurrentGroup =
           currentStage === entry.events.at(-1)?.toStage &&
@@ -188,10 +184,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
                     <TimelineRow
                       key={event.id}
                       date={formatTimestampWithTime(event.occurredAt)}
-                      title={
-                        event.metadata?.eventLabel ||
-                        STAGE_LABELS[event.toStage]
-                      }
+                      title={event.title || STAGE_LABELS[event.toStage]}
                       icon={stageIcons[event.toStage]}
                       isCompact
                       isLast={false}

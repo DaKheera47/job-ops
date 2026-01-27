@@ -102,6 +102,8 @@ export const stageEvents = sqliteTable("stage_events", {
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  groupId: text("group_id"),
   fromStage: text("from_stage", { enum: APPLICATION_STAGES }),
   toStage: text("to_stage", { enum: APPLICATION_STAGES }).notNull(),
   occurredAt: integer("occurred_at", { mode: "number" }).notNull(),

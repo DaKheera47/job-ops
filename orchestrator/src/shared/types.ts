@@ -90,6 +90,8 @@ export interface StageEventMetadata {
 export interface StageEvent {
   id: string;
   applicationId: string;
+  title: string;
+  groupId: string | null;
   fromStage: ApplicationStage | null;
   toStage: ApplicationStage;
   occurredAt: number;
