@@ -12,6 +12,7 @@ const baseEvent: StageEvent = {
   metadata: {
     eventLabel: "Applied",
   },
+  outcome: null,
 };
 
 describe("JobTimeline", () => {

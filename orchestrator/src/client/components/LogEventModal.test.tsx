@@ -81,7 +81,6 @@ describe("LogEventModal", () => {
         isOpen
         onClose={onClose}
         onLog={onLog}
-        currentStage={"applied"}
       />,
     );
 
@@ -112,7 +111,6 @@ describe("LogEventModal", () => {
         isOpen
         onClose={onClose}
         onLog={onLog}
-        currentStage={"applied"}
       />,
     );
 

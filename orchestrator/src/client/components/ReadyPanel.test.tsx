@@ -123,6 +123,8 @@ const createJob = (overrides: Partial<Job> = {}): Job => ({
   appliedAt: null,
   createdAt: "2025-01-01T00:00:00Z",
   updatedAt: "2025-01-02T00:00:00Z",
+  outcome: null,
+  closedAt: null,
   ...overrides,
 });
 
