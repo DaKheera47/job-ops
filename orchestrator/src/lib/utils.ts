@@ -26,6 +26,26 @@ export const formatDate = (dateStr?: string | null) => {
   }
 };
 
+export const formatTimestamp = (value?: number | null) => {
+  if (!value) return "No due date";
+  return new Date(value * 1000).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+export const formatTimestampWithTime = (value?: number | null) => {
+  if (!value) return "No date";
+  const date = new Date(value * 1000);
+  const dateLabel = formatTimestamp(value);
+  const timeLabel = date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${dateLabel} ${timeLabel}`;
+};
+
 export const formatDateTime = (dateStr?: string | null) => {
   if (!dateStr) return null;
   try {

@@ -13,20 +13,9 @@ import {
 import React from "react";
 
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import type { ApplicationStage, StageEvent } from "../../../shared/types";
+import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
+import { type ApplicationStage, type StageEvent, STAGE_LABELS } from "../../../shared/types";
 import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
-
-const stageLabels: Record<ApplicationStage, string> = {
-  applied: "Applied",
-  recruiter_screen: "Recruiter screen",
-  assessment: "Assessment",
-  hiring_manager_screen: "Hiring manager screen",
-  technical_interview: "Technical interview",
-  onsite: "Onsite",
-  offer: "Offer",
-  closed: "Closed",
-};
 
 const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   applied: <CheckCircle2 className="h-4 w-4" />,
@@ -39,38 +28,23 @@ const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   closed: <ClipboardList className="h-4 w-4" />,
 };
 
-const formatDateOnly = (value: number) =>
-  new Date(value * 1000).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-
-const formatTimestamp = (value: number) => {
-  const date = new Date(value * 1000);
-  const dateLabel = formatDateOnly(value);
-  const timeLabel = date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  return `${dateLabel} ${timeLabel}`;
-};
-
 const formatRange = (start: number, end: number) => {
-  const startLabel = formatDateOnly(start);
-  const endLabel = formatDateOnly(end);
+  const startLabel = formatTimestamp(start);
+  const endLabel = formatTimestamp(end);
   return startLabel === endLabel ? startLabel : `${startLabel} - ${endLabel}`;
 };
+
+
 
 type TimelineEntry =
   | { kind: "event"; event: StageEvent }
   | {
-      kind: "group";
-      id: string;
-      label: string;
-      events: StageEvent[];
-      occurredAt: number;
-    };
+    kind: "group";
+    id: string;
+    label: string;
+    events: StageEvent[];
+    occurredAt: number;
+  };
 
 interface JobTimelineProps {
   events: StageEvent[];
@@ -145,7 +119,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
         if (entry.kind === "event") {
           const title =
             entry.event.metadata?.eventLabel ||
-            stageLabels[entry.event.toStage];
+            STAGE_LABELS[entry.event.toStage];
           const note = entry.event.metadata?.note;
           const reason = entry.event.metadata?.reasonCode;
           const isCurrent =
@@ -155,7 +129,7 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
           return (
             <TimelineRow
               key={entry.event.id}
-              date={formatTimestamp(entry.event.occurredAt)}
+              date={formatTimestampWithTime(entry.event.occurredAt)}
               title={title}
               icon={stageIcons[entry.event.toStage]}
               isCurrent={isCurrent}
@@ -211,9 +185,9 @@ export const JobTimeline: React.FC<JobTimelineProps> = ({
                   {entry.events.map((event) => (
                     <TimelineRow
                       key={event.id}
-                      date={formatTimestamp(event.occurredAt)}
+                      date={formatTimestampWithTime(event.occurredAt)}
                       title={
-                        event.metadata?.eventLabel || stageLabels[event.toStage]
+                        event.metadata?.eventLabel || STAGE_LABELS[event.toStage]
                       }
                       icon={stageIcons[event.toStage]}
                       isCompact

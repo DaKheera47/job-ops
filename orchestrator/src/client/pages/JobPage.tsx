@@ -10,12 +10,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type {
-  ApplicationStage,
-  ApplicationTask,
-  Job,
-  JobOutcome,
-  StageEvent,
+import {
+  type ApplicationStage,
+  type ApplicationTask,
+  type Job,
+  type JobOutcome,
+  type StageEvent,
+  STAGE_LABELS,
 } from "../../shared/types";
 import * as api from "../api";
 import { JobHeader } from "../components/JobHeader";
@@ -23,27 +24,10 @@ import {
   type LogEventFormValues,
   LogEventModal,
 } from "../components/LogEventModal";
+import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
 import { JobTimeline } from "./job/Timeline";
 
-const formatTimestamp = (value?: number | null) => {
-  if (!value) return "No due date";
-  return new Date(value * 1000).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-};
 
-const STAGE_LABELS: Record<ApplicationStage, string> = {
-  applied: "Applied",
-  recruiter_screen: "Recruiter Screen",
-  assessment: "Assessment",
-  hiring_manager_screen: "Hiring Manager Screen",
-  technical_interview: "Technical Interview",
-  onsite: "Final Round",
-  offer: "Offer",
-  closed: "Closed",
-};
 
 export const JobPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -260,7 +244,7 @@ export const JobPage: React.FC = () => {
                 <div className="mt-1 text-sm font-medium">
                   {currentStage
                     ? STAGE_LABELS[currentStage as ApplicationStage] ||
-                      currentStage
+                    currentStage
                     : job?.status}
                 </div>
               </div>
@@ -332,7 +316,6 @@ export const JobPage: React.FC = () => {
           setEditingEvent(null);
         }}
         onLog={handleLogEvent}
-        currentStage={currentStage as ApplicationStage}
         editingEvent={editingEvent}
       />
     </main>

@@ -23,6 +23,17 @@ export const APPLICATION_STAGES = [
 
 export type ApplicationStage = (typeof APPLICATION_STAGES)[number];
 
+export const STAGE_LABELS: Record<ApplicationStage, string> = {
+  applied: "Applied",
+  recruiter_screen: "Recruiter Screen",
+  assessment: "Assessment",
+  hiring_manager_screen: "Hiring Manager Screen",
+  technical_interview: "Technical Interview",
+  onsite: "Final Round",
+  offer: "Offer",
+  closed: "Closed",
+};
+
 export type StageTransitionTarget = ApplicationStage | "no_change";
 
 export const APPLICATION_OUTCOMES = [
