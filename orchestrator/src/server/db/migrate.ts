@@ -175,7 +175,6 @@ const migrations = [
   // Add application tracking columns
   `ALTER TABLE jobs ADD COLUMN outcome TEXT`,
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,
-  `ALTER TABLE tasks ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN outcome TEXT`,
   `ALTER TABLE stage_events ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN group_id TEXT`,
