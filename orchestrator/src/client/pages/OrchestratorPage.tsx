@@ -348,7 +348,6 @@ export const OrchestratorPage: React.FC = () => {
                   selectedJob={selectedJob}
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
-                  onSetActiveTab={setActiveTab}
                 />
               </div>
             )}
@@ -382,7 +381,6 @@ export const OrchestratorPage: React.FC = () => {
                 selectedJob={selectedJob}
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
-                onSetActiveTab={setActiveTab}
               />
             </div>
           </DrawerContent>

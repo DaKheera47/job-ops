@@ -11,6 +11,7 @@
     "ci": "biome ci",
     "check": "biome check",
     "check:fix": "biome check --write",
+    "check:types": "tsc --noEmit",
     "format": "biome format",
     "format:fix": "biome format --write",
     "build": "npm run build:client && npm run build:server",

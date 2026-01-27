@@ -7,9 +7,9 @@ import {
   PIPELINE_SOURCES_STORAGE_KEY,
 } from "./constants";
 
-const resolveAllowedSources = (enabledSources?: JobSource[]) =>
+const resolveAllowedSources = (enabledSources?: readonly JobSource[]) =>
   enabledSources && enabledSources.length > 0
-    ? enabledSources
+    ? (enabledSources as JobSource[])
     : DEFAULT_PIPELINE_SOURCES;
 
 const normalizeSources = (
@@ -24,7 +24,7 @@ const sourcesMatch = (left: JobSource[], right: JobSource[]) =>
   left.length === right.length &&
   left.every((value, index) => value === right[index]);
 
-export const usePipelineSources = (enabledSources?: JobSource[]) => {
+export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
   const allowedSources = useMemo(
     () => resolveAllowedSources(enabledSources),
     [enabledSources],

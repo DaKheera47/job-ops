@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
+import type { JobSource } from "../../../shared/types";
 import type { FilterTab, JobSort } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
 
@@ -92,7 +93,7 @@ const renderFilters = (
     onSearchQueryChange: vi.fn(),
     sourceFilter: "all" as const,
     onSourceFilterChange: vi.fn(),
-    sourcesWithJobs: ["gradcracker", "linkedin", "manual"],
+    sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
     ...overrides,

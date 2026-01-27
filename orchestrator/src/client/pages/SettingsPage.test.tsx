@@ -109,6 +109,7 @@ const baseSettings: AppSettings = {
   ukvisajobsPasswordHint: null,
   webhookSecretHint: null,
   basicAuthActive: false,
+  rxresumeBaseResumeId: null,
 };
 
 const renderPage = () => {
