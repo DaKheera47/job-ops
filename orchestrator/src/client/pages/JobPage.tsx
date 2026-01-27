@@ -22,6 +22,7 @@ import {
   type StageEvent,
 } from "../../shared/types";
 import * as api from "../api";
+import { ConfirmDelete } from "../components/ConfirmDelete";
 import { JobHeader } from "../components/JobHeader";
 import {
   type LogEventFormValues,
@@ -37,6 +38,8 @@ export const JobPage: React.FC = () => {
   const [tasks, setTasks] = React.useState<ApplicationTask[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [eventToDelete, setEventToDelete] = React.useState<string | null>(null);
   const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
     null,
   );
@@ -147,11 +150,15 @@ export const JobPage: React.FC = () => {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!job || !window.confirm("Are you sure you want to delete this event?"))
-      return;
+  const confirmDeleteEvent = (eventId: string) => {
+    setEventToDelete(eventId);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!job || !eventToDelete) return;
     try {
-      await api.deleteJobStageEvent(job.id, eventId);
+      await api.deleteJobStageEvent(job.id, eventToDelete);
       const [jobData, eventData] = await Promise.all([
         api.getJob(job.id),
         api.getJobStageEvents(job.id),
@@ -162,6 +169,9 @@ export const JobPage: React.FC = () => {
     } catch (error) {
       console.error("Failed to delete event:", error);
       toast.error("Failed to delete event");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setEventToDelete(null);
     }
   };
 
@@ -243,7 +253,7 @@ export const JobPage: React.FC = () => {
             <JobTimeline
               events={events}
               onEdit={handleEditEvent}
-              onDelete={handleDeleteEvent}
+              onDelete={confirmDeleteEvent}
             />
           </CardContent>
         </Card>
@@ -337,6 +347,15 @@ export const JobPage: React.FC = () => {
         }}
         onLog={handleLogEvent}
         editingEvent={editingEvent}
+      />
+
+      <ConfirmDelete
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setEventToDelete(null);
+        }}
+        onConfirm={handleDeleteEvent}
       />
     </main>
   );
