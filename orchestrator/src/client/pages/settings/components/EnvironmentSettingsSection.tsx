@@ -37,6 +37,31 @@ export const EnvironmentSettingsSection: React.FC<
   const { private: privateValues } = values;
 
   const isBasicAuthEnabled = watch("enableBasicAuth");
+  const selectedProvider =
+    watch("llmProvider") || values.readable.llmProvider || "openrouter";
+  const normalizedProvider = selectedProvider.toLowerCase();
+  const showApiKey = normalizedProvider !== "ollama";
+
+  const baseUrlPlaceholder =
+    normalizedProvider === "ollama"
+      ? "http://localhost:11434"
+      : normalizedProvider === "openai_compatible"
+        ? "https://api.openai.com"
+        : "https://openrouter.ai";
+
+  const baseUrlHelper =
+    normalizedProvider === "ollama"
+      ? "Default: http://localhost:11434"
+      : normalizedProvider === "openai_compatible"
+        ? "Default: https://api.openai.com"
+        : "Default: https://openrouter.ai";
+
+  const providerHint =
+    normalizedProvider === "ollama"
+      ? "Ollama typically runs locally and does not require an API key."
+      : normalizedProvider === "openai_compatible"
+        ? "Use any OpenAI-compatible API. API key is required for most hosted providers."
+        : "OpenRouter uses your API key and supports model routing across providers.";
 
   return (
     <AccordionItem value="environment" className="border rounded-lg px-4">
@@ -85,6 +110,7 @@ export const EnvironmentSettingsSection: React.FC<
                 <p className="text-xs text-muted-foreground">
                   Used for scoring, tailoring, and extraction.
                 </p>
+                <p className="text-xs text-muted-foreground">{providerHint}</p>
                 <p className="text-xs text-muted-foreground">
                   Current:{" "}
                   <span className="font-mono">
@@ -95,20 +121,23 @@ export const EnvironmentSettingsSection: React.FC<
               <SettingsInput
                 label="LLM base URL"
                 inputProps={register("llmBaseUrl")}
-                placeholder="https://openrouter.ai"
+                placeholder={baseUrlPlaceholder}
                 disabled={isLoading || isSaving}
                 error={errors.llmBaseUrl?.message as string | undefined}
+                helper={baseUrlHelper}
                 current={values.readable.llmBaseUrl}
               />
-              <SettingsInput
-                label="LLM API key"
-                inputProps={register("llmApiKey")}
-                type="password"
-                placeholder="Enter new key"
-                disabled={isLoading || isSaving}
-                error={errors.llmApiKey?.message as string | undefined}
-                current={formatSecretHint(privateValues.llmApiKeyHint)}
-              />
+              {showApiKey && (
+                <SettingsInput
+                  label="LLM API key"
+                  inputProps={register("llmApiKey")}
+                  type="password"
+                  placeholder="Enter new key"
+                  disabled={isLoading || isSaving}
+                  error={errors.llmApiKey?.message as string | undefined}
+                  current={formatSecretHint(privateValues.llmApiKeyHint)}
+                />
+              )}
             </div>
           </div>
 
