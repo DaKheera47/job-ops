@@ -40,7 +40,10 @@ const ChartStyle: React.FC<{ id: string; config: ChartConfig }> = ({
 
 export const ChartContainer = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement> & { config: ChartConfig }
+  React.HTMLAttributes<HTMLDivElement> & {
+    config: ChartConfig;
+    children?: React.ReactElement | null;
+  }
 >(({ id, className, children, config, ...props }, ref) => {
   const generatedId = React.useId();
   const chartId = id ?? generatedId;
@@ -54,7 +57,9 @@ export const ChartContainer = React.forwardRef<
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <ResponsiveContainer>{children}</ResponsiveContainer>
+        {React.isValidElement(children) ? (
+          <ResponsiveContainer>{children}</ResponsiveContainer>
+        ) : null}
       </div>
     </ChartConfigContext.Provider>
   );

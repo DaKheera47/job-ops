@@ -3,6 +3,7 @@ import { PageHeader, PageMain } from "@client/components/layout";
 import { Home } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
 import {
@@ -18,13 +19,21 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type DailyApplications = {
   date: string;
   applications: number;
 };
 
-const DAYS_TO_SHOW = 30;
+const DAY_OPTIONS = [7, 14, 30, 90] as const;
+const DEFAULT_DAYS = 30;
 
 const chartConfig = {
   applications: {
@@ -40,11 +49,14 @@ const toDateKey = (value: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const buildApplicationsPerDay = (appliedAt: Array<string | null>) => {
+const buildApplicationsPerDay = (
+  appliedAt: Array<string | null>,
+  daysToShow: number,
+) => {
   const end = new Date();
   end.setHours(0, 0, 0, 0);
   const start = new Date(end);
-  start.setDate(start.getDate() - (DAYS_TO_SHOW - 1));
+  start.setDate(start.getDate() - (daysToShow - 1));
 
   const counts = new Map<string, number>();
   for (const value of appliedAt) {
@@ -71,10 +83,16 @@ const buildApplicationsPerDay = (appliedAt: Array<string | null>) => {
 };
 
 export const HomePage: React.FC = () => {
-  const [chartData, setChartData] = useState<DailyApplications[]>([]);
-  const [total, setTotal] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [appliedDates, setAppliedDates] = useState<Array<string | null>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [daysToShow, setDaysToShow] = useState(() => {
+    const initial = Number(searchParams.get("days"));
+    return (DAY_OPTIONS as readonly number[]).includes(initial)
+      ? initial
+      : DEFAULT_DAYS;
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -85,10 +103,7 @@ export const HomePage: React.FC = () => {
       .then((response) => {
         if (!isMounted) return;
         const appliedDates = response.jobs.map((job) => job.appliedAt);
-        const { data, total: totalApplications } =
-          buildApplicationsPerDay(appliedDates);
-        setChartData(data);
-        setTotal(totalApplications);
+        setAppliedDates(appliedDates);
         setError(null);
       })
       .catch((fetchError) => {
@@ -109,10 +124,29 @@ export const HomePage: React.FC = () => {
     };
   }, []);
 
+  const { data: chartData, total } = useMemo(() => {
+    return buildApplicationsPerDay(appliedDates, daysToShow);
+  }, [appliedDates, daysToShow]);
+
   const average = useMemo(() => {
     if (chartData.length === 0) return 0;
     return total / chartData.length;
-  }, [chartData.length, total]);
+  }, [chartData, total]);
+
+  const handleDaysChange = (value: string) => {
+    const parsed = Number(value);
+    if (!(DAY_OPTIONS as readonly number[]).includes(parsed)) return;
+    setDaysToShow(parsed);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (parsed === DEFAULT_DAYS) {
+        next.delete("days");
+      } else {
+        next.set("days", String(parsed));
+      }
+      return next;
+    });
+  };
 
   return (
     <>
@@ -130,14 +164,36 @@ export const HomePage: React.FC = () => {
               <CardDescription>
                 {isLoading
                   ? "Loading applied jobs..."
-                  : `Last ${DAYS_TO_SHOW} days · ${total.toLocaleString()} total`}
+                  : `Last ${daysToShow} days · ${total.toLocaleString()} total`}
               </CardDescription>
             </div>
-            <div className="flex flex-col justify-center gap-1 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
-              <span className="text-xs text-muted-foreground">Avg / day</span>
-              <span className="text-lg font-bold leading-none sm:text-3xl">
-                {average.toFixed(1)}
-              </span>
+            <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Avg / day</span>
+                <span className="text-lg font-bold leading-none sm:text-3xl">
+                  {average.toFixed(1)}
+                </span>
+              </div>
+              <div className="w-full">
+                <span className="text-xs text-muted-foreground">Range</span>
+                <div className="mt-2">
+                  <Select
+                    value={String(daysToShow)}
+                    onValueChange={handleDaysChange}
+                  >
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <SelectValue placeholder="Days" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DAY_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={String(option)}>
+                          Last {option} days
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="px-2 sm:p-6">
