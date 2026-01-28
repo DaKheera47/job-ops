@@ -80,8 +80,8 @@ const providerConfig: Record<LlmProvider, ProviderConfig> = {
     defaultBaseUrl: "https://api.openai.com",
     chatPath: "/v1/chat/completions",
     validationPaths: ["/v1/models"],
-    requiresApiKey: true,
-    responseFormat: "json_object",
+    requiresApiKey: false,
+    responseFormat: "none",
   },
   ollama: {
     provider: "ollama",
@@ -175,8 +175,9 @@ export class LlmService {
 
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "No error body");
+          const detail = errorBody ? ` - ${truncate(errorBody, 400)}` : "";
           const err = new Error(
-            `LLM API error: ${response.status}`,
+            `LLM API error: ${response.status}${detail}`,
           ) as LlmApiError;
           err.status = response.status;
           err.body = errorBody;
@@ -216,6 +217,14 @@ export class LlmService {
     }
 
     return { success: false, error: "All retry attempts failed" };
+  }
+
+  getProvider(): LlmProvider {
+    return this.provider;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   async validateCredentials(): Promise<LlmValidationResult> {
@@ -356,4 +365,9 @@ function joinUrl(baseUrl: string, path: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function truncate(value: string, maxLength: number): string {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength - 1)}…`;
 }

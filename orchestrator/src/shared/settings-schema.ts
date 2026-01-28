@@ -13,7 +13,7 @@ export const updateSettingsSchema = z
     modelTailoring: z.string().trim().max(200).nullable().optional(),
     modelProjectSelection: z.string().trim().max(200).nullable().optional(),
     llmProvider: z.string().trim().max(200).nullable().optional(),
-    llmBaseUrl: z.string().trim().max(2000).nullable().optional(),
+    llmBaseUrl: z.string().trim().url().max(2000).nullable().optional(),
     llmApiKey: z.string().trim().max(2000).nullable().optional(),
     pipelineWebhookUrl: z.string().trim().max(2000).nullable().optional(),
     jobCompleteWebhookUrl: z.string().trim().max(2000).nullable().optional(),

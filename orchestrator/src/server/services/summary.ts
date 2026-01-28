@@ -85,10 +85,16 @@ export async function generateTailoring(
   });
 
   if (!result.success) {
+    const context = `provider=${llm.getProvider()} baseUrl=${llm.getBaseUrl()}`;
     if (result.error.toLowerCase().includes("api key")) {
-      console.warn("⚠️ LLM API key not set, cannot generate tailoring");
+      const message = `LLM API key not set, cannot generate tailoring. (${context})`;
+      console.warn(`⚠️ ${message}`);
+      return { success: false, error: message };
     }
-    return { success: false, error: result.error };
+    return {
+      success: false,
+      error: `${result.error} (${context})`,
+    };
   }
 
   const { summary, headline, skills } = result.data;

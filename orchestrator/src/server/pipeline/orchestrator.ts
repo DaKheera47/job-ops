@@ -506,6 +506,11 @@ export async function summarizeJob(
         tailoredSummary = tailoringResult.data.summary;
         tailoredHeadline = tailoringResult.data.headline;
         tailoredSkills = JSON.stringify(tailoringResult.data.skills);
+      } else if (options?.force || !tailoredSummary || !tailoredHeadline) {
+        return {
+          success: false,
+          error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
+        };
       }
     }
 
