@@ -2,6 +2,7 @@
  * UK Visa Jobs search page.
  */
 
+import { isNavActive, NAV_LINKS } from "@client/components/navigation";
 import {
   Briefcase,
   Calendar,
@@ -12,19 +13,15 @@ import {
   DollarSign,
   ExternalLink,
   GraduationCap,
-  Home,
   Loader2,
   MapPin,
   Menu,
   Search,
-  Settings,
-  Shield,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -46,13 +43,6 @@ const clampText = (value: string, max = 160) =>
   value.length > max ? `${value.slice(0, max).trim()}...` : value;
 
 const jobKey = (job: CreateJobInput) => job.sourceJobId || job.jobUrl;
-
-const navLinks = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
-  { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export const UkVisaJobsPage: React.FC = () => {
   const location = useLocation();
@@ -78,7 +68,6 @@ export const UkVisaJobsPage: React.FC = () => {
       ? window.matchMedia("(min-width: 1024px)").matches
       : false,
   );
-
   useEffect(() => {
     if (results.length === 0) {
       setSelectedJobId(null);
@@ -375,12 +364,12 @@ export const UkVisaJobsPage: React.FC = () => {
                   <SheetTitle>JobOps</SheetTitle>
                 </SheetHeader>
                 <nav className="mt-6 flex flex-col gap-2">
-                  {navLinks.map(({ to, label, icon: Icon }) => (
+                  {NAV_LINKS.map(({ to, label, icon: Icon, activePaths }) => (
                     <button
                       key={to}
                       type="button"
                       onClick={() => {
-                        if (location.pathname === to) {
+                        if (isNavActive(location.pathname, to, activePaths)) {
                           setNavOpen(false);
                           return;
                         }
@@ -389,14 +378,7 @@ export const UkVisaJobsPage: React.FC = () => {
                       }}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                        location.pathname === to ||
-                          (to === "/" &&
-                            [
-                              "/ready",
-                              "/discovered",
-                              "/applied",
-                              "/all",
-                            ].includes(location.pathname))
+                        isNavActive(location.pathname, to, activePaths)
                           ? "bg-accent text-accent-foreground"
                           : "text-muted-foreground",
                       )}

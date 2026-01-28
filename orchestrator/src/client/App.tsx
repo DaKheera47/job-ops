@@ -8,6 +8,7 @@ import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
 import { OnboardingGate } from "./components/OnboardingGate";
+import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -41,6 +42,7 @@ export const App: React.FC = () => {
           <div ref={nodeRef}>
             <Routes location={location}>
               <Route path="/" element={<Navigate to="/ready" replace />} />
+              <Route path="/home" element={<HomePage />} />
               <Route path="/job/:id" element={<JobPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
