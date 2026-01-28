@@ -99,6 +99,43 @@ export const getSourcesWithJobs = (jobs: Job[]): JobSource[] => {
   return orderedFilterSources.filter((source) => seen.has(source));
 };
 
+export const getAllowedSources = (
+  settings: AppSettings | null,
+): JobSource[] => {
+  if (!settings) return [...orderedSources];
+
+  const allowed: JobSource[] = [];
+  const jobspySites = settings.jobspySites ?? [];
+  const hasUkVisaJobsAuth = Boolean(
+    settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint,
+  );
+
+  for (const source of orderedSources) {
+    if (source === "gradcracker") {
+      // Gradcracker is always allowed (no credentials required)
+      allowed.push(source);
+      continue;
+    }
+    if (source === "ukvisajobs") {
+      if (hasUkVisaJobsAuth) allowed.push(source);
+      continue;
+    }
+    if (source === "indeed") {
+      if (jobspySites.includes(source)) {
+        allowed.push(source);
+      }
+      continue;
+    }
+    if (source === "linkedin") {
+      if (jobspySites.includes(source)) {
+        allowed.push(source);
+      }
+    }
+  }
+
+  return allowed.length > 0 ? allowed : [...orderedSources];
+};
+
 export const getEnabledSources = (
   settings: AppSettings | null,
 ): JobSource[] => {
@@ -112,15 +149,23 @@ export const getEnabledSources = (
 
   for (const source of orderedSources) {
     if (source === "gradcracker") {
-      enabled.push(source);
+      if (settings.gradcrackerEnabled) enabled.push(source);
       continue;
     }
     if (source === "ukvisajobs") {
-      if (hasUkVisaJobsAuth) enabled.push(source);
+      if (hasUkVisaJobsAuth && settings.ukvisajobsEnabled) enabled.push(source);
       continue;
     }
-    if (source === "indeed" || source === "linkedin") {
-      if (jobspySites.includes(source)) enabled.push(source);
+    if (source === "indeed") {
+      if (jobspySites.includes(source) && settings.indeedEnabled) {
+        enabled.push(source);
+      }
+      continue;
+    }
+    if (source === "linkedin") {
+      if (jobspySites.includes(source) && settings.linkedinEnabled) {
+        enabled.push(source);
+      }
     }
   }
 

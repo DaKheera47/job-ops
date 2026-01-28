@@ -1,56 +1,77 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { JobSource } from "../../../shared/types";
-import {
-  DEFAULT_PIPELINE_SOURCES,
-  orderedSources,
-  PIPELINE_SOURCES_STORAGE_KEY,
-} from "./constants";
-
-const resolveAllowedSources = (enabledSources?: readonly JobSource[]) =>
-  enabledSources && enabledSources.length > 0
-    ? (enabledSources as JobSource[])
-    : DEFAULT_PIPELINE_SOURCES;
+import { orderedSources, PIPELINE_SOURCES_STORAGE_KEY } from "./constants";
 
 const normalizeSources = (
   sources: JobSource[],
   allowedSources: JobSource[],
+  enabledSources: JobSource[],
 ) => {
   const filtered = sources.filter((value) => allowedSources.includes(value));
-  return filtered.length > 0 ? filtered : allowedSources.slice(0, 1);
+  // If no valid sources remain, default to enabled sources (or first allowed if none enabled)
+  return filtered.length > 0
+    ? filtered
+    : enabledSources.length > 0
+      ? enabledSources
+      : allowedSources.slice(0, 1);
 };
 
 const sourcesMatch = (left: JobSource[], right: JobSource[]) =>
   left.length === right.length &&
   left.every((value, index) => value === right[index]);
 
-export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
-  const allowedSources = useMemo(
-    () => resolveAllowedSources(enabledSources),
+export const usePipelineSources = (
+  allowedSources: readonly JobSource[],
+  enabledSources: readonly JobSource[],
+) => {
+  const allowedSourcesList = useMemo(
+    () => allowedSources as JobSource[],
+    [allowedSources],
+  );
+  const enabledSourcesList = useMemo(
+    () => enabledSources as JobSource[],
     [enabledSources],
   );
   const [pipelineSources, setPipelineSources] = useState<JobSource[]>(() => {
     try {
       const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
-      if (!raw) return normalizeSources(allowedSources, allowedSources);
+      if (!raw)
+        return normalizeSources(
+          enabledSourcesList,
+          allowedSourcesList,
+          enabledSourcesList,
+        );
       const parsed = JSON.parse(raw) as unknown;
       if (!Array.isArray(parsed))
-        return normalizeSources(allowedSources, allowedSources);
+        return normalizeSources(
+          enabledSourcesList,
+          allowedSourcesList,
+          enabledSourcesList,
+        );
       const next = parsed.filter((value): value is JobSource =>
         orderedSources.includes(value as JobSource),
       );
-      return normalizeSources(next, allowedSources);
+      return normalizeSources(next, allowedSourcesList, enabledSourcesList);
     } catch {
-      return normalizeSources(allowedSources, allowedSources);
+      return normalizeSources(
+        enabledSourcesList,
+        allowedSourcesList,
+        enabledSourcesList,
+      );
     }
   });
 
   useEffect(() => {
     setPipelineSources((current) => {
-      const normalized = normalizeSources(current, allowedSources);
+      const normalized = normalizeSources(
+        current,
+        allowedSourcesList,
+        enabledSourcesList,
+      );
       return sourcesMatch(current, normalized) ? current : normalized;
     });
-  }, [allowedSources]);
+  }, [allowedSourcesList, enabledSourcesList]);
 
   useEffect(() => {
     try {
@@ -65,7 +86,7 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
 
   const toggleSource = useCallback(
     (source: JobSource, checked: boolean) => {
-      if (!allowedSources.includes(source)) return;
+      if (!allowedSourcesList.includes(source)) return;
       setPipelineSources((current) => {
         const next = checked
           ? Array.from(new Set([...current, source]))
@@ -74,7 +95,7 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
         return next.length === 0 ? current : next;
       });
     },
-    [allowedSources],
+    [allowedSourcesList],
   );
 
   return { pipelineSources, setPipelineSources, toggleSource };

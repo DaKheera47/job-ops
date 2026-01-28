@@ -210,6 +210,46 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    if ("gradcrackerEnabled" in input) {
+      const val = input.gradcrackerEnabled ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "gradcrackerEnabled",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
+    if ("ukvisajobsEnabled" in input) {
+      const val = input.ukvisajobsEnabled ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "ukvisajobsEnabled",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
+    if ("indeedEnabled" in input) {
+      const val = input.indeedEnabled ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "indeedEnabled",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
+    if ("linkedinEnabled" in input) {
+      const val = input.linkedinEnabled ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "linkedinEnabled",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
     if ("openrouterApiKey" in input) {
       const value = normalizeEnvInput(input.openrouterApiKey);
       promises.push(

@@ -84,6 +84,7 @@ const renderHeader = (
     onNavOpenChange: vi.fn(),
     isPipelineRunning: false,
     pipelineSources: ["gradcracker"],
+    allowedSources: ["gradcracker"],
     enabledSources: ["gradcracker"],
     onToggleSource: vi.fn(),
     onSetPipelineSources: vi.fn(),
@@ -103,9 +104,10 @@ const renderHeader = (
 };
 
 describe("OrchestratorHeader", () => {
-  it("renders only enabled sources", () => {
+  it("renders only allowed sources in dropdown", () => {
     renderHeader({
-      enabledSources: ["gradcracker", "linkedin"],
+      allowedSources: ["gradcracker", "linkedin"],
+      enabledSources: ["linkedin"],
       pipelineSources: ["linkedin"],
     });
 
@@ -120,9 +122,10 @@ describe("OrchestratorHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("uses enabled sources for the all sources action", () => {
+  it("uses allowed sources for the all sources action", () => {
     const { props } = renderHeader({
-      enabledSources: ["gradcracker", "linkedin"],
+      allowedSources: ["gradcracker", "linkedin"],
+      enabledSources: ["gradcracker"],
     });
 
     fireEvent.click(
@@ -136,7 +139,10 @@ describe("OrchestratorHeader", () => {
   });
 
   it("does not show source presets", () => {
-    renderHeader({ enabledSources: ["gradcracker", "linkedin"] });
+    renderHeader({
+      allowedSources: ["gradcracker", "linkedin"],
+      enabledSources: ["gradcracker", "linkedin"],
+    });
 
     expect(
       screen.queryByRole("menuitem", { name: /Gradcracker only/i }),

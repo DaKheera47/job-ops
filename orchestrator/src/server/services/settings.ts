@@ -168,6 +168,57 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     : null;
   const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
 
+  // Parse boolean environment variables for scanner enabled flags
+  const parseBooleanEnv = (value: string | undefined): boolean => {
+    if (!value) return true;
+    const normalized = value.toLowerCase().trim();
+    if (normalized === "false" || normalized === "0" || normalized === "no") {
+      return false;
+    }
+    if (normalized === "true" || normalized === "1" || normalized === "yes") {
+      return true;
+    }
+    // Invalid value defaults to true
+    return true;
+  };
+
+  const defaultGradcrackerEnabled = parseBooleanEnv(
+    process.env.GRADCRACKER_ENABLED,
+  );
+  const overrideGradcrackerEnabledRaw = overrides.gradcrackerEnabled;
+  const overrideGradcrackerEnabled = overrideGradcrackerEnabledRaw
+    ? overrideGradcrackerEnabledRaw === "true" ||
+      overrideGradcrackerEnabledRaw === "1"
+    : null;
+  const gradcrackerEnabled =
+    overrideGradcrackerEnabled ?? defaultGradcrackerEnabled;
+
+  const defaultUkvisajobsEnabled = parseBooleanEnv(
+    process.env.UKVISAJOBS_ENABLED,
+  );
+  const overrideUkvisajobsEnabledRaw = overrides.ukvisajobsEnabled;
+  const overrideUkvisajobsEnabled = overrideUkvisajobsEnabledRaw
+    ? overrideUkvisajobsEnabledRaw === "true" ||
+      overrideUkvisajobsEnabledRaw === "1"
+    : null;
+  const ukvisajobsEnabled =
+    overrideUkvisajobsEnabled ?? defaultUkvisajobsEnabled;
+
+  const defaultIndeedEnabled = parseBooleanEnv(process.env.INDEED_ENABLED);
+  const overrideIndeedEnabledRaw = overrides.indeedEnabled;
+  const overrideIndeedEnabled = overrideIndeedEnabledRaw
+    ? overrideIndeedEnabledRaw === "true" || overrideIndeedEnabledRaw === "1"
+    : null;
+  const indeedEnabled = overrideIndeedEnabled ?? defaultIndeedEnabled;
+
+  const defaultLinkedinEnabled = parseBooleanEnv(process.env.LINKEDIN_ENABLED);
+  const overrideLinkedinEnabledRaw = overrides.linkedinEnabled;
+  const overrideLinkedinEnabled = overrideLinkedinEnabledRaw
+    ? overrideLinkedinEnabledRaw === "true" ||
+      overrideLinkedinEnabledRaw === "1"
+    : null;
+  const linkedinEnabled = overrideLinkedinEnabled ?? defaultLinkedinEnabled;
+
   return {
     model,
     defaultModel,
@@ -216,6 +267,18 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
+    gradcrackerEnabled,
+    defaultGradcrackerEnabled,
+    overrideGradcrackerEnabled,
+    ukvisajobsEnabled,
+    defaultUkvisajobsEnabled,
+    overrideUkvisajobsEnabled,
+    indeedEnabled,
+    defaultIndeedEnabled,
+    overrideIndeedEnabled,
+    linkedinEnabled,
+    defaultLinkedinEnabled,
+    overrideLinkedinEnabled,
     ...envSettings,
   } as AppSettings;
 }

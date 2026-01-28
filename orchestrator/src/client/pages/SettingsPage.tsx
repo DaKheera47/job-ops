@@ -110,6 +110,10 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   jobspySites: data.overrideJobspySites,
   jobspyLinkedinFetchDescription: data.overrideJobspyLinkedinFetchDescription,
   showSponsorInfo: data.overrideShowSponsorInfo,
+  gradcrackerEnabled: data.overrideGradcrackerEnabled,
+  ukvisajobsEnabled: data.overrideUkvisajobsEnabled,
+  indeedEnabled: data.overrideIndeedEnabled,
+  linkedinEnabled: data.overrideLinkedinEnabled,
   openrouterApiKey: "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
@@ -257,6 +261,22 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     display: {
       effective: settings?.showSponsorInfo ?? true,
       default: settings?.defaultShowSponsorInfo ?? true,
+    },
+    gradcrackerEnabled: {
+      effective: settings?.gradcrackerEnabled ?? true,
+      default: settings?.defaultGradcrackerEnabled ?? true,
+    },
+    ukvisajobsEnabled: {
+      effective: settings?.ukvisajobsEnabled ?? true,
+      default: settings?.defaultUkvisajobsEnabled ?? true,
+    },
+    indeedEnabled: {
+      effective: settings?.indeedEnabled ?? true,
+      default: settings?.defaultIndeedEnabled ?? true,
+    },
+    linkedinEnabled: {
+      effective: settings?.linkedinEnabled ?? true,
+      default: settings?.defaultLinkedinEnabled ?? true,
     },
     envSettings: {
       readable: {
@@ -411,6 +431,10 @@ export const SettingsPage: React.FC = () => {
     searchTerms,
     jobspy,
     display,
+    gradcrackerEnabled,
+    ukvisajobsEnabled,
+    indeedEnabled,
+    linkedinEnabled,
     envSettings,
     defaultResumeProjects,
     profileProjects,
@@ -540,6 +564,19 @@ export const SettingsPage: React.FC = () => {
           jobspy.linkedinFetchDescription.default,
         ),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
+        gradcrackerEnabled: nullIfSame(
+          data.gradcrackerEnabled,
+          gradcrackerEnabled.default,
+        ),
+        ukvisajobsEnabled: nullIfSame(
+          data.ukvisajobsEnabled,
+          ukvisajobsEnabled.default,
+        ),
+        indeedEnabled: nullIfSame(data.indeedEnabled, indeedEnabled.default),
+        linkedinEnabled: nullIfSame(
+          data.linkedinEnabled,
+          linkedinEnabled.default,
+        ),
         ...envPayload,
       };
 
@@ -660,11 +697,13 @@ export const SettingsPage: React.FC = () => {
           />
           <UkvisajobsSection
             values={ukvisajobs}
+            enabled={ukvisajobsEnabled}
             isLoading={isLoading}
             isSaving={isSaving}
           />
           <GradcrackerSection
             values={gradcracker}
+            enabled={gradcrackerEnabled}
             isLoading={isLoading}
             isSaving={isSaving}
           />
@@ -675,6 +714,8 @@ export const SettingsPage: React.FC = () => {
           />
           <JobspySection
             values={jobspy}
+            indeedEnabled={indeedEnabled}
+            linkedinEnabled={linkedinEnabled}
             isLoading={isLoading}
             isSaving={isSaving}
           />

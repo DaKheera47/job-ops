@@ -23,6 +23,7 @@ import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
 import {
+  getAllowedSources,
   getEnabledSources,
   getJobCounts,
   getSourcesWithJobs,
@@ -160,12 +161,16 @@ export const OrchestratorPage: React.FC = () => {
     setIsPipelineRunning,
     loadJobs,
   } = useOrchestratorData();
+  const allowedSources = useMemo(
+    () => getAllowedSources(settings ?? null),
+    [settings],
+  );
   const enabledSources = useMemo(
     () => getEnabledSources(settings ?? null),
     [settings],
   );
   const { pipelineSources, setPipelineSources, toggleSource } =
-    usePipelineSources(enabledSources);
+    usePipelineSources(allowedSources, enabledSources);
 
   const activeJobs = useFilteredJobs(
     jobs,
@@ -201,6 +206,11 @@ export const OrchestratorPage: React.FC = () => {
   );
 
   const handleRunPipeline = async () => {
+    if (pipelineSources.length === 0) {
+      toast.error("Cannot run pipeline with no sources selected");
+      return;
+    }
+
     try {
       setIsPipelineRunning(true);
       await api.runPipeline({ sources: pipelineSources });
@@ -298,6 +308,7 @@ export const OrchestratorPage: React.FC = () => {
         onNavOpenChange={setNavOpen}
         isPipelineRunning={isPipelineRunning}
         pipelineSources={pipelineSources}
+        allowedSources={allowedSources}
         enabledSources={enabledSources}
         onToggleSource={toggleSource}
         onSetPipelineSources={setPipelineSources}

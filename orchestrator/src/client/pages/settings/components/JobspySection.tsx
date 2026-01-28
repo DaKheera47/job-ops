@@ -1,5 +1,5 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
-import type { JobspyValues } from "@client/pages/settings/types";
+import type { DisplayValues, JobspyValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";
@@ -20,6 +20,8 @@ import { Separator } from "@/components/ui/separator";
 
 type JobspySectionProps = {
   values: JobspyValues;
+  indeedEnabled: DisplayValues;
+  linkedinEnabled: DisplayValues;
   isLoading: boolean;
   isSaving: boolean;
 };
@@ -139,6 +141,8 @@ const JOBSPY_INDEED_COUNTRY_OPTIONS = Array.from(
 
 export const JobspySection: React.FC<JobspySectionProps> = ({
   values,
+  indeedEnabled,
+  linkedinEnabled,
   isLoading,
   isSaving,
 }) => {
@@ -156,6 +160,9 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
 
+  const defaultIndeedEnabled = indeedEnabled.default;
+  const defaultLinkedinEnabled = linkedinEnabled.default;
+
   return (
     <AccordionItem value="jobspy" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
@@ -163,6 +170,72 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Controller
+                name="indeedEnabled"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="indeed-enabled"
+                    checked={field.value ?? defaultIndeedEnabled}
+                    onCheckedChange={(checked) => field.onChange(!!checked)}
+                    disabled={isLoading || isSaving}
+                  />
+                )}
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="indeed-enabled"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Enable Indeed scanner
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  When disabled, Indeed will not run in the pipeline.
+                </p>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Effective: {indeedEnabled.effective ? "Yes" : "No"}
+                  </span>
+                  <span>Default: {defaultIndeedEnabled ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Controller
+                name="linkedinEnabled"
+                control={control}
+                render={({ field }) => (
+                  <Checkbox
+                    id="linkedin-enabled"
+                    checked={field.value ?? defaultLinkedinEnabled}
+                    onCheckedChange={(checked) => field.onChange(!!checked)}
+                    disabled={isLoading || isSaving}
+                  />
+                )}
+              />
+              <div className="grid gap-1.5 leading-none">
+                <label
+                  htmlFor="linkedin-enabled"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Enable LinkedIn scanner
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  When disabled, LinkedIn will not run in the pipeline.
+                </p>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span>
+                    Effective: {linkedinEnabled.effective ? "Yes" : "No"}
+                  </span>
+                  <span>Default: {defaultLinkedinEnabled ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-3">
             <div className="text-sm font-medium">Scraped Sites</div>
             <div className="flex gap-6">

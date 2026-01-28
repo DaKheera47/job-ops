@@ -55,6 +55,10 @@ export const updateSettingsSchema = z
     ukvisajobsPassword: z.string().trim().max(2000).nullable().optional(),
     webhookSecret: z.string().trim().max(2000).nullable().optional(),
     enableBasicAuth: z.boolean().optional(),
+    gradcrackerEnabled: z.boolean().nullable().optional(),
+    ukvisajobsEnabled: z.boolean().nullable().optional(),
+    indeedEnabled: z.boolean().nullable().optional(),
+    linkedinEnabled: z.boolean().nullable().optional(),
   })
   .superRefine((data, ctx) => {
     if (data.enableBasicAuth) {

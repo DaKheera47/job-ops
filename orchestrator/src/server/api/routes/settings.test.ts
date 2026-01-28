@@ -71,4 +71,44 @@ describe.sequential("Settings API routes", () => {
     expect(body.success).toBe(false);
     expect(body.error).toContain("Username is required");
   });
+
+  it("persists scanner enabled flag overrides", async () => {
+    // First, disable gradcrackerEnabled and indeedEnabled
+    const patchRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gradcrackerEnabled: false,
+        indeedEnabled: false,
+      }),
+    });
+    const patchBody = await patchRes.json();
+    expect(patchBody.success).toBe(true);
+    expect(patchBody.data.gradcrackerEnabled).toBe(false);
+    expect(patchBody.data.overrideGradcrackerEnabled).toBe(false);
+    expect(patchBody.data.indeedEnabled).toBe(false);
+    expect(patchBody.data.overrideIndeedEnabled).toBe(false);
+
+    // Verify persistence with GET request
+    const getRes = await fetch(`${baseUrl}/api/settings`);
+    const getBody = await getRes.json();
+    expect(getBody.success).toBe(true);
+    expect(getBody.data.gradcrackerEnabled).toBe(false);
+    expect(getBody.data.overrideGradcrackerEnabled).toBe(false);
+    expect(getBody.data.indeedEnabled).toBe(false);
+    expect(getBody.data.overrideIndeedEnabled).toBe(false);
+
+    // Reset gradcrackerEnabled to default using null
+    const resetRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gradcrackerEnabled: null,
+      }),
+    });
+    const resetBody = await resetRes.json();
+    expect(resetBody.success).toBe(true);
+    expect(resetBody.data.gradcrackerEnabled).toBe(true); // returns to default (true)
+    expect(resetBody.data.overrideGradcrackerEnabled).toBeNull(); // override cleared
+  });
 });

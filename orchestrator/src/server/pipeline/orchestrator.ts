@@ -140,6 +140,21 @@ export async function runPipeline(
     // Read all settings at once to avoid sequential DB calls
     const settings = await settingsRepo.getAllSettings();
 
+    // Parse scanner enabled flags (default: true if not set or invalid)
+    const parseBooleanSetting = (value: string | null | undefined): boolean => {
+      if (!value) return true;
+      const normalized = value.toLowerCase().trim();
+      // Check if explicitly disabled
+      if (["0", "false", "no"].includes(normalized)) return false;
+      // Otherwise enabled (including '1', 'true', 'yes' and any truthy value)
+      return true;
+    };
+
+    const gradcrackerEnabled = parseBooleanSetting(settings.gradcrackerEnabled);
+    const ukvisajobsEnabled = parseBooleanSetting(settings.ukvisajobsEnabled);
+    const indeedEnabled = parseBooleanSetting(settings.indeedEnabled);
+    const linkedinEnabled = parseBooleanSetting(settings.linkedinEnabled);
+
     // Read search terms setting
     const searchTermsSetting = settings.searchTerms;
     let searchTerms: string[] = [];
@@ -171,6 +186,21 @@ export async function runPipeline(
         }
       } catch {
         // ignore JSON parse error
+      }
+    }
+
+    // Apply scanner enabled flags
+    const beforeEnabledFilter = [...jobSpySites];
+    if (!indeedEnabled) {
+      jobSpySites = jobSpySites.filter((s) => s !== "indeed");
+      if (beforeEnabledFilter.includes("indeed")) {
+        console.log("Indeed: skipped (disabled in settings)");
+      }
+    }
+    if (!linkedinEnabled) {
+      jobSpySites = jobSpySites.filter((s) => s !== "linkedin");
+      if (beforeEnabledFilter.includes("linkedin")) {
+        console.log("LinkedIn: skipped (disabled in settings)");
       }
     }
 
@@ -213,71 +243,79 @@ export async function runPipeline(
 
     // Run Gradcracker crawler if selected
     if (mergedConfig.sources.includes("gradcracker")) {
-      updateProgress({
-        step: "crawling",
-        detail: "Gradcracker: scraping...",
-      });
-
-      // Pass existing URLs to avoid clicking "Apply" on jobs we already have
-      const existingJobUrls = await jobsRepo.getAllJobUrls();
-
-      const gradcrackerMaxJobsSetting = settings.gradcrackerMaxJobsPerTerm;
-      const gradcrackerMaxJobs = gradcrackerMaxJobsSetting
-        ? parseInt(gradcrackerMaxJobsSetting, 10)
-        : 50;
-
-      const crawlerResult = await runCrawler({
-        existingJobUrls,
-        searchTerms,
-        maxJobsPerTerm: gradcrackerMaxJobs,
-        onProgress: (progress) => {
-          // Calculate overall progress based on list pages processed vs total
-          // This is rough but better than nothing
-          if (progress.listPagesTotal && progress.listPagesTotal > 0) {
-            const percent = Math.round(
-              ((progress.listPagesProcessed ?? 0) / progress.listPagesTotal) *
-                100,
-            );
-            updateProgress({
-              step: "crawling",
-              detail: `Gradcracker: ${percent}% (scan ${progress.listPagesProcessed}/${progress.listPagesTotal}, found ${progress.jobCardsFound})`,
-            });
-          }
-        },
-      });
-
-      if (!crawlerResult.success) {
-        sourceErrors.push(
-          `gradcracker: ${crawlerResult.error ?? "unknown error"}`,
-        );
+      if (!gradcrackerEnabled) {
+        console.log("Gradcracker: skipped (disabled in settings)");
       } else {
-        discoveredJobs.push(...crawlerResult.jobs);
+        updateProgress({
+          step: "crawling",
+          detail: "Gradcracker: scraping...",
+        });
+
+        // Pass existing URLs to avoid clicking "Apply" on jobs we already have
+        const existingJobUrls = await jobsRepo.getAllJobUrls();
+
+        const gradcrackerMaxJobsSetting = settings.gradcrackerMaxJobsPerTerm;
+        const gradcrackerMaxJobs = gradcrackerMaxJobsSetting
+          ? parseInt(gradcrackerMaxJobsSetting, 10)
+          : 50;
+
+        const crawlerResult = await runCrawler({
+          existingJobUrls,
+          searchTerms,
+          maxJobsPerTerm: gradcrackerMaxJobs,
+          onProgress: (progress) => {
+            // Calculate overall progress based on list pages processed vs total
+            // This is rough but better than nothing
+            if (progress.listPagesTotal && progress.listPagesTotal > 0) {
+              const percent = Math.round(
+                ((progress.listPagesProcessed ?? 0) / progress.listPagesTotal) *
+                  100,
+              );
+              updateProgress({
+                step: "crawling",
+                detail: `Gradcracker: ${percent}% (scan ${progress.listPagesProcessed}/${progress.listPagesTotal}, found ${progress.jobCardsFound})`,
+              });
+            }
+          },
+        });
+
+        if (!crawlerResult.success) {
+          sourceErrors.push(
+            `gradcracker: ${crawlerResult.error ?? "unknown error"}`,
+          );
+        } else {
+          discoveredJobs.push(...crawlerResult.jobs);
+        }
       }
     }
 
     // Run UKVisaJobs extractor if selected
     if (mergedConfig.sources.includes("ukvisajobs")) {
-      updateProgress({
-        step: "crawling",
-        detail: "UKVisaJobs: scraping visa-sponsoring jobs...",
-      });
-
-      // Read max jobs setting from database (default to 50 if not set)
-      const ukvisajobsMaxJobsSetting = settings.ukvisajobsMaxJobs;
-      const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting
-        ? parseInt(ukvisajobsMaxJobsSetting, 10)
-        : 50;
-
-      const ukVisaResult = await runUkVisaJobs({
-        maxJobs: ukvisajobsMaxJobs,
-        searchTerms,
-      });
-      if (!ukVisaResult.success) {
-        sourceErrors.push(
-          `ukvisajobs: ${ukVisaResult.error ?? "unknown error"}`,
-        );
+      if (!ukvisajobsEnabled) {
+        console.log("UKVisaJobs: skipped (disabled in settings)");
       } else {
-        discoveredJobs.push(...ukVisaResult.jobs);
+        updateProgress({
+          step: "crawling",
+          detail: "UKVisaJobs: scraping visa-sponsoring jobs...",
+        });
+
+        // Read max jobs setting from database (default to 50 if not set)
+        const ukvisajobsMaxJobsSetting = settings.ukvisajobsMaxJobs;
+        const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting
+          ? parseInt(ukvisajobsMaxJobsSetting, 10)
+          : 50;
+
+        const ukVisaResult = await runUkVisaJobs({
+          maxJobs: ukvisajobsMaxJobs,
+          searchTerms,
+        });
+        if (!ukVisaResult.success) {
+          sourceErrors.push(
+            `ukvisajobs: ${ukVisaResult.error ?? "unknown error"}`,
+          );
+        } else {
+          discoveredJobs.push(...ukVisaResult.jobs);
+        }
       }
     }
 

@@ -32,13 +32,13 @@ import {
 
 import { sourceLabel } from "@/lib/utils";
 import type { JobSource } from "../../../shared/types";
-import { orderedSources } from "./constants";
 
 interface OrchestratorHeaderProps {
   navOpen: boolean;
   onNavOpenChange: (open: boolean) => void;
   isPipelineRunning: boolean;
   pipelineSources: JobSource[];
+  allowedSources: JobSource[];
   enabledSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
@@ -58,7 +58,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   onNavOpenChange,
   isPipelineRunning,
   pipelineSources,
-  enabledSources,
+  allowedSources,
   onToggleSource,
   onSetPipelineSources,
   onRunPipeline,
@@ -66,9 +66,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const visibleSources = orderedSources.filter((source) =>
-    enabledSources.includes(source),
-  );
+  const visibleSources = allowedSources;
   const allSourcesSelected =
     visibleSources.length > 0 &&
     visibleSources.every((source) => pipelineSources.includes(source));

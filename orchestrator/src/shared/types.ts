@@ -524,6 +524,18 @@ export interface AppSettings {
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
+  gradcrackerEnabled: boolean;
+  defaultGradcrackerEnabled: boolean;
+  overrideGradcrackerEnabled: boolean | null;
+  ukvisajobsEnabled: boolean;
+  defaultUkvisajobsEnabled: boolean;
+  overrideUkvisajobsEnabled: boolean | null;
+  indeedEnabled: boolean;
+  defaultIndeedEnabled: boolean;
+  overrideIndeedEnabled: boolean | null;
+  linkedinEnabled: boolean;
+  defaultLinkedinEnabled: boolean;
+  overrideLinkedinEnabled: boolean | null;
   openrouterApiKeyHint: string | null;
   rxresumeEmail: string | null;
   rxresumePasswordHint: string | null;
