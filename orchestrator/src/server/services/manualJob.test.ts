@@ -30,7 +30,7 @@ describe("manual job inference", () => {
     const result = await inferManualJobDetails("JD text");
 
     expect(result.job).toEqual({});
-    expect(result.warning).toContain("OPENROUTER_API_KEY not set");
+    expect(result.warning).toContain("LLM API key not set");
     expect(global.fetch).not.toHaveBeenCalled();
   });
 

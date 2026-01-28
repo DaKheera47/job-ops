@@ -63,6 +63,24 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    if ("llmProvider" in input) {
+      const value = normalizeEnvInput(input.llmProvider);
+      promises.push(
+        settingsRepo.setSetting("llmProvider", value).then(() => {
+          applyEnvValue("LLM_PROVIDER", value);
+        }),
+      );
+    }
+
+    if ("llmBaseUrl" in input) {
+      const value = normalizeEnvInput(input.llmBaseUrl);
+      promises.push(
+        settingsRepo.setSetting("llmBaseUrl", value).then(() => {
+          applyEnvValue("LLM_BASE_URL", value);
+        }),
+      );
+    }
+
     if ("pipelineWebhookUrl" in input) {
       promises.push(
         settingsRepo.setSetting(
@@ -215,6 +233,15 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       promises.push(
         settingsRepo.setSetting("openrouterApiKey", value).then(() => {
           applyEnvValue("OPENROUTER_API_KEY", value);
+        }),
+      );
+    }
+
+    if ("llmApiKey" in input) {
+      const value = normalizeEnvInput(input.llmApiKey);
+      promises.push(
+        settingsRepo.setSetting("llmApiKey", value).then(() => {
+          applyEnvValue("LLM_API_KEY", value);
         }),
       );
     }

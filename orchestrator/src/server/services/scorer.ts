@@ -4,7 +4,7 @@
 
 import type { Job } from "../../shared/types.js";
 import { getSetting } from "../repositories/settings.js";
-import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 
 interface SuitabilityResult {
   score: number; // 0-100
@@ -39,11 +39,6 @@ export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
 ): Promise<SuitabilityResult> {
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.warn("⚠️ OPENROUTER_API_KEY not set, using mock scoring");
-    return mockScore(job);
-  }
-
   const [overrideModel, overrideModelScorer] = await Promise.all([
     getSetting("model"),
     getSetting("modelScorer"),
@@ -57,7 +52,8 @@ export async function scoreJobSuitability(
 
   const prompt = buildScoringPrompt(job, profile);
 
-  const result = await callOpenRouter<{ score: number; reason: string }>({
+  const llm = new LlmService();
+  const result = await llm.callJson<{ score: number; reason: string }>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: SCORING_SCHEMA,
@@ -66,6 +62,9 @@ export async function scoreJobSuitability(
   });
 
   if (!result.success) {
+    if (result.error.toLowerCase().includes("api key")) {
+      console.warn("⚠️ LLM API key not set, using mock scoring");
+    }
     console.error(
       `❌ [Job ${job.id}] Scoring failed: ${result.error}, using mock scoring`,
     );
@@ -92,7 +91,7 @@ export async function scoreJobSuitability(
  * Robustly parse JSON from AI-generated content.
  * Handles common AI quirks: markdown fences, extra text, trailing commas, etc.
  *
- * @deprecated Use callOpenRouter with structured outputs instead. Kept for backwards compatibility with tests.
+ * @deprecated Use LlmService with structured outputs instead. Kept for backwards compatibility with tests.
  */
 export function parseJsonFromContent(
   content: string,

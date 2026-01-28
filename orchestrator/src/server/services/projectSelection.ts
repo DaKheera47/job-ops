@@ -3,7 +3,7 @@
  */
 
 import { getSetting } from "../repositories/settings.js";
-import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 import type { ResumeProjectSelectionItem } from "./resumeProjects.js";
 
 /** JSON schema for project selection response */
@@ -34,14 +34,6 @@ export async function pickProjectIdsForJob(args: {
   const eligibleIds = new Set(args.eligibleProjects.map((p) => p.id));
   if (eligibleIds.size === 0) return [];
 
-  if (!process.env.OPENROUTER_API_KEY) {
-    return fallbackPickProjectIds(
-      args.jobDescription,
-      args.eligibleProjects,
-      desiredCount,
-    );
-  }
-
   const [overrideModel, overrideModelProjectSelection] = await Promise.all([
     getSetting("model"),
     getSetting("modelProjectSelection"),
@@ -59,7 +51,8 @@ export async function pickProjectIdsForJob(args: {
     desiredCount,
   });
 
-  const result = await callOpenRouter<{ selectedProjectIds: string[] }>({
+  const llm = new LlmService();
+  const result = await llm.callJson<{ selectedProjectIds: string[] }>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: PROJECT_SELECTION_SCHEMA,

@@ -1,4 +1,5 @@
 import { getSetting } from "@server/repositories/settings.js";
+import { LlmService } from "@server/services/llm-service.js";
 import { RxResumeClient } from "@server/services/rxresume-client.js";
 import {
   getResume,
@@ -14,56 +15,11 @@ type ValidationResponse = {
   message: string | null;
 };
 
-async function validateOpenrouter(
+async function validateLlm(
   apiKey?: string | null,
 ): Promise<ValidationResponse> {
-  const key = apiKey?.trim() || process.env.OPENROUTER_API_KEY || "";
-  if (!key) {
-    return { valid: false, message: "OpenRouter API key is missing." };
-  }
-
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/key", {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${key}`,
-      },
-    });
-
-    if (!response.ok) {
-      let detail = "";
-      try {
-        const payload = await response.json();
-        if (payload && typeof payload === "object" && "error" in payload) {
-          const errorObj = payload.error as {
-            message?: string;
-            code?: number | string;
-          };
-          const message = errorObj?.message || "";
-          const code = errorObj?.code ? ` (${errorObj.code})` : "";
-          detail = `${message}${code}`.trim();
-        }
-      } catch {
-        // ignore JSON parse errors
-      }
-
-      if (response.status === 401) {
-        return {
-          valid: false,
-          message: "Invalid OpenRouter API key. Check the key and try again.",
-        };
-      }
-
-      const fallback = `OpenRouter returned ${response.status}`;
-      return { valid: false, message: detail || fallback };
-    }
-
-    return { valid: true, message: null };
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "OpenRouter validation failed.";
-    return { valid: false, message };
-  }
+  const llm = new LlmService({ apiKey });
+  return llm.validateCredentials();
 }
 
 /**
@@ -164,7 +120,7 @@ onboardingRouter.post(
   async (req: Request, res: Response) => {
     const apiKey =
       typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
-    const result = await validateOpenrouter(apiKey);
+    const result = await validateLlm(apiKey);
     res.json({ success: true, data: result });
   },
 );

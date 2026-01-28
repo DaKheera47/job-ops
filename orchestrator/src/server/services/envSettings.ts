@@ -4,6 +4,8 @@ import * as settingsRepo from "@server/repositories/settings.js";
 const envDefaults: Record<string, string | undefined> = { ...process.env };
 
 const readableStringConfig: { settingKey: SettingKey; envKey: string }[] = [
+  { settingKey: "llmProvider", envKey: "LLM_PROVIDER" },
+  { settingKey: "llmBaseUrl", envKey: "LLM_BASE_URL" },
   { settingKey: "rxresumeEmail", envKey: "RXRESUME_EMAIL" },
   { settingKey: "ukvisajobsEmail", envKey: "UKVISAJOBS_EMAIL" },
   { settingKey: "basicAuthUser", envKey: "BASIC_AUTH_USER" },
@@ -20,6 +22,11 @@ const privateStringConfig: {
   envKey: string;
   hintKey: string;
 }[] = [
+  {
+    settingKey: "llmApiKey",
+    envKey: "LLM_API_KEY",
+    hintKey: "llmApiKeyHint",
+  },
   {
     settingKey: "openrouterApiKey",
     envKey: "OPENROUTER_API_KEY",
