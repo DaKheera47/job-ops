@@ -66,9 +66,10 @@ const buildApplicationsPerDay = (
   daysToShow: number,
 ) => {
   const end = new Date();
-  end.setHours(0, 0, 0, 0);
+  end.setHours(23, 59, 59, 999);
   const start = new Date(end);
   start.setDate(start.getDate() - (daysToShow - 1));
+  start.setHours(0, 0, 0, 0);
 
   const counts = new Map<string, number>();
   for (const value of appliedAt) {
