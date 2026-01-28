@@ -25,11 +25,14 @@ export type JobspyValues = {
 
 export type EnvSettingsValues = {
   readable: {
+    llmProvider: string;
+    llmBaseUrl: string;
     rxresumeEmail: string;
     ukvisajobsEmail: string;
     basicAuthUser: string;
   };
   private: {
+    llmApiKeyHint: string | null;
     openrouterApiKeyHint: string | null;
     rxresumePasswordHint: string | null;
     ukvisajobsPasswordHint: string | null;

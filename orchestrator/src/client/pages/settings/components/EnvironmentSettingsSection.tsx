@@ -10,6 +10,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 
 type EnvironmentSettingsSectionProps = {
@@ -44,14 +51,63 @@ export const EnvironmentSettingsSection: React.FC<
               External Services
             </div>
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label htmlFor="llmProvider" className="text-sm font-medium">
+                  LLM provider
+                </label>
+                <Controller
+                  name="llmProvider"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(value) => field.onChange(value)}
+                      disabled={isLoading || isSaving}
+                    >
+                      <SelectTrigger id="llmProvider">
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="openrouter">OpenRouter</SelectItem>
+                        <SelectItem value="openai_compatible">
+                          OpenAI-compatible
+                        </SelectItem>
+                        <SelectItem value="ollama">Ollama</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.llmProvider?.message && (
+                  <p className="text-xs text-destructive">
+                    {errors.llmProvider.message as string}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Used for scoring, tailoring, and extraction.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Current:{" "}
+                  <span className="font-mono">
+                    {values.readable.llmProvider || "—"}
+                  </span>
+                </p>
+              </div>
               <SettingsInput
-                label="OpenRouter API key"
-                inputProps={register("openrouterApiKey")}
+                label="LLM base URL"
+                inputProps={register("llmBaseUrl")}
+                placeholder="https://openrouter.ai"
+                disabled={isLoading || isSaving}
+                error={errors.llmBaseUrl?.message as string | undefined}
+                current={values.readable.llmBaseUrl}
+              />
+              <SettingsInput
+                label="LLM API key"
+                inputProps={register("llmApiKey")}
                 type="password"
                 placeholder="Enter new key"
                 disabled={isLoading || isSaving}
-                error={errors.openrouterApiKey?.message as string | undefined}
-                current={formatSecretHint(privateValues.openrouterApiKeyHint)}
+                error={errors.llmApiKey?.message as string | undefined}
+                current={formatSecretHint(privateValues.llmApiKeyHint)}
               />
             </div>
           </div>

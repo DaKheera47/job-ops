@@ -36,6 +36,9 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   modelScorer: "",
   modelTailoring: "",
   modelProjectSelection: "",
+  llmProvider: "",
+  llmBaseUrl: "",
+  llmApiKey: "",
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
@@ -66,6 +69,9 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   modelScorer: null,
   modelTailoring: null,
   modelProjectSelection: null,
+  llmProvider: null,
+  llmBaseUrl: null,
+  llmApiKey: null,
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
@@ -96,6 +102,9 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.overrideModelScorer ?? "",
   modelTailoring: data.overrideModelTailoring ?? "",
   modelProjectSelection: data.overrideModelProjectSelection ?? "",
+  llmProvider: data.overrideLlmProvider ?? "",
+  llmBaseUrl: data.overrideLlmBaseUrl ?? "",
+  llmApiKey: "",
   pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",
   jobCompleteWebhookUrl: data.overrideJobCompleteWebhookUrl ?? "",
   resumeProjects: data.resumeProjects,
@@ -260,11 +269,15 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     },
     envSettings: {
       readable: {
+        llmProvider: settings?.llmProvider ?? "",
+        llmBaseUrl: settings?.llmBaseUrl ?? "",
         rxresumeEmail: settings?.rxresumeEmail ?? "",
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
         basicAuthUser: settings?.basicAuthUser ?? "",
       },
       private: {
+        llmApiKeyHint:
+          settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null,
         openrouterApiKeyHint: settings?.openrouterApiKeyHint ?? null,
         rxresumePasswordHint: settings?.rxresumePasswordHint ?? null,
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
@@ -480,6 +493,19 @@ export const SettingsPage: React.FC = () => {
       if (dirtyFields.openrouterApiKey) {
         const value = normalizePrivateInput(data.openrouterApiKey);
         if (value !== undefined) envPayload.openrouterApiKey = value;
+      }
+
+      if (dirtyFields.llmProvider) {
+        envPayload.llmProvider = normalizeString(data.llmProvider);
+      }
+
+      if (dirtyFields.llmBaseUrl) {
+        envPayload.llmBaseUrl = normalizeString(data.llmBaseUrl);
+      }
+
+      if (dirtyFields.llmApiKey) {
+        const value = normalizePrivateInput(data.llmApiKey);
+        if (value !== undefined) envPayload.llmApiKey = value;
       }
 
       if (dirtyFields.rxresumePassword) {
