@@ -5,6 +5,7 @@
 import {
   Briefcase,
   Home,
+  LayoutDashboard,
   type LucideIcon,
   Menu,
   Settings,
@@ -30,7 +31,13 @@ import { cn } from "@/lib/utils";
 // ============================================================================
 
 const navLinks = [
-  { to: "/", label: "Dashboard", icon: Home },
+  { to: "/home", label: "Home", icon: Home },
+  {
+    to: "/ready",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    activePaths: ["/ready", "/discovered", "/applied", "/all"],
+  },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
   { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
   { to: "/settings", label: "Settings", icon: Settings },
@@ -57,8 +64,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
 
-  const handleNavClick = (to: string) => {
-    if (location.pathname === to) {
+  const isNavActive = (to: string, activePaths?: string[]) =>
+    location.pathname === to ||
+    (activePaths ? activePaths.includes(location.pathname) : false);
+
+  const handleNavClick = (to: string, activePaths?: string[]) => {
+    if (isNavActive(to, activePaths)) {
       setNavOpen(false);
       return;
     }
@@ -82,21 +93,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {navLinks.map(({ to, label, icon: NavIcon }) => (
+                {navLinks.map(({ to, label, icon: NavIcon, activePaths }) => (
                   <button
                     key={to}
                     type="button"
-                    onClick={() => handleNavClick(to)}
+                    onClick={() => handleNavClick(to, activePaths)}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                      location.pathname === to ||
-                        (to === "/" &&
-                          [
-                            "/ready",
-                            "/discovered",
-                            "/applied",
-                            "/all",
-                          ].includes(location.pathname))
+                      isNavActive(to, activePaths)
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground",
                     )}
