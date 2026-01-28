@@ -29,7 +29,7 @@ export const App: React.FC = () => {
 
   return (
     <>
-      <OnboardingGate />
+      {/* <OnboardingGate /> */}
       <SwitchTransition mode="out-in">
         <CSSTransition
           key={pageKey}

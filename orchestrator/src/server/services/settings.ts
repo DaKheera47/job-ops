@@ -238,8 +238,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase();
   if (normalized === "ollama") return "http://localhost:11434";
-  if (normalized === "openai" || normalized === "openai_compatible") {
+  if (normalized === "lmstudio") return "http://localhost:1234";
+  if (normalized === "openai") {
     return "https://api.openai.com";
+  }
+  if (normalized === "gemini") {
+    return "https://generativelanguage.googleapis.com";
   }
   return "https://openrouter.ai";
 }

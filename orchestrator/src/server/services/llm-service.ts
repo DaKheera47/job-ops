@@ -1,8 +1,15 @@
 /**
- * LLM service for OpenAI-compatible providers.
+ * LLM service with provider-specific strategies and strict-first fallback.
  */
 
-export type LlmProvider = "openrouter" | "openai_compatible" | "ollama";
+export type LlmProvider =
+  | "openrouter"
+  | "lmstudio"
+  | "ollama"
+  | "openai"
+  | "gemini";
+
+type ResponseMode = "json_schema" | "json_object" | "text" | "none";
 
 export interface JsonSchemaDefinition {
   name: string;
@@ -52,13 +59,30 @@ type LlmServiceOptions = {
   apiKey?: string | null;
 };
 
-type ProviderConfig = {
+type ProviderStrategy = {
   provider: LlmProvider;
   defaultBaseUrl: string;
-  chatPath: string;
-  validationPaths: string[];
   requiresApiKey: boolean;
-  responseFormat: "json_schema" | "json_object" | "none";
+  modes: ResponseMode[];
+  validationPaths: string[];
+  buildRequest: (args: {
+    mode: ResponseMode;
+    baseUrl: string;
+    apiKey: string | null;
+    model: string;
+    messages: LlmRequestOptions<unknown>["messages"];
+    jsonSchema: JsonSchemaDefinition;
+  }) => { url: string; headers: Record<string, string>; body: unknown };
+  extractText: (response: unknown) => string | null;
+  isCapabilityError: (args: {
+    mode: ResponseMode;
+    status?: number;
+    body?: string;
+  }) => boolean;
+  getValidationUrls: (args: {
+    baseUrl: string;
+    apiKey: string | null;
+  }) => string[];
 };
 
 interface LlmApiError extends Error {
@@ -66,49 +90,264 @@ interface LlmApiError extends Error {
   body?: string;
 }
 
-const providerConfig: Record<LlmProvider, ProviderConfig> = {
-  openrouter: {
-    provider: "openrouter",
-    defaultBaseUrl: "https://openrouter.ai",
-    chatPath: "/api/v1/chat/completions",
-    validationPaths: ["/api/v1/key"],
-    requiresApiKey: true,
-    responseFormat: "json_schema",
+const modeCache = new Map<string, ResponseMode>();
+
+const openRouterStrategy: ProviderStrategy = {
+  provider: "openrouter",
+  defaultBaseUrl: "https://openrouter.ai",
+  requiresApiKey: true,
+  modes: ["json_schema", "none"],
+  validationPaths: ["/api/v1/key"],
+  buildRequest: ({ mode, baseUrl, apiKey, model, messages, jsonSchema }) => {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      stream: false,
+      plugins: [{ id: "response-healing" }],
+    };
+
+    if (mode === "json_schema") {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: {
+          name: jsonSchema.name,
+          strict: true,
+          schema: jsonSchema.schema,
+        },
+      };
+    }
+
+    return {
+      url: joinUrl(baseUrl, "/api/v1/chat/completions"),
+      headers: buildHeaders({ apiKey, provider: "openrouter" }),
+      body,
+    };
   },
-  openai_compatible: {
-    provider: "openai_compatible",
-    defaultBaseUrl: "https://api.openai.com",
-    chatPath: "/v1/chat/completions",
-    validationPaths: ["/v1/models"],
-    requiresApiKey: false,
-    responseFormat: "none",
+  extractText: (response) =>
+    (response as any)?.choices?.[0]?.message?.content ?? null,
+  isCapabilityError: ({ mode, status, body }) =>
+    isCapabilityError({ mode, status, body }),
+  getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/api/v1/key")],
+};
+
+const lmStudioStrategy: ProviderStrategy = {
+  provider: "lmstudio",
+  defaultBaseUrl: "http://localhost:1234",
+  requiresApiKey: false,
+  modes: ["json_schema", "text", "none"],
+  validationPaths: ["/v1/models"],
+  buildRequest: ({ mode, baseUrl, model, messages, jsonSchema }) => {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      stream: false,
+    };
+
+    if (mode === "json_schema") {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: {
+          name: jsonSchema.name,
+          strict: true,
+          schema: jsonSchema.schema,
+        },
+      };
+    } else if (mode === "text") {
+      body.response_format = { type: "text" };
+    }
+
+    return {
+      url: joinUrl(baseUrl, "/v1/chat/completions"),
+      headers: buildHeaders({ apiKey: null, provider: "lmstudio" }),
+      body,
+    };
   },
-  ollama: {
-    provider: "ollama",
-    defaultBaseUrl: "http://localhost:11434",
-    chatPath: "/v1/chat/completions",
-    validationPaths: ["/v1/models", "/api/tags"],
-    requiresApiKey: false,
-    responseFormat: "none",
+  extractText: (response) =>
+    (response as any)?.choices?.[0]?.message?.content ?? null,
+  isCapabilityError: ({ mode, status, body }) =>
+    isCapabilityError({ mode, status, body }),
+  getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/v1/models")],
+};
+
+const ollamaStrategy: ProviderStrategy = {
+  provider: "ollama",
+  defaultBaseUrl: "http://localhost:11434",
+  requiresApiKey: false,
+  modes: ["json_schema", "text", "none"],
+  validationPaths: ["/v1/models", "/api/tags"],
+  buildRequest: ({ mode, baseUrl, model, messages, jsonSchema }) => {
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      stream: false,
+    };
+
+    if (mode === "json_schema") {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: {
+          name: jsonSchema.name,
+          strict: true,
+          schema: jsonSchema.schema,
+        },
+      };
+    } else if (mode === "text") {
+      body.response_format = { type: "text" };
+    }
+
+    return {
+      url: joinUrl(baseUrl, "/v1/chat/completions"),
+      headers: buildHeaders({ apiKey: null, provider: "ollama" }),
+      body,
+    };
   },
+  extractText: (response) =>
+    (response as any)?.choices?.[0]?.message?.content ?? null,
+  isCapabilityError: ({ mode, status, body }) =>
+    isCapabilityError({ mode, status, body }),
+  getValidationUrls: ({ baseUrl }) => [
+    joinUrl(baseUrl, "/v1/models"),
+    joinUrl(baseUrl, "/api/tags"),
+  ],
+};
+
+const openAiStrategy: ProviderStrategy = {
+  provider: "openai",
+  defaultBaseUrl: "https://api.openai.com",
+  requiresApiKey: true,
+  modes: ["json_schema", "json_object", "none"],
+  validationPaths: ["/v1/models"],
+  buildRequest: ({ mode, baseUrl, apiKey, model, messages, jsonSchema }) => {
+    const input = ensureJsonInstructionIfNeeded(messages, mode);
+    const body: Record<string, unknown> = {
+      model,
+      input,
+    };
+
+    if (mode === "json_schema") {
+      body.text = {
+        format: {
+          type: "json_schema",
+          name: jsonSchema.name,
+          strict: true,
+          schema: jsonSchema.schema,
+        },
+      };
+    } else if (mode === "json_object") {
+      body.text = { format: { type: "json_object" } };
+    }
+
+    return {
+      url: joinUrl(baseUrl, "/v1/responses"),
+      headers: buildHeaders({ apiKey, provider: "openai" }),
+      body,
+    };
+  },
+  extractText: (response) => {
+    const direct = (response as any)?.output_text;
+    if (typeof direct === "string" && direct.trim()) return direct;
+
+    const output = (response as any)?.output;
+    if (!Array.isArray(output)) return null;
+
+    for (const item of output) {
+      const content = item?.content;
+      if (!Array.isArray(content)) continue;
+      for (const part of content) {
+        if (part?.type === "output_text" && typeof part.text === "string") {
+          return part.text;
+        }
+      }
+    }
+    return null;
+  },
+  isCapabilityError: ({ mode, status, body }) =>
+    isCapabilityError({ mode, status, body }),
+  getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/v1/models")],
+};
+
+const geminiStrategy: ProviderStrategy = {
+  provider: "gemini",
+  defaultBaseUrl: "https://generativelanguage.googleapis.com",
+  requiresApiKey: true,
+  modes: ["json_schema", "json_object", "none"],
+  validationPaths: ["/v1beta/models"],
+  buildRequest: ({ mode, baseUrl, apiKey, model, messages, jsonSchema }) => {
+    const { systemInstruction, contents } = toGeminiContents(messages);
+    const body: Record<string, unknown> = {
+      contents,
+    };
+
+    if (systemInstruction) {
+      body.systemInstruction = systemInstruction;
+    }
+
+    if (mode === "json_schema") {
+      body.generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema: jsonSchema.schema,
+      };
+    } else if (mode === "json_object") {
+      body.generationConfig = {
+        responseMimeType: "application/json",
+      };
+    }
+
+    const url = joinUrl(
+      baseUrl,
+      `/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    );
+    const urlWithKey = addQueryParam(url, "key", apiKey ?? "");
+
+    return {
+      url: urlWithKey,
+      headers: buildHeaders({ apiKey: null, provider: "gemini" }),
+      body,
+    };
+  },
+  extractText: (response) => {
+    const parts = (response as any)?.candidates?.[0]?.content?.parts;
+    if (!Array.isArray(parts)) return null;
+    const text = parts
+      .map((part: { text?: string }) => part.text)
+      .filter((part: string | undefined) => typeof part === "string")
+      .join("");
+    return text || null;
+  },
+  isCapabilityError: ({ mode, status, body }) =>
+    isCapabilityError({ mode, status, body }),
+  getValidationUrls: ({ baseUrl, apiKey }) => {
+    const url = joinUrl(baseUrl, "/v1beta/models");
+    return [addQueryParam(url, "key", apiKey ?? "")];
+  },
+};
+
+const strategies: Record<LlmProvider, ProviderStrategy> = {
+  openrouter: openRouterStrategy,
+  lmstudio: lmStudioStrategy,
+  ollama: ollamaStrategy,
+  openai: openAiStrategy,
+  gemini: geminiStrategy,
 };
 
 export class LlmService {
   private readonly provider: LlmProvider;
   private readonly baseUrl: string;
   private readonly apiKey: string | null;
-  private readonly config: ProviderConfig;
+  private readonly strategy: ProviderStrategy;
 
   constructor(options: LlmServiceOptions = {}) {
-    const resolvedProvider = normalizeProvider(
-      options.provider ?? process.env.LLM_PROVIDER ?? null,
-    );
-
-    const config = providerConfig[resolvedProvider];
-    const baseUrl =
+    const normalizedBaseUrl =
       normalizeEnvInput(options.baseUrl) ||
       normalizeEnvInput(process.env.LLM_BASE_URL) ||
-      config.defaultBaseUrl;
+      null;
+    const resolvedProvider = normalizeProvider(
+      options.provider ?? process.env.LLM_PROVIDER ?? null,
+      normalizedBaseUrl,
+    );
+
+    const strategy = strategies[resolvedProvider];
+    const baseUrl = normalizedBaseUrl || strategy.defaultBaseUrl;
 
     const apiKey =
       normalizeEnvInput(options.apiKey) ||
@@ -120,11 +359,11 @@ export class LlmService {
     this.provider = resolvedProvider;
     this.baseUrl = baseUrl;
     this.apiKey = apiKey;
-    this.config = config;
+    this.strategy = strategy;
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
-    if (this.config.requiresApiKey && !this.apiKey) {
+    if (this.strategy.requiresApiKey && !this.apiKey) {
       return { success: false, error: "LLM API key not configured" };
     }
 
@@ -134,8 +373,107 @@ export class LlmService {
       jsonSchema,
       maxRetries = 0,
       retryDelayMs = 500,
-      jobId,
     } = options;
+    const jobId = options.jobId;
+
+    const cacheKey = `${this.provider}:${this.baseUrl}`;
+    const cachedMode = modeCache.get(cacheKey);
+    const modes = cachedMode
+      ? [cachedMode, ...this.strategy.modes.filter((m) => m !== cachedMode)]
+      : this.strategy.modes;
+
+    for (const mode of modes) {
+      const result = await this.tryMode<T>({
+        mode,
+        model,
+        messages,
+        jsonSchema,
+        maxRetries,
+        retryDelayMs,
+        jobId,
+      });
+
+      if (result.success) {
+        modeCache.set(cacheKey, mode);
+        return result;
+      }
+
+      if (!result.success && result.error.startsWith("CAPABILITY:")) {
+        continue;
+      }
+
+      return result;
+    }
+
+    return { success: false, error: "All provider modes failed" };
+  }
+
+  getProvider(): LlmProvider {
+    return this.provider;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  async validateCredentials(): Promise<LlmValidationResult> {
+    if (this.strategy.requiresApiKey && !this.apiKey) {
+      return { valid: false, message: "LLM API key is missing." };
+    }
+
+    const urls = this.strategy.getValidationUrls({
+      baseUrl: this.baseUrl,
+      apiKey: this.apiKey,
+    });
+    let lastMessage: string | null = null;
+
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: buildHeaders({
+            apiKey: this.apiKey,
+            provider: this.provider,
+          }),
+        });
+
+        if (response.ok) {
+          return { valid: true, message: null };
+        }
+
+        const detail = await getResponseDetail(response);
+        if (response.status === 401) {
+          return {
+            valid: false,
+            message: "Invalid LLM API key. Check the key and try again.",
+          };
+        }
+
+        lastMessage = detail || `LLM provider returned ${response.status}`;
+      } catch (error) {
+        lastMessage =
+          error instanceof Error ? error.message : "LLM validation failed.";
+      }
+    }
+
+    return {
+      valid: false,
+      message: lastMessage || "LLM provider validation failed.",
+    };
+  }
+
+  private async tryMode<T>(args: {
+    mode: ResponseMode;
+    model: string;
+    messages: LlmRequestOptions<T>["messages"];
+    jsonSchema: JsonSchemaDefinition;
+    maxRetries: number;
+    retryDelayMs: number;
+    jobId?: string;
+  }): Promise<LlmResponse<T>> {
+    const { mode, model, messages, jsonSchema, maxRetries, retryDelayMs } =
+      args;
+    const jobId = args.jobId;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -146,31 +484,19 @@ export class LlmService {
           await sleep(retryDelayMs * attempt);
         }
 
-        const response = await fetch(this.getChatUrl(), {
+        const { url, headers, body } = this.strategy.buildRequest({
+          mode,
+          baseUrl: this.baseUrl,
+          apiKey: this.apiKey,
+          model,
+          messages,
+          jsonSchema,
+        });
+
+        const response = await fetch(url, {
           method: "POST",
-          headers: this.getHeaders(),
-          body: JSON.stringify({
-            model,
-            messages,
-            stream: false,
-            ...(this.config.responseFormat === "json_schema"
-              ? {
-                  response_format: {
-                    type: "json_schema",
-                    json_schema: {
-                      name: jsonSchema.name,
-                      strict: true,
-                      schema: jsonSchema.schema,
-                    },
-                  },
-                }
-              : this.config.responseFormat === "json_object"
-                ? { response_format: { type: "json_object" } }
-                : {}),
-            ...(this.provider === "openrouter"
-              ? { plugins: [{ id: "response-healing" }] }
-              : {}),
-          }),
+          headers,
+          body: JSON.stringify(body),
         });
 
         if (!response.ok) {
@@ -185,18 +511,28 @@ export class LlmService {
         }
 
         const data = await response.json();
-        const content = data?.choices?.[0]?.message?.content;
+        const content = this.strategy.extractText(data);
 
         if (!content) {
           throw new Error("No content in response");
         }
 
         const parsed = parseJsonContent<T>(content, jobId);
-
         return { success: true, data: parsed };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const status = (error as LlmApiError).status;
+        const body = (error as LlmApiError).body;
+
+        if (
+          this.strategy.isCapabilityError({
+            mode,
+            status,
+            body,
+          })
+        ) {
+          return { success: false, error: `CAPABILITY:${message}` };
+        }
 
         const shouldRetry =
           message.includes("parse") ||
@@ -217,77 +553,6 @@ export class LlmService {
     }
 
     return { success: false, error: "All retry attempts failed" };
-  }
-
-  getProvider(): LlmProvider {
-    return this.provider;
-  }
-
-  getBaseUrl(): string {
-    return this.baseUrl;
-  }
-
-  async validateCredentials(): Promise<LlmValidationResult> {
-    if (this.config.requiresApiKey && !this.apiKey) {
-      return { valid: false, message: "LLM API key is missing." };
-    }
-
-    const headers = this.getHeaders({ includeAuth: true });
-    let lastMessage: string | null = null;
-
-    for (const path of this.config.validationPaths) {
-      try {
-        const response = await fetch(joinUrl(this.baseUrl, path), {
-          method: "GET",
-          headers,
-        });
-
-        if (response.ok) {
-          return { valid: true, message: null };
-        }
-
-        const detail = await getResponseDetail(response);
-
-        if (response.status === 401) {
-          return {
-            valid: false,
-            message: "Invalid LLM API key. Check the key and try again.",
-          };
-        }
-
-        lastMessage = detail || `LLM provider returned ${response.status}`;
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "LLM validation failed.";
-        lastMessage = message;
-      }
-    }
-
-    return {
-      valid: false,
-      message: lastMessage || "LLM provider validation failed.",
-    };
-  }
-
-  private getChatUrl(): string {
-    return joinUrl(this.baseUrl, this.config.chatPath);
-  }
-
-  private getHeaders({ includeAuth = true } = {}): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (includeAuth && this.apiKey) {
-      headers.Authorization = `Bearer ${this.apiKey}`;
-    }
-
-    if (this.provider === "openrouter") {
-      headers["HTTP-Referer"] = "JobOps";
-      headers["X-Title"] = "JobOpsOrchestrator";
-    }
-
-    return headers;
   }
 }
 
@@ -319,11 +584,23 @@ export function parseJsonContent<T>(content: string, jobId?: string): T {
   }
 }
 
-function normalizeProvider(raw: string | null): LlmProvider {
+function normalizeProvider(
+  raw: string | null,
+  baseUrl: string | null,
+): LlmProvider {
   const normalized = raw?.trim().toLowerCase();
-  if (normalized === "openai" || normalized === "openai_compatible") {
-    return "openai_compatible";
+  if (normalized === "openai_compatible") {
+    if (
+      baseUrl?.includes("localhost:1234") ||
+      baseUrl?.includes("127.0.0.1:1234")
+    ) {
+      return "lmstudio";
+    }
+    return "openai";
   }
+  if (normalized === "openai") return "openai";
+  if (normalized === "gemini") return "gemini";
+  if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized && normalized !== "openrouter") {
     console.warn(
@@ -336,6 +613,69 @@ function normalizeProvider(raw: string | null): LlmProvider {
 function normalizeEnvInput(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
+}
+
+function buildHeaders(args: {
+  apiKey: string | null;
+  provider: LlmProvider;
+}): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (args.apiKey) {
+    headers.Authorization = `Bearer ${args.apiKey}`;
+  }
+
+  if (args.provider === "openrouter") {
+    headers["HTTP-Referer"] = "JobOps";
+    headers["X-Title"] = "JobOpsOrchestrator";
+  }
+
+  return headers;
+}
+
+function ensureJsonInstructionIfNeeded(
+  messages: LlmRequestOptions<unknown>["messages"],
+  mode: ResponseMode,
+) {
+  if (mode !== "json_object") return messages;
+  const hasJson = messages.some((message) =>
+    message.content.toLowerCase().includes("json"),
+  );
+  if (hasJson) return messages;
+  return [
+    {
+      role: "system" as const,
+      content: "Respond with valid JSON.",
+    },
+    ...messages,
+  ];
+}
+
+function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
+  systemInstruction: { parts: Array<{ text: string }> } | null;
+  contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>;
+} {
+  const systemParts: string[] = [];
+  const contents = messages
+    .filter((message) => {
+      if (message.role === "system") {
+        systemParts.push(message.content);
+        return false;
+      }
+      return true;
+    })
+    .map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: message.content }],
+    }));
+
+  const systemInstruction = systemParts.length
+    ? { parts: [{ text: systemParts.join("\n") }] }
+    : null;
+
+  return { systemInstruction, contents };
 }
 
 async function getResponseDetail(response: Response): Promise<string> {
@@ -357,10 +697,39 @@ async function getResponseDetail(response: Response): Promise<string> {
   return response.text().catch(() => "");
 }
 
+function isCapabilityError(args: {
+  mode: ResponseMode;
+  status?: number;
+  body?: string;
+}): boolean {
+  if (args.mode === "none") return false;
+  if (args.status !== 400) return false;
+  const body = (args.body || "").toLowerCase();
+
+  if (body.includes("model") && body.includes("not")) return false;
+  if (body.includes("unknown model")) return false;
+
+  return (
+    body.includes("response_format") ||
+    body.includes("json_schema") ||
+    body.includes("json_object") ||
+    body.includes("text.format") ||
+    body.includes("response schema") ||
+    body.includes("responseschema") ||
+    body.includes("responsemime") ||
+    body.includes("response_mime")
+  );
+}
+
 function joinUrl(baseUrl: string, path: string): string {
   const base = baseUrl.replace(/\/+$/, "");
   const suffix = path.startsWith("/") ? path : `/${path}`;
   return `${base}${suffix}`;
+}
+
+function addQueryParam(url: string, key: string, value: string): string {
+  const connector = url.includes("?") ? "&" : "?";
+  return `${url}${connector}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
 function sleep(ms: number): Promise<void> {

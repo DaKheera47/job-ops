@@ -3,6 +3,7 @@ import type { EnvSettingsValues } from "@client/pages/settings/types";
 import { formatSecretHint } from "@client/pages/settings/utils";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type React from "react";
+import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
   AccordionContent,
@@ -32,6 +33,7 @@ export const EnvironmentSettingsSection: React.FC<
     register,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
   const { private: privateValues } = values;
@@ -40,28 +42,39 @@ export const EnvironmentSettingsSection: React.FC<
   const selectedProvider =
     watch("llmProvider") || values.readable.llmProvider || "openrouter";
   const normalizedProvider = selectedProvider.toLowerCase();
-  const showApiKey = normalizedProvider !== "ollama";
+  const showApiKey = ["openrouter", "openai", "gemini"].includes(
+    normalizedProvider,
+  );
+  const showBaseUrl = ["lmstudio", "ollama"].includes(normalizedProvider);
 
   const baseUrlPlaceholder =
     normalizedProvider === "ollama"
       ? "http://localhost:11434"
-      : normalizedProvider === "openai_compatible"
-        ? "https://api.openai.com"
-        : "https://openrouter.ai";
+      : "http://localhost:1234";
 
   const baseUrlHelper =
     normalizedProvider === "ollama"
       ? "Default: http://localhost:11434"
-      : normalizedProvider === "openai_compatible"
-        ? "Default: https://api.openai.com"
-        : "Default: https://openrouter.ai";
+      : "Default: http://localhost:1234";
 
   const providerHint =
     normalizedProvider === "ollama"
       ? "Ollama typically runs locally and does not require an API key."
-      : normalizedProvider === "openai_compatible"
-        ? "Use any OpenAI-compatible API. API key is required for most hosted providers."
-        : "OpenRouter uses your API key and supports model routing across providers.";
+      : normalizedProvider === "lmstudio"
+        ? "LM Studio runs locally via its OpenAI-compatible server."
+        : normalizedProvider === "openai"
+          ? "OpenAI uses the Responses API with structured outputs."
+          : normalizedProvider === "gemini"
+            ? "Gemini uses the native AI Studio API and requires a key."
+            : "OpenRouter uses your API key and supports model routing across providers.";
+
+  useEffect(() => {
+    if (showBaseUrl) return;
+    const currentValue = watch("llmBaseUrl");
+    if (currentValue) {
+      setValue("llmBaseUrl", "", { shouldDirty: true });
+    }
+  }, [setValue, showBaseUrl, watch]);
 
   return (
     <AccordionItem value="environment" className="border rounded-lg px-4">
@@ -94,10 +107,10 @@ export const EnvironmentSettingsSection: React.FC<
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="openrouter">OpenRouter</SelectItem>
-                        <SelectItem value="openai_compatible">
-                          OpenAI-compatible
-                        </SelectItem>
+                        <SelectItem value="lmstudio">LM Studio</SelectItem>
                         <SelectItem value="ollama">Ollama</SelectItem>
+                        <SelectItem value="openai">OpenAI</SelectItem>
+                        <SelectItem value="gemini">Gemini</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -118,15 +131,17 @@ export const EnvironmentSettingsSection: React.FC<
                   </span>
                 </p>
               </div>
-              <SettingsInput
-                label="LLM base URL"
-                inputProps={register("llmBaseUrl")}
-                placeholder={baseUrlPlaceholder}
-                disabled={isLoading || isSaving}
-                error={errors.llmBaseUrl?.message as string | undefined}
-                helper={baseUrlHelper}
-                current={values.readable.llmBaseUrl}
-              />
+              {showBaseUrl && (
+                <SettingsInput
+                  label="LLM base URL"
+                  inputProps={register("llmBaseUrl")}
+                  placeholder={baseUrlPlaceholder}
+                  disabled={isLoading || isSaving}
+                  error={errors.llmBaseUrl?.message as string | undefined}
+                  helper={baseUrlHelper}
+                  current={values.readable.llmBaseUrl}
+                />
+              )}
               {showApiKey && (
                 <SettingsInput
                   label="LLM API key"

@@ -211,6 +211,60 @@ describe("LlmService", () => {
     }
     expect(callCount).toBe(3);
   });
+
+  it("falls back to a looser mode when schema is rejected", async () => {
+    process.env.LLM_PROVIDER = "lmstudio";
+    delete process.env.OPENROUTER_API_KEY;
+
+    vi.mocked(global.fetch).mockImplementation(async (_input, init) => {
+      const body = JSON.parse(init?.body as string);
+      if (body.response_format?.type === "json_schema") {
+        return {
+          ok: false,
+          status: 400,
+          text: async () =>
+            JSON.stringify({
+              error: "'response_format.type' must be 'json_schema' or 'text'",
+            }),
+        } as Response;
+      }
+      if (body.response_format?.type === "text") {
+        return {
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: { content: '{"value": "ok", "count": 1}' },
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: '{"value": "fallback", "count": 2}' },
+            },
+          ],
+        }),
+      } as Response;
+    });
+
+    const llm = new LlmService();
+    const result = await llm.callJson<{ value: string; count: number }>({
+      model: "test-model",
+      messages: [{ role: "user", content: "test" }],
+      jsonSchema: testSchema,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.value).toBe("ok");
+    }
+    expect(vi.mocked(global.fetch).mock.calls.length).toBe(2);
+  });
 });
 
 describe("parseJsonContent", () => {
