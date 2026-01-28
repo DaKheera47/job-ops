@@ -501,7 +501,8 @@ export class LlmService {
 
         if (!response.ok) {
           const errorBody = await response.text().catch(() => "No error body");
-          const detail = errorBody ? ` - ${truncate(errorBody, 400)}` : "";
+          const parsedError = parseErrorMessage(errorBody);
+          const detail = parsedError ? ` - ${truncate(parsedError, 400)}` : "";
           const err = new Error(
             `LLM API error: ${response.status}${detail}`,
           ) as LlmApiError;
@@ -739,4 +740,35 @@ function sleep(ms: number): Promise<void> {
 function truncate(value: string, maxLength: number): string {
   if (value.length <= maxLength) return value;
   return `${value.slice(0, maxLength - 1)}…`;
+}
+
+function parseErrorMessage(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+
+  try {
+    const payload = JSON.parse(trimmed);
+    const candidates: Array<unknown> = [
+      (payload as any)?.error?.message,
+      (payload as any)?.error?.error?.message,
+      (payload as any)?.error,
+      (payload as any)?.message,
+      (payload as any)?.detail,
+      (payload as any)?.msg,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    if (typeof payload === "string" && payload.trim()) {
+      return payload.trim();
+    }
+  } catch {
+    // Not JSON
+  }
+
+  return trimmed;
 }
