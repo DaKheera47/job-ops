@@ -123,8 +123,15 @@ const openRouterStrategy: ProviderStrategy = {
       body,
     };
   },
-  extractText: (response) =>
-    (response as any)?.choices?.[0]?.message?.content ?? null,
+  extractText: (response) => {
+    const content = getNestedValue(response, [
+      "choices",
+      0,
+      "message",
+      "content",
+    ]);
+    return typeof content === "string" ? content : null;
+  },
   isCapabilityError: ({ mode, status, body }) =>
     isCapabilityError({ mode, status, body }),
   getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/api/v1/key")],
@@ -162,8 +169,15 @@ const lmStudioStrategy: ProviderStrategy = {
       body,
     };
   },
-  extractText: (response) =>
-    (response as any)?.choices?.[0]?.message?.content ?? null,
+  extractText: (response) => {
+    const content = getNestedValue(response, [
+      "choices",
+      0,
+      "message",
+      "content",
+    ]);
+    return typeof content === "string" ? content : null;
+  },
   isCapabilityError: ({ mode, status, body }) =>
     isCapabilityError({ mode, status, body }),
   getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/v1/models")],
@@ -201,8 +215,15 @@ const ollamaStrategy: ProviderStrategy = {
       body,
     };
   },
-  extractText: (response) =>
-    (response as any)?.choices?.[0]?.message?.content ?? null,
+  extractText: (response) => {
+    const content = getNestedValue(response, [
+      "choices",
+      0,
+      "message",
+      "content",
+    ]);
+    return typeof content === "string" ? content : null;
+  },
   isCapabilityError: ({ mode, status, body }) =>
     isCapabilityError({ mode, status, body }),
   getValidationUrls: ({ baseUrl }) => [
@@ -244,18 +265,20 @@ const openAiStrategy: ProviderStrategy = {
     };
   },
   extractText: (response) => {
-    const direct = (response as any)?.output_text;
+    const direct = getNestedValue(response, ["output_text"]);
     if (typeof direct === "string" && direct.trim()) return direct;
 
-    const output = (response as any)?.output;
+    const output = getNestedValue(response, ["output"]);
     if (!Array.isArray(output)) return null;
 
     for (const item of output) {
-      const content = item?.content;
+      const content = getNestedValue(item, ["content"]);
       if (!Array.isArray(content)) continue;
       for (const part of content) {
-        if (part?.type === "output_text" && typeof part.text === "string") {
-          return part.text;
+        const type = getNestedValue(part, ["type"]);
+        const text = getNestedValue(part, ["text"]);
+        if (type === "output_text" && typeof text === "string") {
+          return text;
         }
       }
     }
@@ -306,11 +329,16 @@ const geminiStrategy: ProviderStrategy = {
     };
   },
   extractText: (response) => {
-    const parts = (response as any)?.candidates?.[0]?.content?.parts;
+    const parts = getNestedValue(response, [
+      "candidates",
+      0,
+      "content",
+      "parts",
+    ]);
     if (!Array.isArray(parts)) return null;
     const text = parts
-      .map((part: { text?: string }) => part.text)
-      .filter((part: string | undefined) => typeof part === "string")
+      .map((part) => getNestedValue(part, ["text"]))
+      .filter((part) => typeof part === "string")
       .join("");
     return text || null;
   },
@@ -667,10 +695,11 @@ function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
       }
       return true;
     })
-    .map((message) => ({
-      role: message.role === "assistant" ? "model" : "user",
-      parts: [{ text: message.content }],
-    }));
+    .map((message) => {
+      const role: "user" | "model" =
+        message.role === "assistant" ? "model" : "user";
+      return { role, parts: [{ text: message.content }] };
+    });
 
   const systemInstruction = systemParts.length
     ? { parts: [{ text: systemParts.join("\n") }] }
@@ -733,6 +762,26 @@ function addQueryParam(url: string, key: string, value: string): string {
   return `${url}${connector}${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
 }
 
+type PathSegment = string | number;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getNestedValue(value: unknown, path: PathSegment[]): unknown {
+  let current: unknown = value;
+  for (const segment of path) {
+    if (typeof segment === "number") {
+      if (!Array.isArray(current)) return undefined;
+      current = current[segment];
+      continue;
+    }
+    if (!isRecord(current)) return undefined;
+    current = current[segment];
+  }
+  return current;
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -747,14 +796,14 @@ function parseErrorMessage(raw: string): string {
   if (!trimmed) return "";
 
   try {
-    const payload = JSON.parse(trimmed);
+    const payload = JSON.parse(trimmed) as unknown;
     const candidates: Array<unknown> = [
-      (payload as any)?.error?.message,
-      (payload as any)?.error?.error?.message,
-      (payload as any)?.error,
-      (payload as any)?.message,
-      (payload as any)?.detail,
-      (payload as any)?.msg,
+      getNestedValue(payload, ["error", "message"]),
+      getNestedValue(payload, ["error", "error", "message"]),
+      getNestedValue(payload, ["error"]),
+      getNestedValue(payload, ["message"]),
+      getNestedValue(payload, ["detail"]),
+      getNestedValue(payload, ["msg"]),
     ];
 
     for (const candidate of candidates) {

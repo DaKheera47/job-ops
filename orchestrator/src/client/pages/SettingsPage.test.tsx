@@ -145,10 +145,7 @@ describe("SettingsPage", () => {
     const modelTrigger = await screen.findByRole("button", { name: /model/i });
     fireEvent.click(modelTrigger);
 
-    const modelField =
-      screen.getByText("Override model").parentElement ??
-      screen.getByRole("main");
-    const modelInput = within(modelField).getByRole("textbox");
+    const modelInput = screen.getByLabelText(/default model/i);
     fireEvent.change(modelInput, { target: { value: "  gpt-4  " } });
 
     const saveButton = screen.getByRole("button", { name: /^save$/i });
@@ -173,10 +170,7 @@ describe("SettingsPage", () => {
     const modelTrigger = await screen.findByRole("button", { name: /model/i });
     fireEvent.click(modelTrigger);
 
-    const modelField =
-      screen.getByText("Override model").parentElement ??
-      screen.getByRole("main");
-    const modelInput = within(modelField).getByRole("textbox");
+    const modelInput = screen.getByLabelText(/default model/i);
 
     // Change to > 200 chars
     fireEvent.change(modelInput, { target: { value: "a".repeat(201) } });
@@ -236,7 +230,7 @@ describe("SettingsPage", () => {
 
     const modelTrigger = await screen.findByRole("button", { name: /model/i });
     fireEvent.click(modelTrigger);
-    const modelInput = screen.getByLabelText(/override model/i);
+    const modelInput = screen.getByLabelText(/default model/i);
     fireEvent.change(modelInput, { target: { value: "new-model" } });
     expect(saveButton).toBeEnabled();
   });

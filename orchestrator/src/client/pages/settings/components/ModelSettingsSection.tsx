@@ -90,16 +90,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const scoringModel = scorer || effectiveDefaultModel;
   const tailoringModel = tailoring || effectiveDefaultModel;
   const projectSelectionModel = projectSelection || effectiveDefaultModel;
-  const overrideSegments = [
-    scoringModel !== effectiveDefaultModel ? `scoring ${scoringModel}` : null,
-    tailoringModel !== effectiveDefaultModel
-      ? `tailoring ${tailoringModel}`
-      : null,
-    projectSelectionModel !== effectiveDefaultModel
-      ? `project selection ${projectSelectionModel}`
-      : null,
-  ].filter(Boolean);
-
   return (
     <AccordionItem value="model" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">

@@ -25,7 +25,7 @@ import type {
 import { Settings } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   modelScorer: "",
   modelTailoring: "",
   modelProjectSelection: "",
-  llmProvider: "",
+  llmProvider: null,
   llmBaseUrl: "",
   llmApiKey: "",
   pipelineWebhookUrl: "",
@@ -62,6 +62,25 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   ukvisajobsPassword: "",
   webhookSecret: "",
   enableBasicAuth: false,
+};
+
+const LLM_PROVIDERS = [
+  "openrouter",
+  "lmstudio",
+  "ollama",
+  "openai",
+  "gemini",
+] as const;
+
+type LlmProviderValue = (typeof LLM_PROVIDERS)[number];
+
+const normalizeLlmProvider = (
+  value: string | null | undefined,
+): LlmProviderValue | null => {
+  if (!value) return null;
+  return (LLM_PROVIDERS as readonly string[]).includes(value)
+    ? (value as LlmProviderValue)
+    : null;
 };
 
 const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
@@ -102,7 +121,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.overrideModelScorer ?? "",
   modelTailoring: data.overrideModelTailoring ?? "",
   modelProjectSelection: data.overrideModelProjectSelection ?? "",
-  llmProvider: data.overrideLlmProvider ?? "",
+  llmProvider: normalizeLlmProvider(data.overrideLlmProvider),
   llmBaseUrl: data.overrideLlmBaseUrl ?? "",
   llmApiKey: "",
   pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",
@@ -310,7 +329,9 @@ export const SettingsPage: React.FC = () => {
     useState(false);
 
   const methods = useForm<UpdateSettingsInput>({
-    resolver: zodResolver(updateSettingsSchema),
+    resolver: zodResolver(
+      updateSettingsSchema,
+    ) as Resolver<UpdateSettingsInput>,
     mode: "onChange",
     defaultValues: DEFAULT_FORM_VALUES,
   });
@@ -496,7 +517,7 @@ export const SettingsPage: React.FC = () => {
       }
 
       if (dirtyFields.llmProvider) {
-        envPayload.llmProvider = normalizeString(data.llmProvider);
+        envPayload.llmProvider = data.llmProvider ?? null;
       }
 
       if (dirtyFields.llmBaseUrl) {
