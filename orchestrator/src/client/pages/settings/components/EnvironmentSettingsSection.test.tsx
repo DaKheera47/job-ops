@@ -10,9 +10,6 @@ const EnvironmentSettingsHarness = () => {
       rxresumeEmail: "resume@example.com",
       ukvisajobsEmail: "visa@example.com",
       basicAuthUser: "admin",
-      llmProvider: "openrouter",
-      llmBaseUrl: "https://openrouter.ai",
-      llmApiKey: "",
       openrouterApiKey: "",
       rxresumePassword: "",
       ukvisajobsPassword: "",
@@ -28,14 +25,11 @@ const EnvironmentSettingsHarness = () => {
         <EnvironmentSettingsSection
           values={{
             readable: {
-              llmProvider: "openrouter",
-              llmBaseUrl: "https://openrouter.ai",
               rxresumeEmail: "resume@example.com",
               ukvisajobsEmail: "visa@example.com",
               basicAuthUser: "admin",
             },
             private: {
-              llmApiKeyHint: "sk-1",
               openrouterApiKeyHint: "sk-1",
               rxresumePasswordHint: null,
               ukvisajobsPasswordHint: "pass",
@@ -69,7 +63,6 @@ describe("EnvironmentSettingsSection", () => {
     expect(screen.getByDisplayValue("admin")).toBeInTheDocument();
 
     // Sections
-    expect(screen.getByText("External Services")).toBeInTheDocument();
     expect(screen.getByText("Service Accounts")).toBeInTheDocument();
     expect(screen.getByText("Security")).toBeInTheDocument();
   });

@@ -7,6 +7,9 @@ export type ModelValues = EffectiveDefault<string> & {
   scorer: string;
   tailoring: string;
   projectSelection: string;
+  llmProvider: string;
+  llmBaseUrl: string;
+  llmApiKeyHint: string | null;
 };
 
 export type WebhookValues = EffectiveDefault<string>;
@@ -25,14 +28,11 @@ export type JobspyValues = {
 
 export type EnvSettingsValues = {
   readable: {
-    llmProvider: string;
-    llmBaseUrl: string;
     rxresumeEmail: string;
     ukvisajobsEmail: string;
     basicAuthUser: string;
   };
   private: {
-    llmApiKeyHint: string | null;
     openrouterApiKeyHint: string | null;
     rxresumePasswordHint: string | null;
     ukvisajobsPasswordHint: string | null;

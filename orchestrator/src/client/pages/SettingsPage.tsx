@@ -216,6 +216,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       scorer: settings?.modelScorer ?? "",
       tailoring: settings?.modelTailoring ?? "",
       projectSelection: settings?.modelProjectSelection ?? "",
+      llmProvider: settings?.llmProvider ?? "",
+      llmBaseUrl: settings?.llmBaseUrl ?? "",
+      llmApiKeyHint:
+        settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null,
     },
     pipelineWebhook: {
       effective: settings?.pipelineWebhookUrl ?? "",
@@ -269,15 +273,11 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     },
     envSettings: {
       readable: {
-        llmProvider: settings?.llmProvider ?? "",
-        llmBaseUrl: settings?.llmBaseUrl ?? "",
         rxresumeEmail: settings?.rxresumeEmail ?? "",
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
         basicAuthUser: settings?.basicAuthUser ?? "",
       },
       private: {
-        llmApiKeyHint:
-          settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null,
         openrouterApiKeyHint: settings?.openrouterApiKeyHint ?? null,
         rxresumePasswordHint: settings?.rxresumePasswordHint ?? null,
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
