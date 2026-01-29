@@ -353,6 +353,9 @@ export async function updateSettings(update: {
   modelScorer?: string | null;
   modelTailoring?: string | null;
   modelProjectSelection?: string | null;
+  llmProvider?: string | null;
+  llmBaseUrl?: string | null;
+  llmApiKey?: string | null;
   pipelineWebhookUrl?: string | null;
   jobCompleteWebhookUrl?: string | null;
   resumeProjects?: ResumeProjectsSettings | null;

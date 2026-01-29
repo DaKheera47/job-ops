@@ -72,7 +72,7 @@ export const OnboardingGate: React.FC = () => {
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  const [llmProvider, setLlmProvider] = useState<string>("openrouter");
+  const [llmProvider, setLlmProvider] = useState("");
   const [llmBaseUrl, setLlmBaseUrl] = useState("");
   const [llmApiKey, setLlmApiKey] = useState("");
   const [rxresumeEmail, setRxresumeEmail] = useState("");
@@ -176,14 +176,14 @@ export const OnboardingGate: React.FC = () => {
   useEffect(() => {
     if (settings) {
       setRxresumeBaseResumeId(settings.rxresumeBaseResumeId || null);
-      if (settings.llmProvider) {
+      if (!llmProvider && settings.llmProvider) {
         setLlmProvider(settings.llmProvider);
       }
-      if (settings.llmBaseUrl) {
+      if (!llmBaseUrl && settings.llmBaseUrl) {
         setLlmBaseUrl(settings.llmBaseUrl);
       }
     }
-  }, [settings]);
+  }, [llmBaseUrl, llmProvider, settings]);
 
   useEffect(() => {
     if (showBaseUrl) return;
