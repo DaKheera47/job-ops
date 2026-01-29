@@ -1,11 +1,5 @@
 import type { AppSettings } from "@shared/types";
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";

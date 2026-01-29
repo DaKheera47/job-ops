@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingGate } from "./OnboardingGate";
 
 vi.mock("@client/api", () => ({
-  validateOpenrouter: vi.fn(),
+  validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
   updateSettings: vi.fn(),
@@ -55,6 +55,24 @@ vi.mock("@/components/ui/tabs", () => ({
   ),
 }));
 
+vi.mock("@/components/ui/select", () => ({
+  Select: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  SelectContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  SelectItem: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  SelectTrigger: ({ children }: { children: React.ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  SelectValue: ({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  ),
+}));
+
 vi.mock("@/components/ui/progress", () => ({
   Progress: () => <div>Progress</div>,
 }));
@@ -87,7 +105,7 @@ describe("OnboardingGate", () => {
   });
 
   it("renders the gate once validations complete and any fail", async () => {
-    vi.mocked(api.validateOpenrouter).mockResolvedValue({
+    vi.mocked(api.validateLlm).mockResolvedValue({
       valid: false,
       message: "Invalid",
     });
@@ -102,12 +120,12 @@ describe("OnboardingGate", () => {
 
     render(<OnboardingGate />);
 
-    await waitFor(() => expect(api.validateOpenrouter).toHaveBeenCalled());
+    await waitFor(() => expect(api.validateLlm).toHaveBeenCalled());
     expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
   });
 
   it("hides the gate when all validations succeed", async () => {
-    vi.mocked(api.validateOpenrouter).mockResolvedValue({
+    vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
     });
@@ -122,7 +140,7 @@ describe("OnboardingGate", () => {
 
     render(<OnboardingGate />);
 
-    await waitFor(() => expect(api.validateOpenrouter).toHaveBeenCalled());
+    await waitFor(() => expect(api.validateLlm).toHaveBeenCalled());
     expect(screen.queryByText("Welcome to Job Ops")).not.toBeInTheDocument();
   });
 
@@ -146,8 +164,8 @@ describe("OnboardingGate", () => {
     render(<OnboardingGate />);
 
     await waitFor(() => expect(api.validateRxresume).toHaveBeenCalled());
-    expect(api.validateOpenrouter).not.toHaveBeenCalled();
+    expect(api.validateLlm).not.toHaveBeenCalled();
     expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
-    expect(screen.queryByText("OpenRouter API key")).not.toBeInTheDocument();
+    expect(screen.queryByText("LLM API key")).not.toBeInTheDocument();
   });
 });

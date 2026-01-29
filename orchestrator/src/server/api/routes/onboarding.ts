@@ -15,10 +15,16 @@ type ValidationResponse = {
   message: string | null;
 };
 
-async function validateLlm(
-  apiKey?: string | null,
-): Promise<ValidationResponse> {
-  const llm = new LlmService({ apiKey });
+async function validateLlm(options: {
+  apiKey?: string | null;
+  provider?: string | null;
+  baseUrl?: string | null;
+}): Promise<ValidationResponse> {
+  const llm = new LlmService({
+    apiKey: options.apiKey,
+    provider: options.provider ?? undefined,
+    baseUrl: options.baseUrl ?? undefined,
+  });
   return llm.validateCredentials();
 }
 
@@ -120,10 +126,21 @@ onboardingRouter.post(
   async (req: Request, res: Response) => {
     const apiKey =
       typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
-    const result = await validateLlm(apiKey);
+    const result = await validateLlm({ apiKey, provider: "openrouter" });
     res.json({ success: true, data: result });
   },
 );
+
+onboardingRouter.post("/validate/llm", async (req: Request, res: Response) => {
+  const apiKey =
+    typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
+  const provider =
+    typeof req.body?.provider === "string" ? req.body.provider : undefined;
+  const baseUrl =
+    typeof req.body?.baseUrl === "string" ? req.body.baseUrl : undefined;
+  const result = await validateLlm({ apiKey, provider, baseUrl });
+  res.json({ success: true, data: result });
+});
 
 onboardingRouter.post(
   "/validate/rxresume",

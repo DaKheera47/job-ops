@@ -10,7 +10,11 @@ import { ReactiveResumeSection } from "@client/pages/settings/components/Reactiv
 import { SearchTermsSection } from "@client/pages/settings/components/SearchTermsSection";
 import { UkvisajobsSection } from "@client/pages/settings/components/UkvisajobsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
-import { resumeProjectsEqual } from "@client/pages/settings/utils";
+import {
+  type LlmProviderId,
+  normalizeLlmProvider,
+  resumeProjectsEqual,
+} from "@client/pages/settings/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type UpdateSettingsInput,
@@ -64,24 +68,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   enableBasicAuth: false,
 };
 
-const LLM_PROVIDERS = [
-  "openrouter",
-  "lmstudio",
-  "ollama",
-  "openai",
-  "gemini",
-] as const;
+type LlmProviderValue = LlmProviderId | null;
 
-type LlmProviderValue = (typeof LLM_PROVIDERS)[number];
-
-const normalizeLlmProvider = (
+const normalizeLlmProviderValue = (
   value: string | null | undefined,
-): LlmProviderValue | null => {
-  if (!value) return null;
-  return (LLM_PROVIDERS as readonly string[]).includes(value)
-    ? (value as LlmProviderValue)
-    : null;
-};
+): LlmProviderValue => (value ? normalizeLlmProvider(value) : null);
 
 const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   model: null,
@@ -121,7 +112,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.overrideModelScorer ?? "",
   modelTailoring: data.overrideModelTailoring ?? "",
   modelProjectSelection: data.overrideModelProjectSelection ?? "",
-  llmProvider: normalizeLlmProvider(data.overrideLlmProvider),
+  llmProvider: normalizeLlmProviderValue(data.overrideLlmProvider),
   llmBaseUrl: data.overrideLlmBaseUrl ?? "",
   llmApiKey: "",
   pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",

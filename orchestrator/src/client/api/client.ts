@@ -323,12 +323,14 @@ export async function refreshProfile(): Promise<ResumeProfile> {
   });
 }
 
-export async function validateOpenrouter(
-  apiKey?: string,
-): Promise<ValidationResult> {
-  return fetchApi<ValidationResult>("/onboarding/validate/openrouter", {
+export async function validateLlm(input: {
+  provider?: string;
+  baseUrl?: string;
+  apiKey?: string;
+}): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>("/onboarding/validate/llm", {
     method: "POST",
-    body: JSON.stringify({ apiKey }),
+    body: JSON.stringify(input),
   });
 }
 

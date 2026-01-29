@@ -2,7 +2,13 @@ import * as api from "@client/api";
 import { useSettings } from "@client/hooks/useSettings";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
-import { formatSecretHint } from "@client/pages/settings/utils";
+import {
+  formatSecretHint,
+  getLlmProviderConfig,
+  LLM_PROVIDER_LABELS,
+  LLM_PROVIDERS,
+  normalizeLlmProvider,
+} from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { Check } from "lucide-react";
 import type React from "react";
@@ -24,6 +30,13 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
@@ -36,15 +49,14 @@ export const OnboardingGate: React.FC = () => {
     refreshSettings,
   } = useSettings();
   const [isSavingEnv, setIsSavingEnv] = useState(false);
-  const [isValidatingOpenrouter, setIsValidatingOpenrouter] = useState(false);
+  const [isValidatingLlm, setIsValidatingLlm] = useState(false);
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
   const [isValidatingBaseResume, setIsValidatingBaseResume] = useState(false);
-  const [openrouterValidation, setOpenrouterValidation] =
-    useState<ValidationState>({
-      valid: false,
-      message: null,
-      checked: false,
-    });
+  const [llmValidation, setLlmValidation] = useState<ValidationState>({
+    valid: false,
+    message: null,
+    checked: false,
+  });
   const [rxresumeValidation, setRxresumeValidation] = useState<ValidationState>(
     {
       valid: false,
@@ -60,29 +72,34 @@ export const OnboardingGate: React.FC = () => {
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  const [openrouterApiKey, setOpenrouterApiKey] = useState("");
+  const [llmProvider, setLlmProvider] = useState<string>("openrouter");
+  const [llmBaseUrl, setLlmBaseUrl] = useState("");
+  const [llmApiKey, setLlmApiKey] = useState("");
   const [rxresumeEmail, setRxresumeEmail] = useState("");
   const [rxresumePassword, setRxresumePassword] = useState("");
   const [rxresumeBaseResumeId, setRxresumeBaseResumeId] = useState<
     string | null
   >(null);
 
-  const validateOpenrouter = useCallback(async (apiKey?: string) => {
-    setIsValidatingOpenrouter(true);
-    try {
-      const result = await api.validateOpenrouter(apiKey);
-      setOpenrouterValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "OpenRouter validation failed";
-      const result = { valid: false, message };
-      setOpenrouterValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingOpenrouter(false);
-    }
-  }, []);
+  const validateLlm = useCallback(
+    async (input: { provider?: string; baseUrl?: string; apiKey?: string }) => {
+      setIsValidatingLlm(true);
+      try {
+        const result = await api.validateLlm(input);
+        setLlmValidation({ ...result, checked: true });
+        return result;
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "LLM validation failed";
+        const result = { valid: false, message };
+        setLlmValidation({ ...result, checked: true });
+        return result;
+      } finally {
+        setIsValidatingLlm(false);
+      }
+    },
+    [],
+  );
 
   const validateRxresume = useCallback(
     async (email?: string, password?: string) => {
@@ -123,27 +140,32 @@ export const OnboardingGate: React.FC = () => {
     }
   }, []);
 
-  const llmProvider =
-    settings?.llmProvider?.trim().toLowerCase() || "openrouter";
-  const requiresLlmKey = !["ollama", "lmstudio"].includes(llmProvider);
+  const selectedProvider = normalizeLlmProvider(
+    llmProvider || settings?.llmProvider || "openrouter",
+  );
+  const providerConfig = getLlmProviderConfig(selectedProvider);
+  const {
+    normalizedProvider,
+    showApiKey,
+    showBaseUrl,
+    requiresApiKey: requiresLlmKey,
+  } = providerConfig;
   const llmKeyHint =
     settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null;
-  const hasOpenrouterKey = Boolean(llmKeyHint);
+  const hasLlmKey = Boolean(llmKeyHint);
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
   const hasCheckedValidations =
-    (requiresLlmKey ? openrouterValidation.checked : true) &&
+    (requiresLlmKey ? llmValidation.checked : true) &&
     rxresumeValidation.checked &&
     baseResumeValidation.checked;
-  const llmValidated = requiresLlmKey ? openrouterValidation.valid : true;
+  const llmValidated = requiresLlmKey ? llmValidation.valid : true;
   const shouldOpen =
     Boolean(settings && !settingsLoading) &&
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
 
-  const openrouterCurrent = llmKeyHint
-    ? formatSecretHint(llmKeyHint)
-    : undefined;
+  const llmKeyCurrent = llmKeyHint ? formatSecretHint(llmKeyHint) : undefined;
   const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
     ? settings.rxresumeEmail
     : undefined;
@@ -154,21 +176,34 @@ export const OnboardingGate: React.FC = () => {
   useEffect(() => {
     if (settings) {
       setRxresumeBaseResumeId(settings.rxresumeBaseResumeId || null);
+      if (settings.llmProvider) {
+        setLlmProvider(settings.llmProvider);
+      }
+      if (settings.llmBaseUrl) {
+        setLlmBaseUrl(settings.llmBaseUrl);
+      }
     }
   }, [settings]);
 
-  const steps = useMemo(() => {
-    const items = [];
-    if (requiresLlmKey) {
-      items.push({
-        id: "openrouter",
-        label: "Connect AI",
-        subtitle: "OpenRouter key",
-        complete: openrouterValidation.valid,
+  useEffect(() => {
+    if (showBaseUrl) return;
+    if (llmBaseUrl) setLlmBaseUrl("");
+  }, [llmBaseUrl, showBaseUrl]);
+
+  useEffect(() => {
+    if (!selectedProvider) return;
+    setLlmValidation({ valid: false, message: null, checked: false });
+  }, [selectedProvider]);
+
+  const steps = useMemo(
+    () => [
+      {
+        id: "llm",
+        label: "LLM Provider",
+        subtitle: "Provider + credentials",
+        complete: llmValidated,
         disabled: false,
-      });
-    }
-    items.push(
+      },
       {
         id: "rxresume",
         label: "Connect Reactive Resume",
@@ -183,14 +218,9 @@ export const OnboardingGate: React.FC = () => {
         complete: baseResumeValidation.valid,
         disabled: !rxresumeValidation.valid,
       },
-    );
-    return items;
-  }, [
-    requiresLlmKey,
-    openrouterValidation.valid,
-    rxresumeValidation.valid,
-    baseResumeValidation.valid,
-  ]);
+    ],
+    [llmValidated, rxresumeValidation.valid, baseResumeValidation.valid],
+  );
 
   const defaultStep = steps.find((step) => !step.complete)?.id ?? steps[0]?.id;
 
@@ -205,9 +235,15 @@ export const OnboardingGate: React.FC = () => {
     if (!settings) return;
     const validations: Promise<ValidationResult>[] = [];
     if (requiresLlmKey) {
-      validations.push(validateOpenrouter());
+      validations.push(
+        validateLlm({
+          provider: normalizedProvider,
+          baseUrl: llmBaseUrl.trim() || undefined,
+          apiKey: llmApiKey.trim() || undefined,
+        }),
+      );
     } else {
-      setOpenrouterValidation({ valid: true, message: null, checked: true });
+      setLlmValidation({ valid: true, message: null, checked: true });
     }
     validations.push(validateRxresume(), validateBaseResume());
 
@@ -223,15 +259,18 @@ export const OnboardingGate: React.FC = () => {
   }, [
     settings,
     requiresLlmKey,
-    validateOpenrouter,
+    validateLlm,
     validateRxresume,
     validateBaseResume,
+    normalizedProvider,
+    llmBaseUrl,
+    llmApiKey,
   ]);
 
   useEffect(() => {
     if (!settings || settingsLoading) return;
     const needsValidation =
-      (requiresLlmKey ? !openrouterValidation.checked : false) ||
+      (requiresLlmKey ? !llmValidation.checked : false) ||
       !rxresumeValidation.checked ||
       !baseResumeValidation.checked;
     if (!needsValidation) return;
@@ -240,7 +279,7 @@ export const OnboardingGate: React.FC = () => {
     settings,
     settingsLoading,
     requiresLlmKey,
-    openrouterValidation.checked,
+    llmValidation.checked,
     rxresumeValidation.checked,
     baseResumeValidation.checked,
     runAllValidations,
@@ -260,35 +299,51 @@ export const OnboardingGate: React.FC = () => {
     }
   };
 
-  const handleSaveOpenrouter = async (): Promise<boolean> => {
-    const openrouterValue = openrouterApiKey.trim();
-    if (!requiresLlmKey) return true;
-    if (!openrouterValue && !hasOpenrouterKey) {
-      toast.info("Add your OpenRouter API key to continue");
+  const handleSaveLlm = async (): Promise<boolean> => {
+    const apiKeyValue = llmApiKey.trim();
+    const baseUrlValue = llmBaseUrl.trim();
+
+    if (requiresLlmKey && !apiKeyValue && !hasLlmKey) {
+      toast.info("Add your LLM API key to continue");
       return false;
     }
 
     try {
-      const validation = await validateOpenrouter(openrouterValue || undefined);
+      const validation = requiresLlmKey
+        ? await validateLlm({
+            provider: normalizedProvider,
+            baseUrl: baseUrlValue || undefined,
+            apiKey: apiKeyValue || undefined,
+          })
+        : { valid: true, message: null };
+
       if (!validation.valid) {
-        toast.error(validation.message || "OpenRouter validation failed");
+        toast.error(validation.message || "LLM validation failed");
         return false;
       }
 
-      if (openrouterValue) {
-        setIsSavingEnv(true);
-        await api.updateSettings({ openrouterApiKey: openrouterValue });
-        await refreshSettings();
-        setOpenrouterApiKey("");
+      const update: {
+        llmProvider?: string;
+        llmBaseUrl?: string | null;
+        llmApiKey?: string;
+      } = {
+        llmProvider: normalizedProvider,
+        llmBaseUrl: showBaseUrl ? baseUrlValue || null : null,
+      };
+
+      if (showApiKey && apiKeyValue) {
+        update.llmApiKey = apiKeyValue;
       }
 
-      toast.success("OpenRouter connected");
+      setIsSavingEnv(true);
+      await api.updateSettings(update);
+      await refreshSettings();
+      setLlmApiKey("");
+      toast.success("LLM provider connected");
       return true;
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to save OpenRouter key";
+        error instanceof Error ? error.message : "Failed to save LLM settings";
       toast.error(message);
       return false;
     } finally {
@@ -385,13 +440,13 @@ export const OnboardingGate: React.FC = () => {
   const isBusy =
     isSavingEnv ||
     settingsLoading ||
-    isValidatingOpenrouter ||
+    isValidatingLlm ||
     isValidatingRxresume ||
     isValidatingBaseResume;
   const canGoBack = stepIndex > 0;
   const primaryLabel =
-    currentStep === "openrouter"
-      ? openrouterValidation.valid
+    currentStep === "llm"
+      ? llmValidated
         ? "Revalidate"
         : "Validate"
       : currentStep === "rxresume"
@@ -406,8 +461,8 @@ export const OnboardingGate: React.FC = () => {
 
   const handlePrimaryAction = async () => {
     if (!currentStep) return;
-    if (currentStep === "openrouter") {
-      await handleSaveOpenrouter();
+    if (currentStep === "llm") {
+      await handleSaveLlm();
       return;
     }
     if (currentStep === "rxresume") {
@@ -492,30 +547,69 @@ export const OnboardingGate: React.FC = () => {
               })}
             </TabsList>
 
-            {requiresLlmKey && (
-              <TabsContent value="openrouter" className="space-y-4 pt-6">
-                <div>
-                  <p className="text-sm font-semibold">Connect OpenRouter</p>
+            <TabsContent value="llm" className="space-y-4 pt-6">
+              <div>
+                <p className="text-sm font-semibold">Connect LLM provider</p>
+                <p className="text-xs text-muted-foreground">
+                  Used for job scoring, summaries, and tailoring.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="llmProvider" className="text-sm font-medium">
+                    Provider
+                  </label>
+                  <Select
+                    value={selectedProvider}
+                    onValueChange={(value) => setLlmProvider(value)}
+                    disabled={isSavingEnv}
+                  >
+                    <SelectTrigger id="llmProvider">
+                      <SelectValue placeholder="Select provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LLM_PROVIDERS.map((provider) => (
+                        <SelectItem key={provider} value={provider}>
+                          {LLM_PROVIDER_LABELS[provider]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
-                    Used for job scoring, summaries, and tailoring.
+                    {providerConfig.providerHint}
                   </p>
                 </div>
-                <SettingsInput
-                  label="OpenRouter API key"
-                  inputProps={{
-                    name: "openrouterApiKey",
-                    value: openrouterApiKey,
-                    onChange: (event) =>
-                      setOpenrouterApiKey(event.target.value),
-                  }}
-                  type="password"
-                  placeholder="sk-or-v1..."
-                  current={openrouterCurrent}
-                  helper="Create a key at openrouter.ai"
-                  disabled={isSavingEnv}
-                />
-              </TabsContent>
-            )}
+                {showBaseUrl && (
+                  <SettingsInput
+                    label="LLM base URL"
+                    inputProps={{
+                      name: "llmBaseUrl",
+                      value: llmBaseUrl,
+                      onChange: (event) => setLlmBaseUrl(event.target.value),
+                    }}
+                    placeholder={providerConfig.baseUrlPlaceholder}
+                    helper={providerConfig.baseUrlHelper}
+                    current={settings?.llmBaseUrl || "—"}
+                    disabled={isSavingEnv}
+                  />
+                )}
+                {showApiKey && (
+                  <SettingsInput
+                    label="LLM API key"
+                    inputProps={{
+                      name: "llmApiKey",
+                      value: llmApiKey,
+                      onChange: (event) => setLlmApiKey(event.target.value),
+                    }}
+                    type="password"
+                    placeholder="Enter key"
+                    current={llmKeyCurrent}
+                    helper={providerConfig.keyHelper}
+                    disabled={isSavingEnv}
+                  />
+                )}
+              </div>
+            </TabsContent>
 
             <TabsContent value="rxresume" className="space-y-4 pt-6">
               <div>

@@ -1,6 +1,9 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { ModelValues } from "@client/pages/settings/types";
-import { formatSecretHint } from "@client/pages/settings/utils";
+import {
+  formatSecretHint,
+  getLlmProviderConfig,
+} from "@client/pages/settings/utils";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type React from "react";
 import { useEffect } from "react";
@@ -49,32 +52,8 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   } = useFormContext<UpdateSettingsInput>();
 
   const selectedProvider = watch("llmProvider") || llmProvider || "openrouter";
-  const normalizedProvider = selectedProvider.toLowerCase();
-  const showApiKey = ["openrouter", "openai", "gemini"].includes(
-    normalizedProvider,
-  );
-  const showBaseUrl = ["lmstudio", "ollama"].includes(normalizedProvider);
-
-  const baseUrlPlaceholder =
-    normalizedProvider === "ollama"
-      ? "http://localhost:11434"
-      : "http://localhost:1234";
-
-  const baseUrlHelper =
-    normalizedProvider === "ollama"
-      ? "Default: http://localhost:11434"
-      : "Default: http://localhost:1234";
-
-  const providerHint =
-    normalizedProvider === "ollama"
-      ? "Ollama typically runs locally and does not require an API key."
-      : normalizedProvider === "lmstudio"
-        ? "LM Studio runs locally via its OpenAI-compatible server."
-        : normalizedProvider === "openai"
-          ? "OpenAI uses the Responses API with structured outputs."
-          : normalizedProvider === "gemini"
-            ? "Gemini uses the native AI Studio API and requires a key."
-            : "OpenRouter uses your API key and supports model routing across providers.";
+  const providerConfig = getLlmProviderConfig(selectedProvider);
+  const { showApiKey, showBaseUrl } = providerConfig;
 
   useEffect(() => {
     if (showBaseUrl) return;
@@ -134,16 +113,18 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                 <p className="text-xs text-muted-foreground">
                   Used for scoring, tailoring, and extraction.
                 </p>
-                <p className="text-xs text-muted-foreground">{providerHint}</p>
+                <p className="text-xs text-muted-foreground">
+                  {providerConfig.providerHint}
+                </p>
               </div>
               {showBaseUrl && (
                 <SettingsInput
                   label="LLM base URL"
                   inputProps={register("llmBaseUrl")}
-                  placeholder={baseUrlPlaceholder}
+                  placeholder={providerConfig.baseUrlPlaceholder}
                   disabled={isLoading || isSaving}
                   error={errors.llmBaseUrl?.message as string | undefined}
-                  helper={baseUrlHelper}
+                  helper={providerConfig.baseUrlHelper}
                   current={llmBaseUrl || "—"}
                 />
               )}
