@@ -69,6 +69,8 @@ vi.mock("sonner", () => ({
 
 const settingsResponse = {
   settings: {
+    llmProvider: "openrouter",
+    llmApiKeyHint: null,
     openrouterApiKeyHint: null,
     rxresumeEmail: "",
     rxresumePasswordHint: null,
@@ -122,5 +124,30 @@ describe("OnboardingGate", () => {
 
     await waitFor(() => expect(api.validateOpenrouter).toHaveBeenCalled());
     expect(screen.queryByText("Welcome to Job Ops")).not.toBeInTheDocument();
+  });
+
+  it("skips LLM key validation for providers without API keys", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      ...settingsResponse,
+      settings: {
+        ...settingsResponse.settings,
+        llmProvider: "ollama",
+      },
+    } as any);
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Missing",
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    render(<OnboardingGate />);
+
+    await waitFor(() => expect(api.validateRxresume).toHaveBeenCalled());
+    expect(api.validateOpenrouter).not.toHaveBeenCalled();
+    expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
+    expect(screen.queryByText("OpenRouter API key")).not.toBeInTheDocument();
   });
 });
