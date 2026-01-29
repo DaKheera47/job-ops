@@ -69,6 +69,10 @@ describe("LlmService", () => {
     } as Response);
 
     const llm = new LlmService();
+
+    // Backwards-compat: OPENROUTER_API_KEY should be copied to LLM_API_KEY.
+    expect(process.env.LLM_API_KEY).toBe("test-api-key");
+
     const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],

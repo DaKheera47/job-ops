@@ -532,6 +532,7 @@ export interface AppSettings {
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
   llmApiKeyHint: string | null;
+  /** @deprecated Use llmApiKeyHint instead. */
   openrouterApiKeyHint: string | null;
   rxresumeEmail: string | null;
   rxresumePasswordHint: string | null;

@@ -90,22 +90,63 @@ export function serializeEnvBoolean(value: boolean | null): string | null {
 }
 
 export async function applyStoredEnvOverrides(): Promise<void> {
+  const overrides = await settingsRepo.getAllSettings();
+
+  // Migration: move legacy OpenRouter key to the unified LLM key.
+  //
+  // Users only see their API keys once. If we simply switch to LLM_API_KEY without
+  // copying, they may be unable to recover their existing key.
+  const effectiveProvider = (overrides.llmProvider ?? process.env.LLM_PROVIDER)
+    ?.trim()
+    .toLowerCase();
+  const legacyOpenrouterKey = normalizeEnvInput(overrides.openrouterApiKey);
+  const unifiedKey = normalizeEnvInput(overrides.llmApiKey);
+
+  if (
+    (effectiveProvider ?? "openrouter") === "openrouter" &&
+    legacyOpenrouterKey &&
+    !unifiedKey
+  ) {
+    console.warn(
+      "[DEPRECATED] Detected stored OpenRouter API key. Migrating to LLM_API_KEY and clearing legacy storage.",
+    );
+    await settingsRepo.setSetting("llmApiKey", legacyOpenrouterKey);
+    await settingsRepo.setSetting("openrouterApiKey", null);
+    overrides.llmApiKey = legacyOpenrouterKey;
+    delete overrides.openrouterApiKey;
+  }
+
+  // Migration helper for env-based users: copy OPENROUTER_API_KEY -> LLM_API_KEY
+  // at runtime so the app keeps working after removing fallback logic.
+  if (
+    (effectiveProvider ?? "openrouter") === "openrouter" &&
+    !normalizeEnvInput(process.env.LLM_API_KEY) &&
+    normalizeEnvInput(process.env.OPENROUTER_API_KEY)
+  ) {
+    console.warn(
+      "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY for compatibility.",
+    );
+    process.env.LLM_API_KEY = normalizeEnvInput(
+      process.env.OPENROUTER_API_KEY,
+    )!;
+  }
+
   await Promise.all([
     ...readableStringConfig.map(async ({ settingKey, envKey }) => {
-      const override = await settingsRepo.getSetting(settingKey);
+      const override = overrides[settingKey] ?? null;
       if (override === null) return;
       applyEnvValue(envKey, normalizeEnvInput(override));
     }),
     ...readableBooleanConfig.map(
       async ({ settingKey, envKey, defaultValue }) => {
-        const override = await settingsRepo.getSetting(settingKey);
+        const override = overrides[settingKey] ?? null;
         if (override === null) return;
         const parsed = parseEnvBoolean(override, defaultValue);
         applyEnvValue(envKey, serializeEnvBoolean(parsed));
       },
     ),
     ...privateStringConfig.map(async ({ settingKey, envKey }) => {
-      const override = await settingsRepo.getSetting(settingKey);
+      const override = overrides[settingKey] ?? null;
       if (override === null) return;
       applyEnvValue(envKey, normalizeEnvInput(override));
     }),
@@ -142,6 +183,12 @@ export async function getEnvSettingsData(
     const hintLength =
       rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
     privateValues[hintKey] = rawValue.slice(0, hintLength);
+  }
+
+  // Backwards-compat: old clients still expect openrouterApiKeyHint.
+  // Always prefer the unified LLM key hint when present.
+  if (privateValues.llmApiKeyHint) {
+    privateValues.openrouterApiKeyHint = privateValues.llmApiKeyHint;
   }
 
   const basicAuthUser =

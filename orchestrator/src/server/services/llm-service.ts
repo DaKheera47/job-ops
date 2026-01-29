@@ -377,12 +377,27 @@ export class LlmService {
     const strategy = strategies[resolvedProvider];
     const baseUrl = normalizedBaseUrl || strategy.defaultBaseUrl;
 
-    const apiKey =
+    let apiKey =
       normalizeEnvInput(options.apiKey) ||
       normalizeEnvInput(process.env.LLM_API_KEY) ||
-      (resolvedProvider === "openrouter"
-        ? normalizeEnvInput(process.env.OPENROUTER_API_KEY)
-        : null);
+      null;
+
+    // Backwards-compat migration: OPENROUTER_API_KEY -> LLM_API_KEY.
+    // This prevents users from losing access when upgrading (keys are often only shown once).
+    if (
+      !apiKey &&
+      resolvedProvider === "openrouter" &&
+      normalizeEnvInput(process.env.OPENROUTER_API_KEY)
+    ) {
+      console.warn(
+        "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
+      );
+      const migrated = normalizeEnvInput(process.env.OPENROUTER_API_KEY);
+      if (migrated) {
+        process.env.LLM_API_KEY = migrated;
+        apiKey = migrated;
+      }
+    }
 
     this.provider = resolvedProvider;
     this.baseUrl = baseUrl;
