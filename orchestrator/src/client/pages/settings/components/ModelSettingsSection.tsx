@@ -55,13 +55,14 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
 
+  const llmBaseUrlValue = watch("llmBaseUrl");
+
   useEffect(() => {
     if (showBaseUrl) return;
-    const currentValue = watch("llmBaseUrl");
-    if (currentValue) {
+    if (llmBaseUrlValue) {
       setValue("llmBaseUrl", "", { shouldDirty: true });
     }
-  }, [setValue, showBaseUrl, watch]);
+  }, [setValue, showBaseUrl, llmBaseUrlValue]);
 
   const keyHint = formatSecretHint(llmApiKeyHint);
   const keyText = showApiKey ? keyHint || "Not set" : "Not required";
