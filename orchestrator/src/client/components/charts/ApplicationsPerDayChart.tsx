@@ -3,6 +3,7 @@
  * Shows daily application volume over a selected time range.
  */
 
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
@@ -69,7 +70,29 @@ const buildApplicationsPerDay = (
   }
 
   const total = data.reduce((sum, item) => sum + item.applications, 0);
-  return { data, total };
+
+  // Calculate trend by comparing first half vs second half
+  const halfPoint = Math.floor(data.length / 2);
+  const firstHalf = data.slice(0, halfPoint);
+  const secondHalf = data.slice(halfPoint);
+  const firstHalfAvg =
+    firstHalf.length > 0
+      ? firstHalf.reduce((sum, item) => sum + item.applications, 0) /
+        firstHalf.length
+      : 0;
+  const secondHalfAvg =
+    secondHalf.length > 0
+      ? secondHalf.reduce((sum, item) => sum + item.applications, 0) /
+        secondHalf.length
+      : 0;
+  const trend =
+    firstHalfAvg === 0
+      ? secondHalfAvg > 0
+        ? "up"
+        : "neutral"
+      : ((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100;
+
+  return { data, total, trend };
 };
 
 interface ApplicationsPerDayChartProps {
@@ -85,7 +108,11 @@ export function ApplicationsPerDayChart({
   error,
   daysToShow,
 }: ApplicationsPerDayChartProps) {
-  const { data: chartData, total } = useMemo(() => {
+  const {
+    data: chartData,
+    total,
+    trend,
+  } = useMemo(() => {
     return buildApplicationsPerDay(appliedAt, daysToShow);
   }, [appliedAt, daysToShow]);
 
@@ -93,6 +120,9 @@ export function ApplicationsPerDayChart({
     if (chartData.length === 0) return 0;
     return total / chartData.length;
   }, [chartData, total]);
+
+  const showTrendUp = typeof trend === "number" ? trend > 5 : trend === "up";
+  const showTrendDown = typeof trend === "number" ? trend < -5 : false;
 
   return (
     <Card className="py-0">
@@ -108,9 +138,16 @@ export function ApplicationsPerDayChart({
         <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">Avg / day</span>
-            <span className="text-lg font-bold leading-none sm:text-3xl">
-              {average.toFixed(1)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-bold leading-none sm:text-3xl">
+                {average.toFixed(1)}
+              </span>
+              {showTrendUp ? (
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+              ) : showTrendDown ? (
+                <TrendingDown className="h-4 w-4 text-destructive" />
+              ) : null}
+            </div>
           </div>
         </div>
       </CardHeader>
