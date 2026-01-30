@@ -3,7 +3,7 @@
  * Shows daily application volume over a selected time range.
  */
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 
 import {
@@ -18,21 +18,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type DailyApplications = {
   date: string;
   applications: number;
 };
-
-const DAY_OPTIONS = [7, 14, 30, 90] as const;
-const DEFAULT_DAYS = 30;
 
 const chartConfig = {
   applications: {
@@ -86,23 +76,15 @@ interface ApplicationsPerDayChartProps {
   appliedAt: Array<string | null>;
   isLoading: boolean;
   error: string | null;
-  initialDays?: number;
-  onDaysChange?: (days: number) => void;
+  daysToShow: number;
 }
 
 export function ApplicationsPerDayChart({
   appliedAt,
   isLoading,
   error,
-  initialDays = DEFAULT_DAYS,
-  onDaysChange,
+  daysToShow,
 }: ApplicationsPerDayChartProps) {
-  const [daysToShow, setDaysToShow] = useState(() => {
-    return (DAY_OPTIONS as readonly number[]).includes(initialDays)
-      ? initialDays
-      : DEFAULT_DAYS;
-  });
-
   const { data: chartData, total } = useMemo(() => {
     return buildApplicationsPerDay(appliedAt, daysToShow);
   }, [appliedAt, daysToShow]);
@@ -111,16 +93,6 @@ export function ApplicationsPerDayChart({
     if (chartData.length === 0) return 0;
     return total / chartData.length;
   }, [chartData, total]);
-
-  const handleDaysChange = useCallback(
-    (value: string) => {
-      const parsed = Number(value);
-      if (!(DAY_OPTIONS as readonly number[]).includes(parsed)) return;
-      setDaysToShow(parsed);
-      onDaysChange?.(parsed);
-    },
-    [onDaysChange],
-  );
 
   return (
     <Card className="py-0">
@@ -139,27 +111,6 @@ export function ApplicationsPerDayChart({
             <span className="text-lg font-bold leading-none sm:text-3xl">
               {average.toFixed(1)}
             </span>
-          </div>
-          <div className="w-full">
-            <span className="text-xs text-muted-foreground">Range</span>
-            <div className="mt-2">
-              <Select
-                value={String(daysToShow)}
-                onValueChange={handleDaysChange}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="h-8 w-[140px]">
-                  <SelectValue placeholder="Days" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DAY_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={String(option)}>
-                      Last {option} days
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
       </CardHeader>

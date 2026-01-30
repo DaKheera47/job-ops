@@ -4,7 +4,7 @@
  */
 
 import { AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Bar,
   BarChart,
@@ -27,7 +27,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { StageEvent } from "../../../shared/types";
 
 type FunnelStage = {
@@ -51,9 +50,6 @@ type JobWithEvents = {
   positiveResponse: boolean;
   events: StageEvent[];
 };
-
-const CONVERSION_WINDOW_OPTIONS = [14, 30] as const;
-const DEFAULT_CONVERSION_WINDOW = 14;
 
 const chartConfig = {
   conversionRate: {
@@ -142,12 +138,12 @@ const buildFunnelData = (jobsWithEvents: JobWithEvents[]): FunnelStage[] => {
 // Build conversion rate time-series data
 const buildConversionTimeSeries = (
   jobsWithEvents: JobWithEvents[],
-  windowDays: number,
+  daysToShow: number,
 ): ConversionDataPoint[] => {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
   const start = new Date(end);
-  start.setDate(start.getDate() - (windowDays - 1));
+  start.setDate(start.getDate() - (daysToShow - 1));
   start.setHours(0, 0, 0, 0);
 
   // Group jobs by application date
@@ -167,7 +163,7 @@ const buildConversionTimeSeries = (
 
   // Build time series with rolling conversion rate
   const data: ConversionDataPoint[] = [];
-  const rollingWindow = 7; // 7-day rolling average
+  const rollingWindow = Math.min(7, daysToShow); // 7-day rolling average, capped by daysToShow
 
   for (
     let day = new Date(start);
@@ -249,46 +245,25 @@ const calculateOverallConversion = (
 interface ConversionAnalyticsProps {
   jobsWithEvents: JobWithEvents[];
   error: string | null;
-  initialWindow?: number;
-  onWindowChange?: (window: number) => void;
+  daysToShow: number;
 }
 
 export function ConversionAnalytics({
   jobsWithEvents,
   error,
-  initialWindow = DEFAULT_CONVERSION_WINDOW,
-  onWindowChange,
+  daysToShow,
 }: ConversionAnalyticsProps) {
-  const [conversionWindow, setConversionWindow] = useState(() => {
-    return (CONVERSION_WINDOW_OPTIONS as readonly number[]).includes(
-      initialWindow,
-    )
-      ? initialWindow
-      : DEFAULT_CONVERSION_WINDOW;
-  });
-
   const funnelData = useMemo(() => {
     return buildFunnelData(jobsWithEvents);
   }, [jobsWithEvents]);
 
   const conversionTimeSeries = useMemo(() => {
-    return buildConversionTimeSeries(jobsWithEvents, conversionWindow);
-  }, [jobsWithEvents, conversionWindow]);
+    return buildConversionTimeSeries(jobsWithEvents, daysToShow);
+  }, [jobsWithEvents, daysToShow]);
 
   const overallConversion = useMemo(() => {
     return calculateOverallConversion(jobsWithEvents);
   }, [jobsWithEvents]);
-
-  const handleWindowChange = useCallback(
-    (value: string) => {
-      const parsed = Number(value);
-      if (!(CONVERSION_WINDOW_OPTIONS as readonly number[]).includes(parsed))
-        return;
-      setConversionWindow(parsed);
-      onWindowChange?.(parsed);
-    },
-    [onWindowChange],
-  );
 
   return (
     <Card className="py-0">
@@ -385,24 +360,9 @@ export function ConversionAnalytics({
             <div>
               <div className="mb-3 flex items-center justify-between">
                 <h4 className="text-sm font-medium text-muted-foreground">
-                  Conversion rate over time (rolling 7-day average)
+                  Conversion rate over time (rolling {Math.min(7, daysToShow)}
+                  -day average)
                 </h4>
-                <Tabs
-                  value={String(conversionWindow)}
-                  onValueChange={handleWindowChange}
-                >
-                  <TabsList className="h-7">
-                    {CONVERSION_WINDOW_OPTIONS.map((option) => (
-                      <TabsTrigger
-                        key={option}
-                        value={String(option)}
-                        className="px-2 text-xs"
-                      >
-                        {option}d
-                      </TabsTrigger>
-                    ))}
-                  </TabsList>
-                </Tabs>
               </div>
               <ChartContainer
                 config={chartConfig}
@@ -461,7 +421,7 @@ export function ConversionAnalytics({
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-muted-foreground">
-                                Applied (7d window)
+                                Applied ({Math.min(7, daysToShow)}d window)
                               </span>
                               <span className="font-semibold text-foreground">
                                 {data.appliedCount}
