@@ -47,7 +47,6 @@ type JobWithEvents = {
   datePosted: string | null;
   discoveredAt: string;
   appliedAt: string | null;
-  positiveResponse: boolean;
   events: StageEvent[];
 };
 

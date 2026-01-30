@@ -4,7 +4,6 @@ import {
   ConversionAnalytics,
   DurationSelector,
   type DurationValue,
-  FreshnessResponseChart,
 } from "@client/components/charts";
 import { PageMain } from "@client/components/layout";
 import { Home, Menu } from "lucide-react";
@@ -23,41 +22,22 @@ import { cn } from "@/lib/utils";
 import type { StageEvent } from "../../shared/types";
 import { isNavActive, NAV_LINKS } from "../components/navigation";
 
-type JobSummary = {
-  id: string;
-  datePosted: string | null;
-  discoveredAt: string;
-  appliedAt: string | null;
-  positiveResponse: boolean;
-};
-
 type JobWithEvents = {
   id: string;
   datePosted: string | null;
   discoveredAt: string;
   appliedAt: string | null;
-  positiveResponse: boolean;
   events: StageEvent[];
 };
 
 const DURATION_OPTIONS = [7, 14, 30, 90] as const;
 const DEFAULT_DURATION = 30;
 
-const positiveStages = new Set([
-  "recruiter_screen",
-  "assessment",
-  "hiring_manager_screen",
-  "technical_interview",
-  "onsite",
-  "offer",
-]);
-
 export const HomePage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [navOpen, setNavOpen] = useState(false);
-  const [jobs, setJobs] = useState<JobSummary[]>([]);
   const [jobsWithEvents, setJobsWithEvents] = useState<JobWithEvents[]>([]);
   const [appliedDates, setAppliedDates] = useState<Array<string | null>>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -84,7 +64,7 @@ export const HomePage: React.FC = () => {
       .then(async (response) => {
         if (!isMounted) return;
         const appliedDates = response.jobs.map((job) => job.appliedAt);
-        const jobSummaries: JobSummary[] = response.jobs.map((job) => ({
+        const jobSummaries = response.jobs.map((job) => ({
           id: job.id,
           datePosted: job.datePosted,
           discoveredAt: job.discoveredAt,
@@ -96,29 +76,17 @@ export const HomePage: React.FC = () => {
         const results = await Promise.allSettled(
           appliedJobs.map((job) => api.getJobStageEvents(job.id)),
         );
-        const positiveMap = new Map<string, boolean>();
         const eventsMap = new Map<string, StageEvent[]>();
 
         results.forEach((result, index) => {
           const jobId = appliedJobs[index]?.id;
           if (!jobId) return;
           if (result.status !== "fulfilled") {
-            positiveMap.set(jobId, false);
             eventsMap.set(jobId, []);
             return;
           }
-          const events = result.value;
-          eventsMap.set(jobId, events);
-          const hasPositive = events.some((event) =>
-            positiveStages.has(event.toStage),
-          );
-          positiveMap.set(jobId, hasPositive);
+          eventsMap.set(jobId, result.value);
         });
-
-        const resolvedJobs = jobSummaries.map((job) => ({
-          ...job,
-          positiveResponse: positiveMap.get(job.id) ?? false,
-        }));
 
         const resolvedJobsWithEvents: JobWithEvents[] = jobSummaries
           .filter((job) => job.appliedAt)
@@ -127,7 +95,6 @@ export const HomePage: React.FC = () => {
             events: eventsMap.get(job.id) ?? [],
           }));
 
-        setJobs(resolvedJobs);
         setJobsWithEvents(resolvedJobsWithEvents);
         setAppliedDates(appliedDates);
         setError(null);
@@ -245,8 +212,6 @@ export const HomePage: React.FC = () => {
           error={error}
           daysToShow={duration}
         />
-
-        <FreshnessResponseChart jobs={jobs} error={error} />
 
         <ConversionAnalytics
           jobsWithEvents={jobsWithEvents}
