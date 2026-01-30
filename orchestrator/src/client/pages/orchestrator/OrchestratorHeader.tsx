@@ -1,18 +1,14 @@
+import { isNavActive, NAV_LINKS } from "@client/components/navigation";
 import {
-  Briefcase,
   ChevronDown,
   FileText,
-  Home,
   Loader2,
   Menu,
   Play,
-  Settings,
-  Shield,
   Sparkles,
 } from "lucide-react";
 import type React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,8 +25,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-
-import { sourceLabel } from "@/lib/utils";
+import { cn, sourceLabel } from "@/lib/utils";
 import type { JobSource } from "../../../shared/types";
 import { orderedSources } from "./constants";
 
@@ -45,13 +40,6 @@ interface OrchestratorHeaderProps {
   onRunPipeline: () => void;
   onOpenManualImport: () => void;
 }
-
-const navLinks = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
-  { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   navOpen,
@@ -72,7 +60,6 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   const allSourcesSelected =
     visibleSources.length > 0 &&
     visibleSources.every((source) => pipelineSources.includes(source));
-
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
@@ -89,32 +76,24 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {navLinks.map(({ to, label, icon: Icon }) => (
+                {NAV_LINKS.map(({ to, label, icon: Icon, activePaths }) => (
                   <button
                     key={to}
                     type="button"
                     onClick={() => {
-                      if (location.pathname === to) {
+                      if (isNavActive(location.pathname, to, activePaths)) {
                         onNavOpenChange(false);
                         return;
                       }
                       onNavOpenChange(false);
                       setTimeout(() => navigate(to), 150);
                     }}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left ${
-                      location.pathname === to ||
-                      (
-                        to === "/" &&
-                          [
-                            "/ready",
-                            "/discovered",
-                            "/applied",
-                            "/all",
-                          ].includes(location.pathname)
-                      )
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                      isNavActive(location.pathname, to, activePaths)
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
-                    }`}
+                        : "text-muted-foreground",
+                    )}
                   >
                     <Icon className="h-4 w-4" />
                     {label}

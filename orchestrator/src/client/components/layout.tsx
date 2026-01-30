@@ -2,14 +2,7 @@
  * Shared layout components for consistent page structure.
  */
 
-import {
-  Briefcase,
-  Home,
-  type LucideIcon,
-  Menu,
-  Settings,
-  Shield,
-} from "lucide-react";
+import { type LucideIcon, Menu } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -24,17 +17,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { isNavActive, NAV_LINKS } from "./navigation";
 
 // ============================================================================
 // Page Header
 // ============================================================================
-
-const navLinks = [
-  { to: "/", label: "Dashboard", icon: Home },
-  { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
-  { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
-  { to: "/settings", label: "Settings", icon: Settings },
-];
 
 interface PageHeaderProps {
   icon: LucideIcon;
@@ -57,8 +44,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
 
-  const handleNavClick = (to: string) => {
-    if (location.pathname === to) {
+  const handleNavClick = (to: string, activePaths?: string[]) => {
+    if (isNavActive(location.pathname, to, activePaths)) {
       setNavOpen(false);
       return;
     }
@@ -82,21 +69,14 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {navLinks.map(({ to, label, icon: NavIcon }) => (
+                {NAV_LINKS.map(({ to, label, icon: NavIcon, activePaths }) => (
                   <button
                     key={to}
                     type="button"
-                    onClick={() => handleNavClick(to)}
+                    onClick={() => handleNavClick(to, activePaths)}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                      location.pathname === to ||
-                        (to === "/" &&
-                          [
-                            "/ready",
-                            "/discovered",
-                            "/applied",
-                            "/all",
-                          ].includes(location.pathname))
+                      isNavActive(location.pathname, to, activePaths)
                         ? "bg-accent text-accent-foreground"
                         : "text-muted-foreground",
                     )}

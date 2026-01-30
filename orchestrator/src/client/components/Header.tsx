@@ -2,20 +2,10 @@
  * Header component with logo and pipeline trigger.
  */
 
-import {
-  Briefcase,
-  ChevronDown,
-  Home,
-  Loader2,
-  Menu,
-  Play,
-  RefreshCcw,
-  Settings,
-  Shield,
-} from "lucide-react";
+import { isNavActive, NAV_LINKS } from "@client/components/navigation";
+import { ChevronDown, Loader2, Menu, Play, RefreshCcw } from "lucide-react";
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,7 +23,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { sourceLabel } from "@/lib/utils";
+import { cn, sourceLabel } from "@/lib/utils";
 import type { JobSource } from "../../shared/types";
 
 interface HeaderProps {
@@ -63,13 +53,6 @@ export const Header: React.FC<HeaderProps> = ({
     "ukvisajobs",
   ];
 
-  const navLinks = [
-    { to: "/", label: "Dashboard", icon: Home },
-    { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
-    { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
-    { to: "/settings", label: "Settings", icon: Settings },
-  ];
-
   const toggleSource = (source: JobSource, checked: boolean) => {
     const next = checked
       ? Array.from(new Set([...pipelineSources, source]))
@@ -95,16 +78,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {navLinks.map(({ to, label, icon: Icon }) => (
+                {NAV_LINKS.map(({ to, label, icon: Icon, activePaths }) => (
                   <Link
                     key={to}
                     to={to}
                     onClick={() => setSheetOpen(false)}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground ${
-                      location.pathname === to
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                      isNavActive(location.pathname, to, activePaths)
                         ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground"
-                    }`}
+                        : "text-muted-foreground",
+                    )}
                   >
                     <Icon className="h-4 w-4" />
                     {label}
