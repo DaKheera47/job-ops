@@ -71,7 +71,7 @@
         "Use pattern: JOBSPY_IS_REMOTE: String(options.isRemote ?? process.env.JOBSPY_IS_REMOTE ?? '0')",
         "Verify environment variable defaults to '0' if not provided"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "pipeline-1",

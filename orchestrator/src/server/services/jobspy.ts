@@ -113,6 +113,7 @@ export interface RunJobSpyOptions {
   hoursOld?: number;
   countryIndeed?: string;
   linkedinFetchDescription?: boolean;
+  isRemote?: boolean;
 }
 
 export interface JobSpyResult {
@@ -173,6 +174,9 @@ export async function runJobSpy(
               options.linkedinFetchDescription ??
                 process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION ??
                 "1",
+            ),
+            JOBSPY_IS_REMOTE: String(
+              options.isRemote ?? process.env.JOBSPY_IS_REMOTE ?? "0",
             ),
             JOBSPY_OUTPUT_CSV: outputCsv,
             JOBSPY_OUTPUT_JSON: outputJson,

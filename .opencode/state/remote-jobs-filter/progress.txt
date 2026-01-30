@@ -41,3 +41,10 @@ Started: 2026-01-30
   - orchestrator/src/server/services/settings.ts:172-181 - Added defaultJobspyIsRemote, overrideJobspyIsRemote, and merge logic after jobspyLinkedinFetchDescription
   - orchestrator/src/server/services/settings.ts:232-234 - Added three fields to return object
 - **Learnings:** Settings service follows pattern: parse default from env var with fallback, parse override from database (checks for '1' or 'true'), merge using nullish coalescing (override ?? default). Environment variable JOBSPY_IS_REMOTE defaults to '0' (false) if not set.
+
+## Task - jobspy-1
+- Added `isRemote` parameter to JobSpy service interface and implementation
+- Files changed:
+  - orchestrator/src/server/services/jobspy.ts:116 - Added `isRemote?: boolean` to RunJobSpyOptions interface
+  - orchestrator/src/server/services/jobspy.ts:178-180 - Added JOBSPY_IS_REMOTE environment variable passing using pattern `String(options.isRemote ?? process.env.JOBSPY_IS_REMOTE ?? "0")`
+- **Learnings:** JobSpy service passes parameters to Python script via environment variables. Boolean values are converted to strings using String() function. Follows nullish coalescing pattern: option parameter ?? env var ?? default value.
