@@ -186,6 +186,7 @@ export async function runPipeline(
       const jobspyCountryIndeedSetting = settings.jobspyCountryIndeed;
       const jobspyLinkedinFetchDescriptionSetting =
         settings.jobspyLinkedinFetchDescription;
+      const jobspyIsRemoteSetting = settings.jobspyIsRemote;
 
       const jobSpyResult = await runJobSpy({
         sites: jobSpySites,
@@ -202,6 +203,10 @@ export async function runPipeline(
           jobspyLinkedinFetchDescriptionSetting !== null &&
           jobspyLinkedinFetchDescriptionSetting !== undefined
             ? jobspyLinkedinFetchDescriptionSetting === "1"
+            : undefined,
+        isRemote:
+          jobspyIsRemoteSetting !== null && jobspyIsRemoteSetting !== undefined
+            ? jobspyIsRemoteSetting === "1"
             : undefined,
       });
       if (!jobSpyResult.success) {

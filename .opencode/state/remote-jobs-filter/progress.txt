@@ -48,3 +48,10 @@ Started: 2026-01-30
   - orchestrator/src/server/services/jobspy.ts:116 - Added `isRemote?: boolean` to RunJobSpyOptions interface
   - orchestrator/src/server/services/jobspy.ts:178-180 - Added JOBSPY_IS_REMOTE environment variable passing using pattern `String(options.isRemote ?? process.env.JOBSPY_IS_REMOTE ?? "0")`
 - **Learnings:** JobSpy service passes parameters to Python script via environment variables. Boolean values are converted to strings using String() function. Follows nullish coalescing pattern: option parameter ?? env var ?? default value.
+
+## Task - pipeline-1
+- Added `isRemote` parameter passing from pipeline orchestrator to JobSpy service
+- Files changed:
+  - orchestrator/src/server/pipeline/orchestrator.ts:189 - Added `const jobspyIsRemoteSetting = settings.jobspyIsRemote;` to read setting from database
+  - orchestrator/src/server/pipeline/orchestrator.ts:206-209 - Added `isRemote` parameter to runJobSpy() call with conversion: `jobspyIsRemoteSetting === "1"`
+- **Learnings:** Pipeline orchestrator reads all settings at once via `getAllSettings()` to avoid sequential DB calls. Boolean settings stored as '1'/'0' strings in database are converted using strict equality check `=== "1"`. Follows same pattern as linkedinFetchDescription: check for non-null/undefined, then convert. The ternary pattern `setting !== null && setting !== undefined ? setting === "1" : undefined` ensures undefined is passed when setting is not set, allowing downstream defaults to apply.

@@ -84,7 +84,7 @@
         "Pass isRemote to runJobSpy() call (around line 206)",
         "Verify conversion: setting === '1' ? true : false"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "python-1",
