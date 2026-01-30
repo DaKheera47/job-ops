@@ -83,3 +83,12 @@ Started: 2026-01-30
   - orchestrator/src/client/pages/settings/components/JobspySection.tsx:152,428-460 - Added checkbox UI with effective/default display
   - orchestrator/src/client/pages/settings/components/JobspySection.test.tsx:17,34 - Updated test fixture
 - **Learnings:** UI checkbox components follow consistent pattern: Controller wrapper, checked state with default fallback, onCheckedChange with !!checked coercion, and effective/default value display. Form submission uses nullIfSame to only store values different from defaults.
+
+## Task - ui-badge
+- Added Remote badge to JobHeader component that displays when job.isRemote === true
+- Badge positioned next to Source badge in job header
+- Uses Badge component with outline variant, consistent styling with Source badge
+- Badge only displays when job.isRemote is strictly true (not for false or null)
+- Files changed:
+  - orchestrator/src/client/components/JobHeader.tsx:207-215 - Added conditional Remote badge rendering after Source badge
+- **Learnings:** Badge components follow simple conditional rendering pattern. Using strict equality (=== true) ensures badge only shows for explicitly remote jobs, not for null/undefined values. Badge styling kept consistent with existing badges by reusing the same className pattern.

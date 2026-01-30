@@ -206,6 +206,14 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           >
             {sourceLabel[job.source]}
           </Badge>
+          {job.isRemote === true && (
+            <Badge
+              variant="outline"
+              className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
+            >
+              Remote
+            </Badge>
+          )}
           {!isJobPage && (
             <Button
               asChild

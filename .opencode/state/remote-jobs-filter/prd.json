@@ -133,7 +133,7 @@
         "Create or find a job with isRemote: true and verify badge appears",
         "Create or find a job with isRemote: false and verify badge does NOT appear"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "docs-1",
