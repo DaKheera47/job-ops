@@ -96,7 +96,7 @@ export async function applyStoredEnvOverrides(): Promise<void> {
     } catch (error) {
       // In some test harnesses or first-boot scenarios, the DB may exist but not yet
       // have the settings table. Treat this as "no overrides".
-      const msg = String((error as any)?.message ?? error);
+      const msg = String((error as Error)?.message ?? error);
       if (msg.includes("no such table") && msg.includes("settings"))
         return null;
       throw error;
@@ -107,7 +107,7 @@ export async function applyStoredEnvOverrides(): Promise<void> {
     try {
       await settingsRepo.setSetting(key, value);
     } catch (error) {
-      const msg = String((error as any)?.message ?? error);
+      const msg = String((error as Error)?.message ?? error);
       if (msg.includes("no such table") && msg.includes("settings")) return;
       throw error;
     }
@@ -149,9 +149,8 @@ export async function applyStoredEnvOverrides(): Promise<void> {
     console.warn(
       "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY for compatibility.",
     );
-    process.env.LLM_API_KEY = normalizeEnvInput(
-      process.env.OPENROUTER_API_KEY,
-    )!;
+    const normalizedKey = normalizeEnvInput(process.env.OPENROUTER_API_KEY);
+    if (normalizedKey) process.env.LLM_API_KEY = normalizedKey;
   }
 
   await Promise.all([
