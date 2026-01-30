@@ -13,6 +13,7 @@ import type { ValidationResult } from "@shared/types";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -42,12 +43,22 @@ import { cn } from "@/lib/utils";
 
 type ValidationState = ValidationResult & { checked: boolean };
 
+type OnboardingFormData = {
+  llmProvider: string;
+  llmBaseUrl: string;
+  llmApiKey: string;
+  rxresumeEmail: string;
+  rxresumePassword: string;
+  rxresumeBaseResumeId: string | null;
+};
+
 export const OnboardingGate: React.FC = () => {
   const {
     settings,
     isLoading: settingsLoading,
     refreshSettings,
   } = useSettings();
+
   const [isSavingEnv, setIsSavingEnv] = useState(false);
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
@@ -72,54 +83,71 @@ export const OnboardingGate: React.FC = () => {
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
 
-  const [llmProvider, setLlmProvider] = useState("");
-  const [llmBaseUrl, setLlmBaseUrl] = useState("");
-  const [llmApiKey, setLlmApiKey] = useState("");
-  const [rxresumeEmail, setRxresumeEmail] = useState("");
-  const [rxresumePassword, setRxresumePassword] = useState("");
-  const [rxresumeBaseResumeId, setRxresumeBaseResumeId] = useState<
-    string | null
-  >(null);
+  const { control, watch, getValues, reset, setValue } =
+    useForm<OnboardingFormData>({
+      defaultValues: {
+        llmProvider: "",
+        llmBaseUrl: "",
+        llmApiKey: "",
+        rxresumeEmail: "",
+        rxresumePassword: "",
+        rxresumeBaseResumeId: null,
+      },
+    });
 
-  const validateLlm = useCallback(
-    async (input: { provider?: string; baseUrl?: string; apiKey?: string }) => {
-      setIsValidatingLlm(true);
-      try {
-        const result = await api.validateLlm(input);
-        setLlmValidation({ ...result, checked: true });
-        return result;
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "LLM validation failed";
-        const result = { valid: false, message };
-        setLlmValidation({ ...result, checked: true });
-        return result;
-      } finally {
-        setIsValidatingLlm(false);
-      }
-    },
-    [],
-  );
+  const llmProvider = watch("llmProvider");
 
-  const validateRxresume = useCallback(
-    async (email?: string, password?: string) => {
-      setIsValidatingRxresume(true);
-      try {
-        const result = await api.validateRxresume(email, password);
-        setRxresumeValidation({ ...result, checked: true });
-        return result;
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "RxResume validation failed";
-        const result = { valid: false, message };
-        setRxresumeValidation({ ...result, checked: true });
-        return result;
-      } finally {
-        setIsValidatingRxresume(false);
-      }
-    },
-    [],
-  );
+  const validateLlm = useCallback(async () => {
+    const values = getValues();
+    const selectedProvider = normalizeLlmProvider(
+      values.llmProvider || settings?.llmProvider || "openrouter",
+    );
+    const providerConfig = getLlmProviderConfig(selectedProvider);
+    const { requiresApiKey } = providerConfig;
+
+    setIsValidatingLlm(true);
+    try {
+      const result = await api.validateLlm({
+        provider: selectedProvider,
+        baseUrl: values.llmBaseUrl.trim() || undefined,
+        apiKey: requiresApiKey
+          ? values.llmApiKey.trim() || undefined
+          : undefined,
+      });
+      setLlmValidation({ ...result, checked: true });
+      return result;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "LLM validation failed";
+      const result = { valid: false, message };
+      setLlmValidation({ ...result, checked: true });
+      return result;
+    } finally {
+      setIsValidatingLlm(false);
+    }
+  }, [getValues, settings?.llmProvider]);
+
+  const validateRxresume = useCallback(async () => {
+    const values = getValues();
+
+    setIsValidatingRxresume(true);
+    try {
+      const result = await api.validateRxresume(
+        values.rxresumeEmail.trim() || undefined,
+        values.rxresumePassword.trim() || undefined,
+      );
+      setRxresumeValidation({ ...result, checked: true });
+      return result;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "RxResume validation failed";
+      const result = { valid: false, message };
+      setRxresumeValidation({ ...result, checked: true });
+      return result;
+    } finally {
+      setIsValidatingRxresume(false);
+    }
+  }, [getValues]);
 
   const validateBaseResume = useCallback(async () => {
     setIsValidatingBaseResume(true);
@@ -150,6 +178,7 @@ export const OnboardingGate: React.FC = () => {
     showBaseUrl,
     requiresApiKey: requiresLlmKey,
   } = providerConfig;
+
   const llmKeyHint =
     settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
@@ -170,26 +199,31 @@ export const OnboardingGate: React.FC = () => {
     ? settings.rxresumeEmail
     : undefined;
   const rxresumePasswordCurrent = settings?.rxresumePasswordHint
-    ? formatSecretHint(settings.rxresumePasswordHint)
+    ? formatSecretHint(settings?.rxresumePasswordHint)
     : undefined;
 
+  // Initialize form values from settings
   useEffect(() => {
     if (settings) {
-      setRxresumeBaseResumeId(settings.rxresumeBaseResumeId || null);
-      if (!llmProvider && settings.llmProvider) {
-        setLlmProvider(settings.llmProvider);
-      }
-      if (!llmBaseUrl && settings.llmBaseUrl) {
-        setLlmBaseUrl(settings.llmBaseUrl);
-      }
+      reset({
+        llmProvider: settings.llmProvider || "",
+        llmBaseUrl: settings.llmBaseUrl || "",
+        llmApiKey: "",
+        rxresumeEmail: "",
+        rxresumePassword: "",
+        rxresumeBaseResumeId: settings.rxresumeBaseResumeId || null,
+      });
     }
-  }, [llmBaseUrl, llmProvider, settings]);
+  }, [settings, reset]);
 
+  // Clear base URL when provider doesn't require it
   useEffect(() => {
-    if (showBaseUrl) return;
-    if (llmBaseUrl) setLlmBaseUrl("");
-  }, [llmBaseUrl, showBaseUrl]);
+    if (!showBaseUrl) {
+      setValue("llmBaseUrl", "");
+    }
+  }, [showBaseUrl, setValue]);
 
+  // Reset LLM validation when provider changes
   useEffect(() => {
     if (!selectedProvider) return;
     setLlmValidation({ valid: false, message: null, checked: false });
@@ -235,13 +269,7 @@ export const OnboardingGate: React.FC = () => {
     if (!settings) return;
     const validations: Promise<ValidationResult>[] = [];
     if (requiresLlmKey) {
-      validations.push(
-        validateLlm({
-          provider: normalizedProvider,
-          baseUrl: llmBaseUrl.trim() || undefined,
-          apiKey: llmApiKey.trim() || undefined,
-        }),
-      );
+      validations.push(validateLlm());
     } else {
       setLlmValidation({ valid: true, message: null, checked: true });
     }
@@ -262,11 +290,9 @@ export const OnboardingGate: React.FC = () => {
     validateLlm,
     validateRxresume,
     validateBaseResume,
-    normalizedProvider,
-    llmBaseUrl,
-    llmApiKey,
   ]);
 
+  // Run validations on mount when needed
   useEffect(() => {
     if (!settings || settingsLoading) return;
     const needsValidation =
@@ -300,8 +326,9 @@ export const OnboardingGate: React.FC = () => {
   };
 
   const handleSaveLlm = async (): Promise<boolean> => {
-    const apiKeyValue = llmApiKey.trim();
-    const baseUrlValue = llmBaseUrl.trim();
+    const values = getValues();
+    const apiKeyValue = values.llmApiKey.trim();
+    const baseUrlValue = values.llmBaseUrl.trim();
 
     if (requiresLlmKey && !apiKeyValue && !hasLlmKey) {
       toast.info("Add your LLM API key to continue");
@@ -310,11 +337,7 @@ export const OnboardingGate: React.FC = () => {
 
     try {
       const validation = requiresLlmKey
-        ? await validateLlm({
-            provider: normalizedProvider,
-            baseUrl: baseUrlValue || undefined,
-            apiKey: apiKeyValue || undefined,
-          })
+        ? await validateLlm()
         : { valid: true, message: null };
 
       if (!validation.valid) {
@@ -338,7 +361,7 @@ export const OnboardingGate: React.FC = () => {
       setIsSavingEnv(true);
       await api.updateSettings(update);
       await refreshSettings();
-      setLlmApiKey("");
+      setValue("llmApiKey", "");
       toast.success("LLM provider connected");
       return true;
     } catch (error) {
@@ -352,8 +375,9 @@ export const OnboardingGate: React.FC = () => {
   };
 
   const handleSaveRxresume = async (): Promise<boolean> => {
-    const emailValue = rxresumeEmail.trim();
-    const passwordValue = rxresumePassword.trim();
+    const values = getValues();
+    const emailValue = values.rxresumeEmail.trim();
+    const passwordValue = values.rxresumePassword.trim();
     const missing: string[] = [];
 
     if (!hasRxresumeEmail && !emailValue) missing.push("RxResume email");
@@ -368,10 +392,7 @@ export const OnboardingGate: React.FC = () => {
     }
 
     try {
-      const validation = await validateRxresume(
-        emailValue || undefined,
-        passwordValue || undefined,
-      );
+      const validation = await validateRxresume();
       if (!validation.valid) {
         toast.error(validation.message || "RxResume validation failed");
         return false;
@@ -385,7 +406,7 @@ export const OnboardingGate: React.FC = () => {
         setIsSavingEnv(true);
         await api.updateSettings(update);
         await refreshSettings();
-        setRxresumePassword("");
+        setValue("rxresumePassword", "");
       }
 
       toast.success("RxResume connected");
@@ -403,14 +424,18 @@ export const OnboardingGate: React.FC = () => {
   };
 
   const handleSaveBaseResume = async (): Promise<boolean> => {
-    if (!rxresumeBaseResumeId) {
+    const values = getValues();
+
+    if (!values.rxresumeBaseResumeId) {
       toast.info("Select a base resume to continue");
       return false;
     }
 
     try {
       setIsSavingEnv(true);
-      await api.updateSettings({ rxresumeBaseResumeId: rxresumeBaseResumeId });
+      await api.updateSettings({
+        rxresumeBaseResumeId: values.rxresumeBaseResumeId,
+      });
       const validation = await validateBaseResume();
       if (!validation.valid) {
         toast.error(validation.message || "Base resume validation failed");
@@ -492,7 +517,7 @@ export const OnboardingGate: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Welcome to Job Ops</AlertDialogTitle>
             <AlertDialogDescription>
-              Let’s get your workspace ready. Add your keys and resume once,
+              Let's get your workspace ready. Add your keys and resume once,
               then the pipeline can run end-to-end.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -559,53 +584,73 @@ export const OnboardingGate: React.FC = () => {
                   <label htmlFor="llmProvider" className="text-sm font-medium">
                     Provider
                   </label>
-                  <Select
-                    value={selectedProvider}
-                    onValueChange={(value) => setLlmProvider(value)}
-                    disabled={isSavingEnv}
-                  >
-                    <SelectTrigger id="llmProvider">
-                      <SelectValue placeholder="Select provider" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {LLM_PROVIDERS.map((provider) => (
-                        <SelectItem key={provider} value={provider}>
-                          {LLM_PROVIDER_LABELS[provider]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="llmProvider"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={selectedProvider}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                        }}
+                        disabled={isSavingEnv}
+                      >
+                        <SelectTrigger id="llmProvider">
+                          <SelectValue placeholder="Select provider" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LLM_PROVIDERS.map((provider) => (
+                            <SelectItem key={provider} value={provider}>
+                              {LLM_PROVIDER_LABELS[provider]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   <p className="text-xs text-muted-foreground">
                     {providerConfig.providerHint}
                   </p>
                 </div>
                 {showBaseUrl && (
-                  <SettingsInput
-                    label="LLM base URL"
-                    inputProps={{
-                      name: "llmBaseUrl",
-                      value: llmBaseUrl,
-                      onChange: (event) => setLlmBaseUrl(event.target.value),
-                    }}
-                    placeholder={providerConfig.baseUrlPlaceholder}
-                    helper={providerConfig.baseUrlHelper}
-                    current={settings?.llmBaseUrl || "—"}
-                    disabled={isSavingEnv}
+                  <Controller
+                    name="llmBaseUrl"
+                    control={control}
+                    render={({ field }) => (
+                      <SettingsInput
+                        label="LLM base URL"
+                        inputProps={{
+                          name: "llmBaseUrl",
+                          value: field.value,
+                          onChange: field.onChange,
+                        }}
+                        placeholder={providerConfig.baseUrlPlaceholder}
+                        helper={providerConfig.baseUrlHelper}
+                        current={settings?.llmBaseUrl || "—"}
+                        disabled={isSavingEnv}
+                      />
+                    )}
                   />
                 )}
                 {showApiKey && (
-                  <SettingsInput
-                    label="LLM API key"
-                    inputProps={{
-                      name: "llmApiKey",
-                      value: llmApiKey,
-                      onChange: (event) => setLlmApiKey(event.target.value),
-                    }}
-                    type="password"
-                    placeholder="Enter key"
-                    current={llmKeyCurrent}
-                    helper={providerConfig.keyHelper}
-                    disabled={isSavingEnv}
+                  <Controller
+                    name="llmApiKey"
+                    control={control}
+                    render={({ field }) => (
+                      <SettingsInput
+                        label="LLM API key"
+                        inputProps={{
+                          name: "llmApiKey",
+                          value: field.value,
+                          onChange: field.onChange,
+                        }}
+                        type="password"
+                        placeholder="Enter key"
+                        current={llmKeyCurrent}
+                        helper={providerConfig.keyHelper}
+                        disabled={isSavingEnv}
+                      />
+                    )}
                   />
                 )}
               </div>
@@ -621,29 +666,40 @@ export const OnboardingGate: React.FC = () => {
                 </p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
-                <SettingsInput
-                  label="Email"
-                  inputProps={{
-                    name: "rxresumeEmail",
-                    value: rxresumeEmail,
-                    onChange: (event) => setRxresumeEmail(event.target.value),
-                  }}
-                  placeholder="you@example.com"
-                  current={rxresumeEmailCurrent}
-                  disabled={isSavingEnv}
+                <Controller
+                  name="rxresumeEmail"
+                  control={control}
+                  render={({ field }) => (
+                    <SettingsInput
+                      label="Email"
+                      inputProps={{
+                        name: "rxresumeEmail",
+                        value: field.value,
+                        onChange: field.onChange,
+                      }}
+                      placeholder="you@example.com"
+                      current={rxresumeEmailCurrent}
+                      disabled={isSavingEnv}
+                    />
+                  )}
                 />
-                <SettingsInput
-                  label="Password"
-                  inputProps={{
-                    name: "rxresumePassword",
-                    value: rxresumePassword,
-                    onChange: (event) =>
-                      setRxresumePassword(event.target.value),
-                  }}
-                  type="password"
-                  placeholder="Enter password"
-                  current={rxresumePasswordCurrent}
-                  disabled={isSavingEnv}
+                <Controller
+                  name="rxresumePassword"
+                  control={control}
+                  render={({ field }) => (
+                    <SettingsInput
+                      label="Password"
+                      inputProps={{
+                        name: "rxresumePassword",
+                        value: field.value,
+                        onChange: field.onChange,
+                      }}
+                      type="password"
+                      placeholder="Enter password"
+                      current={rxresumePasswordCurrent}
+                      disabled={isSavingEnv}
+                    />
+                  )}
                 />
               </div>
             </TabsContent>
@@ -658,11 +714,17 @@ export const OnboardingGate: React.FC = () => {
                   resume will be used as a template for tailoring.
                 </p>
               </div>
-              <BaseResumeSelection
-                value={rxresumeBaseResumeId}
-                onValueChange={setRxresumeBaseResumeId}
-                hasRxResumeAccess={rxresumeValidation.valid}
-                disabled={isSavingEnv}
+              <Controller
+                name="rxresumeBaseResumeId"
+                control={control}
+                render={({ field }) => (
+                  <BaseResumeSelection
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    hasRxResumeAccess={rxresumeValidation.valid}
+                    disabled={isSavingEnv}
+                  />
+                )}
               />
             </TabsContent>
           </Tabs>
