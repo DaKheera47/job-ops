@@ -24,6 +24,7 @@ export type JobspyValues = {
   hoursOld: EffectiveDefault<number>;
   countryIndeed: EffectiveDefault<string>;
   linkedinFetchDescription: EffectiveDefault<boolean>;
+  isRemote: EffectiveDefault<boolean>;
 };
 
 export type EnvSettingsValues = {

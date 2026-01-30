@@ -14,6 +14,7 @@ const JobspyHarness = () => {
       jobspyHoursOld: 72,
       jobspyCountryIndeed: "UK",
       jobspyLinkedinFetchDescription: true,
+      jobspyIsRemote: false,
     },
   });
 
@@ -31,6 +32,7 @@ const JobspyHarness = () => {
             hoursOld: { default: 72, effective: 72 },
             countryIndeed: { default: "UK", effective: "UK" },
             linkedinFetchDescription: { default: true, effective: true },
+            isRemote: { default: false, effective: false },
           }}
           isLoading={false}
           isSaving={false}

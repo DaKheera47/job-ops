@@ -56,6 +56,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   jobspyCountryIndeed: null,
   jobspySites: null,
   jobspyLinkedinFetchDescription: null,
+  jobspyIsRemote: null,
   showSponsorInfo: null,
   openrouterApiKey: "",
   rxresumeEmail: "",
@@ -95,6 +96,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   jobspyCountryIndeed: null,
   jobspySites: null,
   jobspyLinkedinFetchDescription: null,
+  jobspyIsRemote: null,
   showSponsorInfo: null,
   openrouterApiKey: null,
   rxresumeEmail: null,
@@ -128,6 +130,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   jobspyCountryIndeed: data.overrideJobspyCountryIndeed,
   jobspySites: data.overrideJobspySites,
   jobspyLinkedinFetchDescription: data.overrideJobspyLinkedinFetchDescription,
+  jobspyIsRemote: data.overrideJobspyIsRemote,
   showSponsorInfo: data.overrideShowSponsorInfo,
   openrouterApiKey: "",
   rxresumeEmail: data.rxresumeEmail ?? "",
@@ -275,6 +278,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       linkedinFetchDescription: {
         effective: settings?.jobspyLinkedinFetchDescription ?? true,
         default: settings?.defaultJobspyLinkedinFetchDescription ?? true,
+      },
+      isRemote: {
+        effective: settings?.jobspyIsRemote ?? false,
+        default: settings?.defaultJobspyIsRemote ?? false,
       },
     },
     display: {
@@ -576,6 +583,10 @@ export const SettingsPage: React.FC = () => {
         jobspyLinkedinFetchDescription: nullIfSame(
           data.jobspyLinkedinFetchDescription,
           jobspy.linkedinFetchDescription.default,
+        ),
+        jobspyIsRemote: nullIfSame(
+          data.jobspyIsRemote,
+          jobspy.isRemote.default,
         ),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
         ...envPayload,

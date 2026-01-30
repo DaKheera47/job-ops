@@ -149,6 +149,7 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
     hoursOld,
     countryIndeed,
     linkedinFetchDescription,
+    isRemote,
   } = values;
   const {
     control,
@@ -421,6 +422,36 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                 <span>
                   Default: {linkedinFetchDescription.default ? "Yes" : "No"}
                 </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Controller
+              name="jobspyIsRemote"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  id="jobspy-remote"
+                  checked={field.value ?? isRemote.default}
+                  onCheckedChange={(checked) => field.onChange(!!checked)}
+                  disabled={isLoading || isSaving}
+                />
+              )}
+            />
+            <div className="grid gap-1.5 leading-none">
+              <label
+                htmlFor="jobspy-remote"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Remote Jobs?
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Only search for remote job listings
+              </p>
+              <div className="flex gap-2 text-xs text-muted-foreground">
+                <span>Effective: {isRemote.effective ? "Yes" : "No"}</span>
+                <span>Default: {isRemote.default ? "Yes" : "No"}</span>
               </div>
             </div>
           </div>

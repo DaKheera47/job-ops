@@ -116,7 +116,7 @@
         "Navigate to Settings page and confirm checkbox appears",
         "Toggle checkbox and save, verify setting persists in database"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ui-badge",

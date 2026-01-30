@@ -62,3 +62,24 @@ Started: 2026-01-30
   - extractors/jobspy/scrape_jobs.py:42 - Added `is_remote = _env_bool("JOBSPY_IS_REMOTE", False)` after linkedin_fetch_description
   - extractors/jobspy/scrape_jobs.py:61 - Added `is_remote=is_remote` parameter to scrape_jobs() function call
 - **Learnings:** Python script uses `_env_bool()` helper function to parse boolean environment variables with default fallback. Parameters are passed directly to the JobSpy library's scrape_jobs() function. The JobSpy library handles unsupported parameters gracefully (sites that don't support remote filtering will ignore it silently).
+
+## Task - ui-settings
+- Added `isRemote` field to JobspyValues type with EffectiveDefault<boolean> structure
+- Updated SettingsPage.tsx to include jobspyIsRemote in all form handling:
+  - Added to DEFAULT_FORM_VALUES (null)
+  - Added to NULL_SETTINGS_PAYLOAD (null)
+  - Added to mapSettingsToForm (data.overrideJobspyIsRemote)
+  - Added to getDerivedSettings with default false values
+  - Added to form submission payload with nullIfSame logic
+- Added Remote Jobs checkbox to JobspySection.tsx after Fetch LinkedIn Description checkbox
+  - Uses Controller pattern with react-hook-form
+  - Label: "Remote Jobs?"
+  - Description: "Only search for remote job listings"
+  - Displays effective and default values
+- Updated test fixtures in JobspySection.test.tsx to include isRemote field
+- Files changed:
+  - orchestrator/src/client/pages/settings/types.ts:27 - Added isRemote to JobspyValues
+  - orchestrator/src/client/pages/SettingsPage.tsx:58,98,131,278-281,586-590 - Added jobspyIsRemote to form handling and getDerivedSettings
+  - orchestrator/src/client/pages/settings/components/JobspySection.tsx:152,428-460 - Added checkbox UI with effective/default display
+  - orchestrator/src/client/pages/settings/components/JobspySection.test.tsx:17,34 - Updated test fixture
+- **Learnings:** UI checkbox components follow consistent pattern: Controller wrapper, checked state with default fallback, onCheckedChange with !!checked coercion, and effective/default value display. Form submission uses nullIfSame to only store values different from defaults.
