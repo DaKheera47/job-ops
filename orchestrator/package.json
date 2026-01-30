@@ -8,6 +8,7 @@
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite --host",
+    "check:all": "npm run check:types && npm run check:fix && npm run format:fix",
     "ci": "biome ci",
     "check": "biome check",
     "check:fix": "biome check --write",
