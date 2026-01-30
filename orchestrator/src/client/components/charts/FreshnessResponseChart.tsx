@@ -134,6 +134,7 @@ export function FreshnessResponseChart({
                 tickMargin={8}
               />
               <ChartTooltip
+                cursor={{ fill: "var(--chart-1)", opacity: 0.3 }}
                 content={({
                   active,
                   payload,

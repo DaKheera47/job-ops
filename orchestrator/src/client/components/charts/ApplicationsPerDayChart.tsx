@@ -192,6 +192,7 @@ export function ApplicationsPerDayChart({
                 }}
               />
               <ChartTooltip
+                cursor={{ fill: "var(--chart-1)", opacity: 0.3 }}
                 content={
                   <ChartTooltipContent
                     className="w-[160px]"

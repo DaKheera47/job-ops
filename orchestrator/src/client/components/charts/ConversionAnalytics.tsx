@@ -352,6 +352,7 @@ export function ConversionAnalytics({
                       tick={{ fontSize: 12 }}
                     />
                     <Tooltip
+                      cursor={{ fill: "var(--chart-1)", opacity: 0.3 }}
                       content={({ active, payload }) => {
                         if (!active || !payload?.length) return null;
                         const data = payload[0].payload as FunnelStage;
@@ -433,6 +434,7 @@ export function ConversionAnalytics({
                     domain={[0, "auto"]}
                   />
                   <ChartTooltip
+                    cursor={{ fill: "var(--chart-1)", opacity: 0.3 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       const data = payload[0].payload as ConversionDataPoint;
