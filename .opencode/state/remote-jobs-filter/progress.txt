@@ -16,3 +16,9 @@ Started: 2026-01-30
   - orchestrator/src/shared/types.ts:531-533 - Added three boolean fields after jobspyLinkedinFetchDescription
   - orchestrator/src/client/pages/SettingsPage.test.tsx:100-102 - Updated test fixture with default values
 - **Learnings:** Boolean settings consistently use three-field pattern (value, default, override). All test fixtures must be updated when adding new settings fields to AppSettings interface.
+
+## Task - types-2
+- Added `jobspyIsRemote` validation schema to updateSettingsSchema
+- Files changed:
+  - orchestrator/src/shared/settings-schema.ts:63 - Added `jobspyIsRemote: z.boolean().nullable().optional()` after jobspyLinkedinFetchDescription
+- **Learnings:** Validation schemas use Zod with `.boolean().nullable().optional()` pattern for boolean settings. Schema placement follows the same order as the TypeScript types.

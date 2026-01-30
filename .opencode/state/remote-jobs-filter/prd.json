@@ -21,7 +21,7 @@
         "Add jobspyIsRemote: z.boolean().nullable().optional() (around line 62)",
         "Verify schema exports correctly"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "db-1",
