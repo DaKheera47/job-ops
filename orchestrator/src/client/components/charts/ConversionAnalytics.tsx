@@ -3,7 +3,7 @@
  * Shows Application → Interview conversion metrics including funnel, time-series, and insights.
  */
 
-import { AlertCircle, TrendingDown, TrendingUp } from "lucide-react";
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import {
   Bar,
@@ -69,11 +69,21 @@ const FUNNEL_STAGES = [
 // Stages that count as "screening"
 const SCREENING_STAGES = new Set(["recruiter_screen", "assessment"]);
 
-// Stages that count as "interview"
+// Stages that count as "interview" (for funnel display)
 const INTERVIEW_STAGES = new Set([
   "hiring_manager_screen",
   "technical_interview",
   "onsite",
+]);
+
+// Stages that count as conversion (any positive response from company)
+const CONVERSION_STAGES = new Set([
+  "recruiter_screen",
+  "assessment",
+  "hiring_manager_screen",
+  "technical_interview",
+  "onsite",
+  "offer",
 ]);
 
 // Stages that count as "offer"
@@ -195,11 +205,11 @@ const buildConversionTimeSeries = (
       for (const job of jobs) {
         appliedCount++;
 
-        // Check if reached interview stage
-        const reachedInterview = job.events.some((event) =>
-          INTERVIEW_STAGES.has(event.toStage),
+        // Check if reached any conversion stage
+        const reachedConversion = job.events.some((event) =>
+          CONVERSION_STAGES.has(event.toStage),
         );
-        if (reachedInterview) {
+        if (reachedConversion) {
           interviewCount++;
         }
       }
@@ -230,10 +240,10 @@ const calculateOverallConversion = (
     if (!job.appliedAt) continue;
     total++;
 
-    const reachedInterview = job.events.some((event) =>
-      INTERVIEW_STAGES.has(event.toStage),
+    const reachedConversion = job.events.some((event) =>
+      CONVERSION_STAGES.has(event.toStage),
     );
-    if (reachedInterview) {
+    if (reachedConversion) {
       converted++;
     }
   }
@@ -451,26 +461,6 @@ export function ConversionAnalytics({
                 </LineChart>
               </ChartContainer>
             </div>
-
-            {/* Actionable Insight */}
-            {overallConversion.rate < 15 && overallConversion.total >= 10 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/50">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <div className="text-sm">
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
-                      Low conversion detected
-                    </p>
-                    <p className="mt-1 text-amber-700 dark:text-amber-300">
-                      Your application-to-interview rate is below 15%. Possible
-                      causes: bad targeting, CV mismatch, or late applications.
-                      Consider reviewing your CV alignment with job requirements
-                      and applying to roles within 3 days of posting.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </CardContent>
