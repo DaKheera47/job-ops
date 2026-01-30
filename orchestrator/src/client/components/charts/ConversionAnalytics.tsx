@@ -39,7 +39,7 @@ type ConversionDataPoint = {
   date: string;
   conversionRate: number;
   appliedCount: number;
-  interviewCount: number;
+  convertedCount: number;
 };
 
 type JobWithEvents = {
@@ -53,7 +53,7 @@ type JobWithEvents = {
 const chartConfig = {
   conversionRate: {
     label: "Conversion Rate",
-    color: "var(--chart-3)",
+    color: "var(--chart-1)",
   },
 };
 
@@ -186,7 +186,7 @@ const buildConversionTimeSeries = (
     windowStart.setDate(windowStart.getDate() - rollingWindow + 1);
 
     let appliedCount = 0;
-    let interviewCount = 0;
+    let convertedCount = 0;
 
     // Sum up jobs in the rolling window
     for (
@@ -209,19 +209,19 @@ const buildConversionTimeSeries = (
           CONVERSION_STAGES.has(event.toStage),
         );
         if (reachedConversion) {
-          interviewCount++;
+          convertedCount++;
         }
       }
     }
 
     const conversionRate =
-      appliedCount > 0 ? (interviewCount / appliedCount) * 100 : 0;
+      appliedCount > 0 ? (convertedCount / appliedCount) * 100 : 0;
 
     data.push({
       date: key,
       conversionRate,
       appliedCount,
-      interviewCount,
+      convertedCount,
     });
   }
 
@@ -438,10 +438,10 @@ export function ConversionAnalytics({
                             </div>
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-muted-foreground">
-                                Reached Interview
+                                Converted
                               </span>
                               <span className="font-semibold text-foreground">
-                                {data.interviewCount}
+                                {data.convertedCount}
                               </span>
                             </div>
                           </div>
