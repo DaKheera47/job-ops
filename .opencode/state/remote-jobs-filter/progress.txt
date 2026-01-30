@@ -28,3 +28,9 @@ Started: 2026-01-30
 - Files changed:
   - orchestrator/src/server/repositories/settings.ts:31 - Added "jobspyIsRemote" to SettingKey type union after "jobspyLinkedinFetchDescription"
 - **Learnings:** The SettingKey type union defines all valid setting keys that can be stored/retrieved from the database. Each new setting must be added to this type for TypeScript safety.
+
+## Task - api-1
+- Added `jobspyIsRemote` storage logic to settings API route
+- Files changed:
+  - orchestrator/src/server/api/routes/settings.ts:221-228 - Added storage block after jobspyLinkedinFetchDescription that converts boolean to '1'/'0' string for database storage
+- **Learnings:** Settings API route follows consistent pattern: check if field exists in input, extract value with null coalescing, store using ternary conversion (val ? '1' : '0'). All boolean settings stored as strings in database.

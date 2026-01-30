@@ -44,7 +44,7 @@
         "Follow pattern: val !== null ? (val ? '1' : '0') : null",
         "Verify PATCH /api/settings accepts jobspyIsRemote boolean"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "service-1",

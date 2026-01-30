@@ -218,6 +218,16 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    if ("jobspyIsRemote" in input) {
+      const val = input.jobspyIsRemote ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "jobspyIsRemote",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
     if ("showSponsorInfo" in input) {
       const val = input.showSponsorInfo ?? null;
       promises.push(
