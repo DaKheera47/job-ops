@@ -169,6 +169,13 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     overrideJobspyLinkedinFetchDescription ??
     defaultJobspyLinkedinFetchDescription;
 
+  const defaultJobspyIsRemote = (process.env.JOBSPY_IS_REMOTE || "0") === "1";
+  const overrideJobspyIsRemoteRaw = overrides.jobspyIsRemote;
+  const overrideJobspyIsRemote = overrideJobspyIsRemoteRaw
+    ? overrideJobspyIsRemoteRaw === "true" || overrideJobspyIsRemoteRaw === "1"
+    : null;
+  const jobspyIsRemote = overrideJobspyIsRemote ?? defaultJobspyIsRemote;
+
   const defaultShowSponsorInfo = true;
   const overrideShowSponsorInfoRaw = overrides.showSponsorInfo;
   const overrideShowSponsorInfo = overrideShowSponsorInfoRaw
@@ -229,6 +236,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     jobspyLinkedinFetchDescription,
     defaultJobspyLinkedinFetchDescription,
     overrideJobspyLinkedinFetchDescription,
+    jobspyIsRemote,
+    defaultJobspyIsRemote,
+    overrideJobspyIsRemote,
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,

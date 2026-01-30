@@ -34,3 +34,10 @@ Started: 2026-01-30
 - Files changed:
   - orchestrator/src/server/api/routes/settings.ts:221-228 - Added storage block after jobspyLinkedinFetchDescription that converts boolean to '1'/'0' string for database storage
 - **Learnings:** Settings API route follows consistent pattern: check if field exists in input, extract value with null coalescing, store using ternary conversion (val ? '1' : '0'). All boolean settings stored as strings in database.
+
+## Task - service-1
+- Added `jobspyIsRemote` retrieval logic to settings service with environment variable support
+- Files changed:
+  - orchestrator/src/server/services/settings.ts:172-181 - Added defaultJobspyIsRemote, overrideJobspyIsRemote, and merge logic after jobspyLinkedinFetchDescription
+  - orchestrator/src/server/services/settings.ts:232-234 - Added three fields to return object
+- **Learnings:** Settings service follows pattern: parse default from env var with fallback, parse override from database (checks for '1' or 'true'), merge using nullish coalescing (override ?? default). Environment variable JOBSPY_IS_REMOTE defaults to '0' (false) if not set.

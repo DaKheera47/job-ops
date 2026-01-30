@@ -58,7 +58,7 @@
         "Verify environment variable JOBSPY_IS_REMOTE defaults to '0'",
         "Verify database override takes precedence over environment variable"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "jobspy-1",
