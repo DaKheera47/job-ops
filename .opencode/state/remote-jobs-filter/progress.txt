@@ -92,3 +92,12 @@ Started: 2026-01-30
 - Files changed:
   - orchestrator/src/client/components/JobHeader.tsx:207-215 - Added conditional Remote badge rendering after Source badge
 - **Learnings:** Badge components follow simple conditional rendering pattern. Using strict equality (=== true) ensures badge only shows for explicitly remote jobs, not for null/undefined values. Badge styling kept consistent with existing badges by reusing the same className pattern.
+
+## Task - docs-1
+- Added JOBSPY_IS_REMOTE environment variable documentation to .env.example
+- Created new JobSpy section following the format of existing sections (UKVisaJobs)
+- Documentation includes clear description: "Filter for remote-only jobs (default: 0 = disabled)"
+- Variable is commented out by default: # JOBSPY_IS_REMOTE=0
+- Files changed:
+  - .env.example:31-35 - Added JobSpy section with JOBSPY_IS_REMOTE documentation
+- **Learnings:** .env.example follows structured sections with headers delimited by === lines. New variables should be commented out by default with clear descriptions of their purpose and default values. JobSpy variables were not previously documented in .env.example, so this creates the first JobSpy section in the file.

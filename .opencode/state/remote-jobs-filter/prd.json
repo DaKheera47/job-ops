@@ -144,7 +144,7 @@
         "Add commented line: # JOBSPY_IS_REMOTE=0",
         "Verify documentation is clear and follows existing format"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "testing-1",
