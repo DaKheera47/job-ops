@@ -1,6 +1,6 @@
 /**
  * Conversion Analytics
- * Shows Application → Interview conversion metrics including funnel, time-series, and insights.
+ * Shows Application → Response conversion metrics including funnel, time-series, and insights.
  */
 
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -279,9 +279,9 @@ export function ConversionAnalytics({
     <Card className="py-0">
       <CardHeader className="flex flex-col gap-2 border-b !p-0 sm:flex-row sm:items-stretch">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
-          <CardTitle>Application → Interview Conversion</CardTitle>
+          <CardTitle>Application → Response Conversion</CardTitle>
           <CardDescription>
-            Why it matters: tells you whether your targeting and CV are working.
+            How many applications received a positive response from the company.
           </CardDescription>
         </div>
         <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
