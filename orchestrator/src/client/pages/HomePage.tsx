@@ -1,11 +1,23 @@
 import * as api from "@client/api";
 import { PageHeader, PageMain } from "@client/components/layout";
-import { Home } from "lucide-react";
+import { AlertCircle, Home, TrendingDown, TrendingUp } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { TooltipProps } from "recharts";
-import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import {
   Card,
@@ -27,6 +39,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { StageEvent } from "../../shared/types";
 
 type DailyApplications = {
   date: string;
@@ -40,8 +54,32 @@ type FreshnessBucket = {
   positive: number;
 };
 
+type FunnelStage = {
+  name: string;
+  value: number;
+  fill: string;
+};
+
+type ConversionDataPoint = {
+  date: string;
+  conversionRate: number;
+  appliedCount: number;
+  interviewCount: number;
+};
+
+type JobWithEvents = {
+  id: string;
+  datePosted: string | null;
+  discoveredAt: string;
+  appliedAt: string | null;
+  positiveResponse: boolean;
+  events: StageEvent[];
+};
+
 const DAY_OPTIONS = [7, 14, 30, 90] as const;
 const DEFAULT_DAYS = 30;
+const CONVERSION_WINDOW_OPTIONS = [14, 30] as const;
+const DEFAULT_CONVERSION_WINDOW = 14;
 
 const chartConfig = {
   applications: {
@@ -52,7 +90,36 @@ const chartConfig = {
     label: "Positive response rate",
     color: "var(--chart-2)",
   },
+  conversionRate: {
+    label: "Conversion Rate",
+    color: "var(--chart-3)",
+  },
+  funnel: {
+    label: "Funnel",
+    color: "var(--chart-4)",
+  },
 } satisfies ChartConfig;
+
+// Stage definitions for funnel
+const FUNNEL_STAGES = [
+  { key: "applied", label: "Applied", color: "#3b82f6" },
+  { key: "screening", label: "Screening", color: "#8b5cf6" },
+  { key: "interview", label: "Interview", color: "#f59e0b" },
+  { key: "offer", label: "Offer", color: "#10b981" },
+] as const;
+
+// Stages that count as "screening"
+const SCREENING_STAGES = new Set(["recruiter_screen", "assessment"]);
+
+// Stages that count as "interview"
+const INTERVIEW_STAGES = new Set([
+  "hiring_manager_screen",
+  "technical_interview",
+  "onsite",
+]);
+
+// Stages that count as "offer"
+const OFFER_STAGES = new Set(["offer"]);
 
 const toDateKey = (value: Date) => {
   const year = value.getFullYear();
@@ -113,6 +180,162 @@ const positiveStages = new Set([
   "offer",
 ]);
 
+// Build funnel data from jobs with their stage events
+const buildFunnelData = (jobsWithEvents: JobWithEvents[]): FunnelStage[] => {
+  let applied = 0;
+  let screening = 0;
+  let interview = 0;
+  let offer = 0;
+
+  for (const job of jobsWithEvents) {
+    if (!job.appliedAt) continue;
+    applied++;
+
+    const reachedStages = new Set<string>();
+    for (const event of job.events) {
+      reachedStages.add(event.toStage);
+    }
+
+    // Check if reached screening
+    for (const stage of SCREENING_STAGES) {
+      if (reachedStages.has(stage)) {
+        screening++;
+        break;
+      }
+    }
+
+    // Check if reached interview
+    for (const stage of INTERVIEW_STAGES) {
+      if (reachedStages.has(stage)) {
+        interview++;
+        break;
+      }
+    }
+
+    // Check if reached offer
+    for (const stage of OFFER_STAGES) {
+      if (reachedStages.has(stage)) {
+        offer++;
+        break;
+      }
+    }
+  }
+
+  return [
+    { name: "Applied", value: applied, fill: FUNNEL_STAGES[0].color },
+    { name: "Screening", value: screening, fill: FUNNEL_STAGES[1].color },
+    { name: "Interview", value: interview, fill: FUNNEL_STAGES[2].color },
+    { name: "Offer", value: offer, fill: FUNNEL_STAGES[3].color },
+  ];
+};
+
+// Build conversion rate time-series data
+const buildConversionTimeSeries = (
+  jobsWithEvents: JobWithEvents[],
+  windowDays: number,
+): ConversionDataPoint[] => {
+  const end = new Date();
+  end.setHours(23, 59, 59, 999);
+  const start = new Date(end);
+  start.setDate(start.getDate() - (windowDays - 1));
+  start.setHours(0, 0, 0, 0);
+
+  // Group jobs by application date
+  const jobsByDate = new Map<string, JobWithEvents[]>();
+
+  for (const job of jobsWithEvents) {
+    if (!job.appliedAt) continue;
+    const date = new Date(job.appliedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    if (date < start || date > end) continue;
+
+    const key = toDateKey(date);
+    const list = jobsByDate.get(key) ?? [];
+    list.push(job);
+    jobsByDate.set(key, list);
+  }
+
+  // Build time series with rolling conversion rate
+  const data: ConversionDataPoint[] = [];
+  const rollingWindow = 7; // 7-day rolling average
+
+  for (
+    let day = new Date(start);
+    day <= end;
+    day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)
+  ) {
+    const key = toDateKey(day);
+
+    // Calculate rolling window range
+    const windowStart = new Date(day);
+    windowStart.setDate(windowStart.getDate() - rollingWindow + 1);
+
+    let appliedCount = 0;
+    let interviewCount = 0;
+
+    // Sum up jobs in the rolling window
+    for (
+      let windowDay = new Date(windowStart);
+      windowDay <= day;
+      windowDay = new Date(
+        windowDay.getFullYear(),
+        windowDay.getMonth(),
+        windowDay.getDate() + 1,
+      )
+    ) {
+      const windowKey = toDateKey(windowDay);
+      const jobs = jobsByDate.get(windowKey) ?? [];
+
+      for (const job of jobs) {
+        appliedCount++;
+
+        // Check if reached interview stage
+        const reachedInterview = job.events.some((event) =>
+          INTERVIEW_STAGES.has(event.toStage),
+        );
+        if (reachedInterview) {
+          interviewCount++;
+        }
+      }
+    }
+
+    const conversionRate =
+      appliedCount > 0 ? (interviewCount / appliedCount) * 100 : 0;
+
+    data.push({
+      date: key,
+      conversionRate,
+      appliedCount,
+      interviewCount,
+    });
+  }
+
+  return data;
+};
+
+// Calculate overall conversion rate
+const calculateOverallConversion = (
+  jobsWithEvents: JobWithEvents[],
+): { rate: number; total: number; converted: number } => {
+  let total = 0;
+  let converted = 0;
+
+  for (const job of jobsWithEvents) {
+    if (!job.appliedAt) continue;
+    total++;
+
+    const reachedInterview = job.events.some((event) =>
+      INTERVIEW_STAGES.has(event.toStage),
+    );
+    if (reachedInterview) {
+      converted++;
+    }
+  }
+
+  const rate = total > 0 ? (converted / total) * 100 : 0;
+  return { rate, total, converted };
+};
+
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [jobs, setJobs] = useState<
@@ -124,6 +347,7 @@ export const HomePage: React.FC = () => {
       positiveResponse: boolean;
     }>
   >([]);
+  const [jobsWithEvents, setJobsWithEvents] = useState<JobWithEvents[]>([]);
   const [appliedDates, setAppliedDates] = useState<Array<string | null>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +356,12 @@ export const HomePage: React.FC = () => {
     return (DAY_OPTIONS as readonly number[]).includes(initial)
       ? initial
       : DEFAULT_DAYS;
+  });
+  const [conversionWindow, setConversionWindow] = useState(() => {
+    const initial = Number(searchParams.get("conversionWindow"));
+    return (CONVERSION_WINDOW_OPTIONS as readonly number[]).includes(initial)
+      ? initial
+      : DEFAULT_CONVERSION_WINDOW;
   });
 
   useEffect(() => {
@@ -156,14 +386,19 @@ export const HomePage: React.FC = () => {
           appliedJobs.map((job) => api.getJobStageEvents(job.id)),
         );
         const positiveMap = new Map<string, boolean>();
+        const eventsMap = new Map<string, StageEvent[]>();
+
         results.forEach((result, index) => {
           const jobId = appliedJobs[index]?.id;
           if (!jobId) return;
           if (result.status !== "fulfilled") {
             positiveMap.set(jobId, false);
+            eventsMap.set(jobId, []);
             return;
           }
-          const hasPositive = result.value.some((event) =>
+          const events = result.value;
+          eventsMap.set(jobId, events);
+          const hasPositive = events.some((event) =>
             positiveStages.has(event.toStage),
           );
           positiveMap.set(jobId, hasPositive);
@@ -174,7 +409,16 @@ export const HomePage: React.FC = () => {
           positiveResponse: positiveMap.get(job.id) ?? false,
         }));
 
+        // Build jobs with events for conversion analytics
+        const resolvedJobsWithEvents: JobWithEvents[] = jobSummaries
+          .filter((job) => job.appliedAt)
+          .map((job) => ({
+            ...job,
+            events: eventsMap.get(job.id) ?? [],
+          }));
+
         setJobs(resolvedJobs);
+        setJobsWithEvents(resolvedJobsWithEvents);
         setAppliedDates(appliedDates);
         setError(null);
       })
@@ -250,6 +494,19 @@ export const HomePage: React.FC = () => {
     return total / chartData.length;
   }, [chartData, total]);
 
+  // Conversion analytics calculations
+  const funnelData = useMemo(() => {
+    return buildFunnelData(jobsWithEvents);
+  }, [jobsWithEvents]);
+
+  const conversionTimeSeries = useMemo(() => {
+    return buildConversionTimeSeries(jobsWithEvents, conversionWindow);
+  }, [jobsWithEvents, conversionWindow]);
+
+  const overallConversion = useMemo(() => {
+    return calculateOverallConversion(jobsWithEvents);
+  }, [jobsWithEvents]);
+
   const handleDaysChange = (value: string) => {
     const parsed = Number(value);
     if (!(DAY_OPTIONS as readonly number[]).includes(parsed)) return;
@@ -260,6 +517,22 @@ export const HomePage: React.FC = () => {
         next.delete("days");
       } else {
         next.set("days", String(parsed));
+      }
+      return next;
+    });
+  };
+
+  const handleConversionWindowChange = (value: string) => {
+    const parsed = Number(value);
+    if (!(CONVERSION_WINDOW_OPTIONS as readonly number[]).includes(parsed))
+      return;
+    setConversionWindow(parsed);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (parsed === DEFAULT_CONVERSION_WINDOW) {
+        next.delete("conversionWindow");
+      } else {
+        next.set("conversionWindow", String(parsed));
       }
       return next;
     });
@@ -453,6 +726,232 @@ export const HomePage: React.FC = () => {
                   />
                 </BarChart>
               </ChartContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="py-0">
+          <CardHeader className="flex flex-col gap-2 border-b !p-0 sm:flex-row sm:items-stretch">
+            <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
+              <CardTitle>Application → Interview Conversion</CardTitle>
+              <CardDescription>
+                Why it matters: tells you whether your targeting and CV are
+                working.
+              </CardDescription>
+            </div>
+            <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">
+                  Conversion Rate
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold leading-none sm:text-3xl">
+                    {overallConversion.rate.toFixed(1)}%
+                  </span>
+                  {overallConversion.rate < 10 ? (
+                    <TrendingDown className="h-4 w-4 text-destructive" />
+                  ) : overallConversion.rate > 25 ? (
+                    <TrendingUp className="h-4 w-4 text-emerald-500" />
+                  ) : null}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {overallConversion.converted} of {overallConversion.total}{" "}
+                  applications
+                </span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 sm:p-6">
+            {error ? (
+              <div className="px-4 py-6 text-sm text-destructive">{error}</div>
+            ) : (
+              <div className="space-y-6">
+                {/* Funnel Chart */}
+                <div>
+                  <h4 className="mb-3 text-sm font-medium text-muted-foreground">
+                    Funnel: Applied → Screening → Interview → Offer
+                  </h4>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="aspect-auto h-[200px] w-full"
+                  >
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={funnelData}
+                        layout="vertical"
+                        margin={{ left: 60, right: 20, top: 5, bottom: 5 }}
+                      >
+                        <XAxis type="number" hide />
+                        <YAxis
+                          dataKey="name"
+                          type="category"
+                          tickLine={false}
+                          axisLine={false}
+                          width={80}
+                          tick={{ fontSize: 12 }}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const data = payload[0].payload as FunnelStage;
+                            return (
+                              <div className="rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-sm">
+                                <div className="font-medium">{data.name}</div>
+                                <div className="mt-1 text-muted-foreground">
+                                  {data.value} applications
+                                </div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                          {funnelData.map((entry) => (
+                            <Cell key={entry.name} fill={entry.fill} />
+                          ))}
+                          <LabelList
+                            dataKey="value"
+                            position="right"
+                            className="text-xs fill-foreground"
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </div>
+
+                {/* Time Series Chart */}
+                <div>
+                  <div className="mb-3 flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-muted-foreground">
+                      Conversion rate over time (rolling 7-day average)
+                    </h4>
+                    <Tabs
+                      value={String(conversionWindow)}
+                      onValueChange={handleConversionWindowChange}
+                    >
+                      <TabsList className="h-7">
+                        {CONVERSION_WINDOW_OPTIONS.map((option) => (
+                          <TabsTrigger
+                            key={option}
+                            value={String(option)}
+                            className="px-2 text-xs"
+                          >
+                            {option}d
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    </Tabs>
+                  </div>
+                  <ChartContainer
+                    config={chartConfig}
+                    className="aspect-auto h-[200px] w-full"
+                  >
+                    <LineChart
+                      data={conversionTimeSeries}
+                      margin={{ left: 12, right: 12, top: 5, bottom: 5 }}
+                    >
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={8}
+                        minTickGap={32}
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString("en-GB", {
+                            month: "short",
+                            day: "numeric",
+                          });
+                        }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `${value.toFixed(0)}%`}
+                        domain={[0, "auto"]}
+                      />
+                      <ChartTooltip
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null;
+                          const data = payload[0]
+                            .payload as ConversionDataPoint;
+                          return (
+                            <div className="rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-sm">
+                              <div className="mb-2 text-[11px] font-medium text-muted-foreground">
+                                {new Date(label as string).toLocaleDateString(
+                                  "en-GB",
+                                  {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  },
+                                )}
+                              </div>
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">
+                                    Conversion Rate
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {data.conversionRate.toFixed(1)}%
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">
+                                    Applied (7d window)
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {data.appliedCount}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-muted-foreground">
+                                    Reached Interview
+                                  </span>
+                                  <span className="font-semibold text-foreground">
+                                    {data.interviewCount}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="conversionRate"
+                        stroke="var(--color-conversionRate)"
+                        strokeWidth={2}
+                        dot={false}
+                        activeDot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </div>
+
+                {/* Actionable Insight */}
+                {overallConversion.rate < 15 &&
+                  overallConversion.total >= 10 && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/50">
+                      <div className="flex items-start gap-2">
+                        <AlertCircle className="mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400" />
+                        <div className="text-sm">
+                          <p className="font-medium text-amber-800 dark:text-amber-200">
+                            Low conversion detected
+                          </p>
+                          <p className="mt-1 text-amber-700 dark:text-amber-300">
+                            Your application-to-interview rate is below 15%.
+                            Possible causes: bad targeting, CV mismatch, or late
+                            applications. Consider reviewing your CV alignment
+                            with job requirements and applying to roles within 3
+                            days of posting.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+              </div>
             )}
           </CardContent>
         </Card>
