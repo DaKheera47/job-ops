@@ -21,6 +21,10 @@ services:
 
       # Python path (uses system python in container)
       - PYTHON_PATH=/usr/bin/python3
+
+    env_file:
+      - path: ./.env
+        required: false
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
