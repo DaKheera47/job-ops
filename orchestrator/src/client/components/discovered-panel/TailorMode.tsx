@@ -141,8 +141,10 @@ export const TailorMode: React.FC<TailorModeProps> = ({
       toast.success("Draft generated with AI", {
         description: "Review and edit before finalizing.",
       });
-    } catch {
-      toast.error("Failed to generate AI draft");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to generate AI draft";
+      toast.error(message);
     } finally {
       setIsGenerating(false);
     }

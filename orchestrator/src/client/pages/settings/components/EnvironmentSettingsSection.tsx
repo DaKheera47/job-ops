@@ -38,26 +38,6 @@ export const EnvironmentSettingsSection: React.FC<
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-8">
-          {/* External Services */}
-          <div className="space-y-4">
-            <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              External Services
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <SettingsInput
-                label="OpenRouter API key"
-                inputProps={register("openrouterApiKey")}
-                type="password"
-                placeholder="Enter new key"
-                disabled={isLoading || isSaving}
-                error={errors.openrouterApiKey?.message as string | undefined}
-                current={formatSecretHint(privateValues.openrouterApiKeyHint)}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
           {/* Service Accounts */}
           <div className="space-y-6">
             <div className="text-sm font-bold uppercase tracking-wider text-muted-foreground">

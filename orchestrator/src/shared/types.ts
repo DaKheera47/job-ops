@@ -483,6 +483,13 @@ export interface AppSettings {
   modelProjectSelection: string; // resolved
   overrideModelProjectSelection: string | null;
 
+  llmProvider: string;
+  defaultLlmProvider: string;
+  overrideLlmProvider: string | null;
+  llmBaseUrl: string;
+  defaultLlmBaseUrl: string;
+  overrideLlmBaseUrl: string | null;
+
   pipelineWebhookUrl: string;
   defaultPipelineWebhookUrl: string;
   overridePipelineWebhookUrl: string | null;
@@ -524,6 +531,8 @@ export interface AppSettings {
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
+  llmApiKeyHint: string | null;
+  /** @deprecated Use llmApiKeyHint instead. */
   openrouterApiKeyHint: string | null;
   rxresumeEmail: string | null;
   rxresumePasswordHint: string | null;

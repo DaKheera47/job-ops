@@ -4,7 +4,7 @@ AI-powered job discovery and application pipeline. Automatically finds jobs, sco
 
 ## Workflow
 1. **Search**: Scrapes Gradcracker, Indeed, LinkedIn, and UK Visa Sponsorship jobs.
-2. **Score**: AI ranks jobs by suitability using OpenRouter.
+2. **Score**: AI ranks jobs by suitability using the configured LLM provider (OpenRouter by default).
 3. **Tailor**: Generates a custom resume summary for top-tier matches.
 4. **Export**: Uses [RxResume v4](https://v4.rxresu.me) to create tailored PDFs.
 5. **Manage**: Review and mark jobs as "Applied" via the dashboard (syncs to Notion).
@@ -29,9 +29,11 @@ open http://localhost:3005
 ```
 
 The app will guide you through setup on first launch. The onboarding wizard helps you:
-- Connect your OpenRouter API key (for AI scoring/tailoring)
+- Configure the LLM provider (OpenRouter by default) and add an API key if required (for AI scoring/tailoring)
 - Add your RxResume credentials (for PDF export via v4.rxresu.me)
 - Select a template resume from your v4.rxresu.me account
+
+Note: `OPENROUTER_API_KEY` is deprecated. Existing OpenRouter keys are automatically migrated/copied to `LLM_API_KEY` on upgrade. Other providers are also supported.
 
 ## Structure
 - `/orchestrator`: React frontend + Node.js backend & pipeline.

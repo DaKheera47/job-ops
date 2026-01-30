@@ -38,6 +38,10 @@ orchestrator/
 
    After the server starts, use the onboarding modal to connect OpenRouter, link your v4.rxresu.me account, and select a template resume.
 
+   OpenRouter is the default LLM provider, but LM Studio, Ollama, OpenAI, and Gemini are also supported.
+
+   Deprecated: `OPENROUTER_API_KEY` / `openrouterApiKey`. Use `LLM_API_KEY` / `llmApiKey` instead (legacy values are auto-migrated/copied for compatibility).
+
 3. **Initialize database:**
    ```bash
    npm run db:migrate
@@ -120,6 +124,6 @@ npm start
 
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
-- **AI:** OpenRouter API (GPT-4o-mini)
+- **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI/Gemini/LM Studio/Ollama)
 - **PDF Generation:** RxResume v4 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler

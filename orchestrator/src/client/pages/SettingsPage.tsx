@@ -10,7 +10,11 @@ import { ReactiveResumeSection } from "@client/pages/settings/components/Reactiv
 import { SearchTermsSection } from "@client/pages/settings/components/SearchTermsSection";
 import { UkvisajobsSection } from "@client/pages/settings/components/UkvisajobsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
-import { resumeProjectsEqual } from "@client/pages/settings/utils";
+import {
+  type LlmProviderId,
+  normalizeLlmProvider,
+  resumeProjectsEqual,
+} from "@client/pages/settings/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type UpdateSettingsInput,
@@ -25,7 +29,7 @@ import type {
 import { Settings } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -36,6 +40,9 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   modelScorer: "",
   modelTailoring: "",
   modelProjectSelection: "",
+  llmProvider: null,
+  llmBaseUrl: "",
+  llmApiKey: "",
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
@@ -61,11 +68,20 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   enableBasicAuth: false,
 };
 
+type LlmProviderValue = LlmProviderId | null;
+
+const normalizeLlmProviderValue = (
+  value: string | null | undefined,
+): LlmProviderValue => (value ? normalizeLlmProvider(value) : null);
+
 const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   model: null,
   modelScorer: null,
   modelTailoring: null,
   modelProjectSelection: null,
+  llmProvider: null,
+  llmBaseUrl: null,
+  llmApiKey: null,
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
@@ -96,6 +112,9 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.overrideModelScorer ?? "",
   modelTailoring: data.overrideModelTailoring ?? "",
   modelProjectSelection: data.overrideModelProjectSelection ?? "",
+  llmProvider: normalizeLlmProviderValue(data.overrideLlmProvider),
+  llmBaseUrl: data.overrideLlmBaseUrl ?? "",
+  llmApiKey: "",
   pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",
   jobCompleteWebhookUrl: data.overrideJobCompleteWebhookUrl ?? "",
   resumeProjects: data.resumeProjects,
@@ -207,6 +226,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       scorer: settings?.modelScorer ?? "",
       tailoring: settings?.modelTailoring ?? "",
       projectSelection: settings?.modelProjectSelection ?? "",
+      llmProvider: settings?.llmProvider ?? "",
+      llmBaseUrl: settings?.llmBaseUrl ?? "",
+      llmApiKeyHint:
+        settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null,
     },
     pipelineWebhook: {
       effective: settings?.pipelineWebhookUrl ?? "",
@@ -297,7 +320,9 @@ export const SettingsPage: React.FC = () => {
     useState(false);
 
   const methods = useForm<UpdateSettingsInput>({
-    resolver: zodResolver(updateSettingsSchema),
+    resolver: zodResolver(
+      updateSettingsSchema,
+    ) as Resolver<UpdateSettingsInput>,
     mode: "onChange",
     defaultValues: DEFAULT_FORM_VALUES,
   });
@@ -480,6 +505,19 @@ export const SettingsPage: React.FC = () => {
       if (dirtyFields.openrouterApiKey) {
         const value = normalizePrivateInput(data.openrouterApiKey);
         if (value !== undefined) envPayload.openrouterApiKey = value;
+      }
+
+      if (dirtyFields.llmProvider) {
+        envPayload.llmProvider = data.llmProvider ?? null;
+      }
+
+      if (dirtyFields.llmBaseUrl) {
+        envPayload.llmBaseUrl = normalizeString(data.llmBaseUrl);
+      }
+
+      if (dirtyFields.llmApiKey) {
+        const value = normalizePrivateInput(data.llmApiKey);
+        if (value !== undefined) envPayload.llmApiKey = value;
       }
 
       if (dirtyFields.rxresumePassword) {

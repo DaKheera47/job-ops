@@ -4,7 +4,7 @@
 
 import type { ManualJobDraft } from "../../shared/types.js";
 import { getSetting } from "../repositories/settings.js";
-import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 
 export interface ManualJobInferenceResult {
   job: ManualJobDraft;
@@ -92,25 +92,25 @@ const MANUAL_JOB_SCHEMA: JsonSchemaDefinition = {
 export async function inferManualJobDetails(
   jobDescription: string,
 ): Promise<ManualJobInferenceResult> {
-  if (!process.env.OPENROUTER_API_KEY) {
-    return {
-      job: {},
-      warning: "OPENROUTER_API_KEY not set. Fill details manually.",
-    };
-  }
-
   const overrideModel = await getSetting("model");
   const model =
     overrideModel || process.env.MODEL || "google/gemini-3-flash-preview";
   const prompt = buildInferencePrompt(jobDescription);
 
-  const result = await callOpenRouter<ManualJobApiResponse>({
+  const llm = new LlmService();
+  const result = await llm.callJson<ManualJobApiResponse>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: MANUAL_JOB_SCHEMA,
   });
 
   if (!result.success) {
+    if (result.error.toLowerCase().includes("api key")) {
+      return {
+        job: {},
+        warning: "LLM API key not set. Fill details manually.",
+      };
+    }
     console.warn("Manual job inference failed:", result.error);
     return {
       job: {},

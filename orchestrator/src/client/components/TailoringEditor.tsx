@@ -136,8 +136,10 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       }
       toast.success("AI Summary & Projects generated");
       await onUpdate();
-    } catch (_error) {
-      toast.error("AI summarization failed");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "AI summarization failed";
+      toast.error(message);
     } finally {
       setIsSummarizing(false);
     }

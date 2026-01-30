@@ -28,6 +28,7 @@ describe.sequential("Settings API routes", () => {
     expect(body.data.defaultModel).toBe("test-model");
     expect(Array.isArray(body.data.searchTerms)).toBe(true);
     expect(body.data.rxresumeEmail).toBe("resume@example.com");
+    expect(body.data.llmApiKeyHint).toBe("secr");
     expect(body.data.openrouterApiKeyHint).toBe("secr");
     expect(body.data.basicAuthActive).toBe(false);
   });
@@ -54,6 +55,7 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.searchTerms).toEqual(["engineer"]);
     expect(patchBody.data.overrideSearchTerms).toEqual(["engineer"]);
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
+    expect(patchBody.data.llmApiKeyHint).toBe("upda");
     expect(patchBody.data.openrouterApiKeyHint).toBe("upda");
   });
 

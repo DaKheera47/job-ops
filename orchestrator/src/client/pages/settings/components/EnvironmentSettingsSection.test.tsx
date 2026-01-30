@@ -53,7 +53,6 @@ describe("EnvironmentSettingsSection", () => {
     expect(screen.getByDisplayValue("resume@example.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument();
 
-    expect(screen.getByText(/sk-1\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument();
     expect(screen.getByText("Not set")).toBeInTheDocument();
@@ -63,7 +62,6 @@ describe("EnvironmentSettingsSection", () => {
     expect(screen.getByDisplayValue("admin")).toBeInTheDocument();
 
     // Sections
-    expect(screen.getByText("External Services")).toBeInTheDocument();
     expect(screen.getByText("Service Accounts")).toBeInTheDocument();
     expect(screen.getByText("Security")).toBeInTheDocument();
   });

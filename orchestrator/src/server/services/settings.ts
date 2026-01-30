@@ -59,6 +59,15 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideModelProjectSelection = overrides.modelProjectSelection ?? null;
   const modelProjectSelection = overrideModelProjectSelection || model;
 
+  const defaultLlmProvider = process.env.LLM_PROVIDER || "openrouter";
+  const overrideLlmProvider = overrides.llmProvider ?? null;
+  const llmProvider = overrideLlmProvider || defaultLlmProvider;
+
+  const defaultLlmBaseUrl =
+    process.env.LLM_BASE_URL || resolveDefaultLlmBaseUrl(llmProvider);
+  const overrideLlmBaseUrl = overrides.llmBaseUrl ?? null;
+  const llmBaseUrl = overrideLlmBaseUrl || defaultLlmBaseUrl;
+
   const defaultPipelineWebhookUrl =
     process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || "";
   const overridePipelineWebhookUrl = overrides.pipelineWebhookUrl ?? null;
@@ -169,6 +178,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
 
   return {
+    ...envSettings,
     model,
     defaultModel,
     overrideModel,
@@ -178,6 +188,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     overrideModelTailoring,
     modelProjectSelection,
     overrideModelProjectSelection,
+    llmProvider,
+    defaultLlmProvider,
+    overrideLlmProvider,
+    llmBaseUrl,
+    defaultLlmBaseUrl,
+    overrideLlmBaseUrl,
     pipelineWebhookUrl,
     defaultPipelineWebhookUrl,
     overridePipelineWebhookUrl,
@@ -216,6 +232,18 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
-    ...envSettings,
   } as AppSettings;
+}
+
+function resolveDefaultLlmBaseUrl(provider: string): string {
+  const normalized = provider.trim().toLowerCase();
+  if (normalized === "ollama") return "http://localhost:11434";
+  if (normalized === "lmstudio") return "http://localhost:1234";
+  if (normalized === "openai") {
+    return "https://api.openai.com";
+  }
+  if (normalized === "gemini") {
+    return "https://generativelanguage.googleapis.com";
+  }
+  return "https://openrouter.ai";
 }

@@ -7,6 +7,9 @@ export type ModelValues = EffectiveDefault<string> & {
   scorer: string;
   tailoring: string;
   projectSelection: string;
+  llmProvider: string;
+  llmBaseUrl: string;
+  llmApiKeyHint: string | null;
 };
 
 export type WebhookValues = EffectiveDefault<string>;

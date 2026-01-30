@@ -63,6 +63,24 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    if ("llmProvider" in input) {
+      const value = normalizeEnvInput(input.llmProvider);
+      promises.push(
+        settingsRepo.setSetting("llmProvider", value).then(() => {
+          applyEnvValue("LLM_PROVIDER", value);
+        }),
+      );
+    }
+
+    if ("llmBaseUrl" in input) {
+      const value = normalizeEnvInput(input.llmBaseUrl);
+      promises.push(
+        settingsRepo.setSetting("llmBaseUrl", value).then(() => {
+          applyEnvValue("LLM_BASE_URL", value);
+        }),
+      );
+    }
+
     if ("pipelineWebhookUrl" in input) {
       promises.push(
         settingsRepo.setSetting(
@@ -211,10 +229,28 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
     }
 
     if ("openrouterApiKey" in input) {
+      // @deprecated Use llmApiKey. Keep accepting this field for backwards compatibility.
+      console.warn(
+        "[DEPRECATED] Received openrouterApiKey update. Storing as llmApiKey and clearing legacy openrouterApiKey.",
+      );
       const value = normalizeEnvInput(input.openrouterApiKey);
       promises.push(
-        settingsRepo.setSetting("openrouterApiKey", value).then(() => {
-          applyEnvValue("OPENROUTER_API_KEY", value);
+        settingsRepo.setSetting("llmApiKey", value).then(() => {
+          applyEnvValue("LLM_API_KEY", value);
+        }),
+      );
+      promises.push(
+        settingsRepo.setSetting("openrouterApiKey", null).then(() => {
+          applyEnvValue("OPENROUTER_API_KEY", null);
+        }),
+      );
+    }
+
+    if ("llmApiKey" in input) {
+      const value = normalizeEnvInput(input.llmApiKey);
+      promises.push(
+        settingsRepo.setSetting("llmApiKey", value).then(() => {
+          applyEnvValue("LLM_API_KEY", value);
         }),
       );
     }

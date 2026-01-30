@@ -15,11 +15,13 @@ The user provides input via the **Manual Import** sheet in the UI. They paste a 
 When the user clicks "Analyze JD", the orchestrator calls an internal endpoint (`/api/manual-jobs/infer`).
 
 The server-side service (`orchestrator/src/server/services/manualJob.ts`) then:
-- Sends the raw text to an LLM (via OpenRouter).
+- Sends the raw text to an LLM (via the configured provider; OpenRouter by default).
 - Uses a specific prompt to extract structured data (title, employer, location, salary, etc.).
 - Returns a JSON object containing the inferred fields.
 
-If `OPENROUTER_API_KEY` is not configured, the inference step skips and warns the user to fill details manually.
+If the LLM API key is not configured (e.g. `LLM_API_KEY` for OpenRouter/OpenAI/Gemini), the inference step skips and warns the user to fill details manually.
+
+(`OPENROUTER_API_KEY` is deprecated and is automatically copied to `LLM_API_KEY` for compatibility.)
 
 ## 3) Review and Edit
 

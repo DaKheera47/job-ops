@@ -4,7 +4,7 @@
 
 import type { ResumeProfile } from "../../shared/types.js";
 import { getSetting } from "../repositories/settings.js";
-import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 
 export interface TailoredData {
   summary: string;
@@ -65,11 +65,6 @@ export async function generateTailoring(
   jobDescription: string,
   profile: ResumeProfile,
 ): Promise<TailoringResult> {
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.warn("⚠️ OPENROUTER_API_KEY not set, cannot generate tailoring");
-    return { success: false, error: "API key not configured" };
-  }
-
   const [overrideModel, overrideModelTailoring] = await Promise.all([
     getSetting("model"),
     getSetting("modelTailoring"),
@@ -82,14 +77,24 @@ export async function generateTailoring(
     "google/gemini-3-flash-preview";
   const prompt = buildTailoringPrompt(profile, jobDescription);
 
-  const result = await callOpenRouter<TailoredData>({
+  const llm = new LlmService();
+  const result = await llm.callJson<TailoredData>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: TAILORING_SCHEMA,
   });
 
   if (!result.success) {
-    return { success: false, error: result.error };
+    const context = `provider=${llm.getProvider()} baseUrl=${llm.getBaseUrl()}`;
+    if (result.error.toLowerCase().includes("api key")) {
+      const message = `LLM API key not set, cannot generate tailoring. (${context})`;
+      console.warn(`⚠️ ${message}`);
+      return { success: false, error: message };
+    }
+    return {
+      success: false,
+      error: `${result.error} (${context})`,
+    };
   }
 
   const { summary, headline, skills } = result.data;

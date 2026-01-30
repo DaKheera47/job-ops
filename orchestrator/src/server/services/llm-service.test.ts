@@ -1,15 +1,14 @@
 /**
- * Tests for the shared OpenRouter API helper.
+ * Tests for the shared LLM service helper.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  callOpenRouter,
   type JsonSchemaDefinition,
+  LlmService,
   parseJsonContent,
-} from "./openrouter.js";
+} from "./llm-service.js";
 
-// Mock fetch globally
 const originalFetch = global.fetch;
 
 const testSchema: JsonSchemaDefinition = {
@@ -25,22 +24,27 @@ const testSchema: JsonSchemaDefinition = {
   },
 };
 
-describe("callOpenRouter", () => {
+describe("LlmService", () => {
   beforeEach(() => {
+    process.env.LLM_PROVIDER = "openrouter";
     process.env.OPENROUTER_API_KEY = "test-api-key";
+    delete process.env.LLM_API_KEY;
     global.fetch = vi.fn();
   });
 
   afterEach(() => {
+    delete process.env.LLM_PROVIDER;
     delete process.env.OPENROUTER_API_KEY;
+    delete process.env.LLM_API_KEY;
     global.fetch = originalFetch;
     vi.restoreAllMocks();
   });
 
-  it("should return error when API key is not set", async () => {
+  it("returns error when API key is missing", async () => {
     delete process.env.OPENROUTER_API_KEY;
 
-    const result = await callOpenRouter({
+    const llm = new LlmService();
+    const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
       jsonSchema: testSchema,
@@ -48,11 +52,11 @@ describe("callOpenRouter", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toContain("API_KEY");
+      expect(result.error).toContain("API key");
     }
   });
 
-  it("should return parsed data on successful response", async () => {
+  it("returns parsed data on successful response", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -64,7 +68,12 @@ describe("callOpenRouter", () => {
       }),
     } as Response);
 
-    const result = await callOpenRouter<{ value: string; count: number }>({
+    const llm = new LlmService();
+
+    // Backwards-compat: OPENROUTER_API_KEY should be copied to LLM_API_KEY.
+    expect(process.env.LLM_API_KEY).toBe("test-api-key");
+
+    const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
       jsonSchema: testSchema,
@@ -77,14 +86,15 @@ describe("callOpenRouter", () => {
     }
   });
 
-  it("should handle API errors gracefully", async () => {
+  it("handles API errors gracefully", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: false,
       status: 500,
       text: async () => "Internal Server Error",
     } as Response);
 
-    const result = await callOpenRouter({
+    const llm = new LlmService();
+    const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
       jsonSchema: testSchema,
@@ -96,7 +106,7 @@ describe("callOpenRouter", () => {
     }
   });
 
-  it("should handle empty response content", async () => {
+  it("handles empty response content", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -104,7 +114,8 @@ describe("callOpenRouter", () => {
       }),
     } as Response);
 
-    const result = await callOpenRouter({
+    const llm = new LlmService();
+    const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
       jsonSchema: testSchema,
@@ -116,7 +127,7 @@ describe("callOpenRouter", () => {
     }
   });
 
-  it("should include json_schema in request body", async () => {
+  it("includes json_schema and OpenRouter plugins in request body", async () => {
     vi.mocked(global.fetch).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -124,7 +135,8 @@ describe("callOpenRouter", () => {
       }),
     } as Response);
 
-    await callOpenRouter({
+    const llm = new LlmService();
+    await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test prompt" }],
       jsonSchema: testSchema,
@@ -136,9 +148,33 @@ describe("callOpenRouter", () => {
     expect(body.response_format.type).toBe("json_schema");
     expect(body.response_format.json_schema.name).toBe("test_schema");
     expect(body.response_format.json_schema.strict).toBe(true);
+    expect(body.plugins[0].id).toBe("response-healing");
   });
 
-  it("should retry on parsing failures when maxRetries is set", async () => {
+  it("adds OpenRouter headers", async () => {
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        choices: [{ message: { content: '{"value": "test", "count": 1}' } }],
+      }),
+    } as Response);
+
+    const llm = new LlmService();
+    await llm.callJson({
+      model: "test-model",
+      messages: [{ role: "user", content: "test prompt" }],
+      jsonSchema: testSchema,
+    });
+
+    const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+    const headers = fetchCall[1]?.headers as Record<string, string>;
+
+    expect(headers.Authorization).toContain("Bearer");
+    expect(headers["HTTP-Referer"]).toBe("JobOps");
+    expect(headers["X-Title"]).toBe("JobOpsOrchestrator");
+  });
+
+  it("retries on parsing failures when maxRetries is set", async () => {
     let callCount = 0;
     vi.mocked(global.fetch).mockImplementation(async () => {
       callCount++;
@@ -160,17 +196,17 @@ describe("callOpenRouter", () => {
       } as Response;
     });
 
-    // Suppress console output during test
     vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const result = await callOpenRouter<{ value: string; count: number }>({
+    const llm = new LlmService();
+    const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
       jsonSchema: testSchema,
       maxRetries: 2,
-      retryDelayMs: 10, // Fast retries for tests
+      retryDelayMs: 10,
     });
 
     expect(result.success).toBe(true);
@@ -179,36 +215,90 @@ describe("callOpenRouter", () => {
     }
     expect(callCount).toBe(3);
   });
+
+  it("falls back to a looser mode when schema is rejected", async () => {
+    process.env.LLM_PROVIDER = "lmstudio";
+    delete process.env.OPENROUTER_API_KEY;
+
+    vi.mocked(global.fetch).mockImplementation(async (_input, init) => {
+      const body = JSON.parse(init?.body as string);
+      if (body.response_format?.type === "json_schema") {
+        return {
+          ok: false,
+          status: 400,
+          text: async () =>
+            JSON.stringify({
+              error: "'response_format.type' must be 'json_schema' or 'text'",
+            }),
+        } as Response;
+      }
+      if (body.response_format?.type === "text") {
+        return {
+          ok: true,
+          json: async () => ({
+            choices: [
+              {
+                message: { content: '{"value": "ok", "count": 1}' },
+              },
+            ],
+          }),
+        } as Response;
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: { content: '{"value": "fallback", "count": 2}' },
+            },
+          ],
+        }),
+      } as Response;
+    });
+
+    const llm = new LlmService();
+    const result = await llm.callJson<{ value: string; count: number }>({
+      model: "test-model",
+      messages: [{ role: "user", content: "test" }],
+      jsonSchema: testSchema,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.value).toBe("ok");
+    }
+    expect(vi.mocked(global.fetch).mock.calls.length).toBe(2);
+  });
 });
 
 describe("parseJsonContent", () => {
-  it("should parse clean JSON", () => {
+  it("parses clean JSON", () => {
     const result = parseJsonContent<{ foo: string }>('{"foo": "bar"}');
     expect(result.foo).toBe("bar");
   });
 
-  it("should handle markdown code fences", () => {
+  it("handles markdown code fences", () => {
     const result = parseJsonContent<{ foo: string }>(
       '```json\n{"foo": "bar"}\n```',
     );
     expect(result.foo).toBe("bar");
   });
 
-  it("should handle json without language specifier", () => {
+  it("handles json without language specifier", () => {
     const result = parseJsonContent<{ foo: string }>(
       '```\n{"foo": "bar"}\n```',
     );
     expect(result.foo).toBe("bar");
   });
 
-  it("should extract JSON from surrounding text", () => {
+  it("extracts JSON from surrounding text", () => {
     const result = parseJsonContent<{ foo: string }>(
       'Here is the result: {"foo": "bar"} as requested.',
     );
     expect(result.foo).toBe("bar");
   });
 
-  it("should throw on completely invalid content", () => {
+  it("throws on completely invalid content", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     expect(() => parseJsonContent("not json at all")).toThrow();
   });

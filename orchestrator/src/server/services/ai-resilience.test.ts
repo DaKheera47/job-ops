@@ -82,11 +82,13 @@ const mockProfile = { name: "Test User" };
 describe("AI Service Resilience", () => {
   beforeEach(() => {
     global.fetch = vi.fn();
+    delete process.env.LLM_API_KEY;
     process.env.OPENROUTER_API_KEY = "mock-key"; // Ensure logic tries to call API
   });
 
   afterEach(() => {
     global.fetch = globalFetch;
+    delete process.env.LLM_API_KEY;
     delete process.env.OPENROUTER_API_KEY;
     vi.restoreAllMocks();
   });

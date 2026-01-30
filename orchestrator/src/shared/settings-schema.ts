@@ -12,6 +12,21 @@ export const updateSettingsSchema = z
     modelScorer: z.string().trim().max(200).nullable().optional(),
     modelTailoring: z.string().trim().max(200).nullable().optional(),
     modelProjectSelection: z.string().trim().max(200).nullable().optional(),
+    llmProvider: z
+      .preprocess(
+        (value) => (value === "" ? null : value),
+        z
+          .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"])
+          .nullable(),
+      )
+      .optional(),
+    llmBaseUrl: z
+      .preprocess(
+        (value) => (value === "" ? null : value),
+        z.string().trim().url().max(2000).nullable(),
+      )
+      .optional(),
+    llmApiKey: z.string().trim().max(2000).nullable().optional(),
     pipelineWebhookUrl: z.string().trim().max(2000).nullable().optional(),
     jobCompleteWebhookUrl: z.string().trim().max(2000).nullable().optional(),
     resumeProjects: resumeProjectsSchema.nullable().optional(),
@@ -46,6 +61,7 @@ export const updateSettingsSchema = z
       .optional(),
     jobspyLinkedinFetchDescription: z.boolean().nullable().optional(),
     showSponsorInfo: z.boolean().nullable().optional(),
+    /** @deprecated Use llmApiKey instead. */
     openrouterApiKey: z.string().trim().max(2000).nullable().optional(),
     rxresumeEmail: z.string().trim().max(200).nullable().optional(),
     rxresumePassword: z.string().trim().max(2000).nullable().optional(),

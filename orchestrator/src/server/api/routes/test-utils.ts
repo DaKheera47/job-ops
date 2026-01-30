@@ -129,8 +129,13 @@ export async function stopServer(args: {
   closeDb: () => void;
   tempDir: string;
 }) {
-  await new Promise<void>((resolve) => args.server.close(() => resolve()));
-  args.closeDb();
+  // Defensive: if startServer throws, callers may still run cleanup.
+  if (args.server) {
+    await new Promise<void>((resolve) => args.server.close(() => resolve()));
+  }
+  if (args.closeDb) {
+    args.closeDb();
+  }
   await rm(args.tempDir, { recursive: true, force: true });
   process.env = { ...originalEnv };
   vi.clearAllMocks();

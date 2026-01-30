@@ -25,11 +25,13 @@ Open your browser to:
 
 On first launch, you will be greeted by an **Onboarding Wizard**. The app will help you validate and save your configuration:
 
-1.  **Connect AI**: Add your OpenRouter API key (required for job scoring and summaries).
+1.  **LLM Provider**: OpenRouter is the default. Add an API key if required (OpenRouter/OpenAI/Gemini), or configure a local base URL (LM Studio/Ollama).
 2.  **PDF Export**: Add your RxResume credentials (used to export PDFs from v4.rxresu.me).
 3.  **Template Resume**: Select a base resume from your v4.rxresu.me account.
 
 The app saves these to its persistent database, so you don't need to manage `.env` files for basic setup. All other settings (like search terms, job sources, and more) can also be configured directly in the UI.
+
+Upgrade note: `OPENROUTER_API_KEY` is deprecated. Existing OpenRouter keys are automatically migrated/copied to `LLM_API_KEY` so you don't lose them.
 
 ## Persistent data
 
