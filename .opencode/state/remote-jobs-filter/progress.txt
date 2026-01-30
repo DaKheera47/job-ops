@@ -55,3 +55,10 @@ Started: 2026-01-30
   - orchestrator/src/server/pipeline/orchestrator.ts:189 - Added `const jobspyIsRemoteSetting = settings.jobspyIsRemote;` to read setting from database
   - orchestrator/src/server/pipeline/orchestrator.ts:206-209 - Added `isRemote` parameter to runJobSpy() call with conversion: `jobspyIsRemoteSetting === "1"`
 - **Learnings:** Pipeline orchestrator reads all settings at once via `getAllSettings()` to avoid sequential DB calls. Boolean settings stored as '1'/'0' strings in database are converted using strict equality check `=== "1"`. Follows same pattern as linkedinFetchDescription: check for non-null/undefined, then convert. The ternary pattern `setting !== null && setting !== undefined ? setting === "1" : undefined` ensures undefined is passed when setting is not set, allowing downstream defaults to apply.
+
+## Task - python-1
+- Added `is_remote` parameter to Python scraper script with JOBSPY_IS_REMOTE environment variable support
+- Files changed:
+  - extractors/jobspy/scrape_jobs.py:42 - Added `is_remote = _env_bool("JOBSPY_IS_REMOTE", False)` after linkedin_fetch_description
+  - extractors/jobspy/scrape_jobs.py:61 - Added `is_remote=is_remote` parameter to scrape_jobs() function call
+- **Learnings:** Python script uses `_env_bool()` helper function to parse boolean environment variables with default fallback. Parameters are passed directly to the JobSpy library's scrape_jobs() function. The JobSpy library handles unsupported parameters gracefully (sites that don't support remote filtering will ignore it silently).

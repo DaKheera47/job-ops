@@ -98,7 +98,7 @@
         "Verify default value is False",
         "Verify script continues silently if job site doesn't support remote filtering"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ui-settings",
