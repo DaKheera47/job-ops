@@ -32,7 +32,7 @@
         "Add 'jobspyIsRemote' to SETTING_KEYS array (around line 30)",
         "Verify repository can handle the new setting key"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "api-1",

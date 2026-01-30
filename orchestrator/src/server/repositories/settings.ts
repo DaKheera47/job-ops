@@ -28,6 +28,7 @@ export type SettingKey =
   | "jobspyCountryIndeed"
   | "jobspySites"
   | "jobspyLinkedinFetchDescription"
+  | "jobspyIsRemote"
   | "showSponsorInfo"
   | "openrouterApiKey"
   | "rxresumeEmail"

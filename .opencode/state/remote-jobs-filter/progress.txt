@@ -22,3 +22,9 @@ Started: 2026-01-30
 - Files changed:
   - orchestrator/src/shared/settings-schema.ts:63 - Added `jobspyIsRemote: z.boolean().nullable().optional()` after jobspyLinkedinFetchDescription
 - **Learnings:** Validation schemas use Zod with `.boolean().nullable().optional()` pattern for boolean settings. Schema placement follows the same order as the TypeScript types.
+
+## Task - db-1
+- Added `jobspyIsRemote` to SettingKey type union in settings repository
+- Files changed:
+  - orchestrator/src/server/repositories/settings.ts:31 - Added "jobspyIsRemote" to SettingKey type union after "jobspyLinkedinFetchDescription"
+- **Learnings:** The SettingKey type union defines all valid setting keys that can be stored/retrieved from the database. Each new setting must be added to this type for TypeScript safety.
