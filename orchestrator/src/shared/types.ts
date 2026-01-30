@@ -528,6 +528,9 @@ export interface AppSettings {
   jobspyLinkedinFetchDescription: boolean;
   defaultJobspyLinkedinFetchDescription: boolean;
   overrideJobspyLinkedinFetchDescription: boolean | null;
+  jobspyIsRemote: boolean;
+  defaultJobspyIsRemote: boolean;
+  overrideJobspyIsRemote: boolean | null;
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;

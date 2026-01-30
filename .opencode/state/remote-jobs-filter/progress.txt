@@ -1,0 +1,18 @@
+# Progress Log
+PRD: remote-jobs-filter
+Started: 2026-01-30
+
+## Codebase Patterns
+- Boolean settings follow three-field pattern: `fieldName`, `defaultFieldName`, `overrideFieldName`
+- Settings stored in database as '1' (true) / '0' (false) / null
+- Test fixtures in *.test.tsx files must include all AppSettings fields
+
+---
+<!-- Task logs below - APPEND ONLY -->
+
+## Task - types-1
+- Added `jobspyIsRemote`, `defaultJobspyIsRemote`, and `overrideJobspyIsRemote` fields to AppSettings interface
+- Files changed:
+  - orchestrator/src/shared/types.ts:531-533 - Added three boolean fields after jobspyLinkedinFetchDescription
+  - orchestrator/src/client/pages/SettingsPage.test.tsx:100-102 - Updated test fixture with default values
+- **Learnings:** Boolean settings consistently use three-field pattern (value, default, override). All test fixtures must be updated when adding new settings fields to AppSettings interface.

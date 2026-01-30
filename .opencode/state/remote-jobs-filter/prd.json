@@ -1,0 +1,207 @@
+{
+  "prdName": "remote-jobs-filter",
+  "tasks": [
+    {
+      "id": "types-1",
+      "category": "types",
+      "description": "Add jobspyIsRemote to TypeScript type definitions",
+      "steps": [
+        "Open orchestrator/src/shared/types.ts",
+        "Add jobspyIsRemote: boolean to the settings interface (around line 530)",
+        "Verify TypeScript compilation succeeds"
+      ],
+      "passes": true
+    },
+    {
+      "id": "types-2",
+      "category": "types",
+      "description": "Add jobspyIsRemote validation schema",
+      "steps": [
+        "Open orchestrator/src/shared/settings-schema.ts",
+        "Add jobspyIsRemote: z.boolean().nullable().optional() (around line 62)",
+        "Verify schema exports correctly"
+      ],
+      "passes": false
+    },
+    {
+      "id": "db-1",
+      "category": "db",
+      "description": "Add jobspyIsRemote to database repository setting keys",
+      "steps": [
+        "Open orchestrator/src/server/repositories/settings.ts",
+        "Add 'jobspyIsRemote' to SETTING_KEYS array (around line 30)",
+        "Verify repository can handle the new setting key"
+      ],
+      "passes": false
+    },
+    {
+      "id": "api-1",
+      "category": "api",
+      "description": "Add jobspyIsRemote storage to settings API route",
+      "steps": [
+        "Open orchestrator/src/server/api/routes/settings.ts",
+        "Add storage logic for jobspyIsRemote (store as '1' or '0') around line 219",
+        "Follow pattern: val !== null ? (val ? '1' : '0') : null",
+        "Verify PATCH /api/settings accepts jobspyIsRemote boolean"
+      ],
+      "passes": false
+    },
+    {
+      "id": "service-1",
+      "category": "service",
+      "description": "Add jobspyIsRemote to settings service with environment variable support",
+      "steps": [
+        "Open orchestrator/src/server/services/settings.ts",
+        "Add defaultJobspyIsRemote = (process.env.JOBSPY_IS_REMOTE || '0') === '1'",
+        "Add override parsing: check for '1' or 'true'",
+        "Add merge logic: overrideJobspyIsRemote ?? defaultJobspyIsRemote (around line 170)",
+        "Verify environment variable JOBSPY_IS_REMOTE defaults to '0'",
+        "Verify database override takes precedence over environment variable"
+      ],
+      "passes": false
+    },
+    {
+      "id": "jobspy-1",
+      "category": "jobspy",
+      "description": "Add isRemote parameter to JobSpy service interface and implementation",
+      "steps": [
+        "Open orchestrator/src/server/services/jobspy.ts",
+        "Add isRemote?: boolean to RunJobSpyOptions interface (around line 36)",
+        "Add JOBSPY_IS_REMOTE env var passing in runJobSpy() function (around line 177)",
+        "Use pattern: JOBSPY_IS_REMOTE: String(options.isRemote ?? process.env.JOBSPY_IS_REMOTE ?? '0')",
+        "Verify environment variable defaults to '0' if not provided"
+      ],
+      "passes": false
+    },
+    {
+      "id": "pipeline-1",
+      "category": "pipeline",
+      "description": "Pass isRemote setting from pipeline orchestrator to JobSpy service",
+      "steps": [
+        "Open orchestrator/src/server/pipeline/orchestrator.ts",
+        "Read settings.jobspyIsRemote from database (around line 187)",
+        "Convert string ('1'/'0') to boolean using pattern from linkedinFetchDescription",
+        "Pass isRemote to runJobSpy() call (around line 206)",
+        "Verify conversion: setting === '1' ? true : false"
+      ],
+      "passes": false
+    },
+    {
+      "id": "python-1",
+      "category": "python",
+      "description": "Add is_remote parameter to Python scraper script",
+      "steps": [
+        "Open extractors/jobspy/scrape_jobs.py",
+        "Add is_remote = _env_bool('JOBSPY_IS_REMOTE', False) around line 41",
+        "Add is_remote=is_remote parameter to scrape_jobs() call around line 57",
+        "Verify script reads JOBSPY_IS_REMOTE environment variable",
+        "Verify default value is False",
+        "Verify script continues silently if job site doesn't support remote filtering"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ui-settings",
+      "category": "ui",
+      "description": "Add Remote Jobs checkbox to JobSpy settings UI",
+      "steps": [
+        "Open orchestrator/src/client/pages/settings/components/JobspySection.tsx",
+        "Add checkbox after 'Fetch LinkedIn Description' field (around line 426)",
+        "Use Controller pattern with react-hook-form",
+        "Set label: 'Remote Jobs?'",
+        "Set description: 'Only search for remote job listings'",
+        "Set default to false (unchecked)",
+        "Verify checkbox state reflects saved setting on page reload",
+        "Verify value persists when user clicks Save",
+        "Navigate to Settings page and confirm checkbox appears",
+        "Toggle checkbox and save, verify setting persists in database"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ui-badge",
+      "category": "ui",
+      "description": "Add Remote badge to job display",
+      "steps": [
+        "Open orchestrator/src/client/components/JobHeader.tsx",
+        "Add Remote badge component that displays when job.isRemote === true",
+        "Use Badge component with outline variant",
+        "Badge text should display 'Remote'",
+        "Position badge near Source badge in header",
+        "Badge should NOT display when job.isRemote === false or null",
+        "Verify badge is visible in job detail panel",
+        "Create or find a job with isRemote: true and verify badge appears",
+        "Create or find a job with isRemote: false and verify badge does NOT appear"
+      ],
+      "passes": false
+    },
+    {
+      "id": "docs-1",
+      "category": "docs",
+      "description": "Update environment variable documentation",
+      "steps": [
+        "Open .env.example",
+        "Add commented line: # JOBSPY_IS_REMOTE=0",
+        "Verify documentation is clear and follows existing format"
+      ],
+      "passes": false
+    },
+    {
+      "id": "testing-1",
+      "category": "testing",
+      "description": "Verify end-to-end functionality",
+      "steps": [
+        "Start the application",
+        "Navigate to Settings page",
+        "Enable 'Remote Jobs?' checkbox and save",
+        "Trigger a JobSpy pipeline run",
+        "Verify JobSpy scraper receives is_remote=True",
+        "Verify jobs returned have isRemote field populated",
+        "View a remote job in the UI",
+        "Verify 'Remote' badge displays on the job",
+        "Disable 'Remote Jobs?' checkbox and save",
+        "Trigger another pipeline run",
+        "Verify JobSpy scraper receives is_remote=False",
+        "Set JOBSPY_IS_REMOTE=1 environment variable",
+        "Restart application",
+        "Verify setting reflects environment variable value",
+        "Override in UI and verify database override takes precedence"
+      ],
+      "passes": false
+    }
+  ],
+  "context": {
+    "patterns": [
+      "Boolean Setting Pattern (jobspyLinkedinFetchDescription): orchestrator/src/server/api/routes/settings.ts:166-219",
+      "Boolean Setting Retrieval: orchestrator/src/server/services/settings.ts:159-170",
+      "Database format: '1' (true) / '0' (false) / null",
+      "Environment variable parsing: (process.env.VAR_NAME || '0') === '1'",
+      "UI checkbox component: orchestrator/src/client/pages/settings/components/JobspySection.tsx:393-426",
+      "Badge Display Pattern (Sponsor badge): orchestrator/src/client/components/JobHeader.tsx:66-175",
+      "Badge uses Badge component from @/components/ui/badge",
+      "JobSpy Parameter Passing: orchestrator/src/server/services/jobspy.ts:124-213",
+      "Pipeline Layer: orchestrator/src/server/pipeline/orchestrator.ts:183-206"
+    ],
+    "keyFiles": [
+      "orchestrator/src/shared/types.ts - Type definitions (Job interface already includes isRemote: boolean | null at line 141)",
+      "orchestrator/src/shared/settings-schema.ts - Zod validation schemas",
+      "orchestrator/src/server/repositories/settings.ts - Database setting keys",
+      "orchestrator/src/server/api/routes/settings.ts - Settings PATCH endpoint",
+      "orchestrator/src/server/services/settings.ts - Settings retrieval with env var support",
+      "orchestrator/src/server/services/jobspy.ts - JobSpy service and options interface",
+      "orchestrator/src/server/pipeline/orchestrator.ts - Pipeline that calls JobSpy",
+      "extractors/jobspy/scrape_jobs.py - Python scraper script",
+      "orchestrator/src/client/pages/settings/components/JobspySection.tsx - JobSpy UI settings",
+      "orchestrator/src/client/components/JobHeader.tsx - Job header with badges",
+      "orchestrator/src/components/ui/badge.tsx - Badge UI component"
+    ],
+    "nonGoals": [
+      "Hybrid work filtering - JobSpy library doesn't support hybrid as a separate category",
+      "Remote badge in compact list view - Keeping list view minimal; badge only in detail view for v1",
+      "Retroactive population of isRemote for existing jobs - Only new scrapes will use the filter",
+      "Remote filtering for Gradcracker/UKVisaJobs extractors - Only JobSpy supports remote filtering",
+      "Analytics/tracking of remote filter usage - No metrics instrumentation in v1",
+      "Remote location preference (e.g., Remote - US Only) - JobSpy's is_remote is boolean only"
+    ]
+  }
+}
