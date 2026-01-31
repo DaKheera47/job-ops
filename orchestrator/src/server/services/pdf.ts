@@ -117,8 +117,8 @@ export async function generatePdf(
     const { email, password, baseUrl } = await getCredentials();
     const client = new RxResumeClient(baseUrl);
 
-    // Read base resume from profile (fetches from v4 API if configured)
-    const baseResume = JSON.parse(JSON.stringify(await getProfile()));
+    // Read base resume from profile (fetches from v4 API if configured, force fetch)
+    const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
 
     // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
     // This fixes issues where the base JSON uses a shorthand format (missing required fields)
@@ -193,7 +193,7 @@ export async function generatePdf(
               level:
                 newSkill.level !== undefined
                   ? (newSkill.level as number)
-                  : ((existing?.level as number | undefined) ?? 1),
+                  : ((existing?.level as number | undefined) ?? 0),
               keywords:
                 (newSkill.keywords as string[]) ||
                 (existing?.keywords as string[]) ||

@@ -243,7 +243,7 @@ describe("PDF Service Skills Validation", () => {
     expect(newSkill.description).toBe("");
     // Optional but good to check
     expect(newSkill.id).toBeDefined();
-    expect(newSkill.level).toBe(1);
+    expect(newSkill.level).toBe(0);
 
     // Check "Existing Skill" - should preserve existing fields if not overwritten?
     // In the implementation, we look up existing.
