@@ -117,27 +117,8 @@ export async function generatePdf(
     const { email, password, baseUrl } = await getCredentials();
     const client = new RxResumeClient(baseUrl);
 
-    // Read base resume from profile (fetches from v4 API if configured)
-    const baseResume = JSON.parse(JSON.stringify(await getProfile()));
-
-    // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
-    // This fixes issues where the base JSON uses a shorthand format (missing required fields)
-    if (
-      baseResume.sections?.skills?.items &&
-      Array.isArray(baseResume.sections.skills.items)
-    ) {
-      baseResume.sections.skills.items = baseResume.sections.skills.items.map(
-        (skill: Record<string, unknown>) => ({
-          ...skill,
-          id: (skill.id as string) || createId(),
-          visible: (skill.visible as boolean | undefined) ?? true,
-          // Zod schema requires string, default to empty string if missing
-          description: (skill.description as string | undefined) ?? "",
-          level: (skill.level as number | undefined) ?? 1,
-          keywords: (skill.keywords as string[] | undefined) || [],
-        }),
-      );
-    }
+    // Read base resume from profile (fetches from v4 API if configured, force fetch)
+    const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
 
     // Inject tailored summary
     if (tailoredContent.summary) {
@@ -193,7 +174,7 @@ export async function generatePdf(
               level:
                 newSkill.level !== undefined
                   ? (newSkill.level as number)
-                  : ((existing?.level as number | undefined) ?? 1),
+                  : ((existing?.level as number | undefined) ?? 0),
               keywords:
                 (newSkill.keywords as string[]) ||
                 (existing?.keywords as string[]) ||
