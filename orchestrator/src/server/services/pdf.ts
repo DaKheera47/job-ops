@@ -120,6 +120,25 @@ export async function generatePdf(
     // Read base resume from profile (fetches from v4 API if configured, force fetch)
     const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
 
+    // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
+    // This fixes issues where the base JSON uses a shorthand format (missing required fields)
+    if (
+      baseResume.sections?.skills?.items &&
+      Array.isArray(baseResume.sections.skills.items)
+    ) {
+      baseResume.sections.skills.items = baseResume.sections.skills.items.map(
+        (skill: Record<string, unknown>) => ({
+          ...skill,
+          id: (skill.id as string) || createId(),
+          visible: (skill.visible as boolean | undefined) ?? true,
+          // Zod schema requires string, default to empty string if missing
+          description: (skill.description as string | undefined) ?? "",
+          level: (skill.level as number | undefined) ?? 1,
+          keywords: (skill.keywords as string[] | undefined) || [],
+        }),
+      );
+    }
+
     // Inject tailored summary
     if (tailoredContent.summary) {
       if (baseResume.sections?.summary) {
