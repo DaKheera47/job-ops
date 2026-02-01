@@ -6,12 +6,12 @@
  */
 
 import fs from "node:fs";
+import type { FileHandle } from "node:fs/promises";
 import path from "node:path";
 import type { BackupInfo } from "@shared/types.js";
 import Database from "better-sqlite3";
 import { getDataDir } from "../../config/dataDir.js";
 import { createScheduler } from "../../utils/scheduler.js";
-import type { FileHandle } from "node:fs/promises";
 
 const DB_FILENAME = "jobs.db";
 const AUTO_BACKUP_PREFIX = "jobs_";
@@ -162,7 +162,9 @@ export async function createBackup(type: "auto" | "manual"): Promise<string> {
     throw new Error(`Database file not found: ${dbPath}`);
   }
 
-  const tryReserve = async (candidatePath: string): Promise<FileHandle | null> => {
+  const tryReserve = async (
+    candidatePath: string,
+  ): Promise<FileHandle | null> => {
     try {
       return await fs.promises.open(candidatePath, "wx");
     } catch (error) {
