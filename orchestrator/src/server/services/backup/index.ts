@@ -8,6 +8,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { BackupInfo } from "@shared/types.js";
+import Database from "better-sqlite3";
 import { getDataDir } from "../../config/dataDir.js";
 import { createScheduler } from "../../utils/scheduler.js";
 
@@ -16,7 +17,11 @@ const AUTO_BACKUP_PREFIX = "jobs_";
 const MANUAL_BACKUP_PREFIX = "jobs_manual_";
 const AUTO_BACKUP_PATTERN = /^jobs_\d{4}_\d{2}_\d{2}\.db$/;
 const MANUAL_BACKUP_PATTERN =
-  /^jobs_manual_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}\.db$/;
+  /^jobs_manual_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}(?:_\d+)?\.db$/;
+
+const AUTO_BACKUP_REGEX = /^jobs_(\d{4})_(\d{2})_(\d{2})\.db$/;
+const MANUAL_BACKUP_REGEX =
+  /^jobs_manual_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})(?:_\d+)?\.db$/;
 
 interface BackupSettings {
   enabled: boolean;
@@ -78,26 +83,53 @@ function generateBackupFilename(type: "auto" | "manual"): string {
  * Parse backup filename to extract creation date
  */
 function parseBackupDate(filename: string): Date | null {
-  if (AUTO_BACKUP_PATTERN.test(filename)) {
-    // Parse jobs_YYYY_MM_DD.db
-    const match = filename.match(/^jobs_(\d{4})_(\d{2})_(\d{2})\.db$/);
-    if (match) {
-      const [, year, month, day] = match;
-      return new Date(`${year}-${month}-${day}T00:00:00.000Z`);
-    }
-  } else if (MANUAL_BACKUP_PATTERN.test(filename)) {
-    // Parse jobs_manual_YYYY_MM_DD_HH_MM_SS.db
-    const match = filename.match(
-      /^jobs_manual_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})\.db$/,
-    );
-    if (match) {
-      const [, year, month, day, hours, minutes, seconds] = match;
-      return new Date(
-        `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000Z`,
-      );
-    }
+  const autoMatch = filename.match(AUTO_BACKUP_REGEX);
+  if (autoMatch) {
+    const [, year, month, day] = autoMatch;
+    return buildUtcDate(year, month, day, "0", "0", "0");
   }
+
+  const manualMatch = filename.match(MANUAL_BACKUP_REGEX);
+  if (manualMatch) {
+    const [, year, month, day, hours, minutes, seconds] = manualMatch;
+    return buildUtcDate(year, month, day, hours, minutes, seconds);
+  }
+
   return null;
+}
+
+function buildUtcDate(
+  yearRaw: string,
+  monthRaw: string,
+  dayRaw: string,
+  hourRaw: string,
+  minuteRaw: string,
+  secondRaw: string,
+): Date | null {
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  const second = Number(secondRaw);
+
+  const date = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() + 1 !== month ||
+    date.getUTCDate() !== day ||
+    date.getUTCHours() !== hour ||
+    date.getUTCMinutes() !== minute ||
+    date.getUTCSeconds() !== second
+  ) {
+    return null;
+  }
+
+  return date;
 }
 
 /**
@@ -117,39 +149,72 @@ function getBackupType(filename: string): "auto" | "manual" | null {
 export async function createBackup(type: "auto" | "manual"): Promise<string> {
   const dbPath = getDbPath();
   const backupDir = getBackupDir();
-  let filename = generateBackupFilename(type);
+  const baseFilename = generateBackupFilename(type);
+  let filename = baseFilename;
   let backupPath = path.join(backupDir, filename);
+  let reservedHandle: fs.promises.FileHandle | null = null;
 
   // Check if database exists
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database file not found: ${dbPath}`);
   }
 
-  // Avoid overwriting existing backups
-  if (fs.existsSync(backupPath)) {
-    if (type === "auto") {
+  const tryReserve = async (candidatePath: string): Promise<boolean> => {
+    try {
+      reservedHandle = await fs.promises.open(candidatePath, "wx");
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        return false;
+      }
+      throw error;
+    }
+  };
+
+  if (type === "auto") {
+    const reserved = await tryReserve(backupPath);
+    if (!reserved) {
       console.log(
         `ℹ️ [backup] Auto backup already exists for today: ${filename}`,
       );
       return filename;
     }
+  } else {
+    const baseName = baseFilename.replace(/\.db$/, "");
+    let sequence = 0;
 
-    // Manual backups should be unique; add a sequence suffix
-    const baseFilename = filename.replace(/\.db$/, "");
-    let sequence = 1;
-    while (fs.existsSync(backupPath) && sequence <= 100) {
-      filename = `${baseFilename}_${sequence}.db`;
-      backupPath = path.join(backupDir, filename);
-      sequence += 1;
+    while (!reservedHandle && sequence <= 100) {
+      const candidate =
+        sequence === 0 ? baseFilename : `${baseName}_${sequence}.db`;
+      const candidatePath = path.join(backupDir, candidate);
+      const reserved = await tryReserve(candidatePath);
+      if (reserved) {
+        filename = candidate;
+        backupPath = candidatePath;
+      } else {
+        sequence += 1;
+      }
     }
 
-    if (fs.existsSync(backupPath)) {
+    if (!reservedHandle) {
       throw new Error("Failed to create unique manual backup filename");
     }
   }
 
-  // Copy database file
-  await fs.promises.copyFile(dbPath, backupPath);
+  if (reservedHandle) {
+    await reservedHandle.close();
+  }
+
+  let sqlite: Database | null = null;
+  try {
+    sqlite = new Database(dbPath, { readonly: true, fileMustExist: true });
+    await sqlite.backup(backupPath);
+  } catch (error) {
+    await fs.promises.unlink(backupPath).catch(() => undefined);
+    throw error;
+  } finally {
+    sqlite?.close();
+  }
 
   console.log(
     `✅ [backup] Created ${type} backup: ${filename} (${(await fs.promises.stat(backupPath)).size} bytes)`,

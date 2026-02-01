@@ -21,18 +21,18 @@ interface SchedulerState {
 }
 
 /**
- * Calculate the next occurrence of a specific hour
- * @param hour - Hour of day (0-23)
- * @returns Date object set to the next occurrence of that hour
+ * Calculate the next occurrence of a specific hour (UTC)
+ * @param hour - Hour of day (0-23) in UTC
+ * @returns Date object set to the next UTC occurrence of that hour
  */
 export function calculateNextTime(hour: number): Date {
   const now = new Date();
   const next = new Date(now);
-  next.setHours(hour, 0, 0, 0);
+  next.setUTCHours(hour, 0, 0, 0);
 
   // If we've passed the time today, schedule for tomorrow
   if (next <= now) {
-    next.setDate(next.getDate() + 1);
+    next.setUTCDate(next.getUTCDate() + 1);
   }
 
   return next;

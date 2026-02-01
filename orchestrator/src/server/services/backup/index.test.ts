@@ -70,6 +70,22 @@ describe("Backup Service", () => {
       expect(fs.existsSync(backupPath)).toBe(true);
     });
 
+    it("should add a suffix when manual backup name collides", async () => {
+      vi.useFakeTimers();
+      try {
+        vi.setSystemTime(new Date("2026-01-15T12:30:45Z"));
+
+        const first = await backup.createBackup("manual");
+        const second = await backup.createBackup("manual");
+
+        expect(first).toBe("jobs_manual_2026_01_15_12_30_45.db");
+        expect(second).toBe("jobs_manual_2026_01_15_12_30_45_1.db");
+        expect(fs.existsSync(path.join(tempDir, second))).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("should throw error if database does not exist", async () => {
       // Delete the database
       await fs.promises.unlink(dbPath);
@@ -124,6 +140,18 @@ describe("Backup Service", () => {
       expect(backups).toHaveLength(1);
       expect(backups[0].filename).toMatch(/^jobs_\d{4}_\d{2}_\d{2}\.db$/);
     });
+
+    it("should include suffixed manual backups", async () => {
+      const filename = "jobs_manual_2026_01_01_12_00_00_2.db";
+      await fs.promises.writeFile(path.join(tempDir, filename), "manual");
+
+      const backups = await backup.listBackups();
+
+      expect(backups).toHaveLength(1);
+      expect(backups[0].filename).toBe(filename);
+      expect(backups[0].type).toBe("manual");
+      expect(backups[0].createdAt).toBe("2026-01-01T12:00:00.000Z");
+    });
   });
 
   describe("deleteBackup", () => {
@@ -151,6 +179,15 @@ describe("Backup Service", () => {
       await expect(backup.deleteBackup("jobs_2026_01_01.db")).rejects.toThrow(
         "Backup not found",
       );
+    });
+
+    it("should delete a suffixed manual backup", async () => {
+      const filename = "jobs_manual_2026_01_01_12_00_00_1.db";
+      await fs.promises.writeFile(path.join(tempDir, filename), "manual");
+
+      await backup.deleteBackup(filename);
+
+      expect(fs.existsSync(path.join(tempDir, filename))).toBe(false);
     });
   });
 

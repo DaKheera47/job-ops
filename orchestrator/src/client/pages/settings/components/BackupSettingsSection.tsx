@@ -37,12 +37,14 @@ const formatFileSize = (bytes: number): string => {
 const formatBackupDate = (dateString: string): string => {
   const date = new Date(dateString);
   return date.toLocaleString("en-US", {
+    timeZone: "UTC",
     month: "short",
     day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
+    timeZoneName: "short",
   });
 };
 
@@ -128,8 +130,8 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
                       },
                     }}
                     disabled={isLoading || isSaving}
-                    helper={`Hour of the day (0-23) when automatic backups should run. Default: ${backupHour.default}:00.`}
-                    current={`Effective: ${backupHour.effective}:00 | Default: ${backupHour.default}:00`}
+                    helper={`Hour of the day (0-23) in UTC when automatic backups should run. Default: ${backupHour.default}:00 UTC.`}
+                    current={`Effective: ${backupHour.effective}:00 UTC | Default: ${backupHour.default}:00 UTC`}
                   />
                 )}
               />
@@ -262,8 +264,8 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
             <div>
               <div className="text-xs text-muted-foreground">Hour</div>
               <div className="break-words font-mono text-xs">
-                Effective: {backupHour.effective}:00 | Default:{" "}
-                {backupHour.default}:00
+                Effective: {backupHour.effective}:00 UTC | Default:{" "}
+                {backupHour.default}:00 UTC
               </div>
             </div>
             <div>

@@ -514,6 +514,12 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleDeleteBackup = async (filename: string) => {
+    const confirmed = window.confirm(
+      `Delete backup "${filename}"? This action cannot be undone.`,
+    );
+    if (!confirmed) {
+      return;
+    }
     setIsDeletingBackup(true);
     try {
       await api.deleteBackup(filename);
