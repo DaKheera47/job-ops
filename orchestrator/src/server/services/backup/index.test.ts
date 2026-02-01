@@ -280,9 +280,13 @@ describe("Backup Service", () => {
       const secondRun = backup.getNextBackupTime();
 
       expect(secondRun).not.toBe(firstRun);
-      expect(new Date(secondRun!).getTime()).toBeGreaterThan(
-        new Date(firstRun!).getTime(),
-      );
+      expect(secondRun).not.toBeNull();
+      expect(firstRun).not.toBeNull();
+      if (secondRun && firstRun) {
+        expect(new Date(secondRun).getTime()).toBeGreaterThan(
+          new Date(firstRun).getTime(),
+        );
+      }
     });
   });
 });

@@ -131,9 +131,13 @@ describe("createScheduler", () => {
 
     // Second run should be 24 hours after first run
     expect(secondRun).not.toBe(firstRun);
-    expect(new Date(secondRun!).getTime()).toBe(
-      new Date(firstRun!).getTime() + 24 * 60 * 60 * 1000,
-    );
+    expect(secondRun).not.toBeNull();
+    expect(firstRun).not.toBeNull();
+    if (secondRun && firstRun) {
+      expect(new Date(secondRun).getTime()).toBe(
+        new Date(firstRun).getTime() + 24 * 60 * 60 * 1000,
+      );
+    }
 
     scheduler.stop();
   });
@@ -152,9 +156,13 @@ describe("createScheduler", () => {
     const secondRun = scheduler.getNextRun();
 
     // Second run should be later than first run
-    expect(new Date(secondRun!).getTime()).toBeGreaterThan(
-      new Date(firstRun!).getTime(),
-    );
+    expect(secondRun).not.toBeNull();
+    expect(firstRun).not.toBeNull();
+    if (secondRun && firstRun) {
+      expect(new Date(secondRun).getTime()).toBeGreaterThan(
+        new Date(firstRun).getTime(),
+      );
+    }
 
     scheduler.stop();
   });
