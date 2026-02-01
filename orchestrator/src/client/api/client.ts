@@ -8,6 +8,7 @@ import type {
   ApplicationStage,
   ApplicationTask,
   AppSettings,
+  BackupInfo,
   CreateJobInput,
   Job,
   JobOutcome,
@@ -476,13 +477,6 @@ export async function updateVisaSponsorList(): Promise<{
 // Bulk operations (intentionally none - processing is manual)
 
 // Backup API
-export interface BackupInfo {
-  filename: string;
-  type: "auto" | "manual";
-  size: number;
-  createdAt: string;
-}
-
 export interface BackupListResponse {
   backups: BackupInfo[];
   nextScheduled: string | null;

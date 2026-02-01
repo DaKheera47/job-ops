@@ -54,10 +54,19 @@ export function createScheduler(
     currentHour: null,
   };
 
+  function clearState(): void {
+    if (state.timer) {
+      clearTimeout(state.timer);
+    }
+    state.timer = null;
+    state.nextRunTime = null;
+    state.currentHour = null;
+  }
+
   function scheduleNext(hour: number): void {
     // Clear any existing timer
     if (state.timer) {
-      clearTimeout(state.timer);
+      clearState();
     }
 
     state.currentHour = hour;
@@ -84,7 +93,7 @@ export function createScheduler(
     start(hour: number): void {
       if (state.timer) {
         console.log(`🔄 [${name}] Restarting scheduler with hour ${hour}...`);
-        stop();
+        clearState();
       } else {
         console.log(`🚀 [${name}] Starting scheduler at hour ${hour}...`);
       }
@@ -93,10 +102,7 @@ export function createScheduler(
 
     stop(): void {
       if (state.timer) {
-        clearTimeout(state.timer);
-        state.timer = null;
-        state.nextRunTime = null;
-        state.currentHour = null;
+        clearState();
         console.log(`⏹️ [${name}] Stopped scheduler`);
       }
     },
@@ -109,13 +115,4 @@ export function createScheduler(
       return state.timer !== null;
     },
   };
-
-  function stop(): void {
-    if (state.timer) {
-      clearTimeout(state.timer);
-      state.timer = null;
-      state.nextRunTime = null;
-      state.currentHour = null;
-    }
-  }
 }

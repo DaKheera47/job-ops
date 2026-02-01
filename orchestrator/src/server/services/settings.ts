@@ -194,16 +194,22 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   const defaultBackupHour = 2;
   const overrideBackupHourRaw = overrides.backupHour;
-  const overrideBackupHour = overrideBackupHourRaw
+  const parsedBackupHour = overrideBackupHourRaw
     ? parseInt(overrideBackupHourRaw, 10)
-    : null;
+    : NaN;
+  const overrideBackupHour = Number.isNaN(parsedBackupHour)
+    ? null
+    : Math.min(23, Math.max(0, parsedBackupHour));
   const backupHour = overrideBackupHour ?? defaultBackupHour;
 
   const defaultBackupMaxCount = 5;
   const overrideBackupMaxCountRaw = overrides.backupMaxCount;
-  const overrideBackupMaxCount = overrideBackupMaxCountRaw
+  const parsedBackupMaxCount = overrideBackupMaxCountRaw
     ? parseInt(overrideBackupMaxCountRaw, 10)
-    : null;
+    : NaN;
+  const overrideBackupMaxCount = Number.isNaN(parsedBackupMaxCount)
+    ? null
+    : Math.min(5, Math.max(1, parsedBackupMaxCount));
   const backupMaxCount = overrideBackupMaxCount ?? defaultBackupMaxCount;
 
   return {

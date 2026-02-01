@@ -1,8 +1,5 @@
 import * as settingsRepo from "@server/repositories/settings.js";
-import {
-  getBackupSettings,
-  setBackupSettings,
-} from "@server/services/backup/index.js";
+import { setBackupSettings } from "@server/services/backup/index.js";
 import {
   applyEnvValue,
   normalizeEnvInput,
@@ -365,34 +362,20 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
 
     await Promise.all(promises);
 
+    const data = await getEffectiveSettings();
+
     // Update backup scheduler if backup settings changed
     if (
       "backupEnabled" in input ||
       "backupHour" in input ||
       "backupMaxCount" in input
     ) {
-      const currentSettings = getBackupSettings();
-      const newEnabled =
-        input.backupEnabled !== undefined && input.backupEnabled !== null
-          ? input.backupEnabled
-          : currentSettings.enabled;
-      const newHour =
-        input.backupHour !== undefined && input.backupHour !== null
-          ? input.backupHour
-          : currentSettings.hour;
-      const newMaxCount =
-        input.backupMaxCount !== undefined && input.backupMaxCount !== null
-          ? input.backupMaxCount
-          : currentSettings.maxCount;
-
       setBackupSettings({
-        enabled: newEnabled,
-        hour: newHour,
-        maxCount: newMaxCount,
+        enabled: data.backupEnabled,
+        hour: data.backupHour,
+        maxCount: data.backupMaxCount,
       });
     }
-
-    const data = await getEffectiveSettings();
     res.json({ success: true, data });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

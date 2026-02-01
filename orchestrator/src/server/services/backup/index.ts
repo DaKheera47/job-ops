@@ -7,6 +7,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import type { BackupInfo } from "@shared/types.js";
 import { getDataDir } from "../../config/dataDir.js";
 import { createScheduler } from "../../utils/scheduler.js";
 
@@ -16,13 +17,6 @@ const MANUAL_BACKUP_PREFIX = "jobs_manual_";
 const AUTO_BACKUP_PATTERN = /^jobs_\d{4}_\d{2}_\d{2}\.db$/;
 const MANUAL_BACKUP_PATTERN =
   /^jobs_manual_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}\.db$/;
-
-export interface BackupInfo {
-  filename: string;
-  type: "auto" | "manual";
-  size: number;
-  createdAt: string;
-}
 
 interface BackupSettings {
   enabled: boolean;
@@ -123,12 +117,35 @@ function getBackupType(filename: string): "auto" | "manual" | null {
 export async function createBackup(type: "auto" | "manual"): Promise<string> {
   const dbPath = getDbPath();
   const backupDir = getBackupDir();
-  const filename = generateBackupFilename(type);
-  const backupPath = path.join(backupDir, filename);
+  let filename = generateBackupFilename(type);
+  let backupPath = path.join(backupDir, filename);
 
   // Check if database exists
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database file not found: ${dbPath}`);
+  }
+
+  // Avoid overwriting existing backups
+  if (fs.existsSync(backupPath)) {
+    if (type === "auto") {
+      console.log(
+        `ℹ️ [backup] Auto backup already exists for today: ${filename}`,
+      );
+      return filename;
+    }
+
+    // Manual backups should be unique; add a sequence suffix
+    const baseFilename = filename.replace(/\.db$/, "");
+    let sequence = 1;
+    while (fs.existsSync(backupPath) && sequence <= 100) {
+      filename = `${baseFilename}_${sequence}.db`;
+      backupPath = path.join(backupDir, filename);
+      sequence += 1;
+    }
+
+    if (fs.existsSync(backupPath)) {
+      throw new Error("Failed to create unique manual backup filename");
+    }
   }
 
   // Copy database file

@@ -48,10 +48,21 @@ async function startServer() {
       const backupHour = await settingsRepo.getSetting("backupHour");
       const backupMaxCount = await settingsRepo.getSetting("backupMaxCount");
 
+      const parsedHour = backupHour ? parseInt(backupHour, 10) : NaN;
+      const parsedMaxCount = backupMaxCount
+        ? parseInt(backupMaxCount, 10)
+        : NaN;
+      const safeHour = Number.isNaN(parsedHour)
+        ? 2
+        : Math.min(23, Math.max(0, parsedHour));
+      const safeMaxCount = Number.isNaN(parsedMaxCount)
+        ? 5
+        : Math.min(5, Math.max(1, parsedMaxCount));
+
       setBackupSettings({
         enabled: backupEnabled === "true" || backupEnabled === "1",
-        hour: backupHour ? parseInt(backupHour, 10) : 2,
-        maxCount: backupMaxCount ? parseInt(backupMaxCount, 10) : 5,
+        hour: safeHour,
+        maxCount: safeMaxCount,
       });
 
       startBackupScheduler();
