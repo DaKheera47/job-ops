@@ -191,6 +191,7 @@ export async function createBackup(type: "auto" | "manual"): Promise<string> {
       const candidatePath = path.join(backupDir, candidate);
       const reserved = await tryReserve(candidatePath);
       if (reserved) {
+        reservedHandle = reserved;
         filename = candidate;
         backupPath = candidatePath;
       } else {
@@ -201,10 +202,6 @@ export async function createBackup(type: "auto" | "manual"): Promise<string> {
     if (!reservedHandle) {
       throw new Error("Failed to create unique manual backup filename");
     }
-  }
-
-  if (!reservedHandle) {
-    throw new Error("Failed to create unique manual backup filename");
   }
 
   // Close the reserved file handle before running SQLite backup

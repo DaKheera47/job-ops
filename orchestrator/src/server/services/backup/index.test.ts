@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as backup from "./index.js";
 
@@ -20,8 +21,20 @@ describe("Backup Service", () => {
     tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "backup-test-"));
     dbPath = path.join(tempDir, "jobs.db");
 
-    // Create a dummy database file
-    await fs.promises.writeFile(dbPath, "dummy database content");
+    // Create a real SQLite database file for backup() to work.
+    const db = new Database(dbPath);
+    try {
+      db.exec(
+        [
+          "PRAGMA journal_mode = DELETE;",
+          "CREATE TABLE IF NOT EXISTS test_items (id INTEGER PRIMARY KEY, name TEXT NOT NULL);",
+          "DELETE FROM test_items;",
+          "INSERT INTO test_items (name) VALUES ('alpha');",
+        ].join("\n"),
+      );
+    } finally {
+      db.close();
+    }
 
     // Mock getDataDir to return temp directory
     vi.mocked(getDataDir).mockReturnValue(tempDir);
@@ -52,9 +65,19 @@ describe("Backup Service", () => {
       const backupPath = path.join(tempDir, filename);
       expect(fs.existsSync(backupPath)).toBe(true);
 
-      // Check content matches
-      const content = await fs.promises.readFile(backupPath, "utf-8");
-      expect(content).toBe("dummy database content");
+      // Check backup is a valid SQLite database with expected data
+      const backupDb = new Database(backupPath, {
+        readonly: true,
+        fileMustExist: true,
+      });
+      try {
+        const row = backupDb
+          .prepare("SELECT name FROM test_items ORDER BY id LIMIT 1")
+          .get() as { name: string } | undefined;
+        expect(row?.name).toBe("alpha");
+      } finally {
+        backupDb.close();
+      }
     });
 
     it("should create a manual backup with correct filename format", async () => {
@@ -68,10 +91,24 @@ describe("Backup Service", () => {
       // Check file was created
       const backupPath = path.join(tempDir, filename);
       expect(fs.existsSync(backupPath)).toBe(true);
+
+      const backupDb = new Database(backupPath, {
+        readonly: true,
+        fileMustExist: true,
+      });
+      try {
+        const count = backupDb
+          .prepare("SELECT COUNT(*) as count FROM test_items")
+          .get() as { count: number };
+        expect(count.count).toBe(1);
+      } finally {
+        backupDb.close();
+      }
     });
 
     it("should add a suffix when manual backup name collides", async () => {
-      vi.useFakeTimers();
+      // Only fake Date to keep async I/O (used by better-sqlite3 backup) real.
+      vi.useFakeTimers({ toFake: ["Date"] });
       try {
         vi.setSystemTime(new Date("2026-01-15T12:30:45Z"));
 

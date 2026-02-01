@@ -11,10 +11,6 @@ describe.sequential("Backup API routes", () => {
 
   beforeEach(async () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer());
-
-    // Create a dummy database file
-    const dbPath = `${tempDir}/jobs.db`;
-    await fs.promises.writeFile(dbPath, "dummy database content for testing");
   });
 
   afterEach(async () => {
