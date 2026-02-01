@@ -545,4 +545,21 @@ export interface AppSettings {
   ukvisajobsPasswordHint: string | null;
   webhookSecretHint: string | null;
   basicAuthActive: boolean;
+  // Backup settings
+  backupEnabled: boolean;
+  defaultBackupEnabled: boolean;
+  overrideBackupEnabled: boolean | null;
+  backupHour: number;
+  defaultBackupHour: number;
+  overrideBackupHour: number | null;
+  backupMaxCount: number;
+  defaultBackupMaxCount: number;
+  overrideBackupMaxCount: number | null;
+}
+
+export interface BackupInfo {
+  filename: string;
+  type: "auto" | "manual";
+  size: number;
+  createdAt: string;
 }

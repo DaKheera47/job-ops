@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
+import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection";
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection";
 import { EnvironmentSettingsSection } from "@client/pages/settings/components/EnvironmentSettingsSection";
@@ -22,13 +23,14 @@ import {
 } from "@shared/settings-schema";
 import type {
   AppSettings,
+  BackupInfo,
   JobStatus,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
 } from "@shared/types";
 import { Settings } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Accordion } from "@/components/ui/accordion";
@@ -67,6 +69,9 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   ukvisajobsPassword: "",
   webhookSecret: "",
   enableBasicAuth: false,
+  backupEnabled: null,
+  backupHour: null,
+  backupMaxCount: null,
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -107,6 +112,9 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   ukvisajobsPassword: null,
   webhookSecret: null,
   enableBasicAuth: undefined,
+  backupEnabled: null,
+  backupHour: null,
+  backupMaxCount: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -141,6 +149,9 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   ukvisajobsPassword: "",
   webhookSecret: "",
   enableBasicAuth: data.basicAuthActive,
+  backupEnabled: data.overrideBackupEnabled,
+  backupHour: data.overrideBackupHour,
+  backupMaxCount: data.overrideBackupMaxCount,
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -307,6 +318,21 @@ const getDerivedSettings = (settings: AppSettings | null) => {
 
     profileProjects,
     maxProjectsTotal: profileProjects.length,
+
+    backup: {
+      backupEnabled: {
+        effective: settings?.backupEnabled ?? false,
+        default: settings?.defaultBackupEnabled ?? false,
+      },
+      backupHour: {
+        effective: settings?.backupHour ?? 2,
+        default: settings?.defaultBackupHour ?? 2,
+      },
+      backupMaxCount: {
+        effective: settings?.backupMaxCount ?? 5,
+        default: settings?.defaultBackupMaxCount ?? 5,
+      },
+    },
   };
 };
 
@@ -325,6 +351,13 @@ export const SettingsPage: React.FC = () => {
   >(null);
   const [isFetchingRxResumeProjects, setIsFetchingRxResumeProjects] =
     useState(false);
+
+  // Backup state
+  const [backups, setBackups] = useState<BackupInfo[]>([]);
+  const [nextScheduled, setNextScheduled] = useState<string | null>(null);
+  const [isLoadingBackups, setIsLoadingBackups] = useState(false);
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [isDeletingBackup, setIsDeletingBackup] = useState(false);
 
   const methods = useForm<UpdateSettingsInput>({
     resolver: zodResolver(
@@ -446,7 +479,61 @@ export const SettingsPage: React.FC = () => {
     envSettings,
     defaultResumeProjects,
     profileProjects,
+    backup,
   } = derived;
+
+  // Backup functions
+  const loadBackups = useCallback(async () => {
+    setIsLoadingBackups(true);
+    try {
+      const response = await api.getBackups();
+      setBackups(response.backups);
+      setNextScheduled(response.nextScheduled);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load backups";
+      toast.error(message);
+    } finally {
+      setIsLoadingBackups(false);
+    }
+  }, []);
+
+  const handleCreateBackup = async () => {
+    setIsCreatingBackup(true);
+    try {
+      await api.createManualBackup();
+      toast.success("Backup created successfully");
+      await loadBackups();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create backup";
+      toast.error(message);
+    } finally {
+      setIsCreatingBackup(false);
+    }
+  };
+
+  const handleDeleteBackup = async (filename: string) => {
+    setIsDeletingBackup(true);
+    try {
+      await api.deleteBackup(filename);
+      toast.success("Backup deleted successfully");
+      await loadBackups();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete backup";
+      toast.error(message);
+    } finally {
+      setIsDeletingBackup(false);
+    }
+  };
+
+  // Load backups when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      loadBackups();
+    }
+  }, [settings, loadBackups]);
 
   const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects;
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
@@ -589,6 +676,15 @@ export const SettingsPage: React.FC = () => {
           jobspy.isRemote.default,
         ),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
+        backupEnabled: nullIfSame(
+          data.backupEnabled,
+          backup.backupEnabled.default,
+        ),
+        backupHour: nullIfSame(data.backupHour, backup.backupHour.default),
+        backupMaxCount: nullIfSame(
+          data.backupMaxCount,
+          backup.backupMaxCount.default,
+        ),
         ...envPayload,
       };
 
@@ -750,6 +846,17 @@ export const SettingsPage: React.FC = () => {
             values={envSettings}
             isLoading={isLoading}
             isSaving={isSaving}
+          />
+          <BackupSettingsSection
+            values={backup}
+            backups={backups}
+            nextScheduled={nextScheduled}
+            isLoading={isLoading || isLoadingBackups}
+            isSaving={isSaving}
+            onCreateBackup={handleCreateBackup}
+            onDeleteBackup={handleDeleteBackup}
+            isCreatingBackup={isCreatingBackup}
+            isDeletingBackup={isDeletingBackup}
           />
           <DangerZoneSection
             statusesToClear={statusesToClear}

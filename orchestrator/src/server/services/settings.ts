@@ -184,6 +184,28 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     : null;
   const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
 
+  // Backup settings
+  const defaultBackupEnabled = false;
+  const overrideBackupEnabledRaw = overrides.backupEnabled;
+  const overrideBackupEnabled = overrideBackupEnabledRaw
+    ? overrideBackupEnabledRaw === "true" || overrideBackupEnabledRaw === "1"
+    : null;
+  const backupEnabled = overrideBackupEnabled ?? defaultBackupEnabled;
+
+  const defaultBackupHour = 2;
+  const overrideBackupHourRaw = overrides.backupHour;
+  const overrideBackupHour = overrideBackupHourRaw
+    ? parseInt(overrideBackupHourRaw, 10)
+    : null;
+  const backupHour = overrideBackupHour ?? defaultBackupHour;
+
+  const defaultBackupMaxCount = 5;
+  const overrideBackupMaxCountRaw = overrides.backupMaxCount;
+  const overrideBackupMaxCount = overrideBackupMaxCountRaw
+    ? parseInt(overrideBackupMaxCountRaw, 10)
+    : null;
+  const backupMaxCount = overrideBackupMaxCount ?? defaultBackupMaxCount;
+
   return {
     ...envSettings,
     model,
@@ -242,6 +264,15 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
+    backupEnabled,
+    defaultBackupEnabled,
+    overrideBackupEnabled,
+    backupHour,
+    defaultBackupHour,
+    overrideBackupHour,
+    backupMaxCount,
+    defaultBackupMaxCount,
+    overrideBackupMaxCount,
   } as AppSettings;
 }
 

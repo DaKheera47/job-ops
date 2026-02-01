@@ -7,6 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDataDir } from "../../config/dataDir.js";
+import { createScheduler } from "../../utils/scheduler.js";
 
 const DATA_DIR = path.join(getDataDir(), "visa-sponsors");
 
@@ -492,75 +493,32 @@ export function getOrganizationDetails(
 }
 
 // ============================================================================
-// Scheduled Updates (Cron-style)
+// Scheduled Updates (Cron-style) - Uses shared scheduler utility
 // ============================================================================
 
-let scheduledTimer: ReturnType<typeof setTimeout> | null = null;
-let nextScheduledUpdateTime: Date | null = null;
-
-/**
- * Calculate the next update time (default: 2 AM daily)
- */
-function calculateNextUpdateTime(hour = 2): Date {
-  const now = new Date();
-  const next = new Date(now);
-  next.setHours(hour, 0, 0, 0);
-
-  // If we've passed the time today, schedule for tomorrow
-  if (next <= now) {
-    next.setDate(next.getDate() + 1);
-  }
-
-  return next;
-}
+const scheduler = createScheduler("visa-sponsors", async () => {
+  await downloadLatestCsv();
+});
 
 /**
  * Get the next scheduled update time as ISO string
  */
-function getNextScheduledUpdate(): string | null {
-  return nextScheduledUpdateTime?.toISOString() || null;
-}
-
-/**
- * Schedule the next update
- */
-function scheduleNextUpdate(hour = 2): void {
-  if (scheduledTimer) {
-    clearTimeout(scheduledTimer);
-  }
-
-  nextScheduledUpdateTime = calculateNextUpdateTime(hour);
-  const delay = nextScheduledUpdateTime.getTime() - Date.now();
-
-  console.log(
-    `⏰ Next visa sponsor update scheduled for: ${nextScheduledUpdateTime.toISOString()}`,
-  );
-
-  scheduledTimer = setTimeout(async () => {
-    console.log("🔄 Running scheduled visa sponsor update...");
-    await downloadLatestCsv();
-    scheduleNextUpdate(hour); // Schedule the next one
-  }, delay);
+export function getNextScheduledUpdate(): string | null {
+  return scheduler.getNextRun();
 }
 
 /**
  * Start the scheduler
  */
 export function startScheduler(hour = 2): void {
-  console.log("🚀 Starting visa sponsor update scheduler...");
-  scheduleNextUpdate(hour);
+  scheduler.start(hour);
 }
 
 /**
  * Stop the scheduler
  */
 export function stopScheduler(): void {
-  if (scheduledTimer) {
-    clearTimeout(scheduledTimer);
-    scheduledTimer = null;
-    nextScheduledUpdateTime = null;
-    console.log("⏹️ Stopped visa sponsor update scheduler");
-  }
+  scheduler.stop();
 }
 
 /**

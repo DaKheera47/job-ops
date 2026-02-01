@@ -114,6 +114,16 @@ const baseSettings: AppSettings = {
   webhookSecretHint: null,
   basicAuthActive: false,
   rxresumeBaseResumeId: null,
+  // Backup settings
+  backupEnabled: false,
+  defaultBackupEnabled: false,
+  overrideBackupEnabled: null,
+  backupHour: 2,
+  defaultBackupHour: 2,
+  overrideBackupHour: null,
+  backupMaxCount: 5,
+  defaultBackupMaxCount: 5,
+  overrideBackupMaxCount: null,
 };
 
 const renderPage = () => {

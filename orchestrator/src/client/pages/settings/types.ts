@@ -42,3 +42,9 @@ export type EnvSettingsValues = {
   };
   basicAuthActive: boolean;
 };
+
+export type BackupValues = {
+  backupEnabled: EffectiveDefault<boolean>;
+  backupHour: EffectiveDefault<number>;
+  backupMaxCount: EffectiveDefault<number>;
+};

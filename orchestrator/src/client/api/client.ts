@@ -474,3 +474,32 @@ export async function updateVisaSponsorList(): Promise<{
 }
 
 // Bulk operations (intentionally none - processing is manual)
+
+// Backup API
+export interface BackupInfo {
+  filename: string;
+  type: "auto" | "manual";
+  size: number;
+  createdAt: string;
+}
+
+export interface BackupListResponse {
+  backups: BackupInfo[];
+  nextScheduled: string | null;
+}
+
+export async function getBackups(): Promise<BackupListResponse> {
+  return fetchApi<BackupListResponse>("/backups");
+}
+
+export async function createManualBackup(): Promise<BackupInfo> {
+  return fetchApi<BackupInfo>("/backups", {
+    method: "POST",
+  });
+}
+
+export async function deleteBackup(filename: string): Promise<void> {
+  await fetchApi<void>(`/backups/${encodeURIComponent(filename)}`, {
+    method: "DELETE",
+  });
+}

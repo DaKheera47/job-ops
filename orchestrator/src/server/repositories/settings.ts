@@ -37,7 +37,10 @@ export type SettingKey =
   | "basicAuthPassword"
   | "ukvisajobsEmail"
   | "ukvisajobsPassword"
-  | "webhookSecret";
+  | "webhookSecret"
+  | "backupEnabled"
+  | "backupHour"
+  | "backupMaxCount";
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   const [row] = await db.select().from(settings).where(eq(settings.key, key));

@@ -3,6 +3,7 @@
  */
 
 import { Router } from "express";
+import { backupRouter } from "./routes/backup.js";
 import { databaseRouter } from "./routes/database.js";
 import { jobsRouter } from "./routes/jobs.js";
 import { manualJobsRouter } from "./routes/manual-jobs.js";
@@ -26,3 +27,4 @@ apiRouter.use("/profile", profileRouter);
 apiRouter.use("/database", databaseRouter);
 apiRouter.use("/visa-sponsors", visaSponsorsRouter);
 apiRouter.use("/onboarding", onboardingRouter);
+apiRouter.use("/backups", backupRouter);
