@@ -11,6 +11,7 @@ import type { BackupInfo } from "@shared/types.js";
 import Database from "better-sqlite3";
 import { getDataDir } from "../../config/dataDir.js";
 import { createScheduler } from "../../utils/scheduler.js";
+import type { FileHandle } from "node:fs/promises";
 
 const DB_FILENAME = "jobs.db";
 const AUTO_BACKUP_PREFIX = "jobs_";
@@ -22,6 +23,8 @@ const MANUAL_BACKUP_PATTERN =
 const AUTO_BACKUP_REGEX = /^jobs_(\d{4})_(\d{2})_(\d{2})\.db$/;
 const MANUAL_BACKUP_REGEX =
   /^jobs_manual_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})(?:_\d+)?\.db$/;
+
+type SqliteDatabase = InstanceType<typeof Database>;
 
 interface BackupSettings {
   enabled: boolean;
@@ -152,28 +155,25 @@ export async function createBackup(type: "auto" | "manual"): Promise<string> {
   const baseFilename = generateBackupFilename(type);
   let filename = baseFilename;
   let backupPath = path.join(backupDir, filename);
-  let reservedHandle: fs.promises.FileHandle | null = null;
+  let reservedHandle: FileHandle | null = null;
 
   // Check if database exists
   if (!fs.existsSync(dbPath)) {
     throw new Error(`Database file not found: ${dbPath}`);
   }
 
-  const tryReserve = async (candidatePath: string): Promise<boolean> => {
+  const tryReserve = async (candidatePath: string): Promise<FileHandle | null> => {
     try {
-      reservedHandle = await fs.promises.open(candidatePath, "wx");
-      return true;
+      return await fs.promises.open(candidatePath, "wx");
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-        return false;
-      }
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") return null;
       throw error;
     }
   };
 
   if (type === "auto") {
-    const reserved = await tryReserve(backupPath);
-    if (!reserved) {
+    reservedHandle = await tryReserve(backupPath);
+    if (!reservedHandle) {
       console.log(
         `ℹ️ [backup] Auto backup already exists for today: ${filename}`,
       );
@@ -201,11 +201,14 @@ export async function createBackup(type: "auto" | "manual"): Promise<string> {
     }
   }
 
-  if (reservedHandle) {
-    await reservedHandle.close();
+  if (!reservedHandle) {
+    throw new Error("Failed to create unique manual backup filename");
   }
 
-  let sqlite: Database | null = null;
+  // Close the reserved file handle before running SQLite backup
+  await reservedHandle.close();
+
+  let sqlite: SqliteDatabase | null = null;
   try {
     sqlite = new Database(dbPath, { readonly: true, fileMustExist: true });
     await sqlite.backup(backupPath);
