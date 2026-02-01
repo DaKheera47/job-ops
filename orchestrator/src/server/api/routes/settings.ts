@@ -1,5 +1,9 @@
 import * as settingsRepo from "@server/repositories/settings.js";
 import {
+  getBackupSettings,
+  setBackupSettings,
+} from "@server/services/backup/index.js";
+import {
   applyEnvValue,
   normalizeEnvInput,
 } from "@server/services/envSettings.js";
@@ -328,7 +332,65 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    // Backup settings
+    if ("backupEnabled" in input) {
+      const val = input.backupEnabled ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "backupEnabled",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
+    if ("backupHour" in input) {
+      const val = input.backupHour ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "backupHour",
+          val !== null ? String(val) : null,
+        ),
+      );
+    }
+
+    if ("backupMaxCount" in input) {
+      const val = input.backupMaxCount ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "backupMaxCount",
+          val !== null ? String(val) : null,
+        ),
+      );
+    }
+
     await Promise.all(promises);
+
+    // Update backup scheduler if backup settings changed
+    if (
+      "backupEnabled" in input ||
+      "backupHour" in input ||
+      "backupMaxCount" in input
+    ) {
+      const currentSettings = getBackupSettings();
+      const newEnabled =
+        input.backupEnabled !== undefined && input.backupEnabled !== null
+          ? input.backupEnabled
+          : currentSettings.enabled;
+      const newHour =
+        input.backupHour !== undefined && input.backupHour !== null
+          ? input.backupHour
+          : currentSettings.hour;
+      const newMaxCount =
+        input.backupMaxCount !== undefined && input.backupMaxCount !== null
+          ? input.backupMaxCount
+          : currentSettings.maxCount;
+
+      setBackupSettings({
+        enabled: newEnabled,
+        hour: newHour,
+        maxCount: newMaxCount,
+      });
+    }
 
     const data = await getEffectiveSettings();
     res.json({ success: true, data });
