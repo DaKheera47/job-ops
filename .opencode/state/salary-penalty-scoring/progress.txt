@@ -133,3 +133,27 @@ Started: 2026-02-02
   - orchestrator/src/client/pages/settings/components/ScoringSettingsSection.tsx
 - **Learnings:** Form validation pattern: 1) Zod schema defines validation rules, 2) zodResolver in useForm enables automatic validation, 3) formState.errors provides error messages, 4) pass error prop to input component, 5) isValid automatically controls save button. Removing client-side clamping (Math.min/max) allows Zod validation to trigger proper error messages instead of silently fixing invalid input.
 
+## Task - persistence-1
+- Added comprehensive test coverage for salary penalty persistence in orchestrator/src/server/api/routes/settings.test.ts
+  - Test "persists salary penalty settings and handles reset to defaults":
+    - Verifies GET /api/settings returns both new fields with correct defaults (penalizeMissingSalary: false, missingSalaryPenalty: 10)
+    - Verifies PATCH accepts both fields and updates them correctly
+    - Verifies settings persist across multiple GET requests
+    - Verifies reset to defaults by setting values to null
+    - Confirms overrides are cleared (overridePenalizeMissingSalary: null, overrideMissingSalaryPenalty: null)
+  - Test "validates salary penalty range constraints":
+    - Rejects missingSalaryPenalty < 0 (returns 400)
+    - Rejects missingSalaryPenalty > 100 (returns 400)
+    - Accepts boundary values (0 and 100)
+- Database storage format verified through existing implementation in orchestrator/src/server/api/routes/settings.ts:364-382
+  - Boolean stored as "1" (true) or "0" (false) or null
+  - Number stored as string representation or null
+- All verification steps from PRD completed:
+  - PATCH /api/settings accepts both fields ✓
+  - GET /api/settings returns both fields ✓
+  - Database storage format correct ✓
+  - Reset to defaults works ✓
+  - Settings persist across requests ✓
+- Files changed:
+  - orchestrator/src/server/api/routes/settings.test.ts
+- **Learnings:** Test pattern for settings persistence: 1) GET initial defaults, 2) PATCH with new values, 3) GET to verify persistence, 4) PATCH with null to reset, 5) GET to verify reset. All settings tests use test-utils.js helpers (startServer/stopServer) to create isolated database instances. Tests run sequentially (describe.sequential) to avoid database conflicts.

@@ -159,7 +159,7 @@
         "Reset to default button clears both overrides (sets to null)",
         "After reset, effective values return to defaults (false, 10)"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "integration-1",
