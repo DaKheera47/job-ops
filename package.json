@@ -12,5 +12,8 @@
     "build:ukvisajobs": "npm --workspace ukvisajobs-extractor run build",
     "build:gradcracker": "npm --workspace gradcracker-extractor run build",
     "build": "npm run build:shared && npm run build:orchestrator"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.53.3"
   }
 }
