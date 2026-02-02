@@ -1,7 +1,6 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { ScoringValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
-import { Calculator } from "lucide-react";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
@@ -37,10 +36,7 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   return (
     <AccordionItem value="scoring" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
-        <div className="flex items-center gap-2">
-          <Calculator className="h-5 w-5" />
-          <span className="text-base font-semibold">Scoring Settings</span>
-        </div>
+        <span className="text-base font-semibold">Scoring Settings</span>
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-6">
