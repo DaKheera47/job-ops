@@ -44,8 +44,8 @@ jobs:
         run: npm --workspace orchestrator run test:run
         working-directory: .
 
-  build:
-    name: Build Verification
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
     strategy:
       matrix:
