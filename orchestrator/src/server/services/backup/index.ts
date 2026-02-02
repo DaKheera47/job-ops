@@ -65,13 +65,13 @@ function getBackupDir(): string {
 function generateBackupFilename(type: "auto" | "manual"): string {
   const now = new Date();
   if (type === "auto") {
-    // Format: jobs_YYYY_MM_DD.db
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
+    // Format: jobs_YYYY_MM_DD.db (UTC date to match UTC scheduler)
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(now.getUTCDate()).padStart(2, "0");
     return `${AUTO_BACKUP_PREFIX}${year}_${month}_${day}.db`;
   } else {
-    // Format: jobs_manual_YYYY_MM_DD_HH_MM_SS.db
+    // Format: jobs_manual_YYYY_MM_DD_HH_MM_SS.db (local time for manual backups)
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
