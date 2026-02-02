@@ -11,6 +11,11 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/setupTests.ts",
+    include: [
+      "src/**/*.test.ts",
+      "src/**/*.test.tsx",
+      "../shared/src/**/*.test.ts",
+    ],
     exclude: ["node_modules/**", "dist/**"],
   },
   resolve: {
@@ -18,7 +23,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@client": path.resolve(__dirname, "./src/client"),
       "@server": path.resolve(__dirname, "./src/server"),
-      "@shared": path.resolve(__dirname, "./src/shared"),
+      "@shared": path.resolve(__dirname, "../shared/src"),
     },
   },
   server: {

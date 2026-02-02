@@ -21,9 +21,14 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN python3 -m playwright install firefox
 
 # ---- Node deps (copy lockfiles; cached) ----
+COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+
+WORKDIR /app/shared
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --no-audit --no-fund --progress=false
 
 WORKDIR /app/orchestrator
 RUN --mount=type=cache,target=/root/.npm \
@@ -45,6 +50,7 @@ RUN --mount=type=cache,target=/root/.npm \
 # ---- Copy sources late (preserves dependency cache) ----
 WORKDIR /app
 COPY orchestrator ./orchestrator
+COPY shared ./shared
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
@@ -79,6 +85,7 @@ COPY --from=builder /root/.cache/camoufox /root/.cache/camoufox
 
 # Copy built app + node_modules from builder (fast path)
 COPY --from=builder /app/orchestrator /app/orchestrator
+COPY --from=builder /app/shared /app/shared
 COPY --from=builder /app/extractors /app/extractors
 
 RUN mkdir -p /app/data/pdfs

@@ -11,6 +11,7 @@
   "devDependencies": {
     "@apify/tsconfig": "^0.1.0",
     "@types/node": "^24.0.0",
+    "tsc-alias": "^1.8.16",
     "tsx": "^4.4.0",
     "typescript": "~5.9.0"
   },
@@ -18,7 +19,7 @@
     "start": "npm run start:dev",
     "start:prod": "node dist/main.js",
     "start:dev": "tsx src/main.ts",
-    "build": "tsc",
+    "build": "npm --prefix ../../shared run build && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "get-binaries": "camoufox-js fetch",
     "postinstall": "npm run get-binaries"
   },

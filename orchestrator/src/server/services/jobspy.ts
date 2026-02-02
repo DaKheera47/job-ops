@@ -8,9 +8,12 @@ import { spawn } from "node:child_process";
 import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  toNumberOrNull,
+  toStringOrNull,
+} from "@shared/utils/type-conversion.js";
 import type { CreateJobInput, JobSource } from "../../shared/types.js";
 import { getDataDir } from "../config/dataDir.js";
-import { toNumberOrNull, toStringOrNull } from "../utils/type-conversion.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const JOBSPY_DIR = join(__dirname, "../../../../extractors/jobspy");
