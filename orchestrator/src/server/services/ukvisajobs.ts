@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Service for running the UK Visa Jobs extractor (extractors/ukvisajobs).
  *
  * Spawns the extractor as a child process and reads its output dataset.
@@ -9,6 +9,7 @@ import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CreateJobInput } from "../../shared/types.js";
+import { toNumberOrNull, toStringOrNull } from "../utils/type-conversion.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UKVISAJOBS_DIR = join(__dirname, "../../../../extractors/ukvisajobs");
@@ -39,29 +40,6 @@ export interface UkVisaJobsResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
-}
-
-function toStringOrNull(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  return null;
-}
-
-function toNumberOrNull(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
 }
 
 function buildCookieHeader(session: UkVisaJobsAuthSession): string {

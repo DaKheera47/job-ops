@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CreateJobInput, JobSource } from "../../shared/types.js";
 import { getDataDir } from "../config/dataDir.js";
+import { toNumberOrNull, toStringOrNull } from "../utils/type-conversion.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const JOBSPY_DIR = join(__dirname, "../../../../extractors/jobspy");
@@ -18,29 +19,6 @@ const JOBSPY_SCRIPT = join(JOBSPY_DIR, "scrape_jobs.py");
 function getPythonPath(): string {
   if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH;
   return process.platform === "win32" ? "python" : "python3";
-}
-
-function toStringOrNull(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : null;
-  }
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
-  return null;
-}
-
-function toNumberOrNull(value: unknown): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
 }
 
 function toBooleanOrNull(value: unknown): boolean | null {
