@@ -35,7 +35,7 @@ jobs:
           cache: "npm"
           cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: npm ci --workspaces --include-workspace-root --ignore-scripts
+        run: npm ci --workspaces --include-workspace-root
         working-directory: .
       - name: Build better-sqlite3
         run: npm --workspace orchestrator rebuild better-sqlite3
@@ -60,7 +60,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci --workspaces --include-workspace-root --ignore-scripts
+        run: npm ci --workspaces --include-workspace-root
         working-directory: .
 
       - name: Type Check (orchestrator only)
