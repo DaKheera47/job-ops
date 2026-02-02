@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UK Visa Jobs Extractor
  *
  * Fetches job listings from my.ukvisajobs.com that may sponsor work visas.
@@ -16,7 +16,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
+import { toNumberOrNull, toStringOrNull } from "job-ops-shared/utils/type-conversion";
 import type { Request } from "playwright";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

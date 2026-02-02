@@ -2,8 +2,8 @@
 import { launchOptions } from "camoufox-js";
 import { PlaywrightCrawler } from "crawlee";
 import { firefox } from "playwright";
-import { initJobOpsProgress } from "./progress";
-import { router } from "./routes";
+import { initJobOpsProgress } from "./progress.js";
+import { router } from "./routes.js";
 
 // locations
 const locations = [
