@@ -6,9 +6,7 @@
   "dependencies": {
     "camoufox-js": "^0.8.0",
     "crawlee": "^3.0.0",
-    "playwright": "*"
-  },
-  "dependencies": {
+    "playwright": "*",
     "tsx": "^4.4.0"
   },
   "devDependencies": {
