@@ -22,8 +22,7 @@
     "start:dev": "tsx src/main.ts",
     "build": "tsc",
     "test": "echo \"Error: oops, the actor has no tests yet, sad!\" && exit 1",
-    "get-binaries": "camoufox-js fetch",
-    "postinstall": "npm run get-binaries"
+    "get-binaries": "camoufox-js fetch"
   },
   "author": "It's not you it's me",
   "license": "ISC"
