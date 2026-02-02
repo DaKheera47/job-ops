@@ -89,6 +89,9 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                     </span>
                   )}
                 </div>
+                <div className="truncate text-xs text-muted-foreground mt-0.5">
+                  {job.salary || "Salary not listed"}
+                </div>
               </div>
 
               {/* Single triage cue: score only (status shown via dot) */}

@@ -1,0 +1,17 @@
+# Progress Log
+PRD: salary-display
+Started: 2026-02-02
+
+## Codebase Patterns
+<!-- Consolidate reusable patterns here -->
+- Conditional metadata rendering: Use `job.field && <span>` pattern for optional fields
+- Tailwind styling: `text-xs text-muted-foreground mt-0.5` for secondary metadata lines
+- Truncation: Use `truncate` class for single-line text overflow
+
+---
+<!-- Task logs below - APPEND ONLY -->
+
+## Task - ui-1
+- Added third line to JobListPanel job items displaying salary or "Salary not listed" fallback
+- Files changed: orchestrator/src/client/pages/orchestrator/JobListPanel.tsx:92-94
+- **Learnings:** Used consistent `text-xs text-muted-foreground mt-0.5` styling pattern. The `job.salary || "Salary not listed"` pattern ensures fallback display when salary is null or empty.

@@ -1,0 +1,67 @@
+{
+  "prdName": "salary-display",
+  "tasks": [
+    {
+      "id": "ui-1",
+      "category": "ui",
+      "description": "Add salary display line to job list items in JobListPanel",
+      "steps": [
+        "Open orchestrator in browser and navigate to job list view",
+        "Verify salary displays on third line below employer/location for jobs with salary data",
+        "Verify 'Salary not listed' displays for jobs without salary data",
+        "Verify text styling matches employer line (text-xs text-muted-foreground)",
+        "Verify mt-0.5 margin-top spacing is applied",
+        "Verify text truncates properly if salary string is very long",
+        "Verify no TypeScript errors in JobListPanel.tsx"
+      ],
+      "passes": true
+    },
+    {
+      "id": "ui-2",
+      "category": "ui",
+      "description": "Verify salary displays correctly in all preview panes",
+      "steps": [
+        "Select a job with salary data from list and verify JobHeader shows salary with DollarSign icon",
+        "Navigate to 'discovered' tab and verify DecideMode shows salary in JobHeader",
+        "Navigate to 'ready' tab and verify ReadyPanel shows salary in JobHeader",
+        "Select a job without salary data and verify JobHeader shows salary appropriately",
+        "Verify salary formatting is consistent between list view and preview panes"
+      ],
+      "passes": false
+    },
+    {
+      "id": "testing-1",
+      "category": "testing",
+      "description": "Verify layout quality and edge cases",
+      "steps": [
+        "Test with jobs that have very long salary strings (e.g., 'GBP 100000-200000 / year with additional benefits and bonuses')",
+        "Verify no layout breaks or overflow issues",
+        "Test with jobs that have null salary data",
+        "Test with jobs that have empty string salary data",
+        "Test responsive layout on mobile viewport (320px width)",
+        "Verify vertical alignment remains consistent across all job items",
+        "Verify no visual regressions in status indicator dot, title, employer line, or score display"
+      ],
+      "passes": false
+    }
+  ],
+  "context": {
+    "patterns": [
+      "Conditional metadata rendering: orchestrator/src/client/pages/orchestrator/JobListPanel.tsx:86-91",
+      "Salary display in JobHeader: orchestrator/src/client/components/JobHeader.tsx:247-252",
+      "Tailwind styling conventions: orchestrator/src/client/pages/orchestrator/JobListPanel.tsx:84-91"
+    ],
+    "keyFiles": [
+      "orchestrator/src/client/pages/orchestrator/JobListPanel.tsx",
+      "orchestrator/src/shared/types.ts",
+      "orchestrator/src/client/components/JobHeader.tsx"
+    ],
+    "nonGoals": [
+      "Salary filtering/sorting",
+      "Salary normalization/conversion",
+      "Salary editing in UI",
+      "Salary-based notifications",
+      "Historical salary tracking"
+    ]
+  }
+}
