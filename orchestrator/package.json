@@ -96,5 +96,8 @@
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
     "vitest": "^4.0.16"
+  },
+  "optionalDependencies": {
+    "lightningcss-linux-x64-gnu": "^1.29.3"
   }
 }

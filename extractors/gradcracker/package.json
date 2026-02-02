@@ -16,6 +16,9 @@
     "tsx": "^4.4.0",
     "typescript": "~5.9.0"
   },
+  "optionalDependencies": {
+    "impit-linux-x64-gnu": "^0.1.0"
+  },
   "scripts": {
     "start": "npm run start:dev",
     "start:prod": "node dist/main.js",
