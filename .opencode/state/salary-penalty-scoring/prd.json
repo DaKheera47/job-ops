@@ -75,7 +75,7 @@
         "Test with job.salary='  ' and penalty=10: score 50 becomes 40",
         "Test with job.salary='$50k' and penalty=10: score 50 remains 50"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "scoring-2",

@@ -39,9 +39,16 @@ export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
 ): Promise<SuitabilityResult> {
-  const [overrideModel, overrideModelScorer] = await Promise.all([
+  const [
+    overrideModel,
+    overrideModelScorer,
+    penalizeMissingSalarySetting,
+    missingSalaryPenaltySetting,
+  ] = await Promise.all([
     getSetting("model"),
     getSetting("modelScorer"),
+    getSetting("penalizeMissingSalary"),
+    getSetting("missingSalaryPenalty"),
   ]);
   // Precedence: Scorer-specific override > Global override > Env var > Default
   const model =
@@ -49,6 +56,14 @@ export async function scoreJobSuitability(
     overrideModel ||
     process.env.MODEL ||
     "google/gemini-3-flash-preview";
+
+  // Parse penalty settings (stored as strings in database)
+  const penalizeMissingSalary =
+    penalizeMissingSalarySetting === "true" ||
+    penalizeMissingSalarySetting === "1";
+  const missingSalaryPenalty = missingSalaryPenaltySetting
+    ? Math.min(100, Math.max(0, parseInt(missingSalaryPenaltySetting, 10)))
+    : 10;
 
   const prompt = buildScoringPrompt(job, profile);
 
@@ -81,8 +96,14 @@ export async function scoreJobSuitability(
     return mockScore(job);
   }
 
+  // Apply salary penalty if enabled and salary is missing/whitespace
+  let finalScore = Math.round(score);
+  if (penalizeMissingSalary && !job.salary?.trim()) {
+    finalScore = Math.max(0, finalScore - missingSalaryPenalty);
+  }
+
   return {
-    score: Math.min(100, Math.max(0, Math.round(score))),
+    score: Math.min(100, Math.max(0, finalScore)),
     reason: reason || "No explanation provided",
   };
 }

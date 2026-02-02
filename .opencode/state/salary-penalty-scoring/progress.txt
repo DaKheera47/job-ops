@@ -61,3 +61,15 @@ Started: 2026-02-02
   - orchestrator/src/server/services/envSettings.ts
   - orchestrator/src/server/services/settings.ts
 - **Learnings:** Boolean env vars support "1"/"true" (truthy) and "0"/"false" (falsy). When adding to readableBooleanConfig, applyStoredEnvOverrides() automatically handles applying database overrides to process.env. Number env vars parsed with parseInt() and clamped to valid range, with fallback to default value if NaN.
+
+## Task - scoring-1
+- Implemented salary penalty in LLM scoring path in orchestrator/src/server/services/scorer.ts:38-105
+  - Added getSetting() calls to fetch penalizeMissingSalary and missingSalaryPenalty settings (lines 42-52)
+  - Parse boolean setting from string: `penalizeMissingSalarySetting === "true" || === "1"` (lines 61-63)
+  - Parse number setting with fallback: `parseInt(missingSalaryPenaltySetting, 10)` clamped 0-100, default 10 (lines 64-66)
+  - After LLM returns score, check if penalty should be applied: `if (penalizeMissingSalary && !job.salary?.trim())` (line 101)
+  - Subtract penalty and clamp to 0: `Math.max(0, finalScore - missingSalaryPenalty)` (line 102)
+  - Final score still clamped to 0-100 range before return (line 107)
+- Files changed:
+  - orchestrator/src/server/services/scorer.ts
+- **Learnings:** Settings fetched from database via getSetting() return string values that need parsing. Boolean settings stored as "true"/"1" for true, need explicit comparison. The `!job.salary?.trim()` pattern checks for null/undefined/empty/whitespace in one expression. Penalty applied after LLM scoring but before final return, only affects jobs with missing salary when enabled.
