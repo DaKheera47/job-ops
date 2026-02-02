@@ -129,7 +129,7 @@
         "onSave() payload includes penalizeMissingSalary with nullIfSame() normalization",
         "onSave() payload includes missingSalaryPenalty with nullIfSame() normalization"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ui-validation-1",

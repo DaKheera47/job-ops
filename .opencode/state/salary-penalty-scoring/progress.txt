@@ -102,3 +102,17 @@ Started: 2026-02-02
   - orchestrator/src/client/pages/settings/components/ScoringSettingsSection.tsx (new file)
   - orchestrator/src/client/pages/settings/types.ts
 - **Learnings:** UI settings sections follow consistent pattern: AccordionItem wrapper, Controller for form binding, conditional rendering with watch() for dependent fields, SettingsInput for number inputs with validation/clamping, Separator before effective/default display. The watch() hook from react-hook-form enables conditional UI without lifting state.
+
+## Task - ui-integration-1
+- Integrated ScoringSettingsSection into SettingsPage in orchestrator/src/client/pages/SettingsPage.tsx
+  - Added import for ScoringSettingsSection component (line 9)
+  - Added penalizeMissingSalary: null and missingSalaryPenalty: null to DEFAULT_FORM_VALUES (lines 75-76)
+  - Added penalizeMissingSalary: null and missingSalaryPenalty: null to NULL_SETTINGS_PAYLOAD (lines 117-118)
+  - Updated mapSettingsToForm() to include penalizeMissingSalary and missingSalaryPenalty fields (lines 155-156)
+  - Updated getDerivedSettings() to include scoring object with penalizeMissingSalary and missingSalaryPenalty effective/default values (lines 338-346)
+  - Destructured scoring from derived settings (line 484)
+  - Rendered ScoringSettingsSection in accordion between DisplaySettingsSection and EnvironmentSettingsSection (lines 851-855)
+  - Updated onSave() payload to include penalizeMissingSalary and missingSalaryPenalty with nullIfSame() normalization (lines 694-701)
+- Files changed:
+  - orchestrator/src/client/pages/SettingsPage.tsx
+- **Learnings:** When integrating new settings into SettingsPage, must update 7 key locations: import, DEFAULT_FORM_VALUES, NULL_SETTINGS_PAYLOAD, mapSettingsToForm(), getDerivedSettings(), destructuring, component rendering, and onSave() payload. The nullIfSame() function ensures only changed values are sent to backend (null means "use default"). All SettingsPage tests pass after integration.
