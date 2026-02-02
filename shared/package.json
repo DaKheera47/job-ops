@@ -15,6 +15,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./utils/*": "./src/utils/*.ts",
     "./*": "./src/*.ts"
   }
 }
