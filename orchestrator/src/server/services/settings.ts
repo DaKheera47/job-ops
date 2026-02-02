@@ -212,6 +212,33 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     : Math.min(5, Math.max(1, parsedBackupMaxCount));
   const backupMaxCount = overrideBackupMaxCount ?? defaultBackupMaxCount;
 
+  // Salary penalty settings
+  const defaultPenalizeMissingSalary =
+    (process.env.PENALIZE_MISSING_SALARY || "0") === "1" ||
+    (process.env.PENALIZE_MISSING_SALARY || "").toLowerCase() === "true";
+  const overridePenalizeMissingSalaryRaw = overrides.penalizeMissingSalary;
+  const overridePenalizeMissingSalary = overridePenalizeMissingSalaryRaw
+    ? overridePenalizeMissingSalaryRaw === "true" ||
+      overridePenalizeMissingSalaryRaw === "1"
+    : null;
+  const penalizeMissingSalary =
+    overridePenalizeMissingSalary ?? defaultPenalizeMissingSalary;
+
+  const envPenaltyRaw = process.env.MISSING_SALARY_PENALTY;
+  const envPenaltyParsed = envPenaltyRaw ? parseInt(envPenaltyRaw, 10) : NaN;
+  const defaultMissingSalaryPenalty = Number.isNaN(envPenaltyParsed)
+    ? 10
+    : Math.min(100, Math.max(0, envPenaltyParsed));
+  const overrideMissingSalaryPenaltyRaw = overrides.missingSalaryPenalty;
+  const parsedMissingSalaryPenalty = overrideMissingSalaryPenaltyRaw
+    ? parseInt(overrideMissingSalaryPenaltyRaw, 10)
+    : NaN;
+  const overrideMissingSalaryPenalty = Number.isNaN(parsedMissingSalaryPenalty)
+    ? null
+    : Math.min(100, Math.max(0, parsedMissingSalaryPenalty));
+  const missingSalaryPenalty =
+    overrideMissingSalaryPenalty ?? defaultMissingSalaryPenalty;
+
   return {
     ...envSettings,
     model,
@@ -279,6 +306,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     backupMaxCount,
     defaultBackupMaxCount,
     overrideBackupMaxCount,
+    penalizeMissingSalary,
+    defaultPenalizeMissingSalary,
+    overridePenalizeMissingSalary,
+    missingSalaryPenalty,
+    defaultMissingSalaryPenalty,
+    overrideMissingSalaryPenalty,
   } as AppSettings;
 }
 

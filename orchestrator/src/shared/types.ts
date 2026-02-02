@@ -555,6 +555,13 @@ export interface AppSettings {
   backupMaxCount: number;
   defaultBackupMaxCount: number;
   overrideBackupMaxCount: number | null;
+  // Salary penalty settings
+  penalizeMissingSalary: boolean;
+  defaultPenalizeMissingSalary: boolean;
+  overridePenalizeMissingSalary: boolean | null;
+  missingSalaryPenalty: number;
+  defaultMissingSalaryPenalty: number;
+  overrideMissingSalaryPenalty: number | null;
 }
 
 export interface BackupInfo {

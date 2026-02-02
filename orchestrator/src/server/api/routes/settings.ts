@@ -360,6 +360,27 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
       );
     }
 
+    // Salary penalty settings
+    if ("penalizeMissingSalary" in input) {
+      const val = input.penalizeMissingSalary ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "penalizeMissingSalary",
+          val !== null ? (val ? "1" : "0") : null,
+        ),
+      );
+    }
+
+    if ("missingSalaryPenalty" in input) {
+      const val = input.missingSalaryPenalty ?? null;
+      promises.push(
+        settingsRepo.setSetting(
+          "missingSalaryPenalty",
+          val !== null ? String(val) : null,
+        ),
+      );
+    }
+
     await Promise.all(promises);
 
     const data = await getEffectiveSettings();

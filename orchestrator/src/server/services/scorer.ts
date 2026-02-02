@@ -39,9 +39,16 @@ export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
 ): Promise<SuitabilityResult> {
-  const [overrideModel, overrideModelScorer] = await Promise.all([
+  const [
+    overrideModel,
+    overrideModelScorer,
+    penalizeMissingSalarySetting,
+    missingSalaryPenaltySetting,
+  ] = await Promise.all([
     getSetting("model"),
     getSetting("modelScorer"),
+    getSetting("penalizeMissingSalary"),
+    getSetting("missingSalaryPenalty"),
   ]);
   // Precedence: Scorer-specific override > Global override > Env var > Default
   const model =
@@ -49,6 +56,14 @@ export async function scoreJobSuitability(
     overrideModel ||
     process.env.MODEL ||
     "google/gemini-3-flash-preview";
+
+  // Parse penalty settings (stored as strings in database)
+  const penalizeMissingSalary =
+    penalizeMissingSalarySetting === "true" ||
+    penalizeMissingSalarySetting === "1";
+  const missingSalaryPenalty = missingSalaryPenaltySetting
+    ? Math.min(100, Math.max(0, parseInt(missingSalaryPenaltySetting, 10)))
+    : 10;
 
   const prompt = buildScoringPrompt(job, profile);
 
@@ -68,7 +83,7 @@ export async function scoreJobSuitability(
     console.error(
       `❌ [Job ${job.id}] Scoring failed: ${result.error}, using mock scoring`,
     );
-    return mockScore(job);
+    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
   }
 
   const { score, reason } = result.data;
@@ -78,11 +93,17 @@ export async function scoreJobSuitability(
     console.error(
       `❌ [Job ${job.id}] Invalid score in response, using mock scoring`,
     );
-    return mockScore(job);
+    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
+  }
+
+  // Apply salary penalty if enabled and salary is missing/whitespace
+  let finalScore = Math.round(score);
+  if (penalizeMissingSalary && !job.salary?.trim()) {
+    finalScore = Math.max(0, finalScore - missingSalaryPenalty);
   }
 
   return {
-    score: Math.min(100, Math.max(0, Math.round(score))),
+    score: Math.min(100, Math.max(0, finalScore)),
     reason: reason || "No explanation provided",
   };
 }
@@ -228,7 +249,11 @@ EXAMPLE VALID RESPONSE:
 {"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}`;
 }
 
-function mockScore(job: Job): SuitabilityResult {
+async function mockScore(
+  job: Job,
+  penalizeMissingSalary: boolean,
+  missingSalaryPenalty: number,
+): Promise<SuitabilityResult> {
   // Simple keyword-based scoring as fallback
   const jd = (job.jobDescription || "").toLowerCase();
   const title = job.title.toLowerCase();
@@ -263,6 +288,11 @@ function mockScore(job: Job): SuitabilityResult {
 
   for (const kw of badKeywords) {
     if (jd.includes(kw) || title.includes(kw)) score -= 10;
+  }
+
+  // Apply salary penalty if enabled and salary is missing/whitespace
+  if (penalizeMissingSalary && !job.salary?.trim()) {
+    score = Math.max(0, score - missingSalaryPenalty);
   }
 
   score = Math.min(100, Math.max(0, score));
