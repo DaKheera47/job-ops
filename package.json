@@ -10,7 +10,7 @@
     "build:shared": "npm --workspace shared run build",
     "build:orchestrator": "npm --workspace orchestrator run build",
     "build:ukvisajobs": "npm --workspace ukvisajobs-extractor run build",
-    "build:gradcracker": "npm --workspace job-flow run build",
+    "build:gradcracker": "npm --workspace gradcracker-extractor run build",
     "build": "npm run build:shared && npm run build:orchestrator"
   }
 }
