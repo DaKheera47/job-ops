@@ -42,7 +42,7 @@
         "Verify vertical alignment remains consistent across all job items",
         "Verify no visual regressions in status indicator dot, title, employer line, or score display"
       ],
-      "passes": false
+      "passes": true
     }
   ],
   "context": {
