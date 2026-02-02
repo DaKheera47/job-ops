@@ -18,3 +18,16 @@ Started: 2026-02-02
   - orchestrator/src/shared/types.ts
   - orchestrator/src/client/pages/SettingsPage.test.tsx
 - **Learnings:** When adding new required fields to AppSettings interface, must also update all test mocks that create mock AppSettings objects. TypeScript compilation will catch missing fields in tests.
+
+## Task - schema-1
+- Added Zod validation schema for salary penalty settings in orchestrator/src/shared/settings-schema.ts:78-79
+  - penalizeMissingSalary: z.boolean().nullable().optional()
+  - missingSalaryPenalty: z.number().int().min(0).max(100).nullable().optional()
+- Verified schema validation:
+  - Rejects penalty values < 0 (error: "Number must be greater than or equal to 0")
+  - Rejects penalty values > 100 (error: "Number must be less than or equal to 100")
+  - Accepts null for both fields
+  - Accepts valid values within range (0-100)
+- Files changed:
+  - orchestrator/src/shared/settings-schema.ts
+- **Learnings:** Zod schema fields follow pattern of `.nullable().optional()` to support 3-tier override system where null means "use default". Integer validation automatically applied with `.int()` chained before `.min()` and `.max()`.

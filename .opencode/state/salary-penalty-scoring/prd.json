@@ -27,7 +27,7 @@
         "Schema validation rejects penalty values > 100",
         "Schema validation accepts null for both fields"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "backend-settings-1",

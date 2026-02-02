@@ -75,6 +75,14 @@ export const updateSettingsSchema = z
     backupEnabled: z.boolean().nullable().optional(),
     backupHour: z.number().int().min(0).max(23).nullable().optional(),
     backupMaxCount: z.number().int().min(1).max(5).nullable().optional(),
+    penalizeMissingSalary: z.boolean().nullable().optional(),
+    missingSalaryPenalty: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .nullable()
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.enableBasicAuth) {
