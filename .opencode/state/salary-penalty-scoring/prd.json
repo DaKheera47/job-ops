@@ -142,7 +142,7 @@
         "Save button is disabled when validation errors exist",
         "Error message appears below number input when invalid value entered"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "persistence-1",

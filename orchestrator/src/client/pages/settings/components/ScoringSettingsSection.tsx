@@ -24,7 +24,11 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   isSaving,
 }) => {
   const { penalizeMissingSalary, missingSalaryPenalty } = values;
-  const { control, watch } = useFormContext<UpdateSettingsInput>();
+  const {
+    control,
+    watch,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
 
   // Watch the current form value to conditionally enable/disable penalty input
   const currentPenalizeMissingSalary =
@@ -88,17 +92,23 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                       min: 0,
                       max: 100,
                       placeholder: missingSalaryPenalty.default.toString(),
-                      value: field.value ?? missingSalaryPenalty.default,
+                      value: field.value ?? "",
                       onChange: (event) => {
-                        const value = parseInt(event.target.value, 10);
-                        if (Number.isNaN(value)) {
+                        const value = event.target.value.trim();
+                        if (value === "") {
                           field.onChange(null);
                         } else {
-                          field.onChange(Math.min(100, Math.max(0, value)));
+                          const numValue = parseInt(value, 10);
+                          field.onChange(
+                            Number.isNaN(numValue) ? null : numValue,
+                          );
                         }
                       },
                     }}
                     disabled={isLoading || isSaving}
+                    error={
+                      errors.missingSalaryPenalty?.message as string | undefined
+                    }
                     helper={`Number of points to subtract from the suitability score (0-100) when salary information is missing. Default: ${missingSalaryPenalty.default}.`}
                     current={`Effective: ${missingSalaryPenalty.effective} | Default: ${missingSalaryPenalty.default}`}
                   />
