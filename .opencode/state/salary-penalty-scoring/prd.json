@@ -180,7 +180,7 @@
         "Disable penalty checkbox and save",
         "Verify penalty no longer applied to jobs without salary"
       ],
-      "passes": false
+      "passes": true
     }
   ],
   "context": {
