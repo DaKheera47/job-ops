@@ -31,3 +31,20 @@ Started: 2026-02-02
 - Files changed:
   - orchestrator/src/shared/settings-schema.ts
 - **Learnings:** Zod schema fields follow pattern of `.nullable().optional()` to support 3-tier override system where null means "use default". Integer validation automatically applied with `.int()` chained before `.min()` and `.max()`.
+
+## Task - backend-settings-1
+- Implemented backend settings service for salary penalty in orchestrator/src/server/services/settings.ts:214-244
+  - Added defaults: defaultPenalizeMissingSalary: false, defaultMissingSalaryPenalty: 10
+  - Implemented 3-tier override logic (default -> env -> database) for penalizeMissingSalary (boolean)
+  - Implemented 3-tier override logic for missingSalaryPenalty (number, clamped 0-100)
+  - Added all 6 fields to return statement: effective, default, and override for both settings
+- Updated SettingKey type in orchestrator/src/server/repositories/settings.ts:10-45 to include penalizeMissingSalary and missingSalaryPenalty
+- Updated PATCH /api/settings handler in orchestrator/src/server/api/routes/settings.ts:363-383 to accept both new fields
+  - penalizeMissingSalary stored as "1"/"0"/null (boolean serialization)
+  - missingSalaryPenalty stored as string number/null
+- Files changed:
+  - orchestrator/src/server/services/settings.ts
+  - orchestrator/src/server/repositories/settings.ts
+  - orchestrator/src/server/api/routes/settings.ts
+- **Learnings:** Boolean settings stored in database as "1"/"0" strings and parsed with `=== "true" || === "1"`. Number settings stored as strings and parsed with `parseInt()` then clamped with `Math.min(max, Math.max(min, value))`. Database overrides take precedence over env vars (will be implemented in backend-settings-2).
+

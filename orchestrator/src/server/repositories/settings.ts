@@ -40,7 +40,9 @@ export type SettingKey =
   | "webhookSecret"
   | "backupEnabled"
   | "backupHour"
-  | "backupMaxCount";
+  | "backupMaxCount"
+  | "penalizeMissingSalary"
+  | "missingSalaryPenalty";
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   const [row] = await db.select().from(settings).where(eq(settings.key, key));

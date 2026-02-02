@@ -44,7 +44,7 @@
         "Database override for missingSalaryPenalty takes precedence over environment variable",
         "GET /api/settings returns all 6 new fields in response"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "backend-settings-2",
