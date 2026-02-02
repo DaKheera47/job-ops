@@ -7,11 +7,11 @@ import type {
   JobStatus,
   StageEvent,
   StageEventMetadata,
-} from "@shared/types.js";
+} from "@shared/types";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { db, schema } from "../db/index.js";
+import { db, schema } from "../db/index";
 
 const { jobs, stageEvents, tasks } = schema;
 

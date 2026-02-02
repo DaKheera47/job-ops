@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 import {
   toNumberOrNull,
   toStringOrNull,
-} from "@shared/utils/type-conversion.js";
+} from "@shared/utils/type-conversion";
 import type { Request } from "playwright";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

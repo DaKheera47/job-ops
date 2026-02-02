@@ -5,7 +5,7 @@ import {
   type Job,
   type JobStatus,
   type JobsListResponse,
-} from "@shared/types.js";
+} from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -13,9 +13,9 @@ import {
   generateFinalPdf,
   processJob,
   summarizeJob,
-} from "../../pipeline/index.js";
-import * as jobsRepo from "../../repositories/jobs.js";
-import * as settingsRepo from "../../repositories/settings.js";
+} from "../../pipeline/index";
+import * as jobsRepo from "../../repositories/jobs";
+import * as settingsRepo from "../../repositories/settings";
 import {
   deleteStageEvent,
   getStageEvents,
@@ -23,11 +23,11 @@ import {
   stageEventMetadataSchema,
   transitionStage,
   updateStageEvent,
-} from "../../services/applicationTracking.js";
-import { createNotionEntry } from "../../services/notion.js";
-import { getProfile } from "../../services/profile.js";
-import { scoreJobSuitability } from "../../services/scorer.js";
-import * as visaSponsors from "../../services/visa-sponsors/index.js";
+} from "../../services/applicationTracking";
+import { createNotionEntry } from "../../services/notion";
+import { getProfile } from "../../services/profile";
+import { scoreJobSuitability } from "../../services/scorer";
+import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const jobsRouter = Router();
 

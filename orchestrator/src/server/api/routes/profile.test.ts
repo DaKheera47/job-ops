@@ -1,9 +1,9 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 // Mock the rxresume-v4 service
-vi.mock("../../services/rxresume-v4.js", () => ({
+vi.mock("../../services/rxresume-v4", () => ({
   getResume: vi.fn(),
   listResumes: vi.fn(),
   RxResumeCredentialsError: class RxResumeCredentialsError extends Error {
@@ -15,13 +15,13 @@ vi.mock("../../services/rxresume-v4.js", () => ({
 }));
 
 // Mock the profile service
-vi.mock("../../services/profile.js", () => ({
+vi.mock("../../services/profile", () => ({
   getProfile: vi.fn(),
   clearProfileCache: vi.fn(),
 }));
 
 // Mock the settings repository
-vi.mock("../../repositories/settings.js", async (importOriginal) => {
+vi.mock("../../repositories/settings", async (importOriginal) => {
   const original = (await importOriginal()) as Record<string, unknown>;
   return {
     ...original,
@@ -29,12 +29,12 @@ vi.mock("../../repositories/settings.js", async (importOriginal) => {
   };
 });
 
-import { getSetting } from "../../repositories/settings.js";
-import { getProfile } from "../../services/profile.js";
+import { getSetting } from "../../repositories/settings";
+import { getProfile } from "../../services/profile";
 import {
   getResume,
   RxResumeCredentialsError,
-} from "../../services/rxresume-v4.js";
+} from "../../services/rxresume-v4";
 
 describe.sequential("Profile API routes", () => {
   let server: Server;

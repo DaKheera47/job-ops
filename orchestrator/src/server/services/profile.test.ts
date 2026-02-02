@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearProfileCache, getProfile } from "./profile.js";
+import { clearProfileCache, getProfile } from "./profile";
 
 // Mock the dependencies
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 
-vi.mock("./rxresume-v4.js", () => ({
+vi.mock("./rxresume-v4", () => ({
   getResume: vi.fn(),
   RxResumeCredentialsError: class RxResumeCredentialsError extends Error {
     constructor() {
@@ -16,8 +16,8 @@ vi.mock("./rxresume-v4.js", () => ({
   },
 }));
 
-import { getSetting } from "../repositories/settings.js";
-import { getResume, RxResumeCredentialsError } from "./rxresume-v4.js";
+import { getSetting } from "../repositories/settings";
+import { getResume, RxResumeCredentialsError } from "./rxresume-v4";
 
 describe("getProfile", () => {
   beforeEach(() => {

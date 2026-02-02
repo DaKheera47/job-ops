@@ -1,10 +1,10 @@
-import type { Job } from "@shared/types.js";
+import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { pickProjectIdsForJob } from "./projectSelection.js";
-import { scoreJobSuitability } from "./scorer.js";
+import { pickProjectIdsForJob } from "./projectSelection";
+import { scoreJobSuitability } from "./scorer";
 
 // --- Mocks ---
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockResolvedValue(null),
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));

@@ -1,6 +1,6 @@
-import type { VisaSponsorSearchResult } from "@shared/types.js";
+import type { VisaSponsorSearchResult } from "@shared/types";
 import { describe, expect, it } from "vitest";
-import { calculateSponsorMatchSummary } from "./index.js";
+import { calculateSponsorMatchSummary } from "./index";
 
 describe("calculateSponsorMatchSummary", () => {
   it("should return default values for empty results", () => {

@@ -1,12 +1,12 @@
-import type { ApiResponse, PipelineStatusResponse } from "@shared/types.js";
+import type { ApiResponse, PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import {
   getPipelineStatus,
   runPipeline,
   subscribeToProgress,
-} from "../../pipeline/index.js";
-import * as pipelineRepo from "../../repositories/pipeline.js";
+} from "../../pipeline/index";
+import * as pipelineRepo from "../../repositories/pipeline";
 
 export const pipelineRouter = Router();
 

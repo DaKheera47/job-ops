@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateNextTime, createScheduler } from "./scheduler.js";
+import { calculateNextTime, createScheduler } from "./scheduler";
 
 beforeEach(() => {
   vi.useFakeTimers();

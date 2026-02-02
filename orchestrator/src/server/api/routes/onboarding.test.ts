@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
-import { RxResumeClient } from "@server/services/rxresume-client.js";
+import { RxResumeClient } from "@server/services/rxresume-client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Onboarding API routes", () => {
   let server: Server;

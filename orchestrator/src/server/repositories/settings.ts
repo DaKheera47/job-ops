@@ -3,7 +3,7 @@
  */
 
 import { eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
+import { db, schema } from "../db/index";
 
 const { settings } = schema;
 

@@ -3,7 +3,7 @@ import {
   deleteBackup,
   getNextBackupTime,
   listBackups,
-} from "@server/services/backup/index.js";
+} from "@server/services/backup/index";
 import { type Request, type Response, Router } from "express";
 
 export const backupRouter = Router();

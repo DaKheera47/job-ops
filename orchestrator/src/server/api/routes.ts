@@ -3,17 +3,17 @@
  */
 
 import { Router } from "express";
-import { backupRouter } from "./routes/backup.js";
-import { databaseRouter } from "./routes/database.js";
-import { jobsRouter } from "./routes/jobs.js";
-import { manualJobsRouter } from "./routes/manual-jobs.js";
-import { onboardingRouter } from "./routes/onboarding.js";
-import { pipelineRouter } from "./routes/pipeline.js";
-import { profileRouter } from "./routes/profile.js";
-import { settingsRouter } from "./routes/settings.js";
-import { ukVisaJobsRouter } from "./routes/ukvisajobs.js";
-import { visaSponsorsRouter } from "./routes/visa-sponsors.js";
-import { webhookRouter } from "./routes/webhook.js";
+import { backupRouter } from "./routes/backup";
+import { databaseRouter } from "./routes/database";
+import { jobsRouter } from "./routes/jobs";
+import { manualJobsRouter } from "./routes/manual-jobs";
+import { onboardingRouter } from "./routes/onboarding";
+import { pipelineRouter } from "./routes/pipeline";
+import { profileRouter } from "./routes/profile";
+import { settingsRouter } from "./routes/settings";
+import { ukVisaJobsRouter } from "./routes/ukvisajobs";
+import { visaSponsorsRouter } from "./routes/visa-sponsors";
+import { webhookRouter } from "./routes/webhook";
 
 export const apiRouter = Router();
 

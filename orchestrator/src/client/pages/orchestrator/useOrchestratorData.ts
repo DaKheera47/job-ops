@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "@shared/types.js";
+import type { Job, JobStatus } from "@shared/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";

@@ -2,7 +2,7 @@
  * Settings page constants.
  */
 
-import type { JobStatus } from "@shared/types.js";
+import type { JobStatus } from "@shared/types";
 
 /** All available job statuses for clearing */
 export const ALL_JOB_STATUSES: JobStatus[] = [

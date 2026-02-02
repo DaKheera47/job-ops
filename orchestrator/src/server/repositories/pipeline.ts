@@ -3,9 +3,9 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { PipelineRun } from "@shared/types.js";
+import type { PipelineRun } from "@shared/types";
 import { desc, eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
+import { db, schema } from "../db/index";
 
 const { pipelineRuns } = schema;
 

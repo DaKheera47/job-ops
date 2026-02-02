@@ -4,7 +4,7 @@
 
 import { join } from "node:path";
 import Database from "better-sqlite3";
-import { getDataDir } from "../config/dataDir.js";
+import { getDataDir } from "../config/dataDir";
 
 // Database path - can be overridden via env for Docker
 const DB_PATH = join(getDataDir(), "jobs.db");

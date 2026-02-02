@@ -3,26 +3,26 @@
   "version": "0.0.1",
   "type": "module",
   "description": "UK Visa Jobs extractor - fetches job listings that may sponsor work visas",
-  "main": "dist/main.js",
+  "main": "src/main.ts",
   "dependencies": {
     "camoufox-js": "^0.8.0",
     "playwright": "^1.57.0"
   },
+  "dependencies": {
+    "tsx": "^4.4.0"
+  },
   "devDependencies": {
     "@apify/tsconfig": "^0.1.0",
     "@types/node": "^24.0.0",
-    "tsc-alias": "^1.8.16",
-    "tsx": "^4.4.0",
     "typescript": "~5.9.0"
   },
   "optionalDependencies": {
     "impit-linux-x64-gnu": "^0.1.0"
   },
   "scripts": {
-    "start": "npm run start:dev",
-    "start:prod": "node dist/main.js",
+    "start": "tsx src/main.ts",
     "start:dev": "tsx src/main.ts",
-    "build": "npm --workspace shared run build && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "check:types": "tsc --noEmit",
     "get-binaries": "camoufox-js fetch"
   },
   "author": "",

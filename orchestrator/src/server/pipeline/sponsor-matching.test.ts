@@ -5,22 +5,22 @@
  * correctly calculates and stores sponsor match scores and names.
  */
 
-import type { Job } from "@shared/types.js";
+import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the visa-sponsors module
-vi.mock("../services/visa-sponsors/index.js", () => ({
+vi.mock("../services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
   calculateSponsorMatchSummary: vi.fn(),
 }));
 
 // Mock the scorer module
-vi.mock("../services/scorer.js", () => ({
+vi.mock("../services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
 // Mock the jobs repository
-vi.mock("../repositories/jobs.js", () => ({
+vi.mock("../repositories/jobs", () => ({
   updateJob: vi.fn(),
   getUnscoredDiscoveredJobs: vi.fn(),
   getJobById: vi.fn(),
@@ -29,25 +29,25 @@ vi.mock("../repositories/jobs.js", () => ({
 }));
 
 // Mock other dependencies to prevent side effects
-vi.mock("../repositories/pipeline.js", () => ({
+vi.mock("../repositories/pipeline", () => ({
   createPipelineRun: vi.fn(() => ({ id: "test-run-id" })),
   updatePipelineRun: vi.fn(),
 }));
 
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockResolvedValue(null),
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("../services/crawler.js", () => ({
+vi.mock("../services/crawler", () => ({
   runCrawler: vi.fn(() => ({ success: true, jobs: [] })),
 }));
 
-vi.mock("../services/jobspy.js", () => ({
+vi.mock("../services/jobspy", () => ({
   runJobSpy: vi.fn(() => ({ success: true, jobs: [] })),
 }));
 
-vi.mock("../services/ukvisajobs.js", () => ({
+vi.mock("../services/ukvisajobs", () => ({
   runUkVisaJobs: vi.fn(() => ({ success: true, jobs: [] })),
 }));
 
@@ -129,9 +129,9 @@ describe("Sponsor Match Calculation", () => {
     vi.clearAllMocks();
 
     // Get mocked functions
-    const visaSponsors = await import("../services/visa-sponsors/index.js");
-    const scorer = await import("../services/scorer.js");
-    const jobsRepo = await import("../repositories/jobs.js");
+    const visaSponsors = await import("../services/visa-sponsors/index");
+    const scorer = await import("../services/scorer");
+    const jobsRepo = await import("../repositories/jobs");
 
     searchSponsors = visaSponsors.searchSponsors as ReturnType<typeof vi.fn>;
     calculateSponsorMatchSummary =
@@ -184,7 +184,7 @@ describe("Sponsor Match Calculation", () => {
       ]);
 
       // Import and run pipeline
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // Verify searchSponsors was called with correct parameters
@@ -228,7 +228,7 @@ describe("Sponsor Match Calculation", () => {
         },
       ]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // Should include up to 2 perfect matches
@@ -262,7 +262,7 @@ describe("Sponsor Match Calculation", () => {
         },
       ]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // Should only include the top match since none are 100%
@@ -282,7 +282,7 @@ describe("Sponsor Match Calculation", () => {
       // Mock sponsor search returning no matches
       searchSponsors.mockReturnValue([]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // sponsorMatchScore should be 0 (not set) and sponsorMatchNames undefined
@@ -305,7 +305,7 @@ describe("Sponsor Match Calculation", () => {
       const mockJob = createMockJob({ employer: null as unknown as string });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // searchSponsors should not be called
@@ -325,7 +325,7 @@ describe("Sponsor Match Calculation", () => {
       const mockJob = createMockJob({ employer: "" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // searchSponsors should not be called for empty string
@@ -339,7 +339,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
       searchSponsors.mockReturnValue([]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       expect(searchSponsors).toHaveBeenCalledWith("Test Company", {
@@ -360,7 +360,7 @@ describe("Sponsor Match Calculation", () => {
         },
       ]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // Single perfect match should be reported
@@ -402,7 +402,7 @@ describe("Sponsor Match Calculation", () => {
           },
         ]);
 
-      const { runPipeline } = await import("./orchestrator.js");
+      const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
 
       // Verify both jobs were processed with different sponsor data

@@ -1,5 +1,5 @@
-import type { SettingKey } from "@server/repositories/settings.js";
-import * as settingsRepo from "@server/repositories/settings.js";
+import type { SettingKey } from "@server/repositories/settings";
+import * as settingsRepo from "@server/repositories/settings";
 
 const envDefaults: Record<string, string | undefined> = { ...process.env };
 

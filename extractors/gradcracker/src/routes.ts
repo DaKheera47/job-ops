@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createPlaywrightRouter, log } from "crawlee";
-import { markJobPageDone, markListPageDone } from "./progress.js";
+import { markJobPageDone, markListPageDone } from "./progress";
 
 function normalizeUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;

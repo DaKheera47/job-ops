@@ -1,6 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import { describe, expect, it } from "vitest";
-import { idSchema, resumeDataSchema, skillSchema } from "./rxresume-schema.js";
+import { idSchema, resumeDataSchema, skillSchema } from "./rxresume-schema";
 
 describe("RxResume Schema Validation", () => {
   describe("idSchema (CUID2)", () => {

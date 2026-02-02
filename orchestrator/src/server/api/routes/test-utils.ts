@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { vi } from "vitest";
 
-vi.mock("../../pipeline/index.js", () => {
+vi.mock("../../pipeline/index", () => {
   const progress = {
     step: "idle",
     message: "Ready",
@@ -37,27 +37,27 @@ vi.mock("../../pipeline/index.js", () => {
   };
 });
 
-vi.mock("../../services/notion.js", () => ({
+vi.mock("../../services/notion", () => ({
   createNotionEntry: vi.fn(),
 }));
 
-vi.mock("../../services/manualJob.js", () => ({
+vi.mock("../../services/manualJob", () => ({
   inferManualJobDetails: vi.fn(),
 }));
 
-vi.mock("../../services/scorer.js", () => ({
+vi.mock("../../services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("../../services/profile.js", () => ({
+vi.mock("../../services/profile", () => ({
   getProfile: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("../../services/ukvisajobs.js", () => ({
+vi.mock("../../services/ukvisajobs", () => ({
   fetchUkVisaJobsPage: vi.fn(),
 }));
 
-vi.mock("../../services/visa-sponsors/index.js", () => ({
+vi.mock("../../services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),
   getOrganizationDetails: vi.fn(),
@@ -96,13 +96,13 @@ export async function startServer(options?: {
     ...envOverrides,
   };
 
-  await import("../../db/migrate.js");
+  await import("../../db/migrate");
   const { applyStoredEnvOverrides } = await import(
-    "../../services/envSettings.js"
+    "../../services/envSettings"
   );
-  const { createApp } = await import("../../app.js");
-  const { closeDb } = await import("../../db/index.js");
-  const { getPipelineStatus } = await import("../../pipeline/index.js");
+  const { createApp } = await import("../../app");
+  const { closeDb } = await import("../../db/index");
+  const { getPipelineStatus } = await import("../../pipeline/index");
   vi.mocked(getPipelineStatus).mockReturnValue({ isRunning: false });
 
   await applyStoredEnvOverrides();

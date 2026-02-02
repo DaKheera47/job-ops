@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { parseJsonFromContent } from "./scorer.js";
+import { parseJsonFromContent } from "./scorer";
 
 describe("parseJsonFromContent", () => {
   describe("valid JSON inputs", () => {

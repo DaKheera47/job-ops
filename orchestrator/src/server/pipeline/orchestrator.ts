@@ -8,26 +8,26 @@
  */
 
 import { join } from "node:path";
-import type { CreateJobInput, Job, PipelineConfig } from "@shared/types.js";
-import { getDataDir } from "../config/dataDir.js";
-import * as jobsRepo from "../repositories/jobs.js";
-import * as pipelineRepo from "../repositories/pipeline.js";
-import * as settingsRepo from "../repositories/settings.js";
-import { getSetting } from "../repositories/settings.js";
-import { runCrawler } from "../services/crawler.js";
-import { runJobSpy } from "../services/jobspy.js";
-import { generatePdf } from "../services/pdf.js";
-import { getProfile } from "../services/profile.js";
-import { pickProjectIdsForJob } from "../services/projectSelection.js";
+import type { CreateJobInput, Job, PipelineConfig } from "@shared/types";
+import { getDataDir } from "../config/dataDir";
+import * as jobsRepo from "../repositories/jobs";
+import * as pipelineRepo from "../repositories/pipeline";
+import * as settingsRepo from "../repositories/settings";
+import { getSetting } from "../repositories/settings";
+import { runCrawler } from "../services/crawler";
+import { runJobSpy } from "../services/jobspy";
+import { generatePdf } from "../services/pdf";
+import { getProfile } from "../services/profile";
+import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
-} from "../services/resumeProjects.js";
-import { scoreJobSuitability } from "../services/scorer.js";
-import { generateTailoring } from "../services/summary.js";
-import { runUkVisaJobs } from "../services/ukvisajobs.js";
-import * as visaSponsors from "../services/visa-sponsors/index.js";
-import { progressHelpers, resetProgress, updateProgress } from "./progress.js";
+} from "../services/resumeProjects";
+import { scoreJobSuitability } from "../services/scorer";
+import { generateTailoring } from "../services/summary";
+import { runUkVisaJobs } from "../services/ukvisajobs";
+import * as visaSponsors from "../services/visa-sponsors/index";
+import { progressHelpers, resetProgress, updateProgress } from "./progress";
 
 const DEFAULT_CONFIG: PipelineConfig = {
   topN: 10,

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Backup API routes", () => {
   let server: Server;

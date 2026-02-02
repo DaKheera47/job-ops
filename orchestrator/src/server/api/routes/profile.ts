@@ -1,11 +1,11 @@
 import { type Request, type Response, Router } from "express";
-import { getSetting } from "../../repositories/settings.js";
-import { clearProfileCache, getProfile } from "../../services/profile.js";
-import { extractProjectsFromProfile } from "../../services/resumeProjects.js";
+import { getSetting } from "../../repositories/settings";
+import { clearProfileCache, getProfile } from "../../services/profile";
+import { extractProjectsFromProfile } from "../../services/resumeProjects";
 import {
   getResume,
   RxResumeCredentialsError,
-} from "../../services/rxresume-v4.js";
+} from "../../services/rxresume-v4";
 
 export const profileRouter = Router();
 

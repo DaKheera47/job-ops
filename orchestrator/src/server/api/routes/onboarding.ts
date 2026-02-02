@@ -1,11 +1,11 @@
-import { getSetting } from "@server/repositories/settings.js";
-import { LlmService } from "@server/services/llm-service.js";
-import { RxResumeClient } from "@server/services/rxresume-client.js";
+import { getSetting } from "@server/repositories/settings";
+import { LlmService } from "@server/services/llm-service";
+import { RxResumeClient } from "@server/services/rxresume-client";
 import {
   getResume,
   RxResumeCredentialsError,
-} from "@server/services/rxresume-v4.js";
-import { resumeDataSchema } from "@shared/rxresume-schema.js";
+} from "@server/services/rxresume-v4";
+import { resumeDataSchema } from "@shared/rxresume-schema";
 import { type Request, type Response, Router } from "express";
 
 export const onboardingRouter = Router();

@@ -1,4 +1,4 @@
-import type { Job, JobSource } from "@shared/types.js";
+import type { Job, JobSource } from "@shared/types";
 import { useMemo } from "react";
 import type { FilterTab, JobSort } from "./constants";
 import { compareJobs, jobMatchesQuery } from "./utils";

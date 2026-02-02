@@ -30,7 +30,7 @@ import type {
   VisaSponsor,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
-} from "@shared/types.js";
+} from "@shared/types";
 import { trackEvent } from "@/lib/analytics";
 
 const API_BASE = "/api";

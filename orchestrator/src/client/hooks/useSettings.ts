@@ -1,4 +1,4 @@
-import type { AppSettings } from "@shared/types.js";
+import type { AppSettings } from "@shared/types";
 import { useEffect, useState } from "react";
 import * as api from "../api";
 

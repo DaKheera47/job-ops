@@ -2,9 +2,9 @@
  * Service for scoring job suitability using AI.
  */
 
-import type { Job } from "@shared/types.js";
-import { getSetting } from "../repositories/settings.js";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
+import type { Job } from "@shared/types";
+import { getSetting } from "../repositories/settings";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service";
 
 interface SuitabilityResult {
   score: number; // 0-100

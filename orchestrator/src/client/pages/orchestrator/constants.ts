@@ -1,4 +1,4 @@
-import type { JobSource, JobStatus } from "@shared/types.js";
+import type { JobSource, JobStatus } from "@shared/types";
 
 export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
   "gradcracker",

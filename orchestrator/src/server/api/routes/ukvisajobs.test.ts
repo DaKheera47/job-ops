@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("UK Visa Jobs API routes", () => {
   let server: Server;
@@ -26,9 +26,7 @@ describe.sequential("UK Visa Jobs API routes", () => {
   });
 
   it("searches UK Visa Jobs with valid payloads", async () => {
-    const { fetchUkVisaJobsPage } = await import(
-      "../../services/ukvisajobs.js"
-    );
+    const { fetchUkVisaJobsPage } = await import("../../services/ukvisajobs");
     vi.mocked(fetchUkVisaJobsPage).mockResolvedValue({
       jobs: [
         {
@@ -58,7 +56,7 @@ describe.sequential("UK Visa Jobs API routes", () => {
   });
 
   it("blocks search when pipeline is running", async () => {
-    const { getPipelineStatus } = await import("../../pipeline/index.js");
+    const { getPipelineStatus } = await import("../../pipeline/index");
     vi.mocked(getPipelineStatus).mockReturnValue({ isRunning: true });
 
     const res = await fetch(`${baseUrl}/api/ukvisajobs/search`, {

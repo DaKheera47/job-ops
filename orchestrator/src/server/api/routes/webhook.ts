@@ -1,5 +1,5 @@
 import { type Request, type Response, Router } from "express";
-import { runPipeline } from "../../pipeline/index.js";
+import { runPipeline } from "../../pipeline/index";
 
 export const webhookRouter = Router();
 

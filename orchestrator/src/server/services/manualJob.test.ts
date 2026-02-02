@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as settingsRepo from "../repositories/settings.js";
-import { inferManualJobDetails } from "./manualJob.js";
+import * as settingsRepo from "../repositories/settings";
+import { inferManualJobDetails } from "./manualJob";
 
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn(),
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));

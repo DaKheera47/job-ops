@@ -8,9 +8,9 @@ import type {
   Job,
   JobStatus,
   UpdateJobInput,
-} from "@shared/types.js";
+} from "@shared/types";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
+import { db, schema } from "../db/index";
 
 const { jobs } = schema;
 

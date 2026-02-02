@@ -7,10 +7,11 @@
     "shared"
   ],
   "scripts": {
-    "build:shared": "npm --workspace shared run build",
-    "build:orchestrator": "npm --workspace orchestrator run build",
-    "build:ukvisajobs": "npm --workspace ukvisajobs-extractor run build",
-    "build:gradcracker": "npm --workspace gradcracker-extractor run build",
-    "build": "npm run build:shared && npm run build:orchestrator"
+    "check:types": "npm --workspace shared run check:types && npm --workspace orchestrator run check:types",
+    "check:types:ukvisajobs": "npm --workspace ukvisajobs-extractor run check:types",
+    "check:types:gradcracker": "npm --workspace gradcracker-extractor run check:types"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
   }
 }

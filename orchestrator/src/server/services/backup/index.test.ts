@@ -3,14 +3,14 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as backup from "./index.js";
+import * as backup from "./index";
 
 // Mock the dataDir module
-vi.mock("../../config/dataDir.js", () => ({
+vi.mock("../../config/dataDir", () => ({
   getDataDir: vi.fn(),
 }));
 
-import { getDataDir } from "../../config/dataDir.js";
+import { getDataDir } from "../../config/dataDir";
 
 describe("Backup Service", () => {
   let tempDir: string;

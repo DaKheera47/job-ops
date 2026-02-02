@@ -7,7 +7,7 @@ import {
   type JsonSchemaDefinition,
   LlmService,
   parseJsonContent,
-} from "./llm-service.js";
+} from "./llm-service";
 
 const originalFetch = global.fetch;
 

@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Database API routes", () => {
   let server: Server;
@@ -17,7 +17,7 @@ describe.sequential("Database API routes", () => {
   });
 
   it("clears jobs and pipeline runs", async () => {
-    const { createJob } = await import("../../repositories/jobs.js");
+    const { createJob } = await import("../../repositories/jobs");
     await createJob({
       source: "manual",
       title: "Cleanup Role",
