@@ -108,7 +108,7 @@
         "Component displays effective vs default values for both settings",
         "Component follows same styling patterns as DisplaySettingsSection.tsx"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ui-integration-1",

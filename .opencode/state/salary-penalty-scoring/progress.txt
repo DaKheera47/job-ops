@@ -85,3 +85,20 @@ Started: 2026-02-02
 - Files changed:
   - orchestrator/src/server/services/scorer.ts
 - **Learnings:** When making a function async, must update all call sites to await. Rather than fetching settings inside mockScore(), passed them as parameters since they're already fetched in scoreJobSuitability(). This avoids redundant database queries and keeps mockScore() testable without database dependencies.
+
+## Task - ui-component-1
+- Created ScoringSettingsSection.tsx component in orchestrator/src/client/pages/settings/components/
+  - Component renders AccordionItem with value='scoring'
+  - Uses Calculator icon from lucide-react in trigger alongside "Scoring Settings" heading
+  - Checkbox bound to penalizeMissingSalary field using react-hook-form Controller
+  - Number input bound to missingSalaryPenalty field using SettingsInput component
+  - Number input disabled when checkbox unchecked (using watch() to observe form state)
+  - Input validation: min=0, max=100, placeholder shows default (10), onChange clamps values to range
+  - Displays effective vs default values at bottom for both settings
+  - Follows styling patterns from DisplaySettingsSection and BackupSettingsSection
+- Added ScoringValues type to orchestrator/src/client/pages/settings/types.ts:52-55
+  - Contains penalizeMissingSalary and missingSalaryPenalty, both as EffectiveDefault<T> types
+- Files changed:
+  - orchestrator/src/client/pages/settings/components/ScoringSettingsSection.tsx (new file)
+  - orchestrator/src/client/pages/settings/types.ts
+- **Learnings:** UI settings sections follow consistent pattern: AccordionItem wrapper, Controller for form binding, conditional rendering with watch() for dependent fields, SettingsInput for number inputs with validation/clamping, Separator before effective/default display. The watch() hook from react-hook-form enables conditional UI without lifting state.
