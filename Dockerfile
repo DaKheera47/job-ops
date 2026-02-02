@@ -42,6 +42,10 @@ RUN --mount=type=cache,target=/root/.npm \
     npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
 
+# Fetch Camoufox binaries - do this before copying source code to cache the download
+# Even if source changes, this layer remains cached.
+RUN npx camoufox-js fetch
+
 # Copy source code
 WORKDIR /app
 COPY shared ./shared
@@ -49,10 +53,6 @@ COPY orchestrator ./orchestrator
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
-
-# Fetch Camoufox binaries after source is copied
-WORKDIR /app/extractors/gradcracker
-RUN npx camoufox-js fetch
 
 # Build client bundle
 WORKDIR /app/orchestrator
@@ -106,9 +106,8 @@ COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 
-# Fetch Camoufox binaries in production stage
-WORKDIR /app/extractors/gradcracker
-RUN npx camoufox-js fetch
+# Reuse Camoufox binaries from builder instead of fetching again
+COPY --from=builder /root/.cache/camoufox /root/.cache/camoufox
 
 WORKDIR /app
 # Create data directory
