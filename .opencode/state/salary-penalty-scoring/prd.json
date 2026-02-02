@@ -1,0 +1,211 @@
+{
+  "prdName": "salary-penalty-scoring",
+  "tasks": [
+    {
+      "id": "types-1",
+      "category": "types",
+      "description": "Add salary penalty settings to TypeScript types",
+      "steps": [
+        "AppSettings interface in orchestrator/src/shared/types.ts includes penalizeMissingSalary (effective boolean)",
+        "AppSettings interface includes defaultPenalizeMissingSalary (boolean)",
+        "AppSettings interface includes overridePenalizeMissingSalary (boolean | null)",
+        "AppSettings interface includes missingSalaryPenalty (effective number)",
+        "AppSettings interface includes defaultMissingSalaryPenalty (number)",
+        "AppSettings interface includes overrideMissingSalaryPenalty (number | null)",
+        "TypeScript compilation succeeds with new types (npm run build in orchestrator)"
+      ],
+      "passes": true
+    },
+    {
+      "id": "schema-1",
+      "category": "schema",
+      "description": "Add Zod validation schema for salary penalty settings",
+      "steps": [
+        "updateSettingsSchema in orchestrator/src/shared/settings-schema.ts includes penalizeMissingSalary: z.boolean().nullable().optional()",
+        "updateSettingsSchema includes missingSalaryPenalty: z.number().int().min(0).max(100).nullable().optional()",
+        "Schema validation rejects penalty values < 0",
+        "Schema validation rejects penalty values > 100",
+        "Schema validation accepts null for both fields"
+      ],
+      "passes": false
+    },
+    {
+      "id": "backend-settings-1",
+      "category": "backend",
+      "description": "Implement backend settings service for salary penalty",
+      "steps": [
+        "getEffectiveSettings() in orchestrator/src/server/services/settings.ts returns defaultPenalizeMissingSalary: false",
+        "getEffectiveSettings() returns defaultMissingSalaryPenalty: 10",
+        "getEffectiveSettings() returns penalizeMissingSalary: false when no override exists",
+        "getEffectiveSettings() returns missingSalaryPenalty: 10 when no override exists",
+        "Environment variable PENALIZE_MISSING_SALARY=true overrides default to penalizeMissingSalary: true",
+        "Environment variable MISSING_SALARY_PENALTY=25 overrides default to missingSalaryPenalty: 25",
+        "Database override for penalizeMissingSalary takes precedence over environment variable",
+        "Database override for missingSalaryPenalty takes precedence over environment variable",
+        "GET /api/settings returns all 6 new fields in response"
+      ],
+      "passes": false
+    },
+    {
+      "id": "backend-settings-2",
+      "category": "backend",
+      "description": "Add environment variable support for salary penalty settings",
+      "steps": [
+        "readableBooleanConfig in orchestrator/src/server/services/envSettings.ts includes penalizeMissingSalary entry",
+        "readableBooleanConfig penalizeMissingSalary has defaultValue: false",
+        "envSettings.ts includes support for PENALIZE_MISSING_SALARY env var",
+        "envSettings.ts includes support for MISSING_SALARY_PENALTY env var (parsed as integer)",
+        "applyStoredEnvOverrides() applies boolean setting to process.env.PENALIZE_MISSING_SALARY"
+      ],
+      "passes": false
+    },
+    {
+      "id": "scoring-1",
+      "category": "scoring",
+      "description": "Apply salary penalty in LLM scoring path",
+      "steps": [
+        "scoreJobSuitability() in orchestrator/src/server/services/scorer.ts fetches penalizeMissingSalary setting",
+        "scoreJobSuitability() fetches missingSalaryPenalty setting",
+        "After LLM returns score, function checks if penalizeMissingSalary is enabled",
+        "If enabled AND job.salary is null/undefined/empty/whitespace, penalty is subtracted",
+        "Final score is clamped to 0-100 range: Math.max(0, aiScore - penalty)",
+        "Penalty NOT applied when penalizeMissingSalary is false",
+        "Penalty NOT applied when job.salary contains non-whitespace text (e.g. 'Competitive')",
+        "Test with job.salary=null and penalty=10: score 50 becomes 40",
+        "Test with job.salary='  ' and penalty=10: score 50 becomes 40",
+        "Test with job.salary='$50k' and penalty=10: score 50 remains 50"
+      ],
+      "passes": false
+    },
+    {
+      "id": "scoring-2",
+      "category": "scoring",
+      "description": "Apply salary penalty in mock scoring fallback",
+      "steps": [
+        "mockScore() in orchestrator/src/server/services/scorer.ts is changed to async function",
+        "mockScore() fetches penalizeMissingSalary and missingSalaryPenalty settings",
+        "mockScore() applies same penalty logic as LLM path (if enabled AND !job.salary?.trim())",
+        "mockScore() clamps final score to 0-100 range",
+        "Call site in scoreJobSuitability() updated to await mockScore(job)",
+        "Test mock scoring with job.salary=null and penalty=10: score reduced by 10",
+        "Test mock scoring with job.salary='$60k' and penalty=10: no penalty applied"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ui-component-1",
+      "category": "ui",
+      "description": "Create ScoringSettingsSection component",
+      "steps": [
+        "New file created: orchestrator/src/client/pages/settings/components/ScoringSettingsSection.tsx",
+        "Component renders AccordionItem with value='scoring'",
+        "Component renders Calculator icon (lucide-react) in trigger",
+        "Component renders checkbox bound to penalizeMissingSalary field",
+        "Component renders number input bound to missingSalaryPenalty field",
+        "Number input is disabled (greyed out) when checkbox is unchecked",
+        "Number input has min=0 and max=100 attributes",
+        "Number input placeholder shows default value (10)",
+        "Component displays effective vs default values for both settings",
+        "Component follows same styling patterns as DisplaySettingsSection.tsx"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ui-integration-1",
+      "category": "ui",
+      "description": "Integrate ScoringSettingsSection into SettingsPage",
+      "steps": [
+        "orchestrator/src/client/pages/SettingsPage.tsx imports ScoringSettingsSection",
+        "DEFAULT_FORM_VALUES includes penalizeMissingSalary: null",
+        "DEFAULT_FORM_VALUES includes missingSalaryPenalty: null",
+        "NULL_SETTINGS_PAYLOAD includes penalizeMissingSalary: null",
+        "NULL_SETTINGS_PAYLOAD includes missingSalaryPenalty: null",
+        "mapSettingsToForm() includes penalizeMissingSalary: data.overridePenalizeMissingSalary",
+        "mapSettingsToForm() includes missingSalaryPenalty: data.overrideMissingSalaryPenalty",
+        "getDerivedSettings() includes scoring object with penalizeMissingSalary effective/default",
+        "getDerivedSettings() includes scoring object with missingSalaryPenalty effective/default",
+        "Component destructures scoring from derived",
+        "ScoringSettingsSection rendered in accordion between DisplaySettingsSection and EnvironmentSettingsSection",
+        "onSave() payload includes penalizeMissingSalary with nullIfSame() normalization",
+        "onSave() payload includes missingSalaryPenalty with nullIfSame() normalization"
+      ],
+      "passes": false
+    },
+    {
+      "id": "ui-validation-1",
+      "category": "ui",
+      "description": "Add form validation for penalty settings",
+      "steps": [
+        "Form validation displays error for missingSalaryPenalty < 0",
+        "Form validation displays error for missingSalaryPenalty > 100",
+        "Form validation displays error for non-integer missingSalaryPenalty values",
+        "Save button is disabled when validation errors exist",
+        "Error message appears below number input when invalid value entered"
+      ],
+      "passes": false
+    },
+    {
+      "id": "persistence-1",
+      "category": "persistence",
+      "description": "Verify settings persistence and API integration",
+      "steps": [
+        "PATCH /api/settings accepts penalizeMissingSalary field",
+        "PATCH /api/settings accepts missingSalaryPenalty field",
+        "GET /api/settings returns penalizeMissingSalary in response",
+        "GET /api/settings returns missingSalaryPenalty in response",
+        "Settings repository stores penalizeMissingSalary as 'true'/'false'/null in database",
+        "Settings repository stores missingSalaryPenalty as '0'-'100'/null in database",
+        "Settings persist across page refreshes",
+        "Reset to default button clears both overrides (sets to null)",
+        "After reset, effective values return to defaults (false, 10)"
+      ],
+      "passes": false
+    },
+    {
+      "id": "integration-1",
+      "category": "integration",
+      "description": "End-to-end integration testing",
+      "steps": [
+        "Start orchestrator in dev mode (npm run dev)",
+        "Navigate to /settings in browser",
+        "Open Scoring accordion section",
+        "Enable salary penalty checkbox",
+        "Set penalty to 15 points",
+        "Click Save button",
+        "Verify success toast appears",
+        "Refresh page and verify settings persist",
+        "Verify GET /api/settings shows penalizeMissingSalary: true and missingSalaryPenalty: 15",
+        "Run scoring on a job with no salary and verify penalty applied",
+        "Run scoring on a job with salary and verify no penalty applied",
+        "Disable penalty checkbox and save",
+        "Verify penalty no longer applied to jobs without salary"
+      ],
+      "passes": false
+    }
+  ],
+  "context": {
+    "patterns": [
+      "Settings architecture (3-tier override system): orchestrator/src/server/services/settings.ts:14-226",
+      "Boolean settings with env var support: orchestrator/src/server/services/envSettings.ts:14-18 (readableBooleanConfig)",
+      "Settings UI sections: orchestrator/src/client/pages/settings/components/DisplaySettingsSection.tsx",
+      "Score calculation: orchestrator/src/server/services/scorer.ts:38-88"
+    ],
+    "keyFiles": [
+      "orchestrator/src/shared/types.ts:474-558",
+      "orchestrator/src/shared/settings-schema.ts",
+      "orchestrator/src/server/services/settings.ts",
+      "orchestrator/src/server/services/envSettings.ts",
+      "orchestrator/src/server/services/scorer.ts",
+      "orchestrator/src/server/repositories/settings.ts",
+      "orchestrator/src/client/pages/SettingsPage.tsx",
+      "orchestrator/src/client/pages/settings/components/DisplaySettingsSection.tsx"
+    ],
+    "nonGoals": [
+      "Retroactive re-scoring of already-scored jobs",
+      "Structured salary validation (checking salaryMinAmount/salaryMaxAmount fields)",
+      "Penalty for vague salary text like 'Competitive salary' or 'DOE'",
+      "Per-source penalty settings (different penalties for Indeed vs Gradcracker)",
+      "Salary range requirements (penalize if salary < $X)"
+    ]
+  }
+}

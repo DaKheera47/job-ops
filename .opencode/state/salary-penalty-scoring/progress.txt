@@ -1,0 +1,20 @@
+# Progress Log
+PRD: salary-penalty-scoring
+Started: 2026-02-02
+
+## Codebase Patterns
+- **3-tier override system**: Every setting has 3 fields: `effective` (resolved value), `default` (hardcoded fallback), `override` (nullable user/env override). Pattern seen in types.ts:474-558.
+- **Boolean settings naming**: `someSetting`, `defaultSomeSetting`, `overrideSomeSetting` with types `boolean`, `boolean`, `boolean | null`
+- **Number settings naming**: Same pattern but with `number`, `number`, `number | null`
+
+---
+
+## Task - types-1
+- Added 6 new fields to AppSettings interface in orchestrator/src/shared/types.ts:555-563
+  - penalizeMissingSalary, defaultPenalizeMissingSalary, overridePenalizeMissingSalary (boolean types)
+  - missingSalaryPenalty, defaultMissingSalaryPenalty, overrideMissingSalaryPenalty (number types)
+- Updated test mock in orchestrator/src/client/pages/SettingsPage.test.tsx:124-133 to include new fields
+- Files changed: 
+  - orchestrator/src/shared/types.ts
+  - orchestrator/src/client/pages/SettingsPage.test.tsx
+- **Learnings:** When adding new required fields to AppSettings interface, must also update all test mocks that create mock AppSettings objects. TypeScript compilation will catch missing fields in tests.

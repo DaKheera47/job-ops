@@ -1,0 +1,37 @@
+# Progress Log
+PRD: salary-display
+Started: 2026-02-02
+
+## Codebase Patterns
+<!-- Consolidate reusable patterns here -->
+- Conditional metadata rendering: Use `job.field && <span>` pattern for optional fields
+- Tailwind styling: `text-xs text-muted-foreground mt-0.5` for secondary metadata lines
+- Truncation: Use `truncate` class for single-line text overflow
+
+---
+<!-- Task logs below - APPEND ONLY -->
+
+## Task - ui-1
+- Added third line to JobListPanel job items displaying salary or "Salary not listed" fallback
+- Files changed: orchestrator/src/client/pages/orchestrator/JobListPanel.tsx:92-94
+- **Learnings:** Used consistent `text-xs text-muted-foreground mt-0.5` styling pattern. The `job.salary || "Salary not listed"` pattern ensures fallback display when salary is null or empty.
+
+## Task - ui-2
+- Verified salary displays correctly in all preview panes using JobHeader component
+- JobHeader already implemented with salary display at lines 247-252 with DollarSign icon
+- Confirmed JobHeader usage in DecideMode (line 55), ReadyPanel (lines 261-268), and JobDetailPanel (lines 308-314)
+- Files verified: orchestrator/src/client/components/JobHeader.tsx, orchestrator/src/client/components/discovered-panel/DecideMode.tsx, orchestrator/src/client/components/ReadyPanel.tsx, orchestrator/src/client/pages/orchestrator/JobDetailPanel.tsx
+- **Learnings:** JobHeader provides consistent salary rendering across all preview contexts. Salary uses same conditional rendering pattern as location/deadline with `job.salary && <span>` and DollarSign icon. Tests confirm salary rendering works correctly (JobHeader.test.tsx:67).
+
+## Task - testing-1
+- Added comprehensive test suite for salary display edge cases and layout quality
+- Files changed: orchestrator/src/client/pages/orchestrator/JobListPanel.test.tsx
+- Tests added:
+  - Salary display with valid data
+  - Fallback text for null salary
+  - Fallback text for empty string salary
+  - Very long salary strings with truncation verification
+  - Consistent layout with/without salary data
+  - No visual regressions in other UI elements (status dot, title, employer, score)
+- All tests passing (10/10 tests in JobListPanel.test.tsx)
+- **Learnings:** Testing edge cases requires checking both rendering and styling (classList checks for truncate). The `screen.getByText` matcher with a function allows flexible element matching for CSS class verification. Tests confirm the `truncate` class prevents overflow for long strings, and fallback text displays correctly for null/empty values.
