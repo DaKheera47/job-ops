@@ -27,7 +27,7 @@
         "Select a job without salary data and verify JobHeader shows salary appropriately",
         "Verify salary formatting is consistent between list view and preview panes"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "testing-1",
