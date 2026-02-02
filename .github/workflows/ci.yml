@@ -67,11 +67,11 @@ jobs:
         run: npm run check:types:shared
         working-directory: .
 
-      - name: Type Check (orchestrator only)
-        if: matrix.project == 'orchestrator'
-        run: npm --workspace orchestrator run check:types
+      - name: Type Check ${{ matrix.project }}
+        run: npm --workspace ${{ matrix.project }} run check:types
         working-directory: .
 
-      - name: Build ${{ matrix.project }}
-        run: npm --workspace ${{ matrix.project }} run build
+      - name: Build ${{ matrix.project }} (client)
+        if: matrix.project == 'orchestrator'
+        run: npm --workspace orchestrator run build:client
         working-directory: .
