@@ -83,7 +83,7 @@ export async function scoreJobSuitability(
     console.error(
       `❌ [Job ${job.id}] Scoring failed: ${result.error}, using mock scoring`,
     );
-    return mockScore(job);
+    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
   }
 
   const { score, reason } = result.data;
@@ -93,7 +93,7 @@ export async function scoreJobSuitability(
     console.error(
       `❌ [Job ${job.id}] Invalid score in response, using mock scoring`,
     );
-    return mockScore(job);
+    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
   }
 
   // Apply salary penalty if enabled and salary is missing/whitespace
@@ -249,7 +249,11 @@ EXAMPLE VALID RESPONSE:
 {"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}`;
 }
 
-function mockScore(job: Job): SuitabilityResult {
+async function mockScore(
+  job: Job,
+  penalizeMissingSalary: boolean,
+  missingSalaryPenalty: number,
+): Promise<SuitabilityResult> {
   // Simple keyword-based scoring as fallback
   const jd = (job.jobDescription || "").toLowerCase();
   const title = job.title.toLowerCase();
@@ -284,6 +288,11 @@ function mockScore(job: Job): SuitabilityResult {
 
   for (const kw of badKeywords) {
     if (jd.includes(kw) || title.includes(kw)) score -= 10;
+  }
+
+  // Apply salary penalty if enabled and salary is missing/whitespace
+  if (penalizeMissingSalary && !job.salary?.trim()) {
+    score = Math.max(0, score - missingSalaryPenalty);
   }
 
   score = Math.min(100, Math.max(0, score));

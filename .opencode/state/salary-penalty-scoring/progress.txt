@@ -73,3 +73,15 @@ Started: 2026-02-02
 - Files changed:
   - orchestrator/src/server/services/scorer.ts
 - **Learnings:** Settings fetched from database via getSetting() return string values that need parsing. Boolean settings stored as "true"/"1" for true, need explicit comparison. The `!job.salary?.trim()` pattern checks for null/undefined/empty/whitespace in one expression. Penalty applied after LLM scoring but before final return, only affects jobs with missing salary when enabled.
+
+## Task - scoring-2
+- Made mockScore() async and updated to apply salary penalty in orchestrator/src/server/services/scorer.ts:252-303
+  - Changed function signature to accept penalizeMissingSalary (boolean) and missingSalaryPenalty (number) parameters
+  - Changed return type to Promise<SuitabilityResult> to make it async
+  - Added penalty logic after keyword scoring: `if (penalizeMissingSalary && !job.salary?.trim())` applies penalty (line 294)
+  - Penalty is applied before final clamping: `score = Math.max(0, score - missingSalaryPenalty)` (line 295)
+  - Final score still clamped to 0-100 range (line 298)
+- Updated both mockScore() call sites in scoreJobSuitability() to await and pass penalty parameters (lines 86, 96)
+- Files changed:
+  - orchestrator/src/server/services/scorer.ts
+- **Learnings:** When making a function async, must update all call sites to await. Rather than fetching settings inside mockScore(), passed them as parameters since they're already fetched in scoreJobSuitability(). This avoids redundant database queries and keeps mockScore() testable without database dependencies.

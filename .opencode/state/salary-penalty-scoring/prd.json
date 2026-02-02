@@ -90,7 +90,7 @@
         "Test mock scoring with job.salary=null and penalty=10: score reduced by 10",
         "Test mock scoring with job.salary='$60k' and penalty=10: no penalty applied"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "ui-component-1",
