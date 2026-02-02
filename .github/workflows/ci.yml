@@ -63,8 +63,8 @@ jobs:
         run: npm ci --workspaces --include-workspace-root
         working-directory: .
 
-      - name: Build shared package
-        run: npm run build:shared
+      - name: Check shared package types
+        run: npm run check:types:shared
         working-directory: .
 
       - name: Type Check (orchestrator only)
