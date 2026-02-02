@@ -43,3 +43,21 @@ npm-debug.log*
 # Documentation
 *.md
 !README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Coverage
+coverage
+.nyc_output
