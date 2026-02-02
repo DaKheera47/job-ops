@@ -21,36 +21,25 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN python3 -m playwright install firefox
 
 # ---- Node deps (copy lockfiles; cached) ----
+COPY package*.json ./
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
-WORKDIR /app/shared
+WORKDIR /app
 RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --progress=false
-
-WORKDIR /app/orchestrator
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --progress=false
-
-WORKDIR /app/extractors/gradcracker
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --progress=false
+    npm ci --workspaces --include-workspace-root --no-audit --no-fund --progress=false
 
 # Camoufox fetch (cache npm + whatever it downloads to; if it uses HOME, this helps)
 WORKDIR /app/extractors/gradcracker
 RUN --mount=type=cache,target=/root/.npm \
     npx camoufox fetch
 
-WORKDIR /app/extractors/ukvisajobs
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --no-audit --no-fund --progress=false
-
 # ---- Copy sources late (preserves dependency cache) ----
 WORKDIR /app
-COPY orchestrator ./orchestrator
 COPY shared ./shared
+COPY orchestrator ./orchestrator
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs

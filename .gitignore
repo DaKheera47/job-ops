@@ -2,6 +2,11 @@
 .env
 *.env.local
 
+# Dependencies
+node_modules/
+**/node_modules/
+**/.package-lock.json
+
 # Data directory (bind mount in Docker)
 data/
 

@@ -16,7 +16,7 @@
     "format": "biome format",
     "format:fix": "biome format --write",
     "build": "npm run build:client && npm run build:server",
-    "build:shared": "npm --prefix ../shared run build",
+    "build:shared": "npm --workspace shared run build",
     "build:server": "npm run build:shared && tsc -p tsconfig.server.json && tsc-alias -p tsconfig.server.json",
     "build:client": "vite build",
     "start": "node dist/server/index.js",
