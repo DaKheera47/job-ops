@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types";
+import type { Job } from "@shared/types.js";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";

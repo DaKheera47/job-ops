@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types";
+import type { Job } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";

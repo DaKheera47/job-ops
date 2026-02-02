@@ -7,7 +7,7 @@
  * Now includes inline tailoring mode for editing and regenerating PDFs without switching tabs.
  */
 
-import type { Job, ResumeProjectCatalogItem } from "@shared/types";
+import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import {
   CheckCircle2,
   ChevronUp,

@@ -2,7 +2,7 @@
  * Settings page helpers.
  */
 
-import type { ResumeProjectsSettings } from "@shared/types";
+import type { ResumeProjectsSettings } from "@shared/types.js";
 import { arraysEqual } from "@/lib/utils";
 
 export function resumeProjectsEqual(

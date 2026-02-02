@@ -1,4 +1,4 @@
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DEFAULT_PIPELINE_SOURCES,

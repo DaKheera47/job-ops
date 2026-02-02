@@ -3,7 +3,7 @@
  * Shows Application → Response conversion metrics including funnel, time-series, and insights.
  */
 
-import type { StageEvent } from "@shared/types";
+import type { StageEvent } from "@shared/types.js";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import {

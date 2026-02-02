@@ -3,7 +3,7 @@
  */
 
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
-import type { CreateJobInput } from "@shared/types";
+import type { CreateJobInput } from "@shared/types.js";
 import {
   Briefcase,
   Calendar,

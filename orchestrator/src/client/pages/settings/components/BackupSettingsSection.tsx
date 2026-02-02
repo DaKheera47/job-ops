@@ -1,8 +1,8 @@
 import { EmptyState, ListItem, ListPanel } from "@client/components/layout";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { BackupValues } from "@client/pages/settings/types";
-import type { UpdateSettingsInput } from "@shared/settings-schema";
-import type { BackupInfo } from "@shared/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import type { BackupInfo } from "@shared/types.js";
 import { Archive, Clock, Trash2 } from "lucide-react";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";

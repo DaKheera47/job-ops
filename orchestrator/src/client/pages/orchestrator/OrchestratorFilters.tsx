@@ -1,4 +1,4 @@
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import { ArrowUpDown, Filter, Search } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";

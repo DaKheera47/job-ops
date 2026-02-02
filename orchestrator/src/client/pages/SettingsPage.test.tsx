@@ -1,4 +1,4 @@
-import type { AppSettings } from "@shared/types";
+import type { AppSettings } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";

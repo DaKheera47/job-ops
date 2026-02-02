@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types";
+import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";

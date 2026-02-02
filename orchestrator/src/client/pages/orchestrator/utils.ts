@@ -1,4 +1,4 @@
-import type { AppSettings, Job, JobSource } from "@shared/types";
+import type { AppSettings, Job, JobSource } from "@shared/types.js";
 import type { FilterTab, JobSort } from "./constants";
 import { orderedFilterSources, orderedSources } from "./constants";
 

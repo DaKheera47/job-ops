@@ -1,4 +1,4 @@
-import type { JobStatus } from "@shared/types";
+import type { JobStatus } from "@shared/types.js";
 import type React from "react";
 import { PipelineProgress } from "../../components";
 

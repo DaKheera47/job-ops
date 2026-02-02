@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { StageEvent } from "@shared/types";
-import { STAGE_LABELS } from "@shared/types";
+import type { StageEvent } from "@shared/types.js";
+import { STAGE_LABELS } from "@shared/types.js";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";

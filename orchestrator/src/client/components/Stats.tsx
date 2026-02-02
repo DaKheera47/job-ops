@@ -2,7 +2,7 @@
  * Stats dashboard showing job counts by status.
  */
 
-import type { JobStatus } from "@shared/types";
+import type { JobStatus } from "@shared/types.js";
 import {
   CheckCircle2,
   Clock,

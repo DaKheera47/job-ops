@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "@shared/types";
+import type { Job, JobStatus } from "@shared/types.js";
 import {
   ArrowUpRight,
   Calendar,

@@ -5,7 +5,7 @@ import {
   type JobOutcome,
   STAGE_LABELS,
   type StageEvent,
-} from "@shared/types";
+} from "@shared/types.js";
 import confetti from "canvas-confetti";
 import {
   ArrowLeft,

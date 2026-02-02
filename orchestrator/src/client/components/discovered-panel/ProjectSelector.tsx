@@ -1,4 +1,4 @@
-import type { ResumeProjectCatalogItem } from "@shared/types";
+import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import { AlertTriangle } from "lucide-react";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";

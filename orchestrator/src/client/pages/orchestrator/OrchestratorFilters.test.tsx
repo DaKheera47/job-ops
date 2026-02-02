@@ -1,4 +1,4 @@
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";

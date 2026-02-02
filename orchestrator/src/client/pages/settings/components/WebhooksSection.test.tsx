@@ -1,4 +1,4 @@
-import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import { render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Accordion } from "@/components/ui/accordion";

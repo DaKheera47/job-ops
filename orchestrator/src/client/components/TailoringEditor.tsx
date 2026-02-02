@@ -1,4 +1,4 @@
-import type { Job, ResumeProjectCatalogItem } from "@shared/types";
+import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import {
   AlertTriangle,
   Check,

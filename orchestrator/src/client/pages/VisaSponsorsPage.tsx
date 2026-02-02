@@ -7,7 +7,7 @@ import type {
   VisaSponsor,
   VisaSponsorSearchResult,
   VisaSponsorStatusResponse,
-} from "@shared/types";
+} from "@shared/types.js";
 import {
   AlertCircle,
   Building2,

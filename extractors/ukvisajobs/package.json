@@ -22,7 +22,7 @@
     "start": "npm run start:dev",
     "start:prod": "node dist/main.js",
     "start:dev": "tsx src/main.ts",
-    "build": "npm --prefix ../../shared run build && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build": "npm --workspace shared run build && tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "get-binaries": "camoufox-js fetch"
   },
   "author": "",

@@ -2,7 +2,7 @@
  * Status badge component.
  */
 
-import type { JobStatus } from "@shared/types";
+import type { JobStatus } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { Badge } from "@/components/ui/badge";

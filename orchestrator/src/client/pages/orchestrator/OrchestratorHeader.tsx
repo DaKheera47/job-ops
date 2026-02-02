@@ -1,5 +1,5 @@
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import {
   ChevronDown,
   FileText,

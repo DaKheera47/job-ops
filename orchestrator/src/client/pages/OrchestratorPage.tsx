@@ -3,7 +3,7 @@
  */
 
 import { useSettings } from "@client/hooks/useSettings";
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";

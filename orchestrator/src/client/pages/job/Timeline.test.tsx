@@ -1,4 +1,4 @@
-import type { StageEvent } from "@shared/types";
+import type { StageEvent } from "@shared/types.js";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { JobTimeline } from "./Timeline";

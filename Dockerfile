@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 # Put Playwright browsers in a known cacheable location
@@ -49,7 +49,7 @@ WORKDIR /app/orchestrator
 RUN npm run build
 
 
-FROM node:20-slim AS runtime
+FROM node:22-slim AS runtime
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
 ENV PORT=3001

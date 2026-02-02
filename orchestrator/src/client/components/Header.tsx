@@ -3,7 +3,7 @@
  */
 
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
-import type { JobSource } from "@shared/types";
+import type { JobSource } from "@shared/types.js";
 import { ChevronDown, Loader2, Menu, Play, RefreshCcw } from "lucide-react";
 import React from "react";
 import { Link, useLocation } from "react-router-dom";

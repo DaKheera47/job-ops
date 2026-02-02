@@ -2,7 +2,7 @@
  * Manual job import flow (paste JD -> infer -> review -> import).
  */
 
-import type { ManualJobDraft } from "@shared/types";
+import type { ManualJobDraft } from "@shared/types.js";
 import {
   ArrowLeft,
   ClipboardPaste,

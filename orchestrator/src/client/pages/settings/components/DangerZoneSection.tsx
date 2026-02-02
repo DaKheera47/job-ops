@@ -2,7 +2,7 @@ import {
   ALL_JOB_STATUSES,
   STATUS_DESCRIPTIONS,
 } from "@client/pages/settings/constants";
-import type { JobStatus } from "@shared/types";
+import type { JobStatus } from "@shared/types.js";
 import { AlertTriangle, Trash2 } from "lucide-react";
 import type React from "react";
 import {

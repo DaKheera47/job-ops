@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types";
+import type { Job } from "@shared/types.js";
 import {
   CheckCircle2,
   Copy,

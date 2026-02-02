@@ -2,7 +2,7 @@ import {
   type ApplicationStage,
   STAGE_LABELS,
   type StageEvent,
-} from "@shared/types";
+} from "@shared/types.js";
 import {
   CheckCircle2,
   ClipboardList,

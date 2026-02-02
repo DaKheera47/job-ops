@@ -1,4 +1,4 @@
-import type { ResumeProfile } from "@shared/types";
+import type { ResumeProfile } from "@shared/types.js";
 import { useEffect, useState } from "react";
 import * as api from "../api";
 

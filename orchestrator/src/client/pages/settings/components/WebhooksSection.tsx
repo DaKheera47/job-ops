@@ -1,7 +1,7 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { WebhookValues } from "@client/pages/settings/types";
 import { formatSecretHint } from "@client/pages/settings/utils";
-import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useFormContext } from "react-hook-form";
 import {
