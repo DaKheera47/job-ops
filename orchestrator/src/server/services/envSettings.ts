@@ -15,7 +15,13 @@ const readableBooleanConfig: {
   settingKey: SettingKey;
   envKey: string;
   defaultValue: boolean;
-}[] = [];
+}[] = [
+  {
+    settingKey: "penalizeMissingSalary",
+    envKey: "PENALIZE_MISSING_SALARY",
+    defaultValue: false,
+  },
+];
 
 const privateStringConfig: {
   settingKey: SettingKey;

@@ -48,3 +48,16 @@ Started: 2026-02-02
   - orchestrator/src/server/api/routes/settings.ts
 - **Learnings:** Boolean settings stored in database as "1"/"0" strings and parsed with `=== "true" || === "1"`. Number settings stored as strings and parsed with `parseInt()` then clamped with `Math.min(max, Math.max(min, value))`. Database overrides take precedence over env vars (will be implemented in backend-settings-2).
 
+## Task - backend-settings-2
+- Added penalizeMissingSalary to readableBooleanConfig in orchestrator/src/server/services/envSettings.ts:18
+  - Entry includes settingKey, envKey (PENALIZE_MISSING_SALARY), defaultValue: false
+- Updated settings.ts to read PENALIZE_MISSING_SALARY env var in orchestrator/src/server/services/settings.ts:217-223
+  - defaultPenalizeMissingSalary now reads from process.env.PENALIZE_MISSING_SALARY (supports "1", "true", or "false"/"0")
+  - Follows same pattern as other boolean env vars (jobspyIsRemote, jobspyLinkedinFetchDescription)
+- Updated settings.ts to read MISSING_SALARY_PENALTY env var in orchestrator/src/server/services/settings.ts:226-233
+  - defaultMissingSalaryPenalty now reads from process.env.MISSING_SALARY_PENALTY
+  - Parses as integer, clamps to 0-100 range, falls back to 10 if invalid
+- Files changed:
+  - orchestrator/src/server/services/envSettings.ts
+  - orchestrator/src/server/services/settings.ts
+- **Learnings:** Boolean env vars support "1"/"true" (truthy) and "0"/"false" (falsy). When adding to readableBooleanConfig, applyStoredEnvOverrides() automatically handles applying database overrides to process.env. Number env vars parsed with parseInt() and clamped to valid range, with fallback to default value if NaN.

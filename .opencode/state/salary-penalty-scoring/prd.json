@@ -57,7 +57,7 @@
         "envSettings.ts includes support for MISSING_SALARY_PENALTY env var (parsed as integer)",
         "applyStoredEnvOverrides() applies boolean setting to process.env.PENALIZE_MISSING_SALARY"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "scoring-1",
