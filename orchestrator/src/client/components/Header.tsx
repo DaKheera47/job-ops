@@ -3,6 +3,7 @@
  */
 
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
+import type { JobSource } from "@shared/types";
 import { ChevronDown, Loader2, Menu, Play, RefreshCcw } from "lucide-react";
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -24,7 +25,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn, sourceLabel } from "@/lib/utils";
-import type { JobSource } from "../../shared/types";
 
 interface HeaderProps {
   onRunPipeline: () => void;

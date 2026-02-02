@@ -1,4 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { StageEvent } from "@shared/types";
+import { STAGE_LABELS } from "@shared/types";
 import React from "react";
 import { Controller, useForm } from "react-hook-form";
 import * as z from "zod";
@@ -22,8 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { StageEvent } from "../../shared/types";
-import { STAGE_LABELS } from "../../shared/types";
 
 const logEventSchema = z.object({
   stage: z.string(),

@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { type Request, type Response, Router } from "express";
-import { JSDOM } from "jsdom";
-import { z } from "zod";
 import type {
   ApiResponse,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
-} from "../../../shared/types.js";
+} from "@shared/types.js";
+import { type Request, type Response, Router } from "express";
+import { JSDOM } from "jsdom";
+import { z } from "zod";
 import * as jobsRepo from "../../repositories/jobs.js";
 import { inferManualJobDetails } from "../../services/manualJob.js";
 import { getProfile } from "../../services/profile.js";

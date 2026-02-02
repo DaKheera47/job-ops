@@ -1,10 +1,11 @@
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import type {
   ApiResponse,
   UkVisaJobsImportResponse,
   UkVisaJobsSearchResponse,
-} from "../../../shared/types.js";
+} from "@shared/types.js";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
+
 import { getPipelineStatus } from "../../pipeline/index.js";
 import * as jobsRepo from "../../repositories/jobs.js";
 import { fetchUkVisaJobsPage } from "../../services/ukvisajobs.js";

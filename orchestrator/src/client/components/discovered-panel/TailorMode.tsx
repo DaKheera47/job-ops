@@ -1,11 +1,10 @@
+import type { Job, ResumeProjectCatalogItem } from "@shared/types";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import type { Job, ResumeProjectCatalogItem } from "../../../shared/types";
 import * as api from "../../api";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { ProjectSelector } from "./ProjectSelector";

@@ -5,8 +5,8 @@
  * correctly calculates and stores sponsor match scores and names.
  */
 
+import type { Job } from "@shared/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "../../shared/types.js";
 
 // Mock the visa-sponsors module
 vi.mock("../services/visa-sponsors/index.js", () => ({

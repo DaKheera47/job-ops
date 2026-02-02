@@ -4,7 +4,7 @@
 // - Used by rxresume-v4.ts to provide a higher-level service surface.
 // - The v5 client should be a drop-in replacement in the future.
 
-import type { ResumeData } from "../../shared/rxresume-schema.js";
+import type { ResumeData } from "@shared/rxresume-schema.js";
 
 type AnyObj = Record<string, unknown>;
 

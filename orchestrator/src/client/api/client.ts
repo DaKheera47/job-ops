@@ -2,7 +2,6 @@
  * API client for the orchestrator backend.
  */
 
-import { trackEvent } from "@/lib/analytics";
 import type {
   ApiResponse,
   ApplicationStage,
@@ -31,7 +30,8 @@ import type {
   VisaSponsor,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
-} from "../../shared/types";
+} from "@shared/types";
+import { trackEvent } from "@/lib/analytics";
 
 const API_BASE = "/api";
 

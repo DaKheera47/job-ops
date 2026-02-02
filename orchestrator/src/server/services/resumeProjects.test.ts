@@ -1,5 +1,5 @@
+import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
-import type { ResumeProjectCatalogItem } from "../../shared/types.js";
 import * as rp from "./resumeProjects.js";
 
 describe("Resume Projects Logic", () => {

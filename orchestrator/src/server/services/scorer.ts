@@ -2,7 +2,7 @@
  * Service for scoring job suitability using AI.
  */
 
-import type { Job } from "../../shared/types.js";
+import type { Job } from "@shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 

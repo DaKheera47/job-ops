@@ -2,7 +2,7 @@
  * Service for generating tailored resume content (Summary, Headline, Skills).
  */
 
-import type { ResumeProfile } from "../../shared/types.js";
+import type { ResumeProfile } from "@shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 

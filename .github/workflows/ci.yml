@@ -33,20 +33,23 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: orchestrator/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: npm ci
-        working-directory: orchestrator
+        run: npm ci --workspaces --include-workspace-root --ignore-scripts
+        working-directory: .
+      - name: Build better-sqlite3
+        run: npm --workspace orchestrator rebuild better-sqlite3
+        working-directory: .
       - name: Run Vitest
-        run: npm run test:run
-        working-directory: orchestrator
+        run: npm --workspace orchestrator run test:run
+        working-directory: .
 
   build:
     name: Build Verification
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: [orchestrator, extractors/gradcracker, extractors/ukvisajobs]
+        project: [orchestrator, job-flow, ukvisajobs-extractor]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -54,22 +57,17 @@ jobs:
         with:
           node-version: 20
           cache: "npm"
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: |
-          if [[ "${{ matrix.project }}" == extractors/* ]]; then
-            npm ci --ignore-scripts
-          else
-            npm ci
-          fi
-        working-directory: ${{ matrix.project }}
+        run: npm ci --workspaces --include-workspace-root --ignore-scripts
+        working-directory: .
 
       - name: Type Check (orchestrator only)
         if: matrix.project == 'orchestrator'
-        run: npm run check:types
-        working-directory: ${{ matrix.project }}
+        run: npm --workspace orchestrator run check:types
+        working-directory: .
 
       - name: Build ${{ matrix.project }}
-        run: npm run build
-        working-directory: ${{ matrix.project }}
+        run: npm --workspace ${{ matrix.project }} run build
+        working-directory: .

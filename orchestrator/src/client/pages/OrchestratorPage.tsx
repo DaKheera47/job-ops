@@ -3,13 +3,13 @@
  */
 
 import { useSettings } from "@client/hooks/useSettings";
+import type { JobSource } from "@shared/types";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
-import type { JobSource } from "../../shared/types";
 import * as api from "../api";
 import { ManualImportSheet } from "../components";
 import type { FilterTab, JobSort } from "./orchestrator/constants";

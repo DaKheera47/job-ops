@@ -1,4 +1,5 @@
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
+import type { JobSource } from "@shared/types";
 import {
   ChevronDown,
   FileText,
@@ -26,7 +27,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn, sourceLabel } from "@/lib/utils";
-import type { JobSource } from "../../../shared/types";
 import { orderedSources } from "./constants";
 
 interface OrchestratorHeaderProps {

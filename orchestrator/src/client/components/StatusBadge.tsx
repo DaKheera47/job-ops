@@ -2,12 +2,11 @@
  * Status badge component.
  */
 
+import type { JobStatus } from "@shared/types";
 import { Loader2 } from "lucide-react";
 import type React from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { JobStatus } from "../../shared/types";
 
 interface StatusBadgeProps {
   status: JobStatus;

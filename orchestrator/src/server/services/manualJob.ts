@@ -2,7 +2,7 @@
  * Service for inferring job details from a pasted job description.
  */
 
-import type { ManualJobDraft } from "../../shared/types.js";
+import type { ManualJobDraft } from "@shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
 

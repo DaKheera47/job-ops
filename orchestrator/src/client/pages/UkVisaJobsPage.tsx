@@ -3,6 +3,7 @@
  */
 
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
+import type { CreateJobInput } from "@shared/types";
 import {
   Briefcase,
   Calendar,
@@ -36,7 +37,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn, formatDate, formatDateTime, stripHtml } from "@/lib/utils";
-import type { CreateJobInput } from "../../shared/types";
 import * as api from "../api";
 
 const clampText = (value: string, max = 160) =>

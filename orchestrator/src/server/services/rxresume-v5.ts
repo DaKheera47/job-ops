@@ -5,7 +5,7 @@
 //
 // NOTE: Not currently wired in; keep for migration.
 
-import { resumeDataSchema } from "../../shared/rxresume-schema.js";
+import { resumeDataSchema } from "@shared/rxresume-schema.js";
 
 export interface RxResumeResponse {
   id: string;

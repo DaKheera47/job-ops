@@ -1,9 +1,7 @@
+import type { Job } from "@shared/types";
 import { Loader2 } from "lucide-react";
 import type React from "react";
-
 import { cn } from "@/lib/utils";
-
-import type { Job } from "../../../shared/types";
 import type { FilterTab } from "./constants";
 import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
 

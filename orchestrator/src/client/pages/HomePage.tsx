@@ -6,6 +6,7 @@ import {
   type DurationValue,
 } from "@client/components/charts";
 import { PageMain } from "@client/components/layout";
+import type { StageEvent } from "@shared/types";
 import { Home, Menu } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -19,7 +20,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { StageEvent } from "../../shared/types";
 import { isNavActive, NAV_LINKS } from "../components/navigation";
 
 type JobWithEvents = {

@@ -1,5 +1,5 @@
+import type { AppSettings } from "@shared/types";
 import { useEffect, useState } from "react";
-import type { AppSettings } from "../../shared/types";
 import * as api from "../api";
 
 let settingsCache: AppSettings | null = null;

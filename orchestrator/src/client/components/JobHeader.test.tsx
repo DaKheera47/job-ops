@@ -1,8 +1,8 @@
+import type { Job } from "@shared/types";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "../../shared/types";
 import { useSettings } from "../hooks/useSettings";
 import { JobHeader } from "./JobHeader";
 

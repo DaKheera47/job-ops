@@ -2,7 +2,7 @@ import type {
   ResumeProfile,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
-} from "../../shared/types.js";
+} from "@shared/types.js";
 
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & {
   summaryText: string;

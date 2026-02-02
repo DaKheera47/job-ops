@@ -8,11 +8,7 @@
  */
 
 import { join } from "node:path";
-import type {
-  CreateJobInput,
-  Job,
-  PipelineConfig,
-} from "../../shared/types.js";
+import type { CreateJobInput, Job, PipelineConfig } from "@shared/types.js";
 import { getDataDir } from "../config/dataDir.js";
 import * as jobsRepo from "../repositories/jobs.js";
 import * as pipelineRepo from "../repositories/pipeline.js";

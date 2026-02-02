@@ -1,10 +1,11 @@
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import type {
   ApiResponse,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
-} from "../../../shared/types.js";
+} from "@shared/types.js";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
+
 import * as visaSponsors from "../../services/visa-sponsors/index.js";
 
 export const visaSponsorsRouter = Router();

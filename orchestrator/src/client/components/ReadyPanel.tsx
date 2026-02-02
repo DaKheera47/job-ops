@@ -7,6 +7,7 @@
  * Now includes inline tailoring mode for editing and regenerating PDFs without switching tabs.
  */
 
+import type { Job, ResumeProjectCatalogItem } from "@shared/types";
 import {
   CheckCircle2,
   ChevronUp,
@@ -39,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, copyTextToClipboard, formatJobForWebhook } from "@/lib/utils";
-import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 import * as api from "../api";
 import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";

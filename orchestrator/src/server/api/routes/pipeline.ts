@@ -1,9 +1,6 @@
+import type { ApiResponse, PipelineStatusResponse } from "@shared/types.js";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import type {
-  ApiResponse,
-  PipelineStatusResponse,
-} from "../../../shared/types.js";
 import {
   getPipelineStatus,
   runPipeline,

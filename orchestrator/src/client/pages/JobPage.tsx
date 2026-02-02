@@ -1,3 +1,11 @@
+import {
+  type ApplicationStage,
+  type ApplicationTask,
+  type Job,
+  type JobOutcome,
+  STAGE_LABELS,
+  type StageEvent,
+} from "@shared/types";
 import confetti from "canvas-confetti";
 import {
   ArrowLeft,
@@ -13,14 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatTimestamp } from "@/lib/utils";
-import {
-  type ApplicationStage,
-  type ApplicationTask,
-  type Job,
-  type JobOutcome,
-  STAGE_LABELS,
-  type StageEvent,
-} from "../../shared/types";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { JobHeader } from "../components/JobHeader";

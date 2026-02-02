@@ -3,6 +3,7 @@
  * Shows Application → Response conversion metrics including funnel, time-series, and insights.
  */
 
+import type { StageEvent } from "@shared/types";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import {
@@ -18,7 +19,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-
 import {
   Card,
   CardContent,
@@ -27,7 +27,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import type { StageEvent } from "../../../shared/types";
 
 type FunnelStage = {
   name: string;

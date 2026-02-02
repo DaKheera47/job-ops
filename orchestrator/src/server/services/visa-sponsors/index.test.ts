@@ -1,5 +1,5 @@
+import type { VisaSponsorSearchResult } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
-import type { VisaSponsorSearchResult } from "../../../shared/types.js";
 import { calculateSponsorMatchSummary } from "./index.js";
 
 describe("calculateSponsorMatchSummary", () => {

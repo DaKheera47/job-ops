@@ -8,11 +8,11 @@ import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { CreateJobInput } from "@shared/types.js";
 import {
   toNumberOrNull,
   toStringOrNull,
 } from "@shared/utils/type-conversion.js";
-import type { CreateJobInput } from "../../shared/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UKVISAJOBS_DIR = join(__dirname, "../../../../extractors/ukvisajobs");

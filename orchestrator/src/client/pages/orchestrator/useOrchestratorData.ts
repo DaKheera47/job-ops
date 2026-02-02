@@ -1,7 +1,6 @@
+import type { Job, JobStatus } from "@shared/types";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-
-import type { Job, JobStatus } from "../../../shared/types";
 import * as api from "../../api";
 
 const initialStats: Record<JobStatus, number> = {

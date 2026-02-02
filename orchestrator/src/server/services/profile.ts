@@ -5,7 +5,7 @@
  * There is no local file fallback.
  */
 
-import type { ResumeProfile } from "../../shared/types.js";
+import type { ResumeProfile } from "@shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { getResume, RxResumeCredentialsError } from "./rxresume-v4.js";
 

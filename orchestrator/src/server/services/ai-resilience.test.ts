@@ -1,5 +1,5 @@
+import type { Job } from "@shared/types.js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "../../shared/types.js";
 import { pickProjectIdsForJob } from "./projectSelection.js";
 import { scoreJobSuitability } from "./scorer.js";
 

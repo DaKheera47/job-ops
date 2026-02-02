@@ -1,5 +1,3 @@
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -7,7 +5,10 @@ import {
   type Job,
   type JobStatus,
   type JobsListResponse,
-} from "../../../shared/types.js";
+} from "@shared/types.js";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
+
 import {
   generateFinalPdf,
   processJob,

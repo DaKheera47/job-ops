@@ -127,7 +127,7 @@ export async function startServer(options?: {
 export async function stopServer(args: {
   server: Server;
   closeDb: () => void;
-  tempDir: string;
+  tempDir?: string;
 }) {
   // Defensive: if startServer throws, callers may still run cleanup.
   if (args.server) {
@@ -136,7 +136,9 @@ export async function stopServer(args: {
   if (args.closeDb) {
     args.closeDb();
   }
-  await rm(args.tempDir, { recursive: true, force: true });
+  if (args.tempDir) {
+    await rm(args.tempDir, { recursive: true, force: true });
+  }
   process.env = { ...originalEnv };
   vi.clearAllMocks();
 }

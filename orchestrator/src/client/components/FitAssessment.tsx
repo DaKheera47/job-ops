@@ -1,7 +1,7 @@
+import type { Job } from "@shared/types";
 import { Sparkles } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
-import type { Job } from "../../shared/types";
 
 interface FitAssessmentProps {
   job: Job;

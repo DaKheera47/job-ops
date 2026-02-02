@@ -1,6 +1,6 @@
+import type { JobSource } from "@shared/types";
 import { ArrowUpDown, Filter, Search } from "lucide-react";
 import type React from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,9 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
 import { sourceLabel } from "@/lib/utils";
-import type { JobSource } from "../../../shared/types";
 import type { FilterTab, JobSort } from "./constants";
 import {
   defaultSortDirection,
