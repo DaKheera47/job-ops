@@ -64,7 +64,14 @@ function normalizeApiResponse<T>(
   if (!payload || typeof payload !== "object") {
     throw new ApiClientError("API request failed: malformed JSON response");
   }
-  return payload as ApiResponse<T> | LegacyApiResponse<T>;
+  const response = payload as Record<string, unknown>;
+  if (typeof response.ok === "boolean") {
+    return payload as ApiResponse<T>;
+  }
+  if (typeof response.success === "boolean") {
+    return payload as LegacyApiResponse<T>;
+  }
+  throw new ApiClientError("API request failed: unexpected response shape");
 }
 
 async function fetchApi<T>(
@@ -81,9 +88,9 @@ async function fetchApi<T>(
 
   const text = await response.text();
 
-  let parsed: ApiResponse<T> | LegacyApiResponse<T>;
+  let payload: unknown;
   try {
-    parsed = normalizeApiResponse<T>(JSON.parse(text));
+    payload = JSON.parse(text);
   } catch {
     // If the response is not JSON, it's likely an HTML error page
     console.error("API returned non-JSON response:", text.substring(0, 500));
@@ -91,6 +98,7 @@ async function fetchApi<T>(
       `Server error (${response.status}): Expected JSON but received HTML. Is the backend server running?`,
     );
   }
+  const parsed = normalizeApiResponse<T>(payload);
 
   if ("ok" in parsed) {
     if (!parsed.ok) {
@@ -103,7 +111,9 @@ async function fetchApi<T>(
   }
 
   if (!parsed.success) {
-    throw new ApiClientError(parsed.error || parsed.message || "API request failed");
+    throw new ApiClientError(
+      parsed.error || parsed.message || "API request failed",
+    );
   }
 
   const data = parsed.data;
