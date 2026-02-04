@@ -149,7 +149,7 @@ export async function discoverJobsStep(args: {
   }
 
   if (sourceErrors.length > 0) {
-    console.warn(`ƒsÿ‹,? Some sources failed: ${sourceErrors.join("; ")}`);
+    console.warn(`⚠️ Some sources failed: ${sourceErrors.join("; ")}`);
   }
 
   progressHelpers.crawlingComplete(discoveredJobs.length);

@@ -39,11 +39,19 @@ type SettingsConversionMetadata = {
 export type SettingsConversionKey = keyof SettingsConversionValueMap;
 
 function parseIntOrNull(raw: string | undefined): number | null {
-  return raw ? parseInt(raw, 10) : null;
+  if (!raw) return null;
+  const parsed = parseInt(raw, 10);
+  return Number.isNaN(parsed) ? null : parsed;
 }
 
 function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
-  return raw ? (JSON.parse(raw) as string[]) : null;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as string[]) : null;
+  } catch {
+    return null;
+  }
 }
 
 function parseBitBoolOrNull(raw: string | undefined): boolean | null {

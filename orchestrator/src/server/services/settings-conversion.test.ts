@@ -62,4 +62,20 @@ describe("settings-conversion", () => {
     expect(resolveSettingValue("backupHour", "26").value).toBe(23);
     expect(resolveSettingValue("backupMaxCount", "0").value).toBe(1);
   });
+
+  it("falls back to default for invalid numeric overrides", () => {
+    const resolved = resolveSettingValue("ukvisajobsMaxJobs", "not-a-number");
+    expect(resolved.overrideValue).toBeNull();
+    expect(resolved.value).toBe(50);
+  });
+
+  it("falls back to default for invalid JSON array overrides", () => {
+    const objectOverride = resolveSettingValue("searchTerms", '{"term":"x"}');
+    expect(objectOverride.overrideValue).toBeNull();
+    expect(objectOverride.value).toEqual(["web developer"]);
+
+    const malformedOverride = resolveSettingValue("searchTerms", "[oops");
+    expect(malformedOverride.overrideValue).toBeNull();
+    expect(malformedOverride.value).toEqual(["web developer"]);
+  });
 });
