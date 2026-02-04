@@ -6,8 +6,11 @@ import {
   extractProjectsFromProfile,
   normalizeResumeProjectsSettings,
 } from "@server/services/resumeProjects";
+import {
+  type SettingsConversionKey,
+  serializeSettingValue,
+} from "@server/services/settings-conversion";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
-import { toStringOrNull as toStringOrNullShared } from "@shared/utils/type-conversion";
 
 export type DeferredSideEffect = "refreshBackupScheduler";
 
@@ -45,7 +48,7 @@ export function toNormalizedStringOrNull(
 export function toNumberStringOrNull(
   value: number | null | undefined,
 ): string | null {
-  return toStringOrNullShared(value);
+  return serializeSettingValue("ukvisajobsMaxJobs", value);
 }
 
 export function toJsonOrNull<T>(value: T | null | undefined): string | null {
@@ -55,8 +58,7 @@ export function toJsonOrNull<T>(value: T | null | undefined): string | null {
 export function toBitBoolOrNull(
   value: boolean | null | undefined,
 ): string | null {
-  if (value === null || value === undefined) return null;
-  return value ? "1" : "0";
+  return serializeSettingValue("jobspyIsRemote", value);
 }
 
 function result(
@@ -87,6 +89,13 @@ function singleAction<K extends keyof UpdateSettingsInput>(
   fn: SettingUpdateHandler<K>,
 ): SettingUpdateHandler<K> {
   return fn;
+}
+
+function metadataPersistAction(
+  key: SettingsConversionKey,
+  value: unknown,
+): SettingsUpdateAction {
+  return persistAction(key, serializeSettingValue(key, value as never));
 }
 
 export const settingsUpdateRegistry: Partial<{
@@ -158,57 +167,49 @@ export const settingsUpdateRegistry: Partial<{
   }),
   ukvisajobsMaxJobs: singleAction(({ value }) =>
     result({
-      actions: [
-        persistAction("ukvisajobsMaxJobs", toNumberStringOrNull(value)),
-      ],
+      actions: [metadataPersistAction("ukvisajobsMaxJobs", value)],
     }),
   ),
   gradcrackerMaxJobsPerTerm: singleAction(({ value }) =>
     result({
-      actions: [
-        persistAction("gradcrackerMaxJobsPerTerm", toNumberStringOrNull(value)),
-      ],
+      actions: [metadataPersistAction("gradcrackerMaxJobsPerTerm", value)],
     }),
   ),
   searchTerms: singleAction(({ value }) =>
-    result({ actions: [persistAction("searchTerms", toJsonOrNull(value))] }),
+    result({ actions: [metadataPersistAction("searchTerms", value)] }),
   ),
   jobspyLocation: singleAction(({ value }) =>
-    result({ actions: [persistAction("jobspyLocation", value ?? null)] }),
+    result({ actions: [metadataPersistAction("jobspyLocation", value)] }),
   ),
   jobspyResultsWanted: singleAction(({ value }) =>
     result({
-      actions: [
-        persistAction("jobspyResultsWanted", toNumberStringOrNull(value)),
-      ],
+      actions: [metadataPersistAction("jobspyResultsWanted", value)],
     }),
   ),
   jobspyHoursOld: singleAction(({ value }) =>
     result({
-      actions: [persistAction("jobspyHoursOld", toNumberStringOrNull(value))],
+      actions: [metadataPersistAction("jobspyHoursOld", value)],
     }),
   ),
   jobspyCountryIndeed: singleAction(({ value }) =>
-    result({ actions: [persistAction("jobspyCountryIndeed", value ?? null)] }),
+    result({ actions: [metadataPersistAction("jobspyCountryIndeed", value)] }),
   ),
   jobspySites: singleAction(({ value }) =>
-    result({ actions: [persistAction("jobspySites", toJsonOrNull(value))] }),
+    result({ actions: [metadataPersistAction("jobspySites", value)] }),
   ),
   jobspyLinkedinFetchDescription: singleAction(({ value }) =>
     result({
-      actions: [
-        persistAction("jobspyLinkedinFetchDescription", toBitBoolOrNull(value)),
-      ],
+      actions: [metadataPersistAction("jobspyLinkedinFetchDescription", value)],
     }),
   ),
   jobspyIsRemote: singleAction(({ value }) =>
     result({
-      actions: [persistAction("jobspyIsRemote", toBitBoolOrNull(value))],
+      actions: [metadataPersistAction("jobspyIsRemote", value)],
     }),
   ),
   showSponsorInfo: singleAction(({ value }) =>
     result({
-      actions: [persistAction("showSponsorInfo", toBitBoolOrNull(value))],
+      actions: [metadataPersistAction("showSponsorInfo", value)],
     }),
   ),
   openrouterApiKey: singleAction(({ value }) => {
@@ -309,19 +310,19 @@ export const settingsUpdateRegistry: Partial<{
   }),
   backupEnabled: singleAction(({ value }) =>
     result({
-      actions: [persistAction("backupEnabled", toBitBoolOrNull(value))],
+      actions: [metadataPersistAction("backupEnabled", value)],
       deferred: ["refreshBackupScheduler"],
     }),
   ),
   backupHour: singleAction(({ value }) =>
     result({
-      actions: [persistAction("backupHour", toNumberStringOrNull(value))],
+      actions: [metadataPersistAction("backupHour", value)],
       deferred: ["refreshBackupScheduler"],
     }),
   ),
   backupMaxCount: singleAction(({ value }) =>
     result({
-      actions: [persistAction("backupMaxCount", toNumberStringOrNull(value))],
+      actions: [metadataPersistAction("backupMaxCount", value)],
       deferred: ["refreshBackupScheduler"],
     }),
   ),

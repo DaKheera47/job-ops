@@ -7,6 +7,7 @@ import {
   resolveResumeProjectsSettings,
 } from "./resumeProjects";
 import { getResume, RxResumeCredentialsError } from "./rxresume-v4";
+import { resolveSettingValue } from "./settings-conversion";
 
 /**
  * Get the effective app settings, combining environment variables and database overrides.
@@ -87,130 +88,122 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     overrideRaw: overrideResumeProjectsRaw,
   });
 
-  const defaultUkvisajobsMaxJobs = 50;
-  const overrideUkvisajobsMaxJobsRaw = overrides.ukvisajobsMaxJobs;
-  const overrideUkvisajobsMaxJobs = overrideUkvisajobsMaxJobsRaw
-    ? parseInt(overrideUkvisajobsMaxJobsRaw, 10)
-    : null;
-  const ukvisajobsMaxJobs =
-    overrideUkvisajobsMaxJobs ?? defaultUkvisajobsMaxJobs;
-
-  const defaultGradcrackerMaxJobsPerTerm = 50;
-  const overrideGradcrackerMaxJobsPerTermRaw =
-    overrides.gradcrackerMaxJobsPerTerm;
-  const overrideGradcrackerMaxJobsPerTerm = overrideGradcrackerMaxJobsPerTermRaw
-    ? parseInt(overrideGradcrackerMaxJobsPerTermRaw, 10)
-    : null;
-  const gradcrackerMaxJobsPerTerm =
-    overrideGradcrackerMaxJobsPerTerm ?? defaultGradcrackerMaxJobsPerTerm;
-
-  const defaultSearchTermsEnv =
-    process.env.JOBSPY_SEARCH_TERMS || "web developer";
-  const defaultSearchTerms = defaultSearchTermsEnv
-    .split("|")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const overrideSearchTermsRaw = overrides.searchTerms;
-  const overrideSearchTerms = overrideSearchTermsRaw
-    ? (JSON.parse(overrideSearchTermsRaw) as string[])
-    : null;
-  const searchTerms = overrideSearchTerms ?? defaultSearchTerms;
-
-  const defaultJobspyLocation = process.env.JOBSPY_LOCATION || "UK";
-  const overrideJobspyLocation = overrides.jobspyLocation ?? null;
-  const jobspyLocation = overrideJobspyLocation || defaultJobspyLocation;
-
-  const defaultJobspyResultsWanted = parseInt(
-    process.env.JOBSPY_RESULTS_WANTED || "200",
-    10,
+  const ukvisajobsMaxJobsSetting = resolveSettingValue(
+    "ukvisajobsMaxJobs",
+    overrides.ukvisajobsMaxJobs,
   );
-  const overrideJobspyResultsWantedRaw = overrides.jobspyResultsWanted;
-  const overrideJobspyResultsWanted = overrideJobspyResultsWantedRaw
-    ? parseInt(overrideJobspyResultsWantedRaw, 10)
-    : null;
-  const jobspyResultsWanted =
-    overrideJobspyResultsWanted ?? defaultJobspyResultsWanted;
+  const defaultUkvisajobsMaxJobs = ukvisajobsMaxJobsSetting.defaultValue;
+  const overrideUkvisajobsMaxJobs = ukvisajobsMaxJobsSetting.overrideValue;
+  const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting.value;
 
-  const defaultJobspyHoursOld = parseInt(
-    process.env.JOBSPY_HOURS_OLD || "72",
-    10,
+  const gradcrackerMaxJobsPerTermSetting = resolveSettingValue(
+    "gradcrackerMaxJobsPerTerm",
+    overrides.gradcrackerMaxJobsPerTerm,
   );
-  const overrideJobspyHoursOldRaw = overrides.jobspyHoursOld;
-  const overrideJobspyHoursOld = overrideJobspyHoursOldRaw
-    ? parseInt(overrideJobspyHoursOldRaw, 10)
-    : null;
-  const jobspyHoursOld = overrideJobspyHoursOld ?? defaultJobspyHoursOld;
+  const defaultGradcrackerMaxJobsPerTerm =
+    gradcrackerMaxJobsPerTermSetting.defaultValue;
+  const overrideGradcrackerMaxJobsPerTerm =
+    gradcrackerMaxJobsPerTermSetting.overrideValue;
+  const gradcrackerMaxJobsPerTerm = gradcrackerMaxJobsPerTermSetting.value;
 
-  const defaultJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED || "UK";
-  const overrideJobspyCountryIndeed = overrides.jobspyCountryIndeed ?? null;
-  const jobspyCountryIndeed =
-    overrideJobspyCountryIndeed || defaultJobspyCountryIndeed;
+  const searchTermsSetting = resolveSettingValue(
+    "searchTerms",
+    overrides.searchTerms,
+  );
+  const defaultSearchTerms = searchTermsSetting.defaultValue;
+  const overrideSearchTerms = searchTermsSetting.overrideValue;
+  const searchTerms = searchTermsSetting.value;
 
-  const defaultJobspySites = (process.env.JOBSPY_SITES || "indeed,linkedin")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const overrideJobspySitesRaw = overrides.jobspySites;
-  const overrideJobspySites = overrideJobspySitesRaw
-    ? (JSON.parse(overrideJobspySitesRaw) as string[])
-    : null;
-  const jobspySites = overrideJobspySites ?? defaultJobspySites;
+  const jobspyLocationSetting = resolveSettingValue(
+    "jobspyLocation",
+    overrides.jobspyLocation,
+  );
+  const defaultJobspyLocation = jobspyLocationSetting.defaultValue;
+  const overrideJobspyLocation = jobspyLocationSetting.overrideValue;
+  const jobspyLocation = jobspyLocationSetting.value;
 
+  const jobspyResultsWantedSetting = resolveSettingValue(
+    "jobspyResultsWanted",
+    overrides.jobspyResultsWanted,
+  );
+  const defaultJobspyResultsWanted = jobspyResultsWantedSetting.defaultValue;
+  const overrideJobspyResultsWanted = jobspyResultsWantedSetting.overrideValue;
+  const jobspyResultsWanted = jobspyResultsWantedSetting.value;
+
+  const jobspyHoursOldSetting = resolveSettingValue(
+    "jobspyHoursOld",
+    overrides.jobspyHoursOld,
+  );
+  const defaultJobspyHoursOld = jobspyHoursOldSetting.defaultValue;
+  const overrideJobspyHoursOld = jobspyHoursOldSetting.overrideValue;
+  const jobspyHoursOld = jobspyHoursOldSetting.value;
+
+  const jobspyCountryIndeedSetting = resolveSettingValue(
+    "jobspyCountryIndeed",
+    overrides.jobspyCountryIndeed,
+  );
+  const defaultJobspyCountryIndeed = jobspyCountryIndeedSetting.defaultValue;
+  const overrideJobspyCountryIndeed = jobspyCountryIndeedSetting.overrideValue;
+  const jobspyCountryIndeed = jobspyCountryIndeedSetting.value;
+
+  const jobspySitesSetting = resolveSettingValue(
+    "jobspySites",
+    overrides.jobspySites,
+  );
+  const defaultJobspySites = jobspySitesSetting.defaultValue;
+  const overrideJobspySites = jobspySitesSetting.overrideValue;
+  const jobspySites = jobspySitesSetting.value;
+
+  const jobspyLinkedinFetchDescriptionSetting = resolveSettingValue(
+    "jobspyLinkedinFetchDescription",
+    overrides.jobspyLinkedinFetchDescription,
+  );
   const defaultJobspyLinkedinFetchDescription =
-    (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || "1") === "1";
-  const overrideJobspyLinkedinFetchDescriptionRaw =
-    overrides.jobspyLinkedinFetchDescription;
+    jobspyLinkedinFetchDescriptionSetting.defaultValue;
   const overrideJobspyLinkedinFetchDescription =
-    overrideJobspyLinkedinFetchDescriptionRaw
-      ? overrideJobspyLinkedinFetchDescriptionRaw === "true" ||
-        overrideJobspyLinkedinFetchDescriptionRaw === "1"
-      : null;
+    jobspyLinkedinFetchDescriptionSetting.overrideValue;
   const jobspyLinkedinFetchDescription =
-    overrideJobspyLinkedinFetchDescription ??
-    defaultJobspyLinkedinFetchDescription;
+    jobspyLinkedinFetchDescriptionSetting.value;
 
-  const defaultJobspyIsRemote = (process.env.JOBSPY_IS_REMOTE || "0") === "1";
-  const overrideJobspyIsRemoteRaw = overrides.jobspyIsRemote;
-  const overrideJobspyIsRemote = overrideJobspyIsRemoteRaw
-    ? overrideJobspyIsRemoteRaw === "true" || overrideJobspyIsRemoteRaw === "1"
-    : null;
-  const jobspyIsRemote = overrideJobspyIsRemote ?? defaultJobspyIsRemote;
+  const jobspyIsRemoteSetting = resolveSettingValue(
+    "jobspyIsRemote",
+    overrides.jobspyIsRemote,
+  );
+  const defaultJobspyIsRemote = jobspyIsRemoteSetting.defaultValue;
+  const overrideJobspyIsRemote = jobspyIsRemoteSetting.overrideValue;
+  const jobspyIsRemote = jobspyIsRemoteSetting.value;
 
-  const defaultShowSponsorInfo = true;
-  const overrideShowSponsorInfoRaw = overrides.showSponsorInfo;
-  const overrideShowSponsorInfo = overrideShowSponsorInfoRaw
-    ? overrideShowSponsorInfoRaw === "true" ||
-      overrideShowSponsorInfoRaw === "1"
-    : null;
-  const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
+  const showSponsorInfoSetting = resolveSettingValue(
+    "showSponsorInfo",
+    overrides.showSponsorInfo,
+  );
+  const defaultShowSponsorInfo = showSponsorInfoSetting.defaultValue;
+  const overrideShowSponsorInfo = showSponsorInfoSetting.overrideValue;
+  const showSponsorInfo = showSponsorInfoSetting.value;
 
-  // Backup settings
-  const defaultBackupEnabled = false;
-  const overrideBackupEnabledRaw = overrides.backupEnabled;
-  const overrideBackupEnabled = overrideBackupEnabledRaw
-    ? overrideBackupEnabledRaw === "true" || overrideBackupEnabledRaw === "1"
-    : null;
-  const backupEnabled = overrideBackupEnabled ?? defaultBackupEnabled;
+  const backupEnabledSetting = resolveSettingValue(
+    "backupEnabled",
+    overrides.backupEnabled,
+  );
+  const defaultBackupEnabled = backupEnabledSetting.defaultValue;
+  const overrideBackupEnabled = backupEnabledSetting.overrideValue;
+  const backupEnabled = backupEnabledSetting.value;
 
-  const defaultBackupHour = 2;
-  const overrideBackupHourRaw = overrides.backupHour;
-  const parsedBackupHour = overrideBackupHourRaw
-    ? parseInt(overrideBackupHourRaw, 10)
-    : NaN;
-  const overrideBackupHour = Number.isNaN(parsedBackupHour)
-    ? null
-    : Math.min(23, Math.max(0, parsedBackupHour));
-  const backupHour = overrideBackupHour ?? defaultBackupHour;
+  const backupHourSetting = resolveSettingValue(
+    "backupHour",
+    overrides.backupHour,
+  );
+  const defaultBackupHour = backupHourSetting.defaultValue;
+  const overrideBackupHour = backupHourSetting.overrideValue;
+  const backupHour = backupHourSetting.value;
 
-  const defaultBackupMaxCount = 5;
-  const overrideBackupMaxCountRaw = overrides.backupMaxCount;
-  const parsedBackupMaxCount = overrideBackupMaxCountRaw
-    ? parseInt(overrideBackupMaxCountRaw, 10)
-    : NaN;
-  const overrideBackupMaxCount = Number.isNaN(parsedBackupMaxCount)
-    ? null
-    : Math.min(5, Math.max(1, parsedBackupMaxCount));
-  const backupMaxCount = overrideBackupMaxCount ?? defaultBackupMaxCount;
+  const backupMaxCountSetting = resolveSettingValue(
+    "backupMaxCount",
+    overrides.backupMaxCount,
+  );
+  const defaultBackupMaxCount = backupMaxCountSetting.defaultValue;
+  const overrideBackupMaxCount = backupMaxCountSetting.overrideValue;
+  const backupMaxCount = backupMaxCountSetting.value;
 
   return {
     ...envSettings,
