@@ -1,3 +1,5 @@
+import { logger } from "@infra/logger";
+import { sanitizeWebhookPayload } from "@infra/sanitize";
 import * as settingsRepo from "../../repositories/settings";
 
 export async function notifyPipelineWebhookStep(
@@ -22,22 +24,30 @@ export async function notifyPipelineWebhookStep(
     const secret = process.env.WEBHOOK_SECRET;
     if (secret) headers.Authorization = `Bearer ${secret}`;
 
+    const sanitizedPayload = sanitizeWebhookPayload({
+      event,
+      sentAt: new Date().toISOString(),
+      pipelineRunId: payload.pipelineRunId,
+      jobsDiscovered: payload.jobsDiscovered,
+      jobsScored: payload.jobsScored,
+      jobsProcessed: payload.jobsProcessed,
+      error: payload.error,
+    });
+
     const response = await fetch(pipelineWebhookUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        event,
-        sentAt: new Date().toISOString(),
-        ...payload,
-      }),
+      body: JSON.stringify(sanitizedPayload),
     });
 
     if (!response.ok) {
-      console.warn(
-        `⚠️ Pipeline webhook POST failed (${response.status}): ${await response.text()}`,
-      );
+      const responseText = await response.text().catch(() => "");
+      logger.warn("Pipeline webhook POST failed", {
+        status: response.status,
+        error: responseText.slice(0, 200),
+      });
     }
   } catch (error) {
-    console.warn("⚠️ Pipeline webhook POST failed:", error);
+    logger.warn("Pipeline webhook POST failed", error);
   }
 }

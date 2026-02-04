@@ -2,6 +2,7 @@
  * Service for inferring job details from a pasted job description.
  */
 
+import { logger } from "@infra/logger";
 import type { ManualJobDraft } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service";
@@ -111,7 +112,7 @@ export async function inferManualJobDetails(
         warning: "LLM API key not set. Fill details manually.",
       };
     }
-    console.warn("Manual job inference failed:", result.error);
+    logger.warn("Manual job inference failed", { error: result.error });
     return {
       job: {},
       warning: "AI inference failed. Fill details manually.",

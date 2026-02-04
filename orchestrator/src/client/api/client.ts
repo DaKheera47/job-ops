@@ -35,6 +35,16 @@ import { trackEvent } from "@/lib/analytics";
 
 const API_BASE = "/api";
 
+class ApiClientError extends Error {
+  requestId?: string;
+
+  constructor(message: string, requestId?: string) {
+    super(requestId ? `${message} (requestId: ${requestId})` : message);
+    this.name = "ApiClientError";
+    this.requestId = requestId;
+  }
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
@@ -55,13 +65,16 @@ async function fetchApi<T>(
   } catch {
     // If the response is not JSON, it's likely an HTML error page
     console.error("API returned non-JSON response:", text.substring(0, 500));
-    throw new Error(
+    throw new ApiClientError(
       `Server error (${response.status}): Expected JSON but received HTML. Is the backend server running?`,
     );
   }
 
-  if (!data.success) {
-    throw new Error(data.error || "API request failed");
+  if (!data.ok) {
+    throw new ApiClientError(
+      data.error.message || "API request failed",
+      data.meta?.requestId,
+    );
   }
 
   return data.data as T;

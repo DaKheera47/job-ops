@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
 import { scoreJobSuitability } from "../../services/scorer";
@@ -8,7 +9,7 @@ import type { ScoredJob } from "./types";
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
-  console.log("\n🎯 Scoring jobs for suitability...");
+  logger.info("Running scoring step");
   const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
 
   updateProgress({
@@ -73,7 +74,7 @@ export async function scoreJobsStep(args: {
   }
 
   progressHelpers.scoringComplete(scoredJobs.length);
-  console.log(`\n📊 Scored ${scoredJobs.length} jobs.`);
+  logger.info("Scoring step completed", { scoredJobs: scoredJobs.length });
 
   return { unprocessedJobs, scoredJobs };
 }

@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import { setBackupSettings } from "@server/services/backup/index";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
@@ -72,7 +73,7 @@ settingsRouter.get("/rx-resumes", async (_req: Request, res: Response) => {
       return;
     }
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error(`❌ Failed to fetch Reactive Resumes: ${message}`);
+    logger.error("Failed to fetch Reactive Resumes", { message });
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -103,7 +104,7 @@ settingsRouter.get(
         return;
       }
       const message = error instanceof Error ? error.message : "Unknown error";
-      console.error(`❌ Failed to fetch RxResume projects: ${message}`);
+      logger.error("Failed to fetch RxResume projects", { message });
       res.status(500).json({ success: false, error: message });
     }
   },

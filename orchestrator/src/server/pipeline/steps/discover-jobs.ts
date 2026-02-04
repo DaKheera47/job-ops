@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
@@ -12,7 +13,7 @@ export async function discoverJobsStep(args: {
   discoveredJobs: CreateJobInput[];
   sourceErrors: string[];
 }> {
-  console.log("\n🕷️ Running crawler...");
+  logger.info("Running discovery step");
   progressHelpers.startCrawling();
 
   const discoveredJobs: CreateJobInput[] = [];
@@ -149,7 +150,7 @@ export async function discoverJobsStep(args: {
   }
 
   if (sourceErrors.length > 0) {
-    console.warn(`⚠️ Some sources failed: ${sourceErrors.join("; ")}`);
+    logger.warn("Some discovery sources failed", { sourceErrors });
   }
 
   progressHelpers.crawlingComplete(discoveredJobs.length);

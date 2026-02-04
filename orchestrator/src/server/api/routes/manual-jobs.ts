@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { logger } from "@infra/logger";
 import type {
   ApiResponse,
   ManualJobFetchResponse,
@@ -154,7 +155,7 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
     }
 
     const result: ApiResponse<ManualJobFetchResponse> = {
-      success: true,
+      ok: true,
       data: {
         content: enrichedContent,
         url: input.url,
@@ -185,7 +186,7 @@ manualJobsRouter.post("/infer", async (req: Request, res: Response) => {
     const result = await inferManualJobDetails(input.jobDescription);
 
     const response: ApiResponse<ManualJobInferenceResponse> = {
-      success: true,
+      ok: true,
       data: {
         job: result.job,
         warning: result.warning ?? null,
@@ -254,10 +255,10 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           suitabilityReason: reason,
         });
       } catch (error) {
-        console.warn("Manual job scoring failed:", error);
+        logger.warn("Manual job scoring failed", error);
       }
     })().catch((error) => {
-      console.warn("Manual job scoring task failed to start:", error);
+      logger.warn("Manual job scoring task failed to start", error);
     });
 
     res.json({ success: true, data: createdJob });

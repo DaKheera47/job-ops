@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 
@@ -28,7 +29,10 @@ export async function processJobsStep(args: {
       if (result.success) {
         processedCount++;
       } else {
-        console.warn(`   ⚠️ Failed to process job ${job.id}: ${result.error}`);
+        logger.warn("Failed to process job", {
+          jobId: job.id,
+          error: result.error,
+        });
       }
 
       progressHelpers.jobComplete(i + 1, args.jobsToProcess.length);

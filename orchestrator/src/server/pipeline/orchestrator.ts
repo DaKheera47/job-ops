@@ -8,6 +8,8 @@
  */
 
 import { join } from "node:path";
+import { logger } from "@infra/logger";
+import { runWithRequestContext } from "@infra/request-context";
 import type { PipelineConfig } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
@@ -71,91 +73,92 @@ export async function runPipeline(
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
   const pipelineRun = await pipelineRepo.createPipelineRun();
-
-  console.log("🚀 Starting job pipeline...");
-  console.log(
-    `   Config: topN=${mergedConfig.topN}, minScore=${mergedConfig.minSuitabilityScore} (manual processing)`,
-  );
-
-  try {
-    const profile = await loadProfileStep();
-
-    const { discoveredJobs } = await discoverJobsStep({ mergedConfig });
-
-    const { created } = await importJobsStep({ discoveredJobs });
-
-    await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-      jobsDiscovered: created,
+  return runWithRequestContext({ pipelineRunId: pipelineRun.id }, async () => {
+    const pipelineLogger = logger.child({ pipelineRunId: pipelineRun.id });
+    pipelineLogger.info("Starting pipeline run", {
+      topN: mergedConfig.topN,
+      minSuitabilityScore: mergedConfig.minSuitabilityScore,
+      sources: mergedConfig.sources,
     });
 
-    const { unprocessedJobs, scoredJobs } = await scoreJobsStep({ profile });
+    try {
+      const profile = await loadProfileStep();
 
-    const jobsToProcess = selectJobsStep({
-      scoredJobs,
-      mergedConfig,
-    });
+      const { discoveredJobs } = await discoverJobsStep({ mergedConfig });
 
-    console.log("\n🏭 Auto-processing top jobs...");
-    console.log(
-      `   Found ${jobsToProcess.length} candidates (score >= ${mergedConfig.minSuitabilityScore}, top ${mergedConfig.topN})`,
-    );
+      const { created } = await importJobsStep({ discoveredJobs });
 
-    const { processedCount } = await processJobsStep({
-      jobsToProcess,
-      processJob,
-    });
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+        jobsDiscovered: created,
+      });
 
-    await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-      status: "completed",
-      completedAt: new Date().toISOString(),
-      jobsProcessed: processedCount,
-    });
+      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({ profile });
 
-    console.log("\n🎉 Pipeline completed!");
-    console.log(`   Jobs discovered: ${created}`);
-    console.log(`   Jobs processed: ${processedCount}`);
+      const jobsToProcess = selectJobsStep({
+        scoredJobs,
+        mergedConfig,
+      });
 
-    progressHelpers.complete(created, processedCount);
+      pipelineLogger.info("Selected jobs for processing", {
+        candidates: jobsToProcess.length,
+      });
 
-    await notifyPipelineWebhookStep("pipeline.completed", {
-      pipelineRunId: pipelineRun.id,
-      jobsDiscovered: created,
-      jobsScored: unprocessedJobs.length,
-      jobsProcessed: processedCount,
-    });
-    isPipelineRunning = false;
+      const { processedCount } = await processJobsStep({
+        jobsToProcess,
+        processJob,
+      });
 
-    return {
-      success: true,
-      jobsDiscovered: created,
-      jobsProcessed: processedCount,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+        status: "completed",
+        completedAt: new Date().toISOString(),
+        jobsProcessed: processedCount,
+      });
 
-    await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-      status: "failed",
-      completedAt: new Date().toISOString(),
-      errorMessage: message,
-    });
+      progressHelpers.complete(created, processedCount);
+      pipelineLogger.info("Pipeline run completed", {
+        jobsDiscovered: created,
+        jobsProcessed: processedCount,
+      });
 
-    progressHelpers.failed(message);
+      await notifyPipelineWebhookStep("pipeline.completed", {
+        pipelineRunId: pipelineRun.id,
+        jobsDiscovered: created,
+        jobsScored: unprocessedJobs.length,
+        jobsProcessed: processedCount,
+      });
 
-    await notifyPipelineWebhookStep("pipeline.failed", {
-      pipelineRunId: pipelineRun.id,
-      error: message,
-    });
-    isPipelineRunning = false;
+      return {
+        success: true,
+        jobsDiscovered: created,
+        jobsProcessed: processedCount,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
 
-    console.error("\n❌ Pipeline failed:", message);
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+        status: "failed",
+        completedAt: new Date().toISOString(),
+        errorMessage: message,
+      });
 
-    return {
-      success: false,
-      jobsDiscovered: 0,
-      jobsProcessed: 0,
-      error: message,
-    };
-  }
+      progressHelpers.failed(message);
+      pipelineLogger.error("Pipeline run failed", error);
+
+      await notifyPipelineWebhookStep("pipeline.failed", {
+        pipelineRunId: pipelineRun.id,
+        error: message,
+      });
+
+      return {
+        success: false,
+        jobsDiscovered: 0,
+        jobsProcessed: 0,
+        error: message,
+      };
+    } finally {
+      isPipelineRunning = false;
+    }
+  });
 }
 
 export type ProcessJobOptions = {
@@ -172,83 +175,87 @@ export async function summarizeJob(
   success: boolean;
   error?: string;
 }> {
-  console.log(`📝 Summarizing job ${jobId}...`);
+  return runWithRequestContext({ jobId }, async () => {
+    const jobLogger = logger.child({ jobId });
+    jobLogger.info("Summarizing job");
+    try {
+      const job = await jobsRepo.getJobById(jobId);
+      if (!job) return { success: false, error: "Job not found" };
 
-  try {
-    const job = await jobsRepo.getJobById(jobId);
-    if (!job) return { success: false, error: "Job not found" };
+      const profile = await getProfile();
 
-    const profile = await getProfile();
+      // 1. Generate Summary & Tailoring
+      let tailoredSummary = job.tailoredSummary;
+      let tailoredHeadline = job.tailoredHeadline;
+      let tailoredSkills = job.tailoredSkills;
 
-    // 1. Generate Summary & Tailoring
-    let tailoredSummary = job.tailoredSummary;
-    let tailoredHeadline = job.tailoredHeadline;
-    let tailoredSkills = job.tailoredSkills;
-
-    if (!tailoredSummary || !tailoredHeadline || options?.force) {
-      console.log("   Generating tailoring (summary, headline, skills)...");
-      const tailoringResult = await generateTailoring(
-        job.jobDescription || "",
-        profile,
-      );
-      if (tailoringResult.success && tailoringResult.data) {
-        tailoredSummary = tailoringResult.data.summary;
-        tailoredHeadline = tailoringResult.data.headline;
-        tailoredSkills = JSON.stringify(tailoringResult.data.skills);
-      } else if (options?.force || !tailoredSummary || !tailoredHeadline) {
-        return {
-          success: false,
-          error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
-        };
-      }
-    }
-
-    // 2. Suggest Projects
-    let selectedProjectIds = job.selectedProjectIds;
-    if (!selectedProjectIds || options?.force) {
-      console.log("   Suggesting projects...");
-      try {
-        const { catalog, selectionItems } = extractProjectsFromProfile(profile);
-        const overrideResumeProjectsRaw = await getSetting("resumeProjects");
-        const { resumeProjects } = resolveResumeProjectsSettings({
-          catalog,
-          overrideRaw: overrideResumeProjectsRaw,
-        });
-
-        const locked = resumeProjects.lockedProjectIds;
-        const desiredCount = Math.max(
-          0,
-          resumeProjects.maxProjects - locked.length,
+      if (!tailoredSummary || !tailoredHeadline || options?.force) {
+        jobLogger.info("Generating tailoring content");
+        const tailoringResult = await generateTailoring(
+          job.jobDescription || "",
+          profile,
         );
-        const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-        const eligibleProjects = selectionItems.filter((p) =>
-          eligibleSet.has(p.id),
-        );
-
-        const picked = await pickProjectIdsForJob({
-          jobDescription: job.jobDescription || "",
-          eligibleProjects,
-          desiredCount,
-        });
-
-        selectedProjectIds = [...locked, ...picked].join(",");
-      } catch (_err) {
-        console.warn("   ⚠️ Failed to suggest projects, leaving empty");
+        if (tailoringResult.success && tailoringResult.data) {
+          tailoredSummary = tailoringResult.data.summary;
+          tailoredHeadline = tailoringResult.data.headline;
+          tailoredSkills = JSON.stringify(tailoringResult.data.skills);
+        } else if (options?.force || !tailoredSummary || !tailoredHeadline) {
+          return {
+            success: false,
+            error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
+          };
+        }
       }
+
+      // 2. Suggest Projects
+      let selectedProjectIds = job.selectedProjectIds;
+      if (!selectedProjectIds || options?.force) {
+        jobLogger.info("Selecting projects");
+        try {
+          const { catalog, selectionItems } =
+            extractProjectsFromProfile(profile);
+          const overrideResumeProjectsRaw = await getSetting("resumeProjects");
+          const { resumeProjects } = resolveResumeProjectsSettings({
+            catalog,
+            overrideRaw: overrideResumeProjectsRaw,
+          });
+
+          const locked = resumeProjects.lockedProjectIds;
+          const desiredCount = Math.max(
+            0,
+            resumeProjects.maxProjects - locked.length,
+          );
+          const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
+          const eligibleProjects = selectionItems.filter((p) =>
+            eligibleSet.has(p.id),
+          );
+
+          const picked = await pickProjectIdsForJob({
+            jobDescription: job.jobDescription || "",
+            eligibleProjects,
+            desiredCount,
+          });
+
+          selectedProjectIds = [...locked, ...picked].join(",");
+        } catch (error) {
+          jobLogger.warn("Failed to suggest projects", error);
+        }
+      }
+
+      await jobsRepo.updateJob(job.id, {
+        tailoredSummary: tailoredSummary ?? undefined,
+        tailoredHeadline: tailoredHeadline ?? undefined,
+        tailoredSkills: tailoredSkills ?? undefined,
+        selectedProjectIds: selectedProjectIds ?? undefined,
+      });
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      jobLogger.error("Summarization failed", error);
+      return { success: false, error: message };
     }
-
-    await jobsRepo.updateJob(job.id, {
-      tailoredSummary: tailoredSummary ?? undefined,
-      tailoredHeadline: tailoredHeadline ?? undefined,
-      tailoredSkills: tailoredSkills ?? undefined,
-      selectedProjectIds: selectedProjectIds ?? undefined,
-    });
-
-    return { success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, error: message };
-  }
+  });
 }
 
 /**
@@ -261,43 +268,46 @@ export async function generateFinalPdf(
   success: boolean;
   error?: string;
 }> {
-  console.log(`📄 Generating final PDF for job ${jobId}...`);
+  return runWithRequestContext({ jobId }, async () => {
+    const jobLogger = logger.child({ jobId });
+    jobLogger.info("Generating final PDF");
+    try {
+      const job = await jobsRepo.getJobById(jobId);
+      if (!job) return { success: false, error: "Job not found" };
 
-  try {
-    const job = await jobsRepo.getJobById(jobId);
-    if (!job) return { success: false, error: "Job not found" };
+      // Mark as processing
+      await jobsRepo.updateJob(job.id, { status: "processing" });
 
-    // Mark as processing
-    await jobsRepo.updateJob(job.id, { status: "processing" });
+      const pdfResult = await generatePdf(
+        job.id,
+        {
+          summary: job.tailoredSummary || "",
+          headline: job.tailoredHeadline || "",
+          skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
+        },
+        job.jobDescription || "",
+        undefined, // deprecated baseResumePath parameter
+        job.selectedProjectIds,
+      );
 
-    const pdfResult = await generatePdf(
-      job.id,
-      {
-        summary: job.tailoredSummary || "",
-        headline: job.tailoredHeadline || "",
-        skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
-      },
-      job.jobDescription || "",
-      undefined, // deprecated baseResumePath parameter
-      job.selectedProjectIds,
-    );
+      if (!pdfResult.success) {
+        // Revert status if failed
+        await jobsRepo.updateJob(job.id, { status: "discovered" });
+        return { success: false, error: pdfResult.error };
+      }
 
-    if (!pdfResult.success) {
-      // Revert status if failed
-      await jobsRepo.updateJob(job.id, { status: "discovered" });
-      return { success: false, error: pdfResult.error };
+      await jobsRepo.updateJob(job.id, {
+        status: "ready",
+        pdfPath: pdfResult.pdfPath,
+      });
+
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      jobLogger.error("PDF generation failed", error);
+      return { success: false, error: message };
     }
-
-    await jobsRepo.updateJob(job.id, {
-      status: "ready",
-      pdfPath: pdfResult.pdfPath,
-    });
-
-    return { success: true };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, error: message };
-  }
+  });
 }
 
 /**

@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import { toStringOrNull } from "@shared/utils/type-conversion";
 import {
   buildModeCacheKey,
@@ -51,7 +52,7 @@ export class LlmService {
       resolvedProvider === "openrouter" &&
       toStringOrNull(process.env.OPENROUTER_API_KEY)
     ) {
-      console.warn(
+      logger.warn(
         "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
       );
       const migrated = toStringOrNull(process.env.OPENROUTER_API_KEY);
@@ -180,9 +181,11 @@ export class LlmService {
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 0) {
-          console.log(
-            `🔄 [${jobId ?? "unknown"}] Retry attempt ${attempt}/${maxRetries}...`,
-          );
+          logger.info("LLM retry attempt", {
+            jobId: jobId ?? "unknown",
+            attempt,
+            maxRetries,
+          });
           await sleep(getRetryDelayMs(retryDelayMs, attempt));
         }
 
@@ -209,7 +212,7 @@ export class LlmService {
             `LLM API error: ${response.status}${detail}`,
           ) as LlmApiError;
           err.status = response.status;
-          err.body = errorBody;
+          err.body = truncate(errorBody, 600);
           throw err;
         }
 
@@ -238,9 +241,13 @@ export class LlmService {
         }
 
         if (attempt < maxRetries && shouldRetryAttempt({ message, status })) {
-          console.warn(
-            `⚠️ [${jobId ?? "unknown"}] Attempt ${attempt + 1} failed (${status ?? "no-status"}): ${message}. Retrying...`,
-          );
+          logger.warn("LLM attempt failed, retrying", {
+            jobId: jobId ?? "unknown",
+            attempt: attempt + 1,
+            maxRetries,
+            status: status ?? "no-status",
+            message,
+          });
           continue;
         }
 
@@ -271,9 +278,9 @@ function normalizeProvider(
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized && normalized !== "openrouter") {
-    console.warn(
-      `⚠️ Unknown LLM provider "${normalized}", defaulting to openrouter`,
-    );
+    logger.warn("Unknown LLM provider, defaulting to openrouter", {
+      normalized,
+    });
   }
   return "openrouter";
 }

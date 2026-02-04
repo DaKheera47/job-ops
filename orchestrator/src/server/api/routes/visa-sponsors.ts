@@ -17,7 +17,7 @@ visaSponsorsRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const status = visaSponsors.getStatus();
     const response: ApiResponse<VisaSponsorStatusResponse> = {
-      success: true,
+      ok: true,
       data: status,
     };
     res.json(response);
@@ -46,7 +46,7 @@ visaSponsorsRouter.post("/search", async (req: Request, res: Response) => {
     });
 
     const response: ApiResponse<VisaSponsorSearchResponse> = {
-      success: true,
+      ok: true,
       data: {
         results,
         query: input.query,
