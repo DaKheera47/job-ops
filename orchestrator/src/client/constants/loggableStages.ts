@@ -24,11 +24,14 @@ export const LOGGABLE_STAGE_OPTIONS: Array<{
   { label: STAGE_LABELS.closed, value: "closed" },
 ];
 
-export type SankeyStageValue = Exclude<LoggableStageValue, "no_change">;
+export type SankeyStageValue =
+  | Exclude<LoggableStageValue, "no_change">
+  | "no_response";
 
 export const getSankeyStageLabel = (stage: SankeyStageValue): string => {
   if (stage === "rejected") return "Rejected";
   if (stage === "withdrawn") return "Withdrawn";
+  if (stage === "no_response") return "No Response";
   return STAGE_LABELS[stage];
 };
 
@@ -38,6 +41,9 @@ export const getSankeyStageFromEvent = (
   if (event.toStage === "closed") {
     if (event.outcome === "rejected") return "rejected";
     if (event.outcome === "withdrawn") return "withdrawn";
+    if (event.outcome === "no_response" || event.outcome === "ghosted") {
+      return "no_response";
+    }
   }
   return event.toStage;
 };

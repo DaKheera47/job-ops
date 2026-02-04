@@ -66,6 +66,26 @@ const SANKEY_STAGE_ORDER = LOGGABLE_STAGE_OPTIONS.filter(
   (option) => option.value !== "no_change",
 ).map((option) => option.value) as SankeyStageValue[];
 
+const SANKEY_STAGES: SankeyStageValue[] = SANKEY_STAGE_ORDER.includes(
+  "no_response",
+)
+  ? SANKEY_STAGE_ORDER
+  : [...SANKEY_STAGE_ORDER, "no_response"];
+
+const SANKEY_NODE_COLORS: Record<SankeyStageValue, string> = {
+  applied: "#3b82f6",
+  recruiter_screen: "#06b6d4",
+  assessment: "#f59e0b",
+  hiring_manager_screen: "#8b5cf6",
+  technical_interview: "#a855f7",
+  onsite: "#6366f1",
+  offer: "#22c55e",
+  rejected: "#ef4444",
+  withdrawn: "#f97316",
+  no_response: "#0ea5a4",
+  closed: "#64748b",
+};
+
 const buildSankeyRows = (jobsWithEvents: JobWithEvents[]) => {
   const counts = new Map<string, number>();
 
@@ -92,8 +112,8 @@ const buildSankeyRows = (jobsWithEvents: JobWithEvents[]) => {
   }
 
   const rows: Array<[string, string, number]> = [];
-  for (const fromStage of SANKEY_STAGE_ORDER) {
-    for (const toStage of SANKEY_STAGE_ORDER) {
+  for (const fromStage of SANKEY_STAGES) {
+    for (const toStage of SANKEY_STAGES) {
       const count = counts.get(`${fromStage}->${toStage}`) ?? 0;
       if (count === 0) continue;
       rows.push([
@@ -293,6 +313,9 @@ export function ConversionAnalytics({
                     options={{
                       sankey: {
                         node: {
+                          colors: SANKEY_STAGES.map(
+                            (stage) => SANKEY_NODE_COLORS[stage],
+                          ),
                           label: {
                             fontName:
                               "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace",
@@ -300,6 +323,12 @@ export function ConversionAnalytics({
                           },
                           nodePadding: 14,
                           width: 18,
+                        },
+                        link: {
+                          colorMode: "target",
+                          colors: SANKEY_STAGES.map(
+                            (stage) => SANKEY_NODE_COLORS[stage],
+                          ),
                         },
                       },
                       backgroundColor: "transparent",
