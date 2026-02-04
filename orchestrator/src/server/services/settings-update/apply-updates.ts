@@ -1,12 +1,12 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema";
-import { settingsUpdateRegistry } from "./registry";
 import type {
   DeferredSideEffect,
   SettingsUpdateAction,
   SettingsUpdateContext,
   SettingsUpdatePlan,
   SettingUpdateHandler,
-} from "./types";
+} from "./registry";
+import { settingsUpdateRegistry } from "./registry";
 
 async function runAction(action: SettingsUpdateAction): Promise<void> {
   await action.persist();

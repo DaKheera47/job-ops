@@ -1,23 +1,63 @@
+import type { SettingKey } from "@server/repositories/settings";
 import * as settingsRepo from "@server/repositories/settings";
-import { applyEnvValue } from "@server/services/envSettings";
+import { applyEnvValue, normalizeEnvInput } from "@server/services/envSettings";
 import { getProfile } from "@server/services/profile";
 import {
   extractProjectsFromProfile,
   normalizeResumeProjectsSettings,
 } from "@server/services/resumeProjects";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
-import {
-  toBitBoolOrNull,
-  toJsonOrNull,
-  toNormalizedStringOrNull,
-  toStringOrNull,
-} from "./serializers";
-import type {
-  DeferredSideEffect,
-  SettingsUpdateAction,
-  SettingsUpdateResult,
-  SettingUpdateHandler,
-} from "./types";
+import { toStringOrNull as toStringOrNullShared } from "@shared/utils/type-conversion";
+
+export type DeferredSideEffect = "refreshBackupScheduler";
+
+export type SettingsUpdateAction = {
+  settingKey: SettingKey;
+  persist: () => Promise<void>;
+  sideEffect?: () => void | Promise<void>;
+};
+
+export type SettingsUpdateResult = {
+  actions: SettingsUpdateAction[];
+  deferredSideEffects: Set<DeferredSideEffect>;
+};
+
+export type SettingsUpdateContext = {
+  input: UpdateSettingsInput;
+};
+
+export type SettingUpdateHandler<K extends keyof UpdateSettingsInput> = (args: {
+  key: K;
+  value: UpdateSettingsInput[K];
+  context: SettingsUpdateContext;
+}) => Promise<SettingsUpdateResult> | SettingsUpdateResult;
+
+export type SettingsUpdatePlan = {
+  shouldRefreshBackupScheduler: boolean;
+};
+
+export function toNormalizedStringOrNull(
+  value: string | null | undefined,
+): string | null {
+  return normalizeEnvInput(value);
+}
+
+export function toNumberStringOrNull(
+  value: number | null | undefined,
+): string | null {
+  return toStringOrNullShared(value);
+}
+
+export function toJsonOrNull<T>(value: T | null | undefined): string | null {
+  return value !== null && value !== undefined ? JSON.stringify(value) : null;
+}
+
+export function toBitBoolOrNull(
+  value: boolean | null | undefined,
+): string | null {
+  if (value === null || value === undefined) return null;
+  return value ? "1" : "0";
+}
 
 function result(
   args: {
@@ -118,13 +158,15 @@ export const settingsUpdateRegistry: Partial<{
   }),
   ukvisajobsMaxJobs: singleAction(({ value }) =>
     result({
-      actions: [persistAction("ukvisajobsMaxJobs", toStringOrNull(value))],
+      actions: [
+        persistAction("ukvisajobsMaxJobs", toNumberStringOrNull(value)),
+      ],
     }),
   ),
   gradcrackerMaxJobsPerTerm: singleAction(({ value }) =>
     result({
       actions: [
-        persistAction("gradcrackerMaxJobsPerTerm", toStringOrNull(value)),
+        persistAction("gradcrackerMaxJobsPerTerm", toNumberStringOrNull(value)),
       ],
     }),
   ),
@@ -136,12 +178,14 @@ export const settingsUpdateRegistry: Partial<{
   ),
   jobspyResultsWanted: singleAction(({ value }) =>
     result({
-      actions: [persistAction("jobspyResultsWanted", toStringOrNull(value))],
+      actions: [
+        persistAction("jobspyResultsWanted", toNumberStringOrNull(value)),
+      ],
     }),
   ),
   jobspyHoursOld: singleAction(({ value }) =>
     result({
-      actions: [persistAction("jobspyHoursOld", toStringOrNull(value))],
+      actions: [persistAction("jobspyHoursOld", toNumberStringOrNull(value))],
     }),
   ),
   jobspyCountryIndeed: singleAction(({ value }) =>
@@ -271,13 +315,13 @@ export const settingsUpdateRegistry: Partial<{
   ),
   backupHour: singleAction(({ value }) =>
     result({
-      actions: [persistAction("backupHour", toStringOrNull(value))],
+      actions: [persistAction("backupHour", toNumberStringOrNull(value))],
       deferred: ["refreshBackupScheduler"],
     }),
   ),
   backupMaxCount: singleAction(({ value }) =>
     result({
-      actions: [persistAction("backupMaxCount", toStringOrNull(value))],
+      actions: [persistAction("backupMaxCount", toNumberStringOrNull(value))],
       deferred: ["refreshBackupScheduler"],
     }),
   ),

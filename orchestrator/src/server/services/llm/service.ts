@@ -1,3 +1,4 @@
+import { toStringOrNull } from "@shared/utils/type-conversion";
 import {
   buildModeCacheKey,
   getOrderedModes,
@@ -27,8 +28,8 @@ export class LlmService {
 
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
-      normalizeEnvInput(options.baseUrl) ||
-      normalizeEnvInput(process.env.LLM_BASE_URL) ||
+      toStringOrNull(options.baseUrl) ||
+      toStringOrNull(process.env.LLM_BASE_URL) ||
       null;
     const resolvedProvider = normalizeProvider(
       options.provider ?? process.env.LLM_PROVIDER ?? null,
@@ -39,8 +40,8 @@ export class LlmService {
     const baseUrl = normalizedBaseUrl || strategy.defaultBaseUrl;
 
     let apiKey =
-      normalizeEnvInput(options.apiKey) ||
-      normalizeEnvInput(process.env.LLM_API_KEY) ||
+      toStringOrNull(options.apiKey) ||
+      toStringOrNull(process.env.LLM_API_KEY) ||
       null;
 
     // Backwards-compat migration: OPENROUTER_API_KEY -> LLM_API_KEY.
@@ -48,12 +49,12 @@ export class LlmService {
     if (
       !apiKey &&
       resolvedProvider === "openrouter" &&
-      normalizeEnvInput(process.env.OPENROUTER_API_KEY)
+      toStringOrNull(process.env.OPENROUTER_API_KEY)
     ) {
       console.warn(
         "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
       );
-      const migrated = normalizeEnvInput(process.env.OPENROUTER_API_KEY);
+      const migrated = toStringOrNull(process.env.OPENROUTER_API_KEY);
       if (migrated) {
         process.env.LLM_API_KEY = migrated;
         apiKey = migrated;
@@ -275,11 +276,6 @@ function normalizeProvider(
     );
   }
   return "openrouter";
-}
-
-function normalizeEnvInput(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
 }
 
 function sleep(ms: number): Promise<void> {

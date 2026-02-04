@@ -1,11 +1,4 @@
 export { applySettingsUpdates } from "./apply-updates";
-export { settingsUpdateRegistry } from "./registry";
-export {
-  toBitBoolOrNull,
-  toJsonOrNull,
-  toNormalizedStringOrNull,
-  toStringOrNull,
-} from "./serializers";
 export type {
   DeferredSideEffect,
   SettingsUpdateAction,
@@ -13,4 +6,11 @@ export type {
   SettingsUpdatePlan,
   SettingsUpdateResult,
   SettingUpdateHandler,
-} from "./types";
+} from "./registry";
+export {
+  settingsUpdateRegistry,
+  toBitBoolOrNull,
+  toJsonOrNull,
+  toNormalizedStringOrNull,
+  toNumberStringOrNull,
+} from "./registry";
