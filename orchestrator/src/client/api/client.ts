@@ -45,6 +45,28 @@ class ApiClientError extends Error {
   }
 }
 
+type LegacyApiResponse<T> =
+  | {
+      success: true;
+      data?: T;
+      message?: string;
+    }
+  | {
+      success: false;
+      error?: string;
+      message?: string;
+      details?: unknown;
+    };
+
+function normalizeApiResponse<T>(
+  payload: unknown,
+): ApiResponse<T> | LegacyApiResponse<T> {
+  if (!payload || typeof payload !== "object") {
+    throw new ApiClientError("API request failed: malformed JSON response");
+  }
+  return payload as ApiResponse<T> | LegacyApiResponse<T>;
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
@@ -59,9 +81,9 @@ async function fetchApi<T>(
 
   const text = await response.text();
 
-  let data: ApiResponse<T>;
+  let parsed: ApiResponse<T> | LegacyApiResponse<T>;
   try {
-    data = JSON.parse(text);
+    parsed = normalizeApiResponse<T>(JSON.parse(text));
   } catch {
     // If the response is not JSON, it's likely an HTML error page
     console.error("API returned non-JSON response:", text.substring(0, 500));
@@ -70,14 +92,24 @@ async function fetchApi<T>(
     );
   }
 
-  if (!data.ok) {
-    throw new ApiClientError(
-      data.error.message || "API request failed",
-      data.meta?.requestId,
-    );
+  if ("ok" in parsed) {
+    if (!parsed.ok) {
+      throw new ApiClientError(
+        parsed.error.message || "API request failed",
+        parsed.meta?.requestId,
+      );
+    }
+    return parsed.data as T;
   }
 
-  return data.data as T;
+  if (!parsed.success) {
+    throw new ApiClientError(parsed.error || parsed.message || "API request failed");
+  }
+
+  const data = parsed.data;
+  if (data !== undefined) return data as T;
+  if (parsed.message !== undefined) return { message: parsed.message } as T;
+  return null as T;
 }
 
 // Jobs API
