@@ -35,7 +35,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
     const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`);
     const statusBody = await statusRes.json();
-    expect(statusBody.success).toBe(true);
+    expect(statusBody.ok).toBe(true);
     expect(statusBody.data.totalSponsors).toBe(0);
 
     const updateRes = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
@@ -76,7 +76,7 @@ describe.sequential("Visa sponsors API routes", () => {
       body: JSON.stringify({ query: "Acme" }),
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.total).toBe(1);
 
     const orgRes = await fetch(

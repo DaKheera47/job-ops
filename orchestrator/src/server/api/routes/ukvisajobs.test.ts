@@ -47,7 +47,7 @@ describe.sequential("UK Visa Jobs API routes", () => {
       body: JSON.stringify({ query: "engineer" }),
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.totalPages).toBe(2);
     expect(fetchUkVisaJobsPage).toHaveBeenCalledWith({
       searchKeyword: "engineer",
@@ -87,7 +87,7 @@ describe.sequential("UK Visa Jobs API routes", () => {
       }),
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.created).toBe(1);
     expect(body.data.skipped).toBe(1);
   });

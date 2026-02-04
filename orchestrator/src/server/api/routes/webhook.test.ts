@@ -29,7 +29,7 @@ describe.sequential("Webhook API routes", () => {
       headers: { Authorization: "Bearer secret" },
     });
     const goodBody = await goodRes.json();
-    expect(goodBody.success).toBe(true);
+    expect(goodBody.ok).toBe(true);
     expect(goodBody.data.message).toBe("Pipeline triggered");
   });
 });

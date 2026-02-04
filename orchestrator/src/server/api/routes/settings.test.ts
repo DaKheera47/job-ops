@@ -24,7 +24,7 @@ describe.sequential("Settings API routes", () => {
   it("returns settings with defaults", async () => {
     const res = await fetch(`${baseUrl}/api/settings`);
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.defaultModel).toBe("test-model");
     expect(Array.isArray(body.data.searchTerms)).toBe(true);
     expect(body.data.rxresumeEmail).toBe("resume@example.com");
@@ -51,7 +51,7 @@ describe.sequential("Settings API routes", () => {
       }),
     });
     const patchBody = await patchRes.json();
-    expect(patchBody.success).toBe(true);
+    expect(patchBody.ok).toBe(true);
     expect(patchBody.data.searchTerms).toEqual(["engineer"]);
     expect(patchBody.data.overrideSearchTerms).toEqual(["engineer"]);
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
@@ -70,7 +70,7 @@ describe.sequential("Settings API routes", () => {
     });
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.success).toBe(false);
-    expect(body.error).toContain("Username is required");
+    expect(body.ok).toBe(false);
+    expect(body.error.message).toContain("Username is required");
   });
 });

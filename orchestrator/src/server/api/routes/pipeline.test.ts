@@ -19,7 +19,7 @@ describe.sequential("Pipeline API routes", () => {
   it("reports pipeline status", async () => {
     const res = await fetch(`${baseUrl}/api/pipeline/status`);
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.isRunning).toBe(false);
     expect(body.data.lastRun).toBeNull();
   });
@@ -39,7 +39,7 @@ describe.sequential("Pipeline API routes", () => {
       body: JSON.stringify({ topN: 5, sources: ["gradcracker"] }),
     });
     const runBody = await runRes.json();
-    expect(runBody.success).toBe(true);
+    expect(runBody.ok).toBe(true);
     expect(runPipeline).toHaveBeenCalledWith({
       topN: 5,
       sources: ["gradcracker"],

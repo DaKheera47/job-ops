@@ -30,7 +30,7 @@ describe.sequential("Onboarding API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("missing");
     });
@@ -68,7 +68,7 @@ describe.sequential("Onboarding API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       // Should be invalid because the key is fake
       expect(body.data.valid).toBe(false);
     });
@@ -84,7 +84,7 @@ describe.sequential("Onboarding API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("missing");
     });
@@ -132,7 +132,7 @@ describe.sequential("Onboarding API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       // Should be invalid because credentials are fake
       expect(body.data.valid).toBe(false);
     });
@@ -157,7 +157,7 @@ describe.sequential("Onboarding API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("No base resume selected");
     });

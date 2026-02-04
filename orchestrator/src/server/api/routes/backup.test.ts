@@ -23,7 +23,7 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.backups).toEqual([]);
       expect(body.data.nextScheduled).toBeNull();
     });
@@ -36,7 +36,7 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.backups).toHaveLength(1);
       expect(body.data.backups[0]).toHaveProperty("filename");
       expect(body.data.backups[0]).toHaveProperty("type", "manual");
@@ -51,7 +51,7 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(200);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.type).toBe("manual");
       expect(body.data.filename).toMatch(
         /^jobs_manual_\d{4}_\d{2}_\d{2}_\d{2}_\d{2}_\d{2}\.db$/,
@@ -67,8 +67,8 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(500);
-      expect(body.success).toBe(false);
-      expect(body.error).toContain("Database file not found");
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("Database file not found");
     });
   });
 
@@ -88,8 +88,8 @@ describe.sequential("Backup API routes", () => {
       const deleteBody = await deleteRes.json();
 
       expect(deleteRes.status).toBe(200);
-      expect(deleteBody.success).toBe(true);
-      expect(deleteBody.message).toContain("deleted successfully");
+      expect(deleteBody.ok).toBe(true);
+      expect(deleteBody.data.message).toContain("deleted successfully");
 
       // Verify it's gone
       const listRes = await fetch(`${baseUrl}/api/backups`);
@@ -104,8 +104,8 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(404);
-      expect(body.success).toBe(false);
-      expect(body.error).toContain("not found");
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("not found");
     });
 
     it("should return 400 for invalid filename", async () => {
@@ -115,8 +115,8 @@ describe.sequential("Backup API routes", () => {
       const body = await res.json();
 
       expect(res.status).toBe(400);
-      expect(body.success).toBe(false);
-      expect(body.error).toContain("Invalid");
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("Invalid");
     });
   });
 });

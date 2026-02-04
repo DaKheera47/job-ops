@@ -28,7 +28,7 @@ describe.sequential("Jobs API routes", () => {
 
     const listRes = await fetch(`${baseUrl}/api/jobs`);
     const listBody = await listRes.json();
-    expect(listBody.success).toBe(true);
+    expect(listBody.ok).toBe(true);
     expect(listBody.data.total).toBe(1);
     expect(listBody.data.jobs[0].id).toBe(job.id);
 
@@ -92,7 +92,7 @@ describe.sequential("Jobs API routes", () => {
       method: "POST",
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.status).toBe("applied");
     expect(body.data.notionPageId).toBe("page-123");
     expect(body.data.appliedAt).toBeTruthy();
@@ -135,7 +135,7 @@ describe.sequential("Jobs API routes", () => {
     });
     const body = await res.json();
 
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.suitabilityScore).toBe(77);
     expect(body.data.suitabilityReason).toBe("Updated fit");
   });
@@ -165,7 +165,7 @@ describe.sequential("Jobs API routes", () => {
     });
     const body = await res.json();
 
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.sponsorMatchScore).toBe(100);
     expect(body.data.sponsorMatchNames).toContain("ACME CORP SPONSOR");
   });
@@ -192,7 +192,7 @@ describe.sequential("Jobs API routes", () => {
         body: JSON.stringify({ toStage: "applied" }),
       });
       const body1 = await trans1.json();
-      expect(body1.success).toBe(true);
+      expect(body1.ok).toBe(true);
       expect(body1.data.toStage).toBe("applied");
       const eventId = body1.data.id;
 
@@ -209,7 +209,7 @@ describe.sequential("Jobs API routes", () => {
       // 3. Get events
       const eventsRes = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
       const eventsBody = await eventsRes.json();
-      expect(eventsBody.success).toBe(true);
+      expect(eventsBody.ok).toBe(true);
       expect(eventsBody.data).toHaveLength(2);
       expect(eventsBody.data[0].toStage).toBe("applied");
       expect(eventsBody.data[1].toStage).toBe("recruiter_screen");
@@ -252,7 +252,7 @@ describe.sequential("Jobs API routes", () => {
       // 1. Initial state
       const res1 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
       const body1 = await res1.json();
-      expect(body1.success).toBe(true);
+      expect(body1.ok).toBe(true);
       expect(body1.data).toEqual([]);
 
       // 2. Insert a task
@@ -297,7 +297,7 @@ describe.sequential("Jobs API routes", () => {
         body: JSON.stringify({ outcome: "rejected" }),
       });
       const body = await res.json();
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.outcome).toBe("rejected");
       expect(body.data.closedAt).toBeTruthy();
     });

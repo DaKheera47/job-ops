@@ -92,3 +92,11 @@ POST /api/jobs/:id/generate-pdf
 - `processing` is transient. If PDF generation fails, the job is reverted back to `discovered`.
 - The PDF is served at `/pdfs/resume_<jobId>.pdf` and cache-busted with the job?s `updatedAt` timestamp.
 - If a job is `skipped` or `applied` and you want to re-open it, you can PATCH its `status` back to `discovered`.
+
+## External payload and sanitization defaults
+
+- **LLM providers** receive only prompt inputs required for scoring/tailoring/project selection/manual extraction tasks.
+- By default, prompt construction uses minimized profile/job fields and avoids sending unnecessary sensitive data.
+- **Webhook payloads** are sanitized and whitelisted by default; large/sensitive blobs are not sent.
+- Server logs and error details are redacted/truncated by default (secrets, tokens, cookies, passwords, API keys, and oversized payload fields).
+- Correlation data is included in logs (`requestId`, and when available `pipelineRunId` / `jobId`) to improve traceability without exposing raw payloads.
