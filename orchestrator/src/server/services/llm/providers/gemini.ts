@@ -1,9 +1,9 @@
-import { isCapabilityError } from "../policies/capability-fallback";
-import type { LlmRequestOptions, ProviderStrategy } from "../types";
+import type { LlmRequestOptions } from "../types";
 import { addQueryParam, buildHeaders, joinUrl } from "../utils/http";
 import { getNestedValue } from "../utils/object";
+import { createProviderStrategy } from "./factory";
 
-export const geminiStrategy: ProviderStrategy = {
+export const geminiStrategy = createProviderStrategy({
   provider: "gemini",
   defaultBaseUrl: "https://generativelanguage.googleapis.com",
   requiresApiKey: true,
@@ -56,13 +56,11 @@ export const geminiStrategy: ProviderStrategy = {
       .join("");
     return text || null;
   },
-  isCapabilityError: ({ mode, status, body }) =>
-    isCapabilityError({ mode, status, body }),
   getValidationUrls: ({ baseUrl, apiKey }) => {
     const url = joinUrl(baseUrl, "/v1beta/models");
     return [addQueryParam(url, "key", apiKey ?? "")];
   },
-};
+});
 
 function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
   systemInstruction: { parts: Array<{ text: string }> } | null;

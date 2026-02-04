@@ -18,74 +18,120 @@ const schema = {
 const messages = [{ role: "user" as const, content: "hello" }];
 
 describe("provider adapters", () => {
-  it("builds OpenRouter request", () => {
-    const request = openRouterStrategy.buildRequest({
-      mode: "json_schema",
-      baseUrl: "https://openrouter.ai",
-      apiKey: "x",
-      model: "model-a",
-      messages,
-      jsonSchema: schema,
-    });
-    expect(request.url).toBe("https://openrouter.ai/api/v1/chat/completions");
-    const body = request.body as Record<string, unknown>;
-    expect((body.response_format as Record<string, unknown>).type).toBe(
-      "json_schema",
+  it("builds requests for each provider/mode path", () => {
+    const cases = [
+      {
+        name: "openrouter-json_schema",
+        strategy: openRouterStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://openrouter.ai",
+          apiKey: "x",
+          model: "model-a",
+        },
+        expectedUrl: "https://openrouter.ai/api/v1/chat/completions",
+        expectedResponseFormat: "json_schema",
+      },
+      {
+        name: "openai-json_object",
+        strategy: openAiStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://api.openai.com",
+          apiKey: "x",
+          model: "model-a",
+        },
+        expectedUrl: "https://api.openai.com/v1/responses",
+      },
+      {
+        name: "gemini-json_schema",
+        strategy: geminiStrategy,
+        args: {
+          mode: "json_schema" as const,
+          baseUrl: "https://generativelanguage.googleapis.com",
+          apiKey: "x",
+          model: "gemini-1.5-flash",
+        },
+        expectedUrlContains: [":generateContent", "key=x"],
+      },
+      {
+        name: "lmstudio-text",
+        strategy: lmStudioStrategy,
+        args: {
+          mode: "text" as const,
+          baseUrl: "http://localhost:1234",
+          apiKey: null,
+          model: "local",
+        },
+        expectedUrl: "http://localhost:1234/v1/chat/completions",
+        expectedResponseFormat: "text",
+      },
+      {
+        name: "ollama-none",
+        strategy: ollamaStrategy,
+        args: {
+          mode: "none" as const,
+          baseUrl: "http://localhost:11434",
+          apiKey: null,
+          model: "local",
+        },
+        expectedUrl: "http://localhost:11434/v1/chat/completions",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const request = testCase.strategy.buildRequest({
+        ...testCase.args,
+        messages,
+        jsonSchema: schema,
+      });
+
+      if (testCase.expectedUrl) {
+        expect(request.url, testCase.name).toBe(testCase.expectedUrl);
+      }
+      if (testCase.expectedUrlContains) {
+        for (const expectedPart of testCase.expectedUrlContains) {
+          expect(request.url, testCase.name).toContain(expectedPart);
+        }
+      }
+
+      if (testCase.expectedResponseFormat) {
+        const body = request.body as Record<string, unknown>;
+        expect(
+          (body.response_format as Record<string, unknown>).type,
+          testCase.name,
+        ).toBe(testCase.expectedResponseFormat);
+      }
+    }
+  });
+
+  it("extracts text consistently for chat-completions providers", () => {
+    const response = {
+      choices: [{ message: { content: "ok" } }],
+    };
+    expect(openRouterStrategy.extractText(response)).toBe("ok");
+    expect(lmStudioStrategy.extractText(response)).toBe("ok");
+    expect(ollamaStrategy.extractText(response)).toBe("ok");
+  });
+
+  it("extracts text for openai and gemini variants", () => {
+    expect(openAiStrategy.extractText({ output_text: "openai-direct" })).toBe(
+      "openai-direct",
     );
-  });
+    expect(
+      openAiStrategy.extractText({
+        output: [
+          {
+            content: [{ type: "output_text", text: "openai-nested" }],
+          },
+        ],
+      }),
+    ).toBe("openai-nested");
 
-  it("builds OpenAI request", () => {
-    const request = openAiStrategy.buildRequest({
-      mode: "json_object",
-      baseUrl: "https://api.openai.com",
-      apiKey: "x",
-      model: "model-a",
-      messages,
-      jsonSchema: schema,
-    });
-    expect(request.url).toBe("https://api.openai.com/v1/responses");
-    const body = request.body as Record<string, unknown>;
-    expect(body.model).toBe("model-a");
-  });
-
-  it("builds Gemini request", () => {
-    const request = geminiStrategy.buildRequest({
-      mode: "json_schema",
-      baseUrl: "https://generativelanguage.googleapis.com",
-      apiKey: "x",
-      model: "gemini-1.5-flash",
-      messages,
-      jsonSchema: schema,
-    });
-    expect(request.url).toContain(":generateContent");
-    expect(request.url).toContain("key=x");
-  });
-
-  it("builds LMStudio request", () => {
-    const request = lmStudioStrategy.buildRequest({
-      mode: "text",
-      baseUrl: "http://localhost:1234",
-      apiKey: null,
-      model: "local",
-      messages,
-      jsonSchema: schema,
-    });
-    expect(request.url).toBe("http://localhost:1234/v1/chat/completions");
-    const body = request.body as Record<string, unknown>;
-    expect((body.response_format as Record<string, unknown>).type).toBe("text");
-  });
-
-  it("builds Ollama request", () => {
-    const request = ollamaStrategy.buildRequest({
-      mode: "none",
-      baseUrl: "http://localhost:11434",
-      apiKey: null,
-      model: "local",
-      messages,
-      jsonSchema: schema,
-    });
-    expect(request.url).toBe("http://localhost:11434/v1/chat/completions");
-    const body = request.body as Record<string, unknown>;
-    expect(body.model).toBe("local");
+    expect(
+      geminiStrategy.extractText({
+        candidates: [{ content: { parts: [{ text: "gemini" }] } }],
+      }),
+    ).toBe("gemini");
   });
 });

@@ -1,13 +1,9 @@
-import { isCapabilityError } from "../policies/capability-fallback";
-import type {
-  LlmRequestOptions,
-  ProviderStrategy,
-  ResponseMode,
-} from "../types";
+import type { LlmRequestOptions, ResponseMode } from "../types";
 import { buildHeaders, joinUrl } from "../utils/http";
 import { getNestedValue } from "../utils/object";
+import { createProviderStrategy } from "./factory";
 
-export const openAiStrategy: ProviderStrategy = {
+export const openAiStrategy = createProviderStrategy({
   provider: "openai",
   defaultBaseUrl: "https://api.openai.com",
   requiresApiKey: true,
@@ -59,10 +55,7 @@ export const openAiStrategy: ProviderStrategy = {
     }
     return null;
   },
-  isCapabilityError: ({ mode, status, body }) =>
-    isCapabilityError({ mode, status, body }),
-  getValidationUrls: ({ baseUrl }) => [joinUrl(baseUrl, "/v1/models")],
-};
+});
 
 function ensureJsonInstructionIfNeeded(
   messages: LlmRequestOptions<unknown>["messages"],
