@@ -8,7 +8,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import type { CreateJobInput } from "../../shared/types.js";
+import type { CreateJobInput } from "@shared/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CRAWLER_DIR = join(__dirname, "../../../../extractors/gradcracker");

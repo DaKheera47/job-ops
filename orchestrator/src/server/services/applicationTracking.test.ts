@@ -18,19 +18,19 @@ describe.sequential("Application Tracking Service", () => {
     process.env.NODE_ENV = "test";
 
     // Run migrations
-    await import("../db/migrate.js");
+    await import("../db/migrate");
 
     // Import modules after env is set
-    const dbModule = await import("../db/index.js");
+    const dbModule = await import("../db/index");
     db = dbModule.db;
     schema = dbModule.schema;
 
-    applicationTracking = await import("./applicationTracking.js");
-    jobsRepo = await import("../repositories/jobs.js");
+    applicationTracking = await import("./applicationTracking");
+    jobsRepo = await import("../repositories/jobs");
   });
 
   afterEach(async () => {
-    const { closeDb } = await import("../db/index.js");
+    const { closeDb } = await import("../db/index");
     closeDb();
     await rm(tempDir, { recursive: true, force: true });
     vi.clearAllMocks();

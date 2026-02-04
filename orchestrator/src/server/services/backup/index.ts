@@ -8,10 +8,10 @@
 import fs from "node:fs";
 import type { FileHandle } from "node:fs/promises";
 import path from "node:path";
-import type { BackupInfo } from "@shared/types.js";
+import type { BackupInfo } from "@shared/types";
 import Database from "better-sqlite3";
-import { getDataDir } from "../../config/dataDir.js";
-import { createScheduler } from "../../utils/scheduler.js";
+import { getDataDir } from "../../config/dataDir";
+import { createScheduler } from "../../utils/scheduler";
 
 const DB_FILENAME = "jobs.db";
 const AUTO_BACKUP_PREFIX = "jobs_";

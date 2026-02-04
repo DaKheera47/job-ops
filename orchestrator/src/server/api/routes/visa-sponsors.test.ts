@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Visa sponsors API routes", () => {
   let server: Server;
@@ -18,7 +18,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
   it("returns status and surfaces update errors", async () => {
     const { getStatus, downloadLatestCsv } = await import(
-      "../../services/visa-sponsors/index.js"
+      "../../services/visa-sponsors/index"
     );
     vi.mocked(getStatus).mockReturnValue({
       lastUpdated: null,
@@ -46,7 +46,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
   it("validates search payloads and handles missing organizations", async () => {
     const { searchSponsors, getOrganizationDetails } = await import(
-      "../../services/visa-sponsors/index.js"
+      "../../services/visa-sponsors/index"
     );
     vi.mocked(searchSponsors).mockReturnValue([
       {

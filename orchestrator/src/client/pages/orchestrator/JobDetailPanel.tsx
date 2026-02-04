@@ -1,3 +1,4 @@
+import type { Job } from "@shared/types.js";
 import {
   CheckCircle2,
   Copy,
@@ -15,7 +16,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -32,7 +32,6 @@ import {
   safeFilenamePart,
   stripHtml,
 } from "@/lib/utils";
-import type { Job } from "../../../shared/types";
 import * as api from "../../api";
 import {
   DiscoveredPanel,

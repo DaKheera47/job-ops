@@ -2,9 +2,9 @@
  * Service for inferring job details from a pasted job description.
  */
 
-import type { ManualJobDraft } from "../../shared/types.js";
-import { getSetting } from "../repositories/settings.js";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
+import type { ManualJobDraft } from "@shared/types";
+import { getSetting } from "../repositories/settings";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service";
 
 export interface ManualJobInferenceResult {
   job: ManualJobDraft;

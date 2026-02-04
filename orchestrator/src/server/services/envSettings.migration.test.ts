@@ -19,8 +19,8 @@ describe.sequential("envSettings migration", () => {
       MODEL: "test-model",
     };
 
-    await import("../db/migrate.js");
-    const dbMod = await import("../db/index.js");
+    await import("../db/migrate");
+    const dbMod = await import("../db/index");
     closeDb = dbMod.closeDb;
   });
 
@@ -31,8 +31,8 @@ describe.sequential("envSettings migration", () => {
   });
 
   it("migrates stored openrouterApiKey -> llmApiKey for openrouter provider", async () => {
-    const settingsRepo = await import("../repositories/settings.js");
-    const { applyStoredEnvOverrides } = await import("./envSettings.js");
+    const settingsRepo = await import("../repositories/settings");
+    const { applyStoredEnvOverrides } = await import("./envSettings");
 
     await settingsRepo.setSetting("llmProvider", "openrouter");
     await settingsRepo.setSetting("openrouterApiKey", "sk-or-legacy");
@@ -46,8 +46,8 @@ describe.sequential("envSettings migration", () => {
   });
 
   it("does not migrate openrouterApiKey when provider is not openrouter", async () => {
-    const settingsRepo = await import("../repositories/settings.js");
-    const { applyStoredEnvOverrides } = await import("./envSettings.js");
+    const settingsRepo = await import("../repositories/settings");
+    const { applyStoredEnvOverrides } = await import("./envSettings");
 
     await settingsRepo.setSetting("llmProvider", "openai");
     await settingsRepo.setSetting("openrouterApiKey", "sk-or-legacy");

@@ -5,9 +5,9 @@
  * There is no local file fallback.
  */
 
-import type { ResumeProfile } from "../../shared/types.js";
-import { getSetting } from "../repositories/settings.js";
-import { getResume, RxResumeCredentialsError } from "./rxresume-v4.js";
+import type { ResumeProfile } from "@shared/types";
+import { getSetting } from "../repositories/settings";
+import { getResume, RxResumeCredentialsError } from "./rxresume-v4";
 
 let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;

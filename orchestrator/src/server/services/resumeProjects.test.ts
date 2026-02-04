@@ -1,6 +1,6 @@
+import type { ResumeProjectCatalogItem } from "@shared/types";
 import { describe, expect, it } from "vitest";
-import type { ResumeProjectCatalogItem } from "../../shared/types.js";
-import * as rp from "./resumeProjects.js";
+import * as rp from "./resumeProjects";
 
 describe("Resume Projects Logic", () => {
   describe("stripHtml", () => {

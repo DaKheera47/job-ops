@@ -1,9 +1,8 @@
+import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import { AlertTriangle } from "lucide-react";
 import type React from "react";
-
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import type { ResumeProjectCatalogItem } from "../../../shared/types";
 
 interface ProjectSelectorProps {
   catalog: ResumeProjectCatalogItem[];

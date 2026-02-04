@@ -1,5 +1,5 @@
+import type { JobStatus } from "@shared/types.js";
 import type React from "react";
-import type { JobStatus } from "../../../shared/types";
 import { PipelineProgress } from "../../components";
 
 interface OrchestratorSummaryProps {

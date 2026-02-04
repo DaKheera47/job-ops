@@ -1,0 +1,21 @@
+{
+  "name": "job-ops-shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@paralleldrive/cuid2": "^3.0.6",
+    "typescript": "~5.9.0"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./utils/*": "./src/utils/*.ts",
+    "./*": "./src/*.ts"
+  }
+}

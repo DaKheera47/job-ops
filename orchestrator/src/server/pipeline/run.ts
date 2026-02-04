@@ -5,9 +5,9 @@
  * Usage: npm run pipeline:run
  */
 
-import "../config/env.js";
-import { closeDb } from "../db/index.js";
-import { runPipeline } from "./orchestrator.js";
+import "../config/env";
+import { closeDb } from "../db/index";
+import { runPipeline } from "./orchestrator";
 
 async function main() {
   console.log("=".repeat(60));

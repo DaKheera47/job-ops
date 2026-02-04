@@ -21,14 +21,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type UpdateSettingsInput,
   updateSettingsSchema,
-} from "@shared/settings-schema";
+} from "@shared/settings-schema.js";
 import type {
   AppSettings,
   BackupInfo,
   JobStatus,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
-} from "@shared/types";
+} from "@shared/types.js";
 import { Settings } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";

@@ -1,4 +1,9 @@
 import {
+  type ApplicationStage,
+  STAGE_LABELS,
+  type StageEvent,
+} from "@shared/types.js";
+import {
   CheckCircle2,
   ClipboardList,
   Edit2,
@@ -11,14 +16,8 @@ import {
   Video,
 } from "lucide-react";
 import React from "react";
-
 import { Badge } from "@/components/ui/badge";
 import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
-import {
-  type ApplicationStage,
-  STAGE_LABELS,
-  type StageEvent,
-} from "../../../shared/types";
 import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
 
 const stageIcons: Record<ApplicationStage, React.ReactNode> = {

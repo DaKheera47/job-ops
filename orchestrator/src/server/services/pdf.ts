@@ -8,15 +8,15 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createId } from "@paralleldrive/cuid2";
-import { getDataDir } from "../config/dataDir.js";
-import { getSetting } from "../repositories/settings.js";
-import { getProfile } from "./profile.js";
-import { pickProjectIdsForJob } from "./projectSelection.js";
+import { getDataDir } from "../config/dataDir";
+import { getSetting } from "../repositories/settings";
+import { getProfile } from "./profile";
+import { pickProjectIdsForJob } from "./projectSelection";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
-} from "./resumeProjects.js";
-import { RxResumeClient } from "./rxresume-client.js";
+} from "./resumeProjects";
+import { RxResumeClient } from "./rxresume-client";
 
 const OUTPUT_DIR = join(getDataDir(), "pdfs");
 

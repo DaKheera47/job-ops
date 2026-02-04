@@ -6,8 +6,8 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { getDataDir } from "../../config/dataDir.js";
-import { createScheduler } from "../../utils/scheduler.js";
+import { getDataDir } from "../../config/dataDir";
+import { createScheduler } from "../../utils/scheduler";
 
 const DATA_DIR = path.join(getDataDir(), "visa-sponsors");
 

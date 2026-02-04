@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Jobs API routes", () => {
   let server: Server;
@@ -17,7 +17,7 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("lists jobs and supports status filtering", async () => {
-    const { createJob } = await import("../../repositories/jobs.js");
+    const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
       source: "manual",
       title: "Test Role",
@@ -43,7 +43,7 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("validates job updates and supports skip/delete flow", async () => {
-    const { createJob } = await import("../../repositories/jobs.js");
+    const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
       source: "manual",
       title: "Test Role",
@@ -73,13 +73,13 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("applies a job and syncs to Notion", async () => {
-    const { createNotionEntry } = await import("../../services/notion.js");
+    const { createNotionEntry } = await import("../../services/notion");
     vi.mocked(createNotionEntry).mockResolvedValue({
       success: true,
       pageId: "page-123",
     });
 
-    const { createJob } = await import("../../repositories/jobs.js");
+    const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
       source: "manual",
       title: "Test Role",
@@ -106,9 +106,9 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("rescoring a job updates the suitability fields", async () => {
-    const { createJob } = await import("../../repositories/jobs.js");
-    const { scoreJobSuitability } = await import("../../services/scorer.js");
-    const { getProfile } = await import("../../services/profile.js");
+    const { createJob } = await import("../../repositories/jobs");
+    const { scoreJobSuitability } = await import("../../services/scorer");
+    const { getProfile } = await import("../../services/profile");
 
     vi.mocked(getProfile).mockResolvedValue({});
     vi.mocked(scoreJobSuitability).mockResolvedValue({
@@ -124,7 +124,7 @@ describe.sequential("Jobs API routes", () => {
       jobDescription: "Test description",
     });
 
-    const { updateJob } = await import("../../repositories/jobs.js");
+    const { updateJob } = await import("../../repositories/jobs");
     await updateJob(job.id, {
       suitabilityScore: 55,
       suitabilityReason: "Old fit",
@@ -142,7 +142,7 @@ describe.sequential("Jobs API routes", () => {
 
   it("checks visa sponsor status for a job", async () => {
     const { searchSponsors } = await import(
-      "../../services/visa-sponsors/index.js"
+      "../../services/visa-sponsors/index"
     );
     vi.mocked(searchSponsors).mockReturnValue([
       {
@@ -152,7 +152,7 @@ describe.sequential("Jobs API routes", () => {
       },
     ]);
 
-    const { createJob } = await import("../../repositories/jobs.js");
+    const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
       source: "manual",
       title: "Sponsored Dev",
@@ -174,7 +174,7 @@ describe.sequential("Jobs API routes", () => {
     let jobId: string;
 
     beforeEach(async () => {
-      const { createJob } = await import("../../repositories/jobs.js");
+      const { createJob } = await import("../../repositories/jobs");
       const job = await createJob({
         source: "manual",
         title: "Tracking Test",
@@ -245,7 +245,7 @@ describe.sequential("Jobs API routes", () => {
     });
 
     it("manages application tasks", async () => {
-      const { db, schema } = await import("../../db/index.js");
+      const { db, schema } = await import("../../db/index");
       const { eq } = await import("drizzle-orm");
       const { tasks } = schema;
 

@@ -1,3 +1,4 @@
+import type { Job, JobStatus } from "@shared/types.js";
 import {
   ArrowUpRight,
   Calendar,
@@ -18,7 +19,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
-import type { Job, JobStatus } from "../../shared/types";
 import { useSettings } from "../hooks/useSettings";
 import {
   defaultStatusToken,

@@ -2,6 +2,7 @@
  * Stats dashboard showing job counts by status.
  */
 
+import type { JobStatus } from "@shared/types.js";
 import {
   CheckCircle2,
   Clock,
@@ -11,9 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type React from "react";
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { JobStatus } from "../../shared/types";
 
 interface StatsProps {
   stats: Record<JobStatus, number>;

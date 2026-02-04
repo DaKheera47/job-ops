@@ -1,12 +1,12 @@
 // src/server/services/modelSelection.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import * as settingsRepo from "../repositories/settings.js";
-import { pickProjectIdsForJob } from "./projectSelection.js";
-import { scoreJobSuitability } from "./scorer.js";
-import { generateTailoring } from "./summary.js";
+import * as settingsRepo from "../repositories/settings";
+import { pickProjectIdsForJob } from "./projectSelection";
+import { scoreJobSuitability } from "./scorer";
+import { generateTailoring } from "./summary";
 
 // Mock the settings repository
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 

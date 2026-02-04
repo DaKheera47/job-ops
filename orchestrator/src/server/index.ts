@@ -2,16 +2,16 @@
  * Express server entry point.
  */
 
-import "./config/env.js";
-import { createApp } from "./app.js";
-import * as settingsRepo from "./repositories/settings.js";
+import "./config/env";
+import { createApp } from "./app";
+import * as settingsRepo from "./repositories/settings";
 import {
   getBackupSettings,
   setBackupSettings,
   startBackupScheduler,
-} from "./services/backup/index.js";
-import { applyStoredEnvOverrides } from "./services/envSettings.js";
-import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index.js";
+} from "./services/backup/index";
+import { applyStoredEnvOverrides } from "./services/envSettings";
+import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
 
 async function startServer() {
   await applyStoredEnvOverrides();

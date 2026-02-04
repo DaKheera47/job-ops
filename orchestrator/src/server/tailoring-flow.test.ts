@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generateFinalPdf } from "./pipeline/orchestrator.js";
-import * as jobsRepo from "./repositories/jobs.js";
-import * as pdfService from "./services/pdf.js";
+import { generateFinalPdf } from "./pipeline/orchestrator";
+import * as jobsRepo from "./repositories/jobs";
+import * as pdfService from "./services/pdf";
 
 // Mock dependencies
-vi.mock("./repositories/jobs.js");
-vi.mock("./services/pdf.js");
+vi.mock("./repositories/jobs");
+vi.mock("./services/pdf");
 
 describe("Tailoring Flow", () => {
   beforeEach(() => {

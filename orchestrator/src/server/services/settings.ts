@@ -1,12 +1,12 @@
-import * as settingsRepo from "@server/repositories/settings.js";
-import type { AppSettings } from "@shared/types.js";
-import { getEnvSettingsData } from "./envSettings.js";
-import { getProfile } from "./profile.js";
+import * as settingsRepo from "@server/repositories/settings";
+import type { AppSettings } from "@shared/types";
+import { getEnvSettingsData } from "./envSettings";
+import { getProfile } from "./profile";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
-} from "./resumeProjects.js";
-import { getResume, RxResumeCredentialsError } from "./rxresume-v4.js";
+} from "./resumeProjects";
+import { getResume, RxResumeCredentialsError } from "./rxresume-v4";
 
 /**
  * Get the effective app settings, combining environment variables and database overrides.

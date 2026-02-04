@@ -2,6 +2,7 @@
  * Manual job import flow (paste JD -> infer -> review -> import).
  */
 
+import type { ManualJobDraft } from "@shared/types.js";
 import {
   ArrowLeft,
   ClipboardPaste,
@@ -13,7 +14,6 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { ManualJobDraft } from "../../shared/types";
 import * as api from "../api";
 
 type ManualImportStep = "paste" | "loading" | "review";

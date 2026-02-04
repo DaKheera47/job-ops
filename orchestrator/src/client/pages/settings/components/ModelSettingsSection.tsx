@@ -4,7 +4,7 @@ import {
   formatSecretHint,
   getLlmProviderConfig,
 } from "@client/pages/settings/utils";
-import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";

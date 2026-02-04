@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Pipeline API routes", () => {
   let server: Server;
@@ -32,7 +32,7 @@ describe.sequential("Pipeline API routes", () => {
     });
     expect(badRun.status).toBe(400);
 
-    const { runPipeline } = await import("../../pipeline/index.js");
+    const { runPipeline } = await import("../../pipeline/index");
     const runRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

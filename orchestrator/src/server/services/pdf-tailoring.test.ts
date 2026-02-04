@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generatePdf } from "./pdf.js";
-import * as projectSelection from "./projectSelection.js";
+import { generatePdf } from "./pdf";
+import * as projectSelection from "./projectSelection";
 
 // Define mock data in hoisted block
 const { mocks, mockProfile, mockRxResumeClient } = vi.hoisted(() => {
@@ -112,7 +112,7 @@ vi.mock("node:fs", () => ({
   },
 }));
 
-vi.mock("../repositories/settings.js", () => ({
+vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockImplementation((key: string) => {
     if (key === "rxresumeEmail") return Promise.resolve("test@example.com");
     if (key === "rxresumePassword") return Promise.resolve("testpassword");
@@ -122,15 +122,15 @@ vi.mock("../repositories/settings.js", () => ({
 }));
 
 // Mock the profile service - getProfile now fetches from v4 API
-vi.mock("./profile.js", () => ({
+vi.mock("./profile", () => ({
   getProfile: vi.fn().mockResolvedValue(mockProfile),
 }));
 
-vi.mock("./projectSelection.js", () => ({
+vi.mock("./projectSelection", () => ({
   pickProjectIdsForJob: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("./resumeProjects.js", () => ({
+vi.mock("./resumeProjects", () => ({
   extractProjectsFromProfile: vi.fn().mockReturnValue({
     catalog: [],
     selectionItems: [
@@ -148,7 +148,7 @@ vi.mock("./resumeProjects.js", () => ({
 }));
 
 // Mock the RxResumeClient
-vi.mock("./rxresume-client.js", () => ({
+vi.mock("./rxresume-client", () => ({
   RxResumeClient: vi.fn().mockImplementation(function (this: any) {
     return mockRxResumeClient;
   }),

@@ -31,45 +31,47 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
-          cache-dependency-path: orchestrator/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: npm ci
-        working-directory: orchestrator
+        run: npm ci --workspaces --include-workspace-root
+        working-directory: .
+      - name: Build better-sqlite3
+        run: npm --workspace orchestrator rebuild better-sqlite3
+        working-directory: .
       - name: Run Vitest
-        run: npm run test:run
-        working-directory: orchestrator
+        run: npm --workspace orchestrator run test:run
+        working-directory: .
 
-  build:
-    name: Build Verification
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: [orchestrator, extractors/gradcracker, extractors/ukvisajobs]
+        project: [orchestrator, gradcracker-extractor, ukvisajobs-extractor]
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
-          cache-dependency-path: ${{ matrix.project }}/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: |
-          if [[ "${{ matrix.project }}" == extractors/* ]]; then
-            npm ci --ignore-scripts
-          else
-            npm ci
-          fi
-        working-directory: ${{ matrix.project }}
+        run: npm ci --workspaces --include-workspace-root
+        working-directory: .
 
-      - name: Type Check (orchestrator only)
+      - name: Check shared package types
+        run: npm run check:types:shared
+        working-directory: .
+
+      - name: Type Check ${{ matrix.project }}
+        run: npm --workspace ${{ matrix.project }} run check:types
+        working-directory: .
+
+      - name: Build ${{ matrix.project }} (client)
         if: matrix.project == 'orchestrator'
-        run: npm run check:types
-        working-directory: ${{ matrix.project }}
-
-      - name: Build ${{ matrix.project }}
-        run: npm run build
-        working-directory: ${{ matrix.project }}
+        run: npm --workspace orchestrator run build:client
+        working-directory: .

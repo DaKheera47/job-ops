@@ -1,5 +1,5 @@
-import type { UpdateSettingsInput } from "@shared/settings-schema";
-import type { ResumeProjectCatalogItem } from "@shared/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";

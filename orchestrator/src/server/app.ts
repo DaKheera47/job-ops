@@ -7,8 +7,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
-import { apiRouter } from "./api/index.js";
-import { getDataDir } from "./config/dataDir.js";
+import { apiRouter } from "./api/index";
+import { getDataDir } from "./config/dataDir";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

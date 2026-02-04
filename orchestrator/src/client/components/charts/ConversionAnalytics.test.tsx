@@ -3,10 +3,10 @@
  * Tests real-world edge cases for conversion funnel and analytics
  */
 
+import type { ApplicationStage, StageEvent } from "@shared/types.js";
 import { render, screen } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ApplicationStage, StageEvent } from "../../../shared/types";
 import { ConversionAnalytics } from "./ConversionAnalytics";
 
 // Mock UI components

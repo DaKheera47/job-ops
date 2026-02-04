@@ -1,5 +1,5 @@
+import type { ResumeProfile } from "@shared/types";
 import { useEffect, useState } from "react";
-import type { ResumeProfile } from "../../shared/types";
 import * as api from "../api";
 
 let profileCache: ResumeProfile | null = null;

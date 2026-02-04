@@ -1,5 +1,5 @@
 import type { SearchTermsValues } from "@client/pages/settings/types";
-import type { UpdateSettingsInput } from "@shared/settings-schema";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {

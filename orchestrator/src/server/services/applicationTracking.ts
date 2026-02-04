@@ -1,6 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq } from "drizzle-orm";
-import { z } from "zod";
 import type {
   ApplicationStage,
   ApplicationTask,
@@ -9,8 +7,11 @@ import type {
   JobStatus,
   StageEvent,
   StageEventMetadata,
-} from "../../shared/types.js";
-import { db, schema } from "../db/index.js";
+} from "@shared/types";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { z } from "zod";
+
+import { db, schema } from "../db/index";
 
 const { jobs, stageEvents, tasks } = schema;
 

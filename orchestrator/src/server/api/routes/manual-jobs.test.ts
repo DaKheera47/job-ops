@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils.js";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Manual jobs API routes", () => {
   let server: Server;
@@ -46,9 +46,7 @@ describe.sequential("Manual jobs API routes", () => {
     });
     expect(badRes.status).toBe(400);
 
-    const { inferManualJobDetails } = await import(
-      "../../services/manualJob.js"
-    );
+    const { inferManualJobDetails } = await import("../../services/manualJob");
     vi.mocked(inferManualJobDetails).mockResolvedValue({
       job: { title: "Backend Engineer", employer: "Acme" },
       warning: null,
@@ -65,7 +63,7 @@ describe.sequential("Manual jobs API routes", () => {
   });
 
   it("imports manual jobs and generates a fallback URL", async () => {
-    const { scoreJobSuitability } = await import("../../services/scorer.js");
+    const { scoreJobSuitability } = await import("../../services/scorer");
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 88,
       reason: "Strong fit",

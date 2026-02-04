@@ -1,21 +1,18 @@
-import * as settingsRepo from "@server/repositories/settings.js";
-import { setBackupSettings } from "@server/services/backup/index.js";
-import {
-  applyEnvValue,
-  normalizeEnvInput,
-} from "@server/services/envSettings.js";
-import { getProfile } from "@server/services/profile.js";
+import * as settingsRepo from "@server/repositories/settings";
+import { setBackupSettings } from "@server/services/backup/index";
+import { applyEnvValue, normalizeEnvInput } from "@server/services/envSettings";
+import { getProfile } from "@server/services/profile";
 import {
   extractProjectsFromProfile,
   normalizeResumeProjectsSettings,
-} from "@server/services/resumeProjects.js";
+} from "@server/services/resumeProjects";
 import {
   getResume,
   listResumes,
   RxResumeCredentialsError,
-} from "@server/services/rxresume-v4.js";
-import { getEffectiveSettings } from "@server/services/settings.js";
-import { updateSettingsSchema } from "@shared/settings-schema.js";
+} from "@server/services/rxresume-v4";
+import { getEffectiveSettings } from "@server/services/settings";
+import { updateSettingsSchema } from "@shared/settings-schema";
 import { type Request, type Response, Router } from "express";
 
 export const settingsRouter = Router();

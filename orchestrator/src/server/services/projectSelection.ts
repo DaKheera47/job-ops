@@ -2,9 +2,9 @@
  * Service for AI-powered project selection for resumes.
  */
 
-import { getSetting } from "../repositories/settings.js";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service.js";
-import type { ResumeProjectSelectionItem } from "./resumeProjects.js";
+import { getSetting } from "../repositories/settings";
+import { type JsonSchemaDefinition, LlmService } from "./llm-service";
+import type { ResumeProjectSelectionItem } from "./resumeProjects";
 
 /** JSON schema for project selection response */
 const PROJECT_SELECTION_SCHEMA: JsonSchemaDefinition = {
@@ -143,7 +143,7 @@ function fallbackPickProjectIds(
     "typescript",
     "javascript",
     "node",
-    "next.js",
+    "next",
     "nextjs",
     "python",
     "c++",

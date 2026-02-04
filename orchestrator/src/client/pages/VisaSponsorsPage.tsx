@@ -3,6 +3,11 @@
  * Allows searching the government's list of licensed visa sponsors.
  */
 
+import type {
+  VisaSponsor,
+  VisaSponsorSearchResult,
+  VisaSponsorStatusResponse,
+} from "@shared/types.js";
 import {
   AlertCircle,
   Building2,
@@ -20,17 +25,11 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { cn, formatDateTime } from "@/lib/utils";
-import type {
-  VisaSponsor,
-  VisaSponsorSearchResult,
-  VisaSponsorStatusResponse,
-} from "../../shared/types";
 import * as api from "../api";
 import {
   DetailPanel,

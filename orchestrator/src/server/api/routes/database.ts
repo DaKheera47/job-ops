@@ -1,5 +1,5 @@
 import { type Request, type Response, Router } from "express";
-import { clearDatabase } from "../../db/clear.js";
+import { clearDatabase } from "../../db/clear";
 
 export const databaseRouter = Router();
 

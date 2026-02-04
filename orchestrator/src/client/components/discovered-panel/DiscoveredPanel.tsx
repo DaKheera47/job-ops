@@ -1,7 +1,7 @@
+import type { Job } from "@shared/types.js";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Job } from "../../../shared/types";
 import * as api from "../../api";
 import { useRescoreJob } from "../../hooks/useRescoreJob";
 import { DecideMode } from "./DecideMode";

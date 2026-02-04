@@ -1,3 +1,4 @@
+import type { Job } from "@shared/types.js";
 import {
   ChevronUp,
   ExternalLink,
@@ -8,7 +9,6 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
-
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import type { Job } from "../../../shared/types";
 import { FitAssessment, JobHeader, TailoredSummary } from "..";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { getPlainDescription } from "./helpers";

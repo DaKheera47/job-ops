@@ -1,13 +1,14 @@
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import type {
   ApiResponse,
   UkVisaJobsImportResponse,
   UkVisaJobsSearchResponse,
-} from "../../../shared/types.js";
-import { getPipelineStatus } from "../../pipeline/index.js";
-import * as jobsRepo from "../../repositories/jobs.js";
-import { fetchUkVisaJobsPage } from "../../services/ukvisajobs.js";
+} from "@shared/types";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
+
+import { getPipelineStatus } from "../../pipeline/index";
+import * as jobsRepo from "../../repositories/jobs";
+import { fetchUkVisaJobsPage } from "../../services/ukvisajobs";
 
 export const ukVisaJobsRouter = Router();
 let isUkVisaJobsSearchRunning = false;

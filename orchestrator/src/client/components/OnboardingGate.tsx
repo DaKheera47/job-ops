@@ -9,7 +9,7 @@ import {
   LLM_PROVIDERS,
   normalizeLlmProvider,
 } from "@client/pages/settings/utils";
-import type { ValidationResult } from "@shared/types";
+import type { ValidationResult } from "@shared/types.js";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";

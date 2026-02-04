@@ -1,3 +1,4 @@
+import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import {
   AlertTriangle,
   Check,
@@ -8,11 +9,9 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
 import * as api from "../api";
 
 interface TailoringEditorProps {

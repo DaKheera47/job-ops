@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { RxResumeClient } from "./rxresume-client.js";
+import { RxResumeClient } from "./rxresume-client";
 
 describe("RxResumeClient", () => {
   describe("verifyCredentials (static)", () => {
