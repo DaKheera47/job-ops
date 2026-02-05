@@ -10,6 +10,7 @@ import {
   setBackupSettings,
   startBackupScheduler,
 } from "./services/backup/index";
+import { initializeDemoModeServices } from "./services/demo-mode";
 import { applyStoredEnvOverrides } from "./services/envSettings";
 import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
 
@@ -37,7 +38,11 @@ async function startServer() {
 
     // Initialize visa sponsors service (downloads data if needed, starts scheduler)
     try {
-      await initializeVisaSponsors();
+      if (process.env.DEMO_MODE === "true") {
+        console.log("ℹ️ Demo mode enabled. Skipping visa sponsors initialization.");
+      } else {
+        await initializeVisaSponsors();
+      }
     } catch (error) {
       console.warn("⚠️ Failed to initialize visa sponsors service:", error);
     }
@@ -79,6 +84,12 @@ async function startServer() {
       }
     } catch (error) {
       console.warn("⚠️ Failed to initialize backup service:", error);
+    }
+
+    try {
+      await initializeDemoModeServices();
+    } catch (error) {
+      console.warn("⚠️ Failed to initialize demo mode services:", error);
     }
   });
 }
