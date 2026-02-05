@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { OnboardingGate } from "./OnboardingGate";
 
 vi.mock("@client/api", () => ({
+  getDemoInfo: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -101,6 +102,12 @@ const settingsResponse = {
 describe("OnboardingGate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(api.getDemoInfo).mockResolvedValue({
+      demoMode: false,
+      resetCadenceHours: 6,
+      lastResetAt: null,
+      nextResetAt: null,
+    });
     vi.mocked(useSettings).mockReturnValue(settingsResponse as any);
   });
 
@@ -121,7 +128,9 @@ describe("OnboardingGate", () => {
     render(<OnboardingGate />);
 
     await waitFor(() => expect(api.validateLlm).toHaveBeenCalled());
-    expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
+    });
   });
 
   it("hides the gate when all validations succeed", async () => {
