@@ -83,6 +83,13 @@ export const updateSettingsSchema = z
       .max(100)
       .nullable()
       .optional(),
+    autoSkipScoreThreshold: z
+      .number()
+      .int()
+      .min(0)
+      .max(100)
+      .nullable()
+      .optional(),
   })
   .superRefine((data, ctx) => {
     if (data.enableBasicAuth) {

@@ -9,7 +9,7 @@ import type {
   JobStatus,
   UpdateJobInput,
 } from "@shared/types";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
 const { jobs } = schema;
@@ -239,6 +239,19 @@ export async function getUnscoredDiscoveredJobs(
  */
 export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
   const result = await db.delete(jobs).where(eq(jobs.status, status)).run();
+  return result.changes;
+}
+
+/**
+ * Delete jobs with suitability score below threshold (excluding applied jobs).
+ */
+export async function deleteJobsBelowScore(threshold: number): Promise<number> {
+  const result = await db
+    .delete(jobs)
+    .where(
+      and(lt(jobs.suitabilityScore, threshold), ne(jobs.status, "applied")),
+    )
+    .run();
   return result.changes;
 }
 

@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
+import * as settingsRepo from "../../repositories/settings";
 import { scoreJobSuitability } from "../../services/scorer";
 import * as visaSponsors from "../../services/visa-sponsors/index";
 import { progressHelpers, updateProgress } from "../progress";
@@ -11,6 +12,14 @@ export async function scoreJobsStep(args: {
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
   logger.info("Running scoring step");
   const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
+
+  // Check if auto-skip threshold is configured
+  const autoSkipThresholdRaw = await settingsRepo.getSetting(
+    "autoSkipScoreThreshold",
+  );
+  const autoSkipThreshold = autoSkipThresholdRaw
+    ? parseInt(autoSkipThresholdRaw, 10)
+    : null;
 
   updateProgress({
     step: "scoring",
@@ -65,12 +74,28 @@ export async function scoreJobsStep(args: {
       sponsorMatchNames = summary.sponsorMatchNames ?? undefined;
     }
 
+    // Check if job should be auto-skipped based on score threshold
+    const shouldAutoSkip =
+      autoSkipThreshold !== null &&
+      !Number.isNaN(autoSkipThreshold) &&
+      score < autoSkipThreshold;
+
     await jobsRepo.updateJob(job.id, {
       suitabilityScore: score,
       suitabilityReason: reason,
       sponsorMatchScore,
       sponsorMatchNames,
+      status: shouldAutoSkip ? "skipped" : undefined,
     });
+
+    if (shouldAutoSkip) {
+      logger.info("Auto-skipped job due to low score", {
+        jobId: job.id,
+        title: job.title,
+        score,
+        threshold: autoSkipThreshold,
+      });
+    }
   }
 
   progressHelpers.scoringComplete(scoredJobs.length);

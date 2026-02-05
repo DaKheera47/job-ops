@@ -22,6 +22,7 @@ type SettingsConversionValueMap = {
   backupMaxCount: number;
   penalizeMissingSalary: boolean;
   missingSalaryPenalty: number;
+  autoSkipScoreThreshold: number | null;
 };
 
 type SettingsConversionInputMap = {
@@ -218,6 +219,25 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
     },
     serialize: serializeNullableNumber,
     resolve: resolveWithNullishFallback,
+  },
+  autoSkipScoreThreshold: {
+    defaultValue: () => null,
+    parseOverride: (raw) => {
+      if (!raw || raw === "null" || raw === "") return null;
+      const parsed = parseInt(raw, 10);
+      if (Number.isNaN(parsed)) return null;
+      return Math.min(100, Math.max(0, parsed));
+    },
+    serialize: (value: number | null | undefined) => {
+      if (value === null || value === undefined) return null;
+      return String(value);
+    },
+    resolve: (args: {
+      defaultValue: number | null;
+      overrideValue: number | null;
+    }) => {
+      return args.overrideValue ?? args.defaultValue;
+    },
   },
 };
 

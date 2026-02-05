@@ -75,6 +75,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   backupMaxCount: null,
   penalizeMissingSalary: null,
   missingSalaryPenalty: null,
+  autoSkipScoreThreshold: null,
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -120,6 +121,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   backupMaxCount: null,
   penalizeMissingSalary: null,
   missingSalaryPenalty: null,
+  autoSkipScoreThreshold: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -159,6 +161,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   backupMaxCount: data.overrideBackupMaxCount,
   penalizeMissingSalary: data.overridePenalizeMissingSalary,
   missingSalaryPenalty: data.overrideMissingSalaryPenalty,
+  autoSkipScoreThreshold: data.overrideAutoSkipScoreThreshold,
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -348,6 +351,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       missingSalaryPenalty: {
         effective: settings?.missingSalaryPenalty ?? 10,
         default: settings?.defaultMissingSalaryPenalty ?? 10,
+      },
+      autoSkipScoreThreshold: {
+        effective: settings?.autoSkipScoreThreshold ?? null,
+        default: settings?.defaultAutoSkipScoreThreshold ?? null,
       },
     },
   };
@@ -790,6 +797,31 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleClearByScore = async (threshold: number) => {
+    try {
+      setIsSaving(true);
+      const result = await api.deleteJobsBelowScore(threshold);
+
+      if (result.count > 0) {
+        toast.success("Jobs cleared", {
+          description: `Deleted ${result.count} jobs with score below ${threshold}. Applied jobs were preserved.`,
+        });
+      } else {
+        toast.info("No jobs found", {
+          description: `No jobs with score below ${threshold} found`,
+        });
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to clear jobs by score";
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const toggleStatusToClear = (status: JobStatus) => {
     setStatusesToClear((prev) =>
       prev.includes(status)
@@ -900,6 +932,7 @@ export const SettingsPage: React.FC = () => {
             toggleStatusToClear={toggleStatusToClear}
             handleClearByStatuses={handleClearByStatuses}
             handleClearDatabase={handleClearDatabase}
+            handleClearByScore={handleClearByScore}
             isLoading={isLoading}
             isSaving={isSaving}
           />

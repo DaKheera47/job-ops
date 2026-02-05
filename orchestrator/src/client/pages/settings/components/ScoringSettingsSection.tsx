@@ -22,12 +22,19 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   isLoading,
   isSaving,
 }) => {
-  const { penalizeMissingSalary, missingSalaryPenalty } = values;
+  const {
+    penalizeMissingSalary,
+    missingSalaryPenalty,
+    autoSkipScoreThreshold,
+  } = values;
   const { control, watch } = useFormContext<UpdateSettingsInput>();
 
   // Watch the current form value to conditionally show/hide penalty input
   const currentPenalizeEnabled =
     watch("penalizeMissingSalary") ?? penalizeMissingSalary.default;
+
+  // Watch auto-skip threshold to show current value
+  const currentAutoSkipThreshold = watch("autoSkipScoreThreshold");
 
   return (
     <AccordionItem value="scoring" className="border rounded-lg px-4">
@@ -106,6 +113,47 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
 
           <Separator />
 
+          {/* Auto-skip threshold input */}
+          <div className="space-y-3">
+            <Controller
+              name="autoSkipScoreThreshold"
+              control={control}
+              render={({ field }) => (
+                <SettingsInput
+                  label="Auto-skip Score Threshold"
+                  type="number"
+                  inputProps={{
+                    ...field,
+                    inputMode: "numeric",
+                    min: 0,
+                    max: 100,
+                    step: 1,
+                    value: field.value ?? "",
+                    onChange: (event) => {
+                      const value = event.target.value;
+                      if (value === "" || value === null) {
+                        field.onChange(null);
+                      } else {
+                        const parsed = parseInt(value, 10);
+                        if (Number.isNaN(parsed)) {
+                          field.onChange(null);
+                        } else {
+                          field.onChange(Math.min(100, Math.max(0, parsed)));
+                        }
+                      }
+                    },
+                    placeholder: "Disabled",
+                  }}
+                  disabled={isLoading || isSaving}
+                  helper="Jobs scoring below this threshold will be automatically skipped during scoring. Leave empty to disable auto-skip. (0-100)"
+                  current={`Effective: ${currentAutoSkipThreshold === null || currentAutoSkipThreshold === undefined ? "Disabled" : currentAutoSkipThreshold} | Default: ${autoSkipScoreThreshold.default ?? "Disabled"}`}
+                />
+              )}
+            />
+          </div>
+
+          <Separator />
+
           {/* Effective/Default values display */}
           <div className="grid gap-2 text-sm sm:grid-cols-2">
             <div>
@@ -124,6 +172,15 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
               <div className="break-words font-mono text-xs">
                 Effective: {missingSalaryPenalty.effective} | Default:{" "}
                 {missingSalaryPenalty.default}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Auto-skip Threshold
+              </div>
+              <div className="break-words font-mono text-xs">
+                Effective: {autoSkipScoreThreshold.effective ?? "Disabled"} |
+                Default: {autoSkipScoreThreshold.default ?? "Disabled"}
               </div>
             </div>
           </div>

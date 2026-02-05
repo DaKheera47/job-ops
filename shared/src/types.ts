@@ -589,6 +589,10 @@ export interface AppSettings {
   missingSalaryPenalty: number;
   defaultMissingSalaryPenalty: number;
   overrideMissingSalaryPenalty: number | null;
+  // Auto-skip settings
+  autoSkipScoreThreshold: number | null;
+  defaultAutoSkipScoreThreshold: number | null;
+  overrideAutoSkipScoreThreshold: number | null;
 }
 
 export interface BackupInfo {

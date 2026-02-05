@@ -224,6 +224,16 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     missingSalaryPenaltySetting.overrideValue;
   const missingSalaryPenalty = missingSalaryPenaltySetting.value;
 
+  const autoSkipScoreThresholdSetting = resolveSettingValue(
+    "autoSkipScoreThreshold",
+    overrides.autoSkipScoreThreshold,
+  );
+  const defaultAutoSkipScoreThreshold =
+    autoSkipScoreThresholdSetting.defaultValue;
+  const overrideAutoSkipScoreThreshold =
+    autoSkipScoreThresholdSetting.overrideValue;
+  const autoSkipScoreThreshold = autoSkipScoreThresholdSetting.value;
+
   return {
     ...envSettings,
     model,
@@ -297,6 +307,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     missingSalaryPenalty,
     defaultMissingSalaryPenalty,
     overrideMissingSalaryPenalty,
+    autoSkipScoreThreshold,
+    defaultAutoSkipScoreThreshold,
+    overrideAutoSkipScoreThreshold,
   } as AppSettings;
 }
 

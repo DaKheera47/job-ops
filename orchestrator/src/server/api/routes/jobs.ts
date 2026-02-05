@@ -623,3 +623,57 @@ jobsRouter.delete("/status/:status", async (req: Request, res: Response) => {
     res.status(500).json({ success: false, error: message });
   }
 });
+
+/**
+ * DELETE /api/jobs/score/:threshold - Clear jobs with score below threshold (excluding applied)
+ */
+jobsRouter.delete("/score/:threshold", async (req: Request, res: Response) => {
+  try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Clearing jobs by score is disabled to keep the demo stable.",
+        {
+          route: "DELETE /api/jobs/score/:threshold",
+          threshold: req.params.threshold,
+        },
+      );
+    }
+
+    const threshold = parseInt(req.params.threshold, 10);
+    if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Threshold must be a number between 0 and 100",
+        },
+        meta: {
+          requestId: (req.headers["x-request-id"] as string) || "unknown",
+        },
+      });
+    }
+
+    const count = await jobsRepo.deleteJobsBelowScore(threshold);
+
+    res.json({
+      ok: true,
+      data: {
+        message: `Cleared ${count} jobs with score below ${threshold}`,
+        count,
+        threshold,
+      },
+      meta: { requestId: (req.headers["x-request-id"] as string) || "unknown" },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    res.status(500).json({
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message,
+      },
+      meta: { requestId: (req.headers["x-request-id"] as string) || "unknown" },
+    });
+  }
+});

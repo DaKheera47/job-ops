@@ -52,4 +52,5 @@ export type BackupValues = {
 export type ScoringValues = {
   penalizeMissingSalary: EffectiveDefault<boolean>;
   missingSalaryPenalty: EffectiveDefault<number>;
+  autoSkipScoreThreshold: EffectiveDefault<number | null>;
 };

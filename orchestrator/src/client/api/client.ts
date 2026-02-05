@@ -525,6 +525,20 @@ export async function deleteJobsByStatus(status: string): Promise<{
   });
 }
 
+export async function deleteJobsBelowScore(threshold: number): Promise<{
+  message: string;
+  count: number;
+  threshold: number;
+}> {
+  return fetchApi<{
+    message: string;
+    count: number;
+    threshold: number;
+  }>(`/jobs/score/${threshold}`, {
+    method: "DELETE",
+  });
+}
+
 // Visa Sponsors API
 export async function getVisaSponsorStatus(): Promise<VisaSponsorStatusResponse> {
   return fetchApi<VisaSponsorStatusResponse>("/visa-sponsors/status");

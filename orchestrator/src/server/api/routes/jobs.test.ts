@@ -140,6 +140,93 @@ describe.sequential("Jobs API routes", () => {
     expect(body.data.suitabilityReason).toBe("Updated fit");
   });
 
+  it("deletes jobs below a score threshold (excluding applied)", async () => {
+    const { createJob, updateJob } = await import("../../repositories/jobs");
+
+    // Create jobs with different scores and statuses
+    const lowScoreJob = await createJob({
+      source: "manual",
+      title: "Low Score Job",
+      employer: "Company A",
+      jobUrl: "https://example.com/job/low",
+      jobDescription: "Test description",
+    });
+    await updateJob(lowScoreJob.id, { suitabilityScore: 30 });
+
+    const mediumScoreJob = await createJob({
+      source: "manual",
+      title: "Medium Score Job",
+      employer: "Company B",
+      jobUrl: "https://example.com/job/medium",
+      jobDescription: "Test description",
+    });
+    await updateJob(mediumScoreJob.id, { suitabilityScore: 60 });
+
+    const highScoreJob = await createJob({
+      source: "manual",
+      title: "High Score Job",
+      employer: "Company C",
+      jobUrl: "https://example.com/job/high",
+      jobDescription: "Test description",
+    });
+    await updateJob(highScoreJob.id, { suitabilityScore: 90 });
+
+    const appliedLowScoreJob = await createJob({
+      source: "manual",
+      title: "Applied Low Score Job",
+      employer: "Company D",
+      jobUrl: "https://example.com/job/applied-low",
+      jobDescription: "Test description",
+    });
+    await updateJob(appliedLowScoreJob.id, {
+      suitabilityScore: 30,
+      status: "applied",
+    });
+
+    // Delete jobs below score 50
+    const deleteRes = await fetch(`${baseUrl}/api/jobs/score/50`, {
+      method: "DELETE",
+    });
+    const deleteBody = await deleteRes.json();
+
+    expect(deleteBody.ok).toBe(true);
+    expect(deleteBody.data.count).toBe(1);
+    expect(deleteBody.data.threshold).toBe(50);
+
+    // Verify only the low score non-applied job was deleted
+    const listRes = await fetch(`${baseUrl}/api/jobs`);
+    const listBody = await listRes.json();
+
+    const remainingJobIds = listBody.data.jobs.map((j: any) => j.id);
+    expect(remainingJobIds).not.toContain(lowScoreJob.id);
+    expect(remainingJobIds).toContain(mediumScoreJob.id);
+    expect(remainingJobIds).toContain(highScoreJob.id);
+    expect(remainingJobIds).toContain(appliedLowScoreJob.id); // Applied job preserved
+  });
+
+  it("rejects invalid score thresholds", async () => {
+    // Test invalid threshold (above 100)
+    const invalidRes = await fetch(`${baseUrl}/api/jobs/score/150`, {
+      method: "DELETE",
+    });
+    expect(invalidRes.status).toBe(400);
+    const invalidBody = await invalidRes.json();
+    expect(invalidBody.ok).toBe(false);
+    expect(invalidBody.error.code).toBe("INVALID_REQUEST");
+
+    // Test invalid threshold (below 0)
+    const negativeRes = await fetch(`${baseUrl}/api/jobs/score/-10`, {
+      method: "DELETE",
+    });
+    expect(negativeRes.status).toBe(400);
+
+    // Test non-numeric threshold
+    const nanRes = await fetch(`${baseUrl}/api/jobs/score/abc`, {
+      method: "DELETE",
+    });
+    expect(nanRes.status).toBe(400);
+  });
+
   it("checks visa sponsor status for a job", async () => {
     const { searchSponsors } = await import(
       "../../services/visa-sponsors/index"

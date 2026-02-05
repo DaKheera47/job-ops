@@ -2,9 +2,12 @@ import {
   ALL_JOB_STATUSES,
   STATUS_DESCRIPTIONS,
 } from "@client/pages/settings/constants";
-import type { JobStatus } from "@shared/types.js";
+import type { JobStatus } from "@shared/types";
 import { AlertTriangle, Trash2 } from "lucide-react";
+
 import type React from "react";
+import { useState } from "react";
+
 import {
   AccordionContent,
   AccordionItem,
@@ -22,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
 type DangerZoneSectionProps = {
@@ -29,6 +33,7 @@ type DangerZoneSectionProps = {
   toggleStatusToClear: (status: JobStatus) => void;
   handleClearByStatuses: () => void;
   handleClearDatabase: () => void;
+  handleClearByScore?: (threshold: number) => void;
   isLoading: boolean;
   isSaving: boolean;
 };
@@ -38,9 +43,16 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
   toggleStatusToClear,
   handleClearByStatuses,
   handleClearDatabase,
+  handleClearByScore,
   isLoading,
   isSaving,
 }) => {
+  const [scoreThreshold, setScoreThreshold] = useState<string>("");
+  const parsedThreshold = parseInt(scoreThreshold, 10);
+  const isValidThreshold =
+    !Number.isNaN(parsedThreshold) &&
+    parsedThreshold >= 0 &&
+    parsedThreshold <= 100;
   return (
     <AccordionItem
       value="danger-zone"
@@ -139,6 +151,85 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
               </AlertDialogContent>
             </AlertDialog>
           </div>
+
+          <Separator />
+
+          {/* Clear Jobs Below Score */}
+          {handleClearByScore && (
+            <div className="p-3 rounded-md space-y-4">
+              <div className="space-y-0.5">
+                <div className="text-sm font-semibold text-destructive">
+                  Clear Jobs Below Score
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Remove all jobs with a suitability score below the specified
+                  threshold. Applied jobs will not be deleted.
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="flex-1">
+                  <label
+                    htmlFor="score-threshold"
+                    className="text-sm font-medium mb-1.5 block"
+                  >
+                    Score Threshold (0-100)
+                  </label>
+                  <Input
+                    id="score-threshold"
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    max={100}
+                    step={1}
+                    placeholder="Enter score threshold"
+                    value={scoreThreshold}
+                    onChange={(e) => setScoreThreshold(e.target.value)}
+                    disabled={isLoading || isSaving}
+                    className="w-full"
+                  />
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="default"
+                      disabled={isLoading || isSaving || !isValidThreshold}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Clear Below {isValidThreshold ? parsedThreshold : "..."}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>
+                        Clear jobs below score {parsedThreshold}?
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all jobs with a suitability
+                        score below {parsedThreshold}. Applied jobs will be
+                        preserved. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          if (isValidThreshold) {
+                            handleClearByScore(parsedThreshold);
+                            setScoreThreshold("");
+                          }
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Clear jobs
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
 
           <Separator />
 

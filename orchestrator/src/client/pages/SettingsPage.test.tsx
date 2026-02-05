@@ -131,6 +131,9 @@ const baseSettings: AppSettings = {
   missingSalaryPenalty: 10,
   defaultMissingSalaryPenalty: 10,
   overrideMissingSalaryPenalty: null,
+  autoSkipScoreThreshold: null,
+  defaultAutoSkipScoreThreshold: null,
+  overrideAutoSkipScoreThreshold: null,
 };
 
 const renderPage = () => {
