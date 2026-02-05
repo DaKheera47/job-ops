@@ -1,6 +1,6 @@
 import { type Request, type Response, Router } from "express";
-import { DEMO_PROJECT_CATALOG } from "../../config/demo-defaults";
 import { isDemoMode } from "../../config/demo";
+import { DEMO_PROJECT_CATALOG } from "../../config/demo-defaults";
 import { getSetting } from "../../repositories/settings";
 import { clearProfileCache, getProfile } from "../../services/profile";
 import { extractProjectsFromProfile } from "../../services/resumeProjects";

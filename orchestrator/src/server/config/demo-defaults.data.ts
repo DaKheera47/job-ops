@@ -730,4 +730,3 @@ export const DEMO_BASE_STAGE_EVENTS: DemoDefaultStageEvent[] = [
     },
   },
 ];
-

@@ -103,10 +103,16 @@ describe.sequential("Profile API routes", () => {
 
     it("returns demo project catalog in demo mode", async () => {
       const demoServer = await startServer({
-        env: { DEMO_MODE: "true", BASIC_AUTH_USER: "", BASIC_AUTH_PASSWORD: "" },
+        env: {
+          DEMO_MODE: "true",
+          BASIC_AUTH_USER: "",
+          BASIC_AUTH_PASSWORD: "",
+        },
       });
       try {
-        vi.mocked(getProfile).mockRejectedValue(new Error("should not be used"));
+        vi.mocked(getProfile).mockRejectedValue(
+          new Error("should not be used"),
+        );
 
         const res = await fetch(`${demoServer.baseUrl}/api/profile/projects`);
         const body = await res.json();

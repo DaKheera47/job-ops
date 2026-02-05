@@ -21,7 +21,11 @@ function toIsoFromOffset(now: Date, offsetMinutes: number): string {
   return new Date(now.getTime() - offsetMinutes * 60 * 1000).toISOString();
 }
 
-function makeDemoLink(baseUrl: string, jobId: string, kind: "job" | "apply"): string {
+function makeDemoLink(
+  baseUrl: string,
+  jobId: string,
+  kind: "job" | "apply",
+): string {
   const trimmed = baseUrl.replace(/\/+$/, "");
   return `${trimmed}/${kind}/${jobId}`;
 }
