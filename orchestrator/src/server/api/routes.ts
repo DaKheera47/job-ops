@@ -5,6 +5,7 @@
 import { Router } from "express";
 import { backupRouter } from "./routes/backup";
 import { databaseRouter } from "./routes/database";
+import { demoRouter } from "./routes/demo";
 import { jobsRouter } from "./routes/jobs";
 import { manualJobsRouter } from "./routes/manual-jobs";
 import { onboardingRouter } from "./routes/onboarding";
@@ -18,6 +19,7 @@ import { webhookRouter } from "./routes/webhook";
 export const apiRouter = Router();
 
 apiRouter.use("/jobs", jobsRouter);
+apiRouter.use("/demo", demoRouter);
 apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/pipeline", pipelineRouter);
 apiRouter.use("/manual-jobs", manualJobsRouter);
