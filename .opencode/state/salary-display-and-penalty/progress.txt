@@ -94,3 +94,21 @@ Started: 2026-02-04
   - Form values use nullIfSame to only persist overrides that differ from defaults
   - Settings UI benefits from SettingsInput component for consistent number input styling
 
+## Task - frontend-settings-2
+- All functionality was already implemented in frontend-settings-1
+- Verified all acceptance criteria:
+  - ✅ Numeric input appears when checkbox enabled (line 73-105 in ScoringSettingsSection.tsx)
+  - ✅ Input validation: min=0, max=100, step=1 (lines 85-87)
+  - ✅ Defaults to 10 when enabled (line 88)
+  - ✅ Clamping prevents invalid values (line 94: Math.min/max)
+  - ✅ Current/default/override displayed (lines 100, 115-128)
+  - ✅ Settings save via PATCH /api/settings (SettingsPage onSave)
+  - ✅ Settings persist across reloads (handled by settings system)
+  - ✅ Reset to default works (handleReset uses NULL_SETTINGS_PAYLOAD which includes scoring settings)
+- Fixed modelSelection.test.ts to account for new `getAllSettings` call introduced by penalty feature:
+  - orchestrator/src/server/services/modelSelection.test.ts:9,11,23 - Added getAllSettings to mock
+- **Learnings:**
+  - Sometimes tasks can be completed together - frontend-settings-1 naturally included all of frontend-settings-2
+  - Test mocks need to be updated when adding new dependencies to existing functions
+  - The penalty feature introduced a getEffectiveSettings() call in applySalaryPenalty, which calls getAllSettings
+

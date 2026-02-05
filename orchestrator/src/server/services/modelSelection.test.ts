@@ -8,6 +8,7 @@ import { generateTailoring } from "./summary";
 // Mock the settings repository
 vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn(),
+  getAllSettings: vi.fn(),
 }));
 
 describe("Model Selection Logic", () => {
@@ -21,6 +22,9 @@ describe("Model Selection Logic", () => {
       OPENROUTER_API_KEY: "test-key",
       MODEL: "env-model",
     };
+
+    // Mock getAllSettings to return empty settings (no overrides)
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
 
     // Mock global fetch to capture the request and return a dummy success response
     global.fetch = vi.fn().mockResolvedValue({

@@ -84,7 +84,7 @@
         "Settings persist across page reloads",
         "Reset to default works correctly for both settings"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "frontend-display-1",
