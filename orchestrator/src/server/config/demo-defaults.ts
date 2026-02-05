@@ -43,7 +43,7 @@ const DEMO_GENERATED_APPLIED_JOBS: DemoDefaultJob[] = Array.from(
       "manual",
     ];
     const source = sourceCycle[idx % sourceCycle.length];
-    const appliedDaysAgo = 6 + Math.floor((idx * 360) / GENERATED_APPLIED_JOB_COUNT);
+    const appliedDaysAgo = 2 + Math.floor((idx * 28) / GENERATED_APPLIED_JOB_COUNT);
     const appliedOffsetMinutes = appliedDaysAgo * 24 * 60 + (idx % 16) * 15;
     const discoveredOffsetMinutes =
       appliedOffsetMinutes + (2 + (idx % 9)) * 24 * 60 + (idx % 5) * 60;
