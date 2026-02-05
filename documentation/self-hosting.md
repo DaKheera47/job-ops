@@ -40,6 +40,16 @@ Upgrade note: `OPENROUTER_API_KEY` is deprecated. Existing OpenRouter keys are a
 - Generated PDFs: `data/pdfs/`
 - Template resume selection: Stored internally after selection.
 
+## Public demo deployment (`DEMO_MODE=true`)
+
+For a public sandbox website, set `DEMO_MODE=true` on the container.
+
+Behavior in demo mode:
+- **Works (local demo DB):** browsing, filtering, job status updates, timeline edits.
+- **Simulated (no external side effects):** pipeline run, job summarize/process/rescore/pdf/apply, onboarding validations.
+- **Blocked:** settings writes, database clear, backup create/delete, status bulk deletes.
+- **Auto-reset:** seeded demo data is reset every 6 hours.
+
 ## Updating
 
 ```bash
