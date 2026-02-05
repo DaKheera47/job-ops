@@ -7,8 +7,8 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
-import * as api from "./api";
 import { OnboardingGate } from "./components/OnboardingGate";
+import { useDemoInfo } from "./hooks/useDemoInfo";
 import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
@@ -19,10 +19,7 @@ import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
 export const App: React.FC = () => {
   const location = useLocation();
   const nodeRef = useRef<HTMLDivElement>(null);
-  const [demoInfo, setDemoInfo] = React.useState<{
-    demoMode: boolean;
-    resetCadenceHours: number;
-  } | null>(null);
+  const demoInfo = useDemoInfo();
 
   // Determine a stable key for transitions to avoid unnecessary unmounts when switching sub-tabs
   const pageKey = React.useMemo(() => {
@@ -33,32 +30,11 @@ export const App: React.FC = () => {
     return firstSegment;
   }, [location.pathname]);
 
-  React.useEffect(() => {
-    let isCancelled = false;
-    void api
-      .getDemoInfo()
-      .then((info) => {
-        if (!isCancelled) {
-          setDemoInfo({
-            demoMode: info.demoMode,
-            resetCadenceHours: info.resetCadenceHours,
-          });
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) setDemoInfo(null);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
   return (
     <>
       <OnboardingGate />
       {demoInfo?.demoMode && (
-        <div className="fixed inset-x-0 bottom-0 z-[200] border-t border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200 backdrop-blur">
+        <div className="fixed inset-x-0 top-0 z-[2147483647] border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-100 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
           {demoInfo.resetCadenceHours} hours.
         </div>

@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
@@ -82,7 +83,8 @@ export const OnboardingGate: React.FC = () => {
       checked: false,
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
-  const [demoMode, setDemoMode] = useState(false);
+  const demoInfo = useDemoInfo();
+  const demoMode = demoInfo?.demoMode ?? false;
 
   const { control, watch, getValues, reset, setValue } =
     useForm<OnboardingFormData>({
@@ -195,22 +197,6 @@ export const OnboardingGate: React.FC = () => {
     Boolean(settings && !settingsLoading) &&
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
-
-  useEffect(() => {
-    let isCancelled = false;
-    void api
-      .getDemoInfo()
-      .then((info) => {
-        if (!isCancelled) setDemoMode(info.demoMode);
-      })
-      .catch(() => {
-        if (!isCancelled) setDemoMode(false);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
 
   const llmKeyCurrent = llmKeyHint ? formatSecretHint(llmKeyHint) : undefined;
   const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
