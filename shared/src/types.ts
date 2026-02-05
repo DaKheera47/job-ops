@@ -339,6 +339,36 @@ export interface JobsListResponse {
   byStatus: Record<JobStatus, number>;
 }
 
+export type BulkJobAction = "skip" | "move_to_ready";
+
+export interface BulkJobActionRequest {
+  action: BulkJobAction;
+  jobIds: string[];
+}
+
+export type BulkJobActionResult =
+  | {
+      jobId: string;
+      ok: true;
+      job: Job;
+    }
+  | {
+      jobId: string;
+      ok: false;
+      error: {
+        code: string;
+        message: string;
+      };
+    };
+
+export interface BulkJobActionResponse {
+  action: BulkJobAction;
+  requested: number;
+  succeeded: number;
+  failed: number;
+  results: BulkJobActionResult[];
+}
+
 export interface UkVisaJobsSearchResponse {
   jobs: CreateJobInput[];
   totalJobs: number;

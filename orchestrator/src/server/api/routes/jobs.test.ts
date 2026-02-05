@@ -72,6 +72,112 @@ describe.sequential("Jobs API routes", () => {
     expect(deleteBody.data.count).toBe(1);
   });
 
+  it("runs bulk skip with partial failures", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const discovered = await createJob({
+      source: "manual",
+      title: "Discovered Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bulk-discovered",
+      jobDescription: "Test description",
+    });
+    const ready = await createJob({
+      source: "manual",
+      title: "Ready Role",
+      employer: "Beta",
+      jobUrl: "https://example.com/job/bulk-ready",
+      jobDescription: "Test description",
+    });
+    const applied = await createJob({
+      source: "manual",
+      title: "Applied Role",
+      employer: "Gamma",
+      jobUrl: "https://example.com/job/bulk-applied",
+      jobDescription: "Test description",
+    });
+    const { updateJob } = await import("../../repositories/jobs");
+    await updateJob(ready.id, { status: "ready" });
+    await updateJob(applied.id, { status: "applied" });
+
+    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "skip",
+        jobIds: [discovered.id, ready.id, applied.id, "missing-id"],
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBeTruthy();
+    expect(body.data.requested).toBe(4);
+    expect(body.data.succeeded).toBe(2);
+    expect(body.data.failed).toBe(2);
+    const failures = body.data.results.filter((r: any) => !r.ok);
+    expect(failures).toHaveLength(2);
+    expect(failures.map((r: any) => r.error.code).sort()).toEqual([
+      "INVALID_REQUEST",
+      "NOT_FOUND",
+    ]);
+  });
+
+  it("runs bulk move_to_ready and rejects ineligible statuses", async () => {
+    const { createJob, updateJob } = await import("../../repositories/jobs");
+    const discovered = await createJob({
+      source: "manual",
+      title: "New Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bulk-ready-1",
+      jobDescription: "Test description",
+    });
+    const ready = await createJob({
+      source: "manual",
+      title: "Already Ready",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bulk-ready-2",
+      jobDescription: "Test description",
+    });
+    await updateJob(ready.id, { status: "ready" });
+    const { processJob } = await import("../../pipeline/index");
+
+    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "move_to_ready",
+        jobIds: [discovered.id, ready.id],
+      }),
+    });
+    const body = await res.json();
+
+    expect(body.ok).toBe(true);
+    expect(body.data.succeeded).toBe(1);
+    expect(body.data.failed).toBe(1);
+    expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id);
+    expect(
+      body.data.results.find((r: any) => r.jobId === ready.id).error.code,
+    ).toBe("INVALID_REQUEST");
+  });
+
+  it("validates bulk action payloads", async () => {
+    const tooManyIds = Array.from({ length: 101 }, (_, index) => `job-${index}`);
+    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "skip",
+        jobIds: tooManyIds,
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.meta.requestId).toBeTruthy();
+  });
+
   it("applies a job and syncs to Notion", async () => {
     const { createNotionEntry } = await import("../../services/notion");
     vi.mocked(createNotionEntry).mockResolvedValue({

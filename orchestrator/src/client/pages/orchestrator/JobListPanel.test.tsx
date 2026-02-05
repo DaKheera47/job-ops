@@ -74,9 +74,12 @@ describe("JobListPanel", () => {
         jobs={[]}
         activeJobs={[]}
         selectedJobId={null}
+        selectedJobIds={new Set()}
         activeTab="ready"
         searchQuery=""
         onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
       />,
     );
 
@@ -90,9 +93,12 @@ describe("JobListPanel", () => {
         jobs={[]}
         activeJobs={[]}
         selectedJobId={null}
+        selectedJobIds={new Set()}
         activeTab="ready"
         searchQuery=""
         onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
       />,
     );
 
@@ -109,9 +115,12 @@ describe("JobListPanel", () => {
         jobs={[]}
         activeJobs={[]}
         selectedJobId={null}
+        selectedJobIds={new Set()}
         activeTab="ready"
         searchQuery="iOS"
         onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
       />,
     );
 
@@ -120,6 +129,8 @@ describe("JobListPanel", () => {
 
   it("renders jobs and notifies when a job is selected", () => {
     const onSelectJob = vi.fn();
+    const onToggleSelectJob = vi.fn();
+    const onToggleSelectAll = vi.fn();
     const jobs = [
       createJob({ id: "job-1", title: "Backend Engineer" }),
       createJob({
@@ -135,9 +146,12 @@ describe("JobListPanel", () => {
         jobs={jobs}
         activeJobs={jobs}
         selectedJobId="job-1"
+        selectedJobIds={new Set()}
         activeTab="ready"
         searchQuery=""
         onSelectJob={onSelectJob}
+        onToggleSelectJob={onToggleSelectJob}
+        onToggleSelectAll={onToggleSelectAll}
       />,
     );
 
@@ -147,5 +161,35 @@ describe("JobListPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Frontend Engineer/i }));
     expect(onSelectJob).toHaveBeenCalledWith("job-2");
+  });
+
+  it("toggles row selection and select-all", () => {
+    const onToggleSelectJob = vi.fn();
+    const onToggleSelectAll = vi.fn();
+    const jobs = [
+      createJob({ id: "job-1", title: "Backend Engineer" }),
+      createJob({ id: "job-2", title: "Frontend Engineer" }),
+    ];
+
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId="job-1"
+        selectedJobIds={new Set(["job-1"])}
+        activeTab="ready"
+        searchQuery=""
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={onToggleSelectJob}
+        onToggleSelectAll={onToggleSelectAll}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("Select Backend Engineer"));
+    expect(onToggleSelectJob).toHaveBeenCalledWith("job-1");
+
+    fireEvent.click(screen.getByLabelText("Select all filtered jobs"));
+    expect(onToggleSelectAll).toHaveBeenCalledWith(true);
   });
 });

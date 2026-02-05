@@ -8,6 +8,8 @@ import type {
   ApplicationTask,
   AppSettings,
   BackupInfo,
+  BulkJobActionRequest,
+  BulkJobActionResponse,
   CreateJobInput,
   DemoInfoResponse,
   Job,
@@ -224,6 +226,15 @@ export async function markAsApplied(id: string): Promise<Job> {
 export async function skipJob(id: string): Promise<Job> {
   return fetchApi<Job>(`/jobs/${id}/skip`, {
     method: "POST",
+  });
+}
+
+export async function bulkJobAction(
+  input: BulkJobActionRequest,
+): Promise<BulkJobActionResponse> {
+  return fetchApi<BulkJobActionResponse>("/jobs/bulk-actions", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 

@@ -1,6 +1,7 @@
 import type { Job } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import type React from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { FilterTab } from "./constants";
 import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
@@ -10,9 +11,12 @@ interface JobListPanelProps {
   jobs: Job[];
   activeJobs: Job[];
   selectedJobId: string | null;
+  selectedJobIds: Set<string>;
   activeTab: FilterTab;
   searchQuery: string;
   onSelectJob: (jobId: string) => void;
+  onToggleSelectJob: (jobId: string) => void;
+  onToggleSelectAll: (checked: boolean) => void;
 }
 
 export const JobListPanel: React.FC<JobListPanelProps> = ({
@@ -20,9 +24,12 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
   jobs,
   activeJobs,
   selectedJobId,
+  selectedJobIds,
   activeTab,
   searchQuery,
   onSelectJob,
+  onToggleSelectJob,
+  onToggleSelectAll,
 }) => (
   <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
     {isLoading && jobs.length === 0 ? (
@@ -41,24 +48,52 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       </div>
     ) : (
       <div className="divide-y divide-border/40">
+        <div className="flex items-center justify-between gap-3 px-4 py-2">
+          <label
+            htmlFor="job-list-select-all"
+            className="flex items-center gap-2 text-xs text-muted-foreground"
+          >
+            <Checkbox
+              id="job-list-select-all"
+              checked={
+                activeJobs.length > 0 &&
+                activeJobs.every((job) => selectedJobIds.has(job.id))
+              }
+              onCheckedChange={() => {
+                const allSelected =
+                  activeJobs.length > 0 &&
+                  activeJobs.every((job) => selectedJobIds.has(job.id));
+                onToggleSelectAll(!allSelected);
+              }}
+              aria-label="Select all filtered jobs"
+            />
+            Select all filtered
+          </label>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {selectedJobIds.size} selected
+          </span>
+        </div>
         {activeJobs.map((job) => {
           const isSelected = job.id === selectedJobId;
+          const isChecked = selectedJobIds.has(job.id);
           const hasScore = job.suitabilityScore != null;
           const statusToken = statusTokens[job.status] ?? defaultStatusToken;
           return (
-            <button
+            <div
               key={job.id}
-              type="button"
-              onClick={() => onSelectJob(job.id)}
-              data-testid={`select-${job.id}`}
               className={cn(
-                "flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+                "flex items-center gap-3 px-4 py-3 transition-colors",
                 isSelected
                   ? "bg-primary/5 border-l-2 border-l-primary"
                   : "hover:bg-muted/20 border-l-2 border-l-transparent",
               )}
-              aria-pressed={isSelected}
             >
+              <Checkbox
+                checked={isChecked}
+                onCheckedChange={() => onToggleSelectJob(job.id)}
+                onClick={(event) => event.stopPropagation()}
+                aria-label={`Select ${job.title}`}
+              />
               {/* Single status indicator: subtle dot */}
               <span
                 className={cn(
@@ -69,49 +104,57 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 title={statusToken.label}
               />
 
-              {/* Primary content: title strongest, company secondary */}
-              <div className="min-w-0 flex-1">
-                <div
-                  className={cn(
-                    "truncate text-sm leading-tight",
-                    isSelected ? "font-semibold" : "font-medium",
-                  )}
-                >
-                  {job.title}
-                </div>
-                <div className="truncate text-xs text-muted-foreground mt-0.5">
-                  {job.employer}
-                  {job.location && (
-                    <span className="before:content-['_in_']">
-                      {job.location}
-                    </span>
-                  )}
-                </div>
-                {job.salary?.trim() && (
-                  <div className="truncate text-xs text-muted-foreground mt-0.5">
-                    {job.salary}
-                  </div>
-                )}
-              </div>
-
-              {/* Single triage cue: score only (status shown via dot) */}
-              {hasScore && (
-                <div className="shrink-0 text-right">
-                  <span
+              <button
+                type="button"
+                onClick={() => onSelectJob(job.id)}
+                data-testid={`select-${job.id}`}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                aria-pressed={isSelected}
+              >
+                {/* Primary content: title strongest, company secondary */}
+                <div className="min-w-0 flex-1">
+                  <div
                     className={cn(
-                      "text-xs tabular-nums",
-                      (job.suitabilityScore ?? 0) >= 70
-                        ? "text-emerald-400/90"
-                        : (job.suitabilityScore ?? 0) >= 50
-                          ? "text-foreground/60"
-                          : "text-muted-foreground/60",
+                      "truncate text-sm leading-tight",
+                      isSelected ? "font-semibold" : "font-medium",
                     )}
                   >
-                    {job.suitabilityScore}
-                  </span>
+                    {job.title}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground mt-0.5">
+                    {job.employer}
+                    {job.location && (
+                      <span className="before:content-['_in_']">
+                        {job.location}
+                      </span>
+                    )}
+                  </div>
+                  {job.salary?.trim() && (
+                    <div className="truncate text-xs text-muted-foreground mt-0.5">
+                      {job.salary}
+                    </div>
+                  )}
                 </div>
-              )}
-            </button>
+
+                {/* Single triage cue: score only (status shown via dot) */}
+                {hasScore && (
+                  <div className="shrink-0 text-right">
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        (job.suitabilityScore ?? 0) >= 70
+                          ? "text-emerald-400/90"
+                          : (job.suitabilityScore ?? 0) >= 50
+                            ? "text-foreground/60"
+                            : "text-muted-foreground/60",
+                      )}
+                    >
+                      {job.suitabilityScore}
+                    </span>
+                  </div>
+                )}
+              </button>
+            </div>
           );
         })}
       </div>

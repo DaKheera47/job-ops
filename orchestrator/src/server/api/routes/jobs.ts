@@ -1,10 +1,13 @@
-import { okWithMeta } from "@infra/http";
+import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
   type ApiResponse,
+  type BulkJobAction,
+  type BulkJobActionResponse,
+  type BulkJobActionResult,
   type Job,
   type JobStatus,
   type JobsListResponse,
@@ -12,6 +15,7 @@ import {
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode, sendDemoBlocked } from "../../config/demo";
+import { AppError, badRequest } from "../../infra/errors";
 import {
   generateFinalPdf,
   processJob,
@@ -136,6 +140,118 @@ const updateOutcomeSchema = z.object({
   closedAt: z.number().int().nullable().optional(),
 });
 
+const bulkActionRequestSchema = z.object({
+  action: z.enum(["skip", "move_to_ready"]),
+  jobIds: z.array(z.string().min(1)).min(1).max(100),
+});
+
+const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
+  "discovered",
+  "ready",
+]);
+
+function mapErrorForResult(
+  error: unknown,
+): { code: string; message: string; details?: unknown } {
+  if (error instanceof AppError) {
+    return {
+      code: error.code,
+      message: error.message,
+      ...(error.details !== undefined ? { details: error.details } : {}),
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      code: "INTERNAL_ERROR",
+      message: error.message || "Unknown error",
+    };
+  }
+
+  return {
+    code: "INTERNAL_ERROR",
+    message: "Unknown error",
+  };
+}
+
+async function executeBulkActionForJob(
+  action: BulkJobAction,
+  jobId: string,
+): Promise<BulkJobActionResult> {
+  try {
+    const job = await jobsRepo.getJobById(jobId);
+    if (!job) {
+      throw new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found",
+      });
+    }
+
+    if (action === "skip") {
+      if (!SKIPPABLE_STATUSES.has(job.status)) {
+        throw badRequest(
+          `Job is not skippable from status "${job.status}"`,
+          {
+            jobId,
+            status: job.status,
+            allowedStatuses: ["discovered", "ready"],
+          },
+        );
+      }
+
+      const updated = await jobsRepo.updateJob(jobId, { status: "skipped" });
+      if (!updated) {
+        throw new AppError({
+          status: 404,
+          code: "NOT_FOUND",
+          message: "Job not found",
+        });
+      }
+
+      return { jobId, ok: true, job: updated };
+    }
+
+    if (job.status !== "discovered") {
+      throw badRequest(`Job is not movable to Ready from status "${job.status}"`, {
+        jobId,
+        status: job.status,
+        requiredStatus: "discovered",
+      });
+    }
+
+    const processed = await processJob(jobId);
+    if (!processed.success) {
+      throw new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: processed.error || "Failed to process job",
+      });
+    }
+
+    const updated = await jobsRepo.getJobById(jobId);
+    if (!updated) {
+      throw new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found after processing",
+      });
+    }
+
+    return { jobId, ok: true, job: updated };
+  } catch (error) {
+    const mapped = mapErrorForResult(error);
+    return {
+      jobId,
+      ok: false,
+      error: {
+        code: mapped.code,
+        message: mapped.message,
+      },
+    };
+  }
+}
+
 /**
  * GET /api/jobs - List all jobs
  * Query params: status (comma-separated list of statuses to filter)
@@ -163,6 +279,62 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
+  }
+});
+
+/**
+ * POST /api/jobs/bulk-actions - Run a bulk action across selected jobs
+ */
+jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
+  try {
+    const parsed = bulkActionRequestSchema.parse(req.body);
+    const dedupedJobIds = Array.from(new Set(parsed.jobIds));
+
+    const results: BulkJobActionResult[] = [];
+    for (const jobId of dedupedJobIds) {
+      const result = await executeBulkActionForJob(parsed.action, jobId);
+      results.push(result);
+    }
+
+    const succeeded = results.filter((result) => result.ok).length;
+    const failed = results.length - succeeded;
+    const payload: BulkJobActionResponse = {
+      action: parsed.action,
+      requested: dedupedJobIds.length,
+      succeeded,
+      failed,
+      results,
+    };
+
+    logger.info("Bulk job action completed", {
+      route: "POST /api/jobs/bulk-actions",
+      action: parsed.action,
+      requested: dedupedJobIds.length,
+      succeeded,
+      failed,
+    });
+
+    ok(res, payload);
+  } catch (error) {
+    const err =
+      error instanceof z.ZodError
+        ? badRequest("Invalid bulk action request", error.flatten())
+        : error instanceof AppError
+          ? error
+          : new AppError({
+              status: 500,
+              code: "INTERNAL_ERROR",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+
+    logger.error("Bulk job action failed", {
+      route: "POST /api/jobs/bulk-actions",
+      status: err.status,
+      code: err.code,
+      details: err.details,
+    });
+
+    fail(res, err);
   }
 });
 
