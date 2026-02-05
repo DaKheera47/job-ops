@@ -9,6 +9,8 @@ import {
 } from "./bulkActions";
 import type { FilterTab } from "./constants";
 
+const MAX_BULK_ACTION_JOB_IDS = 100;
+
 interface UseBulkJobSelectionArgs {
   activeJobs: Job[];
   activeTab: FilterTab;
@@ -72,9 +74,17 @@ export function useBulkJobSelection({
 
   const toggleSelectAll = useCallback(
     (checked: boolean) => {
-      setSelectedJobIds(() =>
-        checked ? new Set(activeJobs.map((job) => job.id)) : new Set(),
-      );
+      setSelectedJobIds(() => {
+        if (!checked) return new Set();
+        const allIds = activeJobs.map((job) => job.id);
+        if (allIds.length <= MAX_BULK_ACTION_JOB_IDS) {
+          return new Set(allIds);
+        }
+        toast.error(
+          `Select all is limited to ${MAX_BULK_ACTION_JOB_IDS} jobs per action.`,
+        );
+        return new Set(allIds.slice(0, MAX_BULK_ACTION_JOB_IDS));
+      });
     },
     [activeJobs],
   );
@@ -85,12 +95,21 @@ export function useBulkJobSelection({
 
   const runBulkAction = useCallback(
     async (action: BulkJobAction) => {
-      if (selectedJobIds.size === 0) return;
+      const selectedAtStart = Array.from(selectedJobIds);
+      if (selectedAtStart.length === 0) return;
+      if (selectedAtStart.length > MAX_BULK_ACTION_JOB_IDS) {
+        toast.error(
+          `You can run bulk actions on up to ${MAX_BULK_ACTION_JOB_IDS} jobs at a time.`,
+        );
+        return;
+      }
+
+      const selectedAtStartSet = new Set(selectedAtStart);
       try {
         setBulkActionInFlight(action);
         const result = await api.bulkJobAction({
           action,
-          jobIds: Array.from(selectedJobIds),
+          jobIds: selectedAtStart,
         });
 
         const failedIds = getFailedJobIds(result);
@@ -106,7 +125,20 @@ export function useBulkJobSelection({
         }
 
         await loadJobs();
-        setSelectedJobIds(failedIds);
+        setSelectedJobIds((current) => {
+          const addedDuringRequest = Array.from(current).filter(
+            (jobId) => !selectedAtStartSet.has(jobId),
+          );
+          const removedDuringRequest = Array.from(selectedAtStartSet).filter(
+            (jobId) => !current.has(jobId),
+          );
+          const next = new Set([
+            ...Array.from(failedIds),
+            ...addedDuringRequest,
+          ]);
+          for (const jobId of removedDuringRequest) next.delete(jobId);
+          return next;
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to run bulk action";
