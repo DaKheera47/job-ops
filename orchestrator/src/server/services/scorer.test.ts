@@ -469,7 +469,7 @@ describe("salary penalty", () => {
       expect(result.reason).not.toContain("missing salary");
     });
 
-    it("should clamp score to minimum 0", async () => {
+    it("should clamp score to minimum 0 (high penalty on medium score)", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       const { LlmService } = await import("./llm-service");
 
@@ -488,6 +488,27 @@ describe("salary penalty", () => {
 
       expect(result.score).toBe(0); // Clamped, not negative
       expect(result.reason).toContain("Score reduced by 100 points");
+    });
+
+    it("should clamp score to minimum 0 (low score with penalty)", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 5, reason: "Weak match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(0); // 5 - 10 = -5, clamped to 0
+      expect(result.reason).toContain("Score reduced by 10 points");
     });
 
     it("should handle penalty of 0", async () => {

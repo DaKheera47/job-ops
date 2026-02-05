@@ -125,3 +125,25 @@ Started: 2026-02-04
   - Test mocks need to be updated when adding new dependencies to existing functions
   - The penalty feature introduced a getEffectiveSettings() call in applySalaryPenalty, which calls getAllSettings
 
+## Task - testing-1
+- Added comprehensive edge case test for low score with penalty (score 5 - penalty 10 = 0)
+- Verified all acceptance criteria are covered by tests:
+  - ✅ Job with salary 'Competitive' NOT penalized (scorer.test.ts:407-426)
+  - ✅ Penalty of 0 results in no score change (scorer.test.ts:493-512)
+  - ✅ Penalty of 100 on score 50 = 0, not -50 (scorer.test.ts:472-491)
+  - ✅ Penalty of 10 on score 5 = 0, not -5 (scorer.test.ts:493-513) - NEW TEST ADDED
+  - ✅ Invalid penalty (150) returns 400 error (settings.test.ts:86-98)
+  - ✅ Mock scoring applies penalty correctly (scorer.test.ts:538-561)
+- Files changed:
+  - orchestrator/src/server/services/scorer.test.ts:472-513 - Added explicit test for low score edge case
+- All feedback loops passed:
+  - ✅ Type checking: tsc --noEmit (passed)
+  - ✅ Linting: biome check (passed)
+  - ✅ Formatting: biome format (passed)
+  - ✅ Tests: 44 tests passing in scorer.test.ts, 4 tests passing in settings.test.ts
+- **Learnings:**
+  - Comprehensive test coverage for edge cases prevents regressions
+  - Testing score clamping behavior explicitly documents expected behavior
+  - All acceptance criteria were already covered except one edge case
+  - Pre-existing test failures in ApplicationsPerDayChart and backup tests are unrelated to penalty feature
+

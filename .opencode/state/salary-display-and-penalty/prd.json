@@ -115,7 +115,7 @@
         "Settings update with invalid penalty (e.g., 150) returns 400 validation error",
         "Mock scoring applies penalty correctly when API key is missing"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "integration-1",
