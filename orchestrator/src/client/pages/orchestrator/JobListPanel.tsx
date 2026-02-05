@@ -82,12 +82,13 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
             <div
               key={job.id}
               className={cn(
-                "group flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-l-2",
+                "group flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-l-2 border-b",
+                isChecked
+                  ? "!border-l-2 !border-l-primary/50 bg-muted/20"
+                  : "border-l border-l-border/40",
                 isSelected
-                  ? "bg-primary/8 border-l-primary"
-                  : isChecked
-                    ? "bg-primary/[0.04] border-l-primary/40 hover:bg-primary/[0.06]"
-                    : "hover:bg-muted/20 border-l-transparent",
+                  ? "border border-primary/20 bg-primary/5"
+                  : "border-b-border/40 hover:bg-muted/20",
               )}
             >
               <Checkbox
@@ -96,7 +97,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 onClick={(event) => event.stopPropagation()}
                 aria-label={`Select ${job.title}`}
                 className={cn(
-                  "border-border/40 text-muted-foreground/70 transition-opacity",
+                  "border-border/80 cursor-pointer text-muted-foreground/70 transition-opacity",
                   "data-[state=checked]:border-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary",
                   "data-[state=checked]:shadow-[0_0_0_1px_hsl(var(--primary)/0.35)]",
                   isChecked || isSelected
@@ -118,7 +119,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 type="button"
                 onClick={() => onSelectJob(job.id)}
                 data-testid={`select-${job.id}`}
-                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                 aria-pressed={isSelected}
               >
                 {/* Primary content: title strongest, company secondary */}
