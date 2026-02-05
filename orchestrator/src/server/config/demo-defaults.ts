@@ -80,6 +80,7 @@ const baseAppliedCount = DEMO_BASE_JOBS.filter(
 
 const TARGET_DISCOVERED_TOTAL = 45;
 const TARGET_READY_TOTAL = Math.floor(TARGET_DISCOVERED_TOTAL / 3);
+// Keep applied volume high in demo seeds so stage timelines have enough events.
 const TARGET_APPLIED_TOTAL = TARGET_DISCOVERED_TOTAL;
 
 const GENERATED_DISCOVERED_JOB_COUNT = Math.max(
