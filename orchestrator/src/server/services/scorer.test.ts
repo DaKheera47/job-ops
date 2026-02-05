@@ -2,7 +2,8 @@
  * Tests for scorer.ts - focusing on robust JSON parsing from AI responses
  */
 
-import { describe, expect, it } from "vitest";
+import type { Job } from "@shared/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseJsonFromContent } from "./scorer";
 
 describe("parseJsonFromContent", () => {
@@ -249,6 +250,334 @@ This score reflects the candidate's technical capabilities while accounting for 
       const result = parseJsonFromContent(input);
       expect(result.score).toBe(79);
       expect(result.reason).toBe("Good match");
+    });
+  });
+});
+
+// Helper to create minimal test job
+function createTestJob(overrides: Partial<Job> = {}): Job {
+  return {
+    id: "test-job-1",
+    source: "gradcracker",
+    sourceJobId: "ext-1",
+    jobUrlDirect: null,
+    datePosted: null,
+    title: "Software Engineer",
+    employer: "Test Company",
+    employerUrl: null,
+    jobUrl: "https://example.com/job",
+    applicationLink: null,
+    disciplines: null,
+    deadline: null,
+    salary: null,
+    location: null,
+    degreeRequired: null,
+    starting: null,
+    jobDescription: "A test job",
+    status: "discovered",
+    outcome: null,
+    closedAt: null,
+    suitabilityScore: null,
+    suitabilityReason: null,
+    tailoredSummary: null,
+    tailoredHeadline: null,
+    tailoredSkills: null,
+    selectedProjectIds: null,
+    pdfPath: null,
+    notionPageId: null,
+    sponsorMatchScore: null,
+    sponsorMatchNames: null,
+    jobType: null,
+    salarySource: null,
+    salaryInterval: null,
+    salaryMinAmount: null,
+    salaryMaxAmount: null,
+    salaryCurrency: null,
+    isRemote: null,
+    jobLevel: null,
+    jobFunction: null,
+    listingType: null,
+    emails: null,
+    companyIndustry: null,
+    companyLogo: null,
+    companyUrlDirect: null,
+    companyAddresses: null,
+    companyNumEmployees: null,
+    companyRevenue: null,
+    companyDescription: null,
+    skills: null,
+    experienceRange: null,
+    companyRating: null,
+    companyReviewsCount: null,
+    vacancyCount: null,
+    workFromHomeType: null,
+    discoveredAt: new Date().toISOString(),
+    processedAt: null,
+    appliedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+describe("salary penalty", () => {
+  let getEffectiveSettingsMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    // Mock the settings module
+    const settingsModule = await import("./settings");
+    getEffectiveSettingsMock = vi.fn() as unknown as ReturnType<typeof vi.fn>;
+    vi.spyOn(settingsModule, "getEffectiveSettings").mockImplementation(
+      getEffectiveSettingsMock as () => Promise<
+        import("@shared/types").AppSettings
+      >,
+    );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe("isSalaryMissing detection", () => {
+    it("should detect null salary as missing", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(70); // 80 - 10
+      expect(result.reason).toContain(
+        "Score reduced by 10 points due to missing salary information",
+      );
+    });
+
+    it("should detect empty string salary as missing", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: "" });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(70);
+      expect(result.reason).toContain("missing salary information");
+    });
+
+    it("should detect whitespace-only salary as missing", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: "   " });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(70);
+      expect(result.reason).toContain("missing salary information");
+    });
+
+    it("should NOT penalize jobs with non-empty salary", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: "Competitive" });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(80); // No penalty
+      expect(result.reason).not.toContain("missing salary");
+    });
+
+    it("should NOT penalize jobs with actual salary value", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: "£40,000 - £50,000" });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(80); // No penalty
+      expect(result.reason).not.toContain("missing salary");
+    });
+  });
+
+  describe("penalty application", () => {
+    it("should not apply penalty when disabled", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: false,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(80); // No penalty when disabled
+      expect(result.reason).not.toContain("missing salary");
+    });
+
+    it("should clamp score to minimum 0", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 100,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 50, reason: "Average match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(0); // Clamped, not negative
+      expect(result.reason).toContain("Score reduced by 100 points");
+    });
+
+    it("should handle penalty of 0", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 0,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(80); // No change with 0 penalty
+      expect(result.reason).toContain("Score reduced by 0 points");
+    });
+
+    it("should apply penalty with correct amount", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 25,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: true,
+        data: { score: 90, reason: "Excellent match" },
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.score).toBe(65); // 90 - 25
+      expect(result.reason).toContain(
+        "Score reduced by 25 points due to missing salary information",
+      );
+    });
+  });
+
+  describe("mock scoring with penalty", () => {
+    it("should apply penalty in mock scoring fallback", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 10,
+      });
+
+      // Simulate API key error to trigger mock scoring
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: false,
+        error: "API key not configured",
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      // Mock score base is 50, with keyword bonuses from "Software Engineer"
+      // After 10 point penalty, should be reduced
+      expect(result.score).toBeLessThanOrEqual(50);
+      expect(result.reason).toContain("missing salary information");
+    });
+
+    it("should not apply penalty in mock scoring when disabled", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm-service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: false,
+        missingSalaryPenalty: 10,
+      });
+
+      vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
+        success: false,
+        error: "API key not configured",
+      });
+
+      const job = createTestJob({ salary: null });
+      const result = await scoreJobSuitability(job, {});
+
+      expect(result.reason).not.toContain("missing salary");
     });
   });
 });

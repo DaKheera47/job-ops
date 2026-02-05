@@ -41,7 +41,7 @@
         "Penalty logs to console with INFO level including jobId, originalScore, penalty, finalScore",
         "When penalty disabled, scores are unchanged"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "scoring-penalty-2",

@@ -6,6 +6,7 @@ import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service";
+import { getEffectiveSettings } from "./settings";
 
 interface SuitabilityResult {
   score: number; // 0-100
@@ -31,6 +32,48 @@ const SCORING_SCHEMA: JsonSchemaDefinition = {
     additionalProperties: false,
   },
 };
+
+/**
+ * Check if a job's salary field is missing/empty.
+ * Returns true for null, empty string, or whitespace-only strings.
+ */
+function isSalaryMissing(salary: string | null): boolean {
+  return salary === null || salary.trim() === "";
+}
+
+/**
+ * Apply salary penalty to a score if enabled.
+ * Returns the adjusted score, adjusted reason, and whether penalty was applied.
+ */
+async function applySalaryPenalty(
+  job: Job,
+  originalScore: number,
+  originalReason: string,
+): Promise<{ score: number; reason: string; penaltyApplied: boolean }> {
+  const settings = await getEffectiveSettings();
+
+  if (!settings.penalizeMissingSalary || !isSalaryMissing(job.salary)) {
+    return {
+      score: originalScore,
+      reason: originalReason,
+      penaltyApplied: false,
+    };
+  }
+
+  const penalty = settings.missingSalaryPenalty;
+  const adjustedScore = Math.max(0, originalScore - penalty);
+  const penaltyText = `Score reduced by ${penalty} points due to missing salary information.`;
+  const adjustedReason = `${originalReason} ${penaltyText}`;
+
+  logger.info("Applied salary penalty", {
+    jobId: job.id,
+    originalScore,
+    penalty,
+    finalScore: adjustedScore,
+  });
+
+  return { score: adjustedScore, reason: adjustedReason, penaltyApplied: true };
+}
 
 /**
  * Score a job's suitability based on profile and job description.
@@ -83,9 +126,19 @@ export async function scoreJobSuitability(
     return mockScore(job);
   }
 
+  const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
+  const clampedReason = reason || "No explanation provided";
+
+  // Apply salary penalty if enabled
+  const penaltyResult = await applySalaryPenalty(
+    job,
+    clampedScore,
+    clampedReason,
+  );
+
   return {
-    score: Math.min(100, Math.max(0, Math.round(score))),
-    reason: reason || "No explanation provided",
+    score: penaltyResult.score,
+    reason: penaltyResult.reason,
   };
 }
 
@@ -260,7 +313,7 @@ function sanitizeProfileForPrompt(
   };
 }
 
-function mockScore(job: Job): SuitabilityResult {
+async function mockScore(job: Job): Promise<SuitabilityResult> {
   // Simple keyword-based scoring as fallback
   const jd = (job.jobDescription || "").toLowerCase();
   const title = job.title.toLowerCase();
@@ -299,9 +352,14 @@ function mockScore(job: Job): SuitabilityResult {
 
   score = Math.min(100, Math.max(0, score));
 
+  const baseReason = "Scored using keyword matching (API key not configured)";
+
+  // Apply salary penalty if enabled
+  const penaltyResult = await applySalaryPenalty(job, score, baseReason);
+
   return {
-    score,
-    reason: "Scored using keyword matching (API key not configured)",
+    score: penaltyResult.score,
+    reason: penaltyResult.reason,
   };
 }
 

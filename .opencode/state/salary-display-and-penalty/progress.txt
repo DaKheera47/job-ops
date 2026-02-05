@@ -21,6 +21,13 @@ Started: 2026-02-04
 - Unit tests in settings-conversion.test.ts for serialization/deserialization
 - Integration tests in api/routes/settings.test.ts for API endpoints
 
+**Penalty Application Pattern:**
+- Helper function checks if salary is missing (null/empty/whitespace)
+- Applies penalty after score calculation but before return
+- Clamps final score to minimum 0
+- Appends penalty explanation to reason text
+- Logs with INFO level including all relevant context (jobId, originalScore, penalty, finalScore)
+
 ---
 
 ## Task - backend-settings-1 & backend-settings-2
@@ -39,3 +46,17 @@ Started: 2026-02-04
   - Settings system is well-structured with clear separation of concerns
   - Clamping happens in parseOverride for env vars and in Zod schema for API updates
   - Tests verify round-trip serialization, validation, and persistence
+
+## Task - scoring-penalty-1
+- Implemented salary penalty in AI-based scoring path
+- Added `isSalaryMissing()` helper to detect null/empty/whitespace salary
+- Added `applySalaryPenalty()` helper to apply penalty conditionally
+- Penalty applied after AI score but before returning result
+- Files changed:
+  - orchestrator/src/server/services/scorer.ts:9,16-75,129-140,318-339 - Added penalty logic
+  - orchestrator/src/server/services/scorer.test.ts - Added comprehensive tests (11 test cases)
+- **Learnings:**
+  - Penalty logic is shared between AI scoring and mock scoring paths via helper function
+  - Settings fetched once per scoring call using `getEffectiveSettings()`
+  - Logging includes all context for debugging (jobId, originalScore, penalty, finalScore)
+  - Tests cover all edge cases: null/empty/whitespace salary, disabled penalty, score clamping, different penalty amounts
