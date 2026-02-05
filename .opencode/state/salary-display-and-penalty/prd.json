@@ -101,7 +101,7 @@
         "Salary uses text-xs and muted-foreground styling for consistency",
         "Salary display works for jobs from all sources (verify in UI)"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "testing-1",

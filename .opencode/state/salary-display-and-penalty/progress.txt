@@ -70,6 +70,19 @@ Started: 2026-02-04
   - By sharing the penalty logic via helper function, both paths behave identically
   - This reduces code duplication and ensures consistency
 
+## Task - frontend-display-1
+- Added salary display to JobListPanel as third line below company/location
+- Salary only appears when non-null, non-empty, and non-whitespace using `job.salary?.trim()` check
+- Implemented with same styling as company/location line (text-xs, muted-foreground, mt-0.5)
+- Uses `truncate` class for automatic ellipsis on long salary strings
+- Files changed:
+  - orchestrator/src/client/pages/orchestrator/JobListPanel.tsx:90-94 - Added conditional salary display
+- **Learnings:**
+  - Optional chaining (`?.`) combined with `.trim()` elegantly handles null/empty/whitespace checks
+  - Biome lint suggested using optional chaining instead of `job.salary && job.salary.trim()`
+  - Consistent styling (text-xs, muted-foreground) maintains visual hierarchy in job list
+  - Frontend changes don't require backend changes when data already exists in Job type
+
 ## Task - frontend-settings-1
 - Created ScoringSettingsSection component for penalty settings UI
 - Added scoring settings to Settings page accordion (positioned after Display Settings)
