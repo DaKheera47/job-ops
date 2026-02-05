@@ -187,11 +187,11 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Detail header: lighter weight than list items */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 w-full sm:w-auto sm:flex-1">
           <Link
             to={`/job/${job.id}`}
-            className="flex items-center gap-2 text-base font-semibold underline-offset-2 text-foreground/90 hover:underline"
+            className="block text-base font-semibold leading-snug text-foreground/90 underline-offset-2 break-words hover:underline"
           >
             {job.title}
           </Link>
@@ -199,7 +199,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             <span>{job.employer}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Badge
             variant="outline"
             className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
