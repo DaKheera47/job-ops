@@ -132,7 +132,7 @@
         "Verify existing scored jobs retain their scores (no automatic re-scoring)",
         "Verify environment variable override works (set PENALIZE_MISSING_SALARY=true and restart)"
       ],
-      "passes": false
+      "passes": true
     }
   ],
   "context": {

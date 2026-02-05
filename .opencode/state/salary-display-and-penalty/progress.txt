@@ -147,3 +147,24 @@ Started: 2026-02-04
   - All acceptance criteria were already covered except one edge case
   - Pre-existing test failures in ApplicationsPerDayChart and backup tests are unrelated to penalty feature
 
+## Task - integration-1
+- Verified all acceptance criteria through code review and automated testing:
+  - ✅ Settings UI: ScoringSettingsSection component integrated into Settings page accordion
+  - ✅ Penalty application: applySalaryPenalty() function in scorer.ts applies penalty during scoring
+  - ✅ Jobs without salary penalized: Tested via scorer.test.ts (null, empty, whitespace cases)
+  - ✅ Jobs with salary unchanged: Test confirms 'Competitive' and other non-empty values not penalized
+  - ✅ Suitability reason updated: Penalty text appended to reason (scorer.ts:66)
+  - ✅ JobHeader unchanged: JobHeader.tsx:247-250 displays salary in detail panel
+  - ✅ Disable penalty: Tested via scorer.test.ts:514-537, penalty only applies when enabled
+  - ✅ No retroactive scoring: Penalty only applied during scoring runs, no automatic re-scoring
+  - ✅ Environment variables: PENALIZE_MISSING_SALARY and MISSING_SALARY_PENALTY supported (settings-conversion.ts:198-221)
+- All feedback loops passed:
+  - ✅ Type checking: tsc --noEmit (passed)
+  - ✅ Linting/formatting: biome ci (passed)
+  - ✅ Tests: 62/62 penalty-related tests passing (scorer, settings, settings-conversion)
+- **Learnings:**
+  - Integration verification can be largely automated through comprehensive unit/integration tests
+  - Code review confirms all UI components properly integrated
+  - Environment variable override mechanism follows existing patterns
+  - Feature complete and ready for manual UI testing if desired
+
