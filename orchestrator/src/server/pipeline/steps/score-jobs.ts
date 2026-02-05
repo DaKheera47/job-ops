@@ -76,6 +76,7 @@ export async function scoreJobsStep(args: {
 
     // Check if job should be auto-skipped based on score threshold
     const shouldAutoSkip =
+      job.status !== "applied" &&
       autoSkipThreshold !== null &&
       !Number.isNaN(autoSkipThreshold) &&
       score < autoSkipThreshold;
@@ -85,7 +86,7 @@ export async function scoreJobsStep(args: {
       suitabilityReason: reason,
       sponsorMatchScore,
       sponsorMatchNames,
-      status: shouldAutoSkip ? "skipped" : undefined,
+      ...(shouldAutoSkip ? { status: "skipped" } : {}),
     });
 
     if (shouldAutoSkip) {

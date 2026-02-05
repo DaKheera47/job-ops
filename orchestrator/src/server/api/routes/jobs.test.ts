@@ -162,6 +162,15 @@ describe.sequential("Jobs API routes", () => {
     });
     await updateJob(mediumScoreJob.id, { suitabilityScore: 60 });
 
+    const boundaryScoreJob = await createJob({
+      source: "manual",
+      title: "Boundary Score Job",
+      employer: "Company Boundary",
+      jobUrl: "https://example.com/job/boundary",
+      jobDescription: "Test description",
+    });
+    await updateJob(boundaryScoreJob.id, { suitabilityScore: 50 });
+
     const highScoreJob = await createJob({
       source: "manual",
       title: "High Score Job",
@@ -199,6 +208,7 @@ describe.sequential("Jobs API routes", () => {
 
     const remainingJobIds = listBody.data.jobs.map((j: any) => j.id);
     expect(remainingJobIds).not.toContain(lowScoreJob.id);
+    expect(remainingJobIds).toContain(boundaryScoreJob.id);
     expect(remainingJobIds).toContain(mediumScoreJob.id);
     expect(remainingJobIds).toContain(highScoreJob.id);
     expect(remainingJobIds).toContain(appliedLowScoreJob.id); // Applied job preserved

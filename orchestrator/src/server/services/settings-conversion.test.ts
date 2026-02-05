@@ -112,6 +112,47 @@ describe("settings-conversion", () => {
     expect(resolveSettingValue("missingSalaryPenalty", "100").value).toBe(100);
   });
 
+  it("round-trips autoSkipScoreThreshold with clamping and null fallback", () => {
+    const serialized = serializeSettingValue("autoSkipScoreThreshold", 35);
+    expect(serialized).toBe("35");
+
+    const resolved = resolveSettingValue(
+      "autoSkipScoreThreshold",
+      serialized ?? undefined,
+    );
+    expect(resolved.overrideValue).toBe(35);
+    expect(resolved.value).toBe(35);
+    expect(resolved.defaultValue).toBeNull();
+
+    // Test clamping
+    expect(resolveSettingValue("autoSkipScoreThreshold", "150").value).toBe(
+      100,
+    );
+    expect(resolveSettingValue("autoSkipScoreThreshold", "-5").value).toBe(0);
+    expect(resolveSettingValue("autoSkipScoreThreshold", "0").value).toBe(0);
+    expect(resolveSettingValue("autoSkipScoreThreshold", "100").value).toBe(
+      100,
+    );
+
+    // Test explicit null handling
+    expect(serializeSettingValue("autoSkipScoreThreshold", null)).toBeNull();
+    expect(resolveSettingValue("autoSkipScoreThreshold", undefined).value).toBe(
+      null,
+    );
+    expect(resolveSettingValue("autoSkipScoreThreshold", "null").value).toBe(
+      null,
+    );
+    expect(resolveSettingValue("autoSkipScoreThreshold", "").value).toBe(null);
+
+    // Invalid input falls back to default (null)
+    const invalid = resolveSettingValue(
+      "autoSkipScoreThreshold",
+      "not-a-number",
+    );
+    expect(invalid.overrideValue).toBeNull();
+    expect(invalid.value).toBeNull();
+  });
+
   it("respects environment variables for new salary settings", () => {
     process.env.PENALIZE_MISSING_SALARY = "true";
     process.env.MISSING_SALARY_PENALTY = "25";

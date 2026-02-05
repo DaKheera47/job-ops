@@ -63,8 +63,16 @@ export async function checkForUpdate(): Promise<VersionCheckResult> {
     );
     if (!response.ok) throw new Error("Failed to fetch");
 
-    const data = await response.json();
-    const latestVersion = data.tag_name as string;
+    const data: unknown = await response.json();
+    if (
+      !data ||
+      typeof data !== "object" ||
+      typeof (data as { tag_name?: unknown }).tag_name !== "string" ||
+      !(data as { tag_name: string }).tag_name.trim()
+    ) {
+      throw new Error("Invalid response format");
+    }
+    const latestVersion = (data as { tag_name: string }).tag_name;
 
     // Update available if current is a clean tag and differs from latest
     const updateAvailable =

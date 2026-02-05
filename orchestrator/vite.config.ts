@@ -6,7 +6,16 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-const gitVersion = execSync("git describe --tags --always").toString().trim();
+let gitVersion: string;
+try {
+  gitVersion = execSync("git describe --tags --always", {
+    stdio: ["ignore", "pipe", "ignore"],
+  })
+    .toString()
+    .trim();
+} catch {
+  gitVersion = process.env.APP_VERSION ?? "unknown";
+}
 
 declare global {
   // eslint-disable-next-line no-var
