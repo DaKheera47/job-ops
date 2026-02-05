@@ -100,6 +100,29 @@ describe.sequential("Profile API routes", () => {
       expect(body.ok).toBe(false);
       expect(body.error.message).toContain("Base resume not configured");
     });
+
+    it("returns demo project catalog in demo mode", async () => {
+      const demoServer = await startServer({
+        env: { DEMO_MODE: "true", BASIC_AUTH_USER: "", BASIC_AUTH_PASSWORD: "" },
+      });
+      try {
+        vi.mocked(getProfile).mockRejectedValue(new Error("should not be used"));
+
+        const res = await fetch(`${demoServer.baseUrl}/api/profile/projects`);
+        const body = await res.json();
+
+        expect(res.ok).toBe(true);
+        expect(body.ok).toBe(true);
+        expect(Array.isArray(body.data)).toBe(true);
+        expect(body.data.length).toBeGreaterThan(0);
+        expect(body.data[0]).toMatchObject({
+          id: expect.any(String),
+          name: expect.any(String),
+        });
+      } finally {
+        await stopServer(demoServer);
+      }
+    });
   });
 
   describe("GET /api/profile", () => {

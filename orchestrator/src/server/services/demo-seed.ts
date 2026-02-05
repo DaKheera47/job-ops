@@ -21,6 +21,11 @@ function toIsoFromOffset(now: Date, offsetMinutes: number): string {
   return new Date(now.getTime() - offsetMinutes * 60 * 1000).toISOString();
 }
 
+function makeDemoLink(baseUrl: string, jobId: string, kind: "job" | "apply"): string {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return `${trimmed}/${kind}/${jobId}`;
+}
+
 export function buildDemoBaseline(now: Date): BuiltDemoBaseline {
   const resetAt = now.toISOString();
 
@@ -41,13 +46,12 @@ export function buildDemoBaseline(now: Date): BuiltDemoBaseline {
       source: job.source,
       title: job.title,
       employer: job.employer,
-      jobUrl: job.jobUrl,
-      applicationLink: job.applicationLink,
+      jobUrl: makeDemoLink(job.jobUrl, job.id, "job"),
+      applicationLink: makeDemoLink(job.applicationLink, job.id, "apply"),
       location: job.location,
       salary: job.salary,
       deadline: job.deadline,
-      jobDescription:
-        "Demo job seeded for public sandbox. Real integrations are simulated.",
+      jobDescription: job.jobDescription,
       status: job.status,
       suitabilityScore: job.suitabilityScore,
       suitabilityReason: job.suitabilityReason,
