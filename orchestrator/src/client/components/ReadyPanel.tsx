@@ -23,7 +23,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -75,6 +75,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     employer: string;
     timeoutId: ReturnType<typeof setTimeout>;
   } | null>(null);
+  const previousJobIdRef = useRef<string | null>(null);
 
   const { personName } = useProfile();
 
@@ -85,6 +86,9 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
 
   // Reset mode when job changes
   useEffect(() => {
+    const currentJobId = job?.id ?? null;
+    if (previousJobIdRef.current === currentJobId) return;
+    previousJobIdRef.current = currentJobId;
     setMode("ready");
     onTailoringDirtyChange?.(false);
   }, [job?.id, onTailoringDirtyChange]);

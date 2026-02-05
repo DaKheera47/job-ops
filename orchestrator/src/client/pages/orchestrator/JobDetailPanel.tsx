@@ -70,6 +70,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
   const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
+  const previousSelectedJobIdRef = useRef<string | null>(null);
 
   const { personName } = useProfile();
 
@@ -82,6 +83,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   );
 
   useEffect(() => {
+    const currentJobId = selectedJob?.id ?? null;
+    if (previousSelectedJobIdRef.current === currentJobId) return;
+    previousSelectedJobIdRef.current = currentJobId;
     setHasUnsavedTailoring(false);
     saveTailoringRef.current = null;
     onPauseRefreshChange?.(false);

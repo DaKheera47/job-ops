@@ -1,6 +1,6 @@
 import type { Job } from "@shared/types.js";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
 import { useRescoreJob } from "../../hooks/useRescoreJob";
@@ -27,9 +27,13 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const previousJobIdRef = useRef<string | null>(null);
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
 
   useEffect(() => {
+    const currentJobId = job?.id ?? null;
+    if (previousJobIdRef.current === currentJobId) return;
+    previousJobIdRef.current = currentJobId;
     setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);

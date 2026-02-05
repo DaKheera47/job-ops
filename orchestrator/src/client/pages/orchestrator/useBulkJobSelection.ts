@@ -1,5 +1,5 @@
 import type { BulkJobAction, Job } from "@shared/types.js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
 import {
@@ -25,6 +25,7 @@ export function useBulkJobSelection({
   );
   const [bulkActionInFlight, setBulkActionInFlight] =
     useState<null | BulkJobAction>(null);
+  const previousActiveTabRef = useRef<FilterTab>(activeTab);
 
   const selectedJobs = useMemo(
     () => activeJobs.filter((job) => selectedJobIds.has(job.id)),
@@ -41,6 +42,8 @@ export function useBulkJobSelection({
   );
 
   useEffect(() => {
+    if (previousActiveTabRef.current === activeTab) return;
+    previousActiveTabRef.current = activeTab;
     setSelectedJobIds(new Set());
   }, [activeTab]);
 
