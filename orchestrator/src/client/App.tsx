@@ -58,12 +58,12 @@ export const App: React.FC = () => {
     <>
       <OnboardingGate />
       {demoInfo?.demoMode && (
-        <div className="fixed inset-x-0 top-0 z-[200] border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-[200] border-t border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
           {demoInfo.resetCadenceHours} hours.
         </div>
       )}
-      <div className={demoInfo?.demoMode ? "pt-9" : undefined}>
+      <div>
         <SwitchTransition mode="out-in">
           <CSSTransition
             key={pageKey}
