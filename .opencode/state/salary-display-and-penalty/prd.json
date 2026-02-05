@@ -54,7 +54,7 @@
         "Mock scoring reason text includes penalty explanation when applied",
         "Penalty applied consistently with AI scoring path"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "frontend-settings-1",

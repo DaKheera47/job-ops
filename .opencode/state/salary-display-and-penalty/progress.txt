@@ -60,3 +60,12 @@ Started: 2026-02-04
   - Settings fetched once per scoring call using `getEffectiveSettings()`
   - Logging includes all context for debugging (jobId, originalScore, penalty, finalScore)
   - Tests cover all edge cases: null/empty/whitespace salary, disabled penalty, score clamping, different penalty amounts
+
+## Task - scoring-penalty-2
+- Mock scoring penalty implementation completed as part of scoring-penalty-1
+- Mock scoring now uses same `applySalaryPenalty()` helper function
+- Penalty applied consistently between AI and mock scoring paths
+- Tests verify mock scoring applies penalty correctly when API key is missing
+- **Learnings:**
+  - By sharing the penalty logic via helper function, both paths behave identically
+  - This reduces code duplication and ensures consistency
