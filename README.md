@@ -50,6 +50,19 @@ After this, all write actions (POST/PATCH/DELETE) require Basic Auth; browsing a
 
 Persistent data lives in `./data` (bind-mounted into the container).
 
+## Public Demo Mode
+
+Set `DEMO_MODE=true` to run an opinionated public demo experience.
+
+- Works: browsing jobs, filtering, stage updates, and local demo DB changes.
+- Simulated: pipeline run, summarize/process/rescore/pdf/apply flows, onboarding validation.
+- Blocked: settings writes, database clear, backup create/delete, and status bulk-delete.
+- Reset policy: demo dataset automatically resets every 6 hours.
+
+Demo responses include request metadata and may include:
+- `meta.simulated=true` for simulated actions
+- `meta.blockedReason` for blocked actions
+
 ## Running (local dev)
 
 Prereqs: Node 20+, Python 3.10+, Playwright browsers (Firefox).

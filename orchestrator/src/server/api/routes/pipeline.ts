@@ -1,14 +1,17 @@
+import { okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import type { ApiResponse, PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
+import { isDemoMode } from "../../config/demo";
 import {
   getPipelineStatus,
   runPipeline,
   subscribeToProgress,
 } from "../../pipeline/index";
 import * as pipelineRepo from "../../repositories/pipeline";
+import { simulatePipelineRun } from "../../services/demo-simulator";
 
 export const pipelineRouter = Router();
 
@@ -98,6 +101,11 @@ const runPipelineSchema = z.object({
 pipelineRouter.post("/run", async (req: Request, res: Response) => {
   try {
     const config = runPipelineSchema.parse(req.body);
+
+    if (isDemoMode()) {
+      const simulated = await simulatePipelineRun(config);
+      return okWithMeta(res, simulated, { simulated: true });
+    }
 
     // Start pipeline in background
     runWithRequestContext({}, () => {

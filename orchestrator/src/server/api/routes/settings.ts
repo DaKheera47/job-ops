@@ -10,6 +10,7 @@ import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
 import { updateSettingsSchema } from "@shared/settings-schema";
 import { type Request, type Response, Router } from "express";
+import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 
 export const settingsRouter = Router();
 
@@ -31,6 +32,14 @@ settingsRouter.get("/", async (_req: Request, res: Response) => {
  */
 settingsRouter.patch("/", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Saving settings is disabled in the public demo.",
+        { route: "PATCH /api/settings" },
+      );
+    }
+
     const input = updateSettingsSchema.parse(req.body);
     const plan = await applySettingsUpdates(input);
 

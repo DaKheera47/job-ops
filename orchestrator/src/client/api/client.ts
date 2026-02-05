@@ -9,6 +9,7 @@ import type {
   AppSettings,
   BackupInfo,
   CreateJobInput,
+  DemoInfoResponse,
   Job,
   JobOutcome,
   JobSource,
@@ -32,6 +33,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { trackEvent } from "@/lib/analytics";
+import { showDemoBlockedToast, showDemoSimulatedToast } from "@/lib/demo-toast";
 
 const API_BASE = "/api";
 
@@ -74,6 +76,33 @@ function normalizeApiResponse<T>(
   throw new ApiClientError("API request failed: unexpected response shape");
 }
 
+function describeAction(endpoint: string, method?: string): string {
+  const verb = (method || "GET").toUpperCase();
+  const normalized = endpoint.split("?")[0] || endpoint;
+  if (verb === "POST" && normalized === "/pipeline/run") {
+    return "Pipeline run used demo simulation.";
+  }
+  if (verb === "POST" && normalized.endsWith("/process")) {
+    return "Job processing used demo simulation.";
+  }
+  if (verb === "POST" && normalized.endsWith("/summarize")) {
+    return "Summary generation used demo simulation.";
+  }
+  if (verb === "POST" && normalized.endsWith("/generate-pdf")) {
+    return "PDF generation used demo simulation.";
+  }
+  if (verb === "POST" && normalized.endsWith("/rescore")) {
+    return "Suitability rescoring used demo simulation.";
+  }
+  if (verb === "POST" && normalized.endsWith("/apply")) {
+    return "Apply flow used demo simulation and no external sync.";
+  }
+  if (normalized.startsWith("/onboarding/validate")) {
+    return "Credential validation is simulated in demo mode.";
+  }
+  return "This action ran in demo simulation mode.";
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
@@ -102,10 +131,16 @@ async function fetchApi<T>(
 
   if ("ok" in parsed) {
     if (!parsed.ok) {
+      if (parsed.meta?.blockedReason) {
+        showDemoBlockedToast(parsed.meta.blockedReason);
+      }
       throw new ApiClientError(
         parsed.error.message || "API request failed",
         parsed.meta?.requestId,
       );
+    }
+    if (parsed.meta?.simulated) {
+      showDemoSimulatedToast(describeAction(endpoint, options?.method));
     }
     return parsed.data as T;
   }
@@ -271,6 +306,10 @@ export async function runPipeline(config?: {
     method: "POST",
     body: JSON.stringify(config || {}),
   });
+}
+
+export async function getDemoInfo(): Promise<DemoInfoResponse> {
+  return fetchApi<DemoInfoResponse>("/demo/info");
 }
 
 // UK Visa Jobs API

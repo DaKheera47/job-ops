@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { _resetSettingsCache, useSettings } from "./useSettings";
@@ -55,12 +55,15 @@ describe("useSettings", () => {
     });
 
     let refreshed: any;
-    await waitFor(async () => {
+    await act(async () => {
       refreshed = await result.current.refreshSettings();
     });
 
+    await waitFor(() => {
+      expect(result.current.settings).toEqual(updatedSettings);
+    });
+
     expect(refreshed).toEqual(updatedSettings);
-    expect(result.current.settings).toEqual(updatedSettings);
     expect(result.current.showSponsorInfo).toBe(false);
   });
 

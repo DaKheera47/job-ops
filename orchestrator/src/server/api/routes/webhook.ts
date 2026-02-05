@@ -1,7 +1,11 @@
+import { unauthorized } from "@infra/errors";
+import { fail, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { type Request, type Response, Router } from "express";
+import { isDemoMode } from "../../config/demo";
 import { runPipeline } from "../../pipeline/index";
+import { simulatePipelineRun } from "../../services/demo-simulator";
 
 export const webhookRouter = Router();
 
@@ -9,18 +13,27 @@ export const webhookRouter = Router();
  * POST /api/webhook/trigger - Webhook endpoint for n8n to trigger the pipeline
  */
 webhookRouter.post("/trigger", async (req: Request, res: Response) => {
-  // Optional: Add authentication check
   const authHeader = req.headers.authorization;
   const expectedToken = process.env.WEBHOOK_SECRET;
 
   if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
-    return res.status(401).json({
-      ok: false,
-      error: { code: "UNAUTHORIZED", message: "Unauthorized" },
-    });
+    return fail(res, unauthorized());
   }
 
   try {
+    if (isDemoMode()) {
+      const simulated = await simulatePipelineRun();
+      return okWithMeta(
+        res,
+        {
+          message: "Pipeline trigger simulated in demo mode",
+          triggeredAt: new Date().toISOString(),
+          runId: simulated.runId,
+        },
+        { simulated: true },
+      );
+    }
+
     // Start pipeline in background
     runWithRequestContext({}, () => {
       runPipeline().catch((error) => {

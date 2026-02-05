@@ -32,4 +32,37 @@ describe.sequential("Webhook API routes", () => {
     expect(goodBody.ok).toBe(true);
     expect(goodBody.data.message).toBe("Pipeline triggered");
   });
+
+  it("enforces webhook auth in demo mode when a secret is configured", async () => {
+    const demoServer = await startServer({
+      env: {
+        DEMO_MODE: "true",
+        WEBHOOK_SECRET: "secret",
+      },
+    });
+
+    try {
+      const unauthorizedRes = await fetch(
+        `${demoServer.baseUrl}/api/webhook/trigger`,
+        {
+          method: "POST",
+        },
+      );
+      expect(unauthorizedRes.status).toBe(401);
+
+      const authorizedRes = await fetch(
+        `${demoServer.baseUrl}/api/webhook/trigger`,
+        {
+          method: "POST",
+          headers: { Authorization: "Bearer secret" },
+        },
+      );
+      expect(authorizedRes.status).toBe(200);
+      const authorizedBody = await authorizedRes.json();
+      expect(authorizedBody.ok).toBe(true);
+      expect(authorizedBody.meta.simulated).toBe(true);
+    } finally {
+      await stopServer(demoServer);
+    }
+  });
 });

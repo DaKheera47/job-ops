@@ -1,4 +1,6 @@
 import { type Request, type Response, Router } from "express";
+import { isDemoMode } from "../../config/demo";
+import { DEMO_PROJECT_CATALOG } from "../../config/demo-defaults";
 import { getSetting } from "../../repositories/settings";
 import { clearProfileCache, getProfile } from "../../services/profile";
 import { extractProjectsFromProfile } from "../../services/resumeProjects";
@@ -14,6 +16,10 @@ export const profileRouter = Router();
  */
 profileRouter.get("/projects", async (_req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      res.json({ success: true, data: DEMO_PROJECT_CATALOG });
+      return;
+    }
     const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
     res.json({ success: true, data: catalog });

@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
@@ -82,6 +83,8 @@ export const OnboardingGate: React.FC = () => {
       checked: false,
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const demoInfo = useDemoInfo();
+  const demoMode = demoInfo?.demoMode ?? false;
 
   const { control, watch, getValues, reset, setValue } =
     useForm<OnboardingFormData>({
@@ -190,6 +193,7 @@ export const OnboardingGate: React.FC = () => {
     baseResumeValidation.checked;
   const llmValidated = requiresLlmKey ? llmValidation.valid : true;
   const shouldOpen =
+    !demoMode &&
     Boolean(settings && !settingsLoading) &&
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
@@ -294,6 +298,7 @@ export const OnboardingGate: React.FC = () => {
 
   // Run validations on mount when needed
   useEffect(() => {
+    if (demoMode) return;
     if (!settings || settingsLoading) return;
     const needsValidation =
       (requiresLlmKey ? !llmValidation.checked : false) ||
@@ -309,6 +314,7 @@ export const OnboardingGate: React.FC = () => {
     rxresumeValidation.checked,
     baseResumeValidation.checked,
     runAllValidations,
+    demoMode,
   ]);
 
   const handleRefresh = async () => {

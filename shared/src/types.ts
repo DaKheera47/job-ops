@@ -311,6 +311,8 @@ export interface PipelineRun {
 // API Response types
 export interface ApiMeta {
   requestId: string;
+  simulated?: boolean;
+  blockedReason?: string;
 }
 
 export interface ApiErrorPayload {
@@ -485,6 +487,15 @@ export interface ProfileStatusResponse {
 export interface ValidationResult {
   valid: boolean;
   message: string | null;
+}
+
+export interface DemoInfoResponse {
+  demoMode: boolean;
+  resetCadenceHours: number;
+  lastResetAt: string | null;
+  nextResetAt: string | null;
+  baselineVersion: string | null;
+  baselineName: string | null;
 }
 
 export interface AppSettings {

@@ -34,6 +34,9 @@ vi.mock("../../pipeline/index", () => {
       listener(progress);
       return () => {};
     }),
+    progressHelpers: {
+      complete: vi.fn(),
+    },
   };
 });
 

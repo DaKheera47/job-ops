@@ -1,4 +1,5 @@
 import { type Request, type Response, Router } from "express";
+import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 import { clearDatabase } from "../../db/clear";
 
 export const databaseRouter = Router();
@@ -8,6 +9,14 @@ export const databaseRouter = Router();
  */
 databaseRouter.delete("/", async (_req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Clearing the database is disabled in the public demo.",
+        { route: "DELETE /api/database" },
+      );
+    }
+
     const result = clearDatabase();
 
     res.json({
