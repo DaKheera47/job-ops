@@ -150,9 +150,11 @@ const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
   "ready",
 ]);
 
-function mapErrorForResult(
-  error: unknown,
-): { code: string; message: string; details?: unknown } {
+function mapErrorForResult(error: unknown): {
+  code: string;
+  message: string;
+  details?: unknown;
+} {
   if (error instanceof AppError) {
     return {
       code: error.code,
@@ -190,14 +192,11 @@ async function executeBulkActionForJob(
 
     if (action === "skip") {
       if (!SKIPPABLE_STATUSES.has(job.status)) {
-        throw badRequest(
-          `Job is not skippable from status "${job.status}"`,
-          {
-            jobId,
-            status: job.status,
-            allowedStatuses: ["discovered", "ready"],
-          },
-        );
+        throw badRequest(`Job is not skippable from status "${job.status}"`, {
+          jobId,
+          status: job.status,
+          allowedStatuses: ["discovered", "ready"],
+        });
       }
 
       const updated = await jobsRepo.updateJob(jobId, { status: "skipped" });
@@ -213,11 +212,14 @@ async function executeBulkActionForJob(
     }
 
     if (job.status !== "discovered") {
-      throw badRequest(`Job is not movable to Ready from status "${job.status}"`, {
-        jobId,
-        status: job.status,
-        requiredStatus: "discovered",
-      });
+      throw badRequest(
+        `Job is not movable to Ready from status "${job.status}"`,
+        {
+          jobId,
+          status: job.status,
+          requiredStatus: "discovered",
+        },
+      );
     }
 
     const processed = await processJob(jobId);

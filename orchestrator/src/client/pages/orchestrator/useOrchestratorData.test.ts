@@ -32,7 +32,7 @@ type Deferred<T> = {
   resolve: (value: T) => void;
 };
 
-const deferred = <T,>(): Deferred<T> => {
+const deferred = <T>(): Deferred<T> => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
     resolve = res;
@@ -45,7 +45,9 @@ describe("useOrchestratorData", () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     vi.mocked(api.getJobs).mockResolvedValue(makeResponse("initial") as any);
-    vi.mocked(api.getPipelineStatus).mockResolvedValue({ isRunning: false } as any);
+    vi.mocked(api.getPipelineStatus).mockResolvedValue({
+      isRunning: false,
+    } as any);
   });
 
   it("applies newest loadJobs response when requests resolve out of order", async () => {

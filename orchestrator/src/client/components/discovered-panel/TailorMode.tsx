@@ -40,26 +40,30 @@ export const TailorMode: React.FC<TailorModeProps> = ({
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
-  const [jobDescription, setJobDescription] = useState(job.jobDescription || "");
+  const [jobDescription, setJobDescription] = useState(
+    job.jobDescription || "",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
 
   const [savedSummary, setSavedSummary] = useState(job.tailoredSummary || "");
-  const [savedDescription, setSavedDescription] = useState(job.jobDescription || "");
+  const [savedDescription, setSavedDescription] = useState(
+    job.jobDescription || "",
+  );
   const [savedSelectedIds, setSavedSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<"unsaved" | "saving" | "saved">(
-    "saved",
-  );
+  const [draftStatus, setDraftStatus] = useState<
+    "unsaved" | "saving" | "saved"
+  >("saved");
   const [showDescription, setShowDescription] = useState(false);
-  const [activeField, setActiveField] = useState<"summary" | "description" | null>(
-    null,
-  );
+  const [activeField, setActiveField] = useState<
+    "summary" | "description" | null
+  >(null);
   const lastJobIdRef = useRef(job.id);
 
   useEffect(() => {
@@ -70,7 +74,14 @@ export const TailorMode: React.FC<TailorModeProps> = ({
     if (summary !== savedSummary) return true;
     if (jobDescription !== savedDescription) return true;
     return hasSelectionDiff(selectedIds, savedSelectedIds);
-  }, [summary, savedSummary, jobDescription, savedDescription, selectedIds, savedSelectedIds]);
+  }, [
+    summary,
+    savedSummary,
+    jobDescription,
+    savedDescription,
+    selectedIds,
+    savedSelectedIds,
+  ]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -124,7 +135,10 @@ export const TailorMode: React.FC<TailorModeProps> = ({
     }
   }, [isDirty, draftStatus]);
 
-  const selectedIdsCsv = useMemo(() => Array.from(selectedIds).join(","), [selectedIds]);
+  const selectedIdsCsv = useMemo(
+    () => Array.from(selectedIds).join(","),
+    [selectedIds],
+  );
 
   const syncSavedSnapshot = useCallback(
     (
@@ -147,7 +161,14 @@ export const TailorMode: React.FC<TailorModeProps> = ({
       selectedProjectIds: selectedIdsCsv,
     });
     syncSavedSnapshot(summary, jobDescription, selectedIds);
-  }, [job.id, summary, jobDescription, selectedIdsCsv, selectedIds, syncSavedSnapshot]);
+  }, [
+    job.id,
+    summary,
+    jobDescription,
+    selectedIdsCsv,
+    selectedIds,
+    syncSavedSnapshot,
+  ]);
 
   useEffect(() => {
     if (!isDirty || draftStatus !== "unsaved") return;
@@ -314,9 +335,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
               onChange={(event) => setJobDescription(event.target.value)}
               onFocus={() => setActiveField("description")}
               onBlur={() =>
-                setActiveField((prev) =>
-                  prev === "description" ? null : prev,
-                )
+                setActiveField((prev) => (prev === "description" ? null : prev))
               }
               placeholder="The raw job description..."
               disabled={disableInputs}

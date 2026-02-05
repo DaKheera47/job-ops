@@ -42,28 +42,39 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
-  const [jobDescription, setJobDescription] = useState(job.jobDescription || "");
+  const [jobDescription, setJobDescription] = useState(
+    job.jobDescription || "",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
   const [savedSummary, setSavedSummary] = useState(job.tailoredSummary || "");
-  const [savedDescription, setSavedDescription] = useState(job.jobDescription || "");
+  const [savedDescription, setSavedDescription] = useState(
+    job.jobDescription || "",
+  );
   const [savedSelectedIds, setSavedSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeField, setActiveField] = useState<"summary" | "description" | null>(
-    null,
-  );
+  const [activeField, setActiveField] = useState<
+    "summary" | "description" | null
+  >(null);
   const lastJobIdRef = useRef(job.id);
 
   const isDirty = useMemo(() => {
     if (summary !== savedSummary) return true;
     if (jobDescription !== savedDescription) return true;
     return hasSelectionDiff(selectedIds, savedSelectedIds);
-  }, [summary, savedSummary, jobDescription, savedDescription, selectedIds, savedSelectedIds]);
+  }, [
+    summary,
+    savedSummary,
+    jobDescription,
+    savedDescription,
+    selectedIds,
+    savedSelectedIds,
+  ]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
@@ -123,7 +134,10 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
     [],
   );
 
-  const selectedIdsCsv = useMemo(() => Array.from(selectedIds).join(","), [selectedIds]);
+  const selectedIdsCsv = useMemo(
+    () => Array.from(selectedIds).join(","),
+    [selectedIds],
+  );
 
   const saveChanges = useCallback(
     async ({ showToast = true }: { showToast?: boolean } = {}) => {
@@ -144,7 +158,15 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         setIsSaving(false);
       }
     },
-    [job.id, onUpdate, selectedIdsCsv, selectedIds, summary, jobDescription, syncSavedSnapshot],
+    [
+      job.id,
+      onUpdate,
+      selectedIdsCsv,
+      selectedIds,
+      summary,
+      jobDescription,
+      syncSavedSnapshot,
+    ],
   );
 
   useEffect(() => {
@@ -259,9 +281,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
             onChange={(e) => setJobDescription(e.target.value)}
             onFocus={() => setActiveField("description")}
             onBlur={() =>
-              setActiveField((prev) =>
-                prev === "description" ? null : prev,
-              )
+              setActiveField((prev) => (prev === "description" ? null : prev))
             }
             placeholder="The raw job description..."
           />

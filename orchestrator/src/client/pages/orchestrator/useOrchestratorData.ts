@@ -38,7 +38,10 @@ export const useOrchestratorData = () => {
         error instanceof Error ? error.message : "Failed to load jobs";
       toast.error(message);
     } finally {
-      pendingLoadCountRef.current = Math.max(0, pendingLoadCountRef.current - 1);
+      pendingLoadCountRef.current = Math.max(
+        0,
+        pendingLoadCountRef.current - 1,
+      );
       if (pendingLoadCountRef.current === 0) {
         setIsLoading(false);
       }

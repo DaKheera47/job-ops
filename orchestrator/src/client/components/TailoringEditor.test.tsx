@@ -51,7 +51,9 @@ describe("TailoringEditor", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Tailored Summary")).toHaveValue("Local draft");
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Local draft",
+    );
   });
 
   it("resets local state when job id changes", async () => {
@@ -78,7 +80,9 @@ describe("TailoringEditor", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Tailored Summary")).toHaveValue("New job summary");
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "New job summary",
+    );
   });
 
   it("emits dirty state changes", async () => {

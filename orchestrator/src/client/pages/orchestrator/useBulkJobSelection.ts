@@ -97,7 +97,9 @@ export function useBulkJobSelection({
         if (result.failed === 0) {
           toast.success(`${result.succeeded} ${successLabel}`);
         } else {
-          toast.error(`${result.succeeded} succeeded, ${result.failed} failed.`);
+          toast.error(
+            `${result.succeeded} succeeded, ${result.failed} failed.`,
+          );
         }
 
         await loadJobs();

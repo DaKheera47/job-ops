@@ -162,7 +162,10 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("validates bulk action payloads", async () => {
-    const tooManyIds = Array.from({ length: 101 }, (_, index) => `job-${index}`);
+    const tooManyIds = Array.from(
+      { length: 101 },
+      (_, index) => `job-${index}`,
+    );
     const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

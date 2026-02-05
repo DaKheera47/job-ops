@@ -89,7 +89,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 isSelected
                   ? "bg-primary/5"
                   : "border-b-border/40 hover:bg-muted/20",
-                isChecked && isSelected && "outline-2 outline-primary/30"
+                isChecked && isSelected && "outline-2 outline-primary/30",
               )}
             >
               <Checkbox

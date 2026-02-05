@@ -1,8 +1,4 @@
-import type {
-  BulkJobActionResponse,
-  Job,
-  JobStatus,
-} from "@shared/types.js";
+import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
   canBulkMoveToReady,
@@ -76,8 +72,9 @@ function createJob(id: string, status: JobStatus): Job {
 
 describe("bulkActions", () => {
   it("computes eligibility for skip and move-to-ready", () => {
-    expect(canBulkSkip([createJob("1", "discovered"), createJob("2", "ready")]))
-      .toBe(true);
+    expect(
+      canBulkSkip([createJob("1", "discovered"), createJob("2", "ready")]),
+    ).toBe(true);
     expect(canBulkSkip([createJob("1", "applied")])).toBe(false);
 
     expect(

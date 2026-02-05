@@ -57,7 +57,9 @@ describe("TailorMode", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Tailored Summary")).toHaveValue("Local draft");
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Local draft",
+    );
   });
 
   it("resets local state when job id changes", async () => {
@@ -91,7 +93,9 @@ describe("TailorMode", () => {
       />,
     );
 
-    expect(screen.getByLabelText("Tailored Summary")).toHaveValue("New job summary");
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "New job summary",
+    );
   });
 
   it("does not sync same-job props while summary field is focused", async () => {
