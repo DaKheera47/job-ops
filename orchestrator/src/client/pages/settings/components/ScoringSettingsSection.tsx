@@ -1,0 +1,134 @@
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { ScoringValues } from "@client/pages/settings/types";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import type React from "react";
+import { Controller, useFormContext } from "react-hook-form";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Separator } from "@/components/ui/separator";
+
+type ScoringSettingsSectionProps = {
+  values: ScoringValues;
+  isLoading: boolean;
+  isSaving: boolean;
+};
+
+export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
+  values,
+  isLoading,
+  isSaving,
+}) => {
+  const { penalizeMissingSalary, missingSalaryPenalty } = values;
+  const { control, watch } = useFormContext<UpdateSettingsInput>();
+
+  // Watch the current form value to conditionally show/hide penalty input
+  const currentPenalizeEnabled =
+    watch("penalizeMissingSalary") ?? penalizeMissingSalary.default;
+
+  return (
+    <AccordionItem value="scoring" className="border rounded-lg px-4">
+      <AccordionTrigger className="hover:no-underline py-4">
+        <span className="text-base font-semibold">Scoring Settings</span>
+      </AccordionTrigger>
+      <AccordionContent className="pb-4">
+        <div className="space-y-4">
+          {/* Enable penalty toggle */}
+          <div className="flex items-start space-x-3">
+            <Controller
+              name="penalizeMissingSalary"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  id="penalizeMissingSalary"
+                  checked={field.value ?? penalizeMissingSalary.default}
+                  onCheckedChange={(checked) => {
+                    field.onChange(
+                      checked === "indeterminate" ? null : checked === true,
+                    );
+                  }}
+                  disabled={isLoading || isSaving}
+                />
+              )}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="penalizeMissingSalary"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Penalize Missing Salary
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Reduce suitability scores for jobs that do not include salary
+                information. Jobs with any salary text (including "Competitive")
+                are not penalized.
+              </p>
+            </div>
+          </div>
+
+          {/* Penalty amount input - only shown when enabled */}
+          {currentPenalizeEnabled && (
+            <div className="pl-7">
+              <Controller
+                name="missingSalaryPenalty"
+                control={control}
+                render={({ field }) => (
+                  <SettingsInput
+                    label="Penalty Amount"
+                    type="number"
+                    inputProps={{
+                      ...field,
+                      inputMode: "numeric",
+                      min: 0,
+                      max: 100,
+                      step: 1,
+                      value: field.value ?? missingSalaryPenalty.default,
+                      onChange: (event) => {
+                        const value = parseInt(event.target.value, 10);
+                        if (Number.isNaN(value)) {
+                          field.onChange(null);
+                        } else {
+                          field.onChange(Math.min(100, Math.max(0, value)));
+                        }
+                      },
+                    }}
+                    disabled={isLoading || isSaving}
+                    helper={`Points to subtract from suitability score (0-100). Default: ${missingSalaryPenalty.default}.`}
+                    current={`Effective: ${missingSalaryPenalty.effective} | Default: ${missingSalaryPenalty.default}`}
+                  />
+                )}
+              />
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Effective/Default values display */}
+          <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Penalty Enabled
+              </div>
+              <div className="break-words font-mono text-xs">
+                Effective: {penalizeMissingSalary.effective ? "Yes" : "No"} |
+                Default: {penalizeMissingSalary.default ? "Yes" : "No"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Penalty Amount
+              </div>
+              <div className="break-words font-mono text-xs">
+                Effective: {missingSalaryPenalty.effective} | Default:{" "}
+                {missingSalaryPenalty.default}
+              </div>
+            </div>
+          </div>
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  );
+};

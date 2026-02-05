@@ -8,6 +8,7 @@ import { GradcrackerSection } from "@client/pages/settings/components/Gradcracke
 import { JobspySection } from "@client/pages/settings/components/JobspySection";
 import { ModelSettingsSection } from "@client/pages/settings/components/ModelSettingsSection";
 import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection";
+import { ScoringSettingsSection } from "@client/pages/settings/components/ScoringSettingsSection";
 import { SearchTermsSection } from "@client/pages/settings/components/SearchTermsSection";
 import { UkvisajobsSection } from "@client/pages/settings/components/UkvisajobsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
@@ -72,6 +73,8 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   backupEnabled: null,
   backupHour: null,
   backupMaxCount: null,
+  penalizeMissingSalary: null,
+  missingSalaryPenalty: null,
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -115,6 +118,8 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   backupEnabled: null,
   backupHour: null,
   backupMaxCount: null,
+  penalizeMissingSalary: null,
+  missingSalaryPenalty: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -152,6 +157,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   backupEnabled: data.overrideBackupEnabled,
   backupHour: data.overrideBackupHour,
   backupMaxCount: data.overrideBackupMaxCount,
+  penalizeMissingSalary: data.overridePenalizeMissingSalary,
+  missingSalaryPenalty: data.overrideMissingSalaryPenalty,
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -333,6 +340,16 @@ const getDerivedSettings = (settings: AppSettings | null) => {
         default: settings?.defaultBackupMaxCount ?? 5,
       },
     },
+    scoring: {
+      penalizeMissingSalary: {
+        effective: settings?.penalizeMissingSalary ?? false,
+        default: settings?.defaultPenalizeMissingSalary ?? false,
+      },
+      missingSalaryPenalty: {
+        effective: settings?.missingSalaryPenalty ?? 10,
+        default: settings?.defaultMissingSalaryPenalty ?? 10,
+      },
+    },
   };
 };
 
@@ -480,6 +497,7 @@ export const SettingsPage: React.FC = () => {
     defaultResumeProjects,
     profileProjects,
     backup,
+    scoring,
   } = derived;
 
   // Backup functions
@@ -691,6 +709,14 @@ export const SettingsPage: React.FC = () => {
           data.backupMaxCount,
           backup.backupMaxCount.default,
         ),
+        penalizeMissingSalary: nullIfSame(
+          data.penalizeMissingSalary,
+          scoring.penalizeMissingSalary.default,
+        ),
+        missingSalaryPenalty: nullIfSame(
+          data.missingSalaryPenalty,
+          scoring.missingSalaryPenalty.default,
+        ),
         ...envPayload,
       };
 
@@ -845,6 +871,11 @@ export const SettingsPage: React.FC = () => {
           />
           <DisplaySettingsSection
             values={display}
+            isLoading={isLoading}
+            isSaving={isSaving}
+          />
+          <ScoringSettingsSection
+            values={scoring}
             isLoading={isLoading}
             isSaving={isSaving}
           />

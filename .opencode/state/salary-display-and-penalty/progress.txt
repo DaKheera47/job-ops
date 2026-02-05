@@ -69,3 +69,28 @@ Started: 2026-02-04
 - **Learnings:**
   - By sharing the penalty logic via helper function, both paths behave identically
   - This reduces code duplication and ensures consistency
+
+## Task - frontend-settings-1
+- Created ScoringSettingsSection component for penalty settings UI
+- Added scoring settings to Settings page accordion (positioned after Display Settings)
+- Checkbox for "Penalize Missing Salary" with clear description
+- Conditional numeric input for penalty amount (0-100, defaults to 10)
+- Displays effective and default values for both settings
+- Files changed:
+  - orchestrator/src/client/pages/settings/components/ScoringSettingsSection.tsx - New component (130 lines)
+  - orchestrator/src/client/pages/settings/types.ts:51-56 - Added ScoringValues type
+  - orchestrator/src/client/pages/SettingsPage.tsx - Integrated scoring settings throughout:
+    - Line 11: Import ScoringSettingsSection
+    - Lines 75-76: Added to DEFAULT_FORM_VALUES
+    - Lines 120-121: Added to NULL_SETTINGS_PAYLOAD
+    - Lines 159-160: Added to mapSettingsToForm
+    - Lines 343-353: Added to getDerivedSettings (scoring)
+    - Line 500: Added to derived destructuring
+    - Lines 712-719: Added to onSave payload
+    - Lines 877-882: Rendered ScoringSettingsSection in Accordion
+- **Learnings:**
+  - Frontend settings follow clear pattern: DisplaySettings (boolean-only) and BackupSettings (boolean + conditional inputs)
+  - Used watch() to conditionally show/hide penalty input when checkbox is enabled
+  - Form values use nullIfSame to only persist overrides that differ from defaults
+  - Settings UI benefits from SettingsInput component for consistent number input styling
+

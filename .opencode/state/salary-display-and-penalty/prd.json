@@ -68,7 +68,7 @@
         "Checkbox defaults to unchecked (matches backend default false)",
         "Checkbox description explains feature clearly"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": "frontend-settings-2",

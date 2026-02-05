@@ -48,3 +48,8 @@ export type BackupValues = {
   backupHour: EffectiveDefault<number>;
   backupMaxCount: EffectiveDefault<number>;
 };
+
+export type ScoringValues = {
+  penalizeMissingSalary: EffectiveDefault<boolean>;
+  missingSalaryPenalty: EffectiveDefault<number>;
+};
