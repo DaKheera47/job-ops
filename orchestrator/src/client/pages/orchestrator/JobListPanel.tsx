@@ -48,7 +48,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       </div>
     ) : (
       <div className="divide-y divide-border/40">
-        <div className="flex items-center justify-between gap-3 px-4 py-2">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 opacity-40 hover:opacity-100 transition-opacity">
           <label
             htmlFor="job-list-select-all"
             className="flex items-center gap-2 text-xs text-muted-foreground"
