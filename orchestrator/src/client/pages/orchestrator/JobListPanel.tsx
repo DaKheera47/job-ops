@@ -82,10 +82,12 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
             <div
               key={job.id}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 transition-colors",
+                "group flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-l-2",
                 isSelected
-                  ? "bg-primary/5 border-l-2 border-l-primary"
-                  : "hover:bg-muted/20 border-l-2 border-l-transparent",
+                  ? "bg-primary/8 border-l-primary"
+                  : isChecked
+                    ? "bg-primary/[0.04] border-l-primary/40 hover:bg-primary/[0.06]"
+                    : "hover:bg-muted/20 border-l-transparent",
               )}
             >
               <Checkbox
@@ -93,6 +95,14 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 onCheckedChange={() => onToggleSelectJob(job.id)}
                 onClick={(event) => event.stopPropagation()}
                 aria-label={`Select ${job.title}`}
+                className={cn(
+                  "border-border/40 text-muted-foreground/70 transition-opacity",
+                  "data-[state=checked]:border-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary",
+                  "data-[state=checked]:shadow-[0_0_0_1px_hsl(var(--primary)/0.35)]",
+                  isChecked || isSelected
+                    ? "opacity-100"
+                    : "opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                )}
               />
               {/* Single status indicator: subtle dot */}
               <span
