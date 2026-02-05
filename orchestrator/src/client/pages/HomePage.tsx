@@ -30,7 +30,7 @@ type JobWithEvents = {
   events: StageEvent[];
 };
 
-const DURATION_OPTIONS = [7, 14, 30, 90, 180, 365] as const;
+const DURATION_OPTIONS = [7, 14, 30, 90] as const;
 const DEFAULT_DURATION = 30;
 
 export const HomePage: React.FC = () => {
