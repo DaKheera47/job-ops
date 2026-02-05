@@ -1,6 +1,6 @@
+import * as api from "@client/api";
 import type { DemoInfoResponse } from "@shared/types";
 import { useEffect, useState } from "react";
-import * as api from "@client/api";
 
 export function useDemoInfo() {
   const [demoInfo, setDemoInfo] = useState<DemoInfoResponse | null>(null);

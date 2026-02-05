@@ -50,10 +50,13 @@ describe.sequential("Webhook API routes", () => {
       );
       expect(unauthorizedRes.status).toBe(401);
 
-      const authorizedRes = await fetch(`${demoServer.baseUrl}/api/webhook/trigger`, {
-        method: "POST",
-        headers: { Authorization: "Bearer secret" },
-      });
+      const authorizedRes = await fetch(
+        `${demoServer.baseUrl}/api/webhook/trigger`,
+        {
+          method: "POST",
+          headers: { Authorization: "Bearer secret" },
+        },
+      );
       expect(authorizedRes.status).toBe(200);
       const authorizedBody = await authorizedRes.json();
       expect(authorizedBody.ok).toBe(true);
