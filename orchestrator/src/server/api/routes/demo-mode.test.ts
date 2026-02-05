@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  DEMO_BASELINE_NAME,
+  DEMO_BASELINE_VERSION,
+} from "@server/config/demo-defaults";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Demo mode API behavior", () => {
@@ -11,6 +15,8 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.ok).toBe(true);
       expect(body.data.demoMode).toBe(false);
       expect(body.data.resetCadenceHours).toBe(6);
+      expect(body.data.baselineVersion).toBe(null);
+      expect(body.data.baselineName).toBe(null);
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }
@@ -31,6 +37,8 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.ok).toBe(true);
       expect(body.data.demoMode).toBe(true);
       expect(body.data.resetCadenceHours).toBe(6);
+      expect(body.data.baselineVersion).toBe(DEMO_BASELINE_VERSION);
+      expect(body.data.baselineName).toBe(DEMO_BASELINE_NAME);
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }

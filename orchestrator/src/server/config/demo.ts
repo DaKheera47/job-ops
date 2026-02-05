@@ -2,6 +2,10 @@ import { AppError } from "@infra/errors";
 import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
 import type { DemoInfoResponse } from "@shared/types";
+import {
+  DEMO_BASELINE_NAME,
+  DEMO_BASELINE_VERSION,
+} from "@server/config/demo-defaults";
 import type { Response } from "express";
 
 export const DEMO_RESET_CADENCE_HOURS = 6;
@@ -21,11 +25,14 @@ export function isDemoMode(): boolean {
 }
 
 export function getDemoInfo(): DemoInfoResponse {
+  const demoMode = isDemoMode();
   return {
-    demoMode: isDemoMode(),
+    demoMode,
     resetCadenceHours: DEMO_RESET_CADENCE_HOURS,
     lastResetAt: state.lastResetAt,
     nextResetAt: state.nextResetAt,
+    baselineVersion: demoMode ? DEMO_BASELINE_VERSION : null,
+    baselineName: demoMode ? DEMO_BASELINE_NAME : null,
   };
 }
 

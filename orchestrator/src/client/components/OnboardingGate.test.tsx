@@ -107,6 +107,8 @@ describe("OnboardingGate", () => {
       resetCadenceHours: 6,
       lastResetAt: null,
       nextResetAt: null,
+      baselineVersion: null,
+      baselineName: null,
     });
     vi.mocked(useSettings).mockReturnValue(settingsResponse as any);
   });

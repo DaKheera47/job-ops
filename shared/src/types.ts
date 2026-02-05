@@ -494,6 +494,8 @@ export interface DemoInfoResponse {
   resetCadenceHours: number;
   lastResetAt: string | null;
   nextResetAt: string | null;
+  baselineVersion: string | null;
+  baselineName: string | null;
 }
 
 export interface AppSettings {
