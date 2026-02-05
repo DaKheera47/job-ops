@@ -12,8 +12,6 @@ const DURATION_OPTIONS = [
   { value: 14, label: "14d" },
   { value: 30, label: "30d" },
   { value: 90, label: "90d" },
-  { value: 180, label: "180d" },
-  { value: 365, label: "365d" },
 ] as const;
 
 export type DurationValue = (typeof DURATION_OPTIONS)[number]["value"];
