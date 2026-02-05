@@ -16,7 +16,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useVersionCheck } from "../hooks/useVersionCheck";
 import { isNavActive, NAV_LINKS } from "./navigation";
 
 // ============================================================================
@@ -43,6 +50,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [navOpen, setNavOpen] = useState(false);
+  const { version, updateAvailable } = useVersionCheck();
 
   const handleNavClick = (to: string, activePaths?: string[]) => {
     if (isNavActive(location.pathname, to, activePaths)) {
@@ -64,7 +72,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <span className="sr-only">Open navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64">
+            <SheetContent side="left" className="w-64 flex flex-col">
               <SheetHeader>
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
@@ -86,6 +94,28 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                   </button>
                 ))}
               </nav>
+              <div className="mt-auto pt-6 pb-2">
+                <TooltipProvider>
+                  <a
+                    href="https://github.com/DaKheera47/job-ops/releases"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <span>Version {version}</span>
+                    {updateAvailable && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="h-2 w-2 rounded-full bg-emerald-500 cursor-pointer" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Update available</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                  </a>
+                </TooltipProvider>
+              </div>
             </SheetContent>
           </Sheet>
 
