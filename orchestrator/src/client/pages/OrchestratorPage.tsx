@@ -10,6 +10,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
+import { cn } from "@/lib/utils";
 import * as api from "../api";
 import { ManualImportSheet } from "../components";
 import type { FilterTab, JobSort } from "./orchestrator/constants";
@@ -140,6 +141,8 @@ export const OrchestratorPage: React.FC = () => {
     () => new Set(),
   );
   const [bulkActionInFlight, setBulkActionInFlight] = useState<null | BulkJobAction>(null);
+  const [isBulkBarMounted, setIsBulkBarMounted] = useState(false);
+  const [isBulkBarVisible, setIsBulkBarVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -240,6 +243,18 @@ export const OrchestratorPage: React.FC = () => {
       return next.size === previous.size ? previous : next;
     });
   }, [activeJobs]);
+
+  useEffect(() => {
+    if (selectedJobIds.size > 0) {
+      setIsBulkBarMounted(true);
+      const enterTimer = window.setTimeout(() => setIsBulkBarVisible(true), 10);
+      return () => window.clearTimeout(enterTimer);
+    }
+
+    setIsBulkBarVisible(false);
+    const exitTimer = window.setTimeout(() => setIsBulkBarMounted(false), 180);
+    return () => window.clearTimeout(exitTimer);
+  }, [selectedJobIds.size]);
 
   const handleManualImported = useCallback(
     async (importedJobId: string) => {
@@ -432,46 +447,6 @@ export const OrchestratorPage: React.FC = () => {
           />
 
           {/* List/Detail grid - directly under tabs, no extra section */}
-          {selectedJobIds.size > 0 && (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-              <div className="text-xs text-muted-foreground tabular-nums">
-                {selectedJobIds.size} selected
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!canMoveSelected || bulkActionInFlight !== null}
-                onClick={() => void handleBulkAction("move_to_ready")}
-              >
-                Move to Ready
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!canSkipSelected || bulkActionInFlight !== null}
-                onClick={() => void handleBulkAction("skip")}
-              >
-                Skip selected
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setSelectedJobIds(new Set())}
-                disabled={bulkActionInFlight !== null}
-              >
-                Clear
-              </Button>
-              {bulkActionHint && (
-                <div className="text-xs text-muted-foreground">
-                  {bulkActionHint}
-                </div>
-              )}
-            </div>
-          )}
-
           <div className="grid gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
             {/* Primary region: Job list with highest visual weight */}
             <JobListPanel
@@ -503,6 +478,54 @@ export const OrchestratorPage: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {isBulkBarMounted && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
+          <div
+            className={cn(
+              "pointer-events-auto flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/85",
+              "transition-all duration-200 ease-out",
+              isBulkBarVisible
+                ? "translate-y-0 opacity-100"
+                : "translate-y-4 opacity-0",
+            )}
+          >
+            <div className="text-xs text-muted-foreground tabular-nums">
+              {selectedJobIds.size} selected
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!canMoveSelected || bulkActionInFlight !== null}
+              onClick={() => void handleBulkAction("move_to_ready")}
+            >
+              Move to Ready
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={!canSkipSelected || bulkActionInFlight !== null}
+              onClick={() => void handleBulkAction("skip")}
+            >
+              Skip selected
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelectedJobIds(new Set())}
+              disabled={bulkActionInFlight !== null}
+            >
+              Clear
+            </Button>
+            {bulkActionHint && (
+              <div className="text-xs text-muted-foreground">{bulkActionHint}</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <ManualImportSheet
         open={isManualImportOpen}
