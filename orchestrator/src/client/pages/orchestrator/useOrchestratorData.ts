@@ -1,5 +1,5 @@
 import type { Job, JobStatus } from "@shared/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
 
@@ -17,19 +17,31 @@ export const useOrchestratorData = () => {
   const [stats, setStats] = useState<Record<JobStatus, number>>(initialStats);
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const [isRefreshPaused, setIsRefreshPaused] = useState(false);
+  const requestSeqRef = useRef(0);
+  const latestAppliedSeqRef = useRef(0);
+  const pendingLoadCountRef = useRef(0);
 
   const loadJobs = useCallback(async () => {
+    const seq = ++requestSeqRef.current;
+    pendingLoadCountRef.current += 1;
     try {
       setIsLoading(true);
       const data = await api.getJobs();
-      setJobs(data.jobs);
-      setStats(data.byStatus);
+      if (seq >= latestAppliedSeqRef.current) {
+        latestAppliedSeqRef.current = seq;
+        setJobs(data.jobs);
+        setStats(data.byStatus);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to load jobs";
       toast.error(message);
     } finally {
-      setIsLoading(false);
+      pendingLoadCountRef.current = Math.max(0, pendingLoadCountRef.current - 1);
+      if (pendingLoadCountRef.current === 0) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -47,12 +59,13 @@ export const useOrchestratorData = () => {
     checkPipelineStatus();
 
     const interval = setInterval(() => {
+      if (isRefreshPaused) return;
       loadJobs();
       checkPipelineStatus();
     }, 10000);
 
     return () => clearInterval(interval);
-  }, [loadJobs, checkPipelineStatus]);
+  }, [loadJobs, checkPipelineStatus, isRefreshPaused]);
 
   return {
     jobs,
@@ -60,6 +73,8 @@ export const useOrchestratorData = () => {
     isLoading,
     isPipelineRunning,
     setIsPipelineRunning,
+    isRefreshPaused,
+    setIsRefreshPaused,
     loadJobs,
     checkPipelineStatus,
   };

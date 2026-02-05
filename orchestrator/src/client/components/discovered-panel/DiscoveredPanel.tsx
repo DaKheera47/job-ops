@@ -15,12 +15,14 @@ interface DiscoveredPanelProps {
   job: Job | null;
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
+  onTailoringDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   job,
   onJobUpdated,
   onJobMoved,
+  onTailoringDirtyChange,
 }) => {
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
@@ -31,7 +33,18 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);
-  }, []);
+    onTailoringDirtyChange?.(false);
+  }, [job?.id, onTailoringDirtyChange]);
+
+  useEffect(() => {
+    if (mode !== "tailor") {
+      onTailoringDirtyChange?.(false);
+    }
+  }, [mode, onTailoringDirtyChange]);
+
+  useEffect(() => {
+    return () => onTailoringDirtyChange?.(false);
+  }, [onTailoringDirtyChange]);
 
   const handleSkip = async () => {
     if (!job) return;
@@ -102,6 +115,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           onBack={() => setMode("decide")}
           onFinalize={handleFinalize}
           isFinalizing={isFinalizing}
+          onDirtyChange={onTailoringDirtyChange}
         />
       )}
     </div>

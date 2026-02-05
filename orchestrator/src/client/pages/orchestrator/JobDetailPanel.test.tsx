@@ -1,5 +1,5 @@
 import type { Job } from "@shared/types.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
@@ -58,7 +58,20 @@ vi.mock("../../components/ReadyPanel", () => ({
 }));
 
 vi.mock("../../components/TailoringEditor", () => ({
-  TailoringEditor: () => <div data-testid="tailoring-editor" />,
+  TailoringEditor: ({
+    onDirtyChange,
+  }: {
+    onDirtyChange?: (isDirty: boolean) => void;
+  }) => (
+    <div data-testid="tailoring-editor">
+      <button type="button" onClick={() => onDirtyChange?.(true)}>
+        Mark tailoring dirty
+      </button>
+      <button type="button" onClick={() => onDirtyChange?.(false)}>
+        Mark tailoring clean
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("@/lib/utils", async (importOriginal) => {
@@ -150,52 +163,62 @@ const createJob = (overrides: Partial<Job> = {}): Job => ({
   ...overrides,
 });
 
+const renderJobDetailPanel = async (
+  props: React.ComponentProps<typeof JobDetailPanel>,
+) => {
+  const rendered = render(<JobDetailPanel {...props} />);
+  await act(async () => {
+    await Promise.resolve();
+  });
+  return rendered;
+};
+
 describe("JobDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders the discovered panel when active tab is discovered", () => {
+  it("renders the discovered panel when active tab is discovered", async () => {
     const job = createJob({ id: "job-99", status: "discovered" });
 
-    render(
-      <JobDetailPanel
-        activeTab="discovered"
-        activeJobs={[job]}
-        selectedJob={job}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={vi.fn().mockResolvedValue(undefined)}
-      />,
+    await renderJobDetailPanel(
+      {
+        activeTab: "discovered",
+        activeJobs: [job],
+        selectedJob: job,
+        onSelectJobId: vi.fn(),
+        onJobUpdated: vi.fn().mockResolvedValue(undefined),
+      },
     );
 
     expect(screen.getByTestId("discovered-panel")).toHaveTextContent("job-99");
   });
 
-  it("shows an empty state when no job is selected", () => {
-    render(
-      <JobDetailPanel
-        activeTab="all"
-        activeJobs={[]}
-        selectedJob={null}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={vi.fn().mockResolvedValue(undefined)}
-      />,
+  it("shows an empty state when no job is selected", async () => {
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: null,
+        onSelectJobId: vi.fn(),
+        onJobUpdated: vi.fn().mockResolvedValue(undefined),
+      },
     );
 
     expect(screen.getByText("No job selected")).toBeInTheDocument();
   });
 
-  it("renders a stripped description preview for html content", () => {
-    render(
-      <JobDetailPanel
-        activeTab="all"
-        activeJobs={[]}
-        selectedJob={createJob({
+  it("renders a stripped description preview for html content", async () => {
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: createJob({
           jobDescription: "<p>Hello <strong>world</strong></p>",
-        })}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={vi.fn().mockResolvedValue(undefined)}
-      />,
+        }),
+        onSelectJobId: vi.fn(),
+        onJobUpdated: vi.fn().mockResolvedValue(undefined),
+      },
     );
 
     expect(screen.getByText("Hello world")).toBeInTheDocument();
@@ -205,14 +228,14 @@ describe("JobDetailPanel", () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.updateJob).mockResolvedValue(undefined as any);
 
-    render(
-      <JobDetailPanel
-        activeTab="all"
-        activeJobs={[]}
-        selectedJob={createJob({ jobDescription: "Original" })}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={onJobUpdated}
-      />,
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: createJob({ jobDescription: "Original" }),
+        onSelectJobId: vi.fn(),
+        onJobUpdated,
+      },
     );
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: /description/i }));
@@ -236,14 +259,14 @@ describe("JobDetailPanel", () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.markAsApplied).mockResolvedValue(undefined as any);
 
-    render(
-      <JobDetailPanel
-        activeTab="all"
-        activeJobs={[]}
-        selectedJob={createJob({ status: "ready" })}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={onJobUpdated}
-      />,
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: createJob({ status: "ready" }),
+        onSelectJobId: vi.fn(),
+        onJobUpdated,
+      },
     );
 
     fireEvent.click(screen.getByRole("button", { name: /applied/i }));
@@ -258,14 +281,14 @@ describe("JobDetailPanel", () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.skipJob).mockResolvedValue(undefined as any);
 
-    render(
-      <JobDetailPanel
-        activeTab="all"
-        activeJobs={[]}
-        selectedJob={createJob({ status: "ready" })}
-        onSelectJobId={vi.fn()}
-        onJobUpdated={onJobUpdated}
-      />,
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: createJob({ status: "ready" }),
+        onSelectJobId: vi.fn(),
+        onJobUpdated,
+      },
     );
 
     fireEvent.pointerDown(
@@ -276,5 +299,27 @@ describe("JobDetailPanel", () => {
 
     await waitFor(() => expect(api.skipJob).toHaveBeenCalledWith("job-1"));
     expect(onJobUpdated).toHaveBeenCalled();
+  });
+
+  it("forwards tailoring dirty state to refresh pause callback", async () => {
+    const onPauseRefreshChange = vi.fn();
+
+    await renderJobDetailPanel(
+      {
+        activeTab: "all",
+        activeJobs: [],
+        selectedJob: createJob({ status: "ready" }),
+        onSelectJobId: vi.fn(),
+        onJobUpdated: vi.fn().mockResolvedValue(undefined),
+        onPauseRefreshChange,
+      },
+    );
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /tailoring/i }));
+    fireEvent.click(await screen.findByText("Mark tailoring dirty"));
+    fireEvent.click(screen.getByText("Mark tailoring clean"));
+
+    expect(onPauseRefreshChange).toHaveBeenCalledWith(true);
+    expect(onPauseRefreshChange).toHaveBeenCalledWith(false);
   });
 });

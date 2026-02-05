@@ -50,6 +50,7 @@ interface JobDetailPanelProps {
   selectedJob: Job | null;
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
+  onPauseRefreshChange?: (paused: boolean) => void;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -58,6 +59,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   selectedJob,
   onSelectJobId,
   onJobUpdated,
+  onPauseRefreshChange,
 }) => {
   const [detailTab, setDetailTab] = useState<
     "overview" | "tailoring" | "description"
@@ -71,10 +73,23 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   const { personName } = useProfile();
 
+  const handleTailoringDirtyChange = useCallback(
+    (isDirty: boolean) => {
+      setHasUnsavedTailoring(isDirty);
+      onPauseRefreshChange?.(isDirty);
+    },
+    [onPauseRefreshChange],
+  );
+
   useEffect(() => {
     setHasUnsavedTailoring(false);
     saveTailoringRef.current = null;
-  }, []);
+    onPauseRefreshChange?.(false);
+  }, [selectedJob?.id, onPauseRefreshChange]);
+
+  useEffect(() => {
+    return () => onPauseRefreshChange?.(false);
+  }, [onPauseRefreshChange]);
 
   const description = useMemo(() => {
     if (!selectedJob?.jobDescription) return "No description available.";
@@ -275,6 +290,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         job={selectedJob}
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
+        onTailoringDirtyChange={handleTailoringDirtyChange}
       />
     );
   }
@@ -285,6 +301,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         job={selectedJob}
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
+        onTailoringDirtyChange={handleTailoringDirtyChange}
       />
     );
   }
@@ -534,7 +551,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <TailoringEditor
             job={selectedJob}
             onUpdate={onJobUpdated}
-            onDirtyChange={setHasUnsavedTailoring}
+            onDirtyChange={handleTailoringDirtyChange}
             onRegisterSave={(save) => {
               saveTailoringRef.current = save;
             }}

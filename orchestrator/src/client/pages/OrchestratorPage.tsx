@@ -158,6 +158,7 @@ export const OrchestratorPage: React.FC = () => {
     isLoading,
     isPipelineRunning,
     setIsPipelineRunning,
+    setIsRefreshPaused,
     loadJobs,
   } = useOrchestratorData();
   const enabledSources = useMemo(
@@ -348,6 +349,7 @@ export const OrchestratorPage: React.FC = () => {
                   selectedJob={selectedJob}
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
+                  onPauseRefreshChange={setIsRefreshPaused}
                 />
               </div>
             )}
@@ -381,6 +383,7 @@ export const OrchestratorPage: React.FC = () => {
                 selectedJob={selectedJob}
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
+                onPauseRefreshChange={setIsRefreshPaused}
               />
             </div>
           </DrawerContent>

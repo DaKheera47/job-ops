@@ -1,7 +1,7 @@
 import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import { ArrowLeft, Check, Loader2, Sparkles } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,94 +14,145 @@ interface TailorModeProps {
   onBack: () => void;
   onFinalize: () => void;
   isFinalizing: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
   /** Variant controls the finalize button text. Default is 'discovered'. */
   variant?: "discovered" | "ready";
 }
+
+const parseSelectedIds = (value: string | null | undefined) =>
+  new Set(value?.split(",").filter(Boolean) ?? []);
+
+const hasSelectionDiff = (current: Set<string>, saved: Set<string>) => {
+  if (current.size !== saved.size) return true;
+  for (const id of current) {
+    if (!saved.has(id)) return true;
+  }
+  return false;
+};
 
 export const TailorMode: React.FC<TailorModeProps> = ({
   job,
   onBack,
   onFinalize,
   isFinalizing,
+  onDirtyChange,
   variant = "discovered",
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
-  const [jobDescription, setJobDescription] = useState(
-    job.jobDescription || "",
+  const [jobDescription, setJobDescription] = useState(job.jobDescription || "");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    parseSelectedIds(job.selectedProjectIds),
   );
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => {
-    const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
-    return new Set(saved);
-  });
+
+  const [savedSummary, setSavedSummary] = useState(job.tailoredSummary || "");
+  const [savedDescription, setSavedDescription] = useState(job.jobDescription || "");
+  const [savedSelectedIds, setSavedSelectedIds] = useState<Set<string>>(() =>
+    parseSelectedIds(job.selectedProjectIds),
+  );
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<
-    "unsaved" | "saving" | "saved"
-  >("saved");
+  const [draftStatus, setDraftStatus] = useState<"unsaved" | "saving" | "saved">(
+    "saved",
+  );
   const [showDescription, setShowDescription] = useState(false);
+  const lastJobIdRef = useRef(job.id);
 
   useEffect(() => {
     api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    setSummary(job.tailoredSummary || "");
-    setJobDescription(job.jobDescription || "");
-    const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
-    setSelectedIds(new Set(saved));
-    setDraftStatus("saved");
-  }, [job.tailoredSummary, job.selectedProjectIds, job.jobDescription]);
-
-  const savedSummary = job.tailoredSummary || "";
-  const savedDescription = job.jobDescription || "";
-  const savedIds = useMemo(() => {
-    const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
-    return new Set(saved);
-  }, [job.selectedProjectIds]);
-
-  const hasChanges = useMemo(() => {
+  const isDirty = useMemo(() => {
     if (summary !== savedSummary) return true;
     if (jobDescription !== savedDescription) return true;
-    if (selectedIds.size !== savedIds.size) return true;
-    for (const id of selectedIds) {
-      if (!savedIds.has(id)) return true;
-    }
-    return false;
-  }, [
-    summary,
-    savedSummary,
-    jobDescription,
-    savedDescription,
-    selectedIds,
-    savedIds,
-  ]);
+    return hasSelectionDiff(selectedIds, savedSelectedIds);
+  }, [summary, savedSummary, jobDescription, savedDescription, selectedIds, savedSelectedIds]);
 
   useEffect(() => {
-    if (hasChanges && draftStatus === "saved") {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    return () => onDirtyChange?.(false);
+  }, [onDirtyChange]);
+
+  useEffect(() => {
+    const incomingSummary = job.tailoredSummary || "";
+    const incomingDescription = job.jobDescription || "";
+    const incomingSelectedIds = parseSelectedIds(job.selectedProjectIds);
+
+    if (job.id !== lastJobIdRef.current) {
+      lastJobIdRef.current = job.id;
+      setSummary(incomingSummary);
+      setJobDescription(incomingDescription);
+      setSelectedIds(incomingSelectedIds);
+      setSavedSummary(incomingSummary);
+      setSavedDescription(incomingDescription);
+      setSavedSelectedIds(incomingSelectedIds);
+      setDraftStatus("saved");
+      return;
+    }
+
+    if (isDirty) return;
+
+    setSummary(incomingSummary);
+    setJobDescription(incomingDescription);
+    setSelectedIds(incomingSelectedIds);
+    setSavedSummary(incomingSummary);
+    setSavedDescription(incomingDescription);
+    setSavedSelectedIds(incomingSelectedIds);
+    setDraftStatus("saved");
+  }, [job.id, job.tailoredSummary, job.jobDescription, job.selectedProjectIds, isDirty]);
+
+  useEffect(() => {
+    if (isDirty && draftStatus === "saved") {
       setDraftStatus("unsaved");
     }
-  }, [hasChanges, draftStatus]);
+    if (!isDirty && draftStatus === "unsaved") {
+      setDraftStatus("saved");
+    }
+  }, [isDirty, draftStatus]);
+
+  const selectedIdsCsv = useMemo(() => Array.from(selectedIds).join(","), [selectedIds]);
+
+  const syncSavedSnapshot = useCallback(
+    (
+      nextSummary: string,
+      nextDescription: string,
+      nextSelectedIds: Set<string>,
+    ) => {
+      setSavedSummary(nextSummary);
+      setSavedDescription(nextDescription);
+      setSavedSelectedIds(new Set(nextSelectedIds));
+      setDraftStatus("saved");
+    },
+    [],
+  );
+
+  const persistCurrent = useCallback(async () => {
+    await api.updateJob(job.id, {
+      tailoredSummary: summary,
+      jobDescription,
+      selectedProjectIds: selectedIdsCsv,
+    });
+    syncSavedSnapshot(summary, jobDescription, selectedIds);
+  }, [job.id, summary, jobDescription, selectedIdsCsv, selectedIds, syncSavedSnapshot]);
 
   useEffect(() => {
-    if (!hasChanges || draftStatus !== "unsaved") return;
+    if (!isDirty || draftStatus !== "unsaved") return;
 
     const timeout = setTimeout(async () => {
       try {
         setDraftStatus("saving");
-        await api.updateJob(job.id, {
-          tailoredSummary: summary,
-          jobDescription: jobDescription,
-          selectedProjectIds: Array.from(selectedIds).join(","),
-        });
-        setDraftStatus("saved");
+        await persistCurrent();
       } catch {
         setDraftStatus("unsaved");
       }
     }, 1500);
 
     return () => clearTimeout(timeout);
-  }, [summary, jobDescription, selectedIds, hasChanges, draftStatus, job.id]);
+  }, [isDirty, draftStatus, persistCurrent]);
 
   const handleToggleProject = useCallback(
     (id: string) => {
@@ -120,23 +171,18 @@ export const TailorMode: React.FC<TailorModeProps> = ({
     try {
       setIsGenerating(true);
 
-      if (hasChanges) {
-        await api.updateJob(job.id, {
-          tailoredSummary: summary,
-          jobDescription: jobDescription,
-          selectedProjectIds: Array.from(selectedIds).join(","),
-        });
+      if (isDirty) {
+        await persistCurrent();
       }
 
       const updatedJob = await api.summarizeJob(job.id, { force: true });
-      setSummary(updatedJob.tailoredSummary || "");
-      setJobDescription(updatedJob.jobDescription || "");
-      if (updatedJob.selectedProjectIds) {
-        setSelectedIds(
-          new Set(updatedJob.selectedProjectIds.split(",").filter(Boolean)),
-        );
-      }
-      setDraftStatus("saved");
+      const nextSummary = updatedJob.tailoredSummary || "";
+      const nextDescription = updatedJob.jobDescription || "";
+      const nextSelectedIds = parseSelectedIds(updatedJob.selectedProjectIds);
+      setSummary(nextSummary);
+      setJobDescription(nextDescription);
+      setSelectedIds(nextSelectedIds);
+      syncSavedSnapshot(nextSummary, nextDescription, nextSelectedIds);
       toast.success("Draft generated with AI", {
         description: "Review and edit before finalizing.",
       });
@@ -150,14 +196,10 @@ export const TailorMode: React.FC<TailorModeProps> = ({
   };
 
   const handleFinalize = async () => {
-    if (hasChanges) {
+    if (isDirty) {
       try {
         setIsSaving(true);
-        await api.updateJob(job.id, {
-          tailoredSummary: summary,
-          jobDescription: jobDescription,
-          selectedProjectIds: Array.from(selectedIds).join(","),
-        });
+        await persistCurrent();
       } catch {
         toast.error("Failed to save draft before finalizing");
         setIsSaving(false);
@@ -193,7 +235,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
               Saving...
             </>
           )}
-          {draftStatus === "saved" && !hasChanges && (
+          {draftStatus === "saved" && !isDirty && (
             <>
               <Check className="h-3 w-3 text-emerald-400" />
               Saved

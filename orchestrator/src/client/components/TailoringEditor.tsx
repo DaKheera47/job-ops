@@ -7,7 +7,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +22,17 @@ interface TailoringEditorProps {
   onBeforeGenerate?: () => boolean | Promise<boolean>;
 }
 
+const parseSelectedIds = (value: string | null | undefined) =>
+  new Set(value?.split(",").filter(Boolean) ?? []);
+
+const hasSelectionDiff = (current: Set<string>, saved: Set<string>) => {
+  if (current.size !== saved.size) return true;
+  for (const id of current) {
+    if (!saved.has(id)) return true;
+  }
+  return false;
+};
+
 export const TailoringEditor: React.FC<TailoringEditorProps> = ({
   job,
   onUpdate,
@@ -31,52 +42,78 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 }) => {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
-  const [jobDescription, setJobDescription] = useState(
-    job.jobDescription || "",
+  const [jobDescription, setJobDescription] = useState(job.jobDescription || "");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
+    parseSelectedIds(job.selectedProjectIds),
   );
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [savedSummary, setSavedSummary] = useState(job.tailoredSummary || "");
+  const [savedDescription, setSavedDescription] = useState(job.jobDescription || "");
+  const [savedSelectedIds, setSavedSelectedIds] = useState<Set<string>>(() =>
+    parseSelectedIds(job.selectedProjectIds),
+  );
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const lastJobIdRef = useRef(job.id);
 
-  const savedSelectedIds = useMemo(() => {
-    const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
-    return new Set(saved);
-  }, [job.selectedProjectIds]);
-
-  const hasSelectionDiff = useMemo(() => {
-    if (selectedIds.size !== savedSelectedIds.size) return true;
-    for (const id of selectedIds) {
-      if (!savedSelectedIds.has(id)) return true;
-    }
-    return false;
-  }, [selectedIds, savedSelectedIds]);
-
-  const isDirty =
-    summary !== (job.tailoredSummary || "") ||
-    jobDescription !== (job.jobDescription || "") ||
-    hasSelectionDiff;
+  const isDirty = useMemo(() => {
+    if (summary !== savedSummary) return true;
+    if (jobDescription !== savedDescription) return true;
+    return hasSelectionDiff(selectedIds, savedSelectedIds);
+  }, [summary, savedSummary, jobDescription, savedDescription, selectedIds, savedSelectedIds]);
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
-    // Load project catalog
-    api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
-
-    // Set initial selection
-    if (job.selectedProjectIds) {
-      setSelectedIds(
-        new Set(job.selectedProjectIds.split(",").filter(Boolean)),
-      );
-    }
-    setJobDescription(job.jobDescription || "");
-  }, [job.selectedProjectIds, job.jobDescription]);
+    return () => onDirtyChange?.(false);
+  }, [onDirtyChange]);
 
   useEffect(() => {
-    setSummary(job.tailoredSummary || "");
-  }, [job.tailoredSummary]);
+    api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    const incomingSummary = job.tailoredSummary || "";
+    const incomingDescription = job.jobDescription || "";
+    const incomingSelectedIds = parseSelectedIds(job.selectedProjectIds);
+
+    if (job.id !== lastJobIdRef.current) {
+      lastJobIdRef.current = job.id;
+      setSummary(incomingSummary);
+      setJobDescription(incomingDescription);
+      setSelectedIds(incomingSelectedIds);
+      setSavedSummary(incomingSummary);
+      setSavedDescription(incomingDescription);
+      setSavedSelectedIds(incomingSelectedIds);
+      return;
+    }
+
+    if (isDirty) return;
+
+    setSummary(incomingSummary);
+    setJobDescription(incomingDescription);
+    setSelectedIds(incomingSelectedIds);
+    setSavedSummary(incomingSummary);
+    setSavedDescription(incomingDescription);
+    setSavedSelectedIds(incomingSelectedIds);
+  }, [job.id, job.tailoredSummary, job.jobDescription, job.selectedProjectIds, isDirty]);
+
+  const syncSavedSnapshot = useCallback(
+    (
+      nextSummary: string,
+      nextDescription: string,
+      nextSelectedIds: Set<string>,
+    ) => {
+      setSavedSummary(nextSummary);
+      setSavedDescription(nextDescription);
+      setSavedSelectedIds(new Set(nextSelectedIds));
+    },
+    [],
+  );
+
+  const selectedIdsCsv = useMemo(() => Array.from(selectedIds).join(","), [selectedIds]);
 
   const saveChanges = useCallback(
     async ({ showToast = true }: { showToast?: boolean } = {}) => {
@@ -84,9 +121,10 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         setIsSaving(true);
         await api.updateJob(job.id, {
           tailoredSummary: summary,
-          jobDescription: jobDescription,
-          selectedProjectIds: Array.from(selectedIds).join(","),
+          jobDescription,
+          selectedProjectIds: selectedIdsCsv,
         });
+        syncSavedSnapshot(summary, jobDescription, selectedIds);
         if (showToast) toast.success("Changes saved");
         await onUpdate();
       } catch (error) {
@@ -96,7 +134,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         setIsSaving(false);
       }
     },
-    [job.id, onUpdate, selectedIds, summary, jobDescription],
+    [job.id, onUpdate, selectedIdsCsv, selectedIds, summary, jobDescription, syncSavedSnapshot],
   );
 
   useEffect(() => {
@@ -121,18 +159,17 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
   const handleSummarize = async () => {
     try {
       setIsSummarizing(true);
-      // Save changes first so AI uses latest description
       if (isDirty) {
         await saveChanges({ showToast: false });
       }
       const updatedJob = await api.summarizeJob(job.id, { force: true });
-      setSummary(updatedJob.tailoredSummary || "");
-      setJobDescription(updatedJob.jobDescription || "");
-      if (updatedJob.selectedProjectIds) {
-        setSelectedIds(
-          new Set(updatedJob.selectedProjectIds.split(",").filter(Boolean)),
-        );
-      }
+      const nextSummary = updatedJob.tailoredSummary || "";
+      const nextDescription = updatedJob.jobDescription || "";
+      const nextSelectedIds = parseSelectedIds(updatedJob.selectedProjectIds);
+      setSummary(nextSummary);
+      setJobDescription(nextDescription);
+      setSelectedIds(nextSelectedIds);
+      syncSavedSnapshot(nextSummary, nextDescription, nextSelectedIds);
       toast.success("AI Summary & Projects generated");
       await onUpdate();
     } catch (error) {
@@ -150,7 +187,6 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       if (shouldProceed === false) return;
 
       setIsGeneratingPdf(true);
-      // Save current state first to ensure PDF uses latest
       await saveChanges({ showToast: false });
 
       await api.generateJobPdf(job.id);
@@ -163,7 +199,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
     }
   };
 
-  const maxProjects = 3; // Example limit, could come from settings
+  const maxProjects = 3;
   const tooManyProjects = selectedIds.size > maxProjects;
 
   return (

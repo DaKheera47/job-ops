@@ -52,6 +52,7 @@ interface ReadyPanelProps {
   job: Job | null;
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
+  onTailoringDirtyChange?: (isDirty: boolean) => void;
 }
 
 const safeFilenamePart = (value: string | null | undefined) =>
@@ -61,6 +62,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   job,
   onJobUpdated,
   onJobMoved,
+  onTailoringDirtyChange,
 }) => {
   const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
@@ -84,7 +86,18 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   // Reset mode when job changes
   useEffect(() => {
     setMode("ready");
-  }, []);
+    onTailoringDirtyChange?.(false);
+  }, [job?.id, onTailoringDirtyChange]);
+
+  useEffect(() => {
+    if (mode !== "tailor") {
+      onTailoringDirtyChange?.(false);
+    }
+  }, [mode, onTailoringDirtyChange]);
+
+  useEffect(() => {
+    return () => onTailoringDirtyChange?.(false);
+  }, [onTailoringDirtyChange]);
 
   // Compute derived values
   const pdfHref = job
@@ -252,6 +265,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         onFinalize={handleTailorFinalize}
         isFinalizing={isRegenerating}
         variant="ready"
+        onDirtyChange={onTailoringDirtyChange}
       />
     );
   }
