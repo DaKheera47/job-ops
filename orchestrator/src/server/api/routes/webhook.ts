@@ -20,20 +20,20 @@ webhookRouter.post("/trigger", async (req: Request, res: Response) => {
     return fail(res, unauthorized());
   }
 
-  if (isDemoMode()) {
-    const simulated = await simulatePipelineRun();
-    return okWithMeta(
-      res,
-      {
-        message: "Pipeline trigger simulated in demo mode",
-        triggeredAt: new Date().toISOString(),
-        runId: simulated.runId,
-      },
-      { simulated: true },
-    );
-  }
-
   try {
+    if (isDemoMode()) {
+      const simulated = await simulatePipelineRun();
+      return okWithMeta(
+        res,
+        {
+          message: "Pipeline trigger simulated in demo mode",
+          triggeredAt: new Date().toISOString(),
+          runId: simulated.runId,
+        },
+        { simulated: true },
+      );
+    }
+
     // Start pipeline in background
     runWithRequestContext({}, () => {
       runPipeline().catch((error) => {
