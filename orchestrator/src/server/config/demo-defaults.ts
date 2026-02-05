@@ -1,9 +1,5 @@
-import type {
-  JobStatus,
-  JobSource,
-  StageEventMetadata,
-} from "@shared/types";
 import type { SettingKey } from "@server/repositories/settings";
+import type { JobSource, JobStatus, StageEventMetadata } from "@shared/types";
 
 export const DEMO_BASELINE_VERSION = "2026.02.05.v1";
 export const DEMO_BASELINE_NAME = "Public Demo Baseline";

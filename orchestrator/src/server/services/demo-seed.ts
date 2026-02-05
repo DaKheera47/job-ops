@@ -53,7 +53,9 @@ export function buildDemoBaseline(now: Date): BuiltDemoBaseline {
       suitabilityReason: job.suitabilityReason,
       tailoredSummary: job.tailoredSummary ?? null,
       tailoredHeadline: job.tailoredHeadline ?? null,
-      tailoredSkills: job.tailoredSkills ? JSON.stringify(job.tailoredSkills) : null,
+      tailoredSkills: job.tailoredSkills
+        ? JSON.stringify(job.tailoredSkills)
+        : null,
       selectedProjectIds: job.selectedProjectIds ?? null,
       pdfPath: job.pdfPath ?? null,
       notionPageId: job.notionPageId ?? null,
@@ -92,12 +94,14 @@ export async function applyDemoBaseline(
     tx.delete(pipelineRuns).run();
     tx.delete(settings).run();
 
-    const settingRows = Object.entries(baseline.settings).map(([key, value]) => ({
-      key,
-      value,
-      createdAt: baseline.resetAt,
-      updatedAt: baseline.resetAt,
-    }));
+    const settingRows = Object.entries(baseline.settings).map(
+      ([key, value]) => ({
+        key,
+        value,
+        createdAt: baseline.resetAt,
+        updatedAt: baseline.resetAt,
+      }),
+    );
     if (settingRows.length > 0) {
       tx.insert(settings).values(settingRows).run();
     }

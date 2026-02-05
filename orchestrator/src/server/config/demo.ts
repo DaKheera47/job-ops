@@ -1,11 +1,11 @@
 import { AppError } from "@infra/errors";
 import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
-import type { DemoInfoResponse } from "@shared/types";
 import {
   DEMO_BASELINE_NAME,
   DEMO_BASELINE_VERSION,
 } from "@server/config/demo-defaults";
+import type { DemoInfoResponse } from "@shared/types";
 import type { Response } from "express";
 
 export const DEMO_RESET_CADENCE_HOURS = 6;

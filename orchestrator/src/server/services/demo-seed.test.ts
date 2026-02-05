@@ -1,13 +1,13 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEMO_DEFAULT_JOBS,
   DEMO_DEFAULT_PIPELINE_RUNS,
   DEMO_DEFAULT_SETTINGS,
   DEMO_DEFAULT_STAGE_EVENTS,
 } from "@server/config/demo-defaults";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const originalEnv = { ...process.env };
 
@@ -49,20 +49,22 @@ describe.sequential("demo seed baseline", () => {
 
     expect(baseline.resetAt).toBe(now.toISOString());
     expect(Object.keys(baseline.settings).length).toBeGreaterThan(0);
-    expect(baseline.pipelineRuns).toHaveLength(DEMO_DEFAULT_PIPELINE_RUNS.length);
+    expect(baseline.pipelineRuns).toHaveLength(
+      DEMO_DEFAULT_PIPELINE_RUNS.length,
+    );
     expect(baseline.jobs).toHaveLength(DEMO_DEFAULT_JOBS.length);
     expect(baseline.stageEvents).toHaveLength(DEMO_DEFAULT_STAGE_EVENTS.length);
 
     const seededJobIds = baseline.jobs.map((job) => job.id).sort();
-    expect(seededJobIds).toEqual(
-      DEMO_DEFAULT_JOBS.map((job) => job.id).sort(),
-    );
+    expect(seededJobIds).toEqual(DEMO_DEFAULT_JOBS.map((job) => job.id).sort());
   });
 
   it("resetDemoData restores settings and data to demo defaults", async () => {
     const { db, schema } = await import("../db/index");
     const { resetDemoData } = await import("./demo-mode");
-    const { setSetting, getAllSettings } = await import("../repositories/settings");
+    const { setSetting, getAllSettings } = await import(
+      "../repositories/settings"
+    );
 
     await resetDemoData();
 
@@ -96,9 +98,9 @@ describe.sequential("demo seed baseline", () => {
 
     const logicalSnapshot = async () => {
       const [settingsRows, runRows, jobRows, stageRows] = await Promise.all([
-        db.select({ key: schema.settings.key, value: schema.settings.value }).from(
-          schema.settings,
-        ),
+        db
+          .select({ key: schema.settings.key, value: schema.settings.value })
+          .from(schema.settings),
         db
           .select({
             id: schema.pipelineRuns.id,

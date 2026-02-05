@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import {
   DEMO_BASELINE_NAME,
   DEMO_BASELINE_VERSION,
 } from "@server/config/demo-defaults";
+import { describe, expect, it } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Demo mode API behavior", () => {
