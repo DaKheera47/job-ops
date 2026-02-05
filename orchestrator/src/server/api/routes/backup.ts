@@ -6,6 +6,7 @@ import {
   listBackups,
 } from "@server/services/backup/index";
 import { type Request, type Response, Router } from "express";
+import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 
 export const backupRouter = Router();
 
@@ -36,6 +37,14 @@ backupRouter.get("/", async (_req: Request, res: Response) => {
  */
 backupRouter.post("/", async (_req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Manual backup creation is disabled in the public demo.",
+        { route: "POST /api/backups" },
+      );
+    }
+
     const filename = await createBackup("manual");
     const backups = await listBackups();
     const backup = backups.find((b) => b.filename === filename);
@@ -60,6 +69,14 @@ backupRouter.post("/", async (_req: Request, res: Response) => {
  */
 backupRouter.delete("/:filename", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Deleting backups is disabled in the public demo.",
+        { route: "DELETE /api/backups/:filename", filename: req.params.filename },
+      );
+    }
+
     const { filename } = req.params;
 
     if (!filename) {

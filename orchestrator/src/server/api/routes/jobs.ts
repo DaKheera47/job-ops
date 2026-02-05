@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
+import { okWithMeta } from "@infra/http";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -10,6 +11,7 @@ import {
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
+import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 import {
   generateFinalPdf,
   processJob,
@@ -29,6 +31,13 @@ import { createNotionEntry } from "../../services/notion";
 import { getProfile } from "../../services/profile";
 import { scoreJobSuitability } from "../../services/scorer";
 import * as visaSponsors from "../../services/visa-sponsors/index";
+import {
+  simulateApplyJob,
+  simulateGeneratePdf,
+  simulateProcessJob,
+  simulateRescoreJob,
+  simulateSummarizeJob,
+} from "../../services/demo-simulator";
 
 export const jobsRouter = Router();
 
@@ -316,6 +325,18 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
     const forceRaw = req.query.force as string | undefined;
     const force = forceRaw === "1" || forceRaw === "true";
 
+    if (isDemoMode()) {
+      const result = await simulateSummarizeJob(req.params.id, { force });
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error });
+      }
+      const job = await jobsRepo.getJobById(req.params.id);
+      if (!job) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      }
+      return okWithMeta(res, job, { simulated: true });
+    }
+
     const result = await summarizeJob(req.params.id, { force });
 
     if (!result.success) {
@@ -335,6 +356,11 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
  */
 jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      const simulatedJob = await simulateRescoreJob(req.params.id);
+      return okWithMeta(res, simulatedJob, { simulated: true });
+    }
+
     const job = await jobsRepo.getJobById(req.params.id);
 
     if (!job) {
@@ -424,6 +450,18 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
  */
 jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      const result = await simulateGeneratePdf(req.params.id);
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error });
+      }
+      const job = await jobsRepo.getJobById(req.params.id);
+      if (!job) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      }
+      return okWithMeta(res, job, { simulated: true });
+    }
+
     const result = await generateFinalPdf(req.params.id);
 
     if (!result.success) {
@@ -446,6 +484,18 @@ jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
     const forceRaw = req.query.force as string | undefined;
     const force = forceRaw === "1" || forceRaw === "true";
 
+    if (isDemoMode()) {
+      const result = await simulateProcessJob(req.params.id, { force });
+      if (!result.success) {
+        return res.status(400).json({ success: false, error: result.error });
+      }
+      const job = await jobsRepo.getJobById(req.params.id);
+      if (!job) {
+        return res.status(404).json({ success: false, error: "Job not found" });
+      }
+      return okWithMeta(res, job, { simulated: true });
+    }
+
     const result = await processJob(req.params.id, { force });
 
     if (!result.success) {
@@ -465,6 +515,11 @@ jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
  */
 jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      const updatedJob = await simulateApplyJob(req.params.id);
+      return okWithMeta(res, updatedJob, { simulated: true });
+    }
+
     const job = await jobsRepo.getJobById(req.params.id);
 
     if (!job) {
@@ -545,6 +600,14 @@ jobsRouter.post("/:id/skip", async (req: Request, res: Response) => {
  */
 jobsRouter.delete("/status/:status", async (req: Request, res: Response) => {
   try {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Clearing jobs by status is disabled to keep the demo stable.",
+        { route: "DELETE /api/jobs/status/:status", status: req.params.status },
+      );
+    }
+
     const status = req.params.status as JobStatus;
     const count = await jobsRepo.deleteJobsByStatus(status);
 

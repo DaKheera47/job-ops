@@ -66,5 +66,6 @@ export function sendDemoBlocked(
       message: "This action is disabled in the public demo.",
       details: { blockedReason },
     }),
+    { blockedReason },
   );
 }

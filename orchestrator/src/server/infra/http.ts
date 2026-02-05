@@ -30,7 +30,25 @@ export function ok<T>(res: Response, data: T, status = 200): void {
   res.status(status).json(payload);
 }
 
-export function fail(res: Response, error: AppError): void {
+export function okWithMeta<T>(
+  res: Response,
+  data: T,
+  meta: Omit<NonNullable<ApiResponse<T>["meta"]>, "requestId">,
+  status = 200,
+): void {
+  const payload: ApiResponse<T> = {
+    ok: true,
+    data,
+    meta: { requestId: getResponseRequestId(res), ...meta },
+  };
+  res.status(status).json(payload);
+}
+
+export function fail(
+  res: Response,
+  error: AppError,
+  meta?: Omit<ApiResponse<never>["meta"], "requestId">,
+): void {
   const payload: ApiResponse<never> = {
     ok: false,
     error: {
@@ -40,7 +58,7 @@ export function fail(res: Response, error: AppError): void {
         ? { details: sanitizeUnknown(error.details) }
         : {}),
     },
-    meta: { requestId: getResponseRequestId(res) },
+    meta: { requestId: getResponseRequestId(res), ...(meta ?? {}) },
   };
   res.status(error.status).json(payload);
 }

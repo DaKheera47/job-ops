@@ -7,6 +7,8 @@ import {
 } from "@server/services/rxresume-v4";
 import { resumeDataSchema } from "@shared/rxresume-schema";
 import { type Request, type Response, Router } from "express";
+import { okWithMeta } from "@infra/http";
+import { isDemoMode } from "../../config/demo";
 
 export const onboardingRouter = Router();
 
@@ -124,6 +126,18 @@ async function validateRxresume(
 onboardingRouter.post(
   "/validate/openrouter",
   async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          valid: true,
+          message:
+            "Demo mode: OpenRouter validation is simulated and always succeeds.",
+        },
+        { simulated: true },
+      );
+    }
+
     const apiKey =
       typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
     const result = await validateLlm({ apiKey, provider: "openrouter" });
@@ -132,6 +146,17 @@ onboardingRouter.post(
 );
 
 onboardingRouter.post("/validate/llm", async (req: Request, res: Response) => {
+  if (isDemoMode()) {
+    return okWithMeta(
+      res,
+      {
+        valid: true,
+        message: "Demo mode: LLM validation is simulated.",
+      },
+      { simulated: true },
+    );
+  }
+
   const apiKey =
     typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
   const provider =
@@ -145,6 +170,17 @@ onboardingRouter.post("/validate/llm", async (req: Request, res: Response) => {
 onboardingRouter.post(
   "/validate/rxresume",
   async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          valid: true,
+          message: "Demo mode: RxResume validation is simulated.",
+        },
+        { simulated: true },
+      );
+    }
+
     const email =
       typeof req.body?.email === "string" ? req.body.email : undefined;
     const password =
@@ -157,6 +193,17 @@ onboardingRouter.post(
 onboardingRouter.get(
   "/validate/resume",
   async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          valid: true,
+          message: "Demo mode: resume validation is simulated.",
+        },
+        { simulated: true },
+      );
+    }
+
     const result = await validateResumeConfig();
     res.json({ success: true, data: result });
   },
