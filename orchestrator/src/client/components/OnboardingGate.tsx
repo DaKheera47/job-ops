@@ -82,6 +82,7 @@ export const OnboardingGate: React.FC = () => {
       checked: false,
     });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const [demoMode, setDemoMode] = useState(false);
 
   const { control, watch, getValues, reset, setValue } =
     useForm<OnboardingFormData>({
@@ -190,9 +191,26 @@ export const OnboardingGate: React.FC = () => {
     baseResumeValidation.checked;
   const llmValidated = requiresLlmKey ? llmValidation.valid : true;
   const shouldOpen =
+    !demoMode &&
     Boolean(settings && !settingsLoading) &&
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
+
+  useEffect(() => {
+    let isCancelled = false;
+    void api
+      .getDemoInfo()
+      .then((info) => {
+        if (!isCancelled) setDemoMode(info.demoMode);
+      })
+      .catch(() => {
+        if (!isCancelled) setDemoMode(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
 
   const llmKeyCurrent = llmKeyHint ? formatSecretHint(llmKeyHint) : undefined;
   const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
@@ -294,6 +312,7 @@ export const OnboardingGate: React.FC = () => {
 
   // Run validations on mount when needed
   useEffect(() => {
+    if (demoMode) return;
     if (!settings || settingsLoading) return;
     const needsValidation =
       (requiresLlmKey ? !llmValidation.checked : false) ||
@@ -309,6 +328,7 @@ export const OnboardingGate: React.FC = () => {
     rxresumeValidation.checked,
     baseResumeValidation.checked,
     runAllValidations,
+    demoMode,
   ]);
 
   const handleRefresh = async () => {

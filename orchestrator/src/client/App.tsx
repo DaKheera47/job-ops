@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
+import * as api from "./api";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
@@ -18,6 +19,10 @@ import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
 export const App: React.FC = () => {
   const location = useLocation();
   const nodeRef = useRef<HTMLDivElement>(null);
+  const [demoInfo, setDemoInfo] = React.useState<{
+    demoMode: boolean;
+    resetCadenceHours: number;
+  } | null>(null);
 
   // Determine a stable key for transitions to avoid unnecessary unmounts when switching sub-tabs
   const pageKey = React.useMemo(() => {
@@ -28,9 +33,36 @@ export const App: React.FC = () => {
     return firstSegment;
   }, [location.pathname]);
 
+  React.useEffect(() => {
+    let isCancelled = false;
+    void api
+      .getDemoInfo()
+      .then((info) => {
+        if (!isCancelled) {
+          setDemoInfo({
+            demoMode: info.demoMode,
+            resetCadenceHours: info.resetCadenceHours,
+          });
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) setDemoInfo(null);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   return (
     <>
       <OnboardingGate />
+      {demoInfo?.demoMode && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200">
+          Demo mode: integrations are simulated and data resets every{" "}
+          {demoInfo.resetCadenceHours} hours.
+        </div>
+      )}
       <SwitchTransition mode="out-in">
         <CSSTransition
           key={pageKey}
