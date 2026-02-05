@@ -68,6 +68,15 @@ const PROJECT_ID_SETS = [
   "demo-project-2,demo-project-4,demo-project-5",
 ] as const;
 
+function buildDemoDeadline(idx: number): string {
+  // Use Date rollover so month/day track changes cannot generate invalid dates.
+  const monthIndex = 2 + (idx % 6); // March..August (0-indexed months)
+  const dayOfMonth = (idx % 26) + 1;
+  return new Date(Date.UTC(2026, monthIndex, dayOfMonth))
+    .toISOString()
+    .slice(0, 10);
+}
+
 const baseDiscoveredCount = DEMO_BASE_JOBS.filter(
   (job) => job.status === "discovered",
 ).length;
@@ -115,7 +124,7 @@ function buildGeneratedJob(
     applicationLink: sourceBaseUrl(source),
     location: LOCATION_TRACK[idx % LOCATION_TRACK.length],
     salary: `$${115 + (idx % 11) * 5},000 - $${135 + (idx % 11) * 5},000`,
-    deadline: `2026-0${(idx % 6) + 3}-${String((idx % 26) + 1).padStart(2, "0")}`,
+    deadline: buildDemoDeadline(idx),
     jobDescription:
       "Build and improve backend workflow systems, API contracts, and operational tooling. Partner with product and operations to increase reliability, reduce manual effort, and improve delivery throughput.",
     suitabilityScore: score,
