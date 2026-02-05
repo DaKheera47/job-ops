@@ -336,8 +336,14 @@ describe("salary penalty", () => {
 
     // Mock the settings repository
     const settingsRepo = await import("../repositories/settings");
-    getSettingMock = vi.fn().mockResolvedValue(null);
-    vi.spyOn(settingsRepo, "getSetting").mockImplementation(getSettingMock);
+    getSettingMock = vi.fn().mockResolvedValue(null) as unknown as ReturnType<
+      typeof vi.fn
+    >;
+    vi.spyOn(settingsRepo, "getSetting").mockImplementation(
+      getSettingMock as (
+        key: import("../repositories/settings").SettingKey,
+      ) => Promise<string | null>,
+    );
   });
 
   afterEach(() => {
