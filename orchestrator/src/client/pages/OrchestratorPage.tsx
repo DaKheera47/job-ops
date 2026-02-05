@@ -3,28 +3,24 @@
  */
 
 import { useSettings } from "@client/hooks/useSettings";
-import type { BulkJobAction, JobSource } from "@shared/types.js";
+import type { JobSource } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
-import { cn } from "@/lib/utils";
 import * as api from "../api";
 import { ManualImportSheet } from "../components";
 import type { FilterTab, JobSort } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
+import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
-import {
-  canBulkMoveToReady,
-  canBulkSkip,
-  getFailedJobIds,
-} from "./orchestrator/bulkActions";
+import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
@@ -137,12 +133,6 @@ export const OrchestratorPage: React.FC = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [isManualImportOpen, setIsManualImportOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [bulkActionInFlight, setBulkActionInFlight] = useState<null | BulkJobAction>(null);
-  const [isBulkBarMounted, setIsBulkBarMounted] = useState(false);
-  const [isBulkBarVisible, setIsBulkBarVisible] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -196,31 +186,21 @@ export const OrchestratorPage: React.FC = () => {
         : null,
     [jobs, selectedJobId],
   );
-  const selectedJobs = useMemo(
-    () => activeJobs.filter((job) => selectedJobIds.has(job.id)),
-    [activeJobs, selectedJobIds],
-  );
-  const canSkipSelected = useMemo(
-    () => canBulkSkip(selectedJobs),
-    [selectedJobs],
-  );
-  const canMoveSelected = useMemo(
-    () => canBulkMoveToReady(selectedJobs),
-    [selectedJobs],
-  );
-  const bulkActionHint = useMemo(() => {
-    if (selectedJobs.length === 0) return null;
-    if (!canMoveSelected && !canSkipSelected) {
-      return "Selected jobs are not eligible for bulk actions.";
-    }
-    if (!canMoveSelected) {
-      return "Move to Ready only works for discovered jobs.";
-    }
-    if (!canSkipSelected) {
-      return "Skip only works for discovered or ready jobs.";
-    }
-    return null;
-  }, [selectedJobs, canMoveSelected, canSkipSelected]);
+  const {
+    selectedJobIds,
+    canSkipSelected,
+    canMoveSelected,
+    bulkActionHint,
+    bulkActionInFlight,
+    toggleSelectJob,
+    toggleSelectAll,
+    clearSelection,
+    runBulkAction,
+  } = useBulkJobSelection({
+    activeJobs,
+    activeTab,
+    loadJobs,
+  });
 
   useEffect(() => {
     if (isLoading || sourceFilter === "all") return;
@@ -228,33 +208,6 @@ export const OrchestratorPage: React.FC = () => {
       setSourceFilter("all");
     }
   }, [isLoading, sourceFilter, setSourceFilter, sourcesWithJobs]);
-
-  useEffect(() => {
-    setSelectedJobIds(new Set());
-  }, [activeTab]);
-
-  useEffect(() => {
-    const activeJobIdSet = new Set(activeJobs.map((job) => job.id));
-    setSelectedJobIds((previous) => {
-      if (previous.size === 0) return previous;
-      const next = new Set(
-        Array.from(previous).filter((jobId) => activeJobIdSet.has(jobId)),
-      );
-      return next.size === previous.size ? previous : next;
-    });
-  }, [activeJobs]);
-
-  useEffect(() => {
-    if (selectedJobIds.size > 0) {
-      setIsBulkBarMounted(true);
-      const enterTimer = window.setTimeout(() => setIsBulkBarVisible(true), 10);
-      return () => window.clearTimeout(enterTimer);
-    }
-
-    setIsBulkBarVisible(false);
-    const exitTimer = window.setTimeout(() => setIsBulkBarMounted(false), 180);
-    return () => window.clearTimeout(exitTimer);
-  }, [selectedJobIds.size]);
 
   const handleManualImported = useCallback(
     async (importedJobId: string) => {
@@ -300,61 +253,6 @@ export const OrchestratorPage: React.FC = () => {
       setIsDetailDrawerOpen(true);
     }
   };
-
-  const handleToggleSelectJob = useCallback((jobId: string) => {
-    setSelectedJobIds((previous) => {
-      const next = new Set(previous);
-      if (next.has(jobId)) {
-        next.delete(jobId);
-      } else {
-        next.add(jobId);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleToggleSelectAll = useCallback(
-    (checked: boolean) => {
-      setSelectedJobIds(() =>
-        checked ? new Set(activeJobs.map((job) => job.id)) : new Set(),
-      );
-    },
-    [activeJobs],
-  );
-
-  const handleBulkAction = useCallback(
-    async (action: BulkJobAction) => {
-      if (selectedJobIds.size === 0) return;
-      try {
-        setBulkActionInFlight(action);
-        const result = await api.bulkJobAction({
-          action,
-          jobIds: Array.from(selectedJobIds),
-        });
-        const failedIds = getFailedJobIds(result);
-        const successLabel =
-          action === "skip" ? "jobs skipped" : "jobs moved to Ready";
-        if (result.failed === 0) {
-          toast.success(`${result.succeeded} ${successLabel}`);
-        } else {
-          toast.error(
-            `${result.succeeded} succeeded, ${result.failed} failed.`,
-          );
-        }
-        await loadJobs();
-        setSelectedJobIds(failedIds);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to run bulk action";
-        toast.error(message);
-      } finally {
-        setBulkActionInFlight(null);
-      }
-    },
-    [selectedJobIds, loadJobs],
-  );
 
   useEffect(() => {
     if (activeJobs.length === 0) {
@@ -458,8 +356,8 @@ export const OrchestratorPage: React.FC = () => {
               activeTab={activeTab}
               searchQuery={searchQuery}
               onSelectJob={handleSelectJob}
-              onToggleSelectJob={handleToggleSelectJob}
-              onToggleSelectAll={handleToggleSelectAll}
+              onToggleSelectJob={toggleSelectJob}
+              onToggleSelectAll={toggleSelectAll}
             />
 
             {/* Inspector panel: visually subordinate to list */}
@@ -479,53 +377,16 @@ export const OrchestratorPage: React.FC = () => {
         </section>
       </main>
 
-      {isBulkBarMounted && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-4">
-          <div
-            className={cn(
-              "pointer-events-auto flex flex-wrap items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-card/85",
-              "transition-all duration-200 ease-out",
-              isBulkBarVisible
-                ? "translate-y-0 opacity-100"
-                : "translate-y-4 opacity-0",
-            )}
-          >
-            <div className="text-xs text-muted-foreground tabular-nums">
-              {selectedJobIds.size} selected
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!canMoveSelected || bulkActionInFlight !== null}
-              onClick={() => void handleBulkAction("move_to_ready")}
-            >
-              Move to Ready
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!canSkipSelected || bulkActionInFlight !== null}
-              onClick={() => void handleBulkAction("skip")}
-            >
-              Skip selected
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={() => setSelectedJobIds(new Set())}
-              disabled={bulkActionInFlight !== null}
-            >
-              Clear
-            </Button>
-            {bulkActionHint && (
-              <div className="text-xs text-muted-foreground">{bulkActionHint}</div>
-            )}
-          </div>
-        </div>
-      )}
+      <FloatingBulkActionsBar
+        selectedCount={selectedJobIds.size}
+        canMoveSelected={canMoveSelected}
+        canSkipSelected={canSkipSelected}
+        bulkActionInFlight={bulkActionInFlight !== null}
+        bulkActionHint={bulkActionHint}
+        onMoveToReady={() => void runBulkAction("move_to_ready")}
+        onSkipSelected={() => void runBulkAction("skip")}
+        onClear={clearSelection}
+      />
 
       <ManualImportSheet
         open={isManualImportOpen}
