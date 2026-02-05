@@ -45,13 +45,12 @@ function isSalaryMissing(salary: string | null): boolean {
  * Apply salary penalty to a score if enabled.
  * Returns the adjusted score, adjusted reason, and whether penalty was applied.
  */
-async function applySalaryPenalty(
+function applySalaryPenalty(
   job: Job,
   originalScore: number,
   originalReason: string,
-): Promise<{ score: number; reason: string; penaltyApplied: boolean }> {
-  const settings = await getEffectiveSettings();
-
+  settings: { penalizeMissingSalary: boolean; missingSalaryPenalty: number },
+): { score: number; reason: string; penaltyApplied: boolean } {
   if (!settings.penalizeMissingSalary || !isSalaryMissing(job.salary)) {
     return {
       score: originalScore,
@@ -83,9 +82,10 @@ export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
 ): Promise<SuitabilityResult> {
-  const [overrideModel, overrideModelScorer] = await Promise.all([
+  const [overrideModel, overrideModelScorer, settings] = await Promise.all([
     getSetting("model"),
     getSetting("modelScorer"),
+    getEffectiveSettings(),
   ]);
   // Precedence: Scorer-specific override > Global override > Env var > Default
   const model =
@@ -113,7 +113,7 @@ export async function scoreJobSuitability(
       jobId: job.id,
       error: result.error,
     });
-    return mockScore(job);
+    return mockScore(job, settings);
   }
 
   const { score, reason } = result.data;
@@ -123,18 +123,17 @@ export async function scoreJobSuitability(
     logger.error("Invalid score in AI response, using mock scoring", {
       jobId: job.id,
     });
-    return mockScore(job);
+    return mockScore(job, settings);
   }
 
   const clampedScore = Math.min(100, Math.max(0, Math.round(score)));
   const clampedReason = reason || "No explanation provided";
 
   // Apply salary penalty if enabled
-  const penaltyResult = await applySalaryPenalty(
-    job,
-    clampedScore,
-    clampedReason,
-  );
+  const penaltyResult = applySalaryPenalty(job, clampedScore, clampedReason, {
+    penalizeMissingSalary: settings.penalizeMissingSalary,
+    missingSalaryPenalty: settings.missingSalaryPenalty,
+  });
 
   return {
     score: penaltyResult.score,
@@ -313,7 +312,10 @@ function sanitizeProfileForPrompt(
   };
 }
 
-async function mockScore(job: Job): Promise<SuitabilityResult> {
+async function mockScore(
+  job: Job,
+  settings: { penalizeMissingSalary: boolean; missingSalaryPenalty: number },
+): Promise<SuitabilityResult> {
   // Simple keyword-based scoring as fallback
   const jd = (job.jobDescription || "").toLowerCase();
   const title = job.title.toLowerCase();
@@ -355,7 +357,7 @@ async function mockScore(job: Job): Promise<SuitabilityResult> {
   const baseReason = "Scored using keyword matching (API key not configured)";
 
   // Apply salary penalty if enabled
-  const penaltyResult = await applySalaryPenalty(job, score, baseReason);
+  const penaltyResult = applySalaryPenalty(job, score, baseReason, settings);
 
   return {
     score: penaltyResult.score,

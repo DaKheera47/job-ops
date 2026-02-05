@@ -322,6 +322,7 @@ function createTestJob(overrides: Partial<Job> = {}): Job {
 
 describe("salary penalty", () => {
   let getEffectiveSettingsMock: ReturnType<typeof vi.fn>;
+  let getSettingMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     // Mock the settings module
@@ -332,6 +333,11 @@ describe("salary penalty", () => {
         import("@shared/types").AppSettings
       >,
     );
+
+    // Mock the settings repository
+    const settingsRepo = await import("../repositories/settings");
+    getSettingMock = vi.fn().mockResolvedValue(null);
+    vi.spyOn(settingsRepo, "getSetting").mockImplementation(getSettingMock);
   });
 
   afterEach(() => {
