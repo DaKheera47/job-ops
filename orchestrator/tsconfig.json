@@ -14,6 +14,7 @@
     "paths": {
       "@/*": ["src/*"],
       "@server/*": ["src/server/*"],
+      "@infra/*": ["src/server/infra/*"],
       "@client/*": ["src/client/*"],
       "@shared/*": ["../shared/src/*"]
     }

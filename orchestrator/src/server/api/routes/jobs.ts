@@ -1,3 +1,5 @@
+import { logger } from "@infra/logger";
+import { sanitizeWebhookPayload } from "@infra/sanitize";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -8,7 +10,6 @@ import {
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-
 import {
   generateFinalPdf,
   processJob,
@@ -49,23 +50,35 @@ async function notifyJobCompleteWebhook(job: Job) {
     const secret = process.env.WEBHOOK_SECRET;
     if (secret) headers.Authorization = `Bearer ${secret}`;
 
+    const payload = sanitizeWebhookPayload({
+      event: "job.completed",
+      sentAt: new Date().toISOString(),
+      job: {
+        id: job.id,
+        source: job.source,
+        title: job.title,
+        employer: job.employer,
+        status: job.status,
+        suitabilityScore: job.suitabilityScore,
+        sponsorMatchScore: job.sponsorMatchScore,
+      },
+    });
+
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        event: "job.completed",
-        sentAt: new Date().toISOString(),
-        job,
-      }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      console.warn(
-        `ƒsÿ‹,? Job complete webhook POST failed (${response.status}): ${await response.text()}`,
-      );
+      logger.warn("Job complete webhook POST failed", {
+        status: response.status,
+        response: (await response.text().catch(() => "")).slice(0, 200),
+        jobId: job.id,
+      });
     }
   } catch (error) {
-    console.warn("ƒsÿ‹,? Job complete webhook POST failed:", error);
+    logger.warn("Job complete webhook POST failed", { jobId: job.id, error });
   }
 }
 
@@ -129,7 +142,7 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     const stats = await jobsRepo.getJobStats();
 
     const response: ApiResponse<JobsListResponse> = {
-      success: true,
+      ok: true,
       data: {
         jobs,
         total: jobs.length,
@@ -493,7 +506,9 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     });
 
     if (updatedJob) {
-      notifyJobCompleteWebhook(updatedJob).catch(console.warn);
+      notifyJobCompleteWebhook(updatedJob).catch((error) => {
+        logger.warn("Job complete webhook dispatch failed", error);
+      });
     }
 
     if (!updatedJob) {

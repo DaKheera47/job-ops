@@ -5,6 +5,15 @@
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { unauthorized } from "@infra/errors";
+import {
+  apiErrorHandler,
+  fail,
+  legacyApiResponseShim,
+  notFoundApiHandler,
+  requestContextMiddleware,
+} from "@infra/http";
+import { logger } from "@infra/logger";
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";
@@ -67,7 +76,7 @@ function createBasicAuthGuard() {
     if (!enabled || !requiresAuth(req.method, req.path)) return next();
     if (isAuthorized(req)) return next();
     res.setHeader("WWW-Authenticate", 'Basic realm="Job Ops"');
-    res.status(401).send("Authentication required");
+    fail(res, unauthorized("Authentication required"));
   };
 
   return {
@@ -82,16 +91,21 @@ export function createApp() {
   const authGuard = createBasicAuthGuard();
 
   app.use(cors());
+  app.use(requestContextMiddleware());
   app.use(express.json({ limit: "5mb" }));
+  app.use(legacyApiResponseShim());
 
   // Logging middleware
   app.use((req, res, next) => {
     const start = Date.now();
     res.on("finish", () => {
       const duration = Date.now() - start;
-      console.log(
-        `${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`,
-      );
+      logger.info("HTTP request completed", {
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        durationMs: duration,
+      });
     });
     next();
   });
@@ -101,6 +115,7 @@ export function createApp() {
 
   // API routes
   app.use("/api", apiRouter);
+  app.use(notFoundApiHandler());
 
   // Serve static files for generated PDFs
   const pdfDir = join(getDataDir(), "pdfs");
@@ -131,6 +146,8 @@ export function createApp() {
       res.send(cachedIndexHtml);
     });
   }
+
+  app.use(apiErrorHandler);
 
   return app;
 }

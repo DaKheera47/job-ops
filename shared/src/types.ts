@@ -309,11 +309,27 @@ export interface PipelineRun {
 }
 
 // API Response types
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
+export interface ApiMeta {
+  requestId: string;
 }
+
+export interface ApiErrorPayload {
+  code: string;
+  message: string;
+  details?: unknown;
+}
+
+export type ApiResponse<T> =
+  | {
+      ok: true;
+      data: T;
+      meta?: ApiMeta;
+    }
+  | {
+      ok: false;
+      error: ApiErrorPayload;
+      meta: ApiMeta;
+    };
 
 export interface JobsListResponse {
   jobs: Job[];

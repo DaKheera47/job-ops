@@ -10,8 +10,8 @@
     "check:types:shared": "npm --workspace shared run check:types",
     "check:types": "npm --workspace shared run check:types && npm --workspace orchestrator run check:types",
     "check:types:ukvisajobs": "npm --workspace ukvisajobs-extractor run check:types",
-    "check:all": "npx biome ci .",
-    "format:all": "npx biome format . --write",
+    "check:all": "./orchestrator/node_modules/.bin/biome ci .",
+    "format:all": "./orchestrator/node_modules/.bin/biome format . --write",
     "check:types:gradcracker": "npm --workspace gradcracker-extractor run check:types"
   },
   "devDependencies": {

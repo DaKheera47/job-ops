@@ -1,3 +1,5 @@
+import { logger } from "@infra/logger";
+
 /**
  * Pipeline progress tracking with Server-Sent Events.
  */
@@ -67,7 +69,7 @@ export function updateProgress(update: Partial<PipelineProgress>): void {
     try {
       listener(currentProgress);
     } catch (error) {
-      console.error("Error in progress listener:", error);
+      logger.error("Error in progress listener", error);
     }
   }
 }

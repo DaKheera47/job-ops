@@ -2,6 +2,7 @@
  * Service for scoring job suitability using AI.
  */
 
+import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service";
@@ -65,7 +66,7 @@ export async function scoreJobSuitability(
     ? Math.min(100, Math.max(0, parseInt(missingSalaryPenaltySetting, 10)))
     : 10;
 
-  const prompt = buildScoringPrompt(job, profile);
+  const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile));
 
   const llm = new LlmService();
   const result = await llm.callJson<{ score: number; reason: string }>({
@@ -78,22 +79,23 @@ export async function scoreJobSuitability(
 
   if (!result.success) {
     if (result.error.toLowerCase().includes("api key")) {
-      console.warn("⚠️ LLM API key not set, using mock scoring");
+      logger.warn("LLM API key not set, using mock scoring", { jobId: job.id });
     }
-    console.error(
-      `❌ [Job ${job.id}] Scoring failed: ${result.error}, using mock scoring`,
-    );
-    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
+    logger.error("Scoring failed, using mock scoring", {
+      jobId: job.id,
+      error: result.error,
+    });
+    return mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
   }
 
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
   if (typeof score !== "number" || Number.isNaN(score)) {
-    console.error(
-      `❌ [Job ${job.id}] Invalid score in response, using mock scoring`,
-    );
-    return await mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
+    logger.error("Invalid score in AI response, using mock scoring", {
+      jobId: job.id,
+    });
+    return mockScore(job, penalizeMissingSalary, missingSalaryPenalty);
   }
 
   // Apply salary penalty if enabled and salary is missing/whitespace
@@ -194,21 +196,19 @@ export function parseJsonFromContent(
     const reason = reasonMatch
       ? reasonMatch[1].trim().replace(controlCharsRegex, "")
       : "Score extracted from malformed response";
-    console.log(
-      `⚠️ [Job ${jobId || "unknown"}] Parsed score via regex fallback: ${score}`,
-    );
+    logger.warn("Parsed score via regex fallback", {
+      jobId: jobId || "unknown",
+      score,
+    });
     return { score, reason };
   }
 
   // Log the failure with full content for debugging
-  console.error(
-    `❌ [Job ${jobId || "unknown"}] Failed to parse AI response. Raw content (first 500 chars):`,
-    originalContent.substring(0, 500),
-  );
-  console.error(
-    `   Sanitized content (first 500 chars):`,
-    sanitized.substring(0, 500),
-  );
+  logger.error("Failed to parse AI response", {
+    jobId: jobId || "unknown",
+    rawSample: originalContent.substring(0, 500),
+    sanitizedSample: sanitized.substring(0, 500),
+  });
 
   throw new Error("Unable to parse JSON from model response");
 }
@@ -249,11 +249,43 @@ EXAMPLE VALID RESPONSE:
 {"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}`;
 }
 
-async function mockScore(
+function sanitizeProfileForPrompt(
+  profile: Record<string, unknown>,
+): Record<string, unknown> {
+  const p = profile as {
+    basics?: Record<string, unknown>;
+    sections?: {
+      skills?: unknown;
+      experience?: { items?: unknown[] };
+      projects?: { items?: unknown[] };
+      education?: { items?: unknown[] };
+    };
+  };
+
+  const experienceItems = Array.isArray(p.sections?.experience?.items)
+    ? p.sections?.experience?.items.slice(0, 5)
+    : [];
+  const projectItems = Array.isArray(p.sections?.projects?.items)
+    ? p.sections?.projects?.items.slice(0, 6)
+    : [];
+
+  return {
+    basics: {
+      label: p.basics?.label,
+      summary: p.basics?.summary,
+    },
+    skills: p.sections?.skills ?? null,
+    experience: experienceItems,
+    projects: projectItems,
+    education: p.sections?.education?.items ?? [],
+  };
+}
+
+function mockScore(
   job: Job,
   penalizeMissingSalary: boolean,
   missingSalaryPenalty: number,
-): Promise<SuitabilityResult> {
+): SuitabilityResult {
   // Simple keyword-based scoring as fallback
   const jd = (job.jobDescription || "").toLowerCase();
   const title = job.title.toLowerCase();

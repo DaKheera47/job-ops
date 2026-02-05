@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import {
   createBackup,
   deleteBackup,
@@ -25,7 +26,7 @@ backupRouter.get("/", async (_req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("❌ [backup-api] Failed to list backups:", error);
+    logger.error("Failed to list backups", error);
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -49,7 +50,7 @@ backupRouter.post("/", async (_req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("❌ [backup-api] Failed to create backup:", error);
+    logger.error("Failed to create backup", error);
     res.status(500).json({ success: false, error: message });
   }
 });
@@ -77,10 +78,10 @@ backupRouter.delete("/:filename", async (req: Request, res: Response) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error(
-      `❌ [backup-api] Failed to delete backup ${req.params.filename}:`,
+    logger.error("Failed to delete backup", {
+      filename: req.params.filename,
       error,
-    );
+    });
 
     if (message.includes("not found")) {
       res.status(404).json({ success: false, error: message });

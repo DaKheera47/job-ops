@@ -58,7 +58,7 @@ describe.sequential("Manual jobs API routes", () => {
       body: JSON.stringify({ jobDescription: "Role description" }),
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.job.title).toBe("Backend Engineer");
   });
 
@@ -81,7 +81,7 @@ describe.sequential("Manual jobs API routes", () => {
       }),
     });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.source).toBe("manual");
     expect(body.data.jobUrl).toMatch(/^manual:\/\//);
     await new Promise((resolve) => setTimeout(resolve, 25));

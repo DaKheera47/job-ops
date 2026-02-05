@@ -7,6 +7,7 @@
 import type { ResumeData } from "@shared/rxresume-schema";
 
 type AnyObj = Record<string, unknown>;
+const MAX_ERROR_SNIPPET = 300;
 
 const TOKEN_COOKIE_NAMES = [
   "accessToken",
@@ -241,8 +242,10 @@ export class RxResumeClient {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Login failed: HTTP ${res.status} ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Login failed: HTTP ${res.status} ${sanitizeResponseSnippet(text)}`,
+      );
     }
 
     const data = (await res.json()) as AnyObj;
@@ -266,7 +269,7 @@ export class RxResumeClient {
 
     if (!token || typeof token !== "string") {
       throw new Error(
-        `Login succeeded but could not locate access token in response. Response keys: ${Object.keys(data).join(", ")}`,
+        "Login succeeded but could not locate access token in response.",
       );
     }
 
@@ -295,8 +298,10 @@ export class RxResumeClient {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Create failed: HTTP ${res.status} ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Create failed: HTTP ${res.status} ${sanitizeResponseSnippet(text)}`,
+      );
     }
 
     const d = (await res.json()) as AnyObj;
@@ -310,7 +315,7 @@ export class RxResumeClient {
 
     if (!id || typeof id !== "string") {
       throw new Error(
-        `Create succeeded but could not locate resume id in response. Response keys: ${Object.keys(d).join(", ")}`,
+        "Create succeeded but could not locate resume id in response.",
       );
     }
 
@@ -334,8 +339,10 @@ export class RxResumeClient {
     );
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Print failed: HTTP ${res.status} ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Print failed: HTTP ${res.status} ${sanitizeResponseSnippet(text)}`,
+      );
     }
 
     const d = (await res.json()) as AnyObj;
@@ -348,9 +355,7 @@ export class RxResumeClient {
       (d?.result as AnyObj)?.href;
 
     if (!url || typeof url !== "string") {
-      throw new Error(
-        `Print succeeded but could not locate URL in response. Response: ${JSON.stringify(d)}`,
-      );
+      throw new Error("Print succeeded but could not locate URL in response.");
     }
 
     return url;
@@ -372,8 +377,10 @@ export class RxResumeClient {
     );
 
     if (!res.ok && res.status !== 204) {
-      const text = await res.text();
-      throw new Error(`Delete failed: HTTP ${res.status} ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Delete failed: HTTP ${res.status} ${sanitizeResponseSnippet(text)}`,
+      );
     }
   }
 
@@ -416,8 +423,10 @@ export class RxResumeClient {
     });
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`List resumes failed: HTTP ${res.status} ${text}`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `List resumes failed: HTTP ${res.status} ${sanitizeResponseSnippet(text)}`,
+      );
     }
 
     const data = (await res.json()) as AnyObj | AnyObj[];
@@ -444,4 +453,10 @@ export class RxResumeClient {
     }
     return resume;
   }
+}
+
+function sanitizeResponseSnippet(text: string): string {
+  if (!text) return "";
+  const compact = text.replace(/\s+/g, " ").trim();
+  return compact.slice(0, MAX_ERROR_SNIPPET);
 }

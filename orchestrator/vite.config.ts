@@ -23,6 +23,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
       "@client": path.resolve(__dirname, "./src/client"),
       "@server": path.resolve(__dirname, "./src/server"),
+      "@infra": path.resolve(__dirname, "./src/server/infra"),
       "@shared": path.resolve(__dirname, "../shared/src"),
     },
   },

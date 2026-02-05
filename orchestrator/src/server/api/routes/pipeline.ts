@@ -1,3 +1,5 @@
+import { logger } from "@infra/logger";
+import { runWithRequestContext } from "@infra/request-context";
 import type { ApiResponse, PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -19,7 +21,7 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
     const lastRun = await pipelineRepo.getLatestPipelineRun();
 
     const response: ApiResponse<PipelineStatusResponse> = {
-      success: true,
+      ok: true,
       data: {
         isRunning,
         lastRun,
@@ -30,7 +32,9 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
     res.json(response);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    res
+      .status(500)
+      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
   }
 });
 
@@ -70,10 +74,12 @@ pipelineRouter.get("/progress", (req: Request, res: Response) => {
 pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
   try {
     const runs = await pipelineRepo.getRecentPipelineRuns(20);
-    res.json({ success: true, data: runs });
+    res.json({ ok: true, data: runs });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    res
+      .status(500)
+      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
   }
 });
 
@@ -94,17 +100,26 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     const config = runPipelineSchema.parse(req.body);
 
     // Start pipeline in background
-    runPipeline(config).catch(console.error);
+    runWithRequestContext({}, () => {
+      runPipeline(config).catch((error) => {
+        logger.error("Background pipeline run failed", error);
+      });
+    });
 
     res.json({
-      success: true,
+      ok: true,
       data: { message: "Pipeline started" },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return res.status(400).json({
+        ok: false,
+        error: { code: "INVALID_REQUEST", message: error.message },
+      });
     }
     const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    res
+      .status(500)
+      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
   }
 });

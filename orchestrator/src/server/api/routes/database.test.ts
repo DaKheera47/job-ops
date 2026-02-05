@@ -28,7 +28,7 @@ describe.sequential("Database API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/database`, { method: "DELETE" });
     const body = await res.json();
-    expect(body.success).toBe(true);
+    expect(body.ok).toBe(true);
     expect(body.data.jobsDeleted).toBe(1);
   });
 });

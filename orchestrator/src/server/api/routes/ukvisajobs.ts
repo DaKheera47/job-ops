@@ -70,7 +70,7 @@ ukVisaJobsRouter.post("/search", async (req: Request, res: Response) => {
     );
 
     const response: ApiResponse<UkVisaJobsSearchResponse> = {
-      success: true,
+      ok: true,
       data: {
         jobs: result.jobs,
         totalJobs: result.totalJobs,
@@ -133,7 +133,7 @@ ukVisaJobsRouter.post("/import", async (req: Request, res: Response) => {
     const result = await jobsRepo.bulkCreateJobs(jobs);
 
     const response: ApiResponse<UkVisaJobsImportResponse> = {
-      success: true,
+      ok: true,
       data: {
         created: result.created,
         skipped: result.skipped,

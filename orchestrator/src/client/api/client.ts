@@ -35,6 +35,45 @@ import { trackEvent } from "@/lib/analytics";
 
 const API_BASE = "/api";
 
+class ApiClientError extends Error {
+  requestId?: string;
+
+  constructor(message: string, requestId?: string) {
+    super(requestId ? `${message} (requestId: ${requestId})` : message);
+    this.name = "ApiClientError";
+    this.requestId = requestId;
+  }
+}
+
+type LegacyApiResponse<T> =
+  | {
+      success: true;
+      data?: T;
+      message?: string;
+    }
+  | {
+      success: false;
+      error?: string;
+      message?: string;
+      details?: unknown;
+    };
+
+function normalizeApiResponse<T>(
+  payload: unknown,
+): ApiResponse<T> | LegacyApiResponse<T> {
+  if (!payload || typeof payload !== "object") {
+    throw new ApiClientError("API request failed: malformed JSON response");
+  }
+  const response = payload as Record<string, unknown>;
+  if (typeof response.ok === "boolean") {
+    return payload as ApiResponse<T>;
+  }
+  if (typeof response.success === "boolean") {
+    return payload as LegacyApiResponse<T>;
+  }
+  throw new ApiClientError("API request failed: unexpected response shape");
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
@@ -49,22 +88,38 @@ async function fetchApi<T>(
 
   const text = await response.text();
 
-  let data: ApiResponse<T>;
+  let payload: unknown;
   try {
-    data = JSON.parse(text);
+    payload = JSON.parse(text);
   } catch {
     // If the response is not JSON, it's likely an HTML error page
     console.error("API returned non-JSON response:", text.substring(0, 500));
-    throw new Error(
+    throw new ApiClientError(
       `Server error (${response.status}): Expected JSON but received HTML. Is the backend server running?`,
     );
   }
+  const parsed = normalizeApiResponse<T>(payload);
 
-  if (!data.success) {
-    throw new Error(data.error || "API request failed");
+  if ("ok" in parsed) {
+    if (!parsed.ok) {
+      throw new ApiClientError(
+        parsed.error.message || "API request failed",
+        parsed.meta?.requestId,
+      );
+    }
+    return parsed.data as T;
   }
 
-  return data.data as T;
+  if (!parsed.success) {
+    throw new ApiClientError(
+      parsed.error || parsed.message || "API request failed",
+    );
+  }
+
+  const data = parsed.data;
+  if (data !== undefined) return data as T;
+  if (parsed.message !== undefined) return { message: parsed.message } as T;
+  return null as T;
 }
 
 // Jobs API

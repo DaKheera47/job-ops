@@ -83,7 +83,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(Array.isArray(body.data)).toBe(true);
       expect(body.data.length).toBe(2);
     });
@@ -97,8 +97,8 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(false);
-      expect(body.success).toBe(false);
-      expect(body.error).toContain("Base resume not configured");
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("Base resume not configured");
     });
   });
 
@@ -114,7 +114,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data).toEqual(mockProfile);
     });
 
@@ -127,8 +127,8 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(false);
-      expect(body.success).toBe(false);
-      expect(body.error).toContain("Base resume not configured");
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("Base resume not configured");
     });
   });
 
@@ -140,7 +140,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.exists).toBe(false);
       expect(body.data.error).toContain("No base resume selected");
     });
@@ -156,7 +156,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.exists).toBe(true);
       expect(body.data.error).toBeNull();
     });
@@ -169,7 +169,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.exists).toBe(false);
       expect(body.data.error).toContain("credentials not configured");
     });
@@ -185,7 +185,7 @@ describe.sequential("Profile API routes", () => {
       const body = await res.json();
 
       expect(res.ok).toBe(true);
-      expect(body.success).toBe(true);
+      expect(body.ok).toBe(true);
       expect(body.data.exists).toBe(false);
       expect(body.data.error).toContain("empty or invalid");
     });

@@ -2,6 +2,7 @@
  * Service for generating tailored resume content (Summary, Headline, Skills).
  */
 
+import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { type JsonSchemaDefinition, LlmService } from "./llm-service";
@@ -88,7 +89,7 @@ export async function generateTailoring(
     const context = `provider=${llm.getProvider()} baseUrl=${llm.getBaseUrl()}`;
     if (result.error.toLowerCase().includes("api key")) {
       const message = `LLM API key not set, cannot generate tailoring. (${context})`;
-      console.warn(`⚠️ ${message}`);
+      logger.warn(message);
       return { success: false, error: message };
     }
     return {
@@ -101,7 +102,7 @@ export async function generateTailoring(
 
   // Basic validation
   if (!summary || !headline || !Array.isArray(skills)) {
-    console.warn("⚠️ AI response missing required fields:", result.data);
+    logger.warn("AI response missing required tailoring fields", result.data);
   }
 
   return {
