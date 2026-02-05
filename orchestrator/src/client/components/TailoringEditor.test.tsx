@@ -100,4 +100,27 @@ describe("TailoringEditor", () => {
 
     expect(onDirtyChange).toHaveBeenCalledWith(true);
   });
+
+  it("does not sync same-job props while summary field is focused", async () => {
+    const { rerender } = render(
+      <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    const summary = screen.getByLabelText("Tailored Summary");
+    fireEvent.focus(summary);
+
+    rerender(
+      <TailoringEditor
+        job={createJob({ tailoredSummary: "Incoming from poll" })}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Saved summary",
+    );
+  });
 });

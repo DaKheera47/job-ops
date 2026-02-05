@@ -93,4 +93,34 @@ describe("TailorMode", () => {
 
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue("New job summary");
   });
+
+  it("does not sync same-job props while summary field is focused", async () => {
+    const { rerender } = render(
+      <TailorMode
+        job={createJob()}
+        onBack={vi.fn()}
+        onFinalize={vi.fn()}
+        isFinalizing={false}
+      />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    const summary = screen.getByLabelText("Tailored Summary");
+    fireEvent.focus(summary);
+
+    rerender(
+      <TailorMode
+        job={createJob({ tailoredSummary: "Incoming from poll" })}
+        onBack={vi.fn()}
+        onFinalize={vi.fn()}
+        isFinalizing={false}
+      />,
+    );
+
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Saved summary",
+    );
+  });
 });

@@ -54,6 +54,9 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [activeField, setActiveField] = useState<"summary" | "description" | null>(
+    null,
+  );
   const lastJobIdRef = useRef(job.id);
 
   const isDirty = useMemo(() => {
@@ -90,7 +93,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       return;
     }
 
-    if (isDirty) return;
+    if (isDirty || activeField !== null) return;
 
     setSummary(incomingSummary);
     setJobDescription(incomingDescription);
@@ -98,7 +101,14 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
     setSavedSummary(incomingSummary);
     setSavedDescription(incomingDescription);
     setSavedSelectedIds(incomingSelectedIds);
-  }, [job.id, job.tailoredSummary, job.jobDescription, job.selectedProjectIds, isDirty]);
+  }, [
+    job.id,
+    job.tailoredSummary,
+    job.jobDescription,
+    job.selectedProjectIds,
+    isDirty,
+    activeField,
+  ]);
 
   const syncSavedSnapshot = useCallback(
     (
@@ -247,6 +257,12 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
             className="w-full min-h-[120px] max-h-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
+            onFocus={() => setActiveField("description")}
+            onBlur={() =>
+              setActiveField((prev) =>
+                prev === "description" ? null : prev,
+              )
+            }
             placeholder="The raw job description..."
           />
         </div>
@@ -262,6 +278,10 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
             className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
+            onFocus={() => setActiveField("summary")}
+            onBlur={() =>
+              setActiveField((prev) => (prev === "summary" ? null : prev))
+            }
             placeholder="AI will generate this, or you can write your own..."
           />
         </div>
