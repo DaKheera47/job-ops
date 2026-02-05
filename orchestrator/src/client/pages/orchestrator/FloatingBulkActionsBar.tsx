@@ -8,7 +8,6 @@ interface FloatingBulkActionsBarProps {
   canMoveSelected: boolean;
   canSkipSelected: boolean;
   bulkActionInFlight: boolean;
-  bulkActionHint: string | null;
   onMoveToReady: () => void;
   onSkipSelected: () => void;
   onClear: () => void;
@@ -19,7 +18,6 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
   canMoveSelected,
   canSkipSelected,
   bulkActionInFlight,
-  bulkActionHint,
   onMoveToReady,
   onSkipSelected,
   onClear,
@@ -53,24 +51,28 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
         <div className="text-xs text-muted-foreground tabular-nums">
           {selectedCount} selected
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={!canMoveSelected || bulkActionInFlight}
-          onClick={onMoveToReady}
-        >
-          Move to Ready
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={!canSkipSelected || bulkActionInFlight}
-          onClick={onSkipSelected}
-        >
-          Skip selected
-        </Button>
+        {canMoveSelected && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkActionInFlight}
+            onClick={onMoveToReady}
+          >
+            Move to Ready
+          </Button>
+        )}
+        {canSkipSelected && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkActionInFlight}
+            onClick={onSkipSelected}
+          >
+            Skip selected
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
@@ -80,9 +82,6 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
         >
           Clear
         </Button>
-        {bulkActionHint && (
-          <div className="text-xs text-muted-foreground">{bulkActionHint}</div>
-        )}
       </div>
     </div>
   );

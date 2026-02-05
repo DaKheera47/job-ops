@@ -40,20 +40,6 @@ export function useBulkJobSelection({
     [selectedJobs],
   );
 
-  const bulkActionHint = useMemo(() => {
-    if (selectedJobs.length === 0) return null;
-    if (!canMoveSelected && !canSkipSelected) {
-      return "Selected jobs are not eligible for bulk actions.";
-    }
-    if (!canMoveSelected) {
-      return "Move to Ready only works for discovered jobs.";
-    }
-    if (!canSkipSelected) {
-      return "Skip only works for discovered or ready jobs.";
-    }
-    return null;
-  }, [selectedJobs, canMoveSelected, canSkipSelected]);
-
   useEffect(() => {
     setSelectedJobIds(new Set());
   }, [activeTab]);
@@ -131,7 +117,6 @@ export function useBulkJobSelection({
     selectedJobIds,
     canSkipSelected,
     canMoveSelected,
-    bulkActionHint,
     bulkActionInFlight,
     toggleSelectJob,
     toggleSelectAll,

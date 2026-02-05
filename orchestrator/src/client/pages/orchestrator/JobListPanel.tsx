@@ -84,10 +84,10 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
               className={cn(
                 "group flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-l-2 border-b",
                 isChecked
-                  ? "!border-l !border-l-primary bg-muted/50"
+                  ? "!border-l !border-l-primary !bg-muted/50"
                   : "border-l border-l-border/40",
                 isSelected
-                  ? "border border-primary/20 bg-primary/10"
+                  ? "outline-2 outline-primary/30 bg-primary/5"
                   : "border-b-border/40 hover:bg-muted/20",
               )}
             >
