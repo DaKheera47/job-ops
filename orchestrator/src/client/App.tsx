@@ -58,33 +58,35 @@ export const App: React.FC = () => {
     <>
       <OnboardingGate />
       {demoInfo?.demoMode && (
-        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200">
+        <div className="fixed inset-x-0 top-0 z-[200] border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
           {demoInfo.resetCadenceHours} hours.
         </div>
       )}
-      <SwitchTransition mode="out-in">
-        <CSSTransition
-          key={pageKey}
-          nodeRef={nodeRef}
-          timeout={100}
-          classNames="page"
-          unmountOnExit
-        >
-          <div ref={nodeRef}>
-            <Routes location={location}>
-              <Route path="/" element={<Navigate to="/ready" replace />} />
-              <Route path="/home" element={<HomePage />} />
-              <Route path="/job/:id" element={<JobPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
-              <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
-              <Route path="/:tab" element={<OrchestratorPage />} />
-              <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
-            </Routes>
-          </div>
-        </CSSTransition>
-      </SwitchTransition>
+      <div className={demoInfo?.demoMode ? "pt-9" : undefined}>
+        <SwitchTransition mode="out-in">
+          <CSSTransition
+            key={pageKey}
+            nodeRef={nodeRef}
+            timeout={100}
+            classNames="page"
+            unmountOnExit
+          >
+            <div ref={nodeRef}>
+              <Routes location={location}>
+                <Route path="/" element={<Navigate to="/ready" replace />} />
+                <Route path="/home" element={<HomePage />} />
+                <Route path="/job/:id" element={<JobPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
+                <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
+                <Route path="/:tab" element={<OrchestratorPage />} />
+                <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+              </Routes>
+            </div>
+          </CSSTransition>
+        </SwitchTransition>
+      </div>
 
       <Toaster position="bottom-right" richColors closeButton />
     </>
