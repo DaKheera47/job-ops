@@ -1,0 +1,41 @@
+# Progress Log
+PRD: salary-display-and-penalty
+Started: 2026-02-04
+
+## Codebase Patterns
+
+**Settings System Three-Tier Pattern:**
+- Default: from env vars or hardcoded defaults (settings-conversion.ts)
+- Override: from database (settings.ts via repositories/settings.ts)
+- Effective: resolved value using resolve function (default || override)
+
+**Adding New Settings:**
+1. Add to SettingKey union type in repositories/settings.ts
+2. Add to SettingsConversionValueMap in settings-conversion.ts
+3. Add metadata (defaultValue, parseOverride, serialize, resolve) to settingsConversionMetadata
+4. Add to AppSettings interface in shared/src/types.ts (with default/override variants)
+5. Add to updateSettingsSchema in shared/src/settings-schema.ts
+6. Add resolution logic in services/settings.ts getEffectiveSettings()
+
+**Testing Pattern:**
+- Unit tests in settings-conversion.test.ts for serialization/deserialization
+- Integration tests in api/routes/settings.test.ts for API endpoints
+
+---
+
+## Task - backend-settings-1 & backend-settings-2
+- Added penalizeMissingSalary (boolean) and missingSalaryPenalty (number 0-100) settings
+- Implemented full three-tier pattern with env var support (PENALIZE_MISSING_SALARY, MISSING_SALARY_PENALTY)
+- Added Zod validation with proper clamping for penalty values
+- Files changed:
+  - shared/src/types.ts:574-580 - Added AppSettings fields with default/override variants
+  - shared/src/settings-schema.ts:78-85 - Added Zod validation
+  - orchestrator/src/server/repositories/settings.ts:44-45 - Added SettingKey types
+  - orchestrator/src/server/services/settings-conversion.ts:23-24,198-221 - Added metadata
+  - orchestrator/src/server/services/settings.ts:208-225,294-299 - Added resolution logic
+  - orchestrator/src/server/services/settings-conversion.test.ts - Added comprehensive tests
+  - orchestrator/src/server/api/routes/settings.test.ts - Added integration tests
+- **Learnings:** 
+  - Settings system is well-structured with clear separation of concerns
+  - Clamping happens in parseOverride for env vars and in Zod schema for API updates
+  - Tests verify round-trip serialization, validation, and persistence

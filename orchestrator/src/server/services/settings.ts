@@ -205,6 +205,25 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideBackupMaxCount = backupMaxCountSetting.overrideValue;
   const backupMaxCount = backupMaxCountSetting.value;
 
+  const penalizeMissingSalarySetting = resolveSettingValue(
+    "penalizeMissingSalary",
+    overrides.penalizeMissingSalary,
+  );
+  const defaultPenalizeMissingSalary =
+    penalizeMissingSalarySetting.defaultValue;
+  const overridePenalizeMissingSalary =
+    penalizeMissingSalarySetting.overrideValue;
+  const penalizeMissingSalary = penalizeMissingSalarySetting.value;
+
+  const missingSalaryPenaltySetting = resolveSettingValue(
+    "missingSalaryPenalty",
+    overrides.missingSalaryPenalty,
+  );
+  const defaultMissingSalaryPenalty = missingSalaryPenaltySetting.defaultValue;
+  const overrideMissingSalaryPenalty =
+    missingSalaryPenaltySetting.overrideValue;
+  const missingSalaryPenalty = missingSalaryPenaltySetting.value;
+
   return {
     ...envSettings,
     model,
@@ -272,6 +291,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     backupMaxCount,
     defaultBackupMaxCount,
     overrideBackupMaxCount,
+    penalizeMissingSalary,
+    defaultPenalizeMissingSalary,
+    overridePenalizeMissingSalary,
+    missingSalaryPenalty,
+    defaultMissingSalaryPenalty,
+    overrideMissingSalaryPenalty,
   } as AppSettings;
 }
 

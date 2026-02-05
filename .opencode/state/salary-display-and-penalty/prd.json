@@ -1,0 +1,166 @@
+{
+  "prdName": "salary-display-and-penalty",
+  "tasks": [
+    {
+      "id": "backend-settings-1",
+      "category": "backend",
+      "description": "Add penalizeMissingSalary and missingSalaryPenalty settings to backend",
+      "steps": [
+        "Settings metadata exists in settings-conversion.ts with correct defaults (false, 10)",
+        "Settings support environment variable overrides (PENALIZE_MISSING_SALARY, MISSING_SALARY_PENALTY)",
+        "Settings follow three-tier pattern (effective, default, override)",
+        "Penalty amount validates as integer 0-100 inclusive",
+        "GET /api/settings returns both new settings with all three tiers",
+        "PATCH /api/settings accepts and persists both settings",
+        "Invalid penalty values (negative, >100, decimals) return validation error"
+      ],
+      "passes": true
+    },
+    {
+      "id": "backend-settings-2",
+      "category": "backend",
+      "description": "Update shared types and validation schema for new settings",
+      "steps": [
+        "AppSettings interface includes penalizeMissingSalary and missingSalaryPenalty fields",
+        "AppSettings interface includes default and override variants for both fields",
+        "Zod schema in settings-schema.ts validates both settings",
+        "TypeScript compilation succeeds without errors"
+      ],
+      "passes": true
+    },
+    {
+      "id": "scoring-penalty-1",
+      "category": "scoring",
+      "description": "Apply salary penalty in AI-based scoring path",
+      "steps": [
+        "Scorer reads penalizeMissingSalary and missingSalaryPenalty settings",
+        "When enabled and job.salary is null/empty/whitespace, score is reduced by penalty amount",
+        "Jobs with non-empty salary (e.g., 'Competitive') are NOT penalized",
+        "Final score is clamped to minimum 0 (no negative scores)",
+        "Suitability reason text includes: 'Score reduced by {X} points due to missing salary information'",
+        "Penalty logs to console with INFO level including jobId, originalScore, penalty, finalScore",
+        "When penalty disabled, scores are unchanged"
+      ],
+      "passes": false
+    },
+    {
+      "id": "scoring-penalty-2",
+      "category": "scoring",
+      "description": "Apply salary penalty in mock scoring fallback path",
+      "steps": [
+        "Mock scoring reads penalizeMissingSalary and missingSalaryPenalty settings",
+        "When enabled and job.salary is null/empty/whitespace, mock score is reduced by penalty amount",
+        "Final mock score is clamped to minimum 0",
+        "Mock scoring reason text includes penalty explanation when applied",
+        "Penalty applied consistently with AI scoring path"
+      ],
+      "passes": false
+    },
+    {
+      "id": "frontend-settings-1",
+      "category": "frontend",
+      "description": "Create Scoring Settings section in Settings page",
+      "steps": [
+        "New ScoringSettingsSection component exists",
+        "Component added to Settings page in an Accordion section",
+        "Accordion section titled 'Scoring Settings'",
+        "Section contains checkbox for 'Penalize Missing Salary'",
+        "Checkbox defaults to unchecked (matches backend default false)",
+        "Checkbox description explains feature clearly"
+      ],
+      "passes": false
+    },
+    {
+      "id": "frontend-settings-2",
+      "category": "frontend",
+      "description": "Add penalty amount input with validation",
+      "steps": [
+        "When checkbox is enabled, numeric input appears for penalty amount",
+        "Input has min=0, max=100, step=1",
+        "Input defaults to 10 when first enabled",
+        "Form validation prevents saving invalid values (negative, >100, decimals)",
+        "Current/default/override values displayed correctly",
+        "Settings save successfully via PATCH /api/settings",
+        "Settings persist across page reloads",
+        "Reset to default works correctly for both settings"
+      ],
+      "passes": false
+    },
+    {
+      "id": "frontend-display-1",
+      "category": "frontend",
+      "description": "Display salary in job list panel",
+      "steps": [
+        "JobListPanel shows salary on third line below company/location",
+        "Salary line only appears when salary field has non-empty, non-whitespace value",
+        "Jobs with salary: null do not show salary line",
+        "Jobs with salary: '' (empty string) do not show salary line",
+        "Jobs with salary: '   ' (whitespace-only) do not show salary line",
+        "Jobs with valid salary (e.g., '£40,000 - £50,000') show salary line",
+        "Long salary strings are truncated with ellipsis",
+        "Salary uses text-xs and muted-foreground styling for consistency",
+        "Salary display works for jobs from all sources (verify in UI)"
+      ],
+      "passes": false
+    },
+    {
+      "id": "testing-1",
+      "category": "testing",
+      "description": "Test penalty edge cases",
+      "steps": [
+        "Job with salary 'Competitive' (non-null string) is NOT penalized",
+        "Penalty amount of 0 results in no score change",
+        "Penalty amount of 100 on job with score 50 results in score 0 (not -50)",
+        "Penalty amount of 10 on job with score 5 results in score 0 (not -5)",
+        "Settings update with invalid penalty (e.g., 150) returns 400 validation error",
+        "Mock scoring applies penalty correctly when API key is missing"
+      ],
+      "passes": false
+    },
+    {
+      "id": "integration-1",
+      "category": "integration",
+      "description": "End-to-end verification of complete feature",
+      "steps": [
+        "Enable penalty in Settings UI and save",
+        "Run pipeline to score jobs",
+        "Verify jobs without salary show reduced scores in job list",
+        "Verify jobs with salary maintain original scores",
+        "Click on penalized job and verify suitability reason includes penalty explanation",
+        "Verify JobHeader in detail panel still shows salary (unchanged)",
+        "Disable penalty in Settings and verify new scoring runs do not apply penalty",
+        "Verify existing scored jobs retain their scores (no automatic re-scoring)",
+        "Verify environment variable override works (set PENALIZE_MISSING_SALARY=true and restart)"
+      ],
+      "passes": false
+    }
+  ],
+  "context": {
+    "patterns": [
+      "Settings system: orchestrator/src/server/services/settings-conversion.ts defines metadata (defaultValue, parseOverride, serialize, resolve)",
+      "Boolean settings pattern: orchestrator/src/client/pages/settings/components/DisplaySettingsSection.tsx",
+      "Numeric settings pattern: orchestrator/src/client/pages/settings/components/BackupSettingsSection.tsx",
+      "Scoring service: orchestrator/src/server/services/scorer.ts with scoreJobSuitability() function",
+      "Three-tier settings: effective (used), default (env), override (DB)",
+      "Job list UI: orchestrator/src/client/pages/orchestrator/JobListPanel.tsx",
+      "Job detail UI: orchestrator/src/client/components/JobHeader.tsx already shows salary"
+    ],
+    "keyFiles": [
+      "shared/src/types.ts - Job interface (line 145: salary), AppSettings interface (line 490-574)",
+      "orchestrator/src/server/repositories/settings.ts - Database CRUD for settings",
+      "shared/src/settings-schema.ts - Zod validation schema for settings",
+      "orchestrator/src/server/db/schema.ts - Settings table definition (line 153-158)",
+      "orchestrator/src/client/hooks/useSettings.ts - React hook for settings with caching",
+      "orchestrator/src/server/services/scorer.ts - Main scoring service"
+    ],
+    "nonGoals": [
+      "Salary normalization/parsing - display as-is from source",
+      "Salary-based filtering - no UI to filter/hide jobs",
+      "Salary-based sorting - only affects suitability score",
+      "Re-scoring existing jobs - penalty only applies to new runs",
+      "Salary data quality improvements - use existing data",
+      "Salary comparison/analytics - no trends or insights",
+      "Different penalties per job source - single global penalty"
+    ]
+  }
+}

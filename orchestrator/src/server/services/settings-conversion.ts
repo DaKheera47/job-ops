@@ -20,6 +20,8 @@ type SettingsConversionValueMap = {
   backupEnabled: boolean;
   backupHour: number;
   backupMaxCount: number;
+  penalizeMissingSalary: boolean;
+  missingSalaryPenalty: number;
 };
 
 type SettingsConversionInputMap = {
@@ -189,6 +191,30 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
       const parsed = raw ? parseInt(raw, 10) : NaN;
       if (Number.isNaN(parsed)) return null;
       return Math.min(5, Math.max(1, parsed));
+    },
+    serialize: serializeNullableNumber,
+    resolve: resolveWithNullishFallback,
+  },
+  penalizeMissingSalary: {
+    defaultValue: () =>
+      (process.env.PENALIZE_MISSING_SALARY || "0") === "1" ||
+      (process.env.PENALIZE_MISSING_SALARY || "").toLowerCase() === "true",
+    parseOverride: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+    resolve: resolveWithNullishFallback,
+  },
+  missingSalaryPenalty: {
+    defaultValue: () => {
+      const raw = process.env.MISSING_SALARY_PENALTY;
+      if (!raw) return 10;
+      const parsed = parseInt(raw, 10);
+      if (Number.isNaN(parsed)) return 10;
+      return Math.min(100, Math.max(0, parsed));
+    },
+    parseOverride: (raw) => {
+      const parsed = raw ? parseInt(raw, 10) : NaN;
+      if (Number.isNaN(parsed)) return null;
+      return Math.min(100, Math.max(0, parsed));
     },
     serialize: serializeNullableNumber,
     resolve: resolveWithNullishFallback,

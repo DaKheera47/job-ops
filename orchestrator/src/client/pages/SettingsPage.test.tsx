@@ -124,6 +124,13 @@ const baseSettings: AppSettings = {
   backupMaxCount: 5,
   defaultBackupMaxCount: 5,
   overrideBackupMaxCount: null,
+  // Scoring settings
+  penalizeMissingSalary: false,
+  defaultPenalizeMissingSalary: false,
+  overridePenalizeMissingSalary: null,
+  missingSalaryPenalty: 10,
+  defaultMissingSalaryPenalty: 10,
+  overrideMissingSalaryPenalty: null,
 };
 
 const renderPage = () => {

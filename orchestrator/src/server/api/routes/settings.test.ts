@@ -73,4 +73,51 @@ describe.sequential("Settings API routes", () => {
     expect(body.ok).toBe(false);
     expect(body.error.message).toContain("Username is required");
   });
+
+  it("handles salary penalty settings with validation", async () => {
+    // Get initial settings
+    const initialRes = await fetch(`${baseUrl}/api/settings`);
+    const initialBody = await initialRes.json();
+    expect(initialBody.ok).toBe(true);
+    expect(initialBody.data.penalizeMissingSalary).toBe(false);
+    expect(initialBody.data.missingSalaryPenalty).toBe(10);
+
+    // Test invalid penalty values
+    const invalidRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ missingSalaryPenalty: 150 }),
+    });
+    expect(invalidRes.status).toBe(400);
+
+    const negativeRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ missingSalaryPenalty: -10 }),
+    });
+    expect(negativeRes.status).toBe(400);
+
+    // Test valid settings update
+    const validRes = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        penalizeMissingSalary: true,
+        missingSalaryPenalty: 20,
+      }),
+    });
+    const validBody = await validRes.json();
+    expect(validBody.ok).toBe(true);
+    expect(validBody.data.penalizeMissingSalary).toBe(true);
+    expect(validBody.data.overridePenalizeMissingSalary).toBe(true);
+    expect(validBody.data.missingSalaryPenalty).toBe(20);
+    expect(validBody.data.overrideMissingSalaryPenalty).toBe(20);
+
+    // Verify persistence
+    const getRes = await fetch(`${baseUrl}/api/settings`);
+    const getBody = await getRes.json();
+    expect(getBody.ok).toBe(true);
+    expect(getBody.data.penalizeMissingSalary).toBe(true);
+    expect(getBody.data.missingSalaryPenalty).toBe(20);
+  });
 });

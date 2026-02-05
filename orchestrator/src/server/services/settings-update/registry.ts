@@ -326,4 +326,14 @@ export const settingsUpdateRegistry: Partial<{
       deferred: ["refreshBackupScheduler"],
     }),
   ),
+  penalizeMissingSalary: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("penalizeMissingSalary", value)],
+    }),
+  ),
+  missingSalaryPenalty: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("missingSalaryPenalty", value)],
+    }),
+  ),
 };

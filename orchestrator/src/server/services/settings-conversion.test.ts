@@ -78,4 +78,56 @@ describe("settings-conversion", () => {
     expect(malformedOverride.overrideValue).toBeNull();
     expect(malformedOverride.value).toEqual(["web developer"]);
   });
+
+  it("round-trips penalizeMissingSalary boolean setting", () => {
+    expect(serializeSettingValue("penalizeMissingSalary", true)).toBe("1");
+    expect(serializeSettingValue("penalizeMissingSalary", false)).toBe("0");
+
+    expect(resolveSettingValue("penalizeMissingSalary", "1").value).toBe(true);
+    expect(resolveSettingValue("penalizeMissingSalary", "0").value).toBe(false);
+    expect(resolveSettingValue("penalizeMissingSalary", "true").value).toBe(
+      true,
+    );
+    expect(resolveSettingValue("penalizeMissingSalary", undefined).value).toBe(
+      false,
+    );
+  });
+
+  it("round-trips missingSalaryPenalty numeric setting with clamping", () => {
+    const serialized = serializeSettingValue("missingSalaryPenalty", 10);
+    expect(serialized).toBe("10");
+
+    const resolved = resolveSettingValue(
+      "missingSalaryPenalty",
+      serialized ?? undefined,
+    );
+    expect(resolved.overrideValue).toBe(10);
+    expect(resolved.value).toBe(10);
+    expect(resolved.defaultValue).toBe(10);
+
+    // Test clamping
+    expect(resolveSettingValue("missingSalaryPenalty", "150").value).toBe(100);
+    expect(resolveSettingValue("missingSalaryPenalty", "-5").value).toBe(0);
+    expect(resolveSettingValue("missingSalaryPenalty", "0").value).toBe(0);
+    expect(resolveSettingValue("missingSalaryPenalty", "100").value).toBe(100);
+  });
+
+  it("respects environment variables for new salary settings", () => {
+    process.env.PENALIZE_MISSING_SALARY = "true";
+    process.env.MISSING_SALARY_PENALTY = "25";
+
+    const penalizeResolved = resolveSettingValue(
+      "penalizeMissingSalary",
+      undefined,
+    );
+    expect(penalizeResolved.defaultValue).toBe(true);
+    expect(penalizeResolved.value).toBe(true);
+
+    const penaltyResolved = resolveSettingValue(
+      "missingSalaryPenalty",
+      undefined,
+    );
+    expect(penaltyResolved.defaultValue).toBe(25);
+    expect(penaltyResolved.value).toBe(25);
+  });
 });
