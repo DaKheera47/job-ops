@@ -1,3 +1,4 @@
+import { okWithMeta } from "@infra/http";
 import { getSetting } from "@server/repositories/settings";
 import { LlmService } from "@server/services/llm-service";
 import { RxResumeClient } from "@server/services/rxresume-client";
@@ -7,7 +8,6 @@ import {
 } from "@server/services/rxresume-v4";
 import { resumeDataSchema } from "@shared/rxresume-schema";
 import { type Request, type Response, Router } from "express";
-import { okWithMeta } from "@infra/http";
 import { isDemoMode } from "../../config/demo";
 
 export const onboardingRouter = Router();

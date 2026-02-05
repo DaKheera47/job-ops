@@ -73,7 +73,10 @@ backupRouter.delete("/:filename", async (req: Request, res: Response) => {
       return sendDemoBlocked(
         res,
         "Deleting backups is disabled in the public demo.",
-        { route: "DELETE /api/backups/:filename", filename: req.params.filename },
+        {
+          route: "DELETE /api/backups/:filename",
+          filename: req.params.filename,
+        },
       );
     }
 

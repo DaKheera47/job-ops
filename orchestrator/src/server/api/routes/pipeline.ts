@@ -1,3 +1,4 @@
+import { okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import type { ApiResponse, PipelineStatusResponse } from "@shared/types";
@@ -11,7 +12,6 @@ import {
 } from "../../pipeline/index";
 import * as pipelineRepo from "../../repositories/pipeline";
 import { simulatePipelineRun } from "../../services/demo-simulator";
-import { okWithMeta } from "@infra/http";
 
 export const pipelineRouter = Router();
 

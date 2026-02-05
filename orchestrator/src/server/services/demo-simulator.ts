@@ -1,9 +1,14 @@
 import { logger } from "@infra/logger";
-import type { Job, JobSource, PipelineConfig, StageEventMetadata } from "@shared/types";
 import * as pipeline from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { transitionStage } from "@server/services/applicationTracking";
+import type {
+  Job,
+  JobSource,
+  PipelineConfig,
+  StageEventMetadata,
+} from "@shared/types";
 
 type ProcessOptions = {
   force?: boolean;

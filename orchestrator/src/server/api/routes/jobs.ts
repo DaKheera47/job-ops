@@ -1,6 +1,6 @@
+import { okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
-import { okWithMeta } from "@infra/http";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -27,10 +27,6 @@ import {
   transitionStage,
   updateStageEvent,
 } from "../../services/applicationTracking";
-import { createNotionEntry } from "../../services/notion";
-import { getProfile } from "../../services/profile";
-import { scoreJobSuitability } from "../../services/scorer";
-import * as visaSponsors from "../../services/visa-sponsors/index";
 import {
   simulateApplyJob,
   simulateGeneratePdf,
@@ -38,6 +34,10 @@ import {
   simulateRescoreJob,
   simulateSummarizeJob,
 } from "../../services/demo-simulator";
+import { createNotionEntry } from "../../services/notion";
+import { getProfile } from "../../services/profile";
+import { scoreJobSuitability } from "../../services/scorer";
+import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const jobsRouter = Router();
 

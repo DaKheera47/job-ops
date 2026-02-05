@@ -62,8 +62,7 @@ async function seedDemoJobs(): Promise<void> {
       title: "Software Engineer (Platform)",
       employer: "NovaStack",
       jobUrl: "https://demo.job-ops.local/jobs/novastack-platform",
-      applicationLink:
-        "https://demo.job-ops.local/apply/novastack-platform",
+      applicationLink: "https://demo.job-ops.local/apply/novastack-platform",
       location: "Remote (US)",
       salary: "$130,000 - $155,000",
       deadline: "2026-03-15",
@@ -107,8 +106,7 @@ async function seedDemoJobs(): Promise<void> {
       title: "Full Stack Engineer",
       employer: "Cloudbridge",
       jobUrl: "https://demo.job-ops.local/jobs/cloudbridge-fullstack",
-      applicationLink:
-        "https://demo.job-ops.local/apply/cloudbridge-fullstack",
+      applicationLink: "https://demo.job-ops.local/apply/cloudbridge-fullstack",
       location: "Manchester, UK",
       salary: "GBP 55,000",
       deadline: "2026-03-02",

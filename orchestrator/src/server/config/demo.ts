@@ -43,9 +43,7 @@ export function makeDemoMeta(options?: {
 }): { simulated?: boolean; blockedReason?: string } {
   return {
     ...(options?.simulated ? { simulated: true } : {}),
-    ...(options?.blockedReason
-      ? { blockedReason: options.blockedReason }
-      : {}),
+    ...(options?.blockedReason ? { blockedReason: options.blockedReason } : {}),
   };
 }
 
