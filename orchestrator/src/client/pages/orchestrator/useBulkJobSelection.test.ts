@@ -201,7 +201,10 @@ describe("useBulkJobSelection", () => {
   });
 
   it("runs bulk rescore and reports success copy", async () => {
-    const activeJobs = [createJob("job-1", "ready"), createJob("job-2", "ready")];
+    const activeJobs = [
+      createJob("job-1", "ready"),
+      createJob("job-2", "ready"),
+    ];
     const loadJobs = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.bulkJobAction).mockResolvedValue({
       action: "rescore",
