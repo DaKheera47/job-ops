@@ -1,11 +1,11 @@
 import type { AppSettings, JobSource } from "@shared/types";
+import { X } from "lucide-react";
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
@@ -15,7 +15,6 @@ import {
   loadAutomaticRunMemory,
   parseSearchTermsInput,
   saveAutomaticRunMemory,
-  stringifySearchTerms,
 } from "./automatic-run";
 
 interface AutomaticRunTabProps {
@@ -59,9 +58,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [jobsPerTermInput, setJobsPerTermInput] = useState(
     String(DEFAULT_VALUES.jobsPerTerm),
   );
-  const [searchTermsInput, setSearchTermsInput] = useState(
-    stringifySearchTerms(DEFAULT_VALUES.searchTerms),
+  const [searchTerms, setSearchTerms] = useState<string[]>(
+    DEFAULT_VALUES.searchTerms,
   );
+  const [searchTermDraft, setSearchTermDraft] = useState("");
   const [activePreset, setActivePreset] = useState<AutomaticPresetId | null>(
     null,
   );
@@ -82,14 +82,24 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       settings?.ukvisajobsMaxJobs ??
       DEFAULT_VALUES.jobsPerTerm;
     setJobsPerTermInput(String(rememberedJobsPerTerm));
-    setSearchTermsInput(
-      stringifySearchTerms(settings?.searchTerms ?? DEFAULT_VALUES.searchTerms),
-    );
+    setSearchTerms(settings?.searchTerms ?? DEFAULT_VALUES.searchTerms);
+    setSearchTermDraft("");
     setActivePreset(null);
   }, [open, settings]);
 
+  const addSearchTerms = (input: string) => {
+    const parsed = parseSearchTermsInput(input);
+    if (parsed.length === 0) return;
+    setSearchTerms((current) => {
+      const next = [...current];
+      for (const term of parsed) {
+        if (!next.includes(term)) next.push(term);
+      }
+      return next;
+    });
+  };
+
   const values = useMemo<AutomaticRunValues>(() => {
-    const searchTerms = parseSearchTermsInput(searchTermsInput);
     return {
       topN: toNumber(topNInput, 1, 50, DEFAULT_VALUES.topN),
       minSuitabilityScore: toNumber(
@@ -106,7 +116,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         DEFAULT_VALUES.jobsPerTerm,
       ),
     };
-  }, [topNInput, minScoreInput, searchTermsInput, jobsPerTermInput]);
+  }, [topNInput, minScoreInput, searchTerms, jobsPerTermInput]);
 
   const estimate = useMemo(
     () => calculateAutomaticEstimate({ values, sources: pipelineSources }),
@@ -213,13 +223,65 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             />
           </div>
           <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="search-terms">Search terms (comma or newline separated)</Label>
-            <Textarea
-              id="search-terms"
-              value={searchTermsInput}
-              onChange={(event) => setSearchTermsInput(event.target.value)}
-              className="min-h-[96px]"
-            />
+            <Label htmlFor="search-terms-input">Search terms</Label>
+            <div className="rounded-md border border-input bg-background px-2 py-2">
+              <div className="flex flex-wrap gap-2">
+                {searchTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs"
+                  >
+                    {term}
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label={`Remove ${term}`}
+                      onClick={() =>
+                        setSearchTerms((current) =>
+                          current.filter((value) => value !== term),
+                        )
+                      }
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <Input
+                  id="search-terms-input"
+                  value={searchTermDraft}
+                  onChange={(event) => setSearchTermDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === ",") {
+                      event.preventDefault();
+                      addSearchTerms(searchTermDraft);
+                      setSearchTermDraft("");
+                      return;
+                    }
+                    if (
+                      event.key === "Backspace" &&
+                      searchTermDraft.length === 0 &&
+                      searchTerms.length > 0
+                    ) {
+                      setSearchTerms((current) => current.slice(0, -1));
+                    }
+                  }}
+                  onBlur={() => {
+                    addSearchTerms(searchTermDraft);
+                    setSearchTermDraft("");
+                  }}
+                  onPaste={(event) => {
+                    const pasted = event.clipboardData.getData("text");
+                    const parsed = parseSearchTermsInput(pasted);
+                    if (parsed.length > 1) {
+                      event.preventDefault();
+                      addSearchTerms(pasted);
+                    }
+                  }}
+                  placeholder="Type and press Enter"
+                  className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
+                />
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
