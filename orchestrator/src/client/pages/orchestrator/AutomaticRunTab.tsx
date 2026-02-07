@@ -230,12 +230,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   {searchTerms.map((term) => (
                     <span
                       key={term}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-colors hover:bg-muted/50"
                     >
                       {term}
                       <button
                         type="button"
-                        className="cursor-default text-muted-foreground transition-none hover:text-muted-foreground focus-visible:outline-none"
+                        className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
                         aria-label={`Remove ${term}`}
                         onClick={() =>
                           setSearchTerms((current) =>
