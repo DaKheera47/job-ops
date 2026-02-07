@@ -375,82 +375,53 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle>Sources</CardTitle>
+            <CardTitle>
+              Sources ({pipelineSources.length}/{enabledSources.length})
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2">
-            <div className="flex flex-wrap gap-2">
-              {enabledSources.map((source) => (
-                <Button
-                  key={source}
-                  type="button"
-                  size="sm"
-                  variant={
-                    pipelineSources.includes(source) ? "default" : "outline"
-                  }
-                  onClick={() =>
-                    onToggleSource(source, !pipelineSources.includes(source))
-                  }
-                >
-                  {sourceLabel[source]}
-                </Button>
-              ))}
-            </div>
-            <div className="space-y-2 border-t border-border/60 pt-4 text-sm md:border-l md:border-t-0 md:pl-4 md:pt-0">
-              <p className="text-base font-semibold">Estimate</p>
-              <p>
-                Estimated jobs: <strong>{estimate.discovered.min}</strong>
-                {" - "}
-                <strong>{estimate.discovered.max}</strong> (cap{" "}
-                {estimate.discovered.cap})
-              </p>
-              <p>
-                Resumes: <strong>{values.topN}</strong>
-              </p>
-            </div>
-            <div className="md:col-span-2">
-              <Separator className="my-2" />
-              <p className="mb-2 text-sm font-medium">
-                Sources ({pipelineSources.length}/{enabledSources.length})
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {enabledSources.map((source) => (
-                  <Button
-                    key={`selected-${source}`}
-                    type="button"
-                    size="sm"
-                    variant={
-                      pipelineSources.includes(source) ? "default" : "outline"
-                    }
-                    onClick={() =>
-                      onToggleSource(source, !pipelineSources.includes(source))
-                    }
-                  >
-                    {sourceLabel[source]}
-                  </Button>
-                ))}
-              </div>
-            </div>
+          <CardContent className="flex flex-wrap gap-2">
+            {enabledSources.map((source) => (
+              <Button
+                key={source}
+                type="button"
+                size="sm"
+                variant={
+                  pipelineSources.includes(source) ? "default" : "outline"
+                }
+                onClick={() =>
+                  onToggleSource(source, !pipelineSources.includes(source))
+                }
+              >
+                {sourceLabel[source]}
+              </Button>
+            ))}
           </CardContent>
         </Card>
       </div>
 
       <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
-        <Button type="button" variant="ghost">
-          Save preset
-        </Button>
-        <Button
-          type="button"
-          className="gap-2"
-          disabled={runDisabled}
-          onClick={() => void handleSaveAndRun()}
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Sparkles className="h-4 w-4" />
-          )}
-          Start run now
-        </Button>
+        <div className="hidden text-sm text-muted-foreground md:block">
+          Est: {estimate.discovered.min}-{estimate.discovered.max} jobs, ~
+          {values.topN} resumes
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <Button type="button" variant="ghost">
+            Save preset
+          </Button>
+          <Button
+            type="button"
+            className="gap-2"
+            disabled={runDisabled}
+            onClick={() => void handleSaveAndRun()}
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Start run now
+          </Button>
+        </div>
       </div>
     </div>
   );
