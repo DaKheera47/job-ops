@@ -180,7 +180,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="top-n">Top N</Label>
+            <Label htmlFor="top-n">Jobs to auto-process</Label>
             <Input
               id="top-n"
               type="number"
@@ -269,7 +269,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           <p>
             Estimated auto-processed: <strong>{estimate.processed.min}</strong>
             {" - "}
-            <strong>{estimate.processed.max}</strong> (limited by Top N)
+            <strong>{estimate.processed.max}</strong> (limited by jobs to auto-process)
           </p>
           <p className="text-xs text-muted-foreground">
             Estimate is based on configured caps and historical yield assumptions.
