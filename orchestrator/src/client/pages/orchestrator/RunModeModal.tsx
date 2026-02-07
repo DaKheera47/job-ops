@@ -1,4 +1,6 @@
+import { ManualImportFlow } from "@client/components/ManualImportFlow";
 import type { AppSettings, JobSource } from "@shared/types";
+import type React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -9,8 +11,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ManualImportFlow } from "@client/components/ManualImportFlow";
-import type React from "react";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
 import type { RunMode } from "./run-mode";

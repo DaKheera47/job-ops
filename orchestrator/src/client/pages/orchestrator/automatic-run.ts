@@ -27,7 +27,10 @@ export interface AutomaticEstimate {
   };
 }
 
-export const AUTOMATIC_PRESETS: Record<AutomaticPresetId, AutomaticPresetValues> = {
+export const AUTOMATIC_PRESETS: Record<
+  AutomaticPresetId,
+  AutomaticPresetValues
+> = {
   fast: {
     topN: 5,
     minSuitabilityScore: 75,

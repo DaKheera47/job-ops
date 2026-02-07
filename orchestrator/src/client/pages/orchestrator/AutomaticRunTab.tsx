@@ -1,6 +1,5 @@
 import type { AppSettings, JobSource } from "@shared/types";
-import { X } from "lucide-react";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
@@ -64,15 +63,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
-  const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>({
-    defaultValues: {
-      topN: String(DEFAULT_VALUES.topN),
-      minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
-      runBudget: String(DEFAULT_VALUES.runBudget),
-      searchTerms: DEFAULT_VALUES.searchTerms,
-      searchTermDraft: "",
+  const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
+    {
+      defaultValues: {
+        topN: String(DEFAULT_VALUES.topN),
+        minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
+        runBudget: String(DEFAULT_VALUES.runBudget),
+        searchTerms: DEFAULT_VALUES.searchTerms,
+        searchTermDraft: "",
+      },
     },
-  });
+  );
 
   const topNInput = watch("topN");
   const minScoreInput = watch("minSuitabilityScore");
@@ -123,12 +124,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         DEFAULT_VALUES.minSuitabilityScore,
       ),
       searchTerms,
-      runBudget: toNumber(
-        runBudgetInput,
-        1,
-        1000,
-        DEFAULT_VALUES.runBudget,
-      ),
+      runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
     };
   }, [topNInput, minScoreInput, searchTerms, runBudgetInput]);
 
@@ -323,7 +319,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 key={source}
                 type="button"
                 size="sm"
-                variant={pipelineSources.includes(source) ? "default" : "outline"}
+                variant={
+                  pipelineSources.includes(source) ? "default" : "outline"
+                }
                 onClick={() =>
                   onToggleSource(source, !pipelineSources.includes(source))
                 }
@@ -340,17 +338,22 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              Estimated discovered jobs: <strong>{estimate.discovered.min}</strong>
+              Estimated discovered jobs:{" "}
+              <strong>{estimate.discovered.min}</strong>
               {" - "}
-              <strong>{estimate.discovered.max}</strong> (cap {estimate.discovered.cap})
+              <strong>{estimate.discovered.max}</strong> (cap{" "}
+              {estimate.discovered.cap})
             </p>
             <p>
-              Estimated resumes tailored: <strong>{estimate.processed.min}</strong>
+              Estimated resumes tailored:{" "}
+              <strong>{estimate.processed.min}</strong>
               {" - "}
-              <strong>{estimate.processed.max}</strong> (limited by resumes tailored)
+              <strong>{estimate.processed.max}</strong> (limited by resumes
+              tailored)
             </p>
             <p className="text-xs text-muted-foreground">
-              Estimate is based on the run budget allocation and historical yield assumptions.
+              Estimate is based on the run budget allocation and historical
+              yield assumptions.
             </p>
           </CardContent>
         </Card>

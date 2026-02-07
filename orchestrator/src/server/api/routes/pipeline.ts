@@ -33,9 +33,9 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
     fail(
       res,
       new AppError({
-      status: 500,
-      code: "INTERNAL_ERROR",
-      message: error instanceof Error ? error.message : "Unknown error",
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
       }),
     );
   }
@@ -82,9 +82,9 @@ pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
     fail(
       res,
       new AppError({
-      status: 500,
-      code: "INTERNAL_ERROR",
-      message: error instanceof Error ? error.message : "Unknown error",
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
       }),
     );
   }
@@ -128,9 +128,9 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     fail(
       res,
       new AppError({
-      status: 500,
-      code: "INTERNAL_ERROR",
-      message: error instanceof Error ? error.message : "Unknown error",
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
       }),
     );
   }

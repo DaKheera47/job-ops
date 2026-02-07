@@ -45,8 +45,7 @@ describe("automatic-run utilities", () => {
     });
 
     const cap =
-      2 * limits.jobspyResultsWanted * 3 +
-      limits.gradcrackerMaxJobsPerTerm * 3;
+      2 * limits.jobspyResultsWanted * 3 + limits.gradcrackerMaxJobsPerTerm * 3;
 
     expect(cap).toBeLessThanOrEqual(750);
   });

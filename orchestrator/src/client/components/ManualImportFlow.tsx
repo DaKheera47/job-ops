@@ -1,3 +1,4 @@
+import * as api from "@client/api";
 import type { ManualJobDraft } from "@shared/types.js";
 import {
   ArrowLeft,
@@ -13,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import * as api from "@client/api";
 
 type ManualImportStep = "paste" | "loading" | "review";
 
@@ -170,7 +170,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       setWarning(inferResponse.warning ?? null);
       setStep("review");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to fetch URL";
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch URL";
       setError(message);
       setIsFetching(false);
       setStep("paste");
@@ -199,7 +200,9 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       setStep("review");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to analyze job description";
+        err instanceof Error
+          ? err.message
+          : "Failed to analyze job description";
       setError(message);
       setStep("paste");
     }
@@ -218,7 +221,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       await onImported(created.id);
       onClose();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to import job";
+      const message =
+        err instanceof Error ? err.message : "Failed to import job";
       toast.error(message);
     } finally {
       setIsImporting(false);
@@ -292,7 +296,11 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                   ) : (
                     <ClipboardPaste className="h-4 w-4" />
                   )}
-                  {isFetching ? "Fetching..." : fetchUrl.trim() ? "Fetch" : "Paste"}
+                  {isFetching
+                    ? "Fetching..."
+                    : fetchUrl.trim()
+                      ? "Fetch"
+                      : "Paste"}
                 </Button>
               </div>
             </div>
@@ -320,7 +328,11 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
             )}
 
             <Button
-              onClick={fetchUrl.trim() ? () => void handleFetch() : () => void handleAnalyze()}
+              onClick={
+                fetchUrl.trim()
+                  ? () => void handleFetch()
+                  : () => void handleAnalyze()
+              }
               disabled={isFetching || (!canFetch && !canAnalyze)}
               className="w-full h-10 gap-2"
             >
@@ -337,7 +349,9 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
         {step === "loading" && (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            <div className="text-sm font-semibold">Analyzing job description</div>
+            <div className="text-sm font-semibold">
+              Analyzing job description
+            </div>
             <p className="text-xs text-muted-foreground max-w-xs">
               Extracting title, company, location, and other details.
             </p>
@@ -369,19 +383,123 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <FieldInput id="draft-title" label="Title *" value={draft.title} onChange={(value) => setDraft((prev) => ({ ...prev, title: value }))} placeholder="e.g. Junior Backend Engineer" />
-              <FieldInput id="draft-employer" label="Employer *" value={draft.employer} onChange={(value) => setDraft((prev) => ({ ...prev, employer: value }))} placeholder="e.g. Acme Labs" />
-              <FieldInput id="draft-location" label="Location" value={draft.location} onChange={(value) => setDraft((prev) => ({ ...prev, location: value }))} placeholder="e.g. London, UK" />
-              <FieldInput id="draft-salary" label="Salary" value={draft.salary} onChange={(value) => setDraft((prev) => ({ ...prev, salary: value }))} placeholder="e.g. GBP 45k-55k" />
-              <FieldInput id="draft-deadline" label="Deadline" value={draft.deadline} onChange={(value) => setDraft((prev) => ({ ...prev, deadline: value }))} placeholder="e.g. 30 Sep 2025" />
-              <FieldInput id="draft-jobType" label="Job type" value={draft.jobType} onChange={(value) => setDraft((prev) => ({ ...prev, jobType: value }))} placeholder="e.g. Full-time" />
-              <FieldInput id="draft-jobLevel" label="Job level" value={draft.jobLevel} onChange={(value) => setDraft((prev) => ({ ...prev, jobLevel: value }))} placeholder="e.g. Graduate" />
-              <FieldInput id="draft-jobFunction" label="Job function" value={draft.jobFunction} onChange={(value) => setDraft((prev) => ({ ...prev, jobFunction: value }))} placeholder="e.g. Software Engineering" />
-              <FieldInput id="draft-disciplines" label="Disciplines" value={draft.disciplines} onChange={(value) => setDraft((prev) => ({ ...prev, disciplines: value }))} placeholder="e.g. Computer Science" />
-              <FieldInput id="draft-degreeRequired" label="Degree required" value={draft.degreeRequired} onChange={(value) => setDraft((prev) => ({ ...prev, degreeRequired: value }))} placeholder="e.g. BSc or MSc" />
-              <FieldInput id="draft-starting" label="Starting" value={draft.starting} onChange={(value) => setDraft((prev) => ({ ...prev, starting: value }))} placeholder="e.g. September 2026" />
-              <FieldInput id="draft-jobUrl" label="Job URL" value={draft.jobUrl} onChange={(value) => setDraft((prev) => ({ ...prev, jobUrl: value }))} placeholder="https://..." />
-              <FieldInput id="draft-applicationLink" label="Application URL" value={draft.applicationLink} onChange={(value) => setDraft((prev) => ({ ...prev, applicationLink: value }))} placeholder="https://..." />
+              <FieldInput
+                id="draft-title"
+                label="Title *"
+                value={draft.title}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, title: value }))
+                }
+                placeholder="e.g. Junior Backend Engineer"
+              />
+              <FieldInput
+                id="draft-employer"
+                label="Employer *"
+                value={draft.employer}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, employer: value }))
+                }
+                placeholder="e.g. Acme Labs"
+              />
+              <FieldInput
+                id="draft-location"
+                label="Location"
+                value={draft.location}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, location: value }))
+                }
+                placeholder="e.g. London, UK"
+              />
+              <FieldInput
+                id="draft-salary"
+                label="Salary"
+                value={draft.salary}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, salary: value }))
+                }
+                placeholder="e.g. GBP 45k-55k"
+              />
+              <FieldInput
+                id="draft-deadline"
+                label="Deadline"
+                value={draft.deadline}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, deadline: value }))
+                }
+                placeholder="e.g. 30 Sep 2025"
+              />
+              <FieldInput
+                id="draft-jobType"
+                label="Job type"
+                value={draft.jobType}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, jobType: value }))
+                }
+                placeholder="e.g. Full-time"
+              />
+              <FieldInput
+                id="draft-jobLevel"
+                label="Job level"
+                value={draft.jobLevel}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, jobLevel: value }))
+                }
+                placeholder="e.g. Graduate"
+              />
+              <FieldInput
+                id="draft-jobFunction"
+                label="Job function"
+                value={draft.jobFunction}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, jobFunction: value }))
+                }
+                placeholder="e.g. Software Engineering"
+              />
+              <FieldInput
+                id="draft-disciplines"
+                label="Disciplines"
+                value={draft.disciplines}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, disciplines: value }))
+                }
+                placeholder="e.g. Computer Science"
+              />
+              <FieldInput
+                id="draft-degreeRequired"
+                label="Degree required"
+                value={draft.degreeRequired}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, degreeRequired: value }))
+                }
+                placeholder="e.g. BSc or MSc"
+              />
+              <FieldInput
+                id="draft-starting"
+                label="Starting"
+                value={draft.starting}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, starting: value }))
+                }
+                placeholder="e.g. September 2026"
+              />
+              <FieldInput
+                id="draft-jobUrl"
+                label="Job URL"
+                value={draft.jobUrl}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, jobUrl: value }))
+                }
+                placeholder="https://..."
+              />
+              <FieldInput
+                id="draft-applicationLink"
+                label="Application URL"
+                value={draft.applicationLink}
+                onChange={(value) =>
+                  setDraft((prev) => ({ ...prev, applicationLink: value }))
+                }
+                placeholder="https://..."
+              />
             </div>
 
             <div className="space-y-1">
