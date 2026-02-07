@@ -50,6 +50,23 @@ describe("automatic-run utilities", () => {
     expect(cap).toBeLessThanOrEqual(750);
   });
 
+  it("returns zero estimate when no search terms are provided", () => {
+    const estimate = calculateAutomaticEstimate({
+      values: {
+        topN: 10,
+        minSuitabilityScore: 50,
+        searchTerms: [],
+        runBudget: 750,
+      },
+      sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
+    });
+
+    expect(estimate).toEqual({
+      discovered: { min: 0, max: 0, cap: 0 },
+      processed: { min: 0, max: 0 },
+    });
+  });
+
   it("parses comma and newline separated search terms", () => {
     expect(parseSearchTermsInput("backend, platform\napi\n\n")).toEqual([
       "backend",

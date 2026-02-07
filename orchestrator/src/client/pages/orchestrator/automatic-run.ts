@@ -113,7 +113,21 @@ export function calculateAutomaticEstimate(args: {
   sources: JobSource[];
 }): AutomaticEstimate {
   const { values, sources } = args;
-  const termCount = Math.max(1, values.searchTerms.length);
+  if (values.searchTerms.length === 0) {
+    return {
+      discovered: {
+        min: 0,
+        max: 0,
+        cap: 0,
+      },
+      processed: {
+        min: 0,
+        max: 0,
+      },
+    };
+  }
+
+  const termCount = values.searchTerms.length;
   const hasGradcracker = sources.includes("gradcracker");
   const hasUkVisaJobs = sources.includes("ukvisajobs");
   const hasIndeed = sources.includes("indeed");
