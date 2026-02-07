@@ -10,9 +10,7 @@ describe("automatic-run utilities", () => {
     expect(AUTOMATIC_PRESETS.fast).toEqual({
       topN: 5,
       minSuitabilityScore: 75,
-      jobspyResultsWanted: 60,
-      gradcrackerMaxJobsPerTerm: 25,
-      ukvisajobsMaxJobs: 25,
+      jobsPerTerm: 60,
     });
 
     expect(AUTOMATIC_PRESETS.detailed.topN).toBeGreaterThan(
@@ -26,16 +24,14 @@ describe("automatic-run utilities", () => {
         topN: 10,
         minSuitabilityScore: 50,
         searchTerms: ["backend", "platform"],
-        jobspyResultsWanted: 100,
-        gradcrackerMaxJobsPerTerm: 40,
-        ukvisajobsMaxJobs: 30,
+        jobsPerTerm: 100,
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
 
-    expect(estimate.discovered.cap).toBe(510);
-    expect(estimate.discovered.min).toBe(179);
-    expect(estimate.discovered.max).toBe(383);
+    expect(estimate.discovered.cap).toBe(700);
+    expect(estimate.discovered.min).toBe(245);
+    expect(estimate.discovered.max).toBe(525);
     expect(estimate.processed.min).toBe(10);
     expect(estimate.processed.max).toBe(10);
   });
@@ -48,4 +44,3 @@ describe("automatic-run utilities", () => {
     ]);
   });
 });
-

@@ -206,9 +206,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
       topN: number;
       minSuitabilityScore: number;
       searchTerms: string[];
-      jobspyResultsWanted: number;
-      gradcrackerMaxJobsPerTerm: number;
-      ukvisajobsMaxJobs: number;
+      jobsPerTerm: number;
     }) => Promise<void>;
   }) => (
     <button
@@ -219,9 +217,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
           topN: 12,
           minSuitabilityScore: 55,
           searchTerms: ["backend"],
-          jobspyResultsWanted: 150,
-          gradcrackerMaxJobsPerTerm: 45,
-          ukvisajobsMaxJobs: 35,
+          jobsPerTerm: 150,
         })
       }
     >
@@ -418,8 +414,8 @@ describe("OrchestratorPage", () => {
       expect(api.updateSettings).toHaveBeenCalledWith({
         searchTerms: ["backend"],
         jobspyResultsWanted: 150,
-        gradcrackerMaxJobsPerTerm: 45,
-        ukvisajobsMaxJobs: 35,
+        gradcrackerMaxJobsPerTerm: 150,
+        ukvisajobsMaxJobs: 150,
       });
     });
 

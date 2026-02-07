@@ -6,17 +6,13 @@ export interface AutomaticRunValues {
   topN: number;
   minSuitabilityScore: number;
   searchTerms: string[];
-  jobspyResultsWanted: number;
-  gradcrackerMaxJobsPerTerm: number;
-  ukvisajobsMaxJobs: number;
+  jobsPerTerm: number;
 }
 
 export interface AutomaticPresetValues {
   topN: number;
   minSuitabilityScore: number;
-  jobspyResultsWanted: number;
-  gradcrackerMaxJobsPerTerm: number;
-  ukvisajobsMaxJobs: number;
+  jobsPerTerm: number;
 }
 
 export interface AutomaticEstimate {
@@ -35,23 +31,17 @@ export const AUTOMATIC_PRESETS: Record<AutomaticPresetId, AutomaticPresetValues>
   fast: {
     topN: 5,
     minSuitabilityScore: 75,
-    jobspyResultsWanted: 60,
-    gradcrackerMaxJobsPerTerm: 25,
-    ukvisajobsMaxJobs: 25,
+    jobsPerTerm: 60,
   },
   balanced: {
     topN: 10,
     minSuitabilityScore: 50,
-    jobspyResultsWanted: 200,
-    gradcrackerMaxJobsPerTerm: 50,
-    ukvisajobsMaxJobs: 50,
+    jobsPerTerm: 200,
   },
   detailed: {
     topN: 20,
     minSuitabilityScore: 35,
-    jobspyResultsWanted: 350,
-    gradcrackerMaxJobsPerTerm: 120,
-    ukvisajobsMaxJobs: 120,
+    jobsPerTerm: 350,
   },
 };
 
@@ -85,11 +75,9 @@ export function calculateAutomaticEstimate(args: {
   const hasLinkedIn = sources.includes("linkedin");
 
   const jobspySitesCount = [hasIndeed, hasLinkedIn].filter(Boolean).length;
-  const jobspyCap = jobspySitesCount * values.jobspyResultsWanted * termCount;
-  const gradcrackerCap = hasGradcracker
-    ? values.gradcrackerMaxJobsPerTerm * termCount
-    : 0;
-  const ukvisaCap = hasUkVisaJobs ? values.ukvisajobsMaxJobs : 0;
+  const jobspyCap = jobspySitesCount * values.jobsPerTerm * termCount;
+  const gradcrackerCap = hasGradcracker ? values.jobsPerTerm * termCount : 0;
+  const ukvisaCap = hasUkVisaJobs ? values.jobsPerTerm : 0;
 
   const discoveredCap = jobspyCap + gradcrackerCap + ukvisaCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);

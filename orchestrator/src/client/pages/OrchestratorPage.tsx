@@ -261,9 +261,9 @@ export const OrchestratorPage: React.FC = () => {
     async (values: AutomaticRunValues) => {
       await api.updateSettings({
         searchTerms: values.searchTerms,
-        jobspyResultsWanted: values.jobspyResultsWanted,
-        gradcrackerMaxJobsPerTerm: values.gradcrackerMaxJobsPerTerm,
-        ukvisajobsMaxJobs: values.ukvisajobsMaxJobs,
+        jobspyResultsWanted: values.jobsPerTerm,
+        gradcrackerMaxJobsPerTerm: values.jobsPerTerm,
+        ukvisajobsMaxJobs: values.jobsPerTerm,
       });
       await refreshSettings();
       await startPipelineRun({

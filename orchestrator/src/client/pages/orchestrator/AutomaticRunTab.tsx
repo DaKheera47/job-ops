@@ -33,9 +33,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   topN: 10,
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
-  jobspyResultsWanted: 200,
-  gradcrackerMaxJobsPerTerm: 50,
-  ukvisajobsMaxJobs: 50,
+  jobsPerTerm: 200,
 };
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
@@ -58,14 +56,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [minScoreInput, setMinScoreInput] = useState(
     String(DEFAULT_VALUES.minSuitabilityScore),
   );
-  const [jobspyInput, setJobspyInput] = useState(
-    String(DEFAULT_VALUES.jobspyResultsWanted),
-  );
-  const [gradcrackerInput, setGradcrackerInput] = useState(
-    String(DEFAULT_VALUES.gradcrackerMaxJobsPerTerm),
-  );
-  const [ukvisaInput, setUkvisaInput] = useState(
-    String(DEFAULT_VALUES.ukvisajobsMaxJobs),
+  const [jobsPerTermInput, setJobsPerTermInput] = useState(
+    String(DEFAULT_VALUES.jobsPerTerm),
   );
   const [searchTermsInput, setSearchTermsInput] = useState(
     stringifySearchTerms(DEFAULT_VALUES.searchTerms),
@@ -84,14 +76,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     setTopNInput(String(topN));
     setMinScoreInput(String(minSuitabilityScore));
-    setJobspyInput(String(settings?.jobspyResultsWanted ?? DEFAULT_VALUES.jobspyResultsWanted));
-    setGradcrackerInput(
-      String(
-        settings?.gradcrackerMaxJobsPerTerm ??
-          DEFAULT_VALUES.gradcrackerMaxJobsPerTerm,
-      ),
-    );
-    setUkvisaInput(String(settings?.ukvisajobsMaxJobs ?? DEFAULT_VALUES.ukvisajobsMaxJobs));
+    const rememberedJobsPerTerm =
+      settings?.jobspyResultsWanted ??
+      settings?.gradcrackerMaxJobsPerTerm ??
+      settings?.ukvisajobsMaxJobs ??
+      DEFAULT_VALUES.jobsPerTerm;
+    setJobsPerTermInput(String(rememberedJobsPerTerm));
     setSearchTermsInput(
       stringifySearchTerms(settings?.searchTerms ?? DEFAULT_VALUES.searchTerms),
     );
@@ -109,26 +99,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         DEFAULT_VALUES.minSuitabilityScore,
       ),
       searchTerms,
-      jobspyResultsWanted: toNumber(
-        jobspyInput,
+      jobsPerTerm: toNumber(
+        jobsPerTermInput,
         1,
         1000,
-        DEFAULT_VALUES.jobspyResultsWanted,
-      ),
-      gradcrackerMaxJobsPerTerm: toNumber(
-        gradcrackerInput,
-        1,
-        1000,
-        DEFAULT_VALUES.gradcrackerMaxJobsPerTerm,
-      ),
-      ukvisajobsMaxJobs: toNumber(
-        ukvisaInput,
-        1,
-        1000,
-        DEFAULT_VALUES.ukvisajobsMaxJobs,
+        DEFAULT_VALUES.jobsPerTerm,
       ),
     };
-  }, [topNInput, minScoreInput, searchTermsInput, jobspyInput, gradcrackerInput, ukvisaInput]);
+  }, [topNInput, minScoreInput, searchTermsInput, jobsPerTermInput]);
 
   const estimate = useMemo(
     () => calculateAutomaticEstimate({ values, sources: pipelineSources }),
@@ -145,9 +123,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const preset = AUTOMATIC_PRESETS[presetId];
     setTopNInput(String(preset.topN));
     setMinScoreInput(String(preset.minSuitabilityScore));
-    setJobspyInput(String(preset.jobspyResultsWanted));
-    setGradcrackerInput(String(preset.gradcrackerMaxJobsPerTerm));
-    setUkvisaInput(String(preset.ukvisajobsMaxJobs));
+    setJobsPerTermInput(String(preset.jobsPerTerm));
     setActivePreset(presetId);
   };
 
@@ -226,36 +202,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="jobspy-results">JobSpy results wanted</Label>
+            <Label htmlFor="jobs-per-term">Jobs per term</Label>
             <Input
-              id="jobspy-results"
+              id="jobs-per-term"
               type="number"
               min={1}
               max={1000}
-              value={jobspyInput}
-              onChange={(event) => setJobspyInput(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="gradcracker-max">Gradcracker max jobs/term</Label>
-            <Input
-              id="gradcracker-max"
-              type="number"
-              min={1}
-              max={1000}
-              value={gradcrackerInput}
-              onChange={(event) => setGradcrackerInput(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ukvisa-max">UKVisaJobs max jobs</Label>
-            <Input
-              id="ukvisa-max"
-              type="number"
-              min={1}
-              max={1000}
-              value={ukvisaInput}
-              onChange={(event) => setUkvisaInput(event.target.value)}
+              value={jobsPerTermInput}
+              onChange={(event) => setJobsPerTermInput(event.target.value)}
             />
           </div>
           <div className="space-y-2 md:col-span-2">
