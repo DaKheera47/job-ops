@@ -1,7 +1,6 @@
 import { ManualImportFlow } from "@client/components/ManualImportFlow";
 import type { AppSettings, JobSource } from "@shared/types";
 import type React from "react";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
