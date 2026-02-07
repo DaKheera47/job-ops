@@ -345,11 +345,7 @@ export const OrchestratorPage: React.FC = () => {
         onNavOpenChange={setNavOpen}
         isPipelineRunning={isPipelineRunning}
         pipelineSources={pipelineSources}
-        enabledSources={enabledSources}
-        onToggleSource={toggleSource}
-        onSetPipelineSources={setPipelineSources}
         onOpenAutomaticRun={() => openRunMode("automatic")}
-        onOpenManualRun={() => openRunMode("manual")}
       />
 
       <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
@@ -420,7 +416,10 @@ export const OrchestratorPage: React.FC = () => {
         open={isRunModeModalOpen}
         mode={runMode}
         settings={settings ?? null}
+        enabledSources={enabledSources}
         pipelineSources={pipelineSources}
+        onToggleSource={toggleSource}
+        onSetPipelineSources={setPipelineSources}
         isPipelineRunning={isPipelineRunning}
         onOpenChange={setIsRunModeModalOpen}
         onModeChange={setRunMode}

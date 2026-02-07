@@ -1,7 +1,6 @@
 import type { AppSettings, JobSource } from "@shared/types";
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,7 +21,10 @@ import {
 interface AutomaticRunTabProps {
   open: boolean;
   settings: AppSettings | null;
+  enabledSources: JobSource[];
   pipelineSources: JobSource[];
+  onToggleSource: (source: JobSource, checked: boolean) => void;
+  onSetPipelineSources: (sources: JobSource[]) => void;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
 }
@@ -45,7 +47,10 @@ function toNumber(input: string, min: number, max: number, fallback: number) {
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   open,
   settings,
+  enabledSources,
   pipelineSources,
+  onToggleSource,
+  onSetPipelineSources,
   isPipelineRunning,
   onSaveAndRun,
 }) => {
@@ -267,14 +272,33 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Selected sources ({pipelineSources.length})</CardTitle>
+          <CardTitle className="text-sm">
+            Sources ({pipelineSources.length}/{enabledSources.length})
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {pipelineSources.map((source) => (
-            <Badge key={source} variant="outline">
+          {enabledSources.map((source) => (
+            <Button
+              key={source}
+              type="button"
+              size="sm"
+              variant={pipelineSources.includes(source) ? "default" : "outline"}
+              onClick={() =>
+                onToggleSource(source, !pipelineSources.includes(source))
+              }
+            >
               {sourceLabel[source]}
-            </Badge>
+            </Button>
           ))}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => onSetPipelineSources(enabledSources)}
+            disabled={enabledSources.length === 0}
+          >
+            Select all
+          </Button>
         </CardContent>
       </Card>
 
@@ -317,4 +341,3 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     </div>
   );
 };
-
