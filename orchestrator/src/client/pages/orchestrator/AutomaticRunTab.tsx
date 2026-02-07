@@ -305,70 +305,70 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           <CardHeader className="pb-3">
             <CardTitle>Search terms</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="rounded-md border border-input bg-background px-2 py-2">
-              <div className="flex flex-wrap gap-2">
-                {searchTerms.map((term) => (
-                  <span
-                    key={term}
-                    className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+          <CardContent className="space-y-3">
+            <Input
+              id="search-terms-input"
+              value={searchTermDraft}
+              onChange={(event) =>
+                setValue("searchTermDraft", event.target.value)
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === ",") {
+                  event.preventDefault();
+                  addSearchTerms(searchTermDraft);
+                  setValue("searchTermDraft", "");
+                  return;
+                }
+                if (
+                  event.key === "Backspace" &&
+                  searchTermDraft.length === 0 &&
+                  searchTerms.length > 0
+                ) {
+                  setValue("searchTerms", searchTerms.slice(0, -1), {
+                    shouldDirty: true,
+                  });
+                }
+              }}
+              onBlur={() => {
+                addSearchTerms(searchTermDraft);
+                setValue("searchTermDraft", "");
+              }}
+              onPaste={(event) => {
+                const pasted = event.clipboardData.getData("text");
+                const parsed = parseSearchTermsInput(pasted);
+                if (parsed.length > 1) {
+                  event.preventDefault();
+                  addSearchTerms(pasted);
+                }
+              }}
+              placeholder="Type and press Enter"
+            />
+            <p className="text-xs text-muted-foreground">
+              Add multiple terms by separating with commas or pressing Enter.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {searchTerms.map((term) => (
+                <span
+                  key={term}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/20 px-3 py-1 text-sm transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+                >
+                  {term}
+                  <button
+                    type="button"
+                    className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
+                    aria-label={`Remove ${term}`}
+                    onClick={() =>
+                      setValue(
+                        "searchTerms",
+                        searchTerms.filter((value) => value !== term),
+                        { shouldDirty: true },
+                      )
+                    }
                   >
-                    {term}
-                    <button
-                      type="button"
-                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
-                      aria-label={`Remove ${term}`}
-                      onClick={() =>
-                        setValue(
-                          "searchTerms",
-                          searchTerms.filter((value) => value !== term),
-                          { shouldDirty: true },
-                        )
-                      }
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <Input
-                  id="search-terms-input"
-                  value={searchTermDraft}
-                  onChange={(event) =>
-                    setValue("searchTermDraft", event.target.value)
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === ",") {
-                      event.preventDefault();
-                      addSearchTerms(searchTermDraft);
-                      setValue("searchTermDraft", "");
-                      return;
-                    }
-                    if (
-                      event.key === "Backspace" &&
-                      searchTermDraft.length === 0 &&
-                      searchTerms.length > 0
-                    ) {
-                      setValue("searchTerms", searchTerms.slice(0, -1), {
-                        shouldDirty: true,
-                      });
-                    }
-                  }}
-                  onBlur={() => {
-                    addSearchTerms(searchTermDraft);
-                    setValue("searchTermDraft", "");
-                  }}
-                  onPaste={(event) => {
-                    const pasted = event.clipboardData.getData("text");
-                    const parsed = parseSearchTermsInput(pasted);
-                    if (parsed.length > 1) {
-                      event.preventDefault();
-                      addSearchTerms(pasted);
-                    }
-                  }}
-                  placeholder="Type and press Enter"
-                  className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
-                />
-              </div>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
             </div>
           </CardContent>
         </Card>
