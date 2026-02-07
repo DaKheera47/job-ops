@@ -42,10 +42,43 @@ interface AutomaticRunFormValues {
   searchTermDraft: string;
 }
 
+type AutomaticPresetSelection = AutomaticPresetId | "custom";
+
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function getPresetSelection(values: {
+  topN: number;
+  minSuitabilityScore: number;
+  runBudget: number;
+}): AutomaticPresetSelection {
+  if (
+    values.topN === AUTOMATIC_PRESETS.fast.topN &&
+    values.minSuitabilityScore === AUTOMATIC_PRESETS.fast.minSuitabilityScore &&
+    values.runBudget === AUTOMATIC_PRESETS.fast.runBudget
+  ) {
+    return "fast";
+  }
+  if (
+    values.topN === AUTOMATIC_PRESETS.balanced.topN &&
+    values.minSuitabilityScore ===
+      AUTOMATIC_PRESETS.balanced.minSuitabilityScore &&
+    values.runBudget === AUTOMATIC_PRESETS.balanced.runBudget
+  ) {
+    return "balanced";
+  }
+  if (
+    values.topN === AUTOMATIC_PRESETS.detailed.topN &&
+    values.minSuitabilityScore ===
+      AUTOMATIC_PRESETS.detailed.minSuitabilityScore &&
+    values.runBudget === AUTOMATIC_PRESETS.detailed.runBudget
+  ) {
+    return "detailed";
+  }
+  return "custom";
 }
 
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
@@ -57,9 +90,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   isPipelineRunning,
   onSaveAndRun,
 }) => {
-  const [activePreset, setActivePreset] = useState<AutomaticPresetId | null>(
-    null,
-  );
   const [isSaving, setIsSaving] = useState(false);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
@@ -98,7 +128,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
-    setActivePreset(null);
   }, [open, settings, reset]);
 
   const addSearchTerms = (input: string) => {
@@ -130,6 +159,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => calculateAutomaticEstimate({ values, sources: pipelineSources }),
     [values, pipelineSources],
   );
+  const activePreset = useMemo<AutomaticPresetSelection>(
+    () => getPresetSelection(values),
+    [values],
+  );
 
   const runDisabled =
     isPipelineRunning ||
@@ -144,7 +177,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       shouldDirty: true,
     });
     setValue("runBudget", String(preset.runBudget), { shouldDirty: true });
-    setActivePreset(presetId);
   };
 
   const handleSaveAndRun = async () => {
@@ -191,6 +223,13 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               onClick={() => applyPreset("detailed")}
             >
               Detailed
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activePreset === "custom" ? "secondary" : "outline"}
+            >
+              Custom
             </Button>
           </CardContent>
         </Card>
