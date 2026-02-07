@@ -7,6 +7,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import type { CreateJobInput } from "@shared/types";
 import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
@@ -18,6 +19,7 @@ const AUTH_CACHE_PATH = join(UKVISAJOBS_DIR, "storage/ukvisajobs-auth.json");
 const UKVISAJOBS_API_URL =
   "https://my.ukvisajobs.com/ukvisa-api/api/fetch-jobs-data";
 const UKVISAJOBS_PAGE_SIZE = 15;
+const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 let isUkVisaJobsRunning = false;
 
 interface UkVisaJobsAuthSession {
@@ -34,12 +36,141 @@ export interface RunUkVisaJobsOptions {
   searchKeyword?: string;
   /** List of search terms to run sequentially */
   searchTerms?: string[];
+  /** Optional callback for structured progress emitted by extractor runs. */
+  onProgress?: (event: UkVisaJobsProgressEvent) => void;
 }
 
 export interface UkVisaJobsResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+}
+
+type UkVisaJobsExtractorProgressEvent =
+  | {
+      type: "init";
+      maxPages: number;
+      maxJobs: number;
+      searchKeyword: string;
+    }
+  | {
+      type: "page_fetched";
+      pageNo: number;
+      maxPages: number;
+      jobsOnPage: number;
+      totalCollected: number;
+      totalAvailable: number;
+    }
+  | {
+      type: "done";
+      maxPages: number;
+      totalCollected: number;
+      totalAvailable: number;
+    }
+  | {
+      type: "empty_page";
+      pageNo: number;
+      maxPages: number;
+      totalCollected: number;
+    }
+  | {
+      type: "error";
+      message: string;
+      pageNo?: number;
+      status?: number;
+    };
+
+type UkVisaJobsExtractorEventWithTerm = UkVisaJobsExtractorProgressEvent & {
+  termIndex: number;
+  termTotal: number;
+  searchTerm: string;
+};
+
+export type UkVisaJobsProgressEvent =
+  | UkVisaJobsExtractorEventWithTerm
+  | {
+      type: "term_complete";
+      termIndex: number;
+      termTotal: number;
+      searchTerm: string;
+      jobsFoundTerm: number;
+      totalCollected: number;
+    };
+
+export function parseUkVisaJobsProgressLine(
+  line: string,
+): UkVisaJobsExtractorProgressEvent | null {
+  if (!line.startsWith(JOBOPS_PROGRESS_PREFIX)) return null;
+  const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const event = toStringOrNull(parsed.event);
+  if (!event) return null;
+
+  if (event === "init") {
+    const maxPages = toNumberOrNull(parsed.maxPages);
+    const maxJobs = toNumberOrNull(parsed.maxJobs);
+    if (maxPages === null || maxJobs === null) return null;
+    return {
+      type: "init",
+      maxPages,
+      maxJobs,
+      searchKeyword: toStringOrNull(parsed.searchKeyword) ?? "",
+    };
+  }
+
+  if (event === "page_fetched") {
+    const pageNo = toNumberOrNull(parsed.pageNo);
+    const maxPages = toNumberOrNull(parsed.maxPages);
+    if (pageNo === null || maxPages === null) return null;
+    return {
+      type: "page_fetched",
+      pageNo,
+      maxPages,
+      jobsOnPage: toNumberOrNull(parsed.jobsOnPage) ?? 0,
+      totalCollected: toNumberOrNull(parsed.totalCollected) ?? 0,
+      totalAvailable: toNumberOrNull(parsed.totalAvailable) ?? 0,
+    };
+  }
+
+  if (event === "done") {
+    const maxPages = toNumberOrNull(parsed.maxPages);
+    if (maxPages === null) return null;
+    return {
+      type: "done",
+      maxPages,
+      totalCollected: toNumberOrNull(parsed.totalCollected) ?? 0,
+      totalAvailable: toNumberOrNull(parsed.totalAvailable) ?? 0,
+    };
+  }
+
+  if (event === "empty_page") {
+    const pageNo = toNumberOrNull(parsed.pageNo);
+    const maxPages = toNumberOrNull(parsed.maxPages);
+    if (pageNo === null || maxPages === null) return null;
+    return {
+      type: "empty_page",
+      pageNo,
+      maxPages,
+      totalCollected: toNumberOrNull(parsed.totalCollected) ?? 0,
+    };
+  }
+
+  if (event === "error") {
+    return {
+      type: "error",
+      message: toStringOrNull(parsed.message) ?? "unknown error",
+      pageNo: toNumberOrNull(parsed.pageNo) ?? undefined,
+      status: toNumberOrNull(parsed.status) ?? undefined,
+    };
+  }
+
+  return null;
 }
 
 function buildCookieHeader(session: UkVisaJobsAuthSession): string {
@@ -442,10 +573,12 @@ export async function runUkVisaJobs(
 
     const allJobs: CreateJobInput[] = [];
     const seenIds = new Set<string>();
+    const termTotal = terms.length;
 
     for (let i = 0; i < terms.length; i++) {
       const term = terms[i];
       const termLabel = term ? `"${term}"` : "all jobs";
+      const termIndex = i + 1;
       console.log(`   Running for ${termLabel}...`);
 
       try {
@@ -457,15 +590,42 @@ export async function runUkVisaJobs(
         await new Promise<void>((resolve, reject) => {
           const child = spawn("npx", ["tsx", "src/main.ts"], {
             cwd: UKVISAJOBS_DIR,
-            stdio: "inherit",
+            stdio: ["ignore", "pipe", "pipe"],
             env: {
               ...process.env,
+              JOBOPS_EMIT_PROGRESS: "1",
               UKVISAJOBS_MAX_JOBS: String(options.maxJobs ?? 50),
               UKVISAJOBS_SEARCH_KEYWORD: term,
             },
           });
 
+          const handleLine = (line: string, stream: NodeJS.WriteStream) => {
+            const progressEvent = parseUkVisaJobsProgressLine(line);
+            if (progressEvent) {
+              options.onProgress?.({
+                ...progressEvent,
+                termIndex,
+                termTotal,
+                searchTerm: term,
+              });
+              return;
+            }
+            stream.write(`${line}\n`);
+          };
+
+          const stdoutRl = child.stdout
+            ? createInterface({ input: child.stdout })
+            : null;
+          const stderrRl = child.stderr
+            ? createInterface({ input: child.stderr })
+            : null;
+
+          stdoutRl?.on("line", (line) => handleLine(line, process.stdout));
+          stderrRl?.on("line", (line) => handleLine(line, process.stderr));
+
           child.on("close", (code) => {
+            stdoutRl?.close();
+            stderrRl?.close();
             if (code === 0) resolve();
             else
               reject(
@@ -508,10 +668,25 @@ export async function runUkVisaJobs(
         console.log(
           `   âœ… Fetched ${runJobs.length} jobs for ${termLabel} (${newCount} new unique)`,
         );
+        options.onProgress?.({
+          type: "term_complete",
+          termIndex,
+          termTotal,
+          searchTerm: term,
+          jobsFoundTerm: newCount,
+          totalCollected: allJobs.length,
+        });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Unknown error";
         console.error(`âŒ UK Visa Jobs failed for ${termLabel}: ${message}`);
+        options.onProgress?.({
+          type: "error",
+          termIndex,
+          termTotal,
+          searchTerm: term,
+          message,
+        });
         // Continue to next term instead of failing completely
       }
 

@@ -1,8 +1,11 @@
 import csv
+import json
 import os
 from pathlib import Path
 
 from jobspy import scrape_jobs
+
+PROGRESS_PREFIX = "JOBOPS_PROGRESS "
 
 
 def _env_str(name: str, default: str) -> str:
@@ -27,6 +30,11 @@ def _env_bool(name: str, default: bool) -> bool:
     return value.strip().lower() in ("1", "true", "yes", "y", "on")
 
 
+def _emit_progress(event: str, payload: dict) -> None:
+    serialized = json.dumps({"event": event, **payload}, ensure_ascii=True)
+    print(f"{PROGRESS_PREFIX}{serialized}", flush=True)
+
+
 def _parse_sites(raw: str) -> list[str]:
     return [s.strip() for s in raw.split(",") if s.strip()]
 
@@ -40,6 +48,8 @@ def main() -> int:
     country_indeed = _env_str("JOBSPY_COUNTRY_INDEED", "UK")
     linkedin_fetch_description = _env_bool("JOBSPY_LINKEDIN_FETCH_DESCRIPTION", True)
     is_remote = _env_bool("JOBSPY_IS_REMOTE", False)
+    term_index = _env_int("JOBSPY_TERM_INDEX", 1)
+    term_total = _env_int("JOBSPY_TERM_TOTAL", 1)
 
     output_csv = Path(_env_str("JOBSPY_OUTPUT_CSV", "jobs.csv"))
     output_json = Path(
@@ -50,6 +60,14 @@ def main() -> int:
     output_json.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"jobspy: Search term: {search_term}")
+    _emit_progress(
+        "term_start",
+        {
+            "termIndex": term_index,
+            "termTotal": term_total,
+            "searchTerm": search_term,
+        },
+    )
     jobs = scrape_jobs(
         site_name=sites,
         search_term=search_term,
@@ -62,6 +80,15 @@ def main() -> int:
     )
 
     print(f"Found {len(jobs)} jobs")
+    _emit_progress(
+        "term_complete",
+        {
+            "termIndex": term_index,
+            "termTotal": term_total,
+            "searchTerm": search_term,
+            "jobsFoundTerm": int(len(jobs)),
+        },
+    )
 
     jobs.to_csv(
         output_csv,

@@ -13,10 +13,17 @@ export type PipelineStep =
   | "completed"
   | "failed";
 
+export type CrawlSource = "gradcracker" | "jobspy" | "ukvisajobs";
+
 export interface PipelineProgress {
   step: PipelineStep;
   message: string;
   detail?: string;
+  crawlingSource: CrawlSource | null;
+  crawlingSourcesCompleted: number;
+  crawlingSourcesTotal: number;
+  crawlingTermsProcessed: number;
+  crawlingTermsTotal: number;
   crawlingListPagesProcessed: number;
   crawlingListPagesTotal: number;
   crawlingJobCardsFound: number;
@@ -46,6 +53,11 @@ const listeners: Set<ProgressListener> = new Set();
 let currentProgress: PipelineProgress = {
   step: "idle",
   message: "Ready",
+  crawlingSource: null,
+  crawlingSourcesCompleted: 0,
+  crawlingSourcesTotal: 0,
+  crawlingTermsProcessed: 0,
+  crawlingTermsTotal: 0,
   crawlingListPagesProcessed: 0,
   crawlingListPagesTotal: 0,
   crawlingJobCardsFound: 0,
@@ -56,6 +68,19 @@ let currentProgress: PipelineProgress = {
   jobsScored: 0,
   jobsProcessed: 0,
   totalToProcess: 0,
+};
+
+const emptyCrawlingStats = {
+  crawlingTermsProcessed: 0,
+  crawlingTermsTotal: 0,
+  crawlingListPagesProcessed: 0,
+  crawlingListPagesTotal: 0,
+  crawlingJobCardsFound: 0,
+  crawlingJobPagesEnqueued: 0,
+  crawlingJobPagesSkipped: 0,
+  crawlingJobPagesProcessed: 0,
+  crawlingPhase: undefined,
+  crawlingCurrentUrl: undefined,
 };
 
 /**
@@ -103,14 +128,10 @@ export function resetProgress(): void {
   currentProgress = {
     step: "idle",
     message: "Ready",
-    crawlingListPagesProcessed: 0,
-    crawlingListPagesTotal: 0,
-    crawlingJobCardsFound: 0,
-    crawlingJobPagesEnqueued: 0,
-    crawlingJobPagesSkipped: 0,
-    crawlingJobPagesProcessed: 0,
-    crawlingPhase: undefined,
-    crawlingCurrentUrl: undefined,
+    crawlingSource: null,
+    crawlingSourcesCompleted: 0,
+    crawlingSourcesTotal: 0,
+    ...emptyCrawlingStats,
     jobsDiscovered: 0,
     jobsScored: 0,
     jobsProcessed: 0,
@@ -122,27 +143,51 @@ export function resetProgress(): void {
  * Helper to create progress updates for each step.
  */
 export const progressHelpers = {
-  startCrawling: () =>
+  startCrawling: (sourcesTotal = 0) =>
     updateProgress({
       step: "crawling",
       message: "Fetching jobs from sources...",
       detail: "Starting crawler",
       startedAt: new Date().toISOString(),
-      crawlingListPagesProcessed: 0,
-      crawlingListPagesTotal: 0,
-      crawlingJobCardsFound: 0,
-      crawlingJobPagesEnqueued: 0,
-      crawlingJobPagesSkipped: 0,
-      crawlingJobPagesProcessed: 0,
-      crawlingPhase: undefined,
-      crawlingCurrentUrl: undefined,
+      crawlingSource: null,
+      crawlingSourcesCompleted: 0,
+      crawlingSourcesTotal: sourcesTotal,
+      ...emptyCrawlingStats,
       jobsDiscovered: 0,
       jobsScored: 0,
       jobsProcessed: 0,
       totalToProcess: 0,
     }),
 
+  startSource: (
+    source: CrawlSource,
+    sourcesCompleted: number,
+    sourcesTotal: number,
+    options?: { termsTotal?: number; detail?: string },
+  ) =>
+    updateProgress({
+      step: "crawling",
+      message: `Fetching jobs from ${source}...`,
+      detail: options?.detail,
+      crawlingSource: source,
+      crawlingSourcesCompleted: sourcesCompleted,
+      crawlingSourcesTotal: sourcesTotal,
+      ...emptyCrawlingStats,
+      crawlingTermsTotal: options?.termsTotal ?? 0,
+    }),
+
+  completeSource: (sourcesCompleted: number, sourcesTotal: number) =>
+    updateProgress({
+      crawlingSourcesCompleted: sourcesCompleted,
+      crawlingSourcesTotal: sourcesTotal,
+      crawlingCurrentUrl: undefined,
+      crawlingPhase: undefined,
+    }),
+
   crawlingUpdate: (update: {
+    source?: CrawlSource;
+    termsProcessed?: number;
+    termsTotal?: number;
     listPagesProcessed?: number;
     listPagesTotal?: number;
     jobCardsFound?: number;
@@ -155,6 +200,10 @@ export const progressHelpers = {
     const current = getProgress();
     const next = {
       ...current,
+      crawlingSource: update.source ?? current.crawlingSource,
+      crawlingTermsProcessed:
+        update.termsProcessed ?? current.crawlingTermsProcessed,
+      crawlingTermsTotal: update.termsTotal ?? current.crawlingTermsTotal,
       crawlingListPagesProcessed:
         update.listPagesProcessed ?? current.crawlingListPagesProcessed,
       crawlingListPagesTotal:
@@ -177,6 +226,10 @@ export const progressHelpers = {
         : `${next.crawlingListPagesProcessed}`;
 
     const pagesPart = `${next.crawlingJobPagesProcessed}/${next.crawlingJobPagesEnqueued}`;
+    const termsPart =
+      next.crawlingTermsTotal > 0
+        ? `, terms ${next.crawlingTermsProcessed}/${next.crawlingTermsTotal}`
+        : "";
     const skippedPart =
       next.crawlingJobPagesSkipped > 0
         ? `, skipped ${next.crawlingJobPagesSkipped}`
@@ -186,7 +239,7 @@ export const progressHelpers = {
         ? `, cards ${next.crawlingJobCardsFound}`
         : "";
 
-    const message = `Crawling jobs (${sourcesPart} sources, pages ${pagesPart}${skippedPart}${cardsPart})...`;
+    const message = `Crawling jobs (list pages ${sourcesPart}, job pages ${pagesPart}${termsPart}${skippedPart}${cardsPart})...`;
     const detail =
       next.crawlingCurrentUrl && next.crawlingPhase
         ? `${next.crawlingPhase === "list" ? "List" : "Job"}: ${next.crawlingCurrentUrl}`
@@ -198,6 +251,9 @@ export const progressHelpers = {
       step: "crawling",
       message,
       detail,
+      crawlingSource: next.crawlingSource,
+      crawlingTermsProcessed: next.crawlingTermsProcessed,
+      crawlingTermsTotal: next.crawlingTermsTotal,
       crawlingListPagesProcessed: next.crawlingListPagesProcessed,
       crawlingListPagesTotal: next.crawlingListPagesTotal,
       crawlingJobCardsFound: next.crawlingJobCardsFound,
@@ -215,6 +271,7 @@ export const progressHelpers = {
       message: `Found ${jobsFound} jobs, importing to database...`,
       detail: "Deduplicating and saving",
       jobsDiscovered: jobsFound,
+      crawlingSource: null,
       crawlingCurrentUrl: undefined,
     }),
 

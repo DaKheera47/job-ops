@@ -14,7 +14,6 @@ export async function discoverJobsStep(args: {
   sourceErrors: string[];
 }> {
   logger.info("Running discovery step");
-  progressHelpers.startCrawling();
 
   const discoveredJobs: CreateJobInput[] = [];
   const sourceErrors: string[] = [];
@@ -52,9 +51,27 @@ export async function discoverJobsStep(args: {
     }
   }
 
-  if (jobSpySites.length > 0) {
-    updateProgress({
-      step: "crawling",
+  const shouldRunJobSpy = jobSpySites.length > 0;
+  const shouldRunGradcracker =
+    args.mergedConfig.sources.includes("gradcracker");
+  const shouldRunUkVisaJobs = args.mergedConfig.sources.includes("ukvisajobs");
+
+  const totalSources =
+    Number(shouldRunJobSpy) +
+    Number(shouldRunGradcracker) +
+    Number(shouldRunUkVisaJobs);
+  let completedSources = 0;
+
+  progressHelpers.startCrawling(totalSources);
+
+  const markSourceComplete = () => {
+    completedSources += 1;
+    progressHelpers.completeSource(completedSources, totalSources);
+  };
+
+  if (shouldRunJobSpy) {
+    progressHelpers.startSource("jobspy", completedSources, totalSources, {
+      termsTotal: searchTerms.length,
       detail: `JobSpy: scraping ${jobSpySites.join(", ")}...`,
     });
 
@@ -79,6 +96,34 @@ export async function discoverJobsStep(args: {
         settings.jobspyIsRemote !== undefined
           ? settings.jobspyIsRemote === "1"
           : undefined,
+      onProgress: (event) => {
+        if (event.type === "term_start") {
+          progressHelpers.crawlingUpdate({
+            source: "jobspy",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            phase: "list",
+            currentUrl: event.searchTerm,
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `JobSpy: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+          });
+          return;
+        }
+
+        progressHelpers.crawlingUpdate({
+          source: "jobspy",
+          termsProcessed: event.termIndex,
+          termsTotal: event.termTotal,
+          phase: "list",
+          currentUrl: event.searchTerm,
+        });
+        updateProgress({
+          step: "crawling",
+          detail: `JobSpy: completed ${event.termIndex}/${event.termTotal} (${event.searchTerm}) with ${event.jobsFoundTerm} jobs`,
+        });
+      },
     });
 
     if (!jobSpyResult.success) {
@@ -86,10 +131,14 @@ export async function discoverJobsStep(args: {
     } else {
       discoveredJobs.push(...jobSpyResult.jobs);
     }
+
+    markSourceComplete();
   }
 
-  if (args.mergedConfig.sources.includes("gradcracker")) {
-    updateProgress({ step: "crawling", detail: "Gradcracker: scraping..." });
+  if (shouldRunGradcracker) {
+    progressHelpers.startSource("gradcracker", completedSources, totalSources, {
+      detail: "Gradcracker: scraping...",
+    });
 
     const existingJobUrls = await jobsRepo.getAllJobUrls();
     const gradcrackerMaxJobs = settings.gradcrackerMaxJobsPerTerm
@@ -101,16 +150,17 @@ export async function discoverJobsStep(args: {
       searchTerms,
       maxJobsPerTerm: gradcrackerMaxJobs,
       onProgress: (progress) => {
-        if (progress.listPagesTotal && progress.listPagesTotal > 0) {
-          const percent = Math.round(
-            ((progress.listPagesProcessed ?? 0) / progress.listPagesTotal) *
-              100,
-          );
-          updateProgress({
-            step: "crawling",
-            detail: `Gradcracker: ${percent}% (scan ${progress.listPagesProcessed}/${progress.listPagesTotal}, found ${progress.jobCardsFound})`,
-          });
-        }
+        progressHelpers.crawlingUpdate({
+          source: "gradcracker",
+          listPagesProcessed: progress.listPagesProcessed,
+          listPagesTotal: progress.listPagesTotal,
+          jobCardsFound: progress.jobCardsFound,
+          jobPagesEnqueued: progress.jobPagesEnqueued,
+          jobPagesSkipped: progress.jobPagesSkipped,
+          jobPagesProcessed: progress.jobPagesProcessed,
+          phase: progress.phase,
+          currentUrl: progress.currentUrl,
+        });
       },
     });
 
@@ -121,11 +171,13 @@ export async function discoverJobsStep(args: {
     } else {
       discoveredJobs.push(...crawlerResult.jobs);
     }
+
+    markSourceComplete();
   }
 
-  if (args.mergedConfig.sources.includes("ukvisajobs")) {
-    updateProgress({
-      step: "crawling",
+  if (shouldRunUkVisaJobs) {
+    progressHelpers.startSource("ukvisajobs", completedSources, totalSources, {
+      termsTotal: searchTerms.length,
       detail: "UKVisaJobs: scraping visa-sponsoring jobs...",
     });
 
@@ -136,6 +188,76 @@ export async function discoverJobsStep(args: {
     const ukVisaResult = await runUkVisaJobs({
       maxJobs: ukvisajobsMaxJobs,
       searchTerms,
+      onProgress: (event) => {
+        if (event.type === "init") {
+          progressHelpers.crawlingUpdate({
+            source: "ukvisajobs",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            listPagesProcessed: 0,
+            listPagesTotal: event.maxPages,
+            jobPagesEnqueued: 0,
+            jobPagesProcessed: 0,
+            jobPagesSkipped: 0,
+            phase: "list",
+            currentUrl: event.searchTerm || "all jobs",
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
+          });
+          return;
+        }
+
+        if (event.type === "page_fetched") {
+          progressHelpers.crawlingUpdate({
+            source: "ukvisajobs",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            listPagesProcessed: event.pageNo,
+            listPagesTotal: event.maxPages,
+            jobPagesEnqueued: event.totalCollected,
+            jobPagesProcessed: event.totalCollected,
+            phase: "list",
+            currentUrl: `page ${event.pageNo}/${event.maxPages}`,
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo}/${event.maxPages} (${event.totalCollected} collected)`,
+          });
+          return;
+        }
+
+        if (event.type === "term_complete") {
+          progressHelpers.crawlingUpdate({
+            source: "ukvisajobs",
+            termsProcessed: event.termIndex,
+            termsTotal: event.termTotal,
+            phase: "list",
+            currentUrl: event.searchTerm || "all jobs",
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `UKVisaJobs: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
+          });
+          return;
+        }
+
+        if (event.type === "empty_page") {
+          updateProgress({
+            step: "crawling",
+            detail: `UKVisaJobs: page ${event.pageNo} returned no jobs`,
+          });
+          return;
+        }
+
+        if (event.type === "error") {
+          updateProgress({
+            step: "crawling",
+            detail: `UKVisaJobs: ${event.message}`,
+          });
+        }
+      },
     });
 
     if (!ukVisaResult.success) {
@@ -143,6 +265,8 @@ export async function discoverJobsStep(args: {
     } else {
       discoveredJobs.push(...ukVisaResult.jobs);
     }
+
+    markSourceComplete();
   }
 
   if (discoveredJobs.length === 0 && sourceErrors.length > 0) {

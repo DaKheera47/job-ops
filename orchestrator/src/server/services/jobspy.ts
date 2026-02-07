@@ -7,6 +7,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import type { CreateJobInput, JobSource } from "@shared/types";
 import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
@@ -15,6 +16,61 @@ import { getDataDir } from "../config/dataDir";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const JOBSPY_DIR = join(__dirname, "../../../../extractors/jobspy");
 const JOBSPY_SCRIPT = join(JOBSPY_DIR, "scrape_jobs.py");
+const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+
+export type JobSpyProgressEvent =
+  | {
+      type: "term_start";
+      termIndex: number;
+      termTotal: number;
+      searchTerm: string;
+    }
+  | {
+      type: "term_complete";
+      termIndex: number;
+      termTotal: number;
+      searchTerm: string;
+      jobsFoundTerm: number;
+    };
+
+export function parseJobSpyProgressLine(
+  line: string,
+): JobSpyProgressEvent | null {
+  if (!line.startsWith(JOBOPS_PROGRESS_PREFIX)) return null;
+  const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+
+  const eventName = toStringOrNull(parsed.event);
+  const termIndex = toNumberOrNull(parsed.termIndex);
+  const termTotal = toNumberOrNull(parsed.termTotal);
+  const searchTerm = toStringOrNull(parsed.searchTerm) ?? "";
+
+  if (!eventName || termIndex === null || termTotal === null) return null;
+  if (eventName === "term_start") {
+    return {
+      type: "term_start",
+      termIndex,
+      termTotal,
+      searchTerm,
+    };
+  }
+  if (eventName === "term_complete") {
+    return {
+      type: "term_complete",
+      termIndex,
+      termTotal,
+      searchTerm,
+      jobsFoundTerm: toNumberOrNull(parsed.jobsFoundTerm) ?? 0,
+    };
+  }
+
+  return null;
+}
 
 function getPythonPath(): string {
   if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH;
@@ -92,6 +148,7 @@ export interface RunJobSpyOptions {
   countryIndeed?: string;
   linkedinFetchDescription?: boolean;
   isRemote?: boolean;
+  onProgress?: (event: JobSpyProgressEvent) => void;
 }
 
 export interface JobSpyResult {
@@ -131,11 +188,13 @@ export async function runJobSpy(
         const child = spawn(pythonPath, [JOBSPY_SCRIPT], {
           cwd: JOBSPY_DIR,
           shell: false,
-          stdio: "inherit",
+          stdio: ["ignore", "pipe", "pipe"],
           env: {
             ...process.env,
             JOBSPY_SITES: sites || "indeed,linkedin",
             JOBSPY_SEARCH_TERM: searchTerm,
+            JOBSPY_TERM_INDEX: String(i + 1),
+            JOBSPY_TERM_TOTAL: String(searchTerms.length),
             JOBSPY_LOCATION:
               options.location ?? process.env.JOBSPY_LOCATION ?? "UK",
             JOBSPY_RESULTS_WANTED: String(
@@ -161,7 +220,28 @@ export async function runJobSpy(
           },
         });
 
+        const handleLine = (line: string, stream: NodeJS.WriteStream) => {
+          const event = parseJobSpyProgressLine(line);
+          if (event) {
+            options.onProgress?.(event);
+            return;
+          }
+          stream.write(`${line}\n`);
+        };
+
+        const stdoutRl = child.stdout
+          ? createInterface({ input: child.stdout })
+          : null;
+        const stderrRl = child.stderr
+          ? createInterface({ input: child.stderr })
+          : null;
+
+        stdoutRl?.on("line", (line) => handleLine(line, process.stdout));
+        stderrRl?.on("line", (line) => handleLine(line, process.stderr));
+
         child.on("close", (code) => {
+          stdoutRl?.close();
+          stderrRl?.close();
           if (code === 0) resolve();
           else reject(new Error(`JobSpy exited with code ${code}`));
         });

@@ -61,6 +61,8 @@ describe.sequential("Pipeline API routes", () => {
         const { value } = await reader.read();
         const text = new TextDecoder().decode(value);
         expect(text).toContain("data:");
+        expect(text).toContain('"crawlingSource"');
+        expect(text).toContain('"crawlingSourcesTotal"');
       } finally {
         await reader.cancel();
         controller.abort();

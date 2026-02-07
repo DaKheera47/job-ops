@@ -8,6 +8,11 @@ vi.mock("../../pipeline/index", () => {
   const progress = {
     step: "idle",
     message: "Ready",
+    crawlingSource: null,
+    crawlingSourcesCompleted: 0,
+    crawlingSourcesTotal: 0,
+    crawlingTermsProcessed: 0,
+    crawlingTermsTotal: 0,
     crawlingListPagesProcessed: 0,
     crawlingListPagesTotal: 0,
     crawlingJobCardsFound: 0,

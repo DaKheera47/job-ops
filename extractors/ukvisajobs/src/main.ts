@@ -32,6 +32,16 @@ const AUTH_CACHE_PATH = join(__dirname, "../storage/ukvisajobs-auth.json");
 const JOBS_PER_PAGE = 15;
 const DEFAULT_MAX_JOBS = 50;
 const MAX_ALLOWED_JOBS = 200;
+const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+
+function emitProgress(
+  event: string,
+  payload: Record<string, unknown> = {},
+): void {
+  if (process.env.JOBOPS_EMIT_PROGRESS !== "1") return;
+  const serialized = JSON.stringify({ event, ...payload });
+  process.stdout.write(`${JOBOPS_PROGRESS_PREFIX}${serialized}\n`);
+}
 
 interface UkVisaJobsApiJob {
   id: string;
@@ -444,6 +454,11 @@ async function main(): Promise<void> {
   if (searchKeyword) {
     console.log(`   Search keyword: ${searchKeyword}`);
   }
+  emitProgress("init", {
+    maxPages,
+    maxJobs,
+    searchKeyword: searchKeyword || "",
+  });
 
   const allJobs: ExtractedJob[] = [];
   const seenIds = new Set<string>();
@@ -481,6 +496,11 @@ async function main(): Promise<void> {
       }
 
       if (response.status !== 1) {
+        emitProgress("error", {
+          pageNo,
+          status: response.status,
+          message: `API returned status ${response.status}`,
+        });
         console.warn(
           `   âš ï¸ API returned status ${response.status} on page ${pageNo}`,
         );
@@ -493,6 +513,7 @@ async function main(): Promise<void> {
       }
 
       if (!response.jobs || response.jobs.length === 0) {
+        emitProgress("empty_page", { pageNo, maxPages, totalCollected: allJobs.length });
         console.log(`   No more jobs on page ${pageNo}`);
         break;
       }
@@ -508,6 +529,14 @@ async function main(): Promise<void> {
         allJobs.push(mapped);
       }
 
+      emitProgress("page_fetched", {
+        pageNo,
+        maxPages,
+        jobsOnPage: response.jobs.length,
+        totalCollected: allJobs.length,
+        totalAvailable,
+      });
+
       // If we got fewer jobs than a full page, we're at the end
       if (response.jobs.length < JOBS_PER_PAGE) {
         break;
@@ -519,6 +548,11 @@ async function main(): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
+    emitProgress("done", {
+      maxPages,
+      totalCollected: allJobs.length,
+      totalAvailable,
+    });
     console.log(`âœ… Scraped ${allJobs.length} jobs`);
 
     // Write output to storage directory (similar to Crawlee dataset structure)
@@ -542,6 +576,7 @@ async function main(): Promise<void> {
     console.log(`   Jobs file: ${outputFile}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    emitProgress("error", { message });
     console.error(`âŒ Error: ${message}`);
     process.exit(1);
   }
