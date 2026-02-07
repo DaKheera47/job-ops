@@ -60,7 +60,12 @@ export const defaultStatusToken = {
 
 export type FilterTab = "ready" | "discovered" | "applied" | "all";
 
-export type SortKey = "discoveredAt" | "score" | "title" | "employer";
+export type SortKey =
+  | "discoveredAt"
+  | "score"
+  | "salary"
+  | "title"
+  | "employer";
 export type SortDirection = "asc" | "desc";
 export type SponsorFilter =
   | "all"
@@ -79,6 +84,7 @@ export const DEFAULT_SORT: JobSort = { key: "score", direction: "desc" };
 export const sortLabels: Record<JobSort["key"], string> = {
   discoveredAt: "Discovered",
   score: "Score",
+  salary: "Salary",
   title: "Title",
   employer: "Company",
 };
@@ -86,6 +92,7 @@ export const sortLabels: Record<JobSort["key"], string> = {
 export const defaultSortDirection: Record<JobSort["key"], SortDirection> = {
   discoveredAt: "desc",
   score: "desc",
+  salary: "desc",
   title: "asc",
   employer: "asc",
 };

@@ -104,4 +104,27 @@ describe("useFilteredJobs", () => {
     );
     expect(result.current).toHaveLength(2);
   });
+
+  it("sorts by salary with highest first and missing salaries last", () => {
+    const jobs: Job[] = [
+      { ...baseJob, id: "max", salaryMinAmount: 120000 },
+      { ...baseJob, id: "mid", salary: "GBP 65k" },
+      { ...baseJob, id: "low", salaryMinAmount: 50000 },
+      { ...baseJob, id: "none", salary: null, salaryMinAmount: null },
+    ];
+
+    const { result } = renderHook(() =>
+      useFilteredJobs(jobs, "all", "all", "all", null, "", {
+        key: "salary",
+        direction: "desc",
+      }),
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual([
+      "max",
+      "mid",
+      "low",
+      "none",
+    ]);
+  });
 });

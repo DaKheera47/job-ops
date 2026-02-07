@@ -73,6 +73,12 @@ describe("OrchestratorFilters", () => {
       key: "title",
       direction: "asc",
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Salary" }));
+    expect(props.onSortChange).toHaveBeenCalledWith({
+      key: "salary",
+      direction: "desc",
+    });
   });
 
   it("resets filters and only shows sources present in jobs", () => {

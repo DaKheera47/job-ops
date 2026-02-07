@@ -1,5 +1,5 @@
 import type { JobSource } from "@shared/types.js";
-import { ArrowDown, ArrowUp, Filter, Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -54,6 +54,16 @@ const sponsorOptions: Array<{
   { value: "not_found", label: "Sponsor not found" },
   { value: "unknown", label: "Unchecked sponsor" },
 ];
+
+const getDirectionLabel = (sort: JobSort): string => {
+  if (sort.key === "discoveredAt") {
+    return sort.direction === "desc" ? "Newest" : "Oldest";
+  }
+  if (sort.key === "score" || sort.key === "salary") {
+    return sort.direction === "desc" ? "Largest first" : "Smallest first";
+  }
+  return sort.direction === "asc" ? "A-Z" : "Z-A";
+};
 
 export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   activeTab,
@@ -263,9 +273,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                         )}
                         <Button
                           type="button"
-                          size="icon"
+                          size="sm"
                           variant="outline"
-                          className="h-8 w-8"
                           aria-label={
                             sort.direction === "asc"
                               ? "Switch to descending sort"
@@ -279,11 +288,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                             })
                           }
                         >
-                          {sort.direction === "asc" ? (
-                            <ArrowUp className="h-3.5 w-3.5" />
-                          ) : (
-                            <ArrowDown className="h-3.5 w-3.5" />
-                          )}
+                          {getDirectionLabel(sort)}
                         </Button>
                       </div>
                     </CardContent>
