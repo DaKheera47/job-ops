@@ -151,198 +151,188 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   };
 
   return (
-    <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Presets</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant={activePreset === "fast" ? "default" : "outline"}
-            onClick={() => applyPreset("fast")}
-          >
-            Fast
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activePreset === "balanced" ? "default" : "outline"}
-            onClick={() => applyPreset("balanced")}
-          >
-            Balanced
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={activePreset === "detailed" ? "default" : "outline"}
-            onClick={() => applyPreset("detailed")}
-          >
-            Detailed
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Run settings</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="top-n">Resumes tailored</Label>
-            <Input
-              id="top-n"
-              type="number"
-              min={1}
-              max={50}
-              value={topNInput}
-              onChange={(event) => setTopNInput(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="min-score">Min suitability score</Label>
-            <Input
-              id="min-score"
-              type="number"
-              min={0}
-              max={100}
-              value={minScoreInput}
-              onChange={(event) => setMinScoreInput(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="jobs-per-term">Max jobs discovered (run budget)</Label>
-            <Input
-              id="jobs-per-term"
-              type="number"
-              min={1}
-              max={1000}
-              value={runBudgetInput}
-              onChange={(event) => setRunBudgetInput(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              This is a total run budget used across all selected sources and search terms.
-            </p>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label htmlFor="search-terms-input">Search terms</Label>
-            <div className="rounded-md border border-input bg-background px-2 py-2">
-              <div className="flex flex-wrap gap-2">
-                {searchTerms.map((term) => (
-                  <span
-                    key={term}
-                    className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs"
-                  >
-                    {term}
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground"
-                      aria-label={`Remove ${term}`}
-                      onClick={() =>
-                        setSearchTerms((current) =>
-                          current.filter((value) => value !== term),
-                        )
-                      }
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
-                <Input
-                  id="search-terms-input"
-                  value={searchTermDraft}
-                  onChange={(event) => setSearchTermDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === ",") {
-                      event.preventDefault();
-                      addSearchTerms(searchTermDraft);
-                      setSearchTermDraft("");
-                      return;
-                    }
-                    if (
-                      event.key === "Backspace" &&
-                      searchTermDraft.length === 0 &&
-                      searchTerms.length > 0
-                    ) {
-                      setSearchTerms((current) => current.slice(0, -1));
-                    }
-                  }}
-                  onBlur={() => {
-                    addSearchTerms(searchTermDraft);
-                    setSearchTermDraft("");
-                  }}
-                  onPaste={(event) => {
-                    const pasted = event.clipboardData.getData("text");
-                    const parsed = parseSearchTermsInput(pasted);
-                    if (parsed.length > 1) {
-                      event.preventDefault();
-                      addSearchTerms(pasted);
-                    }
-                  }}
-                  placeholder="Type and press Enter"
-                  className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">
-            Sources ({pipelineSources.length}/{enabledSources.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          {enabledSources.map((source) => (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Presets</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
             <Button
-              key={source}
               type="button"
               size="sm"
-              variant={pipelineSources.includes(source) ? "default" : "outline"}
-              onClick={() =>
-                onToggleSource(source, !pipelineSources.includes(source))
-              }
+              variant={activePreset === "fast" ? "default" : "outline"}
+              onClick={() => applyPreset("fast")}
             >
-              {sourceLabel[source]}
+              Fast
             </Button>
-          ))}
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            onClick={() => onSetPipelineSources(enabledSources)}
-            disabled={enabledSources.length === 0}
-          >
-            Select all
-          </Button>
-        </CardContent>
-      </Card>
+            <Button
+              type="button"
+              size="sm"
+              variant={activePreset === "balanced" ? "default" : "outline"}
+              onClick={() => applyPreset("balanced")}
+            >
+              Balanced
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={activePreset === "detailed" ? "default" : "outline"}
+              onClick={() => applyPreset("detailed")}
+            >
+              Detailed
+            </Button>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Estimate</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <p>
-            Estimated discovered jobs: <strong>{estimate.discovered.min}</strong>
-            {" - "}
-            <strong>{estimate.discovered.max}</strong> (cap {estimate.discovered.cap})
-          </p>
-          <p>
-            Estimated resumes tailored: <strong>{estimate.processed.min}</strong>
-            {" - "}
-            <strong>{estimate.processed.max}</strong> (limited by resumes tailored)
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Estimate is based on the run budget allocation and historical yield assumptions.
-          </p>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Run settings</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="top-n">Resumes tailored</Label>
+              <Input
+                id="top-n"
+                type="number"
+                min={1}
+                max={50}
+                value={topNInput}
+                onChange={(event) => setTopNInput(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="min-score">Min suitability score</Label>
+              <Input
+                id="min-score"
+                type="number"
+                min={0}
+                max={100}
+                value={minScoreInput}
+                onChange={(event) => setMinScoreInput(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="jobs-per-term">Max jobs discovered</Label>
+              <Input
+                id="jobs-per-term"
+                type="number"
+                min={1}
+                max={1000}
+                value={runBudgetInput}
+                onChange={(event) => setRunBudgetInput(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-3">
+              <Label htmlFor="search-terms-input">Search terms</Label>
+              <div className="rounded-md border border-input bg-background px-2 py-2">
+                <div className="flex flex-wrap gap-2">
+                  {searchTerms.map((term) => (
+                    <span
+                      key={term}
+                      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs"
+                    >
+                      {term}
+                      <button
+                        type="button"
+                        className="text-muted-foreground"
+                        aria-label={`Remove ${term}`}
+                        onClick={() =>
+                          setSearchTerms((current) =>
+                            current.filter((value) => value !== term),
+                          )
+                        }
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                  <Input
+                    id="search-terms-input"
+                    value={searchTermDraft}
+                    onChange={(event) => setSearchTermDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === ",") {
+                        event.preventDefault();
+                        addSearchTerms(searchTermDraft);
+                        setSearchTermDraft("");
+                        return;
+                      }
+                      if (
+                        event.key === "Backspace" &&
+                        searchTermDraft.length === 0 &&
+                        searchTerms.length > 0
+                      ) {
+                        setSearchTerms((current) => current.slice(0, -1));
+                      }
+                    }}
+                    onBlur={() => {
+                      addSearchTerms(searchTermDraft);
+                      setSearchTermDraft("");
+                    }}
+                    onPaste={(event) => {
+                      const pasted = event.clipboardData.getData("text");
+                      const parsed = parseSearchTermsInput(pasted);
+                      if (parsed.length > 1) {
+                        event.preventDefault();
+                        addSearchTerms(pasted);
+                      }
+                    }}
+                    placeholder="Type and press Enter"
+                    className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
+                  />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      <div className="sticky bottom-0 flex justify-end bg-background/95 pb-1 pt-2 backdrop-blur">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">
+              Sources ({pipelineSources.length}/{enabledSources.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {enabledSources.map((source) => (
+              <Button
+                key={source}
+                type="button"
+                size="sm"
+                variant={pipelineSources.includes(source) ? "default" : "outline"}
+                onClick={() =>
+                  onToggleSource(source, !pipelineSources.includes(source))
+                }
+              >
+                {sourceLabel[source]}
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Estimate</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>
+              Estimated discovered jobs: <strong>{estimate.discovered.min}</strong>
+              {" - "}
+              <strong>{estimate.discovered.max}</strong> (cap {estimate.discovered.cap})
+            </p>
+            <p>
+              Estimated resumes tailored: <strong>{estimate.processed.min}</strong>
+              {" - "}
+              <strong>{estimate.processed.max}</strong> (limited by resumes tailored)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Estimate is based on the run budget allocation and historical yield assumptions.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="mt-3 flex shrink-0 justify-end border-t border-border/60 bg-background pt-3">
         <Button
           type="button"
           className="gap-2"
@@ -354,7 +344,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           ) : (
             <Sparkles className="h-4 w-4" />
           )}
-          Save + Run automatic
+          Start run now
         </Button>
       </div>
     </div>
