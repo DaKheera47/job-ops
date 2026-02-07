@@ -49,7 +49,6 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               Run jobs
-              <Badge variant="secondary">Unified flow</Badge>
             </SheetTitle>
             <SheetDescription>
               Choose Automatic pipeline run or Manual import.
