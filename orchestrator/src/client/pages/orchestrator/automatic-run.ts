@@ -6,13 +6,13 @@ export interface AutomaticRunValues {
   topN: number;
   minSuitabilityScore: number;
   searchTerms: string[];
-  jobsPerTerm: number;
+  runBudget: number;
 }
 
 export interface AutomaticPresetValues {
   topN: number;
   minSuitabilityScore: number;
-  jobsPerTerm: number;
+  runBudget: number;
 }
 
 export interface AutomaticEstimate {
@@ -31,17 +31,17 @@ export const AUTOMATIC_PRESETS: Record<AutomaticPresetId, AutomaticPresetValues>
   fast: {
     topN: 5,
     minSuitabilityScore: 75,
-    jobsPerTerm: 60,
+    runBudget: 300,
   },
   balanced: {
     topN: 10,
     minSuitabilityScore: 50,
-    jobsPerTerm: 200,
+    runBudget: 500,
   },
   detailed: {
     topN: 20,
     minSuitabilityScore: 35,
-    jobsPerTerm: 350,
+    runBudget: 750,
   },
 };
 
@@ -50,6 +50,48 @@ export const RUN_MEMORY_STORAGE_KEY = "jobops.pipeline.run-memory.v1";
 export interface AutomaticRunMemory {
   topN: number;
   minSuitabilityScore: number;
+}
+
+export interface ExtractorLimits {
+  jobspyResultsWanted: number;
+  gradcrackerMaxJobsPerTerm: number;
+  ukvisajobsMaxJobs: number;
+}
+
+export function deriveExtractorLimits(args: {
+  budget: number;
+  searchTerms: string[];
+  sources: JobSource[];
+}): ExtractorLimits {
+  const budget = Math.max(1, Math.round(args.budget));
+  const termCount = Math.max(1, args.searchTerms.length);
+  const includesIndeed = args.sources.includes("indeed");
+  const includesLinkedIn = args.sources.includes("linkedin");
+  const includesGradcracker = args.sources.includes("gradcracker");
+  const includesUkVisaJobs = args.sources.includes("ukvisajobs");
+
+  const weightedContributors =
+    (includesIndeed ? termCount : 0) +
+    (includesLinkedIn ? termCount : 0) +
+    (includesGradcracker ? termCount : 0) +
+    (includesUkVisaJobs ? 1 : 0);
+
+  if (weightedContributors <= 0) {
+    return {
+      jobspyResultsWanted: budget,
+      gradcrackerMaxJobsPerTerm: budget,
+      ukvisajobsMaxJobs: budget,
+    };
+  }
+
+  const perUnit = Math.max(1, Math.floor(budget / weightedContributors));
+  const remainder = Math.max(0, budget - perUnit * weightedContributors);
+
+  return {
+    jobspyResultsWanted: perUnit,
+    gradcrackerMaxJobsPerTerm: perUnit,
+    ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
+  };
 }
 
 export function parseSearchTermsInput(input: string): string[] {
@@ -73,11 +115,18 @@ export function calculateAutomaticEstimate(args: {
   const hasUkVisaJobs = sources.includes("ukvisajobs");
   const hasIndeed = sources.includes("indeed");
   const hasLinkedIn = sources.includes("linkedin");
+  const limits = deriveExtractorLimits({
+    budget: values.runBudget,
+    searchTerms: values.searchTerms,
+    sources,
+  });
 
   const jobspySitesCount = [hasIndeed, hasLinkedIn].filter(Boolean).length;
-  const jobspyCap = jobspySitesCount * values.jobsPerTerm * termCount;
-  const gradcrackerCap = hasGradcracker ? values.jobsPerTerm * termCount : 0;
-  const ukvisaCap = hasUkVisaJobs ? values.jobsPerTerm : 0;
+  const jobspyCap = jobspySitesCount * limits.jobspyResultsWanted * termCount;
+  const gradcrackerCap = hasGradcracker
+    ? limits.gradcrackerMaxJobsPerTerm * termCount
+    : 0;
+  const ukvisaCap = hasUkVisaJobs ? limits.ukvisajobsMaxJobs : 0;
 
   const discoveredCap = jobspyCap + gradcrackerCap + ukvisaCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);

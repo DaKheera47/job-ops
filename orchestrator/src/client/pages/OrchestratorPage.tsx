@@ -21,6 +21,7 @@ import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
 import { RunModeModal } from "./orchestrator/RunModeModal";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
+import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { RunMode } from "./orchestrator/run-mode";
 import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
@@ -259,11 +260,16 @@ export const OrchestratorPage: React.FC = () => {
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
+      const limits = deriveExtractorLimits({
+        budget: values.runBudget,
+        searchTerms: values.searchTerms,
+        sources: pipelineSources,
+      });
       await api.updateSettings({
         searchTerms: values.searchTerms,
-        jobspyResultsWanted: values.jobsPerTerm,
-        gradcrackerMaxJobsPerTerm: values.jobsPerTerm,
-        ukvisajobsMaxJobs: values.jobsPerTerm,
+        jobspyResultsWanted: limits.jobspyResultsWanted,
+        gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
+        ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
       });
       await refreshSettings();
       await startPipelineRun({

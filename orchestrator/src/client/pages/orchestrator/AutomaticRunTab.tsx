@@ -32,7 +32,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   topN: 10,
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
-  jobsPerTerm: 200,
+  runBudget: 200,
 };
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
@@ -55,8 +55,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [minScoreInput, setMinScoreInput] = useState(
     String(DEFAULT_VALUES.minSuitabilityScore),
   );
-  const [jobsPerTermInput, setJobsPerTermInput] = useState(
-    String(DEFAULT_VALUES.jobsPerTerm),
+  const [runBudgetInput, setRunBudgetInput] = useState(
+    String(DEFAULT_VALUES.runBudget),
   );
   const [searchTerms, setSearchTerms] = useState<string[]>(
     DEFAULT_VALUES.searchTerms,
@@ -76,12 +76,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     setTopNInput(String(topN));
     setMinScoreInput(String(minSuitabilityScore));
-    const rememberedJobsPerTerm =
+    const rememberedRunBudget =
       settings?.jobspyResultsWanted ??
       settings?.gradcrackerMaxJobsPerTerm ??
       settings?.ukvisajobsMaxJobs ??
-      DEFAULT_VALUES.jobsPerTerm;
-    setJobsPerTermInput(String(rememberedJobsPerTerm));
+      DEFAULT_VALUES.runBudget;
+    setRunBudgetInput(String(rememberedRunBudget));
     setSearchTerms(settings?.searchTerms ?? DEFAULT_VALUES.searchTerms);
     setSearchTermDraft("");
     setActivePreset(null);
@@ -109,14 +109,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         DEFAULT_VALUES.minSuitabilityScore,
       ),
       searchTerms,
-      jobsPerTerm: toNumber(
-        jobsPerTermInput,
+      runBudget: toNumber(
+        runBudgetInput,
         1,
         1000,
-        DEFAULT_VALUES.jobsPerTerm,
+        DEFAULT_VALUES.runBudget,
       ),
     };
-  }, [topNInput, minScoreInput, searchTerms, jobsPerTermInput]);
+  }, [topNInput, minScoreInput, searchTerms, runBudgetInput]);
 
   const estimate = useMemo(
     () => calculateAutomaticEstimate({ values, sources: pipelineSources }),
@@ -133,7 +133,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const preset = AUTOMATIC_PRESETS[presetId];
     setTopNInput(String(preset.topN));
     setMinScoreInput(String(preset.minSuitabilityScore));
-    setJobsPerTermInput(String(preset.jobsPerTerm));
+    setRunBudgetInput(String(preset.runBudget));
     setActivePreset(presetId);
   };
 
@@ -190,7 +190,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="top-n">Jobs to auto-process</Label>
+            <Label htmlFor="top-n">Resumes tailored</Label>
             <Input
               id="top-n"
               type="number"
@@ -212,15 +212,18 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="jobs-per-term">Jobs per term</Label>
+            <Label htmlFor="jobs-per-term">Max jobs discovered (run budget)</Label>
             <Input
               id="jobs-per-term"
               type="number"
               min={1}
               max={1000}
-              value={jobsPerTermInput}
-              onChange={(event) => setJobsPerTermInput(event.target.value)}
+              value={runBudgetInput}
+              onChange={(event) => setRunBudgetInput(event.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              This is a total run budget used across all selected sources and search terms.
+            </p>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label htmlFor="search-terms-input">Search terms</Label>
@@ -329,12 +332,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             <strong>{estimate.discovered.max}</strong> (cap {estimate.discovered.cap})
           </p>
           <p>
-            Estimated auto-processed: <strong>{estimate.processed.min}</strong>
+            Estimated resumes tailored: <strong>{estimate.processed.min}</strong>
             {" - "}
-            <strong>{estimate.processed.max}</strong> (limited by jobs to auto-process)
+            <strong>{estimate.processed.max}</strong> (limited by resumes tailored)
           </p>
           <p className="text-xs text-muted-foreground">
-            Estimate is based on configured caps and historical yield assumptions.
+            Estimate is based on the run budget allocation and historical yield assumptions.
           </p>
         </CardContent>
       </Card>

@@ -206,7 +206,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
       topN: number;
       minSuitabilityScore: number;
       searchTerms: string[];
-      jobsPerTerm: number;
+      runBudget: number;
     }) => Promise<void>;
   }) => (
     <button
@@ -217,7 +217,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
           topN: 12,
           minSuitabilityScore: 55,
           searchTerms: ["backend"],
-          jobsPerTerm: 150,
+          runBudget: 150,
         })
       }
     >

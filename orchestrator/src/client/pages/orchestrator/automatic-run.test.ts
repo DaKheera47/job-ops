@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTOMATIC_PRESETS,
   calculateAutomaticEstimate,
+  deriveExtractorLimits,
   parseSearchTermsInput,
 } from "./automatic-run";
 
@@ -10,7 +11,7 @@ describe("automatic-run utilities", () => {
     expect(AUTOMATIC_PRESETS.fast).toEqual({
       topN: 5,
       minSuitabilityScore: 75,
-      jobsPerTerm: 60,
+      runBudget: 300,
     });
 
     expect(AUTOMATIC_PRESETS.detailed.topN).toBeGreaterThan(
@@ -24,16 +25,30 @@ describe("automatic-run utilities", () => {
         topN: 10,
         minSuitabilityScore: 50,
         searchTerms: ["backend", "platform"],
-        jobsPerTerm: 100,
+        runBudget: 100,
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
 
-    expect(estimate.discovered.cap).toBe(700);
-    expect(estimate.discovered.min).toBe(245);
-    expect(estimate.discovered.max).toBe(525);
+    expect(estimate.discovered.cap).toBe(100);
+    expect(estimate.discovered.min).toBe(35);
+    expect(estimate.discovered.max).toBe(75);
     expect(estimate.processed.min).toBe(10);
     expect(estimate.processed.max).toBe(10);
+  });
+
+  it("keeps discovered cap under budget regardless of search-term count", () => {
+    const limits = deriveExtractorLimits({
+      budget: 750,
+      searchTerms: ["a", "b", "c"],
+      sources: ["indeed", "linkedin", "gradcracker"],
+    });
+
+    const cap =
+      2 * limits.jobspyResultsWanted * 3 +
+      limits.gradcrackerMaxJobsPerTerm * 3;
+
+    expect(cap).toBeLessThanOrEqual(750);
   });
 
   it("parses comma and newline separated search terms", () => {
