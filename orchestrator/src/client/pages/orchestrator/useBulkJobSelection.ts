@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import * as api from "../../api";
 import {
   canBulkMoveToReady,
+  canBulkRescore,
   canBulkSkip,
   getFailedJobIds,
 } from "./bulkActions";
@@ -40,6 +41,10 @@ export function useBulkJobSelection({
   );
   const canMoveSelected = useMemo(
     () => canBulkMoveToReady(selectedJobs),
+    [selectedJobs],
+  );
+  const canRescoreSelected = useMemo(
+    () => canBulkRescore(selectedJobs),
     [selectedJobs],
   );
 
@@ -114,7 +119,11 @@ export function useBulkJobSelection({
 
         const failedIds = getFailedJobIds(result);
         const successLabel =
-          action === "skip" ? "jobs skipped" : "jobs moved to Ready";
+          action === "skip"
+            ? "jobs skipped"
+            : action === "move_to_ready"
+              ? "jobs moved to Ready"
+              : "matches recalculated";
 
         if (result.failed === 0) {
           toast.success(`${result.succeeded} ${successLabel}`);
@@ -154,6 +163,7 @@ export function useBulkJobSelection({
     selectedJobIds,
     canSkipSelected,
     canMoveSelected,
+    canRescoreSelected,
     bulkActionInFlight,
     toggleSelectJob,
     toggleSelectAll,

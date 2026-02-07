@@ -7,9 +7,11 @@ interface FloatingBulkActionsBarProps {
   selectedCount: number;
   canMoveSelected: boolean;
   canSkipSelected: boolean;
+  canRescoreSelected: boolean;
   bulkActionInFlight: boolean;
   onMoveToReady: () => void;
   onSkipSelected: () => void;
+  onRescoreSelected: () => void;
   onClear: () => void;
 }
 
@@ -17,9 +19,11 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
   selectedCount,
   canMoveSelected,
   canSkipSelected,
+  canRescoreSelected,
   bulkActionInFlight,
   onMoveToReady,
   onSkipSelected,
+  onRescoreSelected,
   onClear,
 }) => {
   const [isMounted, setIsMounted] = useState(false);
@@ -71,6 +75,17 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
             onClick={onSkipSelected}
           >
             Skip selected
+          </Button>
+        )}
+        {canRescoreSelected && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={bulkActionInFlight}
+            onClick={onRescoreSelected}
+          >
+            Recalculate match
           </Button>
         )}
         <Button

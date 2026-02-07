@@ -141,7 +141,7 @@ const updateOutcomeSchema = z.object({
 });
 
 const bulkActionRequestSchema = z.object({
-  action: z.enum(["skip", "move_to_ready"]),
+  action: z.enum(["skip", "move_to_ready", "rescore"]),
   jobIds: z.array(z.string().min(1)).min(1).max(100),
 });
 
@@ -211,32 +211,75 @@ async function executeBulkActionForJob(
       return { jobId, ok: true, job: updated };
     }
 
-    if (job.status !== "discovered") {
-      throw badRequest(
-        `Job is not movable to Ready from status "${job.status}"`,
-        {
-          jobId,
-          status: job.status,
-          requiredStatus: "discovered",
-        },
-      );
+    if (action === "move_to_ready") {
+      if (job.status !== "discovered") {
+        throw badRequest(
+          `Job is not movable to Ready from status "${job.status}"`,
+          {
+            jobId,
+            status: job.status,
+            requiredStatus: "discovered",
+          },
+        );
+      }
+
+      const processed = await processJob(jobId);
+      if (!processed.success) {
+        throw new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: processed.error || "Failed to process job",
+        });
+      }
+
+      const updated = await jobsRepo.getJobById(jobId);
+      if (!updated) {
+        throw new AppError({
+          status: 404,
+          code: "NOT_FOUND",
+          message: "Job not found after processing",
+        });
+      }
+
+      return { jobId, ok: true, job: updated };
     }
 
-    const processed = await processJob(jobId);
-    if (!processed.success) {
-      throw new AppError({
-        status: 500,
-        code: "INTERNAL_ERROR",
-        message: processed.error || "Failed to process job",
+    if (job.status === "processing") {
+      throw badRequest(`Job is not rescorable from status "${job.status}"`, {
+        jobId,
+        status: job.status,
+        disallowedStatus: "processing",
       });
     }
 
-    const updated = await jobsRepo.getJobById(jobId);
+    if (isDemoMode()) {
+      const simulated = await simulateRescoreJob(job.id);
+      return { jobId, ok: true, job: simulated };
+    }
+
+    const rawProfile = await getProfile();
+    if (
+      !rawProfile ||
+      typeof rawProfile !== "object" ||
+      Array.isArray(rawProfile)
+    ) {
+      throw badRequest("Invalid resume profile format");
+    }
+
+    const { score, reason } = await scoreJobSuitability(
+      job,
+      rawProfile as Record<string, unknown>,
+    );
+
+    const updated = await jobsRepo.updateJob(job.id, {
+      suitabilityScore: score,
+      suitabilityReason: reason,
+    });
     if (!updated) {
       throw new AppError({
         status: 404,
         code: "NOT_FOUND",
-        message: "Job not found after processing",
+        message: "Job not found",
       });
     }
 

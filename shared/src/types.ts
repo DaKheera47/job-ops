@@ -339,7 +339,7 @@ export interface JobsListResponse {
   byStatus: Record<JobStatus, number>;
 }
 
-export type BulkJobAction = "skip" | "move_to_ready";
+export type BulkJobAction = "skip" | "move_to_ready" | "rescore";
 
 export interface BulkJobActionRequest {
   action: BulkJobAction;
