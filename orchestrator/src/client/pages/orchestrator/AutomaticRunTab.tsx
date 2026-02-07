@@ -2,10 +2,17 @@ import type { AppSettings, JobSource } from "@shared/types";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
@@ -91,6 +98,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   onSaveAndRun,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
       defaultValues: {
@@ -128,6 +136,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
+    setAdvancedOpen(false);
   }, [open, settings, reset]);
 
   const addSearchTerms = (input: string) => {
@@ -196,149 +205,169 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Presets</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={activePreset === "fast" ? "default" : "outline"}
-              onClick={() => applyPreset("fast")}
+          <CardContent className="space-y-4 pt-6">
+            <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
+              <Label className="text-base font-semibold">Preset</Label>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={activePreset === "fast" ? "default" : "outline"}
+                  onClick={() => applyPreset("fast")}
+                >
+                  Fast
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={activePreset === "balanced" ? "default" : "outline"}
+                  onClick={() => applyPreset("balanced")}
+                >
+                  Balanced
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={activePreset === "detailed" ? "default" : "outline"}
+                  onClick={() => applyPreset("detailed")}
+                >
+                  Detailed
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={activePreset === "custom" ? "secondary" : "outline"}
+                >
+                  Custom
+                </Button>
+              </div>
+            </div>
+            <Separator />
+            <Accordion
+              type="single"
+              collapsible
+              value={advancedOpen ? "advanced" : undefined}
+              onValueChange={(value) => setAdvancedOpen(value === "advanced")}
             >
-              Fast
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={activePreset === "balanced" ? "default" : "outline"}
-              onClick={() => applyPreset("balanced")}
-            >
-              Balanced
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={activePreset === "detailed" ? "default" : "outline"}
-              onClick={() => applyPreset("detailed")}
-            >
-              Detailed
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={activePreset === "custom" ? "secondary" : "outline"}
-            >
-              Custom
-            </Button>
+              <AccordionItem value="advanced" className="border-b-0">
+                <AccordionTrigger className="py-0 text-base font-semibold hover:no-underline">
+                  Advanced settings
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="top-n">Resumes tailored</Label>
+                      <Input
+                        id="top-n"
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={topNInput}
+                        onChange={(event) =>
+                          setValue("topN", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="min-score">Min suitability score</Label>
+                      <Input
+                        id="min-score"
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={minScoreInput}
+                        onChange={(event) =>
+                          setValue("minSuitabilityScore", event.target.value)
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="jobs-per-term">Max jobs discovered</Label>
+                      <Input
+                        id="jobs-per-term"
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={runBudgetInput}
+                        onChange={(event) =>
+                          setValue("runBudget", event.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Run settings</CardTitle>
+            <CardTitle>Search terms</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="top-n">Resumes tailored</Label>
-              <Input
-                id="top-n"
-                type="number"
-                min={1}
-                max={50}
-                value={topNInput}
-                onChange={(event) => setValue("topN", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="min-score">Min suitability score</Label>
-              <Input
-                id="min-score"
-                type="number"
-                min={0}
-                max={100}
-                value={minScoreInput}
-                onChange={(event) =>
-                  setValue("minSuitabilityScore", event.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="jobs-per-term">Max jobs discovered</Label>
-              <Input
-                id="jobs-per-term"
-                type="number"
-                min={1}
-                max={1000}
-                value={runBudgetInput}
-                onChange={(event) => setValue("runBudget", event.target.value)}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-3">
-              <Label htmlFor="search-terms-input">Search terms</Label>
-              <div className="rounded-md border border-input bg-background px-2 py-2">
-                <div className="flex flex-wrap gap-2">
-                  {searchTerms.map((term) => (
-                    <span
-                      key={term}
-                      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+          <CardContent className="space-y-2">
+            <div className="rounded-md border border-input bg-background px-2 py-2">
+              <div className="flex flex-wrap gap-2">
+                {searchTerms.map((term) => (
+                  <span
+                    key={term}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+                  >
+                    {term}
+                    <button
+                      type="button"
+                      className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
+                      aria-label={`Remove ${term}`}
+                      onClick={() =>
+                        setValue(
+                          "searchTerms",
+                          searchTerms.filter((value) => value !== term),
+                          { shouldDirty: true },
+                        )
+                      }
                     >
-                      {term}
-                      <button
-                        type="button"
-                        className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
-                        aria-label={`Remove ${term}`}
-                        onClick={() =>
-                          setValue(
-                            "searchTerms",
-                            searchTerms.filter((value) => value !== term),
-                            { shouldDirty: true },
-                          )
-                        }
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <Input
-                    id="search-terms-input"
-                    value={searchTermDraft}
-                    onChange={(event) =>
-                      setValue("searchTermDraft", event.target.value)
-                    }
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === ",") {
-                        event.preventDefault();
-                        addSearchTerms(searchTermDraft);
-                        setValue("searchTermDraft", "");
-                        return;
-                      }
-                      if (
-                        event.key === "Backspace" &&
-                        searchTermDraft.length === 0 &&
-                        searchTerms.length > 0
-                      ) {
-                        setValue("searchTerms", searchTerms.slice(0, -1), {
-                          shouldDirty: true,
-                        });
-                      }
-                    }}
-                    onBlur={() => {
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <Input
+                  id="search-terms-input"
+                  value={searchTermDraft}
+                  onChange={(event) =>
+                    setValue("searchTermDraft", event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === ",") {
+                      event.preventDefault();
                       addSearchTerms(searchTermDraft);
                       setValue("searchTermDraft", "");
-                    }}
-                    onPaste={(event) => {
-                      const pasted = event.clipboardData.getData("text");
-                      const parsed = parseSearchTermsInput(pasted);
-                      if (parsed.length > 1) {
-                        event.preventDefault();
-                        addSearchTerms(pasted);
-                      }
-                    }}
-                    placeholder="Type and press Enter"
-                    className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
-                  />
-                </div>
+                      return;
+                    }
+                    if (
+                      event.key === "Backspace" &&
+                      searchTermDraft.length === 0 &&
+                      searchTerms.length > 0
+                    ) {
+                      setValue("searchTerms", searchTerms.slice(0, -1), {
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                  onBlur={() => {
+                    addSearchTerms(searchTermDraft);
+                    setValue("searchTermDraft", "");
+                  }}
+                  onPaste={(event) => {
+                    const pasted = event.clipboardData.getData("text");
+                    const parsed = parseSearchTermsInput(pasted);
+                    if (parsed.length > 1) {
+                      event.preventDefault();
+                      addSearchTerms(pasted);
+                    }
+                  }}
+                  placeholder="Type and press Enter"
+                  className="h-8 min-w-[180px] flex-1 border-0 px-1 shadow-none focus-visible:ring-0"
+                />
               </div>
             </div>
           </CardContent>
@@ -346,57 +375,69 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm">
-              Sources ({pipelineSources.length}/{enabledSources.length})
-            </CardTitle>
+            <CardTitle>Sources</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {enabledSources.map((source) => (
-              <Button
-                key={source}
-                type="button"
-                size="sm"
-                variant={
-                  pipelineSources.includes(source) ? "default" : "outline"
-                }
-                onClick={() =>
-                  onToggleSource(source, !pipelineSources.includes(source))
-                }
-              >
-                {sourceLabel[source]}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm">Estimate</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p>
-              Estimated discovered jobs:{" "}
-              <strong>{estimate.discovered.min}</strong>
-              {" - "}
-              <strong>{estimate.discovered.max}</strong> (cap{" "}
-              {estimate.discovered.cap})
-            </p>
-            <p>
-              Estimated resumes tailored:{" "}
-              <strong>{estimate.processed.min}</strong>
-              {" - "}
-              <strong>{estimate.processed.max}</strong> (limited by resumes
-              tailored)
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Estimate is based on the run budget allocation and historical
-              yield assumptions.
-            </p>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="flex flex-wrap gap-2">
+              {enabledSources.map((source) => (
+                <Button
+                  key={source}
+                  type="button"
+                  size="sm"
+                  variant={
+                    pipelineSources.includes(source) ? "default" : "outline"
+                  }
+                  onClick={() =>
+                    onToggleSource(source, !pipelineSources.includes(source))
+                  }
+                >
+                  {sourceLabel[source]}
+                </Button>
+              ))}
+            </div>
+            <div className="space-y-2 border-t border-border/60 pt-4 text-sm md:border-l md:border-t-0 md:pl-4 md:pt-0">
+              <p className="text-base font-semibold">Estimate</p>
+              <p>
+                Estimated jobs: <strong>{estimate.discovered.min}</strong>
+                {" - "}
+                <strong>{estimate.discovered.max}</strong> (cap{" "}
+                {estimate.discovered.cap})
+              </p>
+              <p>
+                Resumes: <strong>{values.topN}</strong>
+              </p>
+            </div>
+            <div className="md:col-span-2">
+              <Separator className="my-2" />
+              <p className="mb-2 text-sm font-medium">
+                Sources ({pipelineSources.length}/{enabledSources.length})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {enabledSources.map((source) => (
+                  <Button
+                    key={`selected-${source}`}
+                    type="button"
+                    size="sm"
+                    variant={
+                      pipelineSources.includes(source) ? "default" : "outline"
+                    }
+                    onClick={() =>
+                      onToggleSource(source, !pipelineSources.includes(source))
+                    }
+                  >
+                    {sourceLabel[source]}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-3 flex shrink-0 justify-end border-t border-border/60 bg-background pt-3">
+      <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
+        <Button type="button" variant="ghost">
+          Save preset
+        </Button>
         <Button
           type="button"
           className="gap-2"
