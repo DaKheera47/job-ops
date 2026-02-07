@@ -252,18 +252,23 @@ describe("SettingsPage", () => {
     expect(saveButton).toBeEnabled();
   });
 
-  it("enables save button when numeric setting is changed", async () => {
+  it("hides pipeline tuning sections that moved to run modal", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
 
-    const visaTrigger = await screen.findByRole("button", {
-      name: /ukvisajobs extractor/i,
-    });
-    fireEvent.click(visaTrigger);
-    const maxJobsInput = screen.getByLabelText(/max jobs to fetch/i);
-    fireEvent.change(maxJobsInput, { target: { value: "100" } });
-    expect(saveButton).toBeEnabled();
+    await screen.findByRole("button", { name: /model/i });
+    expect(
+      screen.queryByRole("button", { name: /ukvisajobs extractor/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /gradcracker extractor/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /search terms/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /jobspy scraper/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("enables save button when display setting is changed", async () => {

@@ -11,7 +11,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import * as api from "../api";
-import { ManualImportSheet } from "../components";
+import type { AutomaticRunValues } from "./orchestrator/automatic-run";
+import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab, JobSort } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
@@ -20,6 +21,8 @@ import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
+import { RunModeModal } from "./orchestrator/RunModeModal";
+import type { RunMode } from "./orchestrator/run-mode";
 import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
@@ -131,7 +134,8 @@ export const OrchestratorPage: React.FC = () => {
   }, [tab, navigateWithContext]);
 
   const [navOpen, setNavOpen] = useState(false);
-  const [isManualImportOpen, setIsManualImportOpen] = useState(false);
+  const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
+  const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
@@ -153,7 +157,7 @@ export const OrchestratorPage: React.FC = () => {
     [navigateWithContext, activeTab],
   );
 
-  const { settings } = useSettings();
+  const { settings, refreshSettings } = useSettings();
   const {
     jobs,
     stats,
@@ -167,8 +171,7 @@ export const OrchestratorPage: React.FC = () => {
     () => getEnabledSources(settings ?? null),
     [settings],
   );
-  const { pipelineSources, setPipelineSources, toggleSource } =
-    usePipelineSources(enabledSources);
+  const { pipelineSources, toggleSource } = usePipelineSources(enabledSources);
 
   const activeJobs = useFilteredJobs(
     jobs,
@@ -208,43 +211,78 @@ export const OrchestratorPage: React.FC = () => {
     }
   }, [isLoading, sourceFilter, setSourceFilter, sourcesWithJobs]);
 
+  const openRunMode = useCallback((mode: RunMode) => {
+    setRunMode(mode);
+    setIsRunModeModalOpen(true);
+  }, []);
+
   const handleManualImported = useCallback(
     async (importedJobId: string) => {
-      // Refresh jobs and navigate to the new job in discovered tab
       await loadJobs();
       navigateWithContext("discovered", importedJobId);
     },
     [loadJobs, navigateWithContext],
   );
 
-  const handleRunPipeline = async () => {
-    try {
-      setIsPipelineRunning(true);
-      await api.runPipeline({ sources: pipelineSources });
-      toast.message("Pipeline started", {
-        description: `Sources: ${pipelineSources.join(", ")}. This may take a few minutes.`,
-      });
+  const startPipelineRun = useCallback(
+    async (config: {
+      topN: number;
+      minSuitabilityScore: number;
+      sources: JobSource[];
+    }) => {
+      try {
+        setIsPipelineRunning(true);
+        await api.runPipeline(config);
+        toast.message("Pipeline started", {
+          description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
+        });
 
-      const pollInterval = setInterval(async () => {
-        try {
-          const status = await api.getPipelineStatus();
-          if (!status.isRunning) {
-            clearInterval(pollInterval);
-            setIsPipelineRunning(false);
-            await loadJobs();
-            toast.success("Pipeline completed");
+        const pollInterval = setInterval(async () => {
+          try {
+            const status = await api.getPipelineStatus();
+            if (!status.isRunning) {
+              clearInterval(pollInterval);
+              setIsPipelineRunning(false);
+              await loadJobs();
+              toast.success("Pipeline completed");
+            }
+          } catch {
+            // Ignore errors
           }
-        } catch {
-          // Ignore errors
-        }
-      }, 5000);
-    } catch (error) {
-      setIsPipelineRunning(false);
-      const message =
-        error instanceof Error ? error.message : "Failed to start pipeline";
-      toast.error(message);
-    }
-  };
+        }, 5000);
+      } catch (error) {
+        setIsPipelineRunning(false);
+        const message =
+          error instanceof Error ? error.message : "Failed to start pipeline";
+        toast.error(message);
+      }
+    },
+    [loadJobs, setIsPipelineRunning],
+  );
+
+  const handleSaveAndRunAutomatic = useCallback(
+    async (values: AutomaticRunValues) => {
+      const limits = deriveExtractorLimits({
+        budget: values.runBudget,
+        searchTerms: values.searchTerms,
+        sources: pipelineSources,
+      });
+      await api.updateSettings({
+        searchTerms: values.searchTerms,
+        jobspyResultsWanted: limits.jobspyResultsWanted,
+        gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
+        ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
+      });
+      await refreshSettings();
+      await startPipelineRun({
+        topN: values.topN,
+        minSuitabilityScore: values.minSuitabilityScore,
+        sources: pipelineSources,
+      });
+      setIsRunModeModalOpen(false);
+    },
+    [pipelineSources, refreshSettings, startPipelineRun],
+  );
 
   const handleSelectJob = (id: string) => {
     handleSelectJobId(id);
@@ -315,11 +353,7 @@ export const OrchestratorPage: React.FC = () => {
         onNavOpenChange={setNavOpen}
         isPipelineRunning={isPipelineRunning}
         pipelineSources={pipelineSources}
-        enabledSources={enabledSources}
-        onToggleSource={toggleSource}
-        onSetPipelineSources={setPipelineSources}
-        onRunPipeline={handleRunPipeline}
-        onOpenManualImport={() => setIsManualImportOpen(true)}
+        onOpenAutomaticRun={() => openRunMode("automatic")}
       />
 
       <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
@@ -386,10 +420,18 @@ export const OrchestratorPage: React.FC = () => {
         onClear={clearSelection}
       />
 
-      <ManualImportSheet
-        open={isManualImportOpen}
-        onOpenChange={setIsManualImportOpen}
-        onImported={handleManualImported}
+      <RunModeModal
+        open={isRunModeModalOpen}
+        mode={runMode}
+        settings={settings ?? null}
+        enabledSources={enabledSources}
+        pipelineSources={pipelineSources}
+        onToggleSource={toggleSource}
+        isPipelineRunning={isPipelineRunning}
+        onOpenChange={setIsRunModeModalOpen}
+        onModeChange={setRunMode}
+        onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
+        onManualImported={handleManualImported}
       />
 
       {!isDesktop && (

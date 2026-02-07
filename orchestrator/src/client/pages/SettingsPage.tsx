@@ -4,13 +4,9 @@ import { BackupSettingsSection } from "@client/pages/settings/components/BackupS
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection";
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection";
 import { EnvironmentSettingsSection } from "@client/pages/settings/components/EnvironmentSettingsSection";
-import { GradcrackerSection } from "@client/pages/settings/components/GradcrackerSection";
-import { JobspySection } from "@client/pages/settings/components/JobspySection";
 import { ModelSettingsSection } from "@client/pages/settings/components/ModelSettingsSection";
 import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection";
 import { ScoringSettingsSection } from "@client/pages/settings/components/ScoringSettingsSection";
-import { SearchTermsSection } from "@client/pages/settings/components/SearchTermsSection";
-import { UkvisajobsSection } from "@client/pages/settings/components/UkvisajobsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
 import {
   type LlmProviderId,
@@ -864,26 +860,6 @@ export const SettingsPage: React.FC = () => {
             pipelineWebhook={pipelineWebhook}
             jobCompleteWebhook={jobCompleteWebhook}
             webhookSecretHint={envSettings.private.webhookSecretHint}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <UkvisajobsSection
-            values={ukvisajobs}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <GradcrackerSection
-            values={gradcracker}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <SearchTermsSection
-            values={searchTerms}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <JobspySection
-            values={jobspy}
             isLoading={isLoading}
             isSaving={isSaving}
           />

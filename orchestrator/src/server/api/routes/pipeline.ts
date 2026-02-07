@@ -1,7 +1,8 @@
-import { okWithMeta } from "@infra/http";
+import { AppError, badRequest, requestTimeout } from "@infra/errors";
+import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
-import type { ApiResponse, PipelineStatusResponse } from "@shared/types";
+import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode } from "../../config/demo";
@@ -22,22 +23,21 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const { isRunning } = getPipelineStatus();
     const lastRun = await pipelineRepo.getLatestPipelineRun();
-
-    const response: ApiResponse<PipelineStatusResponse> = {
-      ok: true,
-      data: {
-        isRunning,
-        lastRun,
-        nextScheduledRun: null, // Would come from n8n
-      },
+    const data: PipelineStatusResponse = {
+      isRunning,
+      lastRun,
+      nextScheduledRun: null,
     };
-
-    res.json(response);
+    ok(res, data);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
   }
 });
 
@@ -77,12 +77,16 @@ pipelineRouter.get("/progress", (req: Request, res: Response) => {
 pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
   try {
     const runs = await pipelineRepo.getRecentPipelineRuns(20);
-    res.json({ ok: true, data: runs });
+    ok(res, runs);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
   }
 });
 
@@ -113,21 +117,21 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         logger.error("Background pipeline run failed", error);
       });
     });
-
-    res.json({
-      ok: true,
-      data: { message: "Pipeline started" },
-    });
+    ok(res, { message: "Pipeline started" });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        ok: false,
-        error: { code: "INVALID_REQUEST", message: error.message },
-      });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
+    if (error instanceof Error && error.name === "AbortError") {
+      return fail(res, requestTimeout("Request timed out"));
+    }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
   }
 });

@@ -4,6 +4,14 @@ const GITHUB_REPO = "DaKheera47/job-ops";
 const STORAGE_KEY = "jobops_version_check";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
+function canUseStorage(): boolean {
+  return (
+    typeof localStorage !== "undefined" &&
+    typeof localStorage.getItem === "function" &&
+    typeof localStorage.setItem === "function"
+  );
+}
+
 export interface VersionCheckResult {
   currentVersion: string;
   latestVersion: string | null;
@@ -44,7 +52,7 @@ export async function checkForUpdate(): Promise<VersionCheckResult> {
   const currentVersion = parseVersion(currentRaw);
 
   // Check cached result
-  const cached = localStorage.getItem(STORAGE_KEY);
+  const cached = canUseStorage() ? localStorage.getItem(STORAGE_KEY) : null;
   if (cached) {
     try {
       const parsed: VersionCheckResult = JSON.parse(cached);
@@ -85,7 +93,9 @@ export async function checkForUpdate(): Promise<VersionCheckResult> {
       lastChecked: Date.now(),
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    if (canUseStorage()) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+    }
     return result;
   } catch {
     // On error, return current version with no update info

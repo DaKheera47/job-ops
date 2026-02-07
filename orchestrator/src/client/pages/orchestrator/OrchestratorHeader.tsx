@@ -1,24 +1,9 @@
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
 import type { JobSource } from "@shared/types.js";
-import {
-  ChevronDown,
-  FileText,
-  Loader2,
-  Menu,
-  Play,
-  Sparkles,
-} from "lucide-react";
+import { Loader2, Menu, Play, Sparkles } from "lucide-react";
 import type React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -26,19 +11,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn, sourceLabel } from "@/lib/utils";
-import { orderedSources } from "./constants";
+import { cn } from "@/lib/utils";
 
 interface OrchestratorHeaderProps {
   navOpen: boolean;
   onNavOpenChange: (open: boolean) => void;
   isPipelineRunning: boolean;
   pipelineSources: JobSource[];
-  enabledSources: JobSource[];
-  onToggleSource: (source: JobSource, checked: boolean) => void;
-  onSetPipelineSources: (sources: JobSource[]) => void;
-  onRunPipeline: () => void;
-  onOpenManualImport: () => void;
+  onOpenAutomaticRun: () => void;
 }
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
@@ -46,20 +26,10 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   onNavOpenChange,
   isPipelineRunning,
   pipelineSources,
-  enabledSources,
-  onToggleSource,
-  onSetPipelineSources,
-  onRunPipeline,
-  onOpenManualImport,
+  onOpenAutomaticRun,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const visibleSources = orderedSources.filter((source) =>
-    enabledSources.includes(source),
-  );
-  const allSourcesSelected =
-    visibleSources.length > 0 &&
-    visibleSources.every((source) => pipelineSources.includes(source));
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
@@ -126,74 +96,21 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            variant="outline"
-            onClick={onOpenManualImport}
+            onClick={onOpenAutomaticRun}
+            disabled={isPipelineRunning}
             className="gap-2"
           >
-            <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Manual import</span>
+            {isPipelineRunning ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {isPipelineRunning
+                ? `Running (${pipelineSources.length})`
+                : `Run pipeline`}
+            </span>
           </Button>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              onClick={onRunPipeline}
-              disabled={isPipelineRunning}
-              className="gap-2"
-            >
-              {isPipelineRunning ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4" />
-              )}
-              <span className="hidden sm:inline">
-                {isPipelineRunning
-                  ? `Running (${pipelineSources.length})`
-                  : `Run pipeline (${pipelineSources.length})`}
-              </span>
-            </Button>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  disabled={isPipelineRunning}
-                  aria-label="Select pipeline sources"
-                  className="shrink-0"
-                >
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Sources</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {visibleSources.map((source) => (
-                  <DropdownMenuCheckboxItem
-                    key={source}
-                    checked={pipelineSources.includes(source)}
-                    onCheckedChange={(checked) =>
-                      onToggleSource(source, Boolean(checked))
-                    }
-                    onSelect={(event) => event.preventDefault()}
-                  >
-                    {sourceLabel[source]}
-                  </DropdownMenuCheckboxItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuCheckboxItem
-                  checked={allSourcesSelected}
-                  onCheckedChange={(checked) => {
-                    onSetPipelineSources(
-                      checked ? visibleSources : visibleSources.slice(0, 1),
-                    );
-                  }}
-                  onSelect={(event) => event.preventDefault()}
-                >
-                  Select all sources
-                </DropdownMenuCheckboxItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </div>
       </div>
     </header>

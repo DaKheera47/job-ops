@@ -2,8 +2,19 @@ import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as api from "../api";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { FilterTab } from "./orchestrator/constants";
+
+vi.mock("../api", () => ({
+  updateSettings: vi.fn().mockResolvedValue({}),
+  runPipeline: vi.fn().mockResolvedValue({ message: "ok" }),
+  getPipelineStatus: vi.fn().mockResolvedValue({
+    isRunning: false,
+    lastRun: null,
+    nextScheduledRun: null,
+  }),
+}));
 
 const jobFixture: Job = {
   id: "job-1",
@@ -113,6 +124,7 @@ vi.mock("../hooks/useSettings", () => ({
       ukvisajobsEmail: null,
       ukvisajobsPasswordHint: null,
     },
+    refreshSettings: vi.fn(),
   }),
 }));
 
@@ -183,6 +195,34 @@ vi.mock("./orchestrator/JobListPanel", () => ({
         Select job 2
       </button>
     </div>
+  ),
+}));
+
+vi.mock("./orchestrator/RunModeModal", () => ({
+  RunModeModal: ({
+    onSaveAndRunAutomatic,
+  }: {
+    onSaveAndRunAutomatic: (values: {
+      topN: number;
+      minSuitabilityScore: number;
+      searchTerms: string[];
+      runBudget: number;
+    }) => Promise<void>;
+  }) => (
+    <button
+      type="button"
+      data-testid="run-automatic"
+      onClick={() =>
+        void onSaveAndRunAutomatic({
+          topN: 12,
+          minSuitabilityScore: 55,
+          searchTerms: ["backend"],
+          runBudget: 150,
+        })
+      }
+    >
+      Run automatic
+    </button>
   ),
 }));
 
@@ -349,5 +389,36 @@ describe("OrchestratorPage", () => {
         "source=ukvisajobs",
       );
     });
+  });
+
+  it("saves automatic settings from modal", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    const setIntervalSpy = vi
+      .spyOn(globalThis, "setInterval")
+      .mockReturnValue(0 as unknown as NodeJS.Timeout);
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        searchTerms: ["backend"],
+        jobspyResultsWanted: 150,
+        gradcrackerMaxJobsPerTerm: 150,
+        ukvisajobsMaxJobs: 150,
+      });
+    });
+
+    setIntervalSpy.mockRestore();
   });
 });
