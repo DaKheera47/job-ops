@@ -1,3 +1,4 @@
+import type { AppSettings, JobSource } from "@shared/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -10,20 +11,30 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type React from "react";
+import { AutomaticRunTab } from "./AutomaticRunTab";
+import type { AutomaticRunValues } from "./automatic-run";
 import type { RunMode } from "./run-mode";
 
 interface RunModeModalProps {
   open: boolean;
   mode: RunMode;
+  settings: AppSettings | null;
+  pipelineSources: JobSource[];
+  isPipelineRunning: boolean;
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
+  onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
 }
 
 export const RunModeModal: React.FC<RunModeModalProps> = ({
   open,
   mode,
+  settings,
+  pipelineSources,
+  isPipelineRunning,
   onOpenChange,
   onModeChange,
+  onSaveAndRunAutomatic,
 }) => {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -52,15 +63,13 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
             </TabsList>
 
             <TabsContent value="automatic" className="min-h-0 flex-1">
-              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
-                <p className="text-sm font-medium">Automatic run configuration</p>
-                <p className="text-xs text-muted-foreground">
-                  Presets, estimate, and run settings land in Stage 2.
-                </p>
-                <Button type="button" variant="outline" disabled>
-                  Coming in next stage
-                </Button>
-              </div>
+              <AutomaticRunTab
+                open={open}
+                settings={settings}
+                pipelineSources={pipelineSources}
+                isPipelineRunning={isPipelineRunning}
+                onSaveAndRun={onSaveAndRunAutomatic}
+              />
             </TabsContent>
 
             <TabsContent value="manual" className="min-h-0 flex-1">

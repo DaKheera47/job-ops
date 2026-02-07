@@ -113,6 +113,7 @@ vi.mock("../hooks/useSettings", () => ({
       ukvisajobsEmail: null,
       ukvisajobsPasswordHint: null,
     },
+    refreshSettings: vi.fn(),
   }),
 }));
 

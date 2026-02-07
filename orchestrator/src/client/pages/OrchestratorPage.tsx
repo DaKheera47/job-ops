@@ -20,6 +20,7 @@ import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
 import { RunModeModal } from "./orchestrator/RunModeModal";
+import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import type { RunMode } from "./orchestrator/run-mode";
 import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
@@ -155,7 +156,7 @@ export const OrchestratorPage: React.FC = () => {
     [navigateWithContext, activeTab],
   );
 
-  const { settings } = useSettings();
+  const { settings, refreshSettings } = useSettings();
   const {
     jobs,
     stats,
@@ -210,26 +211,21 @@ export const OrchestratorPage: React.FC = () => {
     }
   }, [isLoading, sourceFilter, setSourceFilter, sourcesWithJobs]);
 
-  const handleManualImported = useCallback(
-    async (importedJobId: string) => {
-      // Refresh jobs and navigate to the new job in discovered tab
-      await loadJobs();
-      navigateWithContext("discovered", importedJobId);
-    },
-    [loadJobs, navigateWithContext],
-  );
-
   const openRunMode = useCallback((mode: RunMode) => {
     setRunMode(mode);
     setIsRunModeModalOpen(true);
   }, []);
 
-  const handleRunPipeline = async () => {
+  const startPipelineRun = async (config: {
+    topN: number;
+    minSuitabilityScore: number;
+    sources: JobSource[];
+  }) => {
     try {
       setIsPipelineRunning(true);
-      await api.runPipeline({ sources: pipelineSources });
+      await api.runPipeline(config);
       toast.message("Pipeline started", {
-        description: `Sources: ${pipelineSources.join(", ")}. This may take a few minutes.`,
+        description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
       });
 
       const pollInterval = setInterval(async () => {
@@ -252,6 +248,25 @@ export const OrchestratorPage: React.FC = () => {
       toast.error(message);
     }
   };
+
+  const handleSaveAndRunAutomatic = useCallback(
+    async (values: AutomaticRunValues) => {
+      await api.updateSettings({
+        searchTerms: values.searchTerms,
+        jobspyResultsWanted: values.jobspyResultsWanted,
+        gradcrackerMaxJobsPerTerm: values.gradcrackerMaxJobsPerTerm,
+        ukvisajobsMaxJobs: values.ukvisajobsMaxJobs,
+      });
+      await refreshSettings();
+      await startPipelineRun({
+        topN: values.topN,
+        minSuitabilityScore: values.minSuitabilityScore,
+        sources: pipelineSources,
+      });
+      setIsRunModeModalOpen(false);
+    },
+    [pipelineSources, refreshSettings],
+  );
 
   const handleSelectJob = (id: string) => {
     handleSelectJobId(id);
@@ -396,8 +411,12 @@ export const OrchestratorPage: React.FC = () => {
       <RunModeModal
         open={isRunModeModalOpen}
         mode={runMode}
+        settings={settings ?? null}
+        pipelineSources={pipelineSources}
+        isPipelineRunning={isPipelineRunning}
         onOpenChange={setIsRunModeModalOpen}
         onModeChange={setRunMode}
+        onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
       />
 
       {!isDesktop && (
