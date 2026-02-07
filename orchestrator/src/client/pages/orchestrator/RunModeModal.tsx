@@ -1,0 +1,82 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type React from "react";
+import type { RunMode } from "./run-mode";
+
+interface RunModeModalProps {
+  open: boolean;
+  mode: RunMode;
+  onOpenChange: (open: boolean) => void;
+  onModeChange: (mode: RunMode) => void;
+}
+
+export const RunModeModal: React.FC<RunModeModalProps> = ({
+  open,
+  mode,
+  onOpenChange,
+  onModeChange,
+}) => {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl">
+        <div className="flex h-full flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              Run jobs
+              <Badge variant="secondary">Unified flow</Badge>
+            </SheetTitle>
+            <SheetDescription>
+              Choose Automatic pipeline run or Manual import.
+            </SheetDescription>
+          </SheetHeader>
+
+          <Separator className="my-4" />
+
+          <Tabs
+            value={mode}
+            onValueChange={(value) => onModeChange(value as RunMode)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="automatic">Automatic</TabsTrigger>
+              <TabsTrigger value="manual">Manual</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="automatic" className="min-h-0 flex-1">
+              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm font-medium">Automatic run configuration</p>
+                <p className="text-xs text-muted-foreground">
+                  Presets, estimate, and run settings land in Stage 2.
+                </p>
+                <Button type="button" variant="outline" disabled>
+                  Coming in next stage
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="manual" className="min-h-0 flex-1">
+              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm font-medium">Manual import flow</p>
+                <p className="text-xs text-muted-foreground">
+                  Existing 3-step manual flow lands in Stage 3.
+                </p>
+                <Button type="button" variant="outline" disabled>
+                  Coming in next stage
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};

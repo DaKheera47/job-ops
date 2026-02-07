@@ -87,8 +87,8 @@ const renderHeader = (
     enabledSources: ["gradcracker"],
     onToggleSource: vi.fn(),
     onSetPipelineSources: vi.fn(),
-    onRunPipeline: vi.fn(),
-    onOpenManualImport: vi.fn(),
+    onOpenAutomaticRun: vi.fn(),
+    onOpenManualRun: vi.fn(),
     ...overrides,
   };
 

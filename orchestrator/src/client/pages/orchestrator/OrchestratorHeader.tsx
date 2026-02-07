@@ -37,8 +37,8 @@ interface OrchestratorHeaderProps {
   enabledSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
-  onRunPipeline: () => void;
-  onOpenManualImport: () => void;
+  onOpenAutomaticRun: () => void;
+  onOpenManualRun: () => void;
 }
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
@@ -49,8 +49,8 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   enabledSources,
   onToggleSource,
   onSetPipelineSources,
-  onRunPipeline,
-  onOpenManualImport,
+  onOpenAutomaticRun,
+  onOpenManualRun,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -127,7 +127,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
           <Button
             size="sm"
             variant="outline"
-            onClick={onOpenManualImport}
+            onClick={onOpenManualRun}
             className="gap-2"
           >
             <FileText className="h-4 w-4" />
@@ -136,7 +136,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
           <div className="flex items-center gap-1">
             <Button
               size="sm"
-              onClick={onRunPipeline}
+              onClick={onOpenAutomaticRun}
               disabled={isPipelineRunning}
               className="gap-2"
             >

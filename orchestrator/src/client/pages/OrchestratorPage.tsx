@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import * as api from "../api";
-import { ManualImportSheet } from "../components";
 import type { FilterTab, JobSort } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
@@ -20,6 +19,8 @@ import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
+import { RunModeModal } from "./orchestrator/RunModeModal";
+import type { RunMode } from "./orchestrator/run-mode";
 import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
@@ -131,7 +132,8 @@ export const OrchestratorPage: React.FC = () => {
   }, [tab, navigateWithContext]);
 
   const [navOpen, setNavOpen] = useState(false);
-  const [isManualImportOpen, setIsManualImportOpen] = useState(false);
+  const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
+  const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
@@ -216,6 +218,11 @@ export const OrchestratorPage: React.FC = () => {
     },
     [loadJobs, navigateWithContext],
   );
+
+  const openRunMode = useCallback((mode: RunMode) => {
+    setRunMode(mode);
+    setIsRunModeModalOpen(true);
+  }, []);
 
   const handleRunPipeline = async () => {
     try {
@@ -318,8 +325,8 @@ export const OrchestratorPage: React.FC = () => {
         enabledSources={enabledSources}
         onToggleSource={toggleSource}
         onSetPipelineSources={setPipelineSources}
-        onRunPipeline={handleRunPipeline}
-        onOpenManualImport={() => setIsManualImportOpen(true)}
+        onOpenAutomaticRun={() => openRunMode("automatic")}
+        onOpenManualRun={() => openRunMode("manual")}
       />
 
       <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
@@ -386,10 +393,11 @@ export const OrchestratorPage: React.FC = () => {
         onClear={clearSelection}
       />
 
-      <ManualImportSheet
-        open={isManualImportOpen}
-        onOpenChange={setIsManualImportOpen}
-        onImported={handleManualImported}
+      <RunModeModal
+        open={isRunModeModalOpen}
+        mode={runMode}
+        onOpenChange={setIsRunModeModalOpen}
+        onModeChange={setRunMode}
       />
 
       {!isDesktop && (
