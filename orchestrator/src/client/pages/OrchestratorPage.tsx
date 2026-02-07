@@ -16,6 +16,8 @@ import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type {
   FilterTab,
   JobSort,
+  SalaryFilter,
+  SalaryFilterMode,
   SponsorFilter,
 } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
@@ -43,6 +45,11 @@ const allowedSponsorFilters: SponsorFilter[] = [
   "potential",
   "not_found",
   "unknown",
+];
+const allowedSalaryModes: SalaryFilterMode[] = [
+  "at_least",
+  "at_most",
+  "between",
 ];
 
 export const OrchestratorPage: React.FC = () => {
@@ -127,19 +134,43 @@ export const OrchestratorPage: React.FC = () => {
     [setSearchParams],
   );
 
-  const minSalary = useMemo(() => {
-    const raw = searchParams.get("minSalary");
-    if (!raw) return null;
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  const salaryFilter = useMemo((): SalaryFilter => {
+    const modeRaw = searchParams.get("salaryMode") ?? "at_least";
+    const mode = allowedSalaryModes.includes(modeRaw as SalaryFilterMode)
+      ? (modeRaw as SalaryFilterMode)
+      : "at_least";
+
+    const minRaw = searchParams.get("salaryMin") ?? searchParams.get("minSalary");
+    const minParsed =
+      minRaw == null ? Number.NaN : Number.parseInt(minRaw, 10);
+    const min =
+      Number.isFinite(minParsed) && minParsed > 0 ? minParsed : null;
+
+    const maxRaw = searchParams.get("salaryMax");
+    const maxParsed =
+      maxRaw == null ? Number.NaN : Number.parseInt(maxRaw, 10);
+    const max =
+      Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : null;
+
+    return { mode, min, max };
   }, [searchParams]);
 
-  const setMinSalary = useCallback(
-    (value: number | null) => {
+  const setSalaryFilter = useCallback(
+    (value: SalaryFilter) => {
       setSearchParams(
         (prev) => {
-          if (value == null || value <= 0) prev.delete("minSalary");
-          else prev.set("minSalary", String(value));
+          if (value.mode === "at_least") prev.delete("salaryMode");
+          else prev.set("salaryMode", value.mode);
+
+          if (value.min == null || value.min <= 0) prev.delete("salaryMin");
+          else prev.set("salaryMin", String(value.min));
+
+          if (value.max == null || value.max <= 0) prev.delete("salaryMax");
+          else prev.set("salaryMax", String(value.max));
+
+          // Cleanup legacy key.
+          prev.delete("minSalary");
+
           return prev;
         },
         { replace: true },
@@ -184,6 +215,9 @@ export const OrchestratorPage: React.FC = () => {
       (prev) => {
         prev.delete("source");
         prev.delete("sponsor");
+        prev.delete("salaryMode");
+        prev.delete("salaryMin");
+        prev.delete("salaryMax");
         prev.delete("minSalary");
         prev.delete("sort");
         return prev;
@@ -246,7 +280,7 @@ export const OrchestratorPage: React.FC = () => {
     activeTab,
     sourceFilter,
     sponsorFilter,
-    minSalary,
+    salaryFilter,
     searchQuery,
     sort,
   );
@@ -472,8 +506,8 @@ export const OrchestratorPage: React.FC = () => {
             onSourceFilterChange={setSourceFilter}
             sponsorFilter={sponsorFilter}
             onSponsorFilterChange={setSponsorFilter}
-            minSalary={minSalary}
-            onMinSalaryChange={setMinSalary}
+            salaryFilter={salaryFilter}
+            onSalaryFilterChange={setSalaryFilter}
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}

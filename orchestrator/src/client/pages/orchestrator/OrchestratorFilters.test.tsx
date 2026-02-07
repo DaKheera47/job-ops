@@ -39,8 +39,12 @@ const renderFilters = (
     onSourceFilterChange: vi.fn(),
     sponsorFilter: "all" as SponsorFilter,
     onSponsorFilterChange: vi.fn(),
-    minSalary: null,
-    onMinSalaryChange: vi.fn(),
+    salaryFilter: {
+      mode: "at_least" as const,
+      min: null,
+      max: null,
+    },
+    onSalaryFilterChange: vi.fn(),
     sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
@@ -68,7 +72,7 @@ describe("OrchestratorFilters", () => {
     expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
   });
 
-  it("updates source, sponsor, min salary, and sort from the drawer", async () => {
+  it("updates source, sponsor, salary range, and sort from the drawer", async () => {
     const { props } = renderFilters();
 
     fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
@@ -79,10 +83,24 @@ describe("OrchestratorFilters", () => {
     fireEvent.click(screen.getByRole("button", { name: "Potential sponsor" }));
     expect(props.onSponsorFilterChange).toHaveBeenCalledWith("potential");
 
-    fireEvent.change(screen.getByLabelText("Minimum salary"), {
+    fireEvent.change(screen.getByLabelText("Minimum"), {
       target: { value: "65000" },
     });
-    expect(props.onMinSalaryChange).toHaveBeenCalledWith(65000);
+    expect(props.onSalaryFilterChange).toHaveBeenCalledWith({
+      mode: "at_least",
+      min: 65000,
+      max: null,
+    });
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: "Salary range specifier" }),
+    );
+    fireEvent.click(await screen.findByText("between"));
+    expect(props.onSalaryFilterChange).toHaveBeenCalledWith({
+      mode: "between",
+      min: null,
+      max: null,
+    });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
     fireEvent.click(await screen.findByText("job title"));

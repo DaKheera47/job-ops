@@ -12,18 +12,26 @@ const compareString = (a: string, b: string) =>
   a.localeCompare(b, undefined, { sensitivity: "base" });
 const compareNumber = (a: number, b: number) => a - b;
 
-export const parseSalaryFloor = (job: Job): number | null => {
+export const parseSalaryBounds = (
+  job: Job,
+): { min: number; max: number } | null => {
   if (
     typeof job.salaryMinAmount === "number" &&
     Number.isFinite(job.salaryMinAmount)
   ) {
-    return job.salaryMinAmount;
+    if (
+      typeof job.salaryMaxAmount === "number" &&
+      Number.isFinite(job.salaryMaxAmount)
+    ) {
+      return { min: job.salaryMinAmount, max: job.salaryMaxAmount };
+    }
+    return { min: job.salaryMinAmount, max: job.salaryMinAmount };
   }
   if (
     typeof job.salaryMaxAmount === "number" &&
     Number.isFinite(job.salaryMaxAmount)
   ) {
-    return job.salaryMaxAmount;
+    return { min: job.salaryMaxAmount, max: job.salaryMaxAmount };
   }
   if (!job.salary) return null;
 
@@ -41,7 +49,7 @@ export const parseSalaryFloor = (job: Job): number | null => {
   }
 
   if (values.length === 0) return null;
-  return Math.min(...values);
+  return { min: Math.min(...values), max: Math.max(...values) };
 };
 
 export const compareJobs = (a: Job, b: Job, sort: JobSort) => {
@@ -68,15 +76,18 @@ export const compareJobs = (a: Job, b: Job, sort: JobSort) => {
       break;
     }
     case "salary": {
-      const aSalary = parseSalaryFloor(a);
-      const bSalary = parseSalaryFloor(b);
+      const aSalary = parseSalaryBounds(a);
+      const bSalary = parseSalaryBounds(b);
       if (aSalary == null && bSalary == null) {
         value = 0;
         break;
       }
       if (aSalary == null) return 1;
       if (bSalary == null) return -1;
-      value = compareNumber(aSalary, bSalary);
+      value = compareNumber(aSalary.max, bSalary.max);
+      if (value === 0) {
+        value = compareNumber(aSalary.min, bSalary.min);
+      }
       break;
     }
     case "discoveredAt": {

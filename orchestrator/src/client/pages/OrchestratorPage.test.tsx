@@ -160,7 +160,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onSearchQueryChange,
     onSourceFilterChange,
     onSponsorFilterChange,
-    onMinSalaryChange,
+    onSalaryFilterChange,
     onResetFilters,
     onSortChange,
     sourcesWithJobs,
@@ -170,7 +170,11 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onSearchQueryChange: (q: string) => void;
     onSourceFilterChange: (source: string) => void;
     onSponsorFilterChange: (value: string) => void;
-    onMinSalaryChange: (value: number | null) => void;
+    onSalaryFilterChange: (value: {
+      mode: "at_least" | "at_most" | "between";
+      min: number | null;
+      max: number | null;
+    }) => void;
     onResetFilters: () => void;
     onSortChange: (s: any) => void;
     sourcesWithJobs: string[];
@@ -197,8 +201,17 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
       <button type="button" onClick={() => onSponsorFilterChange("confirmed")}>
         Set Sponsor
       </button>
-      <button type="button" onClick={() => onMinSalaryChange(60000)}>
-        Set Min Salary
+      <button
+        type="button"
+        onClick={() =>
+          onSalaryFilterChange({
+            mode: "between",
+            min: 60000,
+            max: 90000,
+          })
+        }
+      >
+        Set Salary Range
       </button>
       <button type="button" onClick={onResetFilters}>
         Reset Filters
@@ -435,7 +448,7 @@ describe("OrchestratorPage", () => {
     );
   });
 
-  it("syncs source, sponsor, and min salary filters to URL and resets them", () => {
+  it("syncs source, sponsor, and salary range filters to URL and resets them", () => {
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
@@ -460,9 +473,15 @@ describe("OrchestratorPage", () => {
       "sponsor=confirmed",
     );
 
-    fireEvent.click(screen.getByText("Set Min Salary"));
+    fireEvent.click(screen.getByText("Set Salary Range"));
     expect(screen.getByTestId("location").textContent).toContain(
-      "minSalary=60000",
+      "salaryMode=between",
+    );
+    expect(screen.getByTestId("location").textContent).toContain(
+      "salaryMin=60000",
+    );
+    expect(screen.getByTestId("location").textContent).toContain(
+      "salaryMax=90000",
     );
 
     fireEvent.click(screen.getByText("Set Sort"));
@@ -474,7 +493,9 @@ describe("OrchestratorPage", () => {
     const locationText = screen.getByTestId("location").textContent || "";
     expect(locationText).not.toContain("source=");
     expect(locationText).not.toContain("sponsor=");
-    expect(locationText).not.toContain("minSalary=");
+    expect(locationText).not.toContain("salaryMode=");
+    expect(locationText).not.toContain("salaryMin=");
+    expect(locationText).not.toContain("salaryMax=");
     expect(locationText).not.toContain("sort=");
   });
 

@@ -1,7 +1,12 @@
 import type { Job, JobSource } from "@shared/types";
 import { useMemo } from "react";
-import type { FilterTab, JobSort, SponsorFilter } from "./constants";
-import { compareJobs, jobMatchesQuery, parseSalaryFloor } from "./utils";
+import type {
+  FilterTab,
+  JobSort,
+  SalaryFilter,
+  SponsorFilter,
+} from "./constants";
+import { compareJobs, jobMatchesQuery, parseSalaryBounds } from "./utils";
 
 const getSponsorCategory = (score: number | null): SponsorFilter => {
   if (score == null) return "unknown";
@@ -15,7 +20,7 @@ export const useFilteredJobs = (
   activeTab: FilterTab,
   sourceFilter: JobSource | "all",
   sponsorFilter: SponsorFilter,
-  minSalary: number | null,
+  salaryFilter: SalaryFilter,
   searchQuery: string,
   sort: JobSort,
 ) =>
@@ -42,14 +47,41 @@ export const useFilteredJobs = (
       );
     }
 
+    const hasMin =
+      typeof salaryFilter.min === "number" &&
+      Number.isFinite(salaryFilter.min) &&
+      salaryFilter.min > 0;
+    const hasMax =
+      typeof salaryFilter.max === "number" &&
+      Number.isFinite(salaryFilter.max) &&
+      salaryFilter.max > 0;
+
     if (
-      typeof minSalary === "number" &&
-      Number.isFinite(minSalary) &&
-      minSalary > 0
+      (salaryFilter.mode === "at_least" && hasMin) ||
+      (salaryFilter.mode === "at_most" && hasMax) ||
+      (salaryFilter.mode === "between" && (hasMin || hasMax))
     ) {
       filtered = filtered.filter((job) => {
-        const salaryFloor = parseSalaryFloor(job);
-        return salaryFloor != null && salaryFloor >= minSalary;
+        const bounds = parseSalaryBounds(job);
+        if (!bounds) return false;
+
+        if (salaryFilter.mode === "at_least") {
+          return hasMin ? bounds.max >= (salaryFilter.min as number) : true;
+        }
+
+        if (salaryFilter.mode === "at_most") {
+          return hasMax ? bounds.min <= (salaryFilter.max as number) : true;
+        }
+
+        const min = hasMin ? (salaryFilter.min as number) : null;
+        const max = hasMax ? (salaryFilter.max as number) : null;
+
+        if (min != null && max != null) {
+          return bounds.max >= min && bounds.min <= max;
+        }
+        if (min != null) return bounds.max >= min;
+        if (max != null) return bounds.min <= max;
+        return true;
       });
     }
 
@@ -63,7 +95,7 @@ export const useFilteredJobs = (
     activeTab,
     sourceFilter,
     sponsorFilter,
-    minSalary,
+    salaryFilter,
     searchQuery,
     sort,
   ]);

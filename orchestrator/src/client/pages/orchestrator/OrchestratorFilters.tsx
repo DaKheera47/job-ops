@@ -24,7 +24,13 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sourceLabel } from "@/lib/utils";
-import type { FilterTab, JobSort, SponsorFilter } from "./constants";
+import type {
+  FilterTab,
+  JobSort,
+  SalaryFilter,
+  SalaryFilterMode,
+  SponsorFilter,
+} from "./constants";
 import {
   defaultSortDirection,
   orderedFilterSources,
@@ -41,8 +47,8 @@ interface OrchestratorFiltersProps {
   onSourceFilterChange: (value: JobSource | "all") => void;
   sponsorFilter: SponsorFilter;
   onSponsorFilterChange: (value: SponsorFilter) => void;
-  minSalary: number | null;
-  onMinSalaryChange: (value: number | null) => void;
+  salaryFilter: SalaryFilter;
+  onSalaryFilterChange: (value: SalaryFilter) => void;
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
@@ -59,6 +65,15 @@ const sponsorOptions: Array<{
   { value: "potential", label: "Potential sponsor" },
   { value: "not_found", label: "Sponsor not found" },
   { value: "unknown", label: "Unchecked sponsor" },
+];
+
+const salaryModeOptions: Array<{
+  value: SalaryFilterMode;
+  label: string;
+}> = [
+  { value: "at_least", label: "at least" },
+  { value: "at_most", label: "at most" },
+  { value: "between", label: "between" },
 ];
 
 const sortFieldOrder: JobSort["key"][] = [
@@ -108,8 +123,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSourceFilterChange,
   sponsorFilter,
   onSponsorFilterChange,
-  minSalary,
-  onMinSalaryChange,
+  salaryFilter,
+  onSalaryFilterChange,
   sourcesWithJobs,
   sort,
   onSortChange,
@@ -125,9 +140,16 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     () =>
       Number(sourceFilter !== "all") +
       Number(sponsorFilter !== "all") +
-      Number(typeof minSalary === "number" && minSalary > 0),
-    [sourceFilter, sponsorFilter, minSalary],
+      Number(
+        (typeof salaryFilter.min === "number" && salaryFilter.min > 0) ||
+          (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
+      ),
+    [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max],
   );
+  const showSalaryMin =
+    salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
+  const showSalaryMax =
+    salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
 
   return (
     <Tabs
@@ -253,30 +275,116 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
 
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle>Minimum salary</CardTitle>
+                      <CardTitle>Salary</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <Label htmlFor="min-salary-filter">Minimum salary</Label>
-                      <Input
-                        id="min-salary-filter"
-                        className="mt-2"
-                        value={minSalary == null ? "" : String(minSalary)}
-                        onChange={(event) => {
-                          const rawValue = event.target.value.trim();
-                          if (!rawValue) {
-                            onMinSalaryChange(null);
-                            return;
-                          }
-                          const parsed = Number.parseInt(rawValue, 10);
-                          onMinSalaryChange(
-                            Number.isFinite(parsed) && parsed > 0
-                              ? parsed
-                              : null,
-                          );
-                        }}
-                        inputMode="numeric"
-                        placeholder="e.g. 60000"
-                      />
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <span>Salary is</span>
+                        <Select
+                          value={salaryFilter.mode}
+                          onValueChange={(value) => {
+                            const nextMode = value as SalaryFilterMode;
+                            if (nextMode === "at_least") {
+                              onSalaryFilterChange({
+                                mode: nextMode,
+                                min: salaryFilter.min,
+                                max: null,
+                              });
+                              return;
+                            }
+                            if (nextMode === "at_most") {
+                              onSalaryFilterChange({
+                                mode: nextMode,
+                                min: null,
+                                max: salaryFilter.max,
+                              });
+                              return;
+                            }
+                            onSalaryFilterChange({
+                              mode: nextMode,
+                              min: salaryFilter.min,
+                              max: salaryFilter.max,
+                            });
+                          }}
+                        >
+                          <SelectTrigger
+                            id="salary-mode"
+                            aria-label="Salary range specifier"
+                            className="h-8 w-[170px] text-foreground"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {salaryModeOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div
+                        className={
+                          showSalaryMin && showSalaryMax
+                            ? "grid gap-3 md:grid-cols-2"
+                            : "space-y-3"
+                        }
+                      >
+                        {showSalaryMin && (
+                          <div className="space-y-1">
+                            <Label htmlFor="salary-min-filter">Minimum</Label>
+                            <Input
+                              id="salary-min-filter"
+                              value={
+                                salaryFilter.min == null
+                                  ? ""
+                                  : String(salaryFilter.min)
+                              }
+                              onChange={(event) => {
+                                const raw = event.target.value.trim();
+                                const parsed = Number.parseInt(raw, 10);
+                                onSalaryFilterChange({
+                                  ...salaryFilter,
+                                  min:
+                                    Number.isFinite(parsed) && parsed > 0
+                                      ? parsed
+                                      : null,
+                                });
+                              }}
+                              inputMode="numeric"
+                              placeholder="e.g. 60000"
+                            />
+                          </div>
+                        )}
+
+                        {showSalaryMax && (
+                          <div className="space-y-1">
+                            <Label htmlFor="salary-max-filter">Maximum</Label>
+                            <Input
+                              id="salary-max-filter"
+                              value={
+                                salaryFilter.max == null
+                                  ? ""
+                                  : String(salaryFilter.max)
+                              }
+                              onChange={(event) => {
+                                const raw = event.target.value.trim();
+                                const parsed = Number.parseInt(raw, 10);
+                                onSalaryFilterChange({
+                                  ...salaryFilter,
+                                  max:
+                                    Number.isFinite(parsed) && parsed > 0
+                                      ? parsed
+                                      : null,
+                                });
+                              }}
+                              inputMode="numeric"
+                              placeholder="e.g. 100000"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </CardContent>
                   </Card>
 

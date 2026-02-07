@@ -73,6 +73,13 @@ export type SponsorFilter =
   | "potential"
   | "not_found"
   | "unknown";
+export type SalaryFilterMode = "at_least" | "at_most" | "between";
+
+export interface SalaryFilter {
+  mode: SalaryFilterMode;
+  min: number | null;
+  max: number | null;
+}
 
 export interface JobSort {
   key: SortKey;
