@@ -235,7 +235,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       {term}
                       <button
                         type="button"
-                        className="text-muted-foreground"
+                        className="cursor-default text-muted-foreground transition-none hover:text-muted-foreground focus-visible:outline-none"
                         aria-label={`Remove ${term}`}
                         onClick={() =>
                           setSearchTerms((current) =>
