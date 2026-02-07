@@ -230,7 +230,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   {searchTerms.map((term) => (
                     <span
                       key={term}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-colors hover:bg-muted/50"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:-translate-y-px hover:border-primary/60 hover:bg-accent hover:text-accent-foreground hover:shadow-sm"
                     >
                       {term}
                       <button
