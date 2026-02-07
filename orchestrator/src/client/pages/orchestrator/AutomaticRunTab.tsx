@@ -348,26 +348,22 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             </p>
             <div className="flex flex-wrap gap-2">
               {searchTerms.map((term) => (
-                <span
+                <button
+                  type="button"
                   key={term}
                   className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/20 px-3 py-1 text-sm transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+                  aria-label={`Remove ${term}`}
+                  onClick={() =>
+                    setValue(
+                      "searchTerms",
+                      searchTerms.filter((value) => value !== term),
+                      { shouldDirty: true },
+                    )
+                  }
                 >
                   {term}
-                  <button
-                    type="button"
-                    className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
-                    aria-label={`Remove ${term}`}
-                    onClick={() =>
-                      setValue(
-                        "searchTerms",
-                        searchTerms.filter((value) => value !== term),
-                        { shouldDirty: true },
-                      )
-                    }
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
+                  <X className="h-3 w-3" />
+                </button>
               ))}
             </div>
           </CardContent>
