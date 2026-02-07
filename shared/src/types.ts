@@ -302,7 +302,7 @@ export interface PipelineRun {
   id: string;
   startedAt: string;
   completedAt: string | null;
-  status: "running" | "completed" | "failed";
+  status: "running" | "completed" | "failed" | "cancelled";
   jobsDiscovered: number;
   jobsProcessed: number;
   errorMessage: string | null;

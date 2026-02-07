@@ -1,6 +1,6 @@
 import { isNavActive, NAV_LINKS } from "@client/components/navigation";
 import type { JobSource } from "@shared/types.js";
-import { Loader2, Menu, Play, Sparkles } from "lucide-react";
+import { Loader2, Menu, Play, Sparkles, Square } from "lucide-react";
 import type React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -17,16 +17,20 @@ interface OrchestratorHeaderProps {
   navOpen: boolean;
   onNavOpenChange: (open: boolean) => void;
   isPipelineRunning: boolean;
+  isCancelling: boolean;
   pipelineSources: JobSource[];
   onOpenAutomaticRun: () => void;
+  onCancelPipeline: () => void;
 }
 
 export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
   navOpen,
   onNavOpenChange,
   isPipelineRunning,
+  isCancelling,
   pipelineSources,
   onOpenAutomaticRun,
+  onCancelPipeline,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -94,23 +98,31 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={onOpenAutomaticRun}
-            disabled={isPipelineRunning}
-            className="gap-2"
-          >
-            {isPipelineRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+          {isPipelineRunning ? (
+            <Button
+              size="sm"
+              onClick={onCancelPipeline}
+              disabled={isCancelling}
+              variant="destructive"
+              className="gap-2"
+            >
+              {isCancelling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">
+                {isCancelling
+                  ? `Cancelling (${pipelineSources.length})`
+                  : `Cancel run`}
+              </span>
+            </Button>
+          ) : (
+            <Button size="sm" onClick={onOpenAutomaticRun} className="gap-2">
               <Play className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">
-              {isPipelineRunning
-                ? `Running (${pipelineSources.length})`
-                : `Run pipeline`}
-            </span>
-          </Button>
+              <span className="hidden sm:inline">Run pipeline</span>
+            </Button>
+          )}
         </div>
       </div>
     </header>

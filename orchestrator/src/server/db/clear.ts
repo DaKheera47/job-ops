@@ -2,10 +2,10 @@
  * Database utility scripts.
  */
 
+import { existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import Database from "better-sqlite3";
 import { getDataDir } from "../config/dataDir";
-import { existsSync, unlinkSync } from "node:fs";
 
 // Database path - can be overridden via env for Docker
 const DB_PATH = join(getDataDir(), "jobs.db");

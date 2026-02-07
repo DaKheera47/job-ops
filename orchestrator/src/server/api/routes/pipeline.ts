@@ -1,4 +1,4 @@
-import { AppError, badRequest, requestTimeout } from "@infra/errors";
+import { AppError, badRequest, conflict, requestTimeout } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
@@ -8,6 +8,7 @@ import { z } from "zod";
 import { isDemoMode } from "../../config/demo";
 import {
   getPipelineStatus,
+  requestPipelineCancel,
   runPipeline,
   subscribeToProgress,
 } from "../../pipeline/index";
@@ -125,6 +126,43 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
     if (error instanceof Error && error.name === "AbortError") {
       return fail(res, requestTimeout("Request timed out"));
     }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+/**
+ * POST /api/pipeline/cancel - Request cancellation of active pipeline run
+ */
+pipelineRouter.post("/cancel", async (_req: Request, res: Response) => {
+  try {
+    const cancelResult = requestPipelineCancel();
+    if (!cancelResult.accepted) {
+      return fail(res, conflict("No running pipeline to cancel"));
+    }
+
+    logger.info("Pipeline cancellation requested", {
+      route: "/api/pipeline/cancel",
+      action: "cancel",
+      status: "accepted",
+      pipelineRunId: cancelResult.pipelineRunId,
+      alreadyRequested: cancelResult.alreadyRequested,
+    });
+
+    ok(res, {
+      message: cancelResult.alreadyRequested
+        ? "Pipeline cancellation already requested"
+        : "Pipeline cancellation requested",
+      pipelineRunId: cancelResult.pipelineRunId,
+      alreadyRequested: cancelResult.alreadyRequested,
+    });
+  } catch (error) {
     fail(
       res,
       new AppError({

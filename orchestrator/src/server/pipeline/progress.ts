@@ -11,6 +11,7 @@ export type PipelineStep =
   | "scoring"
   | "processing"
   | "completed"
+  | "cancelled"
   | "failed";
 
 export type CrawlSource = "gradcracker" | "jobspy" | "ukvisajobs";
@@ -336,6 +337,15 @@ export const progressHelpers = {
       step: "completed",
       message: `Pipeline complete! Discovered ${discovered} jobs, processed ${processed}.`,
       detail: "Ready for review",
+      completedAt: new Date().toISOString(),
+      currentJob: undefined,
+    }),
+
+  cancelled: (reason: string) =>
+    updateProgress({
+      step: "cancelled",
+      message: "Pipeline cancelled",
+      detail: reason,
       completedAt: new Date().toISOString(),
       currentJob: undefined,
     }),

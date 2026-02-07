@@ -141,7 +141,7 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   startedAt: text("started_at").notNull().default(sql`(datetime('now'))`),
   completedAt: text("completed_at"),
   status: text("status", {
-    enum: ["running", "completed", "failed"],
+    enum: ["running", "completed", "failed", "cancelled"],
   })
     .notNull()
     .default("running"),

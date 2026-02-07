@@ -9,12 +9,19 @@ import type { FilterTab } from "./orchestrator/constants";
 vi.mock("../api", () => ({
   updateSettings: vi.fn().mockResolvedValue({}),
   runPipeline: vi.fn().mockResolvedValue({ message: "ok" }),
+  cancelPipeline: vi.fn().mockResolvedValue({
+    message: "Pipeline cancellation requested",
+    pipelineRunId: "run-1",
+    alreadyRequested: false,
+  }),
   getPipelineStatus: vi.fn().mockResolvedValue({
     isRunning: false,
     lastRun: null,
     nextScheduledRun: null,
   }),
 }));
+
+let mockIsPipelineRunning = false;
 
 const jobFixture: Job = {
   id: "job-1",
@@ -103,7 +110,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
       expired: 0,
     },
     isLoading: false,
-    isPipelineRunning: false,
+    isPipelineRunning: mockIsPipelineRunning,
     setIsPipelineRunning: vi.fn(),
     loadJobs: vi.fn(),
   }),
@@ -129,7 +136,17 @@ vi.mock("../hooks/useSettings", () => ({
 }));
 
 vi.mock("./orchestrator/OrchestratorHeader", () => ({
-  OrchestratorHeader: () => <div data-testid="header" />,
+  OrchestratorHeader: ({
+    onCancelPipeline,
+  }: {
+    onCancelPipeline: () => void;
+  }) => (
+    <div data-testid="header">
+      <button type="button" onClick={onCancelPipeline}>
+        Cancel Pipeline
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("./orchestrator/OrchestratorSummary", () => ({
@@ -240,6 +257,7 @@ const LocationWatcher = () => {
 describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsPipelineRunning = false;
   });
 
   it("syncs tab selection to the URL", () => {
@@ -259,6 +277,28 @@ describe("OrchestratorPage", () => {
 
     fireEvent.click(screen.getByText("To Discovered"));
     expect(screen.getByTestId("location").textContent).toContain("/discovered");
+  });
+
+  it("requests pipeline cancellation when running", async () => {
+    mockIsPipelineRunning = true;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("Cancel Pipeline"));
+
+    await waitFor(() => {
+      expect(api.cancelPipeline).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("syncs job selection to the URL", async () => {

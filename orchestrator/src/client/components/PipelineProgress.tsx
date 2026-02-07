@@ -20,6 +20,7 @@ interface PipelineProgress {
     | "scoring"
     | "processing"
     | "completed"
+    | "cancelled"
     | "failed";
   message: string;
   detail?: string;
@@ -61,6 +62,7 @@ const stepLabels: Record<PipelineProgress["step"], string> = {
   scoring: "Scoring",
   processing: "Processing",
   completed: "Complete",
+  cancelled: "Cancelled",
   failed: "Failed",
 };
 
@@ -71,6 +73,7 @@ const stepBadgeClasses: Record<PipelineProgress["step"], string> = {
   scoring: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   processing: "bg-primary/10 text-primary border-primary/20",
   completed: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  cancelled: "bg-muted text-muted-foreground border-border",
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
@@ -142,6 +145,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
         return 55;
       }
       case "completed":
+      case "cancelled":
       case "failed":
         return 100;
       default:
@@ -185,7 +189,11 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   }
 
   const step = progress?.step ?? "idle";
-  const isActive = step !== "idle" && step !== "completed" && step !== "failed";
+  const isActive =
+    step !== "idle" &&
+    step !== "completed" &&
+    step !== "cancelled" &&
+    step !== "failed";
   const listPagesText = progress
     ? progress.crawlingListPagesTotal > 0
       ? `${progress.crawlingListPagesProcessed}/${progress.crawlingListPagesTotal}`
@@ -203,7 +211,9 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
 
   const showStats =
     !!progress &&
-    ["crawling", "scoring", "processing", "completed"].includes(step);
+    ["crawling", "scoring", "processing", "completed", "cancelled"].includes(
+      step,
+    );
 
   return (
     <Card>

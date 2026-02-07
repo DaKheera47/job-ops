@@ -35,6 +35,12 @@ vi.mock("../../pipeline/index", () => {
     summarizeJob: vi.fn().mockResolvedValue({ success: true }),
     generateFinalPdf: vi.fn().mockResolvedValue({ success: true }),
     getPipelineStatus: vi.fn(() => ({ isRunning: false })),
+    requestPipelineCancel: vi.fn(() => ({
+      accepted: false,
+      pipelineRunId: null,
+      alreadyRequested: false,
+    })),
+    isPipelineCancelRequested: vi.fn(() => false),
     subscribeToProgress: vi.fn((listener: (data: unknown) => void) => {
       listener(progress);
       return () => {};

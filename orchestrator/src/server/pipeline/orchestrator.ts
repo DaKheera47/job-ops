@@ -47,6 +47,21 @@ const DEFAULT_CONFIG: PipelineConfig = {
 
 // Track if pipeline is currently running
 let isPipelineRunning = false;
+let activePipelineRunId: string | null = null;
+let cancelRequestedAt: string | null = null;
+
+class PipelineCancelledError extends Error {
+  constructor(message = "Pipeline cancellation requested") {
+    super(message);
+    this.name = "PipelineCancelledError";
+  }
+}
+
+function ensureNotCancelled(): void {
+  if (cancelRequestedAt) {
+    throw new PipelineCancelledError();
+  }
+}
 
 /**
  * Run the full job discovery and processing pipeline.
@@ -69,12 +84,18 @@ export async function runPipeline(
   }
 
   isPipelineRunning = true;
+  activePipelineRunId = "pending";
+  cancelRequestedAt = null;
   resetProgress();
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
 
   const pipelineRun = await pipelineRepo.createPipelineRun();
+  activePipelineRunId = pipelineRun.id;
+
   return runWithRequestContext({ pipelineRunId: pipelineRun.id }, async () => {
     const pipelineLogger = logger.child({ pipelineRunId: pipelineRun.id });
+    let jobsDiscovered = 0;
+    let jobsProcessed = 0;
     pipelineLogger.info("Starting pipeline run", {
       topN: mergedConfig.topN,
       minSuitabilityScore: mergedConfig.minSuitabilityScore,
@@ -82,18 +103,30 @@ export async function runPipeline(
     });
 
     try {
+      ensureNotCancelled();
       const profile = await loadProfileStep();
 
-      const { discoveredJobs } = await discoverJobsStep({ mergedConfig });
+      ensureNotCancelled();
+      const { discoveredJobs } = await discoverJobsStep({
+        mergedConfig,
+        shouldCancel: () => cancelRequestedAt !== null,
+      });
 
+      ensureNotCancelled();
       const { created } = await importJobsStep({ discoveredJobs });
+      jobsDiscovered = created;
 
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsDiscovered: created,
       });
 
-      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({ profile });
+      ensureNotCancelled();
+      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({
+        profile,
+        shouldCancel: () => cancelRequestedAt !== null,
+      });
 
+      ensureNotCancelled();
       const jobsToProcess = selectJobsStep({
         scoredJobs,
         mergedConfig,
@@ -106,7 +139,9 @@ export async function runPipeline(
       const { processedCount } = await processJobsStep({
         jobsToProcess,
         processJob,
+        shouldCancel: () => cancelRequestedAt !== null,
       });
+      jobsProcessed = processedCount;
 
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         status: "completed",
@@ -133,6 +168,28 @@ export async function runPipeline(
         jobsProcessed: processedCount,
       };
     } catch (error) {
+      if (error instanceof PipelineCancelledError) {
+        const message = "Cancelled by user request";
+        await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+          status: "cancelled",
+          completedAt: new Date().toISOString(),
+          jobsDiscovered,
+          jobsProcessed,
+          errorMessage: message,
+        });
+        progressHelpers.cancelled(message);
+        pipelineLogger.info("Pipeline run cancelled", {
+          jobsDiscovered,
+          jobsProcessed,
+        });
+        return {
+          success: false,
+          jobsDiscovered,
+          jobsProcessed,
+          error: message,
+        };
+      }
+
       const message = error instanceof Error ? error.message : "Unknown error";
 
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
@@ -151,12 +208,14 @@ export async function runPipeline(
 
       return {
         success: false,
-        jobsDiscovered: 0,
-        jobsProcessed: 0,
+        jobsDiscovered,
+        jobsProcessed,
         error: message,
       };
     } finally {
       isPipelineRunning = false;
+      activePipelineRunId = null;
+      cancelRequestedAt = null;
     }
   });
 }
@@ -339,4 +398,38 @@ export async function processJob(
  */
 export function getPipelineStatus(): { isRunning: boolean } {
   return { isRunning: isPipelineRunning };
+}
+
+export function requestPipelineCancel(): {
+  accepted: boolean;
+  pipelineRunId: string | null;
+  alreadyRequested: boolean;
+} {
+  if (!isPipelineRunning) {
+    return { accepted: false, pipelineRunId: null, alreadyRequested: false };
+  }
+
+  const pipelineRunId =
+    activePipelineRunId && activePipelineRunId !== "pending"
+      ? activePipelineRunId
+      : null;
+
+  if (cancelRequestedAt) {
+    return {
+      accepted: true,
+      pipelineRunId,
+      alreadyRequested: true,
+    };
+  }
+
+  cancelRequestedAt = new Date().toISOString();
+  return {
+    accepted: true,
+    pipelineRunId,
+    alreadyRequested: false,
+  };
+}
+
+export function isPipelineCancelRequested(): boolean {
+  return cancelRequestedAt !== null;
 }

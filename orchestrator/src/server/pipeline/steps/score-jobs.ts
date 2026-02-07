@@ -9,6 +9,7 @@ import type { ScoredJob } from "./types";
 
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
+  shouldCancel?: () => boolean;
 }): Promise<{ unprocessedJobs: Job[]; scoredJobs: ScoredJob[] }> {
   logger.info("Running scoring step");
   const unprocessedJobs = await jobsRepo.getUnscoredDiscoveredJobs();
@@ -33,6 +34,8 @@ export async function scoreJobsStep(args: {
   const scoredJobs: ScoredJob[] = [];
 
   for (let i = 0; i < unprocessedJobs.length; i++) {
+    if (args.shouldCancel?.()) break;
+
     const job = unprocessedJobs[i];
     const hasCachedScore =
       typeof job.suitabilityScore === "number" &&

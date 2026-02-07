@@ -137,6 +137,7 @@ export const OrchestratorPage: React.FC = () => {
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -232,6 +233,7 @@ export const OrchestratorPage: React.FC = () => {
     }) => {
       try {
         setIsPipelineRunning(true);
+        setIsCancelling(false);
         await api.runPipeline(config);
         toast.message("Pipeline started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
@@ -243,8 +245,16 @@ export const OrchestratorPage: React.FC = () => {
             if (!status.isRunning) {
               clearInterval(pollInterval);
               setIsPipelineRunning(false);
+              setIsCancelling(false);
               await loadJobs();
-              toast.success("Pipeline completed");
+              const outcome = status.lastRun?.status;
+              if (outcome === "cancelled") {
+                toast.message("Pipeline cancelled");
+              } else if (outcome === "failed") {
+                toast.error(status.lastRun?.errorMessage || "Pipeline failed");
+              } else {
+                toast.success("Pipeline completed");
+              }
             }
           } catch {
             // Ignore errors
@@ -252,6 +262,7 @@ export const OrchestratorPage: React.FC = () => {
         }, 5000);
       } catch (error) {
         setIsPipelineRunning(false);
+        setIsCancelling(false);
         const message =
           error instanceof Error ? error.message : "Failed to start pipeline";
         toast.error(message);
@@ -259,6 +270,21 @@ export const OrchestratorPage: React.FC = () => {
     },
     [loadJobs, setIsPipelineRunning],
   );
+
+  const handleCancelPipeline = useCallback(async () => {
+    if (isCancelling || !isPipelineRunning) return;
+
+    try {
+      setIsCancelling(true);
+      const result = await api.cancelPipeline();
+      toast.message(result.message);
+    } catch (error) {
+      setIsCancelling(false);
+      const message =
+        error instanceof Error ? error.message : "Failed to cancel pipeline";
+      toast.error(message);
+    }
+  }, [isCancelling, isPipelineRunning]);
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
@@ -352,8 +378,10 @@ export const OrchestratorPage: React.FC = () => {
         navOpen={navOpen}
         onNavOpenChange={setNavOpen}
         isPipelineRunning={isPipelineRunning}
+        isCancelling={isCancelling}
         pipelineSources={pipelineSources}
         onOpenAutomaticRun={() => openRunMode("automatic")}
+        onCancelPipeline={handleCancelPipeline}
       />
 
       <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">

@@ -9,6 +9,7 @@ import { progressHelpers, updateProgress } from "../progress";
 
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
+  shouldCancel?: () => boolean;
 }): Promise<{
   discoveredJobs: CreateJobInput[];
   sourceErrors: string[];
@@ -68,6 +69,10 @@ export async function discoverJobsStep(args: {
     completedSources += 1;
     progressHelpers.completeSource(completedSources, totalSources);
   };
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
 
   if (shouldRunJobSpy) {
     progressHelpers.startSource("jobspy", completedSources, totalSources, {
@@ -135,6 +140,10 @@ export async function discoverJobsStep(args: {
     markSourceComplete();
   }
 
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
+
   if (shouldRunGradcracker) {
     progressHelpers.startSource("gradcracker", completedSources, totalSources, {
       detail: "Gradcracker: scraping...",
@@ -173,6 +182,10 @@ export async function discoverJobsStep(args: {
     }
 
     markSourceComplete();
+  }
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
   }
 
   if (shouldRunUkVisaJobs) {

@@ -28,8 +28,10 @@ const renderHeader = (
     navOpen: false,
     onNavOpenChange: vi.fn(),
     isPipelineRunning: false,
+    isCancelling: false,
     pipelineSources: ["gradcracker"],
     onOpenAutomaticRun: vi.fn(),
+    onCancelPipeline: vi.fn(),
     ...overrides,
   };
 
@@ -55,5 +57,11 @@ describe("OrchestratorHeader", () => {
     expect(
       screen.queryByRole("button", { name: /manual import/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("renders cancel button while running and triggers cancel", () => {
+    const { props } = renderHeader({ isPipelineRunning: true });
+    fireEvent.click(screen.getByRole("button", { name: /cancel run/i }));
+    expect(props.onCancelPipeline).toHaveBeenCalled();
   });
 });

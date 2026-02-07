@@ -319,6 +319,20 @@ export async function runPipeline(config?: {
   });
 }
 
+export async function cancelPipeline(): Promise<{
+  message: string;
+  pipelineRunId: string | null;
+  alreadyRequested: boolean;
+}> {
+  return fetchApi<{
+    message: string;
+    pipelineRunId: string | null;
+    alreadyRequested: boolean;
+  }>("/pipeline/cancel", {
+    method: "POST",
+  });
+}
+
 export async function getDemoInfo(): Promise<DemoInfoResponse> {
   return fetchApi<DemoInfoResponse>("/demo/info");
 }

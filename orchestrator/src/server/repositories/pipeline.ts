@@ -40,7 +40,7 @@ export async function updatePipelineRun(
   id: string,
   update: Partial<{
     completedAt: string;
-    status: "running" | "completed" | "failed";
+    status: "running" | "completed" | "failed" | "cancelled";
     jobsDiscovered: number;
     jobsProcessed: number;
     errorMessage: string;

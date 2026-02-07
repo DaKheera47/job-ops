@@ -10,6 +10,7 @@ type ProcessJobFn = (
 export async function processJobsStep(args: {
   jobsToProcess: ScoredJob[];
   processJob: ProcessJobFn;
+  shouldCancel?: () => boolean;
 }): Promise<{ processedCount: number }> {
   let processedCount = 0;
 
@@ -21,6 +22,8 @@ export async function processJobsStep(args: {
     });
 
     for (let i = 0; i < args.jobsToProcess.length; i++) {
+      if (args.shouldCancel?.()) break;
+
       const job = args.jobsToProcess[i];
       progressHelpers.processingJob(i + 1, args.jobsToProcess.length, job);
 

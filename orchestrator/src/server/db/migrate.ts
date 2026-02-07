@@ -80,7 +80,7 @@ const migrations = [
     id TEXT PRIMARY KEY,
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT,
-    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed')),
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
     jobs_discovered INTEGER NOT NULL DEFAULT 0,
     jobs_processed INTEGER NOT NULL DEFAULT 0,
     error_message TEXT
@@ -178,6 +178,22 @@ const migrations = [
   `ALTER TABLE stage_events ADD COLUMN outcome TEXT`,
   `ALTER TABLE stage_events ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN group_id TEXT`,
+
+  // Ensure pipeline_runs status supports "cancelled" for existing databases.
+  `CREATE TABLE IF NOT EXISTS pipeline_runs_new (
+    id TEXT PRIMARY KEY,
+    started_at TEXT NOT NULL DEFAULT (datetime('now')),
+    completed_at TEXT,
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
+    jobs_discovered INTEGER NOT NULL DEFAULT 0,
+    jobs_processed INTEGER NOT NULL DEFAULT 0,
+    error_message TEXT
+  )`,
+  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message
+   FROM pipeline_runs`,
+  `DROP TABLE IF EXISTS pipeline_runs`,
+  `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
