@@ -405,9 +405,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           {values.topN} resumes
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button type="button" variant="ghost">
-            Save preset
-          </Button>
           <Button
             type="button"
             className="gap-2"
