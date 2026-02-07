@@ -18,6 +18,7 @@ import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";
 import { getDataDir } from "./config/dataDir";
+import { isDemoMode } from "./config/demo";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -119,6 +120,14 @@ export function createApp() {
 
   // Serve static files for generated PDFs
   const pdfDir = join(getDataDir(), "pdfs");
+  if (isDemoMode()) {
+    const demoPdfPath = join(pdfDir, "demo.pdf");
+    app.get("/pdfs/*", (_req, res) => {
+      res.sendFile(demoPdfPath, (error) => {
+        if (error) res.status(404).end();
+      });
+    });
+  }
   app.use("/pdfs", express.static(pdfDir));
 
   // Health check
