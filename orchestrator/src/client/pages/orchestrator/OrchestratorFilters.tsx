@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -22,11 +21,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn, sourceLabel } from "@/lib/utils";
+import { sourceLabel } from "@/lib/utils";
 import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import {
   defaultSortDirection,
-  DEFAULT_SORT,
   orderedFilterSources,
   sortLabels,
   tabs,
@@ -47,6 +45,7 @@ interface OrchestratorFiltersProps {
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
+  onResetFilters: () => void;
   filteredCount: number;
 }
 
@@ -76,6 +75,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   sourcesWithJobs,
   sort,
   onSortChange,
+  onResetFilters,
   filteredCount,
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -90,13 +90,6 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
       Number(typeof minSalary === "number" && minSalary > 0),
     [sourceFilter, sponsorFilter, minSalary],
   );
-
-  const resetFilters = () => {
-    onSourceFilterChange("all");
-    onSponsorFilterChange("all");
-    onMinSalaryChange(null);
-    onSortChange(DEFAULT_SORT);
-  };
 
   return (
     <Tabs
@@ -201,31 +194,22 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                     <CardHeader className="pb-3">
                       <CardTitle>Sponsor status</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <RadioGroup
-                        value={sponsorFilter}
-                        onValueChange={(value) =>
-                          onSponsorFilterChange(value as SponsorFilter)
-                        }
-                      >
-                        {sponsorOptions.map((option) => (
-                          <label
-                            key={option.value}
-                            htmlFor={`sponsor-filter-${option.value}`}
-                            className={cn(
-                              "flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm",
-                              sponsorFilter === option.value &&
-                                "border-primary/50 bg-primary/5",
-                            )}
-                          >
-                            <RadioGroupItem
-                              value={option.value}
-                              id={`sponsor-filter-${option.value}`}
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
-                      </RadioGroup>
+                    <CardContent className="flex flex-wrap gap-2">
+                      {sponsorOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          size="sm"
+                          variant={
+                            sponsorFilter === option.value
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => onSponsorFilterChange(option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
                     </CardContent>
                   </Card>
 
@@ -303,7 +287,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                 </div>
 
                 <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
-                  <Button type="button" variant="outline" onClick={resetFilters}>
+                  <Button type="button" variant="outline" onClick={onResetFilters}>
                     Reset
                   </Button>
                   <Button type="button" onClick={() => setIsDrawerOpen(false)}>

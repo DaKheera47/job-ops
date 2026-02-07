@@ -28,6 +28,7 @@ const renderFilters = (
     sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
+    onResetFilters: vi.fn(),
     filteredCount: 5,
     ...overrides,
   };
@@ -59,7 +60,7 @@ describe("OrchestratorFilters", () => {
     fireEvent.click(screen.getByRole("button", { name: "LinkedIn" }));
     expect(props.onSourceFilterChange).toHaveBeenCalledWith("linkedin");
 
-    fireEvent.click(screen.getByRole("radio", { name: /Potential sponsor/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Potential sponsor" }));
     expect(props.onSponsorFilterChange).toHaveBeenCalledWith("potential");
 
     fireEvent.change(screen.getByLabelText("Minimum salary"), {
@@ -86,9 +87,6 @@ describe("OrchestratorFilters", () => {
     expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));
-    expect(props.onSourceFilterChange).toHaveBeenCalledWith("all");
-    expect(props.onSponsorFilterChange).toHaveBeenCalledWith("all");
-    expect(props.onMinSalaryChange).toHaveBeenCalledWith(null);
-    expect(props.onSortChange).toHaveBeenCalled();
+    expect(props.onResetFilters).toHaveBeenCalled();
   });
 });

@@ -161,6 +161,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onSourceFilterChange,
     onSponsorFilterChange,
     onMinSalaryChange,
+    onResetFilters,
     onSortChange,
     sourcesWithJobs,
     filteredCount,
@@ -170,6 +171,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onSourceFilterChange: (source: string) => void;
     onSponsorFilterChange: (value: string) => void;
     onMinSalaryChange: (value: number | null) => void;
+    onResetFilters: () => void;
     onSortChange: (s: any) => void;
     sourcesWithJobs: string[];
     filteredCount: number;
@@ -197,6 +199,9 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
       </button>
       <button type="button" onClick={() => onMinSalaryChange(60000)}>
         Set Min Salary
+      </button>
+      <button type="button" onClick={onResetFilters}>
+        Reset Filters
       </button>
     </div>
   ),
@@ -430,7 +435,7 @@ describe("OrchestratorPage", () => {
     );
   });
 
-  it("syncs source, sponsor, and min salary filters to URL", () => {
+  it("syncs source, sponsor, and min salary filters to URL and resets them", () => {
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
@@ -459,6 +464,18 @@ describe("OrchestratorPage", () => {
     expect(screen.getByTestId("location").textContent).toContain(
       "minSalary=60000",
     );
+
+    fireEvent.click(screen.getByText("Set Sort"));
+    expect(screen.getByTestId("location").textContent).toContain(
+      "sort=title-asc",
+    );
+
+    fireEvent.click(screen.getByText("Reset Filters"));
+    const locationText = screen.getByTestId("location").textContent || "";
+    expect(locationText).not.toContain("source=");
+    expect(locationText).not.toContain("sponsor=");
+    expect(locationText).not.toContain("minSalary=");
+    expect(locationText).not.toContain("sort=");
   });
 
   it("opens the detail drawer on mobile when a job is selected", () => {

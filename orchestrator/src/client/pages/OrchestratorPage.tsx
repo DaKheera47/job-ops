@@ -175,6 +175,19 @@ export const OrchestratorPage: React.FC = () => {
     [setSearchParams],
   );
 
+  const resetFilters = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        prev.delete("source");
+        prev.delete("sponsor");
+        prev.delete("minSalary");
+        prev.delete("sort");
+        return prev;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
   // Effect to sync URL if it was invalid
   useEffect(() => {
     const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
@@ -460,6 +473,7 @@ export const OrchestratorPage: React.FC = () => {
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}
+            onResetFilters={resetFilters}
             filteredCount={activeJobs.length}
           />
 
