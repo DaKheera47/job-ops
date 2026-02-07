@@ -75,15 +75,10 @@ describe("useFilteredJobs", () => {
     ];
 
     const { result } = renderHook(() =>
-      useFilteredJobs(
-        jobs,
-        "all",
-        "all",
-        "confirmed",
-        null,
-        "",
-        { key: "score", direction: "desc" },
-      ),
+      useFilteredJobs(jobs, "all", "all", "confirmed", null, "", {
+        key: "score",
+        direction: "desc",
+      }),
     );
 
     expect(result.current.map((job) => job.id)).toEqual(["confirmed"]);
@@ -98,15 +93,10 @@ describe("useFilteredJobs", () => {
     ];
 
     const { result } = renderHook(() =>
-      useFilteredJobs(
-        jobs,
-        "all",
-        "all",
-        "all",
-        60000,
-        "",
-        { key: "score", direction: "desc" },
-      ),
+      useFilteredJobs(jobs, "all", "all", "all", 60000, "", {
+        key: "score",
+        direction: "desc",
+      }),
     );
 
     expect(result.current.map((job) => job.id)).toEqual(

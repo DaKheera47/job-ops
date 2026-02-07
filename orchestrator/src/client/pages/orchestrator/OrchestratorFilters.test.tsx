@@ -76,14 +76,18 @@ describe("OrchestratorFilters", () => {
   });
 
   it("resets filters and only shows sources present in jobs", () => {
-    const { props } = renderFilters({ sourcesWithJobs: ["gradcracker", "manual"] });
+    const { props } = renderFilters({
+      sourcesWithJobs: ["gradcracker", "manual"],
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
 
     expect(
       screen.queryByRole("button", { name: "LinkedIn" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Gradcracker" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Gradcracker" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset" }));

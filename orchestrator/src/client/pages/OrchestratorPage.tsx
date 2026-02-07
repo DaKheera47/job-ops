@@ -13,7 +13,11 @@ import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import * as api from "../api";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
-import type { FilterTab, JobSort, SponsorFilter } from "./orchestrator/constants";
+import type {
+  FilterTab,
+  JobSort,
+  SponsorFilter,
+} from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";

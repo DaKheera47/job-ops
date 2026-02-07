@@ -11,10 +11,16 @@ const getSponsorCategory = (score: number | null): SponsorFilter => {
 };
 
 const parseSalaryFloor = (job: Job): number | null => {
-  if (typeof job.salaryMinAmount === "number" && Number.isFinite(job.salaryMinAmount)) {
+  if (
+    typeof job.salaryMinAmount === "number" &&
+    Number.isFinite(job.salaryMinAmount)
+  ) {
     return job.salaryMinAmount;
   }
-  if (typeof job.salaryMaxAmount === "number" && Number.isFinite(job.salaryMaxAmount)) {
+  if (
+    typeof job.salaryMaxAmount === "number" &&
+    Number.isFinite(job.salaryMaxAmount)
+  ) {
     return job.salaryMaxAmount;
   }
   if (!job.salary) return null;
@@ -68,7 +74,11 @@ export const useFilteredJobs = (
       );
     }
 
-    if (typeof minSalary === "number" && Number.isFinite(minSalary) && minSalary > 0) {
+    if (
+      typeof minSalary === "number" &&
+      Number.isFinite(minSalary) &&
+      minSalary > 0
+    ) {
       filtered = filtered.filter((job) => {
         const salaryFloor = parseSalaryFloor(job);
         return salaryFloor != null && salaryFloor >= minSalary;
@@ -80,4 +90,12 @@ export const useFilteredJobs = (
     }
 
     return [...filtered].sort((a, b) => compareJobs(a, b, sort));
-  }, [jobs, activeTab, sourceFilter, sponsorFilter, minSalary, searchQuery, sort]);
+  }, [
+    jobs,
+    activeTab,
+    sourceFilter,
+    sponsorFilter,
+    minSalary,
+    searchQuery,
+    sort,
+  ]);

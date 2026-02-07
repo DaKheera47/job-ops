@@ -1,14 +1,9 @@
 import type { JobSource } from "@shared/types.js";
-import { Filter, Search } from "lucide-react";
+import { ArrowDown, ArrowUp, Filter, Search } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -244,10 +239,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
 
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle>Sort</CardTitle>
+                      <CardTitle>Sort by</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="flex flex-wrap gap-2">
+                    <CardContent>
+                      <div className="flex flex-wrap items-center gap-2">
                         {(Object.keys(sortLabels) as Array<JobSort["key"]>).map(
                           (key) => (
                             <Button
@@ -266,28 +261,41 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                             </Button>
                           ),
                         )}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8"
+                          aria-label={
+                            sort.direction === "asc"
+                              ? "Switch to descending sort"
+                              : "Switch to ascending sort"
+                          }
+                          onClick={() =>
+                            onSortChange({
+                              ...sort,
+                              direction:
+                                sort.direction === "asc" ? "desc" : "asc",
+                            })
+                          }
+                        >
+                          {sort.direction === "asc" ? (
+                            <ArrowUp className="h-3.5 w-3.5" />
+                          ) : (
+                            <ArrowDown className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          onSortChange({
-                            ...sort,
-                            direction:
-                              sort.direction === "asc" ? "desc" : "asc",
-                          })
-                        }
-                      >
-                        Direction:{" "}
-                        {sort.direction === "asc" ? "Ascending" : "Descending"}
-                      </Button>
                     </CardContent>
                   </Card>
                 </div>
 
                 <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
-                  <Button type="button" variant="outline" onClick={onResetFilters}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onResetFilters}
+                  >
                     Reset
                   </Button>
                   <Button type="button" onClick={() => setIsDrawerOpen(false)}>
