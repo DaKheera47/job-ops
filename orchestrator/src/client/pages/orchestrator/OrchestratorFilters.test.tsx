@@ -1,9 +1,25 @@
 import type { JobSource } from "@shared/types.js";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+
+beforeAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
+});
+
+afterAll(() => {
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: originalScrollIntoView,
+  });
+});
 
 const renderFilters = (
   overrides?: Partial<ComponentProps<typeof OrchestratorFilters>>,
@@ -52,7 +68,7 @@ describe("OrchestratorFilters", () => {
     expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
   });
 
-  it("updates source, sponsor, min salary, and sort from the drawer", () => {
+  it("updates source, sponsor, min salary, and sort from the drawer", async () => {
     const { props } = renderFilters();
 
     fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
@@ -68,16 +84,25 @@ describe("OrchestratorFilters", () => {
     });
     expect(props.onMinSalaryChange).toHaveBeenCalledWith(65000);
 
-    fireEvent.click(screen.getByRole("button", { name: "Title" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
+    fireEvent.click(await screen.findByText("job title"));
     expect(props.onSortChange).toHaveBeenCalledWith({
       key: "title",
       direction: "asc",
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Salary" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
+    fireEvent.click(await screen.findByText("salary"));
     expect(props.onSortChange).toHaveBeenCalledWith({
       key: "salary",
       direction: "desc",
+    });
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Sort order" }));
+    fireEvent.click(await screen.findByText("smallest first"));
+    expect(props.onSortChange).toHaveBeenCalledWith({
+      key: "score",
+      direction: "asc",
     });
   });
 
