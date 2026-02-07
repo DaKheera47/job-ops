@@ -216,6 +216,14 @@ export const OrchestratorPage: React.FC = () => {
     setIsRunModeModalOpen(true);
   }, []);
 
+  const handleManualImported = useCallback(
+    async (importedJobId: string) => {
+      await loadJobs();
+      navigateWithContext("discovered", importedJobId);
+    },
+    [loadJobs, navigateWithContext],
+  );
+
   const startPipelineRun = async (config: {
     topN: number;
     minSuitabilityScore: number;
@@ -417,6 +425,7 @@ export const OrchestratorPage: React.FC = () => {
         onOpenChange={setIsRunModeModalOpen}
         onModeChange={setRunMode}
         onSaveAndRunAutomatic={handleSaveAndRunAutomatic}
+        onManualImported={handleManualImported}
       />
 
       {!isDesktop && (

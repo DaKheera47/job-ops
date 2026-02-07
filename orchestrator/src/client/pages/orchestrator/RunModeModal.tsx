@@ -1,6 +1,5 @@
 import type { AppSettings, JobSource } from "@shared/types";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -10,6 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ManualImportFlow } from "@client/components/ManualImportFlow";
 import type React from "react";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 import type { AutomaticRunValues } from "./automatic-run";
@@ -24,6 +24,7 @@ interface RunModeModalProps {
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
+  onManualImported: (jobId: string) => Promise<void>;
 }
 
 export const RunModeModal: React.FC<RunModeModalProps> = ({
@@ -35,6 +36,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onOpenChange,
   onModeChange,
   onSaveAndRunAutomatic,
+  onManualImported,
 }) => {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -73,15 +75,11 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
             </TabsContent>
 
             <TabsContent value="manual" className="min-h-0 flex-1">
-              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-6 text-center">
-                <p className="text-sm font-medium">Manual import flow</p>
-                <p className="text-xs text-muted-foreground">
-                  Existing 3-step manual flow lands in Stage 3.
-                </p>
-                <Button type="button" variant="outline" disabled>
-                  Coming in next stage
-                </Button>
-              </div>
+              <ManualImportFlow
+                active={open && mode === "manual"}
+                onImported={onManualImported}
+                onClose={() => onOpenChange(false)}
+              />
             </TabsContent>
           </Tabs>
         </div>
