@@ -2,7 +2,7 @@ import type { JobSource } from "@shared/types.js";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import type { FilterTab, JobSort } from "./constants";
+import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
 
 vi.mock("@/components/ui/dropdown-menu", () => {
@@ -93,6 +93,10 @@ const renderFilters = (
     onSearchQueryChange: vi.fn(),
     sourceFilter: "all" as const,
     onSourceFilterChange: vi.fn(),
+    sponsorFilter: "all" as SponsorFilter,
+    onSponsorFilterChange: vi.fn(),
+    minSalary: null,
+    onMinSalaryChange: vi.fn(),
     sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
@@ -118,7 +122,7 @@ describe("OrchestratorFilters", () => {
     expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
   });
 
-  it("updates source and sort selections", async () => {
+  it("updates source, sponsor, min salary, and sort selections", async () => {
     const { props } = renderFilters();
 
     fireEvent.pointerDown(screen.getByRole("button", { name: /all sources/i }));
@@ -135,6 +139,19 @@ describe("OrchestratorFilters", () => {
       key: "score",
       direction: "asc",
     });
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: /all sponsor statuses/i }),
+    );
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: /Potential sponsor/i }),
+    );
+    expect(props.onSponsorFilterChange).toHaveBeenCalledWith("potential");
+
+    fireEvent.change(screen.getByPlaceholderText("Min salary"), {
+      target: { value: "65000" },
+    });
+    expect(props.onMinSalaryChange).toHaveBeenCalledWith(65000);
   });
 
   it("only shows sources that exist in jobs", async () => {

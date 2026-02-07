@@ -13,7 +13,7 @@ import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import * as api from "../api";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
-import type { FilterTab, JobSort } from "./orchestrator/constants";
+import type { FilterTab, JobSort, SponsorFilter } from "./orchestrator/constants";
 import { DEFAULT_SORT } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
@@ -32,6 +32,14 @@ import {
   getJobCounts,
   getSourcesWithJobs,
 } from "./orchestrator/utils";
+
+const allowedSponsorFilters: SponsorFilter[] = [
+  "all",
+  "confirmed",
+  "potential",
+  "not_found",
+  "unknown",
+];
 
 export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
@@ -86,6 +94,48 @@ export const OrchestratorPage: React.FC = () => {
         (prev) => {
           if (source !== "all") prev.set("source", source);
           else prev.delete("source");
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const sponsorFilter = useMemo((): SponsorFilter => {
+    const raw = searchParams.get("sponsor") ?? "all";
+    return allowedSponsorFilters.includes(raw as SponsorFilter)
+      ? (raw as SponsorFilter)
+      : "all";
+  }, [searchParams]);
+
+  const setSponsorFilter = useCallback(
+    (value: SponsorFilter) => {
+      setSearchParams(
+        (prev) => {
+          if (value === "all") prev.delete("sponsor");
+          else prev.set("sponsor", value);
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const minSalary = useMemo(() => {
+    const raw = searchParams.get("minSalary");
+    if (!raw) return null;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
+  const setMinSalary = useCallback(
+    (value: number | null) => {
+      setSearchParams(
+        (prev) => {
+          if (value == null || value <= 0) prev.delete("minSalary");
+          else prev.set("minSalary", String(value));
           return prev;
         },
         { replace: true },
@@ -178,6 +228,8 @@ export const OrchestratorPage: React.FC = () => {
     jobs,
     activeTab,
     sourceFilter,
+    sponsorFilter,
+    minSalary,
     searchQuery,
     sort,
   );
@@ -401,6 +453,10 @@ export const OrchestratorPage: React.FC = () => {
             onSearchQueryChange={setSearchQuery}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
+            sponsorFilter={sponsorFilter}
+            onSponsorFilterChange={setSponsorFilter}
+            minSalary={minSalary}
+            onMinSalaryChange={setMinSalary}
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}

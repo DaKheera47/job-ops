@@ -158,11 +158,17 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
   OrchestratorFilters: ({
     onTabChange,
     onSearchQueryChange,
+    onSourceFilterChange,
+    onSponsorFilterChange,
+    onMinSalaryChange,
     onSortChange,
     sourcesWithJobs,
   }: {
     onTabChange: (t: FilterTab) => void;
     onSearchQueryChange: (q: string) => void;
+    onSourceFilterChange: (source: string) => void;
+    onSponsorFilterChange: (value: string) => void;
+    onMinSalaryChange: (value: number | null) => void;
     onSortChange: (s: any) => void;
     sourcesWithJobs: string[];
   }) => (
@@ -179,6 +185,15 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
         onClick={() => onSortChange({ key: "title", direction: "asc" })}
       >
         Set Sort
+      </button>
+      <button type="button" onClick={() => onSourceFilterChange("linkedin")}>
+        Set Source
+      </button>
+      <button type="button" onClick={() => onSponsorFilterChange("confirmed")}>
+        Set Sponsor
+      </button>
+      <button type="button" onClick={() => onMinSalaryChange(60000)}>
+        Set Min Salary
       </button>
     </div>
   ),
@@ -409,6 +424,37 @@ describe("OrchestratorPage", () => {
     fireEvent.click(screen.getByText("Set Sort"));
     expect(screen.getByTestId("location").textContent).toContain(
       "sort=title-asc",
+    );
+  });
+
+  it("syncs source, sponsor, and min salary filters to URL", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("Set Source"));
+    expect(screen.getByTestId("location").textContent).toContain(
+      "source=linkedin",
+    );
+
+    fireEvent.click(screen.getByText("Set Sponsor"));
+    expect(screen.getByTestId("location").textContent).toContain(
+      "sponsor=confirmed",
+    );
+
+    fireEvent.click(screen.getByText("Set Min Salary"));
+    expect(screen.getByTestId("location").textContent).toContain(
+      "minSalary=60000",
     );
   });
 

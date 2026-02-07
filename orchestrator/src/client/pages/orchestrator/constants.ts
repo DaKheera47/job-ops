@@ -62,6 +62,12 @@ export type FilterTab = "ready" | "discovered" | "applied" | "all";
 
 export type SortKey = "discoveredAt" | "score" | "title" | "employer";
 export type SortDirection = "asc" | "desc";
+export type SponsorFilter =
+  | "all"
+  | "confirmed"
+  | "potential"
+  | "not_found"
+  | "unknown";
 
 export interface JobSort {
   key: SortKey;

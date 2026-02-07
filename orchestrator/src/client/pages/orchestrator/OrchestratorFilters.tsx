@@ -15,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sourceLabel } from "@/lib/utils";
-import type { FilterTab, JobSort } from "./constants";
+import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import {
   defaultSortDirection,
   orderedFilterSources,
@@ -31,6 +31,10 @@ interface OrchestratorFiltersProps {
   onSearchQueryChange: (value: string) => void;
   sourceFilter: JobSource | "all";
   onSourceFilterChange: (value: JobSource | "all") => void;
+  sponsorFilter: SponsorFilter;
+  onSponsorFilterChange: (value: SponsorFilter) => void;
+  minSalary: number | null;
+  onMinSalaryChange: (value: number | null) => void;
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
@@ -44,6 +48,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSearchQueryChange,
   sourceFilter,
   onSourceFilterChange,
+  sponsorFilter,
+  onSponsorFilterChange,
+  minSalary,
+  onMinSalaryChange,
   sourcesWithJobs,
   sort,
   onSortChange,
@@ -118,6 +126,69 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
+              >
+                <Filter className="h-3.5 w-3.5" />
+                {sponsorFilter === "all"
+                  ? "All sponsor statuses"
+                  : sponsorFilter === "confirmed"
+                    ? "Confirmed sponsor"
+                    : sponsorFilter === "potential"
+                      ? "Potential sponsor"
+                      : sponsorFilter === "not_found"
+                        ? "Sponsor not found"
+                        : "Unchecked sponsor"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Filter by sponsor status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup
+                value={sponsorFilter}
+                onValueChange={(value) =>
+                  onSponsorFilterChange(value as SponsorFilter)
+                }
+              >
+                <DropdownMenuRadioItem value="all">
+                  All statuses
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="confirmed">
+                  Confirmed sponsor
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="potential">
+                  Potential sponsor
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="not_found">
+                  Sponsor not found
+                </DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="unknown">
+                  Unchecked sponsor
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Input
+            value={minSalary == null ? "" : String(minSalary)}
+            onChange={(event) => {
+              const rawValue = event.target.value.trim();
+              if (!rawValue) {
+                onMinSalaryChange(null);
+                return;
+              }
+              const parsed = Number.parseInt(rawValue, 10);
+              onMinSalaryChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
+            }}
+            inputMode="numeric"
+            placeholder="Min salary"
+            className="h-8 w-[120px] text-sm"
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
