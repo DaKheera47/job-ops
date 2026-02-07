@@ -171,8 +171,7 @@ export const OrchestratorPage: React.FC = () => {
     () => getEnabledSources(settings ?? null),
     [settings],
   );
-  const { pipelineSources, setPipelineSources, toggleSource } =
-    usePipelineSources(enabledSources);
+  const { pipelineSources, toggleSource } = usePipelineSources(enabledSources);
 
   const activeJobs = useFilteredJobs(
     jobs,
@@ -225,38 +224,41 @@ export const OrchestratorPage: React.FC = () => {
     [loadJobs, navigateWithContext],
   );
 
-  const startPipelineRun = async (config: {
-    topN: number;
-    minSuitabilityScore: number;
-    sources: JobSource[];
-  }) => {
-    try {
-      setIsPipelineRunning(true);
-      await api.runPipeline(config);
-      toast.message("Pipeline started", {
-        description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
-      });
+  const startPipelineRun = useCallback(
+    async (config: {
+      topN: number;
+      minSuitabilityScore: number;
+      sources: JobSource[];
+    }) => {
+      try {
+        setIsPipelineRunning(true);
+        await api.runPipeline(config);
+        toast.message("Pipeline started", {
+          description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
+        });
 
-      const pollInterval = setInterval(async () => {
-        try {
-          const status = await api.getPipelineStatus();
-          if (!status.isRunning) {
-            clearInterval(pollInterval);
-            setIsPipelineRunning(false);
-            await loadJobs();
-            toast.success("Pipeline completed");
+        const pollInterval = setInterval(async () => {
+          try {
+            const status = await api.getPipelineStatus();
+            if (!status.isRunning) {
+              clearInterval(pollInterval);
+              setIsPipelineRunning(false);
+              await loadJobs();
+              toast.success("Pipeline completed");
+            }
+          } catch {
+            // Ignore errors
           }
-        } catch {
-          // Ignore errors
-        }
-      }, 5000);
-    } catch (error) {
-      setIsPipelineRunning(false);
-      const message =
-        error instanceof Error ? error.message : "Failed to start pipeline";
-      toast.error(message);
-    }
-  };
+        }, 5000);
+      } catch (error) {
+        setIsPipelineRunning(false);
+        const message =
+          error instanceof Error ? error.message : "Failed to start pipeline";
+        toast.error(message);
+      }
+    },
+    [loadJobs, setIsPipelineRunning],
+  );
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
@@ -279,7 +281,7 @@ export const OrchestratorPage: React.FC = () => {
       });
       setIsRunModeModalOpen(false);
     },
-    [pipelineSources, refreshSettings],
+    [pipelineSources, refreshSettings, startPipelineRun],
   );
 
   const handleSelectJob = (id: string) => {
@@ -425,7 +427,6 @@ export const OrchestratorPage: React.FC = () => {
         enabledSources={enabledSources}
         pipelineSources={pipelineSources}
         onToggleSource={toggleSource}
-        onSetPipelineSources={setPipelineSources}
         isPipelineRunning={isPipelineRunning}
         onOpenChange={setIsRunModeModalOpen}
         onModeChange={setRunMode}

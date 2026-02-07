@@ -23,7 +23,6 @@ interface AutomaticRunTabProps {
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
-  onSetPipelineSources: (sources: JobSource[]) => void;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
 }
@@ -55,7 +54,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   enabledSources,
   pipelineSources,
   onToggleSource,
-  onSetPipelineSources,
   isPipelineRunning,
   onSaveAndRun,
 }) => {
@@ -244,20 +242,20 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   {searchTerms.map((term) => (
                     <span
                       key={term}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
-                      onClick={() =>
-                        setValue(
-                          "searchTerms",
-                          searchTerms.filter((value) => value !== term),
-                          { shouldDirty: true },
-                        )
-                      }
+                      className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
                     >
                       {term}
                       <button
                         type="button"
                         className="cursor-pointer text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none"
                         aria-label={`Remove ${term}`}
+                        onClick={() =>
+                          setValue(
+                            "searchTerms",
+                            searchTerms.filter((value) => value !== term),
+                            { shouldDirty: true },
+                          )
+                        }
                       >
                         <X className="h-3 w-3" />
                       </button>
