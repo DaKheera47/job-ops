@@ -2,6 +2,7 @@ import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
   canBulkMoveToReady,
+  canBulkRescore,
   canBulkSkip,
   getFailedJobIds,
 } from "./bulkActions";
@@ -71,7 +72,7 @@ function createJob(id: string, status: JobStatus): Job {
 }
 
 describe("bulkActions", () => {
-  it("computes eligibility for skip and move-to-ready", () => {
+  it("computes eligibility for skip, move-to-ready, and rescore", () => {
     expect(
       canBulkSkip([createJob("1", "discovered"), createJob("2", "ready")]),
     ).toBe(true);
@@ -84,6 +85,19 @@ describe("bulkActions", () => {
       ]),
     ).toBe(true);
     expect(canBulkMoveToReady([createJob("1", "ready")])).toBe(false);
+
+    expect(
+      canBulkRescore([
+        createJob("1", "discovered"),
+        createJob("2", "ready"),
+        createJob("3", "applied"),
+        createJob("4", "skipped"),
+        createJob("5", "expired"),
+      ]),
+    ).toBe(true);
+    expect(
+      canBulkRescore([createJob("1", "ready"), createJob("2", "processing")]),
+    ).toBe(false);
   });
 
   it("extracts failed job ids from a bulk response", () => {

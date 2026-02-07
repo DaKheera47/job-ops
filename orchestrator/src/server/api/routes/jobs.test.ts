@@ -161,6 +161,73 @@ describe.sequential("Jobs API routes", () => {
     ).toBe("INVALID_REQUEST");
   });
 
+  it("runs bulk rescore with partial failures", async () => {
+    const { createJob, updateJob } = await import("../../repositories/jobs");
+    const { scoreJobSuitability } = await import("../../services/scorer");
+    const { getProfile } = await import("../../services/profile");
+
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(scoreJobSuitability).mockResolvedValue({
+      score: 81,
+      reason: "Updated fit from bulk rescore",
+    });
+
+    const discovered = await createJob({
+      source: "manual",
+      title: "Discovered Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bulk-rescore-1",
+      jobDescription: "Test description",
+    });
+    const ready = await createJob({
+      source: "manual",
+      title: "Ready Role",
+      employer: "Beta",
+      jobUrl: "https://example.com/job/bulk-rescore-2",
+      jobDescription: "Test description",
+    });
+    const processing = await createJob({
+      source: "manual",
+      title: "Processing Role",
+      employer: "Gamma",
+      jobUrl: "https://example.com/job/bulk-rescore-3",
+      jobDescription: "Test description",
+    });
+    await updateJob(ready.id, { status: "ready" });
+    await updateJob(processing.id, { status: "processing" });
+
+    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "rescore",
+        jobIds: [discovered.id, ready.id, processing.id, "missing-id"],
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBeTruthy();
+    expect(body.data.requested).toBe(4);
+    expect(body.data.succeeded).toBe(2);
+    expect(body.data.failed).toBe(2);
+    expect(
+      body.data.results.find((r: any) => r.jobId === discovered.id).job
+        .suitabilityScore,
+    ).toBe(81);
+    expect(
+      body.data.results.find((r: any) => r.jobId === ready.id).job
+        .suitabilityScore,
+    ).toBe(81);
+    expect(
+      body.data.results.find((r: any) => r.jobId === processing.id).error.code,
+    ).toBe("INVALID_REQUEST");
+    expect(
+      body.data.results.find((r: any) => r.jobId === "missing-id").error.code,
+    ).toBe("NOT_FOUND");
+  });
+
   it("validates bulk action payloads", async () => {
     const tooManyIds = Array.from(
       { length: 101 },

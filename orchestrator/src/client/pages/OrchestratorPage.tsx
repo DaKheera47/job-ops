@@ -194,6 +194,7 @@ export const OrchestratorPage: React.FC = () => {
     selectedJobIds,
     canSkipSelected,
     canMoveSelected,
+    canRescoreSelected,
     bulkActionInFlight,
     toggleSelectJob,
     toggleSelectAll,
@@ -442,9 +443,11 @@ export const OrchestratorPage: React.FC = () => {
         selectedCount={selectedJobIds.size}
         canMoveSelected={canMoveSelected}
         canSkipSelected={canSkipSelected}
+        canRescoreSelected={canRescoreSelected}
         bulkActionInFlight={bulkActionInFlight !== null}
         onMoveToReady={() => void runBulkAction("move_to_ready")}
         onSkipSelected={() => void runBulkAction("skip")}
+        onRescoreSelected={() => void runBulkAction("rescore")}
         onClear={clearSelection}
       />
 

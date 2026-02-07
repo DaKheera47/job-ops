@@ -12,6 +12,10 @@ export function canBulkMoveToReady(jobs: Job[]): boolean {
   return jobs.length > 0 && jobs.every((job) => job.status === "discovered");
 }
 
+export function canBulkRescore(jobs: Job[]): boolean {
+  return jobs.length > 0 && jobs.every((job) => job.status !== "processing");
+}
+
 export function getFailedJobIds(response: BulkJobActionResponse): Set<string> {
   const failedIds = response.results
     .filter((result) => !result.ok)

@@ -1,5 +1,6 @@
 import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
 import { useBulkJobSelection } from "./useBulkJobSelection";
@@ -197,5 +198,46 @@ describe("useBulkJobSelection", () => {
     await waitFor(() => {
       expect(Array.from(result.current.selectedJobIds)).toEqual(["job-3"]);
     });
+  });
+
+  it("runs bulk rescore and reports success copy", async () => {
+    const activeJobs = [
+      createJob("job-1", "ready"),
+      createJob("job-2", "ready"),
+    ];
+    const loadJobs = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(api.bulkJobAction).mockResolvedValue({
+      action: "rescore",
+      requested: 2,
+      succeeded: 2,
+      failed: 0,
+      results: [
+        { jobId: "job-1", ok: true, job: createJob("job-1", "ready") },
+        { jobId: "job-2", ok: true, job: createJob("job-2", "ready") },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useBulkJobSelection({
+        activeJobs,
+        activeTab: "ready",
+        loadJobs,
+      }),
+    );
+
+    act(() => {
+      result.current.toggleSelectJob("job-1");
+      result.current.toggleSelectJob("job-2");
+    });
+
+    await act(async () => {
+      await result.current.runBulkAction("rescore");
+    });
+
+    expect(api.bulkJobAction).toHaveBeenCalledWith({
+      action: "rescore",
+      jobIds: ["job-1", "job-2"],
+    });
+    expect(toast.success).toHaveBeenCalledWith("2 matches recalculated");
   });
 });
