@@ -1,7 +1,6 @@
 import { ManualImportFlow } from "@client/components/ManualImportFlow";
 import type { AppSettings, JobSource } from "@shared/types";
 import type React from "react";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
@@ -49,7 +48,6 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               Run jobs
-              <Badge variant="secondary">Unified flow</Badge>
             </SheetTitle>
             <SheetDescription>
               Choose Automatic pipeline run or Manual import.
