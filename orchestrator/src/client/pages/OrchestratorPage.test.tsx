@@ -86,6 +86,7 @@ const jobFixture: Job = {
 };
 
 const job2: Job = { ...jobFixture, id: "job-2", status: "discovered" };
+const processingJob: Job = { ...jobFixture, id: "job-3", status: "processing" };
 
 const createMatchMedia = (matches: boolean) =>
   vi.fn().mockImplementation((query: string) => ({
@@ -100,10 +101,10 @@ const createMatchMedia = (matches: boolean) =>
 
 vi.mock("./orchestrator/useOrchestratorData", () => ({
   useOrchestratorData: () => ({
-    jobs: [jobFixture, job2],
+    jobs: [jobFixture, job2, processingJob],
     stats: {
       discovered: 1,
-      processing: 0,
+      processing: 1,
       ready: 1,
       applied: 0,
       skipped: 0,
@@ -190,13 +191,45 @@ vi.mock("./orchestrator/JobDetailPanel", () => ({
 vi.mock("./orchestrator/JobListPanel", () => ({
   JobListPanel: ({
     onSelectJob,
+    onToggleSelectJob,
+    onToggleSelectAll,
     selectedJobId,
   }: {
     onSelectJob: (id: string) => void;
+    onToggleSelectJob: (id: string) => void;
+    onToggleSelectAll: (checked: boolean) => void;
     selectedJobId: string | null;
   }) => (
     <div>
       <div data-testid="selected-job">{selectedJobId ?? "none"}</div>
+      <button
+        data-testid="toggle-select-all-on"
+        type="button"
+        onClick={() => onToggleSelectAll(true)}
+      >
+        Toggle all on
+      </button>
+      <button
+        data-testid="toggle-select-all-off"
+        type="button"
+        onClick={() => onToggleSelectAll(false)}
+      >
+        Toggle all off
+      </button>
+      <button
+        data-testid="toggle-select-job-1"
+        type="button"
+        onClick={() => onToggleSelectJob("job-1")}
+      >
+        Toggle job 1
+      </button>
+      <button
+        data-testid="toggle-select-job-3"
+        type="button"
+        onClick={() => onToggleSelectJob("job-3")}
+      >
+        Toggle job 3
+      </button>
       <button
         data-testid="select-job-1"
         type="button"
@@ -210,6 +243,13 @@ vi.mock("./orchestrator/JobListPanel", () => ({
         onClick={() => onSelectJob("job-2")}
       >
         Select job 2
+      </button>
+      <button
+        data-testid="select-job-3"
+        type="button"
+        onClick={() => onSelectJob("job-3")}
+      >
+        Select job 3
       </button>
     </div>
   ),
@@ -460,5 +500,37 @@ describe("OrchestratorPage", () => {
     });
 
     setIntervalSpy.mockRestore();
+  });
+
+  it("shows and hides bulk Recalculate match based on selected statuses", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/all"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("toggle-select-all-on"));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: "Recalculate match" }),
+      ).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("toggle-select-all-off"));
+    fireEvent.click(screen.getByTestId("toggle-select-job-1"));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Recalculate match" }),
+      ).toBeInTheDocument();
+    });
   });
 });
