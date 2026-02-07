@@ -108,7 +108,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
             <span className="hidden sm:inline">
               {isPipelineRunning
                 ? `Running (${pipelineSources.length})`
-                : `Run pipeline (${pipelineSources.length})`}
+                : `Run pipeline`}
             </span>
           </Button>
         </div>
