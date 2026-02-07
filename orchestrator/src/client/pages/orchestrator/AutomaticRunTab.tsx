@@ -2,6 +2,7 @@ import type { AppSettings, JobSource } from "@shared/types";
 import { X } from "lucide-react";
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,14 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   runBudget: 200,
 };
 
+interface AutomaticRunFormValues {
+  topN: string;
+  minSuitabilityScore: string;
+  runBudget: string;
+  searchTerms: string[];
+  searchTermDraft: string;
+}
+
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
   if (Number.isNaN(parsed)) return fallback;
@@ -51,21 +60,25 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   isPipelineRunning,
   onSaveAndRun,
 }) => {
-  const [topNInput, setTopNInput] = useState(String(DEFAULT_VALUES.topN));
-  const [minScoreInput, setMinScoreInput] = useState(
-    String(DEFAULT_VALUES.minSuitabilityScore),
-  );
-  const [runBudgetInput, setRunBudgetInput] = useState(
-    String(DEFAULT_VALUES.runBudget),
-  );
-  const [searchTerms, setSearchTerms] = useState<string[]>(
-    DEFAULT_VALUES.searchTerms,
-  );
-  const [searchTermDraft, setSearchTermDraft] = useState("");
   const [activePreset, setActivePreset] = useState<AutomaticPresetId | null>(
     null,
   );
   const [isSaving, setIsSaving] = useState(false);
+  const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>({
+    defaultValues: {
+      topN: String(DEFAULT_VALUES.topN),
+      minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
+      runBudget: String(DEFAULT_VALUES.runBudget),
+      searchTerms: DEFAULT_VALUES.searchTerms,
+      searchTermDraft: "",
+    },
+  });
+
+  const topNInput = watch("topN");
+  const minScoreInput = watch("minSuitabilityScore");
+  const runBudgetInput = watch("runBudget");
+  const searchTerms = watch("searchTerms");
+  const searchTermDraft = watch("searchTermDraft");
 
   useEffect(() => {
     if (!open) return;
@@ -74,29 +87,30 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const minSuitabilityScore =
       memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
 
-    setTopNInput(String(topN));
-    setMinScoreInput(String(minSuitabilityScore));
     const rememberedRunBudget =
       settings?.jobspyResultsWanted ??
       settings?.gradcrackerMaxJobsPerTerm ??
       settings?.ukvisajobsMaxJobs ??
       DEFAULT_VALUES.runBudget;
-    setRunBudgetInput(String(rememberedRunBudget));
-    setSearchTerms(settings?.searchTerms ?? DEFAULT_VALUES.searchTerms);
-    setSearchTermDraft("");
+    reset({
+      topN: String(topN),
+      minSuitabilityScore: String(minSuitabilityScore),
+      runBudget: String(rememberedRunBudget),
+      searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
+      searchTermDraft: "",
+    });
     setActivePreset(null);
-  }, [open, settings]);
+  }, [open, settings, reset]);
 
   const addSearchTerms = (input: string) => {
     const parsed = parseSearchTermsInput(input);
     if (parsed.length === 0) return;
-    setSearchTerms((current) => {
-      const next = [...current];
-      for (const term of parsed) {
-        if (!next.includes(term)) next.push(term);
-      }
-      return next;
-    });
+    const current = getValues("searchTerms");
+    const next = [...current];
+    for (const term of parsed) {
+      if (!next.includes(term)) next.push(term);
+    }
+    setValue("searchTerms", next, { shouldDirty: true });
   };
 
   const values = useMemo<AutomaticRunValues>(() => {
@@ -131,9 +145,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
   const applyPreset = (presetId: AutomaticPresetId) => {
     const preset = AUTOMATIC_PRESETS[presetId];
-    setTopNInput(String(preset.topN));
-    setMinScoreInput(String(preset.minSuitabilityScore));
-    setRunBudgetInput(String(preset.runBudget));
+    setValue("topN", String(preset.topN), { shouldDirty: true });
+    setValue("minSuitabilityScore", String(preset.minSuitabilityScore), {
+      shouldDirty: true,
+    });
+    setValue("runBudget", String(preset.runBudget), { shouldDirty: true });
     setActivePreset(presetId);
   };
 
@@ -198,7 +214,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 min={1}
                 max={50}
                 value={topNInput}
-                onChange={(event) => setTopNInput(event.target.value)}
+                onChange={(event) => setValue("topN", event.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -209,7 +225,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 min={0}
                 max={100}
                 value={minScoreInput}
-                onChange={(event) => setMinScoreInput(event.target.value)}
+                onChange={(event) =>
+                  setValue("minSuitabilityScore", event.target.value)
+                }
               />
             </div>
             <div className="space-y-2">
@@ -220,7 +238,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 min={1}
                 max={1000}
                 value={runBudgetInput}
-                onChange={(event) => setRunBudgetInput(event.target.value)}
+                onChange={(event) => setValue("runBudget", event.target.value)}
               />
             </div>
             <div className="space-y-2 md:col-span-3">
@@ -232,8 +250,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       key={term}
                       className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-border/80 bg-muted/30 px-2 py-1 text-xs transition-all duration-150 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
                       onClick={() =>
-                        setSearchTerms((current) =>
-                          current.filter((value) => value !== term),
+                        setValue(
+                          "searchTerms",
+                          searchTerms.filter((value) => value !== term),
+                          { shouldDirty: true },
                         )
                       }
                     >
@@ -250,12 +270,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   <Input
                     id="search-terms-input"
                     value={searchTermDraft}
-                    onChange={(event) => setSearchTermDraft(event.target.value)}
+                    onChange={(event) =>
+                      setValue("searchTermDraft", event.target.value)
+                    }
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === ",") {
                         event.preventDefault();
                         addSearchTerms(searchTermDraft);
-                        setSearchTermDraft("");
+                        setValue("searchTermDraft", "");
                         return;
                       }
                       if (
@@ -263,12 +285,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         searchTermDraft.length === 0 &&
                         searchTerms.length > 0
                       ) {
-                        setSearchTerms((current) => current.slice(0, -1));
+                        setValue("searchTerms", searchTerms.slice(0, -1), {
+                          shouldDirty: true,
+                        });
                       }
                     }}
                     onBlur={() => {
                       addSearchTerms(searchTermDraft);
-                      setSearchTermDraft("");
+                      setValue("searchTermDraft", "");
                     }}
                     onPaste={(event) => {
                       const pasted = event.clipboardData.getData("text");
