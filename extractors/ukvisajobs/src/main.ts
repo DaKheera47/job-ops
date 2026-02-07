@@ -513,7 +513,11 @@ async function main(): Promise<void> {
       }
 
       if (!response.jobs || response.jobs.length === 0) {
-        emitProgress("empty_page", { pageNo, maxPages, totalCollected: allJobs.length });
+        emitProgress("empty_page", {
+          pageNo,
+          maxPages,
+          totalCollected: allJobs.length,
+        });
         console.log(`   No more jobs on page ${pageNo}`);
         break;
       }
