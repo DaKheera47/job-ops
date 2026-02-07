@@ -163,6 +163,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onMinSalaryChange,
     onSortChange,
     sourcesWithJobs,
+    filteredCount,
   }: {
     onTabChange: (t: FilterTab) => void;
     onSearchQueryChange: (q: string) => void;
@@ -171,9 +172,11 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onMinSalaryChange: (value: number | null) => void;
     onSortChange: (s: any) => void;
     sourcesWithJobs: string[];
+    filteredCount: number;
   }) => (
     <div data-testid="filters">
       <div data-testid="sources-with-jobs">{sourcesWithJobs.join(",")}</div>
+      <div data-testid="filtered-count">{filteredCount}</div>
       <button type="button" onClick={() => onTabChange("discovered")}>
         To Discovered
       </button>

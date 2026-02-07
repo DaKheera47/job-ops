@@ -460,6 +460,7 @@ export const OrchestratorPage: React.FC = () => {
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}
+            filteredCount={activeJobs.length}
           />
 
           {/* List/Detail grid - directly under tabs, no extra section */}

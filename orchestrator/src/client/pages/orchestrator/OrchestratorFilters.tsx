@@ -1,23 +1,32 @@
 import type { JobSource } from "@shared/types.js";
-import { ArrowUpDown, Filter, Search } from "lucide-react";
+import { Filter, Search } from "lucide-react";
 import type React from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { sourceLabel } from "@/lib/utils";
+import { cn, sourceLabel } from "@/lib/utils";
 import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import {
   defaultSortDirection,
+  DEFAULT_SORT,
   orderedFilterSources,
   sortLabels,
   tabs,
@@ -38,7 +47,19 @@ interface OrchestratorFiltersProps {
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
+  filteredCount: number;
 }
+
+const sponsorOptions: Array<{
+  value: SponsorFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All statuses" },
+  { value: "confirmed", label: "Confirmed sponsor" },
+  { value: "potential", label: "Potential sponsor" },
+  { value: "not_found", label: "Sponsor not found" },
+  { value: "unknown", label: "Unchecked sponsor" },
+];
 
 export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   activeTab,
@@ -55,10 +76,27 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   sourcesWithJobs,
   sort,
   onSortChange,
+  filteredCount,
 }) => {
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const visibleSources = orderedFilterSources.filter((source) =>
     sourcesWithJobs.includes(source),
   );
+
+  const activeFilterCount = useMemo(
+    () =>
+      Number(sourceFilter !== "all") +
+      Number(sponsorFilter !== "all") +
+      Number(typeof minSalary === "number" && minSalary > 0),
+    [sourceFilter, sponsorFilter, minSalary],
+  );
+
+  const resetFilters = () => {
+    onSourceFilterChange("all");
+    onSponsorFilterChange("all");
+    onMinSalaryChange(null);
+    onSortChange(DEFAULT_SORT);
+  };
 
   return (
     <Tabs
@@ -93,148 +131,189 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
               className="h-8 pl-8 text-sm"
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+
+          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <SheetTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
               >
                 <Filter className="h-3.5 w-3.5" />
-                {sourceFilter === "all"
-                  ? "All sources"
-                  : sourceLabel[sourceFilter]}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Filter by source</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={sourceFilter}
-                onValueChange={(value) =>
-                  onSourceFilterChange(value as JobSource | "all")
-                }
-              >
-                <DropdownMenuRadioItem value="all">
-                  All Sources
-                </DropdownMenuRadioItem>
-                {visibleSources.map((source) => (
-                  <DropdownMenuRadioItem key={source} value={source}>
-                    {sourceLabel[source]}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                {sponsorFilter === "all"
-                  ? "All sponsor statuses"
-                  : sponsorFilter === "confirmed"
-                    ? "Confirmed sponsor"
-                    : sponsorFilter === "potential"
-                      ? "Potential sponsor"
-                      : sponsorFilter === "not_found"
-                        ? "Sponsor not found"
-                        : "Unchecked sponsor"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Filter by sponsor status</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={sponsorFilter}
-                onValueChange={(value) =>
-                  onSponsorFilterChange(value as SponsorFilter)
-                }
-              >
-                <DropdownMenuRadioItem value="all">
-                  All statuses
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="confirmed">
-                  Confirmed sponsor
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="potential">
-                  Potential sponsor
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="not_found">
-                  Sponsor not found
-                </DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="unknown">
-                  Unchecked sponsor
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Input
-            value={minSalary == null ? "" : String(minSalary)}
-            onChange={(event) => {
-              const rawValue = event.target.value.trim();
-              if (!rawValue) {
-                onMinSalaryChange(null);
-                return;
-              }
-              const parsed = Number.parseInt(rawValue, 10);
-              onMinSalaryChange(Number.isFinite(parsed) && parsed > 0 ? parsed : null);
-            }}
-            inputMode="numeric"
-            placeholder="Min salary"
-            className="h-8 w-[120px] text-sm"
-          />
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
-              >
-                <ArrowUpDown className="h-3.5 w-3.5" />
-                {sortLabels[sort.key]}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Sort by</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuRadioGroup
-                value={sort.key}
-                onValueChange={(value) =>
-                  onSortChange({
-                    key: value as JobSort["key"],
-                    direction: defaultSortDirection[value as JobSort["key"]],
-                  })
-                }
-              >
-                {(Object.keys(sortLabels) as Array<JobSort["key"]>).map(
-                  (key) => (
-                    <DropdownMenuRadioItem key={key} value={key}>
-                      {sortLabels[key]}
-                    </DropdownMenuRadioItem>
-                  ),
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/20 px-1 text-[10px] font-semibold tabular-nums text-primary">
+                    {activeFilterCount}
+                  </span>
                 )}
-              </DropdownMenuRadioGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onSelect={() =>
-                  onSortChange({
-                    ...sort,
-                    direction: sort.direction === "asc" ? "desc" : "asc",
-                  })
-                }
-              >
-                Direction:{" "}
-                {sort.direction === "asc" ? "Ascending" : "Descending"}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </Button>
+            </SheetTrigger>
+
+            <SheetContent side="right" className="w-full sm:max-w-2xl">
+              <div className="flex h-full min-h-0 flex-col">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-2">
+                    Filters
+                    {activeFilterCount > 0 && (
+                      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/20 px-1 text-[11px] font-semibold tabular-nums text-primary">
+                        {activeFilterCount}
+                      </span>
+                    )}
+                  </SheetTitle>
+                  <SheetDescription>
+                    Refine sources, sponsor status, salary, and sorting.
+                  </SheetDescription>
+                </SheetHeader>
+
+                <Separator className="my-4" />
+
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Sources</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={sourceFilter === "all" ? "default" : "outline"}
+                        onClick={() => onSourceFilterChange("all")}
+                      >
+                        All sources
+                      </Button>
+                      {visibleSources.map((source) => (
+                        <Button
+                          key={source}
+                          type="button"
+                          size="sm"
+                          variant={
+                            sourceFilter === source ? "default" : "outline"
+                          }
+                          onClick={() => onSourceFilterChange(source)}
+                        >
+                          {sourceLabel[source]}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Sponsor status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <RadioGroup
+                        value={sponsorFilter}
+                        onValueChange={(value) =>
+                          onSponsorFilterChange(value as SponsorFilter)
+                        }
+                      >
+                        {sponsorOptions.map((option) => (
+                          <label
+                            key={option.value}
+                            htmlFor={`sponsor-filter-${option.value}`}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-2 rounded-md border border-border/60 px-3 py-2 text-sm",
+                              sponsorFilter === option.value &&
+                                "border-primary/50 bg-primary/5",
+                            )}
+                          >
+                            <RadioGroupItem
+                              value={option.value}
+                              id={`sponsor-filter-${option.value}`}
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Minimum salary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Label htmlFor="min-salary-filter">Minimum salary</Label>
+                      <Input
+                        id="min-salary-filter"
+                        className="mt-2"
+                        value={minSalary == null ? "" : String(minSalary)}
+                        onChange={(event) => {
+                          const rawValue = event.target.value.trim();
+                          if (!rawValue) {
+                            onMinSalaryChange(null);
+                            return;
+                          }
+                          const parsed = Number.parseInt(rawValue, 10);
+                          onMinSalaryChange(
+                            Number.isFinite(parsed) && parsed > 0
+                              ? parsed
+                              : null,
+                          );
+                        }}
+                        inputMode="numeric"
+                        placeholder="e.g. 60000"
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Sort</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {(Object.keys(sortLabels) as Array<JobSort["key"]>).map(
+                          (key) => (
+                            <Button
+                              key={key}
+                              type="button"
+                              size="sm"
+                              variant={sort.key === key ? "default" : "outline"}
+                              onClick={() =>
+                                onSortChange({
+                                  key,
+                                  direction: defaultSortDirection[key],
+                                })
+                              }
+                            >
+                              {sortLabels[key]}
+                            </Button>
+                          ),
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          onSortChange({
+                            ...sort,
+                            direction:
+                              sort.direction === "asc" ? "desc" : "asc",
+                          })
+                        }
+                      >
+                        Direction:{" "}
+                        {sort.direction === "asc" ? "Ascending" : "Descending"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="mt-3 flex shrink-0 items-center justify-between border-t border-border/60 bg-background pt-3">
+                  <Button type="button" variant="outline" onClick={resetFilters}>
+                    Reset
+                  </Button>
+                  <Button type="button" onClick={() => setIsDrawerOpen(false)}>
+                    Show {filteredCount.toLocaleString()}{" "}
+                    {filteredCount === 1 ? "job" : "jobs"}
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
     </Tabs>

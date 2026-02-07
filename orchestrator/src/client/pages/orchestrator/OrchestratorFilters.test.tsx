@@ -5,78 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { FilterTab, JobSort, SponsorFilter } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
 
-vi.mock("@/components/ui/dropdown-menu", () => {
-  const React = require("react") as typeof import("react");
-  const RadioGroupContext = React.createContext<
-    ((value: string) => void) | null
-  >(null);
-
-  return {
-    DropdownMenu: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ),
-    DropdownMenuContent: ({ children }: { children: React.ReactNode }) => (
-      <div role="menu">{children}</div>
-    ),
-    DropdownMenuItem: ({
-      children,
-      onSelect,
-      ...props
-    }: {
-      children: React.ReactNode;
-      onSelect?: () => void;
-    }) => (
-      <button
-        type="button"
-        role="menuitem"
-        onClick={() => onSelect?.()}
-        {...props}
-      >
-        {children}
-      </button>
-    ),
-    DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => (
-      <div>{children}</div>
-    ),
-    DropdownMenuSeparator: () => <hr />,
-    DropdownMenuRadioGroup: ({
-      children,
-      onValueChange,
-    }: {
-      children: React.ReactNode;
-      onValueChange?: (value: string) => void;
-    }) => (
-      <RadioGroupContext.Provider value={onValueChange ?? null}>
-        <div role="radiogroup">{children}</div>
-      </RadioGroupContext.Provider>
-    ),
-    DropdownMenuRadioItem: ({
-      children,
-      value,
-      checked,
-    }: {
-      children: React.ReactNode;
-      value: string;
-      checked?: boolean;
-    }) => {
-      const onValueChange = React.useContext(RadioGroupContext);
-      return (
-        <button
-          type="button"
-          role="menuitemradio"
-          aria-checked={checked}
-          onClick={() => onValueChange?.(value)}
-        >
-          {children}
-        </button>
-      );
-    },
-  };
-});
-
 const renderFilters = (
   overrides?: Partial<ComponentProps<typeof OrchestratorFilters>>,
 ) => {
@@ -100,6 +28,7 @@ const renderFilters = (
     sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
+    filteredCount: 5,
     ...overrides,
   };
 
@@ -122,54 +51,44 @@ describe("OrchestratorFilters", () => {
     expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
   });
 
-  it("updates source, sponsor, min salary, and sort selections", async () => {
+  it("updates source, sponsor, min salary, and sort from the drawer", () => {
     const { props } = renderFilters();
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: /all sources/i }));
-    fireEvent.click(
-      await screen.findByRole("menuitemradio", { name: /LinkedIn/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "LinkedIn" }));
     expect(props.onSourceFilterChange).toHaveBeenCalledWith("linkedin");
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: /score/i }));
-    fireEvent.click(
-      await screen.findByRole("menuitem", { name: /Direction:/i }),
-    );
-    expect(props.onSortChange).toHaveBeenCalledWith({
-      key: "score",
-      direction: "asc",
-    });
-
-    fireEvent.pointerDown(
-      screen.getByRole("button", { name: /all sponsor statuses/i }),
-    );
-    fireEvent.click(
-      await screen.findByRole("menuitemradio", { name: /Potential sponsor/i }),
-    );
+    fireEvent.click(screen.getByRole("radio", { name: /Potential sponsor/i }));
     expect(props.onSponsorFilterChange).toHaveBeenCalledWith("potential");
 
-    fireEvent.change(screen.getByPlaceholderText("Min salary"), {
+    fireEvent.change(screen.getByLabelText("Minimum salary"), {
       target: { value: "65000" },
     });
     expect(props.onMinSalaryChange).toHaveBeenCalledWith(65000);
+
+    fireEvent.click(screen.getByRole("button", { name: "Title" }));
+    expect(props.onSortChange).toHaveBeenCalledWith({
+      key: "title",
+      direction: "asc",
+    });
   });
 
-  it("only shows sources that exist in jobs", async () => {
-    renderFilters({ sourcesWithJobs: ["gradcracker", "manual"] });
+  it("resets filters and only shows sources present in jobs", () => {
+    const { props } = renderFilters({ sourcesWithJobs: ["gradcracker", "manual"] });
 
-    fireEvent.pointerDown(screen.getByRole("button", { name: /all sources/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
 
     expect(
-      await screen.findByRole("menuitemradio", { name: /Gradcracker/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitemradio", { name: /LinkedIn/i }),
+      screen.queryByRole("button", { name: "LinkedIn" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("menuitemradio", { name: /UK Visa Jobs/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitemradio", { name: /Manual/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Gradcracker" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(props.onSourceFilterChange).toHaveBeenCalledWith("all");
+    expect(props.onSponsorFilterChange).toHaveBeenCalledWith("all");
+    expect(props.onMinSalaryChange).toHaveBeenCalledWith(null);
+    expect(props.onSortChange).toHaveBeenCalled();
   });
 });
