@@ -21,6 +21,12 @@ SKIP_DIRS_DEFAULT = {
     ".idea",
     ".vscode",
     "data",
+    "tests",
+    "__tests__",
+    "spec",
+    "specs",
+    "cypress",
+    "e2e",
 }
 
 ALLOWED_EXTS = {
@@ -140,6 +146,23 @@ def count_file(path: Path):
     return code, comment, blank
 
 
+def is_test_file(path: Path) -> bool:
+    stem = path.stem.lower()
+    return (
+        stem.startswith("test_")
+        or stem.startswith("test-")
+        or stem.endswith("_test")
+        or stem.endswith("-test")
+        or stem.endswith(".test")
+        or stem.endswith(".spec")
+        or stem == "test"
+        or "setuptests" in stem
+        or "vitest.setup" in stem
+        or "jest.setup" in stem
+        or "test-utils" in stem
+    )
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Count code/comment/blank lines by extension."
@@ -161,6 +184,16 @@ def parse_args():
         action="append",
         default=[],
         help="Directory name to exclude (repeatable).",
+    )
+    parser.add_argument(
+        "--list-files",
+        action="store_true",
+        help="List all files that are counted.",
+    )
+    parser.add_argument(
+        "--include-tests",
+        action="store_true",
+        help="Count test files (normally skipped).",
     )
     return parser.parse_args()
 
@@ -186,17 +219,14 @@ def main():
             if ext not in ALLOWED_EXTS:
                 continue
 
-            stem = path.stem.lower()
-            if (
-                stem.startswith("test_")
-                or stem.endswith("_test")
-                or stem.endswith(".test")
-                or stem.endswith(".spec")
-            ):
+            if not args.include_tests and is_test_file(path):
                 continue
 
             if is_binary(str(path)):
                 continue
+
+            if args.list_files:
+                print(f"Counting: {path.relative_to(root)}")
 
             code, comment, blank = count_file(path)
 
