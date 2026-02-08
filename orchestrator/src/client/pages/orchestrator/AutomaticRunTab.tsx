@@ -6,8 +6,8 @@ import {
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
-import { Check, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronsUpDown, Loader2, Sparkles, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Accordion,
@@ -18,13 +18,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -32,7 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { sourceLabel } from "@/lib/utils";
+import { cn, sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
   type AutomaticPresetId,
@@ -123,8 +130,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
-  const [countryQuery, setCountryQuery] = useState("");
-  const countrySearchInputRef = useRef<HTMLInputElement | null>(null);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
       defaultValues: {
@@ -173,16 +178,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     });
     setAdvancedOpen(false);
     setCountryMenuOpen(false);
-    setCountryQuery("");
   }, [open, settings, reset]);
-
-  useEffect(() => {
-    if (!countryMenuOpen) return;
-    const frame = requestAnimationFrame(() => {
-      countrySearchInputRef.current?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [countryMenuOpen]);
 
   const addSearchTerms = (input: string) => {
     const parsed = parseSearchTermsInput(input);
@@ -286,14 +282,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     }
   };
 
-  const countryOptions = useMemo(() => {
-    const query = countryQuery.trim().toLowerCase();
-    if (!query) return SUPPORTED_COUNTRY_KEYS;
-    return SUPPORTED_COUNTRY_KEYS.filter((country) => {
-      const label = formatCountryLabel(country).toLowerCase();
-      return country.includes(query) || label.includes(query);
-    });
-  }, [countryQuery]);
+  const countryOptions = SUPPORTED_COUNTRY_KEYS;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -339,66 +328,55 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
             <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
               <Label className="text-base font-semibold">Country</Label>
-              <DropdownMenu
-                open={countryMenuOpen}
-                onOpenChange={(openState) => {
-                  setCountryMenuOpen(openState);
-                  if (!openState) setCountryQuery("");
-                }}
-              >
-                <DropdownMenuTrigger asChild>
+              <Popover open={countryMenuOpen} onOpenChange={setCountryMenuOpen}>
+                <PopoverTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
+                    role="combobox"
+                    aria-expanded={countryMenuOpen}
+                    aria-label={formatCountryLabel(values.country)}
                     className="h-9 w-full justify-between md:max-w-xs"
                   >
                     {formatCountryLabel(values.country)}
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[320px] p-2">
-                  <Input
-                    ref={countrySearchInputRef}
-                    value={countryQuery}
-                    onChange={(event) => setCountryQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      // Prevent Radix menu typeahead from stealing focus while typing.
-                      event.stopPropagation();
-                    }}
-                    placeholder="Search country..."
-                    className="h-8"
-                  />
-                  <div className="mt-2 max-h-56 overflow-y-auto">
-                    {countryOptions.length === 0 ? (
-                      <p className="px-2 py-2 text-xs text-muted-foreground">
-                        No matching countries.
-                      </p>
-                    ) : (
-                      countryOptions.map((country) => {
-                        const selected = values.country === country;
-                        return (
-                          <DropdownMenuItem
-                            key={country}
-                            className="justify-between"
-                            onSelect={() => {
-                              setValue("country", country, {
-                                shouldDirty: true,
-                              });
-                              setCountryMenuOpen(false);
-                              setCountryQuery("");
-                            }}
-                          >
-                            {formatCountryLabel(country)}
-                            {selected ? (
-                              <Check className="h-4 w-4 text-primary" />
-                            ) : null}
-                          </DropdownMenuItem>
-                        );
-                      })
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[320px] p-0">
+                  <Command loop>
+                    <CommandInput placeholder="Search country..." />
+                    <CommandList className="max-h-56">
+                      <CommandEmpty>No matching countries.</CommandEmpty>
+                      <CommandGroup>
+                        {countryOptions.map((country) => {
+                          const selected = values.country === country;
+                          const label = formatCountryLabel(country);
+                          return (
+                            <CommandItem
+                              key={country}
+                              value={`${country} ${label}`}
+                              onSelect={() => {
+                                setValue("country", country, {
+                                  shouldDirty: true,
+                                });
+                                setCountryMenuOpen(false);
+                              }}
+                            >
+                              {label}
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  selected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <Separator />
             <Accordion

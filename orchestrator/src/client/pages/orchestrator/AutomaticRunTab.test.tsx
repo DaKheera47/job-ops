@@ -38,7 +38,7 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
-      screen.getByRole("button", { name: "United States" }),
+      screen.getByRole("combobox", { name: "United States" }),
     ).toBeInTheDocument();
   });
 
