@@ -116,7 +116,9 @@ export function formatCountryLabel(value: string): string {
 }
 
 export const SUPPORTED_COUNTRY_KEYS = Array.from(
-  new Set(SUPPORTED_COUNTRY_INPUTS.map((country) => normalizeCountryKey(country))),
+  new Set(
+    SUPPORTED_COUNTRY_INPUTS.map((country) => normalizeCountryKey(country)),
+  ),
 ).filter(Boolean);
 
 export function isUkCountry(country: string | null | undefined): boolean {
@@ -137,4 +139,3 @@ export function getCompatibleSourcesForCountry(
 ): JobSource[] {
   return sources.filter((source) => isSourceAllowedForCountry(source, country));
 }
-

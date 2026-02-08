@@ -60,4 +60,3 @@ describe("location-support", () => {
     ).toEqual(["indeed", "linkedin"]);
   });
 });
-
