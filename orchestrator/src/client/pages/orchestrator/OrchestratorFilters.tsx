@@ -85,11 +85,11 @@ const sortFieldOrder: JobSort["key"][] = [
 ];
 
 const sortFieldLabels: Record<JobSort["key"], string> = {
-  score: "match score",
-  discoveredAt: "date discovered",
-  salary: "salary",
-  title: "job title",
-  employer: "company",
+  score: "Score",
+  discoveredAt: "Discovered",
+  salary: "Salary",
+  title: "Title",
+  employer: "Company",
 };
 
 const getDirectionOptions = (

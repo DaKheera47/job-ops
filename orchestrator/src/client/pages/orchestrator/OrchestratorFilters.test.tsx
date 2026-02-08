@@ -103,17 +103,17 @@ describe("OrchestratorFilters", () => {
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
-    fireEvent.click(await screen.findByText("job title"));
+    fireEvent.click(await screen.findByText("Title"));
     expect(props.onSortChange).toHaveBeenCalledWith({
       key: "title",
       direction: "asc",
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
-    fireEvent.click(await screen.findByText("salary"));
+    fireEvent.click(await screen.findByText("Company"));
     expect(props.onSortChange).toHaveBeenCalledWith({
-      key: "salary",
-      direction: "desc",
+      key: "employer",
+      direction: "asc",
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort order" }));
