@@ -56,3 +56,32 @@ Use consistent status/code mapping:
 - Request/correlation IDs appear in logs and async workflows.
 - No raw sensitive payload logging or raw upstream body throws.
 - New/changed webhook or LLM payloads are sanitized and documented.
+
+## Validation / Verification
+
+Before marking work complete, verify changes with the same checks used by CI.
+
+### Required CI-parity checks
+
+Run from repository root:
+
+1. `./orchestrator/node_modules/.bin/biome ci .`
+2. `npm run check:types:shared`
+3. `npm --workspace orchestrator run check:types`
+4. `npm --workspace gradcracker-extractor run check:types`
+5. `npm --workspace ukvisajobs-extractor run check:types`
+6. `npm --workspace orchestrator run build:client`
+7. `npm --workspace orchestrator run test:run`
+
+### Native module note (better-sqlite3)
+
+If tests fail with a Node ABI mismatch for `better-sqlite3`, rebuild it before running tests:
+
+- `npm --workspace orchestrator rebuild better-sqlite3`
+
+CI runs on Node 22. If local behavior differs, verify with Node 22 before concluding a change is valid.
+
+### Scope-specific checks
+
+- For focused changes, run targeted tests first (for touched files/modules), then still run the full CI-parity list above before finalizing.
+- A change is considered valid only when all required checks pass without ignored failures.
