@@ -408,10 +408,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <Separator />
 
-        <Accordion
-          type="multiple"
-          className="space-y-3"
-        >
+        <Accordion type="multiple" className="space-y-3">
           <AccordionItem
             value="summary"
             className="rounded-lg border border-input/80 bg-muted/20 px-0"

@@ -428,10 +428,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           </Button>
         </div>
 
-        <Accordion
-          type="multiple"
-          className="space-y-3"
-        >
+        <Accordion type="multiple" className="space-y-3">
           <AccordionItem
             value="job-description"
             className="rounded-lg border border-border/60 bg-muted/20 px-0"

@@ -31,6 +31,13 @@ const createJob = (overrides: Partial<Job> = {}): Job =>
     ...overrides,
   }) as Job;
 
+const ensureAccordionOpen = (name: string) => {
+  const trigger = screen.getByRole("button", { name });
+  if (trigger.getAttribute("aria-expanded") !== "true") {
+    fireEvent.click(trigger);
+  }
+};
+
 describe("TailoringEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,6 +50,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Summary");
 
     fireEvent.change(screen.getByLabelText("Tailored Summary"), {
       target: { value: "Local draft" },
@@ -54,6 +62,7 @@ describe("TailoringEditor", () => {
         onUpdate={vi.fn()}
       />,
     );
+    ensureAccordionOpen("Summary");
 
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "Local draft",
@@ -67,6 +76,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Summary");
 
     fireEvent.change(screen.getByLabelText("Tailored Summary"), {
       target: { value: "Local draft" },
@@ -87,6 +97,10 @@ describe("TailoringEditor", () => {
         onUpdate={vi.fn()}
       />,
     );
+    ensureAccordionOpen("Summary");
+    ensureAccordionOpen("Headline");
+    ensureAccordionOpen("Tailored Skills");
+    ensureAccordionOpen("Backend");
 
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "New job summary",
@@ -109,6 +123,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Summary");
 
     fireEvent.change(screen.getByLabelText("Tailored Summary"), {
       target: { value: "Local draft" },
@@ -124,6 +139,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Summary");
 
     const summary = screen.getByLabelText("Tailored Summary");
     fireEvent.focus(summary);
@@ -134,6 +150,7 @@ describe("TailoringEditor", () => {
         onUpdate={vi.fn()}
       />,
     );
+    ensureAccordionOpen("Summary");
 
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "Saved summary",
@@ -147,6 +164,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Headline");
 
     fireEvent.change(screen.getByLabelText("Tailored Headline"), {
       target: { value: "Local headline draft" },
@@ -158,6 +176,7 @@ describe("TailoringEditor", () => {
         onUpdate={vi.fn()}
       />,
     );
+    ensureAccordionOpen("Headline");
 
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
       "Local headline draft",
@@ -169,6 +188,9 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    ensureAccordionOpen("Headline");
+    ensureAccordionOpen("Tailored Skills");
+    ensureAccordionOpen("Core");
 
     fireEvent.change(screen.getByLabelText("Tailored Headline"), {
       target: { value: "Updated headline" },
@@ -207,11 +229,12 @@ describe("TailoringEditor", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "AI Summarize" }));
 
-    await waitFor(() =>
-      expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
-        "AI headline",
-      ),
+    await waitFor(() => ensureAccordionOpen("Headline"));
+    expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+      "AI headline",
     );
+    ensureAccordionOpen("Tailored Skills");
+    ensureAccordionOpen("Backend");
     expect(screen.getByDisplayValue("Backend")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Node.js, Kafka")).toBeInTheDocument();
   });
