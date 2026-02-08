@@ -281,6 +281,31 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("does not throw when no sources are requested", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+    const crawler = await import("../../services/crawler");
+    const ukVisa = await import("../../services/ukvisajobs");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: [],
+      },
+    });
+
+    expect(result.discoveredJobs).toEqual([]);
+    expect(result.sourceErrors).toEqual([]);
+    expect(vi.mocked(jobSpy.runJobSpy)).not.toHaveBeenCalled();
+    expect(vi.mocked(crawler.runCrawler)).not.toHaveBeenCalled();
+    expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
+  });
+
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobSpy = await import("../../services/jobspy");

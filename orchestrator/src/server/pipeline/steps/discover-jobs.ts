@@ -60,7 +60,7 @@ export async function discoverJobsStep(args: {
     });
   }
 
-  if (compatibleSources.length === 0) {
+  if (args.mergedConfig.sources.length > 0 && compatibleSources.length === 0) {
     throw new Error(
       `No compatible sources for selected country: ${formatCountryLabel(selectedCountry)}`,
     );
