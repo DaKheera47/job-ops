@@ -60,21 +60,21 @@ const sponsorOptions: Array<{
   value: SponsorFilter;
   label: string;
 }> = [
-  { value: "all", label: "All statuses" },
-  { value: "confirmed", label: "Confirmed sponsor" },
-  { value: "potential", label: "Potential sponsor" },
-  { value: "not_found", label: "Sponsor not found" },
-  { value: "unknown", label: "Unchecked sponsor" },
-];
+    { value: "all", label: "All statuses" },
+    { value: "confirmed", label: "Confirmed sponsor" },
+    { value: "potential", label: "Potential sponsor" },
+    { value: "not_found", label: "Sponsor not found" },
+    { value: "unknown", label: "Unchecked sponsor" },
+  ];
 
 const salaryModeOptions: Array<{
   value: SalaryFilterMode;
   label: string;
 }> = [
-  { value: "at_least", label: "at least" },
-  { value: "at_most", label: "at most" },
-  { value: "between", label: "between" },
-];
+    { value: "at_least", label: "at least" },
+    { value: "at_most", label: "at most" },
+    { value: "between", label: "between" },
+  ];
 
 const sortFieldOrder: JobSort["key"][] = [
   "score",
@@ -142,7 +142,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
       Number(sponsorFilter !== "all") +
       Number(
         (typeof salaryFilter.min === "number" && salaryFilter.min > 0) ||
-          (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
+        (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
       ),
     [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max],
   );
@@ -393,63 +393,71 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                       <CardTitle>Sort</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span>Sort by</span>
-                        <Select
-                          value={sort.key}
-                          onValueChange={(value) =>
-                            onSortChange({
-                              key: value as JobSort["key"],
-                              direction:
-                                defaultSortDirection[value as JobSort["key"]],
-                            })
-                          }
-                        >
-                          <SelectTrigger
-                            id="sort-key"
-                            aria-label="Sort field"
-                            className="h-8 w-[180px] text-foreground"
+                      <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap">Sort by</span>
+                          <Select
+                            value={sort.key}
+                            onValueChange={(value) =>
+                              onSortChange({
+                                key: value as JobSort["key"],
+                                direction:
+                                  defaultSortDirection[value as JobSort["key"]],
+                              })
+                            }
                           >
-                            <SelectValue placeholder={sortFieldLabels[sort.key]} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {sortFieldOrder.map((key) => (
-                              <SelectItem key={key} value={key}>
-                                {sortFieldLabels[key]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={sort.direction}
-                          onValueChange={(value) =>
-                            onSortChange({
-                              ...sort,
-                              direction: value as JobSort["direction"],
-                            })
-                          }
-                        >
-                          <SelectTrigger
-                            id="sort-direction"
-                            aria-label="Sort order"
-                            className="h-8 w-[180px] text-foreground"
+                            <SelectTrigger
+                              id="sort-key"
+                              aria-label="Sort field"
+                              className="h-8 flex-1 sm:w-[180px] text-foreground"
+                            >
+                              <SelectValue
+                                placeholder={sortFieldLabels[sort.key]}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sortFieldOrder.map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {sortFieldLabels[key]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap">and</span>
+                          <Select
+                            value={sort.direction}
+                            onValueChange={(value) =>
+                              onSortChange({
+                                ...sort,
+                                direction: value as JobSort["direction"],
+                              })
+                            }
                           >
-                            <SelectValue
-                              placeholder={
-                                getDirectionOptions(sort.key).find(
-                                  (option) => option.value === sort.direction,
-                                )?.label
-                              }
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getDirectionOptions(sort.key).map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                            <SelectTrigger
+                              id="sort-direction"
+                              aria-label="Sort order"
+                              className="h-8 flex-1 sm:w-[180px] text-foreground"
+                            >
+                              <SelectValue
+                                placeholder={
+                                  getDirectionOptions(sort.key).find(
+                                    (option) => option.value === sort.direction,
+                                  )?.label
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {getDirectionOptions(sort.key).map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
