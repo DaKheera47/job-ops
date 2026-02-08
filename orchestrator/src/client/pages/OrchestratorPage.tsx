@@ -488,7 +488,11 @@ export const OrchestratorPage: React.FC = () => {
         onCancelPipeline={handleCancelPipeline}
       />
 
-      <main className="container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12">
+      <main
+        className={`container mx-auto max-w-7xl space-y-6 px-4 py-6 ${
+          selectedJobIds.size > 0 ? "pb-36 lg:pb-12" : "pb-12"
+        }`}
+      >
         <OrchestratorSummary
           stats={stats}
           isPipelineRunning={isPipelineRunning}
