@@ -10,6 +10,12 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import * as api from "../../api";
@@ -65,6 +71,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
   const [skillsDraft, setSkillsDraft] = useState<EditableSkillGroup[]>(() =>
     toEditableSkillGroups(parseTailoredSkills(job.tailoredSkills)),
   );
+  const [openSkillGroupId, setOpenSkillGroupId] = useState<string>("");
 
   const [savedSummary, setSavedSummary] = useState(job.tailoredSummary || "");
   const [savedHeadline, setSavedHeadline] = useState(
@@ -270,10 +277,12 @@ export const TailorMode: React.FC<TailorModeProps> = ({
 
   const handleAddSkillGroup = useCallback(() => {
     if (isGenerating || isFinalizing || isSaving) return;
+    const nextId = createTailoredSkillDraftId();
     setSkillsDraft((prev) => [
       ...prev,
-      { id: createTailoredSkillDraftId(), name: "", keywordsText: "" },
+      { id: nextId, name: "", keywordsText: "" },
     ]);
+    setOpenSkillGroupId(nextId);
   }, [isGenerating, isFinalizing, isSaving]);
 
   const handleUpdateSkillGroup = useCallback(
@@ -290,6 +299,19 @@ export const TailorMode: React.FC<TailorModeProps> = ({
   const handleRemoveSkillGroup = useCallback((id: string) => {
     setSkillsDraft((prev) => prev.filter((group) => group.id !== id));
   }, []);
+
+  useEffect(() => {
+    if (skillsDraft.length === 0) {
+      setOpenSkillGroupId("");
+      return;
+    }
+
+    setOpenSkillGroupId((prev) =>
+      prev.length > 0 && skillsDraft.some((group) => group.id === prev)
+        ? prev
+        : (skillsDraft[0]?.id ?? ""),
+    );
+  }, [skillsDraft]);
 
   const handleGenerateWithAI = async () => {
     try {
@@ -514,86 +536,100 @@ export const TailorMode: React.FC<TailorModeProps> = ({
               No skill groups yet. Add one to tailor keywords for this role.
             </div>
           ) : (
-            <div className="space-y-2">
-              {skillsDraft.map((group) => (
-                <div
+            <Accordion
+              type="single"
+              collapsible
+              value={openSkillGroupId}
+              onValueChange={(value) => setOpenSkillGroupId(value)}
+              className="space-y-2"
+            >
+              {skillsDraft.map((group, index) => (
+                <AccordionItem
                   key={group.id}
-                  className="space-y-2 rounded-lg border border-border/60 bg-background/30 p-3"
+                  value={group.id}
+                  className="rounded-lg border border-border/60 bg-background/30 px-0"
                 >
-                  <div className="space-y-1">
-                    <label
-                      htmlFor={`tailor-skill-group-name-${group.id}`}
-                      className="text-[11px] font-medium text-muted-foreground"
-                    >
-                      Category
-                    </label>
-                    <input
-                      id={`tailor-skill-group-name-${group.id}`}
-                      type="text"
-                      className="w-full rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      value={group.name}
-                      onChange={(event) =>
-                        handleUpdateSkillGroup(
-                          group.id,
-                          "name",
-                          event.target.value,
-                        )
-                      }
-                      onFocus={() => setActiveField("skills")}
-                      onBlur={() =>
-                        setActiveField((prev) =>
-                          prev === "skills" ? null : prev,
-                        )
-                      }
-                      placeholder="Backend, Frontend, Infrastructure..."
-                      disabled={disableInputs}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label
-                      htmlFor={`tailor-skill-group-keywords-${group.id}`}
-                      className="text-[11px] font-medium text-muted-foreground"
-                    >
-                      Keywords (comma-separated)
-                    </label>
-                    <input
-                      id={`tailor-skill-group-keywords-${group.id}`}
-                      type="text"
-                      className="w-full rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                      value={group.keywordsText}
-                      onChange={(event) =>
-                        handleUpdateSkillGroup(
-                          group.id,
-                          "keywordsText",
-                          event.target.value,
-                        )
-                      }
-                      onFocus={() => setActiveField("skills")}
-                      onBlur={() =>
-                        setActiveField((prev) =>
-                          prev === "skills" ? null : prev,
-                        )
-                      }
-                      placeholder="TypeScript, Node.js, REST APIs..."
-                      disabled={disableInputs}
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveSkillGroup(group.id)}
-                      disabled={disableInputs}
-                      className="h-7 px-2 text-[11px]"
-                    >
-                      <Trash2 className="mr-1 h-3.5 w-3.5" />
-                      Remove
-                    </Button>
-                  </div>
-                </div>
+                  <AccordionTrigger className="px-3 py-2 text-[11px] font-medium hover:no-underline">
+                    {group.name.trim() || `Skill Group ${index + 1}`}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-3 pb-3 pt-1">
+                    <div className="space-y-2">
+                      <div className="space-y-1">
+                        <label
+                          htmlFor={`tailor-skill-group-name-${group.id}`}
+                          className="text-[11px] font-medium text-muted-foreground"
+                        >
+                          Category
+                        </label>
+                        <input
+                          id={`tailor-skill-group-name-${group.id}`}
+                          type="text"
+                          className="w-full rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={group.name}
+                          onChange={(event) =>
+                            handleUpdateSkillGroup(
+                              group.id,
+                              "name",
+                              event.target.value,
+                            )
+                          }
+                          onFocus={() => setActiveField("skills")}
+                          onBlur={() =>
+                            setActiveField((prev) =>
+                              prev === "skills" ? null : prev,
+                            )
+                          }
+                          placeholder="Backend, Frontend, Infrastructure..."
+                          disabled={disableInputs}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label
+                          htmlFor={`tailor-skill-group-keywords-${group.id}`}
+                          className="text-[11px] font-medium text-muted-foreground"
+                        >
+                          Keywords (comma-separated)
+                        </label>
+                        <input
+                          id={`tailor-skill-group-keywords-${group.id}`}
+                          type="text"
+                          className="w-full rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          value={group.keywordsText}
+                          onChange={(event) =>
+                            handleUpdateSkillGroup(
+                              group.id,
+                              "keywordsText",
+                              event.target.value,
+                            )
+                          }
+                          onFocus={() => setActiveField("skills")}
+                          onBlur={() =>
+                            setActiveField((prev) =>
+                              prev === "skills" ? null : prev,
+                            )
+                          }
+                          placeholder="TypeScript, Node.js, REST APIs..."
+                          disabled={disableInputs}
+                        />
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveSkillGroup(group.id)}
+                          disabled={disableInputs}
+                          className="h-7 px-2 text-[11px]"
+                        >
+                          <Trash2 className="mr-1 h-3.5 w-3.5" />
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
               ))}
-            </div>
+            </Accordion>
           )}
         </div>
 
