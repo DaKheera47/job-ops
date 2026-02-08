@@ -21,6 +21,14 @@ const allowedSalaryModes: SalaryFilterMode[] = [
   "at_most",
   "between",
 ];
+const allowedSortKeys: JobSort["key"][] = [
+  "discoveredAt",
+  "score",
+  "salary",
+  "title",
+  "employer",
+];
+const allowedSortDirections: JobSort["direction"][] = ["asc", "desc"];
 
 export const useOrchestratorFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -120,7 +128,15 @@ export const useOrchestratorFilters = () => {
   const sort = useMemo((): JobSort => {
     const sortValue = searchParams.get("sort");
     if (!sortValue) return DEFAULT_SORT;
+
     const [key, direction] = sortValue.split("-");
+    if (
+      !allowedSortKeys.includes(key as JobSort["key"]) ||
+      !allowedSortDirections.includes(direction as JobSort["direction"])
+    ) {
+      return DEFAULT_SORT;
+    }
+
     return {
       key: key as JobSort["key"],
       direction: direction as JobSort["direction"],
