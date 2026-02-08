@@ -300,6 +300,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
       minSuitabilityScore: number;
       searchTerms: string[];
       runBudget: number;
+      country: string;
     }) => Promise<void>;
   }) => (
     <button
@@ -311,6 +312,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
           minSuitabilityScore: 55,
           searchTerms: ["backend"],
           runBudget: 150,
+          country: "united kingdom",
         })
       }
     >

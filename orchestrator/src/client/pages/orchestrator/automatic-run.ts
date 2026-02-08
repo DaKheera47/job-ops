@@ -7,6 +7,7 @@ export interface AutomaticRunValues {
   minSuitabilityScore: number;
   searchTerms: string[];
   runBudget: number;
+  country: string;
 }
 
 export interface AutomaticPresetValues {

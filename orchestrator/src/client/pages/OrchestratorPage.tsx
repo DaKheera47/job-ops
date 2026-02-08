@@ -121,7 +121,8 @@ export const OrchestratorPage: React.FC = () => {
     () => getEnabledSources(settings ?? null),
     [settings],
   );
-  const { pipelineSources, toggleSource } = usePipelineSources(enabledSources);
+  const { pipelineSources, setPipelineSources, toggleSource } =
+    usePipelineSources(enabledSources);
 
   const activeJobs = useFilteredJobs(
     jobs,
@@ -419,6 +420,7 @@ export const OrchestratorPage: React.FC = () => {
         enabledSources={enabledSources}
         pipelineSources={pipelineSources}
         onToggleSource={toggleSource}
+        onSetPipelineSources={setPipelineSources}
         isPipelineRunning={isPipelineRunning}
         onOpenChange={setIsRunModeModalOpen}
         onModeChange={setRunMode}

@@ -22,6 +22,7 @@ describe("RunModeModal", () => {
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
         onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
         isPipelineRunning={false}
         onOpenChange={vi.fn()}
         onModeChange={vi.fn()}

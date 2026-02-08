@@ -26,6 +26,7 @@ describe("automatic-run utilities", () => {
         minSuitabilityScore: 50,
         searchTerms: ["backend", "platform"],
         runBudget: 100,
+        country: "united kingdom",
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -57,6 +58,7 @@ describe("automatic-run utilities", () => {
         minSuitabilityScore: 50,
         searchTerms: [],
         runBudget: 750,
+        country: "united kingdom",
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
