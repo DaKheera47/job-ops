@@ -1,10 +1,10 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import type { JobspyValues } from "@client/pages/settings/types";
 import {
   formatCountryLabel,
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
-import type { JobspyValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { Controller, useFormContext } from "react-hook-form";

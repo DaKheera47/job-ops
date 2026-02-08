@@ -367,7 +367,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                             type="button"
                             className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
                             onClick={() => {
-                              setValue("country", country, { shouldDirty: true });
+                              setValue("country", country, {
+                                shouldDirty: true,
+                              });
                               setCountryMenuOpen(false);
                               setCountryQuery("");
                             }}
@@ -521,8 +523,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           <CardContent className="flex flex-wrap gap-2">
             <TooltipProvider>
               {enabledSources.map((source) => {
-                const allowed = isSourceAllowedForCountry(source, values.country);
+                const allowed = isSourceAllowedForCountry(
+                  source,
+                  values.country,
+                );
                 const selected = compatiblePipelineSources.includes(source);
+                const disabledReason = `${sourceLabel[source]} is available only when country is United Kingdom.`;
 
                 const button = (
                   <Button
@@ -544,12 +550,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 return (
                   <Tooltip key={source}>
                     <TooltipTrigger asChild>
-                      <span className="inline-flex">{button}</span>
+                      <span className="inline-flex" title={disabledReason}>
+                        {button}
+                      </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {sourceLabel[source]} is available only when country is
-                      United Kingdom.
-                    </TooltipContent>
+                    <TooltipContent side="top">{disabledReason}</TooltipContent>
                   </Tooltip>
                 );
               })}

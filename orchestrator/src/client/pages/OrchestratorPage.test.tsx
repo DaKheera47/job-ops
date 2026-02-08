@@ -22,6 +22,16 @@ vi.mock("../api", () => ({
 }));
 
 let mockIsPipelineRunning = false;
+let mockPipelineSources = ["linkedin"] as Array<
+  "gradcracker" | "indeed" | "linkedin" | "ukvisajobs"
+>;
+let mockAutomaticRunValues = {
+  topN: 12,
+  minSuitabilityScore: 55,
+  searchTerms: ["backend"],
+  runBudget: 150,
+  country: "united kingdom",
+};
 
 const jobFixture: Job = {
   id: "job-1",
@@ -119,7 +129,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
 
 vi.mock("./orchestrator/usePipelineSources", () => ({
   usePipelineSources: () => ({
-    pipelineSources: ["linkedin"],
+    pipelineSources: mockPipelineSources,
     setPipelineSources: vi.fn(),
     toggleSource: vi.fn(),
   }),
@@ -306,15 +316,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
     <button
       type="button"
       data-testid="run-automatic"
-      onClick={() =>
-        void onSaveAndRunAutomatic({
-          topN: 12,
-          minSuitabilityScore: 55,
-          searchTerms: ["backend"],
-          runBudget: 150,
-          country: "united kingdom",
-        })
-      }
+      onClick={() => void onSaveAndRunAutomatic(mockAutomaticRunValues)}
     >
       Run automatic
     </button>
@@ -336,6 +338,14 @@ describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsPipelineRunning = false;
+    mockPipelineSources = ["linkedin"];
+    mockAutomaticRunValues = {
+      topN: 12,
+      minSuitabilityScore: 55,
+      searchTerms: ["backend"],
+      runBudget: 150,
+      country: "united kingdom",
+    };
   });
 
   it("syncs tab selection to the URL", () => {
@@ -596,6 +606,36 @@ describe("OrchestratorPage", () => {
     });
 
     setIntervalSpy.mockRestore();
+  });
+
+  it("blocks automatic run when no sources are compatible for selected country", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    mockPipelineSources = ["gradcracker", "ukvisajobs"];
+    mockAutomaticRunValues = {
+      topN: 12,
+      minSuitabilityScore: 55,
+      searchTerms: ["backend"],
+      runBudget: 150,
+      country: "united states",
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(api.updateSettings).not.toHaveBeenCalled();
+      expect(api.runPipeline).not.toHaveBeenCalled();
+    });
   });
 
   it("shows and hides bulk Recalculate match based on selected statuses", async () => {
