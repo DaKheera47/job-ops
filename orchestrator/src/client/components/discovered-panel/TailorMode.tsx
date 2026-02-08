@@ -461,7 +461,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           </div>
         </CollapsibleSection>
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
           <label
             htmlFor="tailor-summary-edit"
             className="text-xs font-medium text-muted-foreground"
@@ -482,7 +482,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
           <label
             htmlFor="tailor-headline-edit"
             className="text-xs font-medium text-muted-foreground"
@@ -504,7 +504,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs font-medium text-muted-foreground">
               Tailored Skills
@@ -624,13 +624,15 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           )}
         </div>
 
-        <ProjectSelector
-          catalog={catalog}
-          selectedIds={selectedIds}
-          onToggle={handleToggleProject}
-          maxProjects={maxProjects}
-          disabled={disableInputs}
-        />
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+          <ProjectSelector
+            catalog={catalog}
+            selectedIds={selectedIds}
+            onToggle={handleToggleProject}
+            maxProjects={maxProjects}
+            disabled={disableInputs}
+          />
+        </div>
       </div>
 
       <Separator className="opacity-50 my-4" />

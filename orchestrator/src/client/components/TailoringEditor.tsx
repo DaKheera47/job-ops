@@ -412,7 +412,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <Separator />
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
           <label htmlFor="tailor-summary" className="text-sm font-medium">
             Tailored Summary
           </label>
@@ -430,7 +430,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
           <label htmlFor="tailor-headline" className="text-sm font-medium">
             Tailored Headline
           </label>
@@ -449,7 +449,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-sm font-medium">Tailored Skills</span>
             <Button
@@ -567,7 +567,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <Separator />
 
-        <div className="space-y-3">
+        <div className="space-y-3 rounded-lg border border-input/80 bg-muted/20 p-3">
           <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
             <span className="text-sm font-medium">Selected Projects</span>
             {tooManyProjects && (
