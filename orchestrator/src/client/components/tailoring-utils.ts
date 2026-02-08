@@ -26,11 +26,21 @@ export function parseTailoredSkills(
     if (!Array.isArray(parsed)) return [];
 
     const groups: TailoredSkillGroup[] = [];
+    const legacyKeywords: string[] = [];
     for (const item of parsed) {
+      if (typeof item === "string") {
+        const keyword = item.trim();
+        if (keyword.length > 0) legacyKeywords.push(keyword);
+        continue;
+      }
       if (!item || typeof item !== "object") continue;
       const record = item as Record<string, unknown>;
       const name = typeof record.name === "string" ? record.name.trim() : "";
-      const keywordsRaw = Array.isArray(record.keywords) ? record.keywords : [];
+      const keywordsRaw = Array.isArray(record.keywords)
+        ? record.keywords
+        : typeof record.keywords === "string"
+          ? record.keywords.split(",")
+          : [];
       const keywords = keywordsRaw
         .filter((value): value is string => typeof value === "string")
         .map((value) => value.trim())
@@ -38,6 +48,10 @@ export function parseTailoredSkills(
 
       if (!name && keywords.length === 0) continue;
       groups.push({ name, keywords });
+    }
+
+    if (legacyKeywords.length > 0) {
+      groups.push({ name: "Skills", keywords: legacyKeywords });
     }
 
     return groups;
