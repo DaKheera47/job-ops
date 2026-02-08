@@ -48,7 +48,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       </div>
     ) : (
       <div className="divide-y divide-border/40">
-        <div className="flex items-center justify-between gap-3 px-4 py-2 opacity-50 hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 opacity-100 transition-opacity sm:opacity-50 sm:hover:opacity-100">
           <label
             htmlFor="job-list-select-all"
             className="flex items-center gap-2 text-xs text-muted-foreground"
@@ -103,7 +103,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                   "data-[state=checked]:shadow-[0_0_0_1px_hsl(var(--primary)/0.35)]",
                   isChecked || isSelected
                     ? "opacity-100"
-                    : "opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100",
+                    : "opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:pointer-events-auto sm:group-hover:opacity-100",
                 )}
               />
               {/* Single status indicator: subtle dot */}
