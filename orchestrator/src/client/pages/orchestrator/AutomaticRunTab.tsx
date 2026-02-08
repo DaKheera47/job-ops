@@ -7,7 +7,7 @@ import {
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
 import { Check, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Accordion,
@@ -124,6 +124,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const [countryQuery, setCountryQuery] = useState("");
+  const countrySearchInputRef = useRef<HTMLInputElement | null>(null);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
       defaultValues: {
@@ -174,6 +175,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     setCountryMenuOpen(false);
     setCountryQuery("");
   }, [open, settings, reset]);
+
+  useEffect(() => {
+    if (!countryMenuOpen) return;
+    const frame = requestAnimationFrame(() => {
+      countrySearchInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [countryMenuOpen]);
 
   const addSearchTerms = (input: string) => {
     const parsed = parseSearchTermsInput(input);
@@ -349,8 +358,13 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-[320px] p-2">
                   <Input
+                    ref={countrySearchInputRef}
                     value={countryQuery}
                     onChange={(event) => setCountryQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      // Prevent Radix menu typeahead from stealing focus while typing.
+                      event.stopPropagation();
+                    }}
                     placeholder="Search country..."
                     className="h-8"
                   />
