@@ -600,10 +600,9 @@ export const TailorMode: React.FC<TailorModeProps> = ({
                             >
                               Keywords (comma-separated)
                             </label>
-                            <input
+                            <textarea
                               id={`tailor-skill-group-keywords-${group.id}`}
-                              type="text"
-                              className="w-full rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                              className="w-full min-h-[88px] rounded-md border border-border/60 bg-background/50 px-2.5 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                               value={group.keywordsText}
                               onChange={(event) =>
                                 handleUpdateSkillGroup(
