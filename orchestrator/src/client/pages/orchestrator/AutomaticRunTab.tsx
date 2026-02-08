@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -362,11 +363,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       countryOptions.map((country) => {
                         const selected = values.country === country;
                         return (
-                          <button
+                          <DropdownMenuItem
                             key={country}
-                            type="button"
-                            className="flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
-                            onClick={() => {
+                            className="justify-between"
+                            onSelect={() => {
                               setValue("country", country, {
                                 shouldDirty: true,
                               });
@@ -378,7 +378,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                             {selected ? (
                               <Check className="h-4 w-4 text-primary" />
                             ) : null}
-                          </button>
+                          </DropdownMenuItem>
                         );
                       })
                     )}
