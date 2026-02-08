@@ -3,6 +3,10 @@
  */
 
 import { useSettings } from "@client/hooks/useSettings";
+import {
+  formatCountryLabel,
+  getCompatibleSourcesForCountry,
+} from "@shared/location-support.js";
 import type { JobSource } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -241,22 +245,35 @@ export const OrchestratorPage: React.FC = () => {
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
+      const compatibleSources = getCompatibleSourcesForCountry(
+        pipelineSources,
+        values.country,
+      );
+      if (compatibleSources.length === 0) {
+        toast.error(
+          "No compatible sources for the selected country. Choose another country or source.",
+        );
+        return;
+      }
+
       const limits = deriveExtractorLimits({
         budget: values.runBudget,
         searchTerms: values.searchTerms,
-        sources: pipelineSources,
+        sources: compatibleSources,
       });
       await api.updateSettings({
         searchTerms: values.searchTerms,
         jobspyResultsWanted: limits.jobspyResultsWanted,
         gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
+        jobspyCountryIndeed: values.country,
+        jobspyLocation: formatCountryLabel(values.country),
       });
       await refreshSettings();
       await startPipelineRun({
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
-        sources: pipelineSources,
+        sources: compatibleSources,
       });
       setIsRunModeModalOpen(false);
     },

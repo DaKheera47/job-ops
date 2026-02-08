@@ -585,7 +585,14 @@ describe("OrchestratorPage", () => {
         jobspyResultsWanted: 150,
         gradcrackerMaxJobsPerTerm: 150,
         ukvisajobsMaxJobs: 150,
+        jobspyCountryIndeed: "united kingdom",
+        jobspyLocation: "United Kingdom",
       });
+    });
+    expect(api.runPipeline).toHaveBeenCalledWith({
+      topN: 12,
+      minSuitabilityScore: 55,
+      sources: ["linkedin"],
     });
 
     setIntervalSpy.mockRestore();
