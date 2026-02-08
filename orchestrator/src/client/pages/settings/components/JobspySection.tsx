@@ -1,4 +1,9 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import {
+  formatCountryLabel,
+  normalizeCountryKey,
+  SUPPORTED_COUNTRY_KEYS,
+} from "@shared/location-support.js";
 import type { JobspyValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
@@ -23,119 +28,6 @@ type JobspySectionProps = {
   isLoading: boolean;
   isSaving: boolean;
 };
-
-const JOBSPY_INDEED_COUNTRIES = [
-  "argentina",
-  "australia",
-  "austria",
-  "bahrain",
-  "bangladesh",
-  "belgium",
-  "bulgaria",
-  "brazil",
-  "canada",
-  "chile",
-  "china",
-  "colombia",
-  "costa rica",
-  "croatia",
-  "cyprus",
-  "czech republic",
-  "czechia",
-  "denmark",
-  "ecuador",
-  "egypt",
-  "estonia",
-  "finland",
-  "france",
-  "germany",
-  "greece",
-  "hong kong",
-  "hungary",
-  "india",
-  "indonesia",
-  "ireland",
-  "israel",
-  "italy",
-  "japan",
-  "kuwait",
-  "latvia",
-  "lithuania",
-  "luxembourg",
-  "malaysia",
-  "malta",
-  "mexico",
-  "morocco",
-  "netherlands",
-  "new zealand",
-  "nigeria",
-  "norway",
-  "oman",
-  "pakistan",
-  "panama",
-  "peru",
-  "philippines",
-  "poland",
-  "portugal",
-  "qatar",
-  "romania",
-  "saudi arabia",
-  "singapore",
-  "slovakia",
-  "slovenia",
-  "south africa",
-  "south korea",
-  "spain",
-  "sweden",
-  "switzerland",
-  "taiwan",
-  "thailand",
-  "türkiye",
-  "turkey",
-  "ukraine",
-  "united arab emirates",
-  "uk",
-  "united kingdom",
-  "usa",
-  "us",
-  "united states",
-  "uruguay",
-  "venezuela",
-  "vietnam",
-  "usa/ca",
-  "worldwide",
-];
-
-const COUNTRY_ALIASES: Record<string, string> = {
-  uk: "united kingdom",
-  us: "united states",
-  usa: "united states",
-  türkiye: "turkey",
-  "czech republic": "czechia",
-};
-
-const COUNTRY_LABELS: Record<string, string> = {
-  "united kingdom": "United Kingdom",
-  "united states": "United States",
-  "usa/ca": "USA/CA",
-  turkey: "Turkey",
-  czechia: "Czechia",
-};
-
-const normalizeCountryValue = (value: string) =>
-  COUNTRY_ALIASES[value] ?? value;
-
-const formatCountryLabel = (value: string) =>
-  COUNTRY_LABELS[value] || value.replace(/\b\w/g, (char) => char.toUpperCase());
-
-const JOBSPY_INDEED_COUNTRY_OPTIONS = Array.from(
-  new Map(
-    JOBSPY_INDEED_COUNTRIES.map((country) => {
-      const normalized = normalizeCountryValue(country);
-      return [normalized, normalized];
-    }),
-  ).values(),
-);
 
 export const JobspySection: React.FC<JobspySectionProps> = ({
   values,
@@ -332,8 +224,8 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                   countryIndeed.default ??
                   ""
                 ).toLowerCase();
-                const normalizedValue = normalizeCountryValue(currentValue);
-                const displayValue = JOBSPY_INDEED_COUNTRY_OPTIONS.includes(
+                const normalizedValue = normalizeCountryKey(currentValue);
+                const displayValue = SUPPORTED_COUNTRY_KEYS.includes(
                   normalizedValue,
                 )
                   ? normalizedValue
@@ -365,7 +257,7 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                         <SelectItem value="__default__">
                           {`Use default (${countryIndeed.default || "UK"})`}
                         </SelectItem>
-                        {JOBSPY_INDEED_COUNTRY_OPTIONS.map((country) => (
+                        {SUPPORTED_COUNTRY_KEYS.map((country) => (
                           <SelectItem key={country} value={country}>
                             {formatCountryLabel(country)}
                           </SelectItem>
