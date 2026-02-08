@@ -1,4 +1,9 @@
 import { logger } from "@infra/logger";
+import {
+  formatCountryLabel,
+  isSourceAllowedForCountry,
+  normalizeCountryKey,
+} from "@shared/location-support.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
@@ -35,7 +40,33 @@ export async function discoverJobsStep(args: {
       .filter(Boolean);
   }
 
-  let jobSpySites = args.mergedConfig.sources.filter(
+  const selectedCountry = normalizeCountryKey(
+    settings.jobspyCountryIndeed ?? settings.jobspyLocation ?? "united kingdom",
+  );
+  const compatibleSources = args.mergedConfig.sources.filter((source) =>
+    isSourceAllowedForCountry(source, selectedCountry),
+  );
+  const skippedSources = args.mergedConfig.sources.filter(
+    (source) => !compatibleSources.includes(source),
+  );
+
+  if (skippedSources.length > 0) {
+    logger.info("Skipping incompatible sources for selected country", {
+      step: "discover-jobs",
+      country: selectedCountry,
+      countryLabel: formatCountryLabel(selectedCountry),
+      requestedSources: args.mergedConfig.sources,
+      skippedSources,
+    });
+  }
+
+  if (compatibleSources.length === 0) {
+    throw new Error(
+      `No compatible sources for selected country: ${formatCountryLabel(selectedCountry)}`,
+    );
+  }
+
+  let jobSpySites = compatibleSources.filter(
     (source): source is "indeed" | "linkedin" =>
       source === "indeed" || source === "linkedin",
   );
@@ -53,9 +84,8 @@ export async function discoverJobsStep(args: {
   }
 
   const shouldRunJobSpy = jobSpySites.length > 0;
-  const shouldRunGradcracker =
-    args.mergedConfig.sources.includes("gradcracker");
-  const shouldRunUkVisaJobs = args.mergedConfig.sources.includes("ukvisajobs");
+  const shouldRunGradcracker = compatibleSources.includes("gradcracker");
+  const shouldRunUkVisaJobs = compatibleSources.includes("ukvisajobs");
 
   const totalSources =
     Number(shouldRunJobSpy) +
