@@ -31,11 +31,7 @@ import type {
   SalaryFilterMode,
   SponsorFilter,
 } from "./constants";
-import {
-  defaultSortDirection,
-  orderedFilterSources,
-  tabs,
-} from "./constants";
+import { defaultSortDirection, orderedFilterSources, tabs } from "./constants";
 
 interface OrchestratorFiltersProps {
   activeTab: FilterTab;
@@ -60,21 +56,21 @@ const sponsorOptions: Array<{
   value: SponsorFilter;
   label: string;
 }> = [
-    { value: "all", label: "All statuses" },
-    { value: "confirmed", label: "Confirmed sponsor" },
-    { value: "potential", label: "Potential sponsor" },
-    { value: "not_found", label: "Sponsor not found" },
-    { value: "unknown", label: "Unchecked sponsor" },
-  ];
+  { value: "all", label: "All statuses" },
+  { value: "confirmed", label: "Confirmed sponsor" },
+  { value: "potential", label: "Potential sponsor" },
+  { value: "not_found", label: "Sponsor not found" },
+  { value: "unknown", label: "Unchecked sponsor" },
+];
 
 const salaryModeOptions: Array<{
   value: SalaryFilterMode;
   label: string;
 }> = [
-    { value: "at_least", label: "at least" },
-    { value: "at_most", label: "at most" },
-    { value: "between", label: "between" },
-  ];
+  { value: "at_least", label: "at least" },
+  { value: "at_most", label: "at most" },
+  { value: "between", label: "between" },
+];
 
 const sortFieldOrder: JobSort["key"][] = [
   "score",
@@ -142,7 +138,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
       Number(sponsorFilter !== "all") +
       Number(
         (typeof salaryFilter.min === "number" && salaryFilter.min > 0) ||
-        (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
+          (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
       ),
     [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max],
   );
@@ -316,7 +312,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                           </SelectTrigger>
                           <SelectContent>
                             {salaryModeOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
+                              <SelectItem
+                                key={option.value}
+                                value={option.value}
+                              >
                                 {option.label}
                               </SelectItem>
                             ))}
@@ -451,7 +450,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                             </SelectTrigger>
                             <SelectContent>
                               {getDirectionOptions(sort.key).map((option) => (
-                                <SelectItem key={option.value} value={option.value}>
+                                <SelectItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
                                   {option.label}
                                 </SelectItem>
                               ))}

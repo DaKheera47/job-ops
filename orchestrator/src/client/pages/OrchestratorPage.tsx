@@ -140,17 +140,14 @@ export const OrchestratorPage: React.FC = () => {
       ? (modeRaw as SalaryFilterMode)
       : "at_least";
 
-    const minRaw = searchParams.get("salaryMin") ?? searchParams.get("minSalary");
-    const minParsed =
-      minRaw == null ? Number.NaN : Number.parseInt(minRaw, 10);
-    const min =
-      Number.isFinite(minParsed) && minParsed > 0 ? minParsed : null;
+    const minRaw =
+      searchParams.get("salaryMin") ?? searchParams.get("minSalary");
+    const minParsed = minRaw == null ? Number.NaN : Number.parseInt(minRaw, 10);
+    const min = Number.isFinite(minParsed) && minParsed > 0 ? minParsed : null;
 
     const maxRaw = searchParams.get("salaryMax");
-    const maxParsed =
-      maxRaw == null ? Number.NaN : Number.parseInt(maxRaw, 10);
-    const max =
-      Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : null;
+    const maxParsed = maxRaw == null ? Number.NaN : Number.parseInt(maxRaw, 10);
+    const max = Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : null;
 
     return { mode, min, max };
   }, [searchParams]);
