@@ -1,3 +1,4 @@
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   formatCountryLabel,
   getCompatibleSourcesForCountry,
@@ -27,11 +28,7 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -342,10 +339,24 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                     <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="w-[320px] p-0">
+                <PopoverPrimitive.Content
+                  align="start"
+                  sideOffset={4}
+                  className={cn(
+                    "z-50 w-[320px] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+                    "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+                    "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
+                    "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+                    "origin-[--radix-popover-content-transform-origin]",
+                  )}
+                >
                   <Command loop>
                     <CommandInput placeholder="Search country..." />
-                    <CommandList className="max-h-56">
+                    <CommandList
+                      className="max-h-56"
+                      onWheelCapture={(event) => event.stopPropagation()}
+                    >
                       <CommandEmpty>No matching countries.</CommandEmpty>
                       <CommandGroup>
                         {countryOptions.map((country) => {
@@ -375,7 +386,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       </CommandGroup>
                     </CommandList>
                   </Command>
-                </PopoverContent>
+                </PopoverPrimitive.Content>
               </Popover>
             </div>
             <Separator />
