@@ -8,6 +8,7 @@ import type {
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
+import { processJob } from "../../pipeline/index";
 import * as jobsRepo from "../../repositories/jobs";
 import { inferManualJobDetails } from "../../services/manualJob";
 import { getProfile } from "../../services/profile";
@@ -234,6 +235,26 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
       starting: cleanOptional(job.starting) ?? undefined,
     });
 
+    const processResult = await processJob(createdJob.id);
+    if (!processResult.success) {
+      logger.warn("Manual job auto-processing failed", {
+        jobId: createdJob.id,
+        error: processResult.error ?? "Unknown error",
+      });
+      return res.status(502).json({
+        success: false,
+        error:
+          processResult.error ||
+          "Imported job but failed to move it to ready automatically",
+        details: { jobId: createdJob.id },
+      });
+    }
+
+    const processedJob = await jobsRepo.getJobById(createdJob.id);
+    if (!processedJob) {
+      return res.status(404).json({ success: false, error: "Job not found" });
+    }
+
     // Score asynchronously so the import returns immediately.
     (async () => {
       try {
@@ -247,21 +268,27 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
         }
         const profile = rawProfile as Record<string, unknown>;
         const { score, reason } = await scoreJobSuitability(
-          createdJob,
+          processedJob,
           profile,
         );
-        await jobsRepo.updateJob(createdJob.id, {
+        await jobsRepo.updateJob(processedJob.id, {
           suitabilityScore: score,
           suitabilityReason: reason,
         });
       } catch (error) {
-        logger.warn("Manual job scoring failed", error);
+        logger.warn("Manual job scoring failed", {
+          jobId: processedJob.id,
+          error,
+        });
       }
     })().catch((error) => {
-      logger.warn("Manual job scoring task failed to start", error);
+      logger.warn("Manual job scoring task failed to start", {
+        jobId: processedJob.id,
+        error,
+      });
     });
 
-    res.json({ success: true, data: createdJob });
+    res.json({ success: true, data: processedJob });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, error: error.message });

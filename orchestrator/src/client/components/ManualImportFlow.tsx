@@ -216,7 +216,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       const payload = toPayload(draft);
       const created = await api.importManualJob({ job: payload });
       toast.success("Job imported", {
-        description: "The job is now in the discovered column.",
+        description: "The job was tailored and moved to the ready column.",
       });
       await onImported(created.id);
       onClose();

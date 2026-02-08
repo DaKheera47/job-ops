@@ -177,7 +177,7 @@ export const OrchestratorPage: React.FC = () => {
   const handleManualImported = useCallback(
     async (importedJobId: string) => {
       await loadJobs();
-      navigateWithContext("discovered", importedJobId);
+      navigateWithContext("ready", importedJobId);
     },
     [loadJobs, navigateWithContext],
   );

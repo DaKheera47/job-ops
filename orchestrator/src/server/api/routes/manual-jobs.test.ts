@@ -63,6 +63,7 @@ describe.sequential("Manual jobs API routes", () => {
   });
 
   it("imports manual jobs and generates a fallback URL", async () => {
+    const { processJob } = await import("../../pipeline/index");
     const { scoreJobSuitability } = await import("../../services/scorer");
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 88,
@@ -84,6 +85,7 @@ describe.sequential("Manual jobs API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.source).toBe("manual");
     expect(body.data.jobUrl).toMatch(/^manual:\/\//);
+    expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id);
     await new Promise((resolve) => setTimeout(resolve, 25));
   });
 });
