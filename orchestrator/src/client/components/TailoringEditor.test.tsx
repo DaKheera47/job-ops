@@ -22,6 +22,10 @@ const createJob = (overrides: Partial<Job> = {}): Job =>
   ({
     id: "job-1",
     tailoredSummary: "Saved summary",
+    tailoredHeadline: "Saved headline",
+    tailoredSkills: JSON.stringify([
+      { name: "Core", keywords: ["React", "TypeScript"] },
+    ]),
     jobDescription: "Saved description",
     selectedProjectIds: "p1",
     ...overrides,
@@ -73,6 +77,10 @@ describe("TailoringEditor", () => {
         job={createJob({
           id: "job-2",
           tailoredSummary: "New job summary",
+          tailoredHeadline: "New job headline",
+          tailoredSkills: JSON.stringify([
+            { name: "Backend", keywords: ["Node.js", "Postgres"] },
+          ]),
           jobDescription: "New job description",
           selectedProjectIds: "",
         })}
@@ -83,6 +91,10 @@ describe("TailoringEditor", () => {
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "New job summary",
     );
+    expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+      "New job headline",
+    );
+    expect(screen.getByDisplayValue("Node.js, Postgres")).toBeInTheDocument();
   });
 
   it("emits dirty state changes", async () => {
@@ -126,5 +138,81 @@ describe("TailoringEditor", () => {
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "Saved summary",
     );
+  });
+
+  it("does not clobber local headline edits from same-job prop updates", async () => {
+    const { rerender } = render(
+      <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    fireEvent.change(screen.getByLabelText("Tailored Headline"), {
+      target: { value: "Local headline draft" },
+    });
+
+    rerender(
+      <TailoringEditor
+        job={createJob({ tailoredHeadline: "Incoming headline from poll" })}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+      "Local headline draft",
+    );
+  });
+
+  it("saves headline and skills in update payload", async () => {
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    fireEvent.change(screen.getByLabelText("Tailored Headline"), {
+      target: { value: "Updated headline" },
+    });
+    fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
+      target: { value: "Node.js, TypeScript" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Selection" }));
+
+    await waitFor(() =>
+      expect(api.updateJob).toHaveBeenCalledWith(
+        "job-1",
+        expect.objectContaining({
+          tailoredHeadline: "Updated headline",
+          tailoredSkills:
+            '[{"name":"Core","keywords":["Node.js","TypeScript"]}]',
+        }),
+      ),
+    );
+  });
+
+  it("hydrates headline and skills after AI summarize", async () => {
+    vi.mocked(api.summarizeJob).mockResolvedValueOnce({
+      ...createJob(),
+      tailoredSummary: "AI summary",
+      tailoredHeadline: "AI headline",
+      tailoredSkills: JSON.stringify([
+        { name: "Backend", keywords: ["Node.js", "Kafka"] },
+      ]),
+    } as Job);
+
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "AI Summarize" }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+        "AI headline",
+      ),
+    );
+    expect(screen.getByDisplayValue("Backend")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Node.js, Kafka")).toBeInTheDocument();
   });
 });

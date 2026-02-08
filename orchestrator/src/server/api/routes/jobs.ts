@@ -45,6 +45,13 @@ import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const jobsRouter = Router();
 
+const tailoredSkillsPayloadSchema = z.array(
+  z.object({
+    name: z.string(),
+    keywords: z.array(z.string()),
+  }),
+);
+
 async function notifyJobCompleteWebhook(job: Job) {
   const overrideWebhookUrl = await settingsRepo.getSetting(
     "jobCompleteWebhookUrl",
@@ -115,6 +122,35 @@ const updateJobSchema = z.object({
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
   tailoredSummary: z.string().optional(),
+  tailoredHeadline: z.string().optional(),
+  tailoredSkills: z
+    .string()
+    .optional()
+    .superRefine((value, ctx) => {
+      if (value === undefined || value.trim().length === 0) return;
+
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(value);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "tailoredSkills must be a JSON array of { name, keywords } objects",
+        });
+        return;
+      }
+
+      const parseResult = tailoredSkillsPayloadSchema.safeParse(parsed);
+
+      if (!parseResult.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "tailoredSkills must be a JSON array of { name, keywords } objects",
+        });
+      }
+    }),
   selectedProjectIds: z.string().optional(),
   pdfPath: z.string().optional(),
   sponsorMatchScore: z.number().min(0).max(100).optional(),

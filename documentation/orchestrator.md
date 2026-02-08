@@ -18,7 +18,7 @@ There are two main ways a job becomes Ready:
 1) **Manual flow (most common)**
    - A job starts in `discovered`.
    - You open it in the Discovered panel, decide to Tailor.
-   - In Tailor mode you edit the job description (optional), summary, and project picks.
+   - In Tailor mode you can edit job description (optional), tailored summary, tailored headline, tailored skills, and project picks.
    - You click **Finalize & Move to Ready**.
    - This runs summarization (if needed), generates the PDF, and sets status to `ready`.
 
@@ -40,7 +40,7 @@ The PDF is generated from:
 
 - The base resume selected from your v4.rxresu.me account (via Onboarding or Settings).
 - The job description (used for AI tailoring and project selection).
-- Your tailored summary/headline/skills and selected projects.
+- Your tailored summary, tailored headline, tailored skills, and selected projects.
 
 Paths:
 
@@ -71,6 +71,8 @@ PATCH /api/jobs/:id
 {
   "jobDescription": "<new JD>",
   "tailoredSummary": "<optional>",
+  "tailoredHeadline": "<optional>",
+  "tailoredSkills": "[{\"name\":\"Backend\",\"keywords\":[\"TypeScript\",\"Node.js\"]}]",
   "selectedProjectIds": "p1,p2"
 }
 ```
