@@ -405,27 +405,18 @@ export const TailorMode: React.FC<TailorModeProps> = ({
         </div>
       </div>
 
-      <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 mb-4">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-xs font-medium text-amber-300">
-            Draft tailoring for this role
-          </span>
-        </div>
-        <p className="text-[10px] text-muted-foreground mt-1 ml-4">
-          Edit below, then finalize to generate your PDF and move to Ready.
-        </p>
-      </div>
-
       <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-        <div className="flex flex-col gap-2 rounded-lg border border-border/40 bg-muted/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="text-xs font-medium">
-              Need help getting started?
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-medium text-amber-300">
+                Draft tailoring for this role
+              </span>
             </div>
-            <div className="text-[10px] text-muted-foreground">
-              AI can draft summary, headline, skills, and project selection
-            </div>
+            <p className="ml-4 mt-1 text-[10px] text-muted-foreground">
+              AI can draft summary, headline, skills, and project selection.
+            </p>
           </div>
           <Button
             size="sm"
