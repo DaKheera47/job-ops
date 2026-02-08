@@ -278,17 +278,13 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
   };
 
   useEffect(() => {
-    if (skillsDraft.length === 0) {
+    if (
+      openSkillGroupId.length > 0 &&
+      !skillsDraft.some((group) => group.id === openSkillGroupId)
+    ) {
       setOpenSkillGroupId("");
-      return;
     }
-
-    setOpenSkillGroupId((prev) =>
-      prev.length > 0 && skillsDraft.some((group) => group.id === prev)
-        ? prev
-        : (skillsDraft[0]?.id ?? ""),
-    );
-  }, [skillsDraft]);
+  }, [skillsDraft, openSkillGroupId]);
 
   const handleSave = async () => {
     try {
@@ -412,197 +408,240 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <Separator />
 
-        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
-          <label htmlFor="tailor-summary" className="text-sm font-medium">
-            Tailored Summary
-          </label>
-          <textarea
-            id="tailor-summary"
-            className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            onFocus={() => setActiveField("summary")}
-            onBlur={() =>
-              setActiveField((prev) => (prev === "summary" ? null : prev))
-            }
-            placeholder="AI will generate this, or you can write your own..."
-            disabled={disableInputs}
-          />
-        </div>
-
-        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
-          <label htmlFor="tailor-headline" className="text-sm font-medium">
-            Tailored Headline
-          </label>
-          <input
-            id="tailor-headline"
-            type="text"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            value={headline}
-            onChange={(e) => setHeadline(e.target.value)}
-            onFocus={() => setActiveField("headline")}
-            onBlur={() =>
-              setActiveField((prev) => (prev === "headline" ? null : prev))
-            }
-            placeholder="Tailor the headline for this role..."
-            disabled={disableInputs}
-          />
-        </div>
-
-        <div className="space-y-2 rounded-lg border border-input/80 bg-muted/20 p-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium">Tailored Skills</span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={handleAddSkillGroup}
-              disabled={disableInputs}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Add Skill Group
-            </Button>
-          </div>
-
-          {skillsDraft.length === 0 ? (
-            <div className="rounded-md border border-dashed border-input px-3 py-4 text-xs text-center text-muted-foreground">
-              No skill groups yet. Add one to manually control skill keywords.
-            </div>
-          ) : (
-            <Accordion
-              type="single"
-              collapsible
-              value={openSkillGroupId}
-              onValueChange={(value) => setOpenSkillGroupId(value)}
-              className="space-y-2"
-            >
-              {skillsDraft.map((group, index) => (
-                <AccordionItem
-                  key={group.id}
-                  value={group.id}
-                  className="rounded-md border border-input px-0"
-                >
-                  <AccordionTrigger className="px-3 py-2 text-xs font-medium hover:no-underline">
-                    {group.name.trim() || `Skill Group ${index + 1}`}
-                  </AccordionTrigger>
-                  <AccordionContent className="px-3 pb-3 pt-1">
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <label
-                          htmlFor={`tailor-skill-group-name-${group.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Category
-                        </label>
-                        <input
-                          id={`tailor-skill-group-name-${group.id}`}
-                          type="text"
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          value={group.name}
-                          onChange={(e) =>
-                            handleUpdateSkillGroup(
-                              group.id,
-                              "name",
-                              e.target.value,
-                            )
-                          }
-                          onFocus={() => setActiveField("skills")}
-                          onBlur={() =>
-                            setActiveField((prev) =>
-                              prev === "skills" ? null : prev,
-                            )
-                          }
-                          placeholder="Backend, Frontend, Infrastructure..."
-                          disabled={disableInputs}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label
-                          htmlFor={`tailor-skill-group-keywords-${group.id}`}
-                          className="text-xs font-medium text-muted-foreground"
-                        >
-                          Keywords (comma-separated)
-                        </label>
-                        <input
-                          id={`tailor-skill-group-keywords-${group.id}`}
-                          type="text"
-                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          value={group.keywordsText}
-                          onChange={(e) =>
-                            handleUpdateSkillGroup(
-                              group.id,
-                              "keywordsText",
-                              e.target.value,
-                            )
-                          }
-                          onFocus={() => setActiveField("skills")}
-                          onBlur={() =>
-                            setActiveField((prev) =>
-                              prev === "skills" ? null : prev,
-                            )
-                          }
-                          placeholder="TypeScript, Node.js, APIs..."
-                          disabled={disableInputs}
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveSkillGroup(group.id)}
-                          disabled={disableInputs}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
-          )}
-        </div>
-
-        <Separator />
-
-        <div className="space-y-3 rounded-lg border border-input/80 bg-muted/20 p-3">
-          <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
-            <span className="text-sm font-medium">Selected Projects</span>
-            {tooManyProjects && (
-              <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
-                <AlertTriangle className="h-3 w-3" />
-                Warning: More than {maxProjects} projects might make the resume
-                too long.
-              </span>
-            )}
-          </div>
-          <div className="grid gap-2 max-h-[300px] overflow-auto pr-2">
-            {catalog.map((project) => (
-              <div
-                key={project.id}
-                className="flex items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
+        <Accordion
+          type="multiple"
+          className="space-y-3"
+        >
+          <AccordionItem
+            value="summary"
+            className="rounded-lg border border-input/80 bg-muted/20 px-0"
+          >
+            <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+              Summary
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-1">
+              <label
+                htmlFor="tailor-summary"
+                className="sr-only text-sm font-medium"
               >
-                <Checkbox
-                  id={`project-${project.id}`}
-                  checked={selectedIds.has(project.id)}
-                  onCheckedChange={() => handleToggleProject(project.id)}
-                  className="mt-1"
-                />
-                <label
-                  htmlFor={`project-${project.id}`}
-                  className="flex flex-1 flex-col gap-1 cursor-pointer"
+                Tailored Summary
+              </label>
+              <textarea
+                id="tailor-summary"
+                className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                onFocus={() => setActiveField("summary")}
+                onBlur={() =>
+                  setActiveField((prev) => (prev === "summary" ? null : prev))
+                }
+                placeholder="AI will generate this, or you can write your own..."
+                disabled={disableInputs}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="headline"
+            className="rounded-lg border border-input/80 bg-muted/20 px-0"
+          >
+            <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+              Headline
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-1">
+              <label
+                htmlFor="tailor-headline"
+                className="sr-only text-sm font-medium"
+              >
+                Tailored Headline
+              </label>
+              <input
+                id="tailor-headline"
+                type="text"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                onFocus={() => setActiveField("headline")}
+                onBlur={() =>
+                  setActiveField((prev) => (prev === "headline" ? null : prev))
+                }
+                placeholder="Tailor the headline for this role..."
+                disabled={disableInputs}
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="skills"
+            className="rounded-lg border border-input/80 bg-muted/20 px-0"
+          >
+            <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+              Tailored Skills
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-1">
+              <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddSkillGroup}
+                  disabled={disableInputs}
                 >
-                  <span className="font-semibold">{project.name}</span>
-                  <span className="text-xs text-muted-foreground line-clamp-2">
-                    {project.description}
-                  </span>
-                </label>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Skill Group
+                </Button>
               </div>
-            ))}
-          </div>
-        </div>
+
+              {skillsDraft.length === 0 ? (
+                <div className="rounded-md border border-dashed border-input px-3 py-4 text-xs text-center text-muted-foreground">
+                  No skill groups yet. Add one to manually control skill
+                  keywords.
+                </div>
+              ) : (
+                <Accordion
+                  type="single"
+                  collapsible
+                  value={openSkillGroupId}
+                  onValueChange={(value) => setOpenSkillGroupId(value)}
+                  className="space-y-2"
+                >
+                  {skillsDraft.map((group, index) => (
+                    <AccordionItem
+                      key={group.id}
+                      value={group.id}
+                      className="rounded-md border border-input px-0"
+                    >
+                      <AccordionTrigger className="px-3 py-2 text-xs font-medium hover:no-underline">
+                        {group.name.trim() || `Skill Group ${index + 1}`}
+                      </AccordionTrigger>
+                      <AccordionContent className="px-3 pb-3 pt-1">
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <label
+                              htmlFor={`tailor-skill-group-name-${group.id}`}
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              Category
+                            </label>
+                            <input
+                              id={`tailor-skill-group-name-${group.id}`}
+                              type="text"
+                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              value={group.name}
+                              onChange={(e) =>
+                                handleUpdateSkillGroup(
+                                  group.id,
+                                  "name",
+                                  e.target.value,
+                                )
+                              }
+                              onFocus={() => setActiveField("skills")}
+                              onBlur={() =>
+                                setActiveField((prev) =>
+                                  prev === "skills" ? null : prev,
+                                )
+                              }
+                              placeholder="Backend, Frontend, Infrastructure..."
+                              disabled={disableInputs}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label
+                              htmlFor={`tailor-skill-group-keywords-${group.id}`}
+                              className="text-xs font-medium text-muted-foreground"
+                            >
+                              Keywords (comma-separated)
+                            </label>
+                            <input
+                              id={`tailor-skill-group-keywords-${group.id}`}
+                              type="text"
+                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                              value={group.keywordsText}
+                              onChange={(e) =>
+                                handleUpdateSkillGroup(
+                                  group.id,
+                                  "keywordsText",
+                                  e.target.value,
+                                )
+                              }
+                              onFocus={() => setActiveField("skills")}
+                              onBlur={() =>
+                                setActiveField((prev) =>
+                                  prev === "skills" ? null : prev,
+                                )
+                              }
+                              placeholder="TypeScript, Node.js, APIs..."
+                              disabled={disableInputs}
+                            />
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSkillGroup(group.id)}
+                              disabled={disableInputs}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="projects"
+            className="rounded-lg border border-input/80 bg-muted/20 px-0"
+          >
+            <AccordionTrigger className="px-3 py-2 text-sm font-medium hover:no-underline">
+              Selected Projects
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-1">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
+                  <span className="text-sm font-medium">Selected Projects</span>
+                  {tooManyProjects && (
+                    <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
+                      <AlertTriangle className="h-3 w-3" />
+                      Warning: More than {maxProjects} projects might make the
+                      resume too long.
+                    </span>
+                  )}
+                </div>
+                <div className="grid gap-2 max-h-[300px] overflow-auto pr-2">
+                  {catalog.map((project) => (
+                    <div
+                      key={project.id}
+                      className="flex items-start gap-3 rounded-lg border p-3 text-sm transition-colors hover:bg-muted/50"
+                    >
+                      <Checkbox
+                        id={`project-${project.id}`}
+                        checked={selectedIds.has(project.id)}
+                        onCheckedChange={() => handleToggleProject(project.id)}
+                        className="mt-1"
+                      />
+                      <label
+                        htmlFor={`project-${project.id}`}
+                        className="flex flex-1 flex-col gap-1 cursor-pointer"
+                      >
+                        <span className="font-semibold">{project.name}</span>
+                        <span className="text-xs text-muted-foreground line-clamp-2">
+                          {project.description}
+                        </span>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <div className="flex justify-end border-t pt-4">
           <Button
