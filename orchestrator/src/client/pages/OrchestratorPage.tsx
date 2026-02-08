@@ -6,21 +6,14 @@ import { useSettings } from "@client/hooks/useSettings";
 import type { JobSource } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import * as api from "../api";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
-import type {
-  FilterTab,
-  JobSort,
-  SalaryFilter,
-  SalaryFilterMode,
-  SponsorFilter,
-} from "./orchestrator/constants";
-import { DEFAULT_SORT } from "./orchestrator/constants";
+import type { FilterTab } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
@@ -32,6 +25,7 @@ import type { RunMode } from "./orchestrator/run-mode";
 import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
+import { useOrchestratorFilters } from "./orchestrator/useOrchestratorFilters";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
 import {
   getEnabledSources,
@@ -39,23 +33,23 @@ import {
   getSourcesWithJobs,
 } from "./orchestrator/utils";
 
-const allowedSponsorFilters: SponsorFilter[] = [
-  "all",
-  "confirmed",
-  "potential",
-  "not_found",
-  "unknown",
-];
-const allowedSalaryModes: SalaryFilterMode[] = [
-  "at_least",
-  "at_most",
-  "between",
-];
-
 export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    searchParams,
+    searchQuery,
+    setSearchQuery,
+    sourceFilter,
+    setSourceFilter,
+    sponsorFilter,
+    setSponsorFilter,
+    salaryFilter,
+    setSalaryFilter,
+    sort,
+    setSort,
+    resetFilters,
+  } = useOrchestratorFilters();
 
   const activeTab = useMemo(() => {
     const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
@@ -79,149 +73,6 @@ export const OrchestratorPage: React.FC = () => {
   );
 
   const selectedJobId = jobId || null;
-
-  // Sync searchQuery with URL
-  const searchQuery = searchParams.get("q") || "";
-  const setSearchQuery = useCallback(
-    (q: string) => {
-      setSearchParams(
-        (prev) => {
-          if (q) prev.set("q", q);
-          else prev.delete("q");
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  // Sync sourceFilter with URL
-  const sourceFilter =
-    (searchParams.get("source") as JobSource | "all") || "all";
-  const setSourceFilter = useCallback(
-    (source: JobSource | "all") => {
-      setSearchParams(
-        (prev) => {
-          if (source !== "all") prev.set("source", source);
-          else prev.delete("source");
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const sponsorFilter = useMemo((): SponsorFilter => {
-    const raw = searchParams.get("sponsor") ?? "all";
-    return allowedSponsorFilters.includes(raw as SponsorFilter)
-      ? (raw as SponsorFilter)
-      : "all";
-  }, [searchParams]);
-
-  const setSponsorFilter = useCallback(
-    (value: SponsorFilter) => {
-      setSearchParams(
-        (prev) => {
-          if (value === "all") prev.delete("sponsor");
-          else prev.set("sponsor", value);
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const salaryFilter = useMemo((): SalaryFilter => {
-    const modeRaw = searchParams.get("salaryMode") ?? "at_least";
-    const mode = allowedSalaryModes.includes(modeRaw as SalaryFilterMode)
-      ? (modeRaw as SalaryFilterMode)
-      : "at_least";
-
-    const minRaw =
-      searchParams.get("salaryMin") ?? searchParams.get("minSalary");
-    const minParsed = minRaw == null ? Number.NaN : Number.parseInt(minRaw, 10);
-    const min = Number.isFinite(minParsed) && minParsed > 0 ? minParsed : null;
-
-    const maxRaw = searchParams.get("salaryMax");
-    const maxParsed = maxRaw == null ? Number.NaN : Number.parseInt(maxRaw, 10);
-    const max = Number.isFinite(maxParsed) && maxParsed > 0 ? maxParsed : null;
-
-    return { mode, min, max };
-  }, [searchParams]);
-
-  const setSalaryFilter = useCallback(
-    (value: SalaryFilter) => {
-      setSearchParams(
-        (prev) => {
-          if (value.mode === "at_least") prev.delete("salaryMode");
-          else prev.set("salaryMode", value.mode);
-
-          if (value.min == null || value.min <= 0) prev.delete("salaryMin");
-          else prev.set("salaryMin", String(value.min));
-
-          if (value.max == null || value.max <= 0) prev.delete("salaryMax");
-          else prev.set("salaryMax", String(value.max));
-
-          // Cleanup legacy key.
-          prev.delete("minSalary");
-
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  // Sync sort with URL
-  const sort = useMemo((): JobSort => {
-    const s = searchParams.get("sort");
-    if (!s) return DEFAULT_SORT;
-    const [key, direction] = s.split("-");
-    return {
-      key: key as JobSort["key"],
-      direction: direction as JobSort["direction"],
-    };
-  }, [searchParams]);
-
-  const setSort = useCallback(
-    (newSort: JobSort) => {
-      setSearchParams(
-        (prev) => {
-          if (
-            newSort.key === DEFAULT_SORT.key &&
-            newSort.direction === DEFAULT_SORT.direction
-          ) {
-            prev.delete("sort");
-          } else {
-            prev.set("sort", `${newSort.key}-${newSort.direction}`);
-          }
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
-
-  const resetFilters = useCallback(() => {
-    setSearchParams(
-      (prev) => {
-        prev.delete("source");
-        prev.delete("sponsor");
-        prev.delete("salaryMode");
-        prev.delete("salaryMin");
-        prev.delete("salaryMax");
-        prev.delete("minSalary");
-        prev.delete("sort");
-        return prev;
-      },
-      { replace: true },
-    );
-  }, [setSearchParams]);
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
