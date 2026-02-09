@@ -8,12 +8,18 @@ import type {
   Job,
   JobListItem,
   JobStatus,
+  JobsRevisionResponse,
   UpdateJobInput,
 } from "@shared/types";
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
 const { jobs } = schema;
+
+function normalizeStatusFilter(statuses?: JobStatus[]): string | null {
+  if (!statuses || statuses.length === 0) return null;
+  return Array.from(new Set(statuses)).sort().join(",");
+}
 
 /**
  * Get all jobs, optionally filtered by status.
@@ -77,6 +83,40 @@ export async function getJobListItems(
     source: row.source as JobListItem["source"],
     status: row.status as JobStatus,
   }));
+}
+
+/**
+ * Get a lightweight revision token for jobs list invalidation.
+ */
+export async function getJobsRevision(
+  statuses?: JobStatus[],
+): Promise<JobsRevisionResponse> {
+  const statusFilter = normalizeStatusFilter(statuses);
+  const whereClause =
+    statuses && statuses.length > 0
+      ? inArray(jobs.status, statuses)
+      : undefined;
+
+  const baseQuery = db
+    .select({
+      latestUpdatedAt: sql<string | null>`max(${jobs.updatedAt})`,
+      total: sql<number>`count(*)`,
+    })
+    .from(jobs);
+  const [row] = whereClause
+    ? await baseQuery.where(whereClause)
+    : await baseQuery;
+
+  const latestUpdatedAt = row?.latestUpdatedAt ?? null;
+  const total = row?.total ?? 0;
+  const revision = `${latestUpdatedAt ?? "none"}:${total}:${statusFilter ?? "all"}`;
+
+  return {
+    revision,
+    latestUpdatedAt,
+    total,
+    statusFilter,
+  };
 }
 
 /**

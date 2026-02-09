@@ -31,10 +31,12 @@ describe.sequential("Jobs API routes", () => {
     expect(listBody.ok).toBe(true);
     expect(listBody.data.total).toBe(1);
     expect(listBody.data.jobs[0].id).toBe(job.id);
+    expect(typeof listBody.data.revision).toBe("string");
 
     const filteredRes = await fetch(`${baseUrl}/api/jobs?status=skipped`);
     const filteredBody = await filteredRes.json();
     expect(filteredBody.data.total).toBe(0);
+    expect(typeof filteredBody.data.revision).toBe("string");
   });
 
   it("supports lightweight and full jobs list views", async () => {
@@ -55,6 +57,7 @@ describe.sequential("Jobs API routes", () => {
     expect(listBody.data.jobs[0].id).toBeTruthy();
     expect(listBody.data.jobs[0].title).toBe("List View Role");
     expect(listBody.data.jobs[0]).not.toHaveProperty("jobDescription");
+    expect(typeof listBody.data.revision).toBe("string");
 
     const fullRes = await fetch(`${baseUrl}/api/jobs?view=full`);
     const fullBody = await fullRes.json();
@@ -62,12 +65,56 @@ describe.sequential("Jobs API routes", () => {
     expect(fullBody.ok).toBe(true);
     expect(fullBody.data.jobs[0].title).toBe("List View Role");
     expect(fullBody.data.jobs[0]).toHaveProperty("jobDescription");
+    expect(typeof fullBody.data.revision).toBe("string");
 
     const defaultRes = await fetch(`${baseUrl}/api/jobs`);
     const defaultBody = await defaultRes.json();
     expect(defaultRes.status).toBe(200);
     expect(defaultBody.ok).toBe(true);
     expect(defaultBody.data.jobs[0]).not.toHaveProperty("jobDescription");
+    expect(typeof defaultBody.data.revision).toBe("string");
+  });
+
+  it("returns jobs revision and supports status filtering", async () => {
+    const { createJob, updateJob } = await import("../../repositories/jobs");
+    const readyJob = await createJob({
+      source: "manual",
+      title: "Ready Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/revision-ready",
+      jobDescription: "Ready description",
+    });
+    const appliedJob = await createJob({
+      source: "manual",
+      title: "Applied Role",
+      employer: "Beta",
+      jobUrl: "https://example.com/job/revision-applied",
+      jobDescription: "Applied description",
+    });
+    await updateJob(readyJob.id, { status: "ready" });
+    await updateJob(appliedJob.id, { status: "applied" });
+
+    const allRes = await fetch(`${baseUrl}/api/jobs/revision`);
+    const allBody = await allRes.json();
+
+    expect(allRes.status).toBe(200);
+    expect(allBody.ok).toBe(true);
+    expect(typeof allBody.meta.requestId).toBe("string");
+    expect(typeof allBody.data.revision).toBe("string");
+    expect(allBody.data.total).toBe(2);
+    expect(allBody.data.latestUpdatedAt).toBeTruthy();
+    expect(allBody.data.statusFilter).toBeNull();
+
+    const filteredRes = await fetch(
+      `${baseUrl}/api/jobs/revision?status=applied,ready`,
+    );
+    const filteredBody = await filteredRes.json();
+
+    expect(filteredRes.status).toBe(200);
+    expect(filteredBody.ok).toBe(true);
+    expect(filteredBody.data.total).toBe(2);
+    expect(filteredBody.data.statusFilter).toBe("applied,ready");
+    expect(typeof filteredBody.data.revision).toBe("string");
   });
 
   it("rejects invalid jobs list view query", async () => {

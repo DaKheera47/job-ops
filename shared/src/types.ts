@@ -361,6 +361,14 @@ export interface JobsListResponse<TJob = Job> {
   jobs: TJob[];
   total: number;
   byStatus: Record<JobStatus, number>;
+  revision: string;
+}
+
+export interface JobsRevisionResponse {
+  revision: string;
+  latestUpdatedAt: string | null;
+  total: number;
+  statusFilter: string | null;
 }
 
 export type BulkJobAction = "skip" | "move_to_ready" | "rescore";

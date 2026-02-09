@@ -11,6 +11,7 @@ import {
   type JobListItem,
   type JobStatus,
   type JobsListResponse,
+  type JobsRevisionResponse,
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -186,10 +187,21 @@ const listJobsQuerySchema = z.object({
   view: z.enum(["full", "list"]).optional(),
 });
 
+const jobsRevisionQuerySchema = z.object({
+  status: z.string().optional(),
+});
+
 const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
   "discovered",
   "ready",
 ]);
+
+function parseStatusFilter(statusFilter?: string): JobStatus[] | undefined {
+  const parsed = statusFilter?.split(",").filter(Boolean) as
+    | JobStatus[]
+    | undefined;
+  return parsed && parsed.length > 0 ? parsed : undefined;
+}
 
 function mapErrorForResult(error: unknown): {
   code: string;
@@ -356,9 +368,7 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     }
 
     const statusFilter = parsedQuery.data.status;
-    const statuses = statusFilter?.split(",").filter(Boolean) as
-      | JobStatus[]
-      | undefined;
+    const statuses = parseStatusFilter(statusFilter);
     const view = parsedQuery.data.view ?? "list";
 
     const jobs: Array<Job | JobListItem> =
@@ -366,18 +376,69 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
         ? await jobsRepo.getJobListItems(statuses)
         : await jobsRepo.getAllJobs(statuses);
     const stats = await jobsRepo.getJobStats();
+    const revision = await jobsRepo.getJobsRevision(statuses);
 
     const response: JobsListResponse<Job | JobListItem> = {
       jobs,
       total: jobs.length,
       byStatus: stats,
+      revision: revision.revision,
     };
 
     logger.info("Jobs list fetched", {
       route: "GET /api/jobs",
       view,
       statusFilter: statusFilter ?? null,
+      revision: revision.revision,
       returnedCount: jobs.length,
+    });
+
+    ok(res, response);
+  } catch (error) {
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError({
+            status: 500,
+            code: "INTERNAL_ERROR",
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+    fail(res, err);
+  }
+});
+
+/**
+ * GET /api/jobs/revision - Get jobs list revision for lightweight change detection
+ * Query params: status (comma-separated list of statuses to filter)
+ */
+jobsRouter.get("/revision", async (req: Request, res: Response) => {
+  try {
+    const parsedQuery = jobsRevisionQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return fail(
+        res,
+        badRequest(
+          "Invalid jobs revision query parameters",
+          parsedQuery.error.flatten(),
+        ),
+      );
+    }
+
+    const statuses = parseStatusFilter(parsedQuery.data.status);
+    const revision = await jobsRepo.getJobsRevision(statuses);
+
+    const response: JobsRevisionResponse = {
+      revision: revision.revision,
+      latestUpdatedAt: revision.latestUpdatedAt,
+      total: revision.total,
+      statusFilter: revision.statusFilter,
+    };
+
+    logger.info("Jobs revision fetched", {
+      route: "GET /api/jobs/revision",
+      statusFilter: revision.statusFilter,
+      revision: revision.revision,
+      total: revision.total,
     });
 
     ok(res, response);
