@@ -1,4 +1,4 @@
-import type { Job, JobStatus } from "@shared/types.js";
+import type { JobListItem, JobStatus } from "@shared/types.js";
 import type { FilterTab } from "./constants";
 
 export type CommandGroupId = "ready" | "discovered" | "applied" | "other";
@@ -119,7 +119,7 @@ export const resolveLockFromAliasPrefix = (
   return matches[0];
 };
 
-export const jobMatchesLock = (job: Job, lock: StatusLock) => {
+export const jobMatchesLock = (job: JobListItem, lock: StatusLock) => {
   if (lock === "ready") return job.status === "ready";
   if (lock === "discovered") return job.status === "discovered";
   if (lock === "applied") return job.status === "applied";
@@ -128,7 +128,10 @@ export const jobMatchesLock = (job: Job, lock: StatusLock) => {
   return false;
 };
 
-export const computeJobMatchScore = (job: Job, normalizedQuery: string) => {
+export const computeJobMatchScore = (
+  job: JobListItem,
+  normalizedQuery: string,
+) => {
   if (!normalizedQuery) return 0;
   const titleScore = computeFieldMatchScore(job.title, normalizedQuery);
   const employerScore = computeFieldMatchScore(job.employer, normalizedQuery);
@@ -145,10 +148,10 @@ export const computeJobMatchScore = (job: Job, normalizedQuery: string) => {
 };
 
 export const groupJobsForCommandBar = (
-  scopedJobs: Job[],
+  scopedJobs: JobListItem[],
   normalizedQuery: string,
-): Record<CommandGroupId, Job[]> => {
-  const groups: Record<CommandGroupId, Job[]> = {
+): Record<CommandGroupId, JobListItem[]> => {
+  const groups: Record<CommandGroupId, JobListItem[]> = {
     ready: [],
     discovered: [],
     applied: [],
@@ -179,7 +182,7 @@ export const groupJobsForCommandBar = (
 };
 
 export const orderCommandGroups = (
-  groupedJobs: Record<CommandGroupId, Job[]>,
+  groupedJobs: Record<CommandGroupId, JobListItem[]>,
   normalizedQuery: string,
 ) => {
   if (!normalizedQuery) return commandGroupMeta;

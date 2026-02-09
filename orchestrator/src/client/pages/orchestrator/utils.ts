@@ -1,4 +1,4 @@
-import type { AppSettings, Job, JobSource } from "@shared/types";
+import type { AppSettings, JobListItem, JobSource } from "@shared/types";
 import type { FilterTab, JobSort } from "./constants";
 import { orderedFilterSources, orderedSources } from "./constants";
 
@@ -13,7 +13,7 @@ const compareString = (a: string, b: string) =>
 const compareNumber = (a: number, b: number) => a - b;
 
 export const parseSalaryBounds = (
-  job: Job,
+  job: JobListItem,
 ): { min: number; max: number } | null => {
   if (
     typeof job.salaryMinAmount === "number" &&
@@ -52,7 +52,7 @@ export const parseSalaryBounds = (
   return { min: Math.min(...values), max: Math.max(...values) };
 };
 
-export const compareJobs = (a: Job, b: Job, sort: JobSort) => {
+export const compareJobs = (a: JobListItem, b: JobListItem, sort: JobSort) => {
   let value = 0;
 
   switch (sort.key) {
@@ -110,7 +110,7 @@ export const compareJobs = (a: Job, b: Job, sort: JobSort) => {
   return a.id.localeCompare(b.id);
 };
 
-export const jobMatchesQuery = (job: Job, query: string) => {
+export const jobMatchesQuery = (job: JobListItem, query: string) => {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return true;
   const haystack = [
@@ -128,7 +128,7 @@ export const jobMatchesQuery = (job: Job, query: string) => {
   return haystack.includes(normalized);
 };
 
-export const getJobCounts = (jobs: Job[]): Record<FilterTab, number> => {
+export const getJobCounts = (jobs: JobListItem[]): Record<FilterTab, number> => {
   const byTab: Record<FilterTab, number> = {
     ready: 0,
     discovered: 0,
@@ -146,7 +146,7 @@ export const getJobCounts = (jobs: Job[]): Record<FilterTab, number> => {
   return byTab;
 };
 
-export const getSourcesWithJobs = (jobs: Job[]): JobSource[] => {
+export const getSourcesWithJobs = (jobs: JobListItem[]): JobSource[] => {
   const seen = new Set<JobSource>();
   for (const job of jobs) {
     seen.add(job.source);

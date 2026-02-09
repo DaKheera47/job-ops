@@ -1,5 +1,5 @@
 import { isMetaKeyPressed } from "@client/lib/meta-key";
-import type { Job } from "@shared/types.js";
+import type { JobListItem } from "@shared/types.js";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -29,7 +29,7 @@ import { JobCommandBarLockSuggestions } from "./JobCommandBarLockSuggestions";
 import { JobRowContent } from "./JobRowContent";
 
 interface JobCommandBarProps {
-  jobs: Job[];
+  jobs: JobListItem[];
   onSelectJob: (tab: FilterTab, jobId: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;

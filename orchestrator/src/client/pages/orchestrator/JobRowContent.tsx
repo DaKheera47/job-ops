@@ -1,9 +1,9 @@
-import type { Job } from "@shared/types.js";
+import type { JobListItem } from "@shared/types.js";
 import { cn } from "@/lib/utils";
 import { defaultStatusToken, statusTokens } from "./constants";
 
 interface JobRowContentProps {
-  job: Job;
+  job: JobListItem;
   isSelected?: boolean;
   showStatusDot?: boolean;
   statusDotClassName?: string;

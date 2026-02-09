@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types.js";
+import type { JobListItem } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,8 +9,8 @@ import { JobRowContent } from "./JobRowContent";
 
 interface JobListPanelProps {
   isLoading: boolean;
-  jobs: Job[];
-  activeJobs: Job[];
+  jobs: JobListItem[];
+  activeJobs: JobListItem[];
   selectedJobId: string | null;
   selectedJobIds: Set<string>;
   activeTab: FilterTab;

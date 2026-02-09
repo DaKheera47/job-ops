@@ -114,11 +114,8 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     void loadSelectedJob(selectedJobId);
   }, [jobListItems, loadSelectedJob, selectedJobId]);
 
-  // Temporary compatibility shim; list components still typed as Job[] until stage 3.
-  const jobs = jobListItems as unknown as Job[];
-
   return {
-    jobs,
+    jobs: jobListItems,
     selectedJob,
     stats,
     isLoading,

@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types.js";
+import type { Job, JobListItem } from "@shared/types.js";
 import {
   CheckCircle2,
   Copy,
@@ -46,7 +46,7 @@ import type { FilterTab } from "./constants";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
-  activeJobs: Job[];
+  activeJobs: JobListItem[];
   selectedJob: Job | null;
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;

@@ -1,4 +1,4 @@
-import type { Job, JobSource } from "@shared/types";
+import type { JobListItem, JobSource } from "@shared/types";
 import { useMemo } from "react";
 import type {
   FilterTab,
@@ -16,7 +16,7 @@ const getSponsorCategory = (score: number | null): SponsorFilter => {
 };
 
 export const useFilteredJobs = (
-  jobs: Job[],
+  jobs: JobListItem[],
   activeTab: FilterTab,
   sourceFilter: JobSource | "all",
   sponsorFilter: SponsorFilter,

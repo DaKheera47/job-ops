@@ -1,4 +1,4 @@
-import type { BulkJobAction, Job } from "@shared/types.js";
+import type { BulkJobAction, JobListItem } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
@@ -13,7 +13,7 @@ import type { FilterTab } from "./constants";
 const MAX_BULK_ACTION_JOB_IDS = 100;
 
 interface UseBulkJobSelectionArgs {
-  activeJobs: Job[];
+  activeJobs: JobListItem[];
   activeTab: FilterTab;
   loadJobs: () => Promise<void>;
 }

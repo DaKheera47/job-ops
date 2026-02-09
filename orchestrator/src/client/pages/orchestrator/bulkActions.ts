@@ -1,18 +1,18 @@
-import type { BulkJobActionResponse, Job } from "@shared/types";
+import type { BulkJobActionResponse, JobListItem } from "@shared/types";
 
 const SKIPPABLE_STATUSES = new Set(["discovered", "ready"]);
 
-export function canBulkSkip(jobs: Job[]): boolean {
+export function canBulkSkip(jobs: JobListItem[]): boolean {
   return (
     jobs.length > 0 && jobs.every((job) => SKIPPABLE_STATUSES.has(job.status))
   );
 }
 
-export function canBulkMoveToReady(jobs: Job[]): boolean {
+export function canBulkMoveToReady(jobs: JobListItem[]): boolean {
   return jobs.length > 0 && jobs.every((job) => job.status === "discovered");
 }
 
-export function canBulkRescore(jobs: Job[]): boolean {
+export function canBulkRescore(jobs: JobListItem[]): boolean {
   return jobs.length > 0 && jobs.every((job) => job.status !== "processing");
 }
 
