@@ -120,13 +120,14 @@ export const OrchestratorPage: React.FC = () => {
   const { settings, refreshSettings } = useSettings();
   const {
     jobs,
+    selectedJob,
     stats,
     isLoading,
     isPipelineRunning,
     setIsPipelineRunning,
     setIsRefreshPaused,
     loadJobs,
-  } = useOrchestratorData();
+  } = useOrchestratorData(selectedJobId);
   const enabledSources = useMemo(
     () => getEnabledSources(settings ?? null),
     [settings],
@@ -144,13 +145,6 @@ export const OrchestratorPage: React.FC = () => {
   );
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
   const sourcesWithJobs = useMemo(() => getSourcesWithJobs(jobs), [jobs]);
-  const selectedJob = useMemo(
-    () =>
-      selectedJobId
-        ? (jobs.find((job) => job.id === selectedJobId) ?? null)
-        : null,
-    [jobs, selectedJobId],
-  );
   const {
     selectedJobIds,
     canSkipSelected,

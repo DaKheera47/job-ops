@@ -5,6 +5,7 @@ import { useOrchestratorData } from "./useOrchestratorData";
 
 vi.mock("../../api", () => ({
   getJobs: vi.fn(),
+  getJob: vi.fn(),
   getPipelineStatus: vi.fn(),
 }));
 
@@ -45,13 +46,17 @@ describe("useOrchestratorData", () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     vi.mocked(api.getJobs).mockResolvedValue(makeResponse("initial") as any);
+    vi.mocked(api.getJob).mockResolvedValue({
+      id: "initial",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } as any);
     vi.mocked(api.getPipelineStatus).mockResolvedValue({
       isRunning: false,
     } as any);
   });
 
   it("applies newest loadJobs response when requests resolve out of order", async () => {
-    const { result } = renderHook(() => useOrchestratorData());
+    const { result } = renderHook(() => useOrchestratorData(null));
 
     await waitFor(() => {
       expect((result.current.jobs[0] as any)?.id).toBe("initial");
@@ -89,7 +94,7 @@ describe("useOrchestratorData", () => {
     vi.useFakeTimers();
     vi.mocked(api.getJobs).mockResolvedValue(makeResponse("steady") as any);
 
-    const { result } = renderHook(() => useOrchestratorData());
+    const { result } = renderHook(() => useOrchestratorData(null));
 
     await act(async () => {
       await Promise.resolve();
@@ -127,5 +132,62 @@ describe("useOrchestratorData", () => {
     expect(vi.mocked(api.getJobs).mock.calls.length).toBeGreaterThan(
       resumedBaselineCalls,
     );
+  });
+
+  it("loads full selected job details on demand", async () => {
+    vi.mocked(api.getJobs).mockResolvedValue({
+      jobs: [
+        {
+          id: "job-1",
+          title: "Role",
+          employer: "Acme",
+          source: "manual",
+          jobUrl: "https://example.com/job-1",
+          applicationLink: null,
+          datePosted: null,
+          deadline: null,
+          salary: null,
+          location: null,
+          status: "discovered",
+          suitabilityScore: null,
+          sponsorMatchScore: null,
+          jobType: null,
+          jobFunction: null,
+          salaryMinAmount: null,
+          salaryMaxAmount: null,
+          salaryCurrency: null,
+          discoveredAt: "2026-01-01T00:00:00.000Z",
+          appliedAt: null,
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+      total: 1,
+      byStatus: {
+        discovered: 1,
+        processing: 0,
+        ready: 0,
+        applied: 0,
+        skipped: 0,
+        expired: 0,
+      },
+    } as any);
+    vi.mocked(api.getJob).mockResolvedValue({
+      id: "job-1",
+      title: "Role",
+      employer: "Acme",
+      status: "discovered",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    } as any);
+
+    const { result } = renderHook(() => useOrchestratorData("job-1"));
+
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalledWith({ view: "list" });
+    });
+
+    await waitFor(() => {
+      expect(api.getJob).toHaveBeenCalledWith("job-1");
+      expect((result.current.selectedJob as any)?.id).toBe("job-1");
+    });
   });
 });
