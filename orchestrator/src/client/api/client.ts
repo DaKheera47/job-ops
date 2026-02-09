@@ -172,7 +172,8 @@ export async function getJobs(options?: {
   view?: "full" | "list";
 }): Promise<JobsListResponse<Job> | JobsListResponse<JobListItem>> {
   const params = new URLSearchParams();
-  if (options?.statuses?.length) params.set("status", options.statuses.join(","));
+  if (options?.statuses?.length)
+    params.set("status", options.statuses.join(","));
   if (options?.view) params.set("view", options.view);
   const query = params.toString();
   return fetchApi<JobsListResponse<Job> | JobsListResponse<JobListItem>>(

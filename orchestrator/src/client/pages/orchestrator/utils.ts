@@ -128,7 +128,9 @@ export const jobMatchesQuery = (job: JobListItem, query: string) => {
   return haystack.includes(normalized);
 };
 
-export const getJobCounts = (jobs: JobListItem[]): Record<FilterTab, number> => {
+export const getJobCounts = (
+  jobs: JobListItem[],
+): Record<FilterTab, number> => {
   const byTab: Record<FilterTab, number> = {
     ready: 0,
     discovered: 0,

@@ -348,7 +348,10 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     if (!parsedQuery.success) {
       return fail(
         res,
-        badRequest("Invalid jobs list query parameters", parsedQuery.error.flatten()),
+        badRequest(
+          "Invalid jobs list query parameters",
+          parsedQuery.error.flatten(),
+        ),
       );
     }
 

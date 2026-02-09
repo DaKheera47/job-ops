@@ -31,7 +31,10 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       try {
         const fullJob = await api.getJob(jobId);
         selectedJobCacheRef.current.set(jobId, fullJob);
-        if (selectedJobId === jobId && seq === selectedJobRequestSeqRef.current) {
+        if (
+          selectedJobId === jobId &&
+          seq === selectedJobRequestSeqRef.current
+        ) {
           setSelectedJob(fullJob);
         }
       } catch (error) {
@@ -99,7 +102,9 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       return;
     }
 
-    const selectedJobListItem = jobListItems.find((job) => job.id === selectedJobId);
+    const selectedJobListItem = jobListItems.find(
+      (job) => job.id === selectedJobId,
+    );
     if (!selectedJobListItem) {
       setSelectedJob(null);
       return;
