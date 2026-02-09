@@ -85,3 +85,7 @@ CI runs on Node 22. If local behavior differs, verify with Node 22 before conclu
 
 - For focused changes, run targeted tests first (for touched files/modules), then still run the full CI-parity list above before finalizing.
 - A change is considered valid only when all required checks pass without ignored failures.
+
+# Agent Instructions for plan mode
+
+plan in "stages", and each stage should be commited before moving to the next stage.
