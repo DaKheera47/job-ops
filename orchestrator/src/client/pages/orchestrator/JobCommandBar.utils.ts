@@ -138,7 +138,10 @@ export const computeJobMatchScore = (job: Job, normalizedQuery: string) => {
   );
 
   // Prefer title/company matches over location when scores tie.
-  return Math.max(titleScore + 8, employerScore + 12, locationScore);
+  // Only apply bias when a field actually matched.
+  const titleRankedScore = titleScore > 0 ? titleScore + 8 : 0;
+  const employerRankedScore = employerScore > 0 ? employerScore + 12 : 0;
+  return Math.max(titleRankedScore, employerRankedScore, locationScore);
 };
 
 export const groupJobsForCommandBar = (
