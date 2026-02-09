@@ -327,6 +327,188 @@ describe("useOrchestratorData", () => {
     expect(api.getJobsRevision).toHaveBeenCalledTimes(2);
   });
 
+  it("does not publish terminal on reload when status and SSE report the same completed run", async () => {
+    vi.mocked(api.getPipelineStatus).mockResolvedValue({
+      isRunning: false,
+      lastRun: {
+        id: "run-1",
+        status: "completed",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        completedAt: "2026-01-01T00:05:00.000Z",
+        errorMessage: null,
+      },
+    } as any);
+
+    const { result } = renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.pipelineTerminalEvent).toBeNull();
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitMessage({
+        step: "completed",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        completedAt: "2026-01-01T00:05:00.000Z",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pipelineTerminalEvent).toBeNull();
+  });
+
+  it("publishes one terminal event when active SSE transitions to completed", async () => {
+    const { result } = renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.pipelineTerminalEvent).toBeNull();
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitMessage({ step: "crawling" });
+      sse.emitMessage({
+        step: "completed",
+        startedAt: "2026-02-01T10:00:00.000Z",
+        completedAt: "2026-02-01T10:05:00.000Z",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pipelineTerminalEvent).toEqual({
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    });
+
+    act(() => {
+      sse.emitMessage({
+        step: "completed",
+        startedAt: "2026-02-01T10:00:00.000Z",
+        completedAt: "2026-02-01T10:05:00.000Z",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pipelineTerminalEvent).toEqual({
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    });
+  });
+
+  it("publishes one terminal event when polling observes running then completed", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getPipelineStatus)
+      .mockResolvedValueOnce({
+        isRunning: true,
+        lastRun: null,
+      } as any)
+      .mockResolvedValueOnce({
+        isRunning: false,
+        lastRun: {
+          id: "run-polling",
+          status: "completed",
+          startedAt: "2026-02-01T11:00:00.000Z",
+          completedAt: "2026-02-01T11:05:00.000Z",
+          errorMessage: null,
+        },
+      } as any);
+
+    const { result } = renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current.pipelineTerminalEvent).toBeNull();
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitError();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
+    });
+
+    expect(result.current.pipelineTerminalEvent).toEqual({
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    });
+  });
+
+  it("dedupes the same terminal run reported by status and SSE", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getPipelineStatus)
+      .mockResolvedValueOnce({
+        isRunning: true,
+        lastRun: null,
+      } as any)
+      .mockResolvedValueOnce({
+        isRunning: false,
+        lastRun: {
+          id: "run-dedupe",
+          status: "completed",
+          startedAt: "2026-02-01T12:00:00.000Z",
+          completedAt: "2026-02-01T12:05:00.000Z",
+          errorMessage: null,
+        },
+      } as any);
+
+    const { result } = renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitError();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
+    });
+    expect(result.current.pipelineTerminalEvent).toEqual({
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    });
+
+    act(() => {
+      sse.emitMessage({
+        step: "completed",
+        startedAt: "2026-02-01T12:00:00.000Z",
+        completedAt: "2026-02-01T12:05:00.000Z",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.pipelineTerminalEvent).toEqual({
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    });
+  });
+
   it("forces a jobs reload on terminal pipeline SSE step", async () => {
     vi.useFakeTimers();
     vi.mocked(api.getJobs)

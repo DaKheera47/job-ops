@@ -40,6 +40,12 @@ type PipelineTerminalEvent = {
   token: number;
 };
 
+type PipelineTerminalSnapshot = {
+  status: PipelineTerminalStatus;
+  errorMessage: string | null;
+  signature: string;
+};
+
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "crawling",
   "importing",
@@ -52,6 +58,23 @@ const TERMINAL_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "cancelled",
   "failed",
 ]);
+
+const buildTerminalSignature = ({
+  status,
+  startedAt,
+  completedAt,
+  runId,
+}: {
+  status: PipelineTerminalStatus;
+  startedAt?: string | null;
+  completedAt?: string | null;
+  runId?: string | null;
+}) => {
+  if (startedAt || completedAt) {
+    return `${status}:${startedAt ?? ""}:${completedAt ?? ""}`;
+  }
+  return `${status}:run:${runId ?? "unknown"}`;
+};
 
 export const useOrchestratorData = (selectedJobId: string | null) => {
   const [jobListItems, setJobListItems] = useState<JobListItem[]>([]);
@@ -70,18 +93,14 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const selectedJobCacheRef = useRef<Map<string, Job>>(new Map());
   const lastRevisionRef = useRef<string | null>(null);
   const lastSseRefreshAtRef = useRef(0);
+  const hasHydratedPipelineStateRef = useRef(false);
+  const seenRunningThisSessionRef = useRef(false);
+  const baselineTerminalSignatureRef = useRef<string | null>(null);
   const lastTerminalSignatureRef = useRef<string | null>(null);
-  const lastTerminalNotificationKeyRef = useRef<string | null>(null);
   const terminalEventTokenRef = useRef(0);
 
   const publishPipelineTerminal = useCallback(
-    (
-      status: PipelineTerminalStatus,
-      errorMessage: string | null,
-      dedupeKey: string,
-    ) => {
-      if (dedupeKey === lastTerminalNotificationKeyRef.current) return;
-      lastTerminalNotificationKeyRef.current = dedupeKey;
+    (status: PipelineTerminalStatus, errorMessage: string | null) => {
       terminalEventTokenRef.current += 1;
       setPipelineTerminalEvent({
         status,
@@ -90,6 +109,55 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       });
     },
     [],
+  );
+
+  const observePipelineState = useCallback(
+    (snapshot: {
+      isRunning: boolean;
+      terminal: PipelineTerminalSnapshot | null;
+    }) => {
+      setIsPipelineRunning(snapshot.isRunning);
+      if (snapshot.isRunning) {
+        seenRunningThisSessionRef.current = true;
+      }
+
+      if (!snapshot.terminal) {
+        if (!hasHydratedPipelineStateRef.current) {
+          hasHydratedPipelineStateRef.current = true;
+        }
+        return;
+      }
+
+      const signature = snapshot.terminal.signature;
+      const isFirstPipelineObservation = !hasHydratedPipelineStateRef.current;
+
+      if (isFirstPipelineObservation) {
+        hasHydratedPipelineStateRef.current = true;
+        baselineTerminalSignatureRef.current = signature;
+        lastTerminalSignatureRef.current = signature;
+        return;
+      }
+
+      if (signature === lastTerminalSignatureRef.current) {
+        return;
+      }
+
+      lastTerminalSignatureRef.current = signature;
+      if (!seenRunningThisSessionRef.current) {
+        return;
+      }
+
+      if (signature === baselineTerminalSignatureRef.current) {
+        return;
+      }
+
+      seenRunningThisSessionRef.current = false;
+      publishPipelineTerminal(
+        snapshot.terminal.status,
+        snapshot.terminal.errorMessage,
+      );
+    },
+    [publishPipelineTerminal],
   );
 
   const loadSelectedJob = useCallback(
@@ -145,24 +213,39 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const checkPipelineStatus = useCallback(async () => {
     try {
       const status = await api.getPipelineStatus();
-      setIsPipelineRunning(status.isRunning);
       const terminalStatus = status.lastRun?.status;
+
+      if (status.isRunning) {
+        observePipelineState({ isRunning: true, terminal: null });
+        return;
+      }
+
       if (
-        status.isRunning ||
         !terminalStatus ||
         !TERMINAL_PIPELINE_STEPS.has(terminalStatus as PipelineProgressStep)
       ) {
+        observePipelineState({ isRunning: false, terminal: null });
         return;
       }
-      publishPipelineTerminal(
-        terminalStatus as PipelineTerminalStatus,
-        status.lastRun?.errorMessage ?? null,
-        `status:${status.lastRun?.id ?? "unknown"}:${terminalStatus}:${status.lastRun?.completedAt ?? ""}`,
-      );
+
+      const terminal = terminalStatus as PipelineTerminalStatus;
+      observePipelineState({
+        isRunning: false,
+        terminal: {
+          status: terminal,
+          errorMessage: status.lastRun?.errorMessage ?? null,
+          signature: buildTerminalSignature({
+            status: terminal,
+            startedAt: status.lastRun?.startedAt ?? null,
+            completedAt: status.lastRun?.completedAt ?? null,
+            runId: status.lastRun?.id ?? null,
+          }),
+        },
+      });
     } catch {
       // Ignore errors
     }
-  }, [publishPipelineTerminal]);
+  }, [observePipelineState]);
 
   const checkForJobChanges = useCallback(async () => {
     if (isRefreshPaused || !isDocumentVisible()) return;
@@ -185,6 +268,11 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     void loadJobs();
     void checkPipelineStatus();
   }, [checkPipelineStatus, loadJobs]);
+
+  useEffect(() => {
+    if (!isPipelineRunning) return;
+    seenRunningThisSessionRef.current = true;
+  }, [isPipelineRunning]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -257,9 +345,14 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       }
 
       const typedStep = step as PipelineProgressStep;
-      setIsPipelineRunning(ACTIVE_PIPELINE_STEPS.has(typedStep));
+      const isActiveStep = ACTIVE_PIPELINE_STEPS.has(typedStep);
+      if (isActiveStep) {
+        observePipelineState({ isRunning: true, terminal: null });
+      } else if (typedStep === "idle") {
+        observePipelineState({ isRunning: false, terminal: null });
+      }
 
-      if (ACTIVE_PIPELINE_STEPS.has(typedStep)) {
+      if (isActiveStep) {
         const now = Date.now();
         if (now - lastSseRefreshAtRef.current >= 2500) {
           lastSseRefreshAtRef.current = now;
@@ -270,16 +363,19 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
 
       if (TERMINAL_PIPELINE_STEPS.has(typedStep)) {
         const eventPayload = payload as PipelineProgressEvent;
-        const terminalSignature = `${typedStep}:${eventPayload.startedAt ?? ""}:${
-          eventPayload.completedAt ?? ""
-        }`;
-        if (terminalSignature === lastTerminalSignatureRef.current) return;
-        lastTerminalSignatureRef.current = terminalSignature;
-        publishPipelineTerminal(
-          typedStep as PipelineTerminalStatus,
-          eventPayload.error ?? null,
-          `sse:${terminalSignature}`,
-        );
+        const terminal = typedStep as PipelineTerminalStatus;
+        observePipelineState({
+          isRunning: false,
+          terminal: {
+            status: terminal,
+            errorMessage: eventPayload.error ?? null,
+            signature: buildTerminalSignature({
+              status: terminal,
+              startedAt: eventPayload.startedAt,
+              completedAt: eventPayload.completedAt,
+            }),
+          },
+        });
         void loadJobs();
       }
     };
@@ -291,7 +387,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     return () => {
       eventSource.close();
     };
-  }, [checkForJobChanges, loadJobs, publishPipelineTerminal]);
+  }, [checkForJobChanges, loadJobs, observePipelineState]);
 
   useEffect(() => {
     if (isPipelineSseConnected) return;
