@@ -9,7 +9,6 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-  CommandShortcut,
 } from "@/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { FilterTab } from "./constants";
@@ -23,11 +22,10 @@ import {
   resolveLockFromAliasPrefix,
   type StatusLock,
   stripLeadingAtToken,
-  toStateLabel,
 } from "./JobCommandBar.utils";
 import { JobCommandBarLockBadge } from "./JobCommandBarLockBadge";
 import { JobCommandBarLockSuggestions } from "./JobCommandBarLockSuggestions";
-import { JobStatusBadge } from "./JobStatusBadge";
+import { JobRowContent } from "./JobRowContent";
 
 interface JobCommandBarProps {
   jobs: Job[];
@@ -160,21 +158,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
                         onSelectJob(getFilterTab(job.status), job.id);
                       }}
                     >
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate font-medium">
-                          {job.title}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {job.employer}
-                          {job.location ? ` - ${job.location}` : ""}
-                        </span>
-                      </div>
-                      <CommandShortcut className="ml-2">
-                        <JobStatusBadge
-                          status={job.status}
-                          label={toStateLabel(job.status)}
-                        />
-                      </CommandShortcut>
+                      <JobRowContent job={job} />
                     </CommandItem>
                   );
                 })}

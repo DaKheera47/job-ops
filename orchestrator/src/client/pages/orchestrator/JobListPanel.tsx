@@ -4,7 +4,8 @@ import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { FilterTab } from "./constants";
-import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
+import { emptyStateCopy } from "./constants";
+import { JobRowContent } from "./JobRowContent";
 
 interface JobListPanelProps {
   isLoading: boolean;
@@ -76,8 +77,6 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
         {activeJobs.map((job) => {
           const isSelected = job.id === selectedJobId;
           const isChecked = selectedJobIds.has(job.id);
-          const hasScore = job.suitabilityScore != null;
-          const statusToken = statusTokens[job.status] ?? defaultStatusToken;
           return (
             <div
               key={job.id}
@@ -107,65 +106,14 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                     : "opacity-100 pointer-events-auto sm:opacity-0 sm:pointer-events-none sm:group-hover:pointer-events-auto sm:group-hover:opacity-100",
                 )}
               />
-              {/* Single status indicator: subtle dot */}
-              <span
-                className={cn(
-                  "h-2 w-2 rounded-full shrink-0",
-                  statusToken.dot,
-                  !isSelected && "opacity-70",
-                )}
-                title={statusToken.label}
-              />
-
               <button
                 type="button"
                 onClick={() => onSelectJob(job.id)}
                 data-testid={`select-${job.id}`}
-                className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                className="flex min-w-0 flex-1 cursor-pointer text-left"
                 aria-pressed={isSelected}
               >
-                {/* Primary content: title strongest, company secondary */}
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={cn(
-                      "truncate text-sm leading-tight",
-                      isSelected ? "font-semibold" : "font-medium",
-                    )}
-                  >
-                    {job.title}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground mt-0.5">
-                    {job.employer}
-                    {job.location && (
-                      <span className="before:content-['_in_']">
-                        {job.location}
-                      </span>
-                    )}
-                  </div>
-                  {job.salary?.trim() && (
-                    <div className="truncate text-xs text-muted-foreground mt-0.5">
-                      {job.salary}
-                    </div>
-                  )}
-                </div>
-
-                {/* Single triage cue: score only (status shown via dot) */}
-                {hasScore && (
-                  <div className="shrink-0 text-right">
-                    <span
-                      className={cn(
-                        "text-xs tabular-nums",
-                        (job.suitabilityScore ?? 0) >= 70
-                          ? "text-emerald-400/90"
-                          : (job.suitabilityScore ?? 0) >= 50
-                            ? "text-foreground/60"
-                            : "text-muted-foreground/60",
-                      )}
-                    >
-                      {job.suitabilityScore}
-                    </span>
-                  </div>
-                )}
+                <JobRowContent job={job} isSelected={isSelected} />
               </button>
             </div>
           );

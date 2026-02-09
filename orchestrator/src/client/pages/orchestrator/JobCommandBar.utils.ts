@@ -1,6 +1,5 @@
 import type { Job, JobStatus } from "@shared/types.js";
 import type { FilterTab } from "./constants";
-import { defaultStatusToken, statusTokens } from "./constants";
 
 export type CommandGroupId = "ready" | "discovered" | "applied" | "other";
 export type StatusLock =
@@ -127,12 +126,6 @@ export const jobMatchesLock = (job: Job, lock: StatusLock) => {
   if (lock === "skipped") return job.status === "skipped";
   if (lock === "expired") return job.status === "expired";
   return false;
-};
-
-export const toStateLabel = (status: JobStatus) => {
-  if (status === "processing") return "Discovered";
-  if (status === "discovered") return "Discovered";
-  return (statusTokens[status] ?? defaultStatusToken).label;
 };
 
 export const computeJobMatchScore = (job: Job, normalizedQuery: string) => {
