@@ -132,6 +132,91 @@ describe.sequential("Jobs API routes", () => {
     expect(res.status).toBe(404);
   });
 
+  it("updates core job detail fields", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Original Title",
+      employer: "Original Employer",
+      jobUrl: "https://example.com/job/core-fields",
+      jobDescription: "Original description",
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "Updated Title",
+        employer: "Updated Employer",
+        jobUrl: "https://example.com/job/core-fields-updated",
+        applicationLink: "https://example.com/apply/core-fields-updated",
+        location: "London, UK",
+        salary: "GBP 100k",
+        deadline: "2026-03-31",
+        jobDescription: "Updated description",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.title).toBe("Updated Title");
+    expect(body.data.employer).toBe("Updated Employer");
+    expect(body.data.jobUrl).toBe("https://example.com/job/core-fields-updated");
+    expect(body.data.applicationLink).toBe(
+      "https://example.com/apply/core-fields-updated",
+    );
+    expect(body.data.location).toBe("London, UK");
+    expect(body.data.salary).toBe("GBP 100k");
+    expect(body.data.deadline).toBe("2026-03-31");
+    expect(body.data.jobDescription).toBe("Updated description");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("returns 404 when patching a missing job", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/missing-id`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Updated Title" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("returns 409 when patching to a duplicate job URL", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const first = await createJob({
+      source: "manual",
+      title: "First",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/first",
+      jobDescription: "First description",
+    });
+    const second = await createJob({
+      source: "manual",
+      title: "Second",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/second",
+      jobDescription: "Second description",
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs/${second.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobUrl: first.jobUrl }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("CONFLICT");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
   it("validates job updates and supports skip/delete flow", async () => {
     const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
@@ -152,6 +237,17 @@ describe.sequential("Jobs API routes", () => {
     expect(badBody.ok).toBe(false);
     expect(badBody.error.code).toBe("INVALID_REQUEST");
     expect(typeof badBody.meta.requestId).toBe("string");
+
+    const invalidCoreRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ employer: "   " }),
+    });
+    const invalidCoreBody = await invalidCoreRes.json();
+    expect(invalidCoreRes.status).toBe(400);
+    expect(invalidCoreBody.ok).toBe(false);
+    expect(invalidCoreBody.error.code).toBe("INVALID_REQUEST");
+    expect(typeof invalidCoreBody.meta.requestId).toBe("string");
 
     const patchRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
       method: "PATCH",

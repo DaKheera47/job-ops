@@ -16,7 +16,7 @@ import {
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import { AppError, badRequest } from "../../infra/errors";
+import { AppError, badRequest, conflict } from "../../infra/errors";
 import {
   generateFinalPdf,
   processJob,
@@ -107,6 +107,13 @@ async function notifyJobCompleteWebhook(job: Job) {
  * PATCH /api/jobs/:id - Update a job
  */
 const updateJobSchema = z.object({
+  title: z.string().trim().min(1).max(500).optional(),
+  employer: z.string().trim().min(1).max(500).optional(),
+  jobUrl: z.string().trim().min(1).max(2000).url().optional(),
+  applicationLink: z.string().trim().max(2000).url().nullable().optional(),
+  location: z.string().trim().max(200).nullable().optional(),
+  salary: z.string().trim().max(200).nullable().optional(),
+  deadline: z.string().trim().max(100).nullable().optional(),
   status: z
     .enum([
       "discovered",
@@ -119,7 +126,7 @@ const updateJobSchema = z.object({
     .optional(),
   outcome: z.enum(APPLICATION_OUTCOMES).nullable().optional(),
   closedAt: z.number().int().nullable().optional(),
-  jobDescription: z.string().optional(),
+  jobDescription: z.string().trim().max(40000).nullable().optional(),
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
   tailoredSummary: z.string().optional(),
@@ -157,6 +164,11 @@ const updateJobSchema = z.object({
   sponsorMatchScore: z.number().min(0).max(100).optional(),
   sponsorMatchNames: z.string().optional(),
 });
+
+function isJobUrlConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /UNIQUE constraint failed: jobs\.job_url/i.test(error.message);
+}
 
 const transitionStageSchema = z.object({
   toStage: z.enum([...APPLICATION_STAGES, "no_change"]),
@@ -674,6 +686,8 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
     const err =
       error instanceof z.ZodError
         ? badRequest("Invalid job update request", error.flatten())
+        : isJobUrlConflictError(error)
+          ? conflict("Another job already uses that job URL")
         : error instanceof AppError
           ? error
           : new AppError({

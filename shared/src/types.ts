@@ -295,10 +295,17 @@ export interface ManualJobFetchResponse {
 }
 
 export interface UpdateJobInput {
+  title?: string;
+  employer?: string;
+  jobUrl?: string;
+  applicationLink?: string | null;
+  location?: string | null;
+  salary?: string | null;
+  deadline?: string | null;
   status?: JobStatus;
   outcome?: JobOutcome | null;
   closedAt?: number | null;
-  jobDescription?: string;
+  jobDescription?: string | null;
   suitabilityScore?: number;
   suitabilityReason?: string;
   tailoredSummary?: string;
