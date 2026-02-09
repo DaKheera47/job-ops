@@ -5,12 +5,16 @@ import { defaultStatusToken, statusTokens } from "./constants";
 interface JobRowContentProps {
   job: Job;
   isSelected?: boolean;
+  showStatusDot?: boolean;
+  statusDotClassName?: string;
   className?: string;
 }
 
 export const JobRowContent = ({
   job,
   isSelected = false,
+  showStatusDot = true,
+  statusDotClassName,
   className,
 }: JobRowContentProps) => {
   const hasScore = job.suitabilityScore != null;
@@ -23,6 +27,8 @@ export const JobRowContent = ({
           "h-2 w-2 rounded-full shrink-0",
           statusToken.dot,
           !isSelected && "opacity-70",
+          statusDotClassName,
+          !showStatusDot && "hidden",
         )}
         title={statusToken.label}
       />

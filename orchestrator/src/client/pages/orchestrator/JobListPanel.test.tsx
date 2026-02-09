@@ -169,4 +169,61 @@ describe("JobListPanel", () => {
     fireEvent.click(screen.getByLabelText("Select all filtered jobs"));
     expect(onToggleSelectAll).toHaveBeenCalledWith(true);
   });
+
+  it("shows checkbox only for selected or checked rows", () => {
+    const jobs = [createJob({ id: "job-1", title: "Backend Engineer" })];
+    const { rerender } = render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Select Backend Engineer")).toHaveClass(
+      "opacity-0",
+    );
+
+    rerender(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId="job-1"
+        selectedJobIds={new Set()}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Select Backend Engineer")).toHaveClass(
+      "opacity-100",
+    );
+
+    rerender(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId={null}
+        selectedJobIds={new Set(["job-1"])}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Select Backend Engineer")).toHaveClass(
+      "opacity-100",
+    );
+  });
 });
