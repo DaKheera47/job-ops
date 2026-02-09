@@ -62,6 +62,12 @@ describe.sequential("Jobs API routes", () => {
     expect(fullBody.ok).toBe(true);
     expect(fullBody.data.jobs[0].title).toBe("List View Role");
     expect(fullBody.data.jobs[0]).toHaveProperty("jobDescription");
+
+    const defaultRes = await fetch(`${baseUrl}/api/jobs`);
+    const defaultBody = await defaultRes.json();
+    expect(defaultRes.status).toBe(200);
+    expect(defaultBody.ok).toBe(true);
+    expect(defaultBody.data.jobs[0]).not.toHaveProperty("jobDescription");
   });
 
   it("rejects invalid jobs list view query", async () => {

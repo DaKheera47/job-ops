@@ -356,7 +356,7 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     const statuses = statusFilter?.split(",").filter(Boolean) as
       | JobStatus[]
       | undefined;
-    const view = parsedQuery.data.view ?? "full";
+    const view = parsedQuery.data.view ?? "list";
 
     const jobs: Array<Job | JobListItem> =
       view === "list"

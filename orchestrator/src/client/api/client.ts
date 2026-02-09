@@ -158,13 +158,14 @@ async function fetchApi<T>(
 }
 
 // Jobs API
+export function getJobs(): Promise<JobsListResponse<JobListItem>>;
 export function getJobs(options: {
   statuses?: string[];
-  view: "list";
+  view?: "list";
 }): Promise<JobsListResponse<JobListItem>>;
 export function getJobs(options?: {
   statuses?: string[];
-  view?: "full";
+  view: "full";
 }): Promise<JobsListResponse<Job>>;
 export async function getJobs(options?: {
   statuses?: string[];
