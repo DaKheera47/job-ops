@@ -60,7 +60,10 @@ export const HomePage: React.FC = () => {
     setIsLoading(true);
 
     api
-      .getJobs()
+      .getJobs({
+        statuses: ["applied"],
+        view: "list",
+      })
       .then(async (response) => {
         if (!isMounted) return;
         const appliedDates = response.jobs.map((job) => job.appliedAt);
