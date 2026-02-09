@@ -649,16 +649,48 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
     const job = await jobsRepo.updateJob(req.params.id, input);
 
     if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      const err = new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found",
+      });
+      logger.warn("Job update failed", {
+        route: "PATCH /api/jobs/:id",
+        jobId: req.params.id,
+        status: err.status,
+        code: err.code,
+      });
+      return fail(res, err);
     }
 
-    res.json({ success: true, data: job });
+    logger.info("Job updated", {
+      route: "PATCH /api/jobs/:id",
+      jobId: req.params.id,
+      updatedFields: Object.keys(input),
+    });
+
+    ok(res, job);
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
-    }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    const err =
+      error instanceof z.ZodError
+        ? badRequest("Invalid job update request", error.flatten())
+        : error instanceof AppError
+          ? error
+          : new AppError({
+              status: 500,
+              code: "INTERNAL_ERROR",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+
+    logger.error("Job update failed", {
+      route: "PATCH /api/jobs/:id",
+      jobId: req.params.id,
+      status: err.status,
+      code: err.code,
+      details: err.details,
+    });
+
+    fail(res, err);
   }
 });
 

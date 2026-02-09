@@ -147,7 +147,22 @@ describe.sequential("Jobs API routes", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ suitabilityScore: 1000 }),
     });
+    const badBody = await badRes.json();
     expect(badRes.status).toBe(400);
+    expect(badBody.ok).toBe(false);
+    expect(badBody.error.code).toBe("INVALID_REQUEST");
+    expect(typeof badBody.meta.requestId).toBe("string");
+
+    const patchRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ suitabilityScore: 77 }),
+    });
+    const patchBody = await patchRes.json();
+    expect(patchRes.status).toBe(200);
+    expect(patchBody.ok).toBe(true);
+    expect(patchBody.data.suitabilityScore).toBe(77);
+    expect(typeof patchBody.meta.requestId).toBe("string");
 
     const skipRes = await fetch(`${baseUrl}/api/jobs/${job.id}/skip`, {
       method: "POST",
