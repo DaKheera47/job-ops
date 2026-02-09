@@ -330,6 +330,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   if (!tailorProps) return null;
 
   const finalizeVariant = tailorProps.variant ?? "discovered";
+  const hasExistingPdf = Boolean(props.job.pdfPath);
 
   return (
     <div className="flex h-full flex-col">
@@ -420,7 +421,12 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         {!canFinalize && (
           <p className="text-center text-[10px] text-muted-foreground">
             Add a summary and select at least one project to{" "}
-            {finalizeVariant === "ready" ? "regenerate" : "finalize"}.
+            {finalizeVariant === "ready"
+              ? hasExistingPdf
+                ? "regenerate"
+                : "generate"
+              : "finalize"}
+            .
           </p>
         )}
         <Button
@@ -432,22 +438,28 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {finalizeVariant === "ready"
-                ? "Regenerating PDF..."
-                : "Finalizing & generating PDF..."}
+                ? hasExistingPdf
+                  ? "Regenerating PDF..."
+                  : "Generating PDF..."
+                : "Finalizing..."}
             </>
           ) : (
             <>
               <Check className="mr-2 h-4 w-4" />
               {finalizeVariant === "ready"
-                ? "Regenerate PDF"
+                ? hasExistingPdf
+                  ? "Regenerate PDF"
+                  : "Generate PDF"
                 : "Finalize & Move to Ready"}
             </>
           )}
         </Button>
         <p className="text-center text-[10px] text-muted-foreground/70">
           {finalizeVariant === "ready"
-            ? "This will save your changes and regenerate the tailored PDF."
-            : "This will generate your tailored PDF and move the job to Ready."}
+            ? hasExistingPdf
+              ? "This will save your changes and regenerate the tailored PDF."
+              : "This will save your changes and generate a tailored PDF."
+            : "This will save your changes and move the job to Ready."}
         </p>
       </div>
     </div>

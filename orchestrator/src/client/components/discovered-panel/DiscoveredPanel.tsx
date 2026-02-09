@@ -74,10 +74,12 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     if (!job) return;
     try {
       setIsFinalizing(true);
-      await api.processJob(job.id);
+      const processedJob = await api.processJob(job.id);
 
       toast.success("Job moved to Ready", {
-        description: "Your tailored PDF has been generated.",
+        description: processedJob.pdfPath
+          ? "Your tailored PDF has been generated."
+          : "Your tailored summary and keywords are ready to copy.",
       });
 
       onJobMoved(job.id);

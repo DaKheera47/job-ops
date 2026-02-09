@@ -5,7 +5,7 @@
 export type JobStatus =
   | "discovered" // Crawled but not processed
   | "processing" // Currently generating resume
-  | "ready" // PDF generated, waiting for user to apply
+  | "ready" // Application kit prepared, waiting for user to apply
   | "applied" // User marked as applied (added to Notion)
   | "skipped" // User skipped this job
   | "expired"; // Deadline passed

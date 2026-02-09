@@ -46,6 +46,7 @@ import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import { TailorMode } from "./discovered-panel/TailorMode";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
+import { parseTailoredSkills } from "./tailoring-utils";
 
 type PanelMode = "ready" | "tailor";
 
@@ -116,6 +117,38 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const selectedProjectIds = useMemo(() => {
     return job?.selectedProjectIds?.split(",").filter(Boolean) ?? [];
   }, [job?.selectedProjectIds]);
+  const hasPdf = Boolean(job?.pdfPath);
+  const summaryText = job?.tailoredSummary?.trim() ?? "";
+  const headlineText = job?.tailoredHeadline?.trim() ?? "";
+  const skillGroups = useMemo(
+    () => parseTailoredSkills(job?.tailoredSkills ?? null),
+    [job?.tailoredSkills],
+  );
+  const keywordsText = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          skillGroups.flatMap((group) =>
+            group.keywords.map((keyword) => keyword.trim()).filter(Boolean),
+          ),
+        ),
+      ).join(", "),
+    [skillGroups],
+  );
+  const fullTailoringPayload = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          summary: summaryText,
+          headline: headlineText,
+          skills: skillGroups,
+          selectedProjectIds,
+        },
+        null,
+        2,
+      ),
+    [summaryText, headlineText, skillGroups, selectedProjectIds],
+  );
 
   const handleUndoApplied = useCallback(
     async (jobId: string) => {
@@ -185,16 +218,20 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     try {
       setIsRegenerating(true);
       await api.generateJobPdf(job.id);
-      toast.success("PDF regenerated");
+      toast.success(hasPdf ? "PDF regenerated" : "PDF generated");
       await onJobUpdated();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
+        error instanceof Error
+          ? error.message
+          : hasPdf
+            ? "Failed to regenerate PDF"
+            : "Failed to generate PDF";
       toast.error(message);
     } finally {
       setIsRegenerating(false);
     }
-  }, [job, onJobUpdated]);
+  }, [job, onJobUpdated, hasPdf]);
 
   const handleRescore = useCallback(
     () => rescoreJob(job?.id),
@@ -234,17 +271,38 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     try {
       setIsRegenerating(true);
       await api.generateJobPdf(job.id);
-      toast.success("PDF regenerated");
+      toast.success(hasPdf ? "PDF regenerated" : "PDF generated");
       await onJobUpdated();
       setMode("ready");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
+        error instanceof Error
+          ? error.message
+          : hasPdf
+            ? "Failed to regenerate PDF"
+            : "Failed to generate PDF";
       toast.error(message);
     } finally {
       setIsRegenerating(false);
     }
-  }, [job, onJobUpdated]);
+  }, [job, onJobUpdated, hasPdf]);
+
+  const handleCopyTailoringPart = useCallback(
+    async (label: string, value: string) => {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        toast.info(`No ${label.toLowerCase()} available to copy`);
+        return;
+      }
+      try {
+        await copyTextToClipboard(trimmed);
+        toast.success(`${label} copied`);
+      } catch {
+        toast.error(`Could not copy ${label.toLowerCase()}`);
+      }
+    },
+    [],
+  );
 
   // Empty state
   if (!job) {
@@ -294,32 +352,80 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       ───────────────────────────────────────────────────────────────────── */}
       <div className="pb-4 border-b border-border/40">
         <div className="grid gap-2 sm:grid-cols-2">
-          {/* Show PDF - to verify quickly without download */}
-          <Button
-            asChild
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-          >
-            <a href={pdfHref} target="_blank" rel="noopener noreferrer">
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">View PDF</span>
-            </a>
-          </Button>
+          {hasPdf ? (
+            <>
+              {/* Show PDF - to verify quickly without download */}
+              <Button
+                asChild
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+              >
+                <a href={pdfHref} target="_blank" rel="noopener noreferrer">
+                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">View PDF</span>
+                </a>
+              </Button>
 
-          {/* Download PDF - primary artifact action */}
-          <Button
-            asChild
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-          >
-            <a
-              href={pdfHref}
-              download={`${safeFilenamePart(personName)}_${safeFilenamePart(job.employer)}.pdf`}
-            >
-              <Download className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Download PDF</span>
-            </a>
-          </Button>
+              {/* Download PDF - primary artifact action */}
+              <Button
+                asChild
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+              >
+                <a
+                  href={pdfHref}
+                  download={`${safeFilenamePart(personName)}_${safeFilenamePart(job.employer)}.pdf`}
+                >
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Download PDF</span>
+                </a>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+                onClick={() => void handleCopyTailoringPart("Summary", summaryText)}
+              >
+                <Copy className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Copy Summary</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+                onClick={() =>
+                  void handleCopyTailoringPart("Headline", headlineText)
+                }
+              >
+                <Copy className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Copy Headline</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+                onClick={() =>
+                  void handleCopyTailoringPart("Keywords", keywordsText)
+                }
+              >
+                <Copy className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Copy Keywords</span>
+              </Button>
+              <Button
+                variant="outline"
+                className="h-9 w-full gap-1 px-2 text-xs"
+                onClick={() =>
+                  void handleCopyTailoringPart(
+                    "Tailoring Payload",
+                    fullTailoringPayload,
+                  )
+                }
+              >
+                <Copy className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Copy Full Tailoring</span>
+              </Button>
+            </>
+          )}
 
           {/* Open job - to verify before applying */}
           <Button
@@ -428,7 +534,13 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <RefreshCcw
                 className={cn("mr-2 h-4 w-4", isRegenerating && "animate-spin")}
               />
-              {isRegenerating ? "Regenerating..." : "Regenerate PDF"}
+              {isRegenerating
+                ? hasPdf
+                  ? "Regenerating..."
+                  : "Generating..."
+                : hasPdf
+                  ? "Regenerate PDF"
+                  : "Generate PDF"}
             </DropdownMenuItem>
 
             <DropdownMenuItem onSelect={handleRescore} disabled={isRescoring}>

@@ -18,7 +18,7 @@ export const ALL_JOB_STATUSES: JobStatus[] = [
 export const STATUS_DESCRIPTIONS: Record<JobStatus, string> = {
   discovered: "Crawled but not processed",
   processing: "Currently generating resume",
-  ready: "PDF generated, waiting for user to apply",
+  ready: "Application kit ready, waiting for user to apply",
   applied: "User marked as applied",
   skipped: "User skipped this job",
   expired: "Deadline passed",
