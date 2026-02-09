@@ -12,7 +12,6 @@ import { onboardingRouter } from "./routes/onboarding";
 import { pipelineRouter } from "./routes/pipeline";
 import { profileRouter } from "./routes/profile";
 import { settingsRouter } from "./routes/settings";
-import { ukVisaJobsRouter } from "./routes/ukvisajobs";
 import { visaSponsorsRouter } from "./routes/visa-sponsors";
 import { webhookRouter } from "./routes/webhook";
 
@@ -23,7 +22,6 @@ apiRouter.use("/demo", demoRouter);
 apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/pipeline", pipelineRouter);
 apiRouter.use("/manual-jobs", manualJobsRouter);
-apiRouter.use("/ukvisajobs", ukVisaJobsRouter);
 apiRouter.use("/webhook", webhookRouter);
 apiRouter.use("/profile", profileRouter);
 apiRouter.use("/database", databaseRouter);

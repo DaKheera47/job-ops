@@ -1,5 +1,4 @@
 import {
-  Briefcase,
   Home,
   LayoutDashboard,
   Settings,
@@ -22,7 +21,6 @@ export const NAV_LINKS: NavLink[] = [
     activePaths: ["/ready", "/discovered", "/applied", "/all"],
   },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
-  { to: "/ukvisajobs", label: "UK Visa Jobs", icon: Briefcase },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
