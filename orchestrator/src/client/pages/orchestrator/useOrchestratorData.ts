@@ -196,6 +196,15 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   }, [checkForJobChanges, isRefreshPaused]);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isDocumentVisible() || isRefreshPaused) return;
+      void loadJobs();
+    }, 600000);
+
+    return () => clearInterval(interval);
+  }, [isRefreshPaused, loadJobs]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
 
     const refreshFromVisibilitySignal = () => {

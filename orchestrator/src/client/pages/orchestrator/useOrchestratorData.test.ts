@@ -381,6 +381,57 @@ describe("useOrchestratorData", () => {
     expect(api.getPipelineStatus).toHaveBeenCalledTimes(1);
   });
 
+  it("runs a safety full refresh every 10 minutes when visible", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeResponse("steady", "rev-steady") as any,
+    );
+    vi.mocked(api.getJobsRevision).mockResolvedValue({
+      revision: "rev-steady",
+      latestUpdatedAt: "2026-01-01T00:00:00.000Z",
+      total: 1,
+      statusFilter: null,
+    } as any);
+
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobs).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(600000);
+      await Promise.resolve();
+    });
+    expect(api.getJobs).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(600000);
+      await Promise.resolve();
+    });
+    expect(api.getJobs).toHaveBeenCalledTimes(2);
+  });
+
+  it("closes pipeline SSE connection on unmount", async () => {
+    const { unmount } = renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    const sse = MockEventSource.instances[0];
+    expect(sse.close).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(sse.close).toHaveBeenCalledTimes(1);
+  });
+
   it("loads full selected job details on demand", async () => {
     vi.mocked(api.getJobs).mockResolvedValue({
       jobs: [
