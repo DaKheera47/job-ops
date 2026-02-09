@@ -29,6 +29,15 @@ type PipelineProgressEvent = {
   step: PipelineProgressStep;
   startedAt?: string;
   completedAt?: string;
+  error?: string;
+};
+
+type PipelineTerminalStatus = "completed" | "cancelled" | "failed";
+
+type PipelineTerminalEvent = {
+  status: PipelineTerminalStatus;
+  errorMessage: string | null;
+  token: number;
 };
 
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
@@ -51,6 +60,8 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
   const [isPipelineSseConnected, setIsPipelineSseConnected] = useState(false);
+  const [pipelineTerminalEvent, setPipelineTerminalEvent] =
+    useState<PipelineTerminalEvent | null>(null);
   const [isRefreshPaused, setIsRefreshPaused] = useState(false);
   const requestSeqRef = useRef(0);
   const latestAppliedSeqRef = useRef(0);
@@ -60,6 +71,26 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const lastRevisionRef = useRef<string | null>(null);
   const lastSseRefreshAtRef = useRef(0);
   const lastTerminalSignatureRef = useRef<string | null>(null);
+  const lastTerminalNotificationKeyRef = useRef<string | null>(null);
+  const terminalEventTokenRef = useRef(0);
+
+  const publishPipelineTerminal = useCallback(
+    (
+      status: PipelineTerminalStatus,
+      errorMessage: string | null,
+      dedupeKey: string,
+    ) => {
+      if (dedupeKey === lastTerminalNotificationKeyRef.current) return;
+      lastTerminalNotificationKeyRef.current = dedupeKey;
+      terminalEventTokenRef.current += 1;
+      setPipelineTerminalEvent({
+        status,
+        errorMessage,
+        token: terminalEventTokenRef.current,
+      });
+    },
+    [],
+  );
 
   const loadSelectedJob = useCallback(
     async (jobId: string) => {
@@ -115,10 +146,23 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     try {
       const status = await api.getPipelineStatus();
       setIsPipelineRunning(status.isRunning);
+      const terminalStatus = status.lastRun?.status;
+      if (
+        status.isRunning ||
+        !terminalStatus ||
+        !TERMINAL_PIPELINE_STEPS.has(terminalStatus as PipelineProgressStep)
+      ) {
+        return;
+      }
+      publishPipelineTerminal(
+        terminalStatus as PipelineTerminalStatus,
+        status.lastRun?.errorMessage ?? null,
+        `status:${status.lastRun?.id ?? "unknown"}:${terminalStatus}:${status.lastRun?.completedAt ?? ""}`,
+      );
     } catch {
       // Ignore errors
     }
-  }, []);
+  }, [publishPipelineTerminal]);
 
   const checkForJobChanges = useCallback(async () => {
     if (isRefreshPaused || !isDocumentVisible()) return;
@@ -222,6 +266,11 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         }`;
         if (terminalSignature === lastTerminalSignatureRef.current) return;
         lastTerminalSignatureRef.current = terminalSignature;
+        publishPipelineTerminal(
+          typedStep as PipelineTerminalStatus,
+          eventPayload.error ?? null,
+          `sse:${terminalSignature}`,
+        );
         void loadJobs();
       }
     };
@@ -233,7 +282,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     return () => {
       eventSource.close();
     };
-  }, [checkForJobChanges, loadJobs]);
+  }, [checkForJobChanges, loadJobs, publishPipelineTerminal]);
 
   useEffect(() => {
     if (isPipelineSseConnected) return;
@@ -276,6 +325,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     isLoading,
     isPipelineRunning,
     setIsPipelineRunning,
+    pipelineTerminalEvent,
     isRefreshPaused,
     setIsRefreshPaused,
     loadJobs,

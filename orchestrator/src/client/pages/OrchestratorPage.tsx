@@ -125,6 +125,7 @@ export const OrchestratorPage: React.FC = () => {
     isLoading,
     isPipelineRunning,
     setIsPipelineRunning,
+    pipelineTerminalEvent,
     setIsRefreshPaused,
     loadJobs,
   } = useOrchestratorData(selectedJobId);
@@ -194,28 +195,6 @@ export const OrchestratorPage: React.FC = () => {
         toast.message("Pipeline started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
         });
-
-        const pollInterval = setInterval(async () => {
-          try {
-            const status = await api.getPipelineStatus();
-            if (!status.isRunning) {
-              clearInterval(pollInterval);
-              setIsPipelineRunning(false);
-              setIsCancelling(false);
-              await loadJobs();
-              const outcome = status.lastRun?.status;
-              if (outcome === "cancelled") {
-                toast.message("Pipeline cancelled");
-              } else if (outcome === "failed") {
-                toast.error(status.lastRun?.errorMessage || "Pipeline failed");
-              } else {
-                toast.success("Pipeline completed");
-              }
-            }
-          } catch {
-            // Ignore errors
-          }
-        }, 5000);
       } catch (error) {
         setIsPipelineRunning(false);
         setIsCancelling(false);
@@ -224,8 +203,26 @@ export const OrchestratorPage: React.FC = () => {
         toast.error(message);
       }
     },
-    [loadJobs, setIsPipelineRunning],
+    [setIsPipelineRunning],
   );
+
+  useEffect(() => {
+    if (!pipelineTerminalEvent) return;
+    setIsPipelineRunning(false);
+    setIsCancelling(false);
+
+    if (pipelineTerminalEvent.status === "cancelled") {
+      toast.message("Pipeline cancelled");
+      return;
+    }
+
+    if (pipelineTerminalEvent.status === "failed") {
+      toast.error(pipelineTerminalEvent.errorMessage || "Pipeline failed");
+      return;
+    }
+
+    toast.success("Pipeline completed");
+  }, [pipelineTerminalEvent, setIsPipelineRunning]);
 
   const handleCancelPipeline = useCallback(async () => {
     if (isCancelling || !isPipelineRunning) return;

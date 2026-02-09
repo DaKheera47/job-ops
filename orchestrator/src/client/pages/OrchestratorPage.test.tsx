@@ -1,6 +1,7 @@
 import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { OrchestratorPage } from "./OrchestratorPage";
@@ -21,7 +22,20 @@ vi.mock("../api", () => ({
   }),
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    message: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+  },
+}));
+
 let mockIsPipelineRunning = false;
+let mockPipelineTerminalEvent: {
+  status: "completed" | "cancelled" | "failed";
+  errorMessage: string | null;
+  token: number;
+} | null = null;
 let mockPipelineSources = ["linkedin"] as Array<
   "gradcracker" | "indeed" | "linkedin" | "ukvisajobs"
 >;
@@ -112,6 +126,7 @@ const createMatchMedia = (matches: boolean) =>
 vi.mock("./orchestrator/useOrchestratorData", () => ({
   useOrchestratorData: () => ({
     jobs: [jobFixture, job2, processingJob],
+    selectedJob: jobFixture,
     stats: {
       discovered: 1,
       processing: 1,
@@ -123,6 +138,8 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
     isLoading: false,
     isPipelineRunning: mockIsPipelineRunning,
     setIsPipelineRunning: vi.fn(),
+    pipelineTerminalEvent: mockPipelineTerminalEvent,
+    setIsRefreshPaused: vi.fn(),
     loadJobs: vi.fn(),
   }),
 }));
@@ -363,6 +380,7 @@ describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsPipelineRunning = false;
+    mockPipelineTerminalEvent = null;
     mockPipelineSources = ["linkedin"];
     mockAutomaticRunValues = {
       topN: 12,
@@ -699,8 +717,81 @@ describe("OrchestratorPage", () => {
       minSuitabilityScore: 55,
       sources: ["linkedin"],
     });
+    expect(setIntervalSpy).not.toHaveBeenCalledWith(expect.any(Function), 5000);
 
     setIntervalSpy.mockRestore();
+  });
+
+  it("shows completion toast from hook terminal state", async () => {
+    mockPipelineTerminalEvent = {
+      status: "completed",
+      errorMessage: null,
+      token: 1,
+    };
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Pipeline completed");
+    });
+  });
+
+  it("shows cancelled toast from hook terminal state", async () => {
+    mockPipelineTerminalEvent = {
+      status: "cancelled",
+      errorMessage: null,
+      token: 1,
+    };
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(toast.message).toHaveBeenCalledWith("Pipeline cancelled");
+    });
+  });
+
+  it("shows failed toast from hook terminal state", async () => {
+    mockPipelineTerminalEvent = {
+      status: "failed",
+      errorMessage: "Pipeline exploded",
+      token: 1,
+    };
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Pipeline exploded");
+    });
   });
 
   it("blocks automatic run when no sources are compatible for selected country", async () => {
