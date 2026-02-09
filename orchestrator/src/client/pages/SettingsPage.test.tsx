@@ -11,6 +11,7 @@ vi.mock("../api", () => ({
   updateSettings: vi.fn(),
   clearDatabase: vi.fn(),
   deleteJobsByStatus: vi.fn(),
+  getRxResumeProjects: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("sonner", () => ({
@@ -338,6 +339,91 @@ describe("SettingsPage", () => {
       expect.objectContaining({
         basicAuthUser: null,
         basicAuthPassword: null,
+      }),
+    );
+  });
+
+  it("saves explicit PDF generation override when toggled off", async () => {
+    const configuredSettings: AppSettings = {
+      ...baseSettings,
+      rxresumeEmail: "rx@example.com",
+      rxresumePasswordHint: "********",
+      rxresumeBaseResumeId: "resume-1",
+      pdfGenerationEnabled: true,
+      defaultPdfGenerationEnabled: true,
+      overridePdfGenerationEnabled: null,
+    };
+    vi.mocked(api.getSettings).mockResolvedValue(configuredSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...configuredSettings,
+      pdfGenerationEnabled: false,
+      overridePdfGenerationEnabled: false,
+    });
+
+    renderPage();
+
+    const reactiveResumeTrigger = await screen.findByRole("button", {
+      name: /reactive resume/i,
+    });
+    fireEvent.click(reactiveResumeTrigger);
+
+    const pdfToggle = await screen.findByRole("checkbox", {
+      name: /enable pdf generation/i,
+    });
+    expect(pdfToggle).toBeChecked();
+    fireEvent.click(pdfToggle);
+    expect(pdfToggle).not.toBeChecked();
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    expect(saveButton).toBeEnabled();
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pdfGenerationEnabled: false,
+      }),
+    );
+  });
+
+  it("clears PDF generation override when toggled back to default", async () => {
+    const overriddenSettings: AppSettings = {
+      ...baseSettings,
+      rxresumeEmail: "rx@example.com",
+      rxresumePasswordHint: "********",
+      rxresumeBaseResumeId: "resume-1",
+      pdfGenerationEnabled: false,
+      defaultPdfGenerationEnabled: true,
+      overridePdfGenerationEnabled: false,
+    };
+    vi.mocked(api.getSettings).mockResolvedValue(overriddenSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...overriddenSettings,
+      pdfGenerationEnabled: true,
+      overridePdfGenerationEnabled: null,
+    });
+
+    renderPage();
+
+    const reactiveResumeTrigger = await screen.findByRole("button", {
+      name: /reactive resume/i,
+    });
+    fireEvent.click(reactiveResumeTrigger);
+
+    const pdfToggle = await screen.findByRole("checkbox", {
+      name: /enable pdf generation/i,
+    });
+    expect(pdfToggle).not.toBeChecked();
+    fireEvent.click(pdfToggle);
+    expect(pdfToggle).toBeChecked();
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pdfGenerationEnabled: null,
       }),
     );
   });

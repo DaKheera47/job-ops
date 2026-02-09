@@ -239,43 +239,40 @@ export const OnboardingGate: React.FC = () => {
     setLlmValidation({ valid: false, message: null, checked: false });
   }, [selectedProvider]);
 
-  const steps = useMemo(
-    () => {
-      const llmStep = {
-        id: "llm",
-        label: "LLM Provider",
-        subtitle: "Provider + credentials",
-        complete: llmValidated,
+  const steps = useMemo(() => {
+    const llmStep = {
+      id: "llm",
+      label: "LLM Provider",
+      subtitle: "Provider + credentials",
+      complete: llmValidated,
+      disabled: false,
+    };
+
+    if (!requiresPdfSetup) return [llmStep];
+
+    return [
+      llmStep,
+      {
+        id: "rxresume",
+        label: "Connect Reactive Resume",
+        subtitle: "Reactive Resume login",
+        complete: rxresumeValidation.valid,
         disabled: false,
-      };
-
-      if (!requiresPdfSetup) return [llmStep];
-
-      return [
-        llmStep,
-        {
-          id: "rxresume",
-          label: "Connect Reactive Resume",
-          subtitle: "Reactive Resume login",
-          complete: rxresumeValidation.valid,
-          disabled: false,
-        },
-        {
-          id: "baseresume",
-          label: "Select Template Resume",
-          subtitle: "Template selection",
-          complete: baseResumeValidation.valid,
-          disabled: !rxresumeValidation.valid,
-        },
-      ];
-    },
-    [
-      llmValidated,
-      requiresPdfSetup,
-      rxresumeValidation.valid,
-      baseResumeValidation.valid,
-    ],
-  );
+      },
+      {
+        id: "baseresume",
+        label: "Select Template Resume",
+        subtitle: "Template selection",
+        complete: baseResumeValidation.valid,
+        disabled: !rxresumeValidation.valid,
+      },
+    ];
+  }, [
+    llmValidated,
+    requiresPdfSetup,
+    rxresumeValidation.valid,
+    baseResumeValidation.valid,
+  ]);
 
   const defaultStep = steps.find((step) => !step.complete)?.id ?? steps[0]?.id;
 

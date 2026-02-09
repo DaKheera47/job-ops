@@ -248,10 +248,13 @@ async function resolvePdfGenerationEnabled(jobId: string): Promise<boolean> {
     const settings = await getEffectiveSettings();
     return settings.pdfGenerationEnabled;
   } catch (error) {
-    logger.warn("Failed to resolve PDF generation mode; defaulting to enabled", {
-      jobId,
-      reason: error instanceof Error ? error.message : "Unknown error",
-    });
+    logger.warn(
+      "Failed to resolve PDF generation mode; defaulting to enabled",
+      {
+        jobId,
+        reason: error instanceof Error ? error.message : "Unknown error",
+      },
+    );
     return true;
   }
 }

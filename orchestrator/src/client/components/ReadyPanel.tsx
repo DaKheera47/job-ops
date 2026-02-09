@@ -386,7 +386,9 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <Button
                 variant="outline"
                 className="h-9 w-full gap-1 px-2 text-xs"
-                onClick={() => void handleCopyTailoringPart("Summary", summaryText)}
+                onClick={() =>
+                  void handleCopyTailoringPart("Summary", summaryText)
+                }
               >
                 <Copy className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">Copy Summary</span>

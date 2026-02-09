@@ -68,16 +68,17 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
             control={control}
             render={({ field }) => (
               <div className="space-y-1 rounded-md border border-border/60 px-3 py-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
+                <div className="flex items-center gap-2 text-sm font-medium">
                   <Checkbox
+                    aria-label="Enable PDF generation"
                     checked={Boolean(field.value)}
                     onCheckedChange={(checked) => {
                       field.onChange(checked === true);
                     }}
                     disabled={isLoading || isSaving}
                   />
-                  Enable PDF generation
-                </label>
+                  <span>Enable PDF generation</span>
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {pdfGenerationDefault
                     ? "Auto-detect is ON: RxResume is configured."

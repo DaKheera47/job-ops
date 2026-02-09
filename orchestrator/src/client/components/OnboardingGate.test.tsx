@@ -94,6 +94,7 @@ const settingsResponse = {
     rxresumeEmail: "",
     rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,
+    pdfGenerationEnabled: true,
   },
   isLoading: false,
   refreshSettings: vi.fn(),
@@ -130,6 +131,8 @@ describe("OnboardingGate", () => {
     render(<OnboardingGate />);
 
     await waitFor(() => expect(api.validateLlm).toHaveBeenCalled());
+    await waitFor(() => expect(api.validateRxresume).toHaveBeenCalled());
+    await waitFor(() => expect(api.validateResumeConfig).toHaveBeenCalled());
     await waitFor(() => {
       expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
     });
@@ -178,5 +181,38 @@ describe("OnboardingGate", () => {
     expect(api.validateLlm).not.toHaveBeenCalled();
     expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
     expect(screen.queryByText("LLM API key")).not.toBeInTheDocument();
+  });
+
+  it("skips RxResume validations when PDF generation is disabled", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      ...settingsResponse,
+      settings: {
+        ...settingsResponse.settings,
+        pdfGenerationEnabled: false,
+      },
+    } as any);
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "Invalid",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Missing",
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: false,
+      message: "Missing",
+    });
+
+    render(<OnboardingGate />);
+
+    await waitFor(() => expect(api.validateLlm).toHaveBeenCalled());
+    expect(api.validateRxresume).not.toHaveBeenCalled();
+    expect(api.validateResumeConfig).not.toHaveBeenCalled();
+    expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
+    expect(screen.getByText(/text-only mode/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/connect reactive resume/i),
+    ).not.toBeInTheDocument();
   });
 });

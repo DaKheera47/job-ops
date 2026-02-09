@@ -4,6 +4,7 @@ import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { copyTextToClipboard } from "@/lib/utils";
 import * as api from "../api";
 import { ReadyPanel } from "./ReadyPanel";
 
@@ -46,6 +47,14 @@ vi.mock("../hooks/useProfile", () => ({
 vi.mock("../hooks/useSettings", () => ({
   useSettings: () => ({ showSponsorInfo: false }),
 }));
+
+vi.mock("@/lib/utils", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/utils")>();
+  return {
+    ...actual,
+    copyTextToClipboard: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock("../api", () => ({
   rescoreJob: vi.fn(),
@@ -204,5 +213,84 @@ describe("ReadyPanel", () => {
     expect(
       screen.queryByTestId("job-details-edit-drawer"),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows copy actions for text-only ready jobs", async () => {
+    const job = createJob({
+      tailoredSummary: "Tailored summary",
+      tailoredHeadline: "Tailored headline",
+      tailoredSkills: JSON.stringify([
+        { name: "Core", keywords: ["TypeScript", "React"] },
+        { name: "Cloud", keywords: ["AWS"] },
+      ]),
+      selectedProjectIds: "proj-1,proj-2",
+      pdfPath: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <ReadyPanel job={job} onJobUpdated={vi.fn()} onJobMoved={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("button", { name: /copy summary/i })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /copy headline/i }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /copy keywords/i }),
+    ).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /copy full tailoring/i }),
+    ).toBeDefined();
+    expect(screen.queryByText(/view pdf/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/download pdf/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /generate pdf/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /copy summary/i }));
+    fireEvent.click(screen.getByRole("button", { name: /copy keywords/i }));
+
+    await waitFor(() =>
+      expect(vi.mocked(copyTextToClipboard)).toHaveBeenCalledWith(
+        "Tailored summary",
+      ),
+    );
+    expect(vi.mocked(copyTextToClipboard)).toHaveBeenCalledWith(
+      "TypeScript, React, AWS",
+    );
+    expect(toast.success).toHaveBeenCalledWith("Summary copied");
+    expect(toast.success).toHaveBeenCalledWith("Keywords copied");
+  });
+
+  it("preserves PDF actions when a PDF exists", async () => {
+    const onJobUpdated = vi.fn().mockResolvedValue(undefined);
+    const job = createJob({
+      pdfPath: "resume-job-1.pdf",
+    });
+    vi.mocked(api.generateJobPdf).mockResolvedValue(job as Job);
+
+    render(
+      <MemoryRouter>
+        <ReadyPanel
+          job={job}
+          onJobUpdated={onJobUpdated}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/view pdf/i)).toBeInTheDocument();
+    expect(screen.getByText(/download pdf/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /copy summary/i })).toBeNull();
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /regenerate pdf/i }));
+
+    await waitFor(() =>
+      expect(api.generateJobPdf).toHaveBeenCalledWith("job-1"),
+    );
+    expect(toast.success).toHaveBeenCalledWith("PDF regenerated");
+    expect(onJobUpdated).toHaveBeenCalled();
   });
 });

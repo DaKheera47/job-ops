@@ -146,4 +146,20 @@ describe("applySettingsUpdates", () => {
       JSON.stringify(normalized),
     );
   });
+
+  it("persists pdfGenerationEnabled overrides as tri-state values", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+
+    await applySettingsUpdates({ pdfGenerationEnabled: true });
+    await applySettingsUpdates({ pdfGenerationEnabled: false });
+    await applySettingsUpdates({ pdfGenerationEnabled: null });
+
+    expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
+      expect.arrayContaining([
+        ["pdfGenerationEnabled", "1"],
+        ["pdfGenerationEnabled", "0"],
+        ["pdfGenerationEnabled", null],
+      ]),
+    );
+  });
 });
