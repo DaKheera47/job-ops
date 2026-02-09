@@ -133,4 +133,45 @@ describe("JobCommandBar", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("ranks the closest match first", () => {
+    const jobs: Job[] = [
+      createJob({
+        id: "ready-job",
+        title: "Junior Software Engineer (Data Products)",
+        employer: "Yapily",
+        status: "ready",
+      }),
+      createJob({
+        id: "discovered-job",
+        title: "Junior Web Developer",
+        employer: "Joinrs",
+        status: "discovered",
+      }),
+      createJob({
+        id: "discovered-job-2",
+        title: "Junior Software Engineer",
+        employer: "Nestle",
+        status: "discovered",
+      }),
+    ];
+
+    render(<JobCommandBar jobs={jobs} onSelectJob={vi.fn()} />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Open job search command menu" }),
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Search jobs by job title or company name...",
+      ),
+      {
+        target: { value: "joinrs" },
+      },
+    );
+
+    const options = screen.getAllByRole("option");
+    expect(options[0]).toHaveTextContent("Joinrs");
+    expect(options[0]).toHaveTextContent("Junior Web Developer");
+  });
 });

@@ -57,11 +57,55 @@ const toStateLabel = (status: JobStatus) => {
   return (statusTokens[status] ?? defaultStatusToken).label;
 };
 
+const computeFieldMatchScore = (fieldRaw: string, needleRaw: string) => {
+  const field = fieldRaw.trim().toLowerCase();
+  const needle = needleRaw.trim().toLowerCase();
+  if (!field || !needle) return 0;
+  if (field === needle) return 1000;
+
+  const words = field.split(/\s+/).filter(Boolean);
+  if (words.includes(needle)) return 920;
+  if (field.startsWith(needle)) return 880;
+  if (words.some((word) => word.startsWith(needle))) return 820;
+  if (field.includes(needle)) return 760;
+
+  const compactField = field.replace(/\s+/g, "");
+  if (compactField.includes(needle)) return 700;
+
+  // Light typo-tolerance via ordered-character subsequence matching.
+  let matchIndex = 0;
+  for (const character of compactField) {
+    if (character === needle[matchIndex]) {
+      matchIndex += 1;
+      if (matchIndex === needle.length) break;
+    }
+  }
+  if (matchIndex === needle.length) {
+    const density = needle.length / compactField.length;
+    return Math.round(500 + density * 100);
+  }
+  return 0;
+};
+
+const computeJobMatchScore = (job: Job, normalizedQuery: string) => {
+  if (!normalizedQuery) return 0;
+  const titleScore = computeFieldMatchScore(job.title, normalizedQuery);
+  const employerScore = computeFieldMatchScore(job.employer, normalizedQuery);
+  const locationScore = computeFieldMatchScore(
+    job.location ?? "",
+    normalizedQuery,
+  );
+
+  // Prefer title/company matches over location when scores tie.
+  return Math.max(titleScore + 8, employerScore + 12, locationScore);
+};
+
 export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   jobs,
   onSelectJob,
 }) => {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const shortcutLabel = useMemo(() => {
     if (typeof navigator === "undefined") return "Ctrl+K";
     return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
@@ -81,6 +125,8 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  const normalizedQuery = query.trim().toLowerCase();
+
   const groupedJobs = useMemo(() => {
     const groups: Record<CommandGroupId, Job[]> = {
       ready: [],
@@ -90,6 +136,12 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     };
 
     const sorted = [...jobs].sort((a, b) => {
+      if (normalizedQuery) {
+        const firstScore = computeJobMatchScore(a, normalizedQuery);
+        const secondScore = computeJobMatchScore(b, normalizedQuery);
+        if (firstScore !== secondScore) return secondScore - firstScore;
+      }
+
       const first = parseTime(a.discoveredAt);
       const second = parseTime(b.discoveredAt);
       if (!Number.isNaN(first) && !Number.isNaN(second)) {
@@ -104,7 +156,31 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
       groups[getCommandGroup(job.status)].push(job);
     }
     return groups;
-  }, [jobs]);
+  }, [jobs, normalizedQuery]);
+
+  const orderedGroups = useMemo(() => {
+    if (!normalizedQuery) return commandGroupMeta;
+
+    const withScores = commandGroupMeta.map((group) => {
+      const maxScore = groupedJobs[group.id].reduce(
+        (currentMax, job) =>
+          Math.max(currentMax, computeJobMatchScore(job, normalizedQuery)),
+        0,
+      );
+      return {
+        ...group,
+        maxScore,
+      };
+    });
+
+    return withScores.sort((a, b) => {
+      if (a.maxScore !== b.maxScore) return b.maxScore - a.maxScore;
+      return (
+        commandGroupMeta.findIndex((group) => group.id === a.id) -
+        commandGroupMeta.findIndex((group) => group.id === b.id)
+      );
+    });
+  }, [groupedJobs, normalizedQuery]);
 
   return (
     <>
@@ -129,10 +205,14 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
         <DialogDescription className="sr-only">
           Search jobs across all states by job title or company name.
         </DialogDescription>
-        <CommandInput placeholder="Search jobs by job title or company name..." />
+        <CommandInput
+          placeholder="Search jobs by job title or company name..."
+          value={query}
+          onValueChange={setQuery}
+        />
         <CommandList>
           <CommandEmpty>No jobs found.</CommandEmpty>
-          {commandGroupMeta.map((group, index) => {
+          {orderedGroups.map((group, index) => {
             const items = groupedJobs[group.id];
             if (items.length === 0) return null;
             return (
