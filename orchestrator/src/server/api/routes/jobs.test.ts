@@ -37,6 +37,43 @@ describe.sequential("Jobs API routes", () => {
     expect(filteredBody.data.total).toBe(0);
   });
 
+  it("supports lightweight and full jobs list views", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    await createJob({
+      source: "manual",
+      title: "List View Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/list-view",
+      jobDescription: "Heavy description that should not be in list mode",
+    });
+
+    const listRes = await fetch(`${baseUrl}/api/jobs?view=list`);
+    const listBody = await listRes.json();
+    expect(listRes.status).toBe(200);
+    expect(listBody.ok).toBe(true);
+    expect(typeof listBody.meta.requestId).toBe("string");
+    expect(listBody.data.jobs[0].id).toBeTruthy();
+    expect(listBody.data.jobs[0].title).toBe("List View Role");
+    expect(listBody.data.jobs[0]).not.toHaveProperty("jobDescription");
+
+    const fullRes = await fetch(`${baseUrl}/api/jobs?view=full`);
+    const fullBody = await fullRes.json();
+    expect(fullRes.status).toBe(200);
+    expect(fullBody.ok).toBe(true);
+    expect(fullBody.data.jobs[0].title).toBe("List View Role");
+    expect(fullBody.data.jobs[0]).toHaveProperty("jobDescription");
+  });
+
+  it("rejects invalid jobs list view query", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs?view=compact`);
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
   it("returns 404 for missing jobs", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/missing-id`);
     expect(res.status).toBe(404);

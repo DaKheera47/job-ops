@@ -197,6 +197,30 @@ export interface Job {
   updatedAt: string;
 }
 
+export interface JobListItem {
+  id: string;
+  source: JobSource;
+  title: string;
+  employer: string;
+  jobUrl: string;
+  applicationLink: string | null;
+  datePosted: string | null;
+  deadline: string | null;
+  salary: string | null;
+  location: string | null;
+  status: JobStatus;
+  suitabilityScore: number | null;
+  sponsorMatchScore: number | null;
+  jobType: string | null;
+  jobFunction: string | null;
+  salaryMinAmount: number | null;
+  salaryMaxAmount: number | null;
+  salaryCurrency: string | null;
+  discoveredAt: string;
+  appliedAt: string | null;
+  updatedAt: string;
+}
+
 export interface CreateJobInput {
   source: JobSource;
   title: string;
@@ -333,8 +357,8 @@ export type ApiResponse<T> =
       meta: ApiMeta;
     };
 
-export interface JobsListResponse {
-  jobs: Job[];
+export interface JobsListResponse<TJob = Job> {
+  jobs: TJob[];
   total: number;
   byStatus: Record<JobStatus, number>;
 }

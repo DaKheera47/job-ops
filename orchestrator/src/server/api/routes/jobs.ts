@@ -4,11 +4,11 @@ import { sanitizeWebhookPayload } from "@infra/sanitize";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
-  type ApiResponse,
   type BulkJobAction,
   type BulkJobActionResponse,
   type BulkJobActionResult,
   type Job,
+  type JobListItem,
   type JobStatus,
   type JobsListResponse,
 } from "@shared/types";
@@ -181,6 +181,11 @@ const bulkActionRequestSchema = z.object({
   jobIds: z.array(z.string().min(1)).min(1).max(100),
 });
 
+const listJobsQuerySchema = z.object({
+  status: z.string().optional(),
+  view: z.enum(["full", "list"]).optional(),
+});
+
 const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
   "discovered",
   "ready",
@@ -339,27 +344,50 @@ async function executeBulkActionForJob(
  */
 jobsRouter.get("/", async (req: Request, res: Response) => {
   try {
-    const statusFilter = req.query.status as string | undefined;
+    const parsedQuery = listJobsQuerySchema.safeParse(req.query);
+    if (!parsedQuery.success) {
+      return fail(
+        res,
+        badRequest("Invalid jobs list query parameters", parsedQuery.error.flatten()),
+      );
+    }
+
+    const statusFilter = parsedQuery.data.status;
     const statuses = statusFilter?.split(",").filter(Boolean) as
       | JobStatus[]
       | undefined;
+    const view = parsedQuery.data.view ?? "full";
 
-    const jobs = await jobsRepo.getAllJobs(statuses);
+    const jobs: Array<Job | JobListItem> =
+      view === "list"
+        ? await jobsRepo.getJobListItems(statuses)
+        : await jobsRepo.getAllJobs(statuses);
     const stats = await jobsRepo.getJobStats();
 
-    const response: ApiResponse<JobsListResponse> = {
-      ok: true,
-      data: {
-        jobs,
-        total: jobs.length,
-        byStatus: stats,
-      },
+    const response: JobsListResponse<Job | JobListItem> = {
+      jobs,
+      total: jobs.length,
+      byStatus: stats,
     };
 
-    res.json(response);
+    logger.info("Jobs list fetched", {
+      route: "GET /api/jobs",
+      view,
+      statusFilter: statusFilter ?? null,
+      returnedCount: jobs.length,
+    });
+
+    ok(res, response);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError({
+            status: 500,
+            code: "INTERNAL_ERROR",
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+    fail(res, err);
   }
 });
 
