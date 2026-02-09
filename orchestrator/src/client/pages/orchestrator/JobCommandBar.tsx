@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { FilterTab } from "./constants";
+import { defaultStatusToken, statusTokens } from "./constants";
 
 interface JobCommandBarProps {
   jobs: Job[];
@@ -53,11 +54,7 @@ const parseTime = (value: string | null) => {
 const toStateLabel = (status: JobStatus) => {
   if (status === "processing") return "Discovered";
   if (status === "discovered") return "Discovered";
-  if (status === "ready") return "Ready";
-  if (status === "applied") return "Applied";
-  if (status === "skipped") return "Skipped";
-  if (status === "expired") return "Expired";
-  return "Other";
+  return (statusTokens[status] ?? defaultStatusToken).label;
 };
 
 export const JobCommandBar: React.FC<JobCommandBarProps> = ({
@@ -142,30 +139,39 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
               <div key={group.id}>
                 {index > 0 && <CommandSeparator />}
                 <CommandGroup heading={group.heading}>
-                  {items.map((job) => (
-                    <CommandItem
-                      key={job.id}
-                      value={`${job.id} ${job.title} ${job.employer}`}
-                      keywords={[job.title, job.employer]}
-                      onSelect={() => {
-                        setOpen(false);
-                        onSelectJob(getFilterTab(job.status), job.id);
-                      }}
-                    >
-                      <div className="flex min-w-0 flex-1 flex-col">
-                        <span className="truncate font-medium">
-                          {job.title}
-                        </span>
-                        <span className="truncate text-xs text-muted-foreground">
-                          {job.employer}
-                          {job.location ? ` - ${job.location}` : ""}
-                        </span>
-                      </div>
-                      <CommandShortcut>
-                        {toStateLabel(job.status)}
-                      </CommandShortcut>
-                    </CommandItem>
-                  ))}
+                  {items.map((job) => {
+                    const statusToken =
+                      statusTokens[job.status] ?? defaultStatusToken;
+                    return (
+                      <CommandItem
+                        key={job.id}
+                        value={`${job.id} ${job.title} ${job.employer}`}
+                        keywords={[job.title, job.employer]}
+                        onSelect={() => {
+                          setOpen(false);
+                          onSelectJob(getFilterTab(job.status), job.id);
+                        }}
+                      >
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate font-medium">
+                            {job.title}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {job.employer}
+                            {job.location ? ` - ${job.location}` : ""}
+                          </span>
+                        </div>
+                        <CommandShortcut
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusToken.badge}`}
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${statusToken.dot}`}
+                          />
+                          {toStateLabel(job.status)}
+                        </CommandShortcut>
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               </div>
             );
