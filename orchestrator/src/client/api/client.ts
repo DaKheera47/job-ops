@@ -10,7 +10,6 @@ import type {
   BackupInfo,
   BulkJobActionRequest,
   BulkJobActionResponse,
-  CreateJobInput,
   DemoInfoResponse,
   Job,
   JobOutcome,
@@ -27,8 +26,6 @@ import type {
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
-  UkVisaJobsImportResponse,
-  UkVisaJobsSearchResponse,
   ValidationResult,
   VisaSponsor,
   VisaSponsorSearchResponse,
@@ -335,32 +332,6 @@ export async function cancelPipeline(): Promise<{
 
 export async function getDemoInfo(): Promise<DemoInfoResponse> {
   return fetchApi<DemoInfoResponse>("/demo/info");
-}
-
-// UK Visa Jobs API
-export async function searchUkVisaJobs(input: {
-  searchTerm?: string;
-  page?: number;
-}): Promise<UkVisaJobsSearchResponse> {
-  if (input.searchTerm?.trim()) {
-    trackEvent("ukvisajobs_search", {
-      searchTerm: input.searchTerm.trim(),
-      page: input.page ?? 1,
-    });
-  }
-  return fetchApi<UkVisaJobsSearchResponse>("/ukvisajobs/search", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-}
-
-export async function importUkVisaJobs(input: {
-  jobs: CreateJobInput[];
-}): Promise<UkVisaJobsImportResponse> {
-  return fetchApi<UkVisaJobsImportResponse>("/ukvisajobs/import", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
 }
 
 // Manual Job Import API
