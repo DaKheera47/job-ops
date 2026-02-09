@@ -89,6 +89,7 @@ orchestrator/
 2. **You review in the UI:**
    - See jobs at `http://localhost:5173`
    - "Ready" tab shows jobs with generated PDFs
+   - Use command bar search (`Cmd/Ctrl+K`) to quickly find and open jobs
    - Click "View Job" to open application
    - Download PDF and apply manually
    - Click "Mark Applied" → syncs to Notion

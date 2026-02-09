@@ -94,6 +94,7 @@ POST /api/jobs/:id/generate-pdf
 - `processing` is transient. If PDF generation fails, the job is reverted back to `discovered`.
 - The PDF is served at `/pdfs/resume_<jobId>.pdf` and cache-busted with the job?s `updatedAt` timestamp.
 - If a job is `skipped` or `applied` and you want to re-open it, you can PATCH its `status` back to `discovered`.
+- Job text search is handled through the command bar (`Cmd/Ctrl+K`) and is not persisted as a URL filter.
 
 ## External payload and sanitization defaults
 
