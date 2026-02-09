@@ -318,6 +318,10 @@ export const OrchestratorPage: React.FC = () => {
   useEffect(() => {
     if (!pendingCommandScrollJobId) return;
     if (selectedJobId !== pendingCommandScrollJobId) return;
+    const hasPendingTargetInList = activeJobs.some(
+      (job) => job.id === pendingCommandScrollJobId,
+    );
+    if (!hasPendingTargetInList) return;
     if (typeof document === "undefined") return;
 
     const selector = `[data-job-id="${escapeCssAttributeValue(
@@ -331,7 +335,7 @@ export const OrchestratorPage: React.FC = () => {
       block: "center",
     });
     setPendingCommandScrollJobId(null);
-  }, [isDesktop, pendingCommandScrollJobId, selectedJobId]);
+  }, [activeJobs, isDesktop, pendingCommandScrollJobId, selectedJobId]);
 
   useEffect(() => {
     if (activeJobs.length === 0) {
