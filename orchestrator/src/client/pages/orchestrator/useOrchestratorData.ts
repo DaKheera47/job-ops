@@ -15,12 +15,42 @@ const initialStats: Record<JobStatus, number> = {
 const isDocumentVisible = () =>
   typeof document === "undefined" || document.visibilityState === "visible";
 
+type PipelineProgressStep =
+  | "idle"
+  | "crawling"
+  | "importing"
+  | "scoring"
+  | "processing"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+type PipelineProgressEvent = {
+  step: PipelineProgressStep;
+  startedAt?: string;
+  completedAt?: string;
+};
+
+const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
+  "crawling",
+  "importing",
+  "scoring",
+  "processing",
+]);
+
+const TERMINAL_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
+  "completed",
+  "cancelled",
+  "failed",
+]);
+
 export const useOrchestratorData = (selectedJobId: string | null) => {
   const [jobListItems, setJobListItems] = useState<JobListItem[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [stats, setStats] = useState<Record<JobStatus, number>>(initialStats);
   const [isLoading, setIsLoading] = useState(true);
   const [isPipelineRunning, setIsPipelineRunning] = useState(false);
+  const [isPipelineSseConnected, setIsPipelineSseConnected] = useState(false);
   const [isRefreshPaused, setIsRefreshPaused] = useState(false);
   const requestSeqRef = useRef(0);
   const latestAppliedSeqRef = useRef(0);
@@ -28,6 +58,8 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const selectedJobRequestSeqRef = useRef(0);
   const selectedJobCacheRef = useRef<Map<string, Job>>(new Map());
   const lastRevisionRef = useRef<string | null>(null);
+  const lastSseRefreshAtRef = useRef(0);
+  const lastTerminalSignatureRef = useRef<string | null>(null);
 
   const loadSelectedJob = useCallback(
     async (jobId: string) => {
@@ -114,11 +146,10 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     const interval = setInterval(() => {
       if (!isDocumentVisible() || isRefreshPaused) return;
       void checkForJobChanges();
-      void checkPipelineStatus();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [checkForJobChanges, checkPipelineStatus, isRefreshPaused]);
+  }, [checkForJobChanges, isRefreshPaused]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -126,7 +157,6 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     const refreshFromVisibilitySignal = () => {
       if (!isDocumentVisible() || isRefreshPaused) return;
       void checkForJobChanges();
-      void checkPipelineStatus();
     };
 
     const onVisibilityChange = () => {
@@ -143,7 +173,78 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
       window.removeEventListener("online", refreshFromVisibilitySignal);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [checkForJobChanges, checkPipelineStatus, isRefreshPaused]);
+  }, [checkForJobChanges, isRefreshPaused]);
+
+  useEffect(() => {
+    if (typeof EventSource === "undefined") return;
+
+    const eventSource = new EventSource("/api/pipeline/progress");
+
+    eventSource.onopen = () => {
+      setIsPipelineSseConnected(true);
+    };
+
+    eventSource.onmessage = (event) => {
+      let payload: unknown;
+      try {
+        payload = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      if (!payload || typeof payload !== "object") return;
+      const step = (payload as { step?: unknown }).step;
+      if (typeof step !== "string") return;
+      if (
+        !ACTIVE_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
+        !TERMINAL_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
+        step !== "idle"
+      ) {
+        return;
+      }
+
+      const typedStep = step as PipelineProgressStep;
+      setIsPipelineRunning(ACTIVE_PIPELINE_STEPS.has(typedStep));
+
+      if (ACTIVE_PIPELINE_STEPS.has(typedStep)) {
+        const now = Date.now();
+        if (now - lastSseRefreshAtRef.current >= 2500) {
+          lastSseRefreshAtRef.current = now;
+          void checkForJobChanges();
+        }
+        return;
+      }
+
+      if (TERMINAL_PIPELINE_STEPS.has(typedStep)) {
+        const eventPayload = payload as PipelineProgressEvent;
+        const terminalSignature = `${typedStep}:${eventPayload.startedAt ?? ""}:${
+          eventPayload.completedAt ?? ""
+        }`;
+        if (terminalSignature === lastTerminalSignatureRef.current) return;
+        lastTerminalSignatureRef.current = terminalSignature;
+        void loadJobs();
+      }
+    };
+
+    eventSource.onerror = () => {
+      setIsPipelineSseConnected(false);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [checkForJobChanges, loadJobs]);
+
+  useEffect(() => {
+    if (isPipelineSseConnected) return;
+
+    const interval = setInterval(() => {
+      if (!isDocumentVisible() || isRefreshPaused) return;
+      void checkPipelineStatus();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [checkPipelineStatus, isPipelineSseConnected, isRefreshPaused]);
 
   useEffect(() => {
     if (!selectedJobId) {

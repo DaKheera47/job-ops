@@ -16,6 +16,33 @@ vi.mock("sonner", () => ({
   },
 }));
 
+class MockEventSource {
+  static instances: MockEventSource[] = [];
+  onopen: ((event: Event) => void) | null = null;
+  onmessage: ((event: MessageEvent) => void) | null = null;
+  onerror: ((event: Event) => void) | null = null;
+
+  constructor(public url: string) {
+    MockEventSource.instances.push(this);
+  }
+
+  close = vi.fn();
+
+  emitOpen() {
+    this.onopen?.(new Event("open"));
+  }
+
+  emitMessage(payload: unknown) {
+    this.onmessage?.({
+      data: JSON.stringify(payload),
+    } as MessageEvent);
+  }
+
+  emitError() {
+    this.onerror?.(new Event("error"));
+  }
+}
+
 const makeResponse = (jobId: string, revision = `rev-${jobId}`) => ({
   jobs: [{ id: jobId }],
   total: 1,
@@ -47,6 +74,8 @@ describe("useOrchestratorData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
+    MockEventSource.instances = [];
+    (globalThis as any).EventSource = MockEventSource;
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -253,6 +282,103 @@ describe("useOrchestratorData", () => {
       await Promise.resolve();
     });
     expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
+  });
+
+  it("throttles revision checks while pipeline SSE is active", async () => {
+    vi.useFakeTimers();
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(api.getJobsRevision).mockClear();
+
+    const sse = MockEventSource.instances[0];
+    expect(sse).toBeTruthy();
+
+    act(() => {
+      sse.emitOpen();
+      sse.emitMessage({ step: "crawling" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      sse.emitMessage({ step: "crawling" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      vi.advanceTimersByTime(2500);
+      await Promise.resolve();
+    });
+
+    act(() => {
+      sse.emitMessage({ step: "crawling" });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(2);
+  });
+
+  it("forces a jobs reload on terminal pipeline SSE step", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getJobs)
+      .mockResolvedValueOnce(makeResponse("initial", "rev-initial") as any)
+      .mockResolvedValueOnce(
+        makeResponse("after-terminal", "rev-terminal") as any,
+      );
+
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobs).toHaveBeenCalledTimes(1);
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitMessage({
+        step: "completed",
+        startedAt: "2026-01-01T00:00:00.000Z",
+        completedAt: "2026-01-01T00:05:00.000Z",
+      });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(api.getJobs).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to polling pipeline status when SSE disconnects", async () => {
+    vi.useFakeTimers();
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(api.getPipelineStatus).mockClear();
+
+    const sse = MockEventSource.instances[0];
+    act(() => {
+      sse.emitOpen();
+      sse.emitError();
+    });
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
+    });
+
+    expect(api.getPipelineStatus).toHaveBeenCalledTimes(1);
   });
 
   it("loads full selected job details on demand", async () => {
