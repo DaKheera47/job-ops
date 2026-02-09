@@ -38,8 +38,6 @@ interface OrchestratorFiltersProps {
   activeTab: FilterTab;
   onTabChange: (value: FilterTab) => void;
   counts: Record<FilterTab, number>;
-  searchQuery: string;
-  onSearchQueryChange: (value: string) => void;
   onOpenCommandBar: () => void;
   sourceFilter: JobSource | "all";
   onSourceFilterChange: (value: JobSource | "all") => void;

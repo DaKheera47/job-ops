@@ -46,8 +46,6 @@ export const OrchestratorPage: React.FC = () => {
   const navigate = useNavigate();
   const {
     searchParams,
-    searchQuery,
-    setSearchQuery,
     sourceFilter,
     setSourceFilter,
     sponsorFilter,
@@ -142,7 +140,6 @@ export const OrchestratorPage: React.FC = () => {
     sourceFilter,
     sponsorFilter,
     salaryFilter,
-    searchQuery,
     sort,
   );
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
@@ -300,7 +297,6 @@ export const OrchestratorPage: React.FC = () => {
       setPendingCommandScrollJobId(id);
       const nextParams = new URLSearchParams(searchParams);
       for (const key of [
-        "q",
         "source",
         "sponsor",
         "salaryMode",
@@ -426,8 +422,6 @@ export const OrchestratorPage: React.FC = () => {
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
             onOpenCommandBar={() => setIsCommandBarOpen(true)}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
@@ -452,7 +446,6 @@ export const OrchestratorPage: React.FC = () => {
               selectedJobId={selectedJobId}
               selectedJobIds={selectedJobIds}
               activeTab={activeTab}
-              searchQuery={searchQuery}
               onSelectJob={handleSelectJob}
               onToggleSelectJob={toggleSelectJob}
               onToggleSelectAll={toggleSelectAll}

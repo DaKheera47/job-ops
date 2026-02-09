@@ -189,7 +189,6 @@ vi.mock("./orchestrator/JobCommandBar", () => ({
 vi.mock("./orchestrator/OrchestratorFilters", () => ({
   OrchestratorFilters: ({
     onTabChange,
-    onSearchQueryChange,
     onOpenCommandBar,
     onSourceFilterChange,
     onSponsorFilterChange,
@@ -200,7 +199,6 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     filteredCount,
   }: {
     onTabChange: (t: FilterTab) => void;
-    onSearchQueryChange: (q: string) => void;
     onOpenCommandBar: () => void;
     onSourceFilterChange: (source: string) => void;
     onSponsorFilterChange: (value: string) => void;
@@ -219,9 +217,6 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
       <div data-testid="filtered-count">{filteredCount}</div>
       <button type="button" onClick={() => onTabChange("discovered")}>
         To Discovered
-      </button>
-      <button type="button" onClick={() => onSearchQueryChange("test search")}>
-        Set Search
       </button>
       <button type="button" onClick={onOpenCommandBar}>
         Open Command Bar
@@ -448,27 +443,6 @@ describe("OrchestratorPage", () => {
     });
   });
 
-  it("syncs search query to URL as a parameter", () => {
-    window.matchMedia = createMatchMedia(
-      true,
-    ) as unknown as typeof window.matchMedia;
-
-    render(
-      <MemoryRouter initialEntries={["/ready"]}>
-        <LocationWatcher />
-        <Routes>
-          <Route path="/:tab" element={<OrchestratorPage />} />
-          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    fireEvent.click(screen.getByText("Set Search"));
-    expect(screen.getByTestId("location").textContent).toContain(
-      "q=test+search",
-    );
-  });
-
   it("opens the command bar when the filters search button is clicked", () => {
     window.matchMedia = createMatchMedia(
       true,
@@ -536,6 +510,28 @@ describe("OrchestratorPage", () => {
         value: originalScrollIntoView,
       });
     }
+  });
+
+  it("removes legacy q query params on load", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready?q=backend&sort=title-asc"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      const locationText = screen.getByTestId("location").textContent || "";
+      expect(locationText).toContain("sort=title-asc");
+      expect(locationText).not.toContain("q=");
+    });
   });
 
   it("syncs sorting to URL and removes it when default", () => {

@@ -33,8 +33,6 @@ const renderFilters = (
       applied: 3,
       all: 6,
     },
-    searchQuery: "",
-    onSearchQueryChange: vi.fn(),
     onOpenCommandBar: vi.fn(),
     sourceFilter: "all" as const,
     onSourceFilterChange: vi.fn(),

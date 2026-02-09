@@ -14,7 +14,6 @@ interface JobListPanelProps {
   selectedJobId: string | null;
   selectedJobIds: Set<string>;
   activeTab: FilterTab;
-  searchQuery: string;
   onSelectJob: (jobId: string) => void;
   onToggleSelectJob: (jobId: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
@@ -27,7 +26,6 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
   selectedJobId,
   selectedJobIds,
   activeTab,
-  searchQuery,
   onSelectJob,
   onToggleSelectJob,
   onToggleSelectAll,
@@ -42,9 +40,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
         <div className="text-base font-semibold">No jobs found</div>
         <p className="max-w-md text-sm text-muted-foreground">
-          {searchQuery.trim()
-            ? `No jobs match "${searchQuery.trim()}".`
-            : emptyStateCopy[activeTab]}
+          {emptyStateCopy[activeTab]}
         </p>
       </div>
     ) : (

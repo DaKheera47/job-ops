@@ -76,7 +76,6 @@ describe("JobListPanel", () => {
         selectedJobId={null}
         selectedJobIds={new Set()}
         activeTab="ready"
-        searchQuery=""
         onSelectJob={vi.fn()}
         onToggleSelectJob={vi.fn()}
         onToggleSelectAll={vi.fn()}
@@ -95,7 +94,6 @@ describe("JobListPanel", () => {
         selectedJobId={null}
         selectedJobIds={new Set()}
         activeTab="ready"
-        searchQuery=""
         onSelectJob={vi.fn()}
         onToggleSelectJob={vi.fn()}
         onToggleSelectAll={vi.fn()}
@@ -106,25 +104,6 @@ describe("JobListPanel", () => {
     expect(
       screen.getByText("Run the pipeline to discover and process new jobs."),
     ).toBeInTheDocument();
-  });
-
-  it("shows the query-specific empty state when searching", () => {
-    render(
-      <JobListPanel
-        isLoading={false}
-        jobs={[]}
-        activeJobs={[]}
-        selectedJobId={null}
-        selectedJobIds={new Set()}
-        activeTab="ready"
-        searchQuery="iOS"
-        onSelectJob={vi.fn()}
-        onToggleSelectJob={vi.fn()}
-        onToggleSelectAll={vi.fn()}
-      />,
-    );
-
-    expect(screen.getByText('No jobs match "iOS".')).toBeInTheDocument();
   });
 
   it("renders jobs and notifies when a job is selected", () => {
@@ -148,7 +127,6 @@ describe("JobListPanel", () => {
         selectedJobId="job-1"
         selectedJobIds={new Set()}
         activeTab="ready"
-        searchQuery=""
         onSelectJob={onSelectJob}
         onToggleSelectJob={onToggleSelectJob}
         onToggleSelectAll={onToggleSelectAll}
@@ -179,7 +157,6 @@ describe("JobListPanel", () => {
         selectedJobId="job-1"
         selectedJobIds={new Set(["job-1"])}
         activeTab="ready"
-        searchQuery=""
         onSelectJob={vi.fn()}
         onToggleSelectJob={onToggleSelectJob}
         onToggleSelectAll={onToggleSelectAll}

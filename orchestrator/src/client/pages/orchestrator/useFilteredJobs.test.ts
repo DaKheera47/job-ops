@@ -81,7 +81,6 @@ describe("useFilteredJobs", () => {
         "all",
         "confirmed",
         { mode: "at_least", min: null, max: null },
-        "",
         {
           key: "score",
           direction: "desc",
@@ -107,7 +106,6 @@ describe("useFilteredJobs", () => {
         "all",
         "all",
         { mode: "between", min: 60000, max: 80000 },
-        "",
         {
           key: "score",
           direction: "desc",
@@ -136,7 +134,6 @@ describe("useFilteredJobs", () => {
         "all",
         "all",
         { mode: "at_least", min: null, max: null },
-        "",
         {
           key: "salary",
           direction: "desc",

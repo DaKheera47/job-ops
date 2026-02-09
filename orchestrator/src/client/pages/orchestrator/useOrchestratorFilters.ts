@@ -1,5 +1,5 @@
 import type { JobSource } from "@shared/types.js";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   JobSort,
@@ -33,20 +33,16 @@ const allowedSortDirections: JobSort["direction"][] = ["asc", "desc"];
 export const useOrchestratorFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const searchQuery = searchParams.get("q") || "";
-  const setSearchQuery = useCallback(
-    (query: string) => {
-      setSearchParams(
-        (prev) => {
-          if (query) prev.set("q", query);
-          else prev.delete("q");
-          return prev;
-        },
-        { replace: true },
-      );
-    },
-    [setSearchParams],
-  );
+  useEffect(() => {
+    if (!searchParams.has("q")) return;
+    setSearchParams(
+      (prev) => {
+        prev.delete("q");
+        return prev;
+      },
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   const sourceFilter =
     (searchParams.get("source") as JobSource | "all") || "all";
@@ -181,8 +177,6 @@ export const useOrchestratorFilters = () => {
 
   return {
     searchParams,
-    searchQuery,
-    setSearchQuery,
     sourceFilter,
     setSourceFilter,
     sponsorFilter,

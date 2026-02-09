@@ -6,7 +6,7 @@ import type {
   SalaryFilter,
   SponsorFilter,
 } from "./constants";
-import { compareJobs, jobMatchesQuery, parseSalaryBounds } from "./utils";
+import { compareJobs, parseSalaryBounds } from "./utils";
 
 const getSponsorCategory = (score: number | null): SponsorFilter => {
   if (score == null) return "unknown";
@@ -21,7 +21,6 @@ export const useFilteredJobs = (
   sourceFilter: JobSource | "all",
   sponsorFilter: SponsorFilter,
   salaryFilter: SalaryFilter,
-  searchQuery: string,
   sort: JobSort,
 ) =>
   useMemo(() => {
@@ -85,17 +84,5 @@ export const useFilteredJobs = (
       });
     }
 
-    if (searchQuery.trim()) {
-      filtered = filtered.filter((job) => jobMatchesQuery(job, searchQuery));
-    }
-
     return [...filtered].sort((a, b) => compareJobs(a, b, sort));
-  }, [
-    jobs,
-    activeTab,
-    sourceFilter,
-    sponsorFilter,
-    salaryFilter,
-    searchQuery,
-    sort,
-  ]);
+  }, [jobs, activeTab, sourceFilter, sponsorFilter, salaryFilter, sort]);
