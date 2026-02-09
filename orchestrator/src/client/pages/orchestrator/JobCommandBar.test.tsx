@@ -349,6 +349,30 @@ describe("JobCommandBar", () => {
     expect(screen.queryByText("@ready")).not.toBeInTheDocument();
   });
 
+  it("clears active lock when the dialog closes", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(screen.getByLabelText("Remove ready filter")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    openWithKeyboard();
+
+    expect(
+      screen.queryByLabelText("Remove ready filter"),
+    ).not.toBeInTheDocument();
+  });
+
   it("treats @all as invalid and does not lock", () => {
     render(
       <JobCommandBar

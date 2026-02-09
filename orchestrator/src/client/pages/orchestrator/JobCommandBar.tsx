@@ -272,8 +272,15 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     }
   };
 
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setActiveLock(null);
+    }
+  };
+
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
+    <CommandDialog open={open} onOpenChange={handleOpenChange}>
       <DialogTitle className="sr-only">Job Search</DialogTitle>
       <DialogDescription className="sr-only">
         Search jobs across all states by job title or company name.
