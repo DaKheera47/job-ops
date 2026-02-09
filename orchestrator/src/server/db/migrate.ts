@@ -197,6 +197,7 @@ const migrations = [
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_application_id ON stage_events(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_stage_events_occurred_at ON stage_events(occurred_at)`,
@@ -237,6 +238,16 @@ for (const migration of migrations) {
 
     if (isDuplicateColumn) {
       console.log("↩️ Migration skipped (column already exists)");
+      continue;
+    }
+
+    // Optional performance-only migration: if this fails we should still boot
+    // existing databases and continue without the index.
+    const isOptionalOptimizationMigration = migration.includes(
+      "idx_jobs_status_discovered_at",
+    );
+    if (isOptionalOptimizationMigration) {
+      console.warn("⚠️ Optional migration skipped:", message);
       continue;
     }
 
