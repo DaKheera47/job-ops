@@ -67,10 +67,6 @@ vi.mock("../../services/profile", () => ({
   getProfile: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("../../services/ukvisajobs", () => ({
-  fetchUkVisaJobsPage: vi.fn(),
-}));
-
 vi.mock("../../services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),

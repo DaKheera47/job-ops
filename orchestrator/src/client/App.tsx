@@ -13,7 +13,6 @@ import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { UkVisaJobsPage } from "./pages/UkVisaJobsPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
 
 export const App: React.FC = () => {
@@ -54,7 +53,6 @@ export const App: React.FC = () => {
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/job/:id" element={<JobPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
-                <Route path="/ukvisajobs" element={<UkVisaJobsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
                 <Route path="/:tab" element={<OrchestratorPage />} />
                 <Route path="/:tab/:jobId" element={<OrchestratorPage />} />

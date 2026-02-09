@@ -369,19 +369,6 @@ export interface BulkJobActionResponse {
   results: BulkJobActionResult[];
 }
 
-export interface UkVisaJobsSearchResponse {
-  jobs: CreateJobInput[];
-  totalJobs: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface UkVisaJobsImportResponse {
-  created: number;
-  skipped: number;
-}
-
 // Visa Sponsors types
 export interface VisaSponsor {
   organisationName: string;
