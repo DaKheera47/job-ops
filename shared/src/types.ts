@@ -197,29 +197,30 @@ export interface Job {
   updatedAt: string;
 }
 
-export interface JobListItem {
-  id: string;
-  source: JobSource;
-  title: string;
-  employer: string;
-  jobUrl: string;
-  applicationLink: string | null;
-  datePosted: string | null;
-  deadline: string | null;
-  salary: string | null;
-  location: string | null;
-  status: JobStatus;
-  suitabilityScore: number | null;
-  sponsorMatchScore: number | null;
-  jobType: string | null;
-  jobFunction: string | null;
-  salaryMinAmount: number | null;
-  salaryMaxAmount: number | null;
-  salaryCurrency: string | null;
-  discoveredAt: string;
-  appliedAt: string | null;
-  updatedAt: string;
-}
+export type JobListItem = Pick<
+  Job,
+  | "id"
+  | "source"
+  | "title"
+  | "employer"
+  | "jobUrl"
+  | "applicationLink"
+  | "datePosted"
+  | "deadline"
+  | "salary"
+  | "location"
+  | "status"
+  | "suitabilityScore"
+  | "sponsorMatchScore"
+  | "jobType"
+  | "jobFunction"
+  | "salaryMinAmount"
+  | "salaryMaxAmount"
+  | "salaryCurrency"
+  | "discoveredAt"
+  | "appliedAt"
+  | "updatedAt"
+>;
 
 export interface CreateJobInput {
   source: JobSource;
