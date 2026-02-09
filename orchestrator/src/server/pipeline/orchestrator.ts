@@ -10,7 +10,7 @@
 import { join } from "node:path";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
-import type { PipelineConfig } from "@shared/types";
+import type { PipelineConfig, ResumeProfile } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
@@ -22,6 +22,7 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
+import { getEffectiveSettings } from "../services/settings";
 import { generateTailoring } from "../services/summary";
 import { progressHelpers, resetProgress } from "./progress";
 import {
@@ -224,6 +225,37 @@ export type ProcessJobOptions = {
   force?: boolean;
 };
 
+async function loadProfileForSummarization(args: {
+  jobId: string;
+  jobLogger: ReturnType<typeof logger.child>;
+}): Promise<ResumeProfile> {
+  try {
+    return await getProfile();
+  } catch (error) {
+    args.jobLogger.warn(
+      "Resume profile unavailable; continuing summarization with empty profile",
+      {
+        jobId: args.jobId,
+        reason: error instanceof Error ? error.message : "Unknown error",
+      },
+    );
+    return {};
+  }
+}
+
+async function resolvePdfGenerationEnabled(jobId: string): Promise<boolean> {
+  try {
+    const settings = await getEffectiveSettings();
+    return settings.pdfGenerationEnabled;
+  } catch (error) {
+    logger.warn("Failed to resolve PDF generation mode; defaulting to enabled", {
+      jobId,
+      reason: error instanceof Error ? error.message : "Unknown error",
+    });
+    return true;
+  }
+}
+
 /**
  * Step 1: Generate AI summary and suggest projects.
  */
@@ -241,7 +273,7 @@ export async function summarizeJob(
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
 
-      const profile = await getProfile();
+      const profile = await loadProfileForSummarization({ jobId, jobLogger });
 
       // 1. Generate Summary & Tailoring
       let tailoredSummary = job.tailoredSummary;
@@ -383,6 +415,17 @@ export async function processJob(
     // Step 1: Summarize & Select Projects
     const sumResult = await summarizeJob(jobId, options);
     if (!sumResult.success) return sumResult;
+
+    // Respect effective settings: text-only mode skips PDF generation.
+    const pdfGenerationEnabled = await resolvePdfGenerationEnabled(jobId);
+    if (!pdfGenerationEnabled) {
+      const updatedJob = await jobsRepo.updateJob(jobId, {
+        status: "ready",
+        pdfPath: null,
+      });
+      if (!updatedJob) return { success: false, error: "Job not found" };
+      return { success: true };
+    }
 
     // Step 2: Generate PDF
     const pdfResult = await generateFinalPdf(jobId, options);

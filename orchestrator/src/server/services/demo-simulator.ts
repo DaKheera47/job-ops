@@ -3,6 +3,7 @@ import * as pipeline from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { transitionStage } from "@server/services/applicationTracking";
+import { getEffectiveSettings } from "@server/services/settings";
 import type {
   Job,
   JobSource,
@@ -119,6 +120,15 @@ export async function simulateProcessJob(
 ): Promise<{ success: boolean; error?: string }> {
   const summarize = await simulateSummarizeJob(jobId, options);
   if (!summarize.success) return summarize;
+  const settings = await getEffectiveSettings();
+  if (!settings.pdfGenerationEnabled) {
+    const job = await ensureJob(jobId);
+    await jobsRepo.updateJob(job.id, {
+      status: "ready",
+      pdfPath: null,
+    });
+    return { success: true };
+  }
   return simulateGeneratePdf(jobId);
 }
 

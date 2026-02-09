@@ -312,7 +312,7 @@ export interface UpdateJobInput {
   tailoredHeadline?: string;
   tailoredSkills?: string;
   selectedProjectIds?: string;
-  pdfPath?: string;
+  pdfPath?: string | null;
   notionPageId?: string;
   appliedAt?: string;
   sponsorMatchScore?: number;
