@@ -6,13 +6,8 @@ import * as api from "../api";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 
 vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({
-    open,
-    children,
-  }: {
-    open: boolean;
-    children: React.ReactNode;
-  }) => (open ? <div>{children}</div> : null),
+  Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
+    open ? <div>{children}</div> : null,
   SheetContent: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),

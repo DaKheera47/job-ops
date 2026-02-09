@@ -50,6 +50,31 @@ vi.mock("../../api", () => ({
   checkSponsor: vi.fn(),
 }));
 
+vi.mock("../JobDetailsEditDrawer", () => ({
+  JobDetailsEditDrawer: ({
+    open,
+    onOpenChange,
+    onJobUpdated,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onJobUpdated: () => void | Promise<void>;
+  }) =>
+    open ? (
+      <div data-testid="job-details-edit-drawer">
+        <button
+          type="button"
+          onClick={() => {
+            void onJobUpdated();
+            onOpenChange(false);
+          }}
+        >
+          Save details
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -148,5 +173,29 @@ describe("DiscoveredPanel", () => {
     await waitFor(() => expect(api.rescoreJob).toHaveBeenCalledWith("job-2"));
     expect(onJobUpdated).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith("Match recalculated");
+  });
+
+  it("opens edit details drawer from more actions", async () => {
+    const onJobUpdated = vi.fn().mockResolvedValue(undefined);
+    const job = createJob();
+
+    render(
+      <MemoryRouter>
+        <DiscoveredPanel
+          job={job}
+          onJobUpdated={onJobUpdated}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /edit details/i }));
+    expect(screen.getByTestId("job-details-edit-drawer")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save details/i }));
+    await waitFor(() => expect(onJobUpdated).toHaveBeenCalled());
+    expect(
+      screen.queryByTestId("job-details-edit-drawer"),
+    ).not.toBeInTheDocument();
   });
 });

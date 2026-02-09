@@ -162,7 +162,9 @@ describe.sequential("Jobs API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.title).toBe("Updated Title");
     expect(body.data.employer).toBe("Updated Employer");
-    expect(body.data.jobUrl).toBe("https://example.com/job/core-fields-updated");
+    expect(body.data.jobUrl).toBe(
+      "https://example.com/job/core-fields-updated",
+    );
     expect(body.data.applicationLink).toBe(
       "https://example.com/apply/core-fields-updated",
     );

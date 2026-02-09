@@ -685,16 +685,20 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
   } catch (error) {
     const err =
       error instanceof z.ZodError
-        ? badRequest("Invalid job update request", error.flatten())
+        ? badRequest(
+            error.issues[0]?.message ?? "Invalid job update request",
+            error.flatten(),
+          )
         : isJobUrlConflictError(error)
           ? conflict("Another job already uses that job URL")
-        : error instanceof AppError
-          ? error
-          : new AppError({
-              status: 500,
-              code: "INTERNAL_ERROR",
-              message: error instanceof Error ? error.message : "Unknown error",
-            });
+          : error instanceof AppError
+            ? error
+            : new AppError({
+                status: 500,
+                code: "INTERNAL_ERROR",
+                message:
+                  error instanceof Error ? error.message : "Unknown error",
+              });
 
     logger.error("Job update failed", {
       route: "PATCH /api/jobs/:id",

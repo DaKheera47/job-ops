@@ -39,9 +39,9 @@ import {
   JobHeader,
   TailoredSummary,
 } from "../../components";
+import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
-import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { useProfile } from "../../hooks/useProfile";
 import type { FilterTab } from "./constants";
 

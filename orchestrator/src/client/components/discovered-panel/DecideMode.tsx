@@ -1,6 +1,7 @@
 import type { Job } from "@shared/types.js";
 import {
   ChevronUp,
+  Edit2,
   ExternalLink,
   Loader2,
   RefreshCcw,
@@ -28,6 +29,7 @@ interface DecideModeProps {
   isSkipping: boolean;
   onRescore: () => void;
   isRescoring: boolean;
+  onEditDetails: () => void;
   onCheckSponsor?: () => Promise<void>;
 }
 
@@ -38,6 +40,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
   isSkipping,
   onRescore,
   isRescoring,
+  onEditDetails,
   onCheckSponsor,
 }) => {
   const [showDescription, setShowDescription] = useState(false);
@@ -113,6 +116,10 @@ export const DecideMode: React.FC<DecideModeProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-56">
+            <DropdownMenuItem onSelect={onEditDetails}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit details
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={onRescore} disabled={isRescoring}>
               <RefreshCcw
                 className={

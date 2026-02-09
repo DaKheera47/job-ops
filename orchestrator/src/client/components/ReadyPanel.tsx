@@ -45,6 +45,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import { TailorMode } from "./discovered-panel/TailorMode";
+import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 
 type PanelMode = "ready" | "tailor";
 
@@ -67,6 +68,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [recentlyApplied, setRecentlyApplied] = useState<{
@@ -90,6 +92,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     if (previousJobIdRef.current === currentJobId) return;
     previousJobIdRef.current = currentJobId;
     setMode("ready");
+    setIsEditDetailsOpen(false);
     onTailoringDirtyChange?.(false);
   }, [job?.id, onTailoringDirtyChange]);
 
@@ -413,6 +416,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Edit tailoring
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit details
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onSelect={handleRegenerate}
@@ -452,6 +459,13 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <JobDetailsEditDrawer
+        open={isEditDetailsOpen}
+        onOpenChange={setIsEditDetailsOpen}
+        job={job}
+        onJobUpdated={onJobUpdated}
+      />
 
       {/* ─────────────────────────────────────────────────────────────────────
           UNDO BAR (conditional)

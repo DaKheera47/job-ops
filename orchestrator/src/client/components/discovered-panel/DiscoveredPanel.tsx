@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
 import { useRescoreJob } from "../../hooks/useRescoreJob";
+import { JobDetailsEditDrawer } from "../JobDetailsEditDrawer";
 import { DecideMode } from "./DecideMode";
 import { EmptyState } from "./EmptyState";
 import { ProcessingState } from "./ProcessingState";
@@ -27,6 +28,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const previousJobIdRef = useRef<string | null>(null);
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
 
@@ -37,6 +39,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);
+    setIsEditDetailsOpen(false);
     onTailoringDirtyChange?.(false);
   }, [job?.id, onTailoringDirtyChange]);
 
@@ -108,6 +111,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           isSkipping={isSkipping}
           onRescore={handleRescore}
           isRescoring={isRescoring}
+          onEditDetails={() => setIsEditDetailsOpen(true)}
           onCheckSponsor={async () => {
             await api.checkSponsor(job.id);
             await onJobUpdated();
@@ -122,6 +126,13 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
           onDirtyChange={onTailoringDirtyChange}
         />
       )}
+
+      <JobDetailsEditDrawer
+        open={isEditDetailsOpen}
+        onOpenChange={setIsEditDetailsOpen}
+        job={job}
+        onJobUpdated={onJobUpdated}
+      />
     </div>
   );
 };
