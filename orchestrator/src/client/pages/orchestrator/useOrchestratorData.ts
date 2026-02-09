@@ -12,6 +12,9 @@ const initialStats: Record<JobStatus, number> = {
   expired: 0,
 };
 
+const isDocumentVisible = () =>
+  typeof document === "undefined" || document.visibilityState === "visible";
+
 export const useOrchestratorData = (selectedJobId: string | null) => {
   const [jobListItems, setJobListItems] = useState<JobListItem[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -24,6 +27,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   const pendingLoadCountRef = useRef(0);
   const selectedJobRequestSeqRef = useRef(0);
   const selectedJobCacheRef = useRef<Map<string, Job>>(new Map());
+  const lastRevisionRef = useRef<string | null>(null);
 
   const loadSelectedJob = useCallback(
     async (jobId: string) => {
@@ -58,6 +62,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         latestAppliedSeqRef.current = seq;
         setJobListItems(data.jobs);
         setStats(data.byStatus);
+        lastRevisionRef.current = data.revision;
       }
     } catch (error) {
       const message =
@@ -83,18 +88,62 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     }
   }, []);
 
-  useEffect(() => {
-    loadJobs();
-    checkPipelineStatus();
+  const checkForJobChanges = useCallback(async () => {
+    if (isRefreshPaused || !isDocumentVisible()) return;
+    try {
+      const revision = await api.getJobsRevision();
+      const previousRevision = lastRevisionRef.current;
+      if (previousRevision === null) {
+        lastRevisionRef.current = revision.revision;
+        return;
+      }
+      if (revision.revision !== previousRevision) {
+        await loadJobs();
+      }
+    } catch {
+      // Ignore errors
+    }
+  }, [isRefreshPaused, loadJobs]);
 
+  useEffect(() => {
+    void loadJobs();
+    void checkPipelineStatus();
+  }, [checkPipelineStatus, loadJobs]);
+
+  useEffect(() => {
     const interval = setInterval(() => {
-      if (isRefreshPaused) return;
-      loadJobs();
-      checkPipelineStatus();
-    }, 10000);
+      if (!isDocumentVisible() || isRefreshPaused) return;
+      void checkForJobChanges();
+      void checkPipelineStatus();
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [loadJobs, checkPipelineStatus, isRefreshPaused]);
+  }, [checkForJobChanges, checkPipelineStatus, isRefreshPaused]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refreshFromVisibilitySignal = () => {
+      if (!isDocumentVisible() || isRefreshPaused) return;
+      void checkForJobChanges();
+      void checkPipelineStatus();
+    };
+
+    const onVisibilityChange = () => {
+      if (!isDocumentVisible()) return;
+      refreshFromVisibilitySignal();
+    };
+
+    window.addEventListener("focus", refreshFromVisibilitySignal);
+    window.addEventListener("online", refreshFromVisibilitySignal);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      window.removeEventListener("focus", refreshFromVisibilitySignal);
+      window.removeEventListener("online", refreshFromVisibilitySignal);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [checkForJobChanges, checkPipelineStatus, isRefreshPaused]);
 
   useEffect(() => {
     if (!selectedJobId) {
@@ -129,6 +178,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     isRefreshPaused,
     setIsRefreshPaused,
     loadJobs,
+    checkForJobChanges,
     checkPipelineStatus,
   };
 };

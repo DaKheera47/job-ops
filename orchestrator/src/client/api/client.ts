@@ -16,6 +16,7 @@ import type {
   JobOutcome,
   JobSource,
   JobsListResponse,
+  JobsRevisionResponse,
   ManualJobDraft,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
@@ -178,6 +179,18 @@ export async function getJobs(options?: {
   const query = params.toString();
   return fetchApi<JobsListResponse<Job> | JobsListResponse<JobListItem>>(
     `/jobs${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getJobsRevision(options?: {
+  statuses?: string[];
+}): Promise<JobsRevisionResponse> {
+  const params = new URLSearchParams();
+  if (options?.statuses?.length)
+    params.set("status", options.statuses.join(","));
+  const query = params.toString();
+  return fetchApi<JobsRevisionResponse>(
+    `/jobs/revision${query ? `?${query}` : ""}`,
   );
 }
 

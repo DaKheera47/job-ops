@@ -5,6 +5,7 @@ import { useOrchestratorData } from "./useOrchestratorData";
 
 vi.mock("../../api", () => ({
   getJobs: vi.fn(),
+  getJobsRevision: vi.fn(),
   getJob: vi.fn(),
   getPipelineStatus: vi.fn(),
 }));
@@ -15,7 +16,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const makeResponse = (jobId: string) => ({
+const makeResponse = (jobId: string, revision = `rev-${jobId}`) => ({
   jobs: [{ id: jobId }],
   total: 1,
   byStatus: {
@@ -26,6 +27,7 @@ const makeResponse = (jobId: string) => ({
     skipped: 0,
     expired: 0,
   },
+  revision,
 });
 
 type Deferred<T> = {
@@ -45,7 +47,19 @@ describe("useOrchestratorData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    vi.mocked(api.getJobs).mockResolvedValue(makeResponse("initial") as any);
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeResponse("initial", "rev-initial") as any,
+    );
+    vi.mocked(api.getJobsRevision).mockResolvedValue({
+      revision: "rev-initial",
+      latestUpdatedAt: "2026-01-01T00:00:00.000Z",
+      total: 1,
+      statusFilter: null,
+    } as any);
     vi.mocked(api.getJob).mockResolvedValue({
       id: "initial",
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -90,48 +104,155 @@ describe("useOrchestratorData", () => {
     expect((result.current.jobs[0] as any)?.id).toBe("newest");
   });
 
-  it("pauses and resumes polling based on isRefreshPaused", async () => {
+  it("checks revision every 30s and skips full reload when unchanged", async () => {
     vi.useFakeTimers();
-    vi.mocked(api.getJobs).mockResolvedValue(makeResponse("steady") as any);
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeResponse("steady", "rev-steady") as any,
+    );
+    vi.mocked(api.getJobsRevision).mockResolvedValue({
+      revision: "rev-steady",
+      latestUpdatedAt: "2026-01-01T00:00:00.000Z",
+      total: 1,
+      statusFilter: null,
+    } as any);
 
-    const { result } = renderHook(() => useOrchestratorData(null));
+    renderHook(() => useOrchestratorData(null));
 
     await act(async () => {
       await Promise.resolve();
     });
     expect(api.getJobs).toHaveBeenCalledTimes(1);
 
-    act(() => {
-      result.current.setIsRefreshPaused(true);
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
     });
+
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
+    expect(api.getJobs).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads full list when revision changes", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getJobs)
+      .mockResolvedValueOnce(makeResponse("initial", "rev-initial") as any)
+      .mockResolvedValueOnce(makeResponse("newest", "rev-new") as any);
+    vi.mocked(api.getJobsRevision)
+      .mockResolvedValueOnce({
+        revision: "rev-new",
+        latestUpdatedAt: "2026-01-02T00:00:00.000Z",
+        total: 1,
+        statusFilter: null,
+      } as any)
+      .mockResolvedValue({
+        revision: "rev-new",
+        latestUpdatedAt: "2026-01-02T00:00:00.000Z",
+        total: 1,
+        statusFilter: null,
+      } as any);
+
+    renderHook(() => useOrchestratorData(null));
 
     await act(async () => {
       await Promise.resolve();
     });
 
-    const pausedBaselineCalls = vi.mocked(api.getJobs).mock.calls.length;
-
     await act(async () => {
-      vi.advanceTimersByTime(10000);
+      vi.advanceTimersByTime(30000);
       await Promise.resolve();
     });
-
-    expect(api.getJobs).toHaveBeenCalledTimes(pausedBaselineCalls);
-
-    act(() => {
-      result.current.setIsRefreshPaused(false);
-    });
-
-    const resumedBaselineCalls = vi.mocked(api.getJobs).mock.calls.length;
-
     await act(async () => {
-      vi.advanceTimersByTime(10000);
       await Promise.resolve();
     });
+    expect(api.getJobs).toHaveBeenCalledTimes(2);
+  });
 
-    expect(vi.mocked(api.getJobs).mock.calls.length).toBeGreaterThan(
-      resumedBaselineCalls,
+  it("triggers immediate revision checks on focus/online/visibility", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeResponse("initial", "rev-initial") as any,
     );
+
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(api.getJobsRevision).mockClear();
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      window.dispatchEvent(new Event("online"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(2);
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(3);
+  });
+
+  it("suppresses interval checks while tab is hidden", async () => {
+    vi.useFakeTimers();
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeResponse("initial", "rev-initial") as any,
+    );
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "hidden",
+    });
+
+    renderHook(() => useOrchestratorData(null));
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    vi.mocked(api.getJobsRevision).mockClear();
+
+    await act(async () => {
+      vi.advanceTimersByTime(30000);
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).not.toHaveBeenCalled();
+
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    });
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(api.getJobsRevision).toHaveBeenCalledTimes(1);
   });
 
   it("loads full selected job details on demand", async () => {
@@ -170,6 +291,7 @@ describe("useOrchestratorData", () => {
         skipped: 0,
         expired: 0,
       },
+      revision: "rev-job-1",
     } as any);
     vi.mocked(api.getJob).mockResolvedValue({
       id: "job-1",
