@@ -35,6 +35,7 @@ const renderFilters = (
     },
     searchQuery: "",
     onSearchQueryChange: vi.fn(),
+    onOpenCommandBar: vi.fn(),
     sourceFilter: "all" as const,
     onSourceFilterChange: vi.fn(),
     sponsorFilter: "all" as SponsorFilter,
@@ -60,16 +61,14 @@ const renderFilters = (
 };
 
 describe("OrchestratorFilters", () => {
-  it("notifies when tabs and search are updated", () => {
+  it("notifies when tabs and command search shortcut are used", () => {
     const { props } = renderFilters();
 
     fireEvent.mouseDown(screen.getByRole("tab", { name: /applied/i }));
     expect(props.onTabChange).toHaveBeenCalledWith("applied");
 
-    fireEvent.change(screen.getByPlaceholderText("Search..."), {
-      target: { value: "Design" },
-    });
-    expect(props.onSearchQueryChange).toHaveBeenCalledWith("Design");
+    fireEvent.click(screen.getByRole("button", { name: /search jobs/i }));
+    expect(props.onOpenCommandBar).toHaveBeenCalled();
   });
 
   it("updates source, sponsor, salary range, and sort from the drawer", async () => {

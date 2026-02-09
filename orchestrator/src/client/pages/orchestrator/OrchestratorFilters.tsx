@@ -1,3 +1,4 @@
+import { getMetaShortcutLabel } from "@client/lib/meta-key";
 import type { JobSource } from "@shared/types.js";
 import { Filter, Search } from "lucide-react";
 import type React from "react";
@@ -39,6 +40,7 @@ interface OrchestratorFiltersProps {
   counts: Record<FilterTab, number>;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
+  onOpenCommandBar: () => void;
   sourceFilter: JobSource | "all";
   onSourceFilterChange: (value: JobSource | "all") => void;
   sponsorFilter: SponsorFilter;
@@ -113,8 +115,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   activeTab,
   onTabChange,
   counts,
-  searchQuery,
-  onSearchQueryChange,
+  onOpenCommandBar,
   sourceFilter,
   onSourceFilterChange,
   sponsorFilter,
@@ -146,6 +147,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
   const showSalaryMax =
     salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
+  const commandShortcutLabel = getMetaShortcutLabel("K");
 
   return (
     <Tabs
@@ -171,15 +173,20 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
         </TabsList>
 
         <div className="flex lg:flex-nowrap flex-wrap items-center justify-end gap-2">
-          <div className="relative w-full flex-1 min-w-[180px] lg:max-w-[240px] lg:flex-none">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/60" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => onSearchQueryChange(event.target.value)}
-              placeholder="Search..."
-              className="h-8 pl-8 text-sm"
-            />
-          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onOpenCommandBar}
+            aria-label="Search jobs"
+            className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground w-auto"
+          >
+            <Search className="h-3.5 w-3.5" />
+            Search
+            <span className="rounded border border-border/70 px-1 py-0.5 font-mono text-xs leading-none text-muted-foreground">
+              {commandShortcutLabel}
+            </span>
+          </Button>
 
           <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
             <SheetTrigger asChild>

@@ -167,12 +167,22 @@ vi.mock("./orchestrator/OrchestratorSummary", () => ({
 vi.mock("./orchestrator/JobCommandBar", () => ({
   JobCommandBar: ({
     onSelectJob,
+    open,
+    onOpenChange,
   }: {
     onSelectJob: (tab: FilterTab, id: string) => void;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
   }) => (
-    <button type="button" onClick={() => onSelectJob("discovered", "job-2")}>
-      Command Select Job
-    </button>
+    <div>
+      <div data-testid="command-open">{open ? "open" : "closed"}</div>
+      <button type="button" onClick={() => onSelectJob("discovered", "job-2")}>
+        Command Select Job
+      </button>
+      <button type="button" onClick={() => onOpenChange?.(false)}>
+        Close Command Bar
+      </button>
+    </div>
   ),
 }));
 
@@ -180,6 +190,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
   OrchestratorFilters: ({
     onTabChange,
     onSearchQueryChange,
+    onOpenCommandBar,
     onSourceFilterChange,
     onSponsorFilterChange,
     onSalaryFilterChange,
@@ -190,6 +201,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
   }: {
     onTabChange: (t: FilterTab) => void;
     onSearchQueryChange: (q: string) => void;
+    onOpenCommandBar: () => void;
     onSourceFilterChange: (source: string) => void;
     onSponsorFilterChange: (value: string) => void;
     onSalaryFilterChange: (value: {
@@ -210,6 +222,9 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
       </button>
       <button type="button" onClick={() => onSearchQueryChange("test search")}>
         Set Search
+      </button>
+      <button type="button" onClick={onOpenCommandBar}>
+        Open Command Bar
       </button>
       <button
         type="button"
@@ -452,6 +467,27 @@ describe("OrchestratorPage", () => {
     expect(screen.getByTestId("location").textContent).toContain(
       "q=test+search",
     );
+  });
+
+  it("opens the command bar when the filters search button is clicked", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/ready"]}>
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("command-open")).toHaveTextContent("closed");
+    fireEvent.click(screen.getByText("Open Command Bar"));
+    expect(screen.getByTestId("command-open")).toHaveTextContent("open");
+    fireEvent.click(screen.getByText("Close Command Bar"));
+    expect(screen.getByTestId("command-open")).toHaveTextContent("closed");
   });
 
   it("navigates from command search across states and clears active filters", async () => {

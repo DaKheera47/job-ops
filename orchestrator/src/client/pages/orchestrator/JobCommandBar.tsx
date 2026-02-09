@@ -1,6 +1,7 @@
+import { isMetaKeyPressed } from "@client/lib/meta-key";
 import type { Job } from "@shared/types.js";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -30,27 +31,52 @@ import { JobRowContent } from "./JobRowContent";
 interface JobCommandBarProps {
   jobs: Job[];
   onSelectJob: (tab: FilterTab, jobId: string) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   jobs,
   onSelectJob,
+  open,
+  onOpenChange,
 }) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeLock, setActiveLock] = useState<StatusLock | null>(null);
+  const isOpenControlled = typeof open === "boolean";
+  const isOpen = isOpenControlled ? open : internalOpen;
+
+  const setDialogOpen = useCallback(
+    (nextOpen: boolean) => {
+      if (!isOpenControlled) {
+        setInternalOpen(nextOpen);
+      }
+      onOpenChange?.(nextOpen);
+    },
+    [isOpenControlled, onOpenChange],
+  );
+
+  const closeDialog = useCallback(() => {
+    setDialogOpen(false);
+    setActiveLock(null);
+  }, [setDialogOpen]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key.toLowerCase() !== "k") return;
-      if (!(event.metaKey || event.ctrlKey)) return;
+      if (!isMetaKeyPressed(event)) return;
       event.preventDefault();
-      setOpen((prev) => !prev);
+      if (isOpen) {
+        closeDialog();
+        return;
+      }
+      setDialogOpen(true);
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [closeDialog, isOpen, setDialogOpen]);
 
   const normalizedQuery = query.trim().toLowerCase();
   const scopedJobs = useMemo(() => {
@@ -73,10 +99,10 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     setQuery((current) => stripLeadingAtToken(current));
   };
 
-  const closeDialog = () => {
-    setOpen(false);
+  useEffect(() => {
+    if (isOpen) return;
     setActiveLock(null);
-  };
+  }, [isOpen]);
 
   const lockSuggestions = useMemo(() => {
     if (activeLock) return [];
@@ -109,7 +135,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      setOpen(true);
+      setDialogOpen(true);
       return;
     }
     closeDialog();
@@ -117,7 +143,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
 
   return (
     <CommandDialog
-      open={open}
+      open={isOpen}
       onOpenChange={handleOpenChange}
       contentClassName="max-w-4xl"
     >

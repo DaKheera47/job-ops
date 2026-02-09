@@ -93,6 +93,7 @@ export const OrchestratorPage: React.FC = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
+  const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [pendingCommandScrollJobId, setPendingCommandScrollJobId] = useState<
     string | null
@@ -415,13 +416,19 @@ export const OrchestratorPage: React.FC = () => {
 
         {/* Main content: tabs/filters -> list/detail */}
         <section className="space-y-4">
-          <JobCommandBar jobs={jobs} onSelectJob={handleCommandSelectJob} />
+          <JobCommandBar
+            jobs={jobs}
+            onSelectJob={handleCommandSelectJob}
+            open={isCommandBarOpen}
+            onOpenChange={setIsCommandBarOpen}
+          />
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
+            onOpenCommandBar={() => setIsCommandBarOpen(true)}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
             sponsorFilter={sponsorFilter}
