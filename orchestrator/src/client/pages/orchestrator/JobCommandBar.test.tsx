@@ -83,6 +83,113 @@ const createJob = (overrides: Partial<Job>): Job => ({
 });
 
 describe("JobCommandBar", () => {
+  const openWithKeyboard = () => {
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
+  };
+
+  it("opens the command dialog with keyboard shortcut", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+
+    expect(
+      screen.getByPlaceholderText(
+        "Search jobs by job title or company name...",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("creates discovered lock from @disc + Tab", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "discovered" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@disc" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(screen.getByText("@discovered")).toBeInTheDocument();
+  });
+
+  it("creates lock from @ready + Enter", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.getByText("@ready")).toBeInTheDocument();
+  });
+
+  it("shows selectable filter suggestion for @ tokens", () => {
+    render(
+      <JobCommandBar
+        jobs={[
+          createJob({
+            id: "ready-job",
+            title: "Ready Engineer",
+            status: "ready",
+          }),
+        ]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+
+    expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
+    expect(screen.queryByText("No jobs found.")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Lock to @ready"));
+
+    expect(screen.getByText("@ready")).toBeInTheDocument();
+    expect(screen.getByText("Ready Engineer")).toBeInTheDocument();
+  });
+
+  it("shows all lock suggestions for bare @", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "ready-job", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@" } });
+
+    expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
+    expect(screen.getByText("Lock to @discovered")).toBeInTheDocument();
+    expect(screen.getByText("Lock to @applied")).toBeInTheDocument();
+    expect(screen.getByText("Lock to @skipped")).toBeInTheDocument();
+    expect(screen.getByText("Lock to @expired")).toBeInTheDocument();
+  });
+
   it("searches by company name and routes to the matched state", () => {
     const onSelectJob = vi.fn();
     const jobs: Job[] = [
@@ -101,9 +208,7 @@ describe("JobCommandBar", () => {
 
     render(<JobCommandBar jobs={jobs} onSelectJob={onSelectJob} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open job search command menu" }),
-    );
+    openWithKeyboard();
     fireEvent.change(
       screen.getByPlaceholderText(
         "Search jobs by job title or company name...",
@@ -117,24 +222,35 @@ describe("JobCommandBar", () => {
     expect(onSelectJob).toHaveBeenCalledWith("applied", "applied-job");
   });
 
-  it("opens the command dialog with keyboard shortcut", () => {
-    render(
-      <JobCommandBar
-        jobs={[createJob({ id: "job-1" })]}
-        onSelectJob={vi.fn()}
-      />,
+  it("returns only locked status results", () => {
+    const jobs: Job[] = [
+      createJob({
+        id: "disc-1",
+        title: "Frontend Engineer",
+        status: "discovered",
+      }),
+      createJob({
+        id: "applied-1",
+        title: "Frontend Engineer",
+        status: "applied",
+      }),
+    ];
+    render(<JobCommandBar jobs={jobs} onSelectJob={vi.fn()} />);
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
     );
+    fireEvent.change(input, { target: { value: "@disc" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    fireEvent.change(input, { target: { value: "Frontend" } });
 
-    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-
-    expect(
-      screen.getByPlaceholderText(
-        "Search jobs by job title or company name...",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Frontend Engineer")).toBeInTheDocument();
+    expect(screen.queryByText("@applied")).not.toBeInTheDocument();
+    expect(screen.queryByText("Applied")).not.toBeInTheDocument();
   });
 
-  it("ranks the closest match first", () => {
+  it("ranks closest match first within a lock", () => {
     const jobs: Job[] = [
       createJob({
         id: "ready-job",
@@ -158,20 +274,149 @@ describe("JobCommandBar", () => {
 
     render(<JobCommandBar jobs={jobs} onSelectJob={vi.fn()} />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Open job search command menu" }),
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
     );
-    fireEvent.change(
-      screen.getByPlaceholderText(
-        "Search jobs by job title or company name...",
-      ),
-      {
-        target: { value: "joinrs" },
-      },
-    );
+    fireEvent.change(input, { target: { value: "@disc" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    fireEvent.change(input, {
+      target: { value: "joinrs" },
+    });
 
     const options = screen.getAllByRole("option");
     expect(options[0]).toHaveTextContent("Joinrs");
     expect(options[0]).toHaveTextContent("Junior Web Developer");
+  });
+
+  it("replaces an existing lock when new @ token is tab-completed", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(screen.getByText("@ready")).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: "@app" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(screen.getByText("@applied")).toBeInTheDocument();
+    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
+  });
+
+  it("removes lock from badge x button", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    fireEvent.click(screen.getByLabelText("Remove ready filter"));
+
+    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
+  });
+
+  it("removes lock with Backspace when query is empty", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    fireEvent.keyDown(input, { key: "Backspace" });
+
+    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
+  });
+
+  it("treats @all as invalid and does not lock", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@all" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
+    expect((input as HTMLInputElement).value).toBe("@all");
+  });
+
+  it("excludes processing jobs from every lock scope", () => {
+    const jobs: Job[] = [
+      createJob({
+        id: "processing-job",
+        title: "Processing-only keyword",
+        employer: "Queue Corp",
+        status: "processing",
+      }),
+      createJob({
+        id: "ready-job",
+        title: "Ready Engineer",
+        status: "ready",
+      }),
+      createJob({
+        id: "disc-job",
+        title: "Discovered Engineer",
+        status: "discovered",
+      }),
+      createJob({
+        id: "applied-job",
+        title: "Applied Engineer",
+        status: "applied",
+      }),
+      createJob({
+        id: "skipped-job",
+        title: "Skipped Engineer",
+        status: "skipped",
+      }),
+      createJob({
+        id: "expired-job",
+        title: "Expired Engineer",
+        status: "expired",
+      }),
+    ];
+    render(<JobCommandBar jobs={jobs} onSelectJob={vi.fn()} />);
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    const lockTokens = ["@ready", "@disc", "@applied", "@skip", "@exp"];
+
+    for (const token of lockTokens) {
+      fireEvent.change(input, { target: { value: token } });
+      fireEvent.keyDown(input, { key: "Tab" });
+      fireEvent.change(input, { target: { value: "Processing-only keyword" } });
+      expect(
+        screen.queryByText("Processing-only keyword"),
+      ).not.toBeInTheDocument();
+    }
   });
 });

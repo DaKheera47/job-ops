@@ -1,8 +1,7 @@
 import type { Job, JobStatus } from "@shared/types.js";
-import { Search } from "lucide-react";
+import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   CommandDialog,
   CommandEmpty,
@@ -23,6 +22,7 @@ interface JobCommandBarProps {
 }
 
 type CommandGroupId = "ready" | "discovered" | "applied" | "other";
+type StatusLock = "ready" | "discovered" | "applied" | "skipped" | "expired";
 
 const commandGroupMeta: Array<{ id: CommandGroupId; heading: string }> = [
   { id: "ready", heading: "Ready" },
@@ -30,6 +30,14 @@ const commandGroupMeta: Array<{ id: CommandGroupId; heading: string }> = [
   { id: "applied", heading: "Applied" },
   { id: "other", heading: "Other" },
 ];
+
+const lockAliases: Record<StatusLock, string[]> = {
+  ready: ["ready", "rdy"],
+  discovered: ["discovered", "discover", "disc"],
+  applied: ["applied", "apply", "app"],
+  skipped: ["skipped", "skip", "skp"],
+  expired: ["expired", "expire", "exp"],
+};
 
 const getCommandGroup = (status: JobStatus): CommandGroupId => {
   if (status === "ready") return "ready";
@@ -49,6 +57,55 @@ const parseTime = (value: string | null) => {
   if (!value) return Number.NaN;
   const parsed = Date.parse(value);
   return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
+const lockLabel: Record<StatusLock, string> = {
+  ready: "ready",
+  discovered: "discovered",
+  applied: "applied",
+  skipped: "skipped",
+  expired: "expired",
+};
+
+const tokenRegex = /^\s*@([a-z-]*)/i;
+
+const extractLeadingAtToken = (input: string) => {
+  const match = tokenRegex.exec(input);
+  if (!match) return null;
+  return match[1].toLowerCase();
+};
+
+const stripLeadingAtToken = (input: string) =>
+  input.replace(tokenRegex, "").trimStart();
+
+const getLockMatchesFromAliasPrefix = (rawToken: string): StatusLock[] => {
+  const token = rawToken.trim().toLowerCase();
+  if (!token) return Object.keys(lockAliases) as StatusLock[];
+
+  const matches: StatusLock[] = [];
+  for (const [status, aliases] of Object.entries(lockAliases) as Array<
+    [StatusLock, string[]]
+  >) {
+    if (aliases.some((alias) => alias.startsWith(token))) {
+      matches.push(status);
+    }
+  }
+  return matches;
+};
+
+const resolveLockFromAliasPrefix = (rawToken: string): StatusLock | null => {
+  const matches = getLockMatchesFromAliasPrefix(rawToken);
+  if (matches.length !== 1) return null;
+  return matches[0];
+};
+
+const jobMatchesLock = (job: Job, lock: StatusLock) => {
+  if (lock === "ready") return job.status === "ready";
+  if (lock === "discovered") return job.status === "discovered";
+  if (lock === "applied") return job.status === "applied";
+  if (lock === "skipped") return job.status === "skipped";
+  if (lock === "expired") return job.status === "expired";
+  return false;
 };
 
 const toStateLabel = (status: JobStatus) => {
@@ -106,12 +163,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const shortcutLabel = useMemo(() => {
-    if (typeof navigator === "undefined") return "Ctrl+K";
-    return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
-      ? "Cmd+K"
-      : "Ctrl+K";
-  }, []);
+  const [activeLock, setActiveLock] = useState<StatusLock | null>(null);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -126,6 +178,10 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   }, []);
 
   const normalizedQuery = query.trim().toLowerCase();
+  const scopedJobs = useMemo(() => {
+    if (!activeLock) return jobs;
+    return jobs.filter((job) => jobMatchesLock(job, activeLock));
+  }, [activeLock, jobs]);
 
   const groupedJobs = useMemo(() => {
     const groups: Record<CommandGroupId, Job[]> = {
@@ -135,7 +191,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
       other: [],
     };
 
-    const sorted = [...jobs].sort((a, b) => {
+    const sorted = [...scopedJobs].sort((a, b) => {
       if (normalizedQuery) {
         const firstScore = computeJobMatchScore(a, normalizedQuery);
         const secondScore = computeJobMatchScore(b, normalizedQuery);
@@ -156,7 +212,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
       groups[getCommandGroup(job.status)].push(job);
     }
     return groups;
-  }, [jobs, normalizedQuery]);
+  }, [normalizedQuery, scopedJobs]);
 
   const orderedGroups = useMemo(() => {
     if (!normalizedQuery) return commandGroupMeta;
@@ -182,82 +238,140 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     });
   }, [groupedJobs, normalizedQuery]);
 
-  return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setOpen(true)}
-        className="h-9 w-full items-center justify-between text-muted-foreground"
-        aria-label="Open job search command menu"
-      >
-        <span className="inline-flex min-w-0 items-center gap-2 truncate text-sm">
-          <Search className="h-4 w-4 shrink-0" />
-          Search jobs by title or company name...
-        </span>
-        <span className="hidden rounded border border-border/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80 sm:inline-flex">
-          {shortcutLabel}
-        </span>
-      </Button>
+  const applyLock = (lock: StatusLock) => {
+    setActiveLock(lock);
+    setQuery((current) => stripLeadingAtToken(current));
+  };
 
-      <CommandDialog open={open} onOpenChange={setOpen}>
-        <DialogTitle className="sr-only">Job Search</DialogTitle>
-        <DialogDescription className="sr-only">
-          Search jobs across all states by job title or company name.
-        </DialogDescription>
-        <CommandInput
-          placeholder="Search jobs by job title or company name..."
-          value={query}
-          onValueChange={setQuery}
-        />
-        <CommandList>
-          <CommandEmpty>No jobs found.</CommandEmpty>
-          {orderedGroups.map((group, index) => {
-            const items = groupedJobs[group.id];
-            if (items.length === 0) return null;
-            return (
-              <div key={group.id}>
-                {index > 0 && <CommandSeparator />}
-                <CommandGroup heading={group.heading}>
-                  {items.map((job) => {
-                    const statusToken =
-                      statusTokens[job.status] ?? defaultStatusToken;
-                    return (
-                      <CommandItem
-                        key={job.id}
-                        value={`${job.id} ${job.title} ${job.employer}`}
-                        keywords={[job.title, job.employer]}
-                        onSelect={() => {
-                          setOpen(false);
-                          onSelectJob(getFilterTab(job.status), job.id);
-                        }}
+  const lockSuggestions = useMemo(() => {
+    if (activeLock) return [];
+    const token = extractLeadingAtToken(query);
+    if (token === null) return [];
+    return getLockMatchesFromAliasPrefix(token);
+  }, [activeLock, query]);
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (
+      (event.key === "Tab" || event.key === "Enter") &&
+      !event.shiftKey &&
+      !event.altKey
+    ) {
+      const token = extractLeadingAtToken(query);
+      if (!token) return;
+      const nextLock = resolveLockFromAliasPrefix(token);
+      if (!nextLock) return;
+
+      event.preventDefault();
+      applyLock(nextLock);
+      return;
+    }
+
+    if (event.key === "Backspace" && query.length === 0 && activeLock) {
+      event.preventDefault();
+      setActiveLock(null);
+    }
+  };
+
+  return (
+    <CommandDialog open={open} onOpenChange={setOpen}>
+      <DialogTitle className="sr-only">Job Search</DialogTitle>
+      <DialogDescription className="sr-only">
+        Search jobs across all states by job title or company name.
+      </DialogDescription>
+      <CommandInput
+        placeholder="Search jobs by job title or company name..."
+        value={query}
+        onValueChange={setQuery}
+        onKeyDown={handleInputKeyDown}
+      />
+      {activeLock && (
+        <div className="flex items-center border-b px-3 py-2">
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold tracking-wide ${
+              (statusTokens[activeLock] ?? defaultStatusToken).badge
+            }`}
+          >
+            @{lockLabel[activeLock]}
+            <button
+              type="button"
+              className="inline-flex items-center rounded-full p-0.5 hover:bg-black/20"
+              aria-label={`Remove ${lockLabel[activeLock]} filter`}
+              onClick={() => setActiveLock(null)}
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        </div>
+      )}
+      <CommandList>
+        <CommandEmpty>No jobs found.</CommandEmpty>
+        {!activeLock && lockSuggestions.length > 0 && (
+          <CommandGroup heading="Filters">
+            {lockSuggestions.map((lock) => {
+              const token = statusTokens[lock] ?? defaultStatusToken;
+              return (
+                <CommandItem
+                  key={lock}
+                  value={`@${lockLabel[lock]} filter`}
+                  keywords={[`@${lockLabel[lock]}`, lockLabel[lock]]}
+                  onSelect={() => applyLock(lock)}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className={`h-1.5 w-1.5 rounded-full ${token.dot}`} />
+                    <span className="truncate text-sm font-medium">
+                      Lock to @{lockLabel[lock]}
+                    </span>
+                  </div>
+                </CommandItem>
+              );
+            })}
+          </CommandGroup>
+        )}
+        {orderedGroups.map((group, index) => {
+          const items = groupedJobs[group.id];
+          if (items.length === 0) return null;
+          return (
+            <div key={group.id}>
+              {index > 0 && <CommandSeparator />}
+              <CommandGroup heading={group.heading}>
+                {items.map((job) => {
+                  const statusToken =
+                    statusTokens[job.status] ?? defaultStatusToken;
+                  return (
+                    <CommandItem
+                      key={job.id}
+                      value={`${job.id} ${job.title} ${job.employer}`}
+                      keywords={[job.title, job.employer]}
+                      onSelect={() => {
+                        setOpen(false);
+                        onSelectJob(getFilterTab(job.status), job.id);
+                      }}
+                    >
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <span className="truncate font-medium">
+                          {job.title}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {job.employer}
+                          {job.location ? ` - ${job.location}` : ""}
+                        </span>
+                      </div>
+                      <CommandShortcut
+                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusToken.badge}`}
                       >
-                        <div className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate font-medium">
-                            {job.title}
-                          </span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {job.employer}
-                            {job.location ? ` - ${job.location}` : ""}
-                          </span>
-                        </div>
-                        <CommandShortcut
-                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusToken.badge}`}
-                        >
-                          <span
-                            className={`h-1.5 w-1.5 rounded-full ${statusToken.dot}`}
-                          />
-                          {toStateLabel(job.status)}
-                        </CommandShortcut>
-                      </CommandItem>
-                    );
-                  })}
-                </CommandGroup>
-              </div>
-            );
-          })}
-        </CommandList>
-      </CommandDialog>
-    </>
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${statusToken.dot}`}
+                        />
+                        {toStateLabel(job.status)}
+                      </CommandShortcut>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </div>
+          );
+        })}
+      </CommandList>
+    </CommandDialog>
   );
 };
