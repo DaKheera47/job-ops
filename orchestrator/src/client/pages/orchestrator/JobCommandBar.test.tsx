@@ -388,7 +388,9 @@ describe("JobCommandBar", () => {
     fireEvent.change(input, { target: { value: "@all" } });
     fireEvent.keyDown(input, { key: "Tab" });
 
-    expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/^@(ready|discovered|applied|skipped|expired)$/),
+    ).not.toBeInTheDocument();
     expect((input as HTMLInputElement).value).toBe("@all");
   });
 

@@ -116,7 +116,11 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   };
 
   return (
-    <CommandDialog open={open} onOpenChange={handleOpenChange}>
+    <CommandDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      contentClassName="max-w-4xl"
+    >
       <DialogTitle className="sr-only">Job Search</DialogTitle>
       <DialogDescription className="sr-only">
         Search jobs across all states by job title or company name.
@@ -132,7 +136,11 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
           ) : undefined
         }
       />
-      <CommandList>
+      <div className="px-3 py-1 text-[11px] text-muted-foreground border-b">
+        Use <span className="font-mono">@</span> + status + Tab/Enter to lock a
+        status. Backspace on empty search clears the lock.
+      </div>
+      <CommandList className="max-h-[65vh]">
         <CommandEmpty>No jobs found.</CommandEmpty>
         {!activeLock && (
           <JobCommandBarLockSuggestions
