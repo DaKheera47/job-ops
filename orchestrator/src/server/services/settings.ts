@@ -181,6 +181,25 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideShowSponsorInfo = showSponsorInfoSetting.overrideValue;
   const showSponsorInfo = showSponsorInfoSetting.value;
 
+  const rxresumeEmail = (
+    overrides.rxresumeEmail ??
+    process.env.RXRESUME_EMAIL ??
+    ""
+  ).trim();
+  const rxresumePassword = (
+    overrides.rxresumePassword ??
+    process.env.RXRESUME_PASSWORD ??
+    ""
+  ).trim();
+  const hasRxResumeCredentials = Boolean(rxresumeEmail && rxresumePassword);
+  const hasBaseResumeId = Boolean(rxresumeBaseResumeId?.trim());
+  const defaultPdfGenerationEnabled = hasRxResumeCredentials && hasBaseResumeId;
+  const overridePdfGenerationEnabled = parseBooleanSetting(
+    overrides.pdfGenerationEnabled,
+  );
+  const pdfGenerationEnabled =
+    overridePdfGenerationEnabled ?? defaultPdfGenerationEnabled;
+
   const backupEnabledSetting = resolveSettingValue(
     "backupEnabled",
     overrides.backupEnabled,
@@ -292,6 +311,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
+    pdfGenerationEnabled,
+    defaultPdfGenerationEnabled,
+    overridePdfGenerationEnabled,
     backupEnabled,
     defaultBackupEnabled,
     overrideBackupEnabled,
@@ -324,4 +346,12 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
     return "https://generativelanguage.googleapis.com";
   }
   return "https://openrouter.ai";
+}
+
+function parseBooleanSetting(raw: string | undefined): boolean | null {
+  if (raw === undefined) return null;
+  const normalized = raw.trim().toLowerCase();
+  if (normalized === "1" || normalized === "true") return true;
+  if (normalized === "0" || normalized === "false") return false;
+  return null;
 }

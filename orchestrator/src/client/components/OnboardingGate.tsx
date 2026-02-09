@@ -187,16 +187,22 @@ export const OnboardingGate: React.FC = () => {
   const hasLlmKey = Boolean(llmKeyHint);
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
+  const requiresPdfSetup = settings?.pdfGenerationEnabled ?? true;
   const hasCheckedValidations =
     (requiresLlmKey ? llmValidation.checked : true) &&
-    rxresumeValidation.checked &&
-    baseResumeValidation.checked;
+    (requiresPdfSetup
+      ? rxresumeValidation.checked && baseResumeValidation.checked
+      : true);
   const llmValidated = requiresLlmKey ? llmValidation.valid : true;
+  const rxresumeValidated = requiresPdfSetup ? rxresumeValidation.valid : true;
+  const baseResumeValidated = requiresPdfSetup
+    ? baseResumeValidation.valid
+    : true;
   const shouldOpen =
     !demoMode &&
     Boolean(settings && !settingsLoading) &&
     hasCheckedValidations &&
-    !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
+    !(llmValidated && rxresumeValidated && baseResumeValidated);
 
   const llmKeyCurrent = llmKeyHint ? formatSecretHint(llmKeyHint) : undefined;
   const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
@@ -234,30 +240,41 @@ export const OnboardingGate: React.FC = () => {
   }, [selectedProvider]);
 
   const steps = useMemo(
-    () => [
-      {
+    () => {
+      const llmStep = {
         id: "llm",
         label: "LLM Provider",
         subtitle: "Provider + credentials",
         complete: llmValidated,
         disabled: false,
-      },
-      {
-        id: "rxresume",
-        label: "Connect Reactive Resume",
-        subtitle: "Reactive Resume login",
-        complete: rxresumeValidation.valid,
-        disabled: false,
-      },
-      {
-        id: "baseresume",
-        label: "Select Template Resume",
-        subtitle: "Template selection",
-        complete: baseResumeValidation.valid,
-        disabled: !rxresumeValidation.valid,
-      },
+      };
+
+      if (!requiresPdfSetup) return [llmStep];
+
+      return [
+        llmStep,
+        {
+          id: "rxresume",
+          label: "Connect Reactive Resume",
+          subtitle: "Reactive Resume login",
+          complete: rxresumeValidation.valid,
+          disabled: false,
+        },
+        {
+          id: "baseresume",
+          label: "Select Template Resume",
+          subtitle: "Template selection",
+          complete: baseResumeValidation.valid,
+          disabled: !rxresumeValidation.valid,
+        },
+      ];
+    },
+    [
+      llmValidated,
+      requiresPdfSetup,
+      rxresumeValidation.valid,
+      baseResumeValidation.valid,
     ],
-    [llmValidated, rxresumeValidation.valid, baseResumeValidation.valid],
   );
 
   const defaultStep = steps.find((step) => !step.complete)?.id ?? steps[0]?.id;
@@ -277,7 +294,12 @@ export const OnboardingGate: React.FC = () => {
     } else {
       setLlmValidation({ valid: true, message: null, checked: true });
     }
-    validations.push(validateRxresume(), validateBaseResume());
+    if (requiresPdfSetup) {
+      validations.push(validateRxresume(), validateBaseResume());
+    } else {
+      setRxresumeValidation({ valid: true, message: null, checked: true });
+      setBaseResumeValidation({ valid: true, message: null, checked: true });
+    }
 
     const results = await Promise.allSettled(validations);
 
@@ -291,6 +313,7 @@ export const OnboardingGate: React.FC = () => {
   }, [
     settings,
     requiresLlmKey,
+    requiresPdfSetup,
     validateLlm,
     validateRxresume,
     validateBaseResume,
@@ -302,8 +325,9 @@ export const OnboardingGate: React.FC = () => {
     if (!settings || settingsLoading) return;
     const needsValidation =
       (requiresLlmKey ? !llmValidation.checked : false) ||
-      !rxresumeValidation.checked ||
-      !baseResumeValidation.checked;
+      (requiresPdfSetup
+        ? !rxresumeValidation.checked || !baseResumeValidation.checked
+        : false);
     if (!needsValidation) return;
     void runAllValidations();
   }, [
@@ -311,6 +335,7 @@ export const OnboardingGate: React.FC = () => {
     settingsLoading,
     requiresLlmKey,
     llmValidation.checked,
+    requiresPdfSetup,
     rxresumeValidation.checked,
     baseResumeValidation.checked,
     runAllValidations,
@@ -523,8 +548,9 @@ export const OnboardingGate: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Welcome to Job Ops</AlertDialogTitle>
             <AlertDialogDescription>
-              Let's get your workspace ready. Add your keys and resume once,
-              then the pipeline can run end-to-end.
+              {requiresPdfSetup
+                ? "Let's get your workspace ready. Add your keys and resume once, then the pipeline can run end-to-end."
+                : "Let's get your workspace ready. Add your LLM key to start tailoring jobs in text-only mode."}
             </AlertDialogDescription>
           </AlertDialogHeader>
 

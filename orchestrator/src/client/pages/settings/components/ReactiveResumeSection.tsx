@@ -34,6 +34,8 @@ type ReactiveResumeSectionProps = {
   isProjectsLoading: boolean;
   isLoading: boolean;
   isSaving: boolean;
+  pdfGenerationEffective: boolean;
+  pdfGenerationDefault: boolean;
 };
 
 export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
@@ -46,6 +48,8 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   isProjectsLoading,
   isLoading,
   isSaving,
+  pdfGenerationEffective,
+  pdfGenerationDefault,
 }) => {
   const {
     control,
@@ -59,6 +63,33 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
+          <Controller
+            name="pdfGenerationEnabled"
+            control={control}
+            render={({ field }) => (
+              <div className="space-y-1 rounded-md border border-border/60 px-3 py-2">
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <Checkbox
+                    checked={Boolean(field.value)}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked === true);
+                    }}
+                    disabled={isLoading || isSaving}
+                  />
+                  Enable PDF generation
+                </label>
+                <p className="text-xs text-muted-foreground">
+                  {pdfGenerationDefault
+                    ? "Auto-detect is ON: RxResume is configured."
+                    : "Auto-detect is OFF: RxResume setup is incomplete."}{" "}
+                  {pdfGenerationEffective
+                    ? "Jobs will generate PDFs when processed."
+                    : "Jobs will move to Ready with copy-ready tailoring text only."}
+                </p>
+              </div>
+            )}
+          />
+
           {!hasRxResumeAccess ? (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />

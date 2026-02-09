@@ -57,6 +57,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   jobspyLinkedinFetchDescription: null,
   jobspyIsRemote: null,
   showSponsorInfo: null,
+  pdfGenerationEnabled: null,
   openrouterApiKey: "",
   rxresumeEmail: "",
   rxresumePassword: "",
@@ -103,6 +104,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   jobspyLinkedinFetchDescription: null,
   jobspyIsRemote: null,
   showSponsorInfo: null,
+  pdfGenerationEnabled: null,
   openrouterApiKey: null,
   rxresumeEmail: null,
   rxresumePassword: null,
@@ -143,6 +145,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   jobspyLinkedinFetchDescription: data.overrideJobspyLinkedinFetchDescription,
   jobspyIsRemote: data.overrideJobspyIsRemote,
   showSponsorInfo: data.overrideShowSponsorInfo,
+  pdfGenerationEnabled:
+    data.overridePdfGenerationEnabled ?? data.pdfGenerationEnabled,
   openrouterApiKey: "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
@@ -304,6 +308,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     display: {
       effective: settings?.showSponsorInfo ?? true,
       default: settings?.defaultShowSponsorInfo ?? true,
+    },
+    pdfGeneration: {
+      effective: settings?.pdfGenerationEnabled ?? false,
+      default: settings?.defaultPdfGenerationEnabled ?? false,
     },
     envSettings: {
       readable: {
@@ -496,6 +504,7 @@ export const SettingsPage: React.FC = () => {
     searchTerms,
     jobspy,
     display,
+    pdfGeneration,
     envSettings,
     defaultResumeProjects,
     profileProjects,
@@ -703,6 +712,10 @@ export const SettingsPage: React.FC = () => {
           jobspy.isRemote.default,
         ),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
+        pdfGenerationEnabled: nullIfSame(
+          data.pdfGenerationEnabled,
+          pdfGeneration.default,
+        ),
         backupEnabled: nullIfSame(
           data.backupEnabled,
           backup.backupEnabled.default,
@@ -876,6 +889,8 @@ export const SettingsPage: React.FC = () => {
             isProjectsLoading={isFetchingRxResumeProjects}
             isLoading={isLoading}
             isSaving={isSaving}
+            pdfGenerationEffective={pdfGeneration.effective}
+            pdfGenerationDefault={pdfGeneration.default}
           />
           <DisplaySettingsSection
             values={display}

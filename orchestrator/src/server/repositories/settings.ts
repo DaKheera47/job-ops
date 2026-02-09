@@ -30,6 +30,7 @@ export type SettingKey =
   | "jobspyLinkedinFetchDescription"
   | "jobspyIsRemote"
   | "showSponsorInfo"
+  | "pdfGenerationEnabled"
   | "openrouterApiKey"
   | "rxresumeEmail"
   | "rxresumePassword"

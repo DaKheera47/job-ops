@@ -62,6 +62,7 @@ export const updateSettingsSchema = z
     jobspyLinkedinFetchDescription: z.boolean().nullable().optional(),
     jobspyIsRemote: z.boolean().nullable().optional(),
     showSponsorInfo: z.boolean().nullable().optional(),
+    pdfGenerationEnabled: z.boolean().nullable().optional(),
     /** @deprecated Use llmApiKey instead. */
     openrouterApiKey: z.string().trim().max(2000).nullable().optional(),
     rxresumeEmail: z.string().trim().max(200).nullable().optional(),

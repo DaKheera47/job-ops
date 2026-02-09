@@ -618,6 +618,9 @@ export interface AppSettings {
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
+  pdfGenerationEnabled: boolean;
+  defaultPdfGenerationEnabled: boolean;
+  overridePdfGenerationEnabled: boolean | null;
   llmApiKeyHint: string | null;
   /** @deprecated Use llmApiKeyHint instead. */
   openrouterApiKeyHint: string | null;

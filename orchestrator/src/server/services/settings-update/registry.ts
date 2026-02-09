@@ -212,6 +212,16 @@ export const settingsUpdateRegistry: Partial<{
       actions: [metadataPersistAction("showSponsorInfo", value)],
     }),
   ),
+  pdfGenerationEnabled: singleAction(({ value }) =>
+    result({
+      actions: [
+        persistAction(
+          "pdfGenerationEnabled",
+          value === null || value === undefined ? null : value ? "1" : "0",
+        ),
+      ],
+    }),
+  ),
   openrouterApiKey: singleAction(({ value }) => {
     console.warn(
       "[DEPRECATED] Received openrouterApiKey update. Storing as llmApiKey and clearing legacy openrouterApiKey.",
