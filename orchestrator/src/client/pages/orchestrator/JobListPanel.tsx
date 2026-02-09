@@ -81,6 +81,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
           return (
             <div
               key={job.id}
+              data-job-id={job.id}
               className={cn(
                 "group flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer border-l-2 border-b",
                 isChecked

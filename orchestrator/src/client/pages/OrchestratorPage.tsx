@@ -38,6 +38,9 @@ import {
   getSourcesWithJobs,
 } from "./orchestrator/utils";
 
+const escapeCssAttributeValue = (value: string) =>
+  value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+
 export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
   const navigate = useNavigate();
@@ -91,6 +94,9 @@ export const OrchestratorPage: React.FC = () => {
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const [pendingCommandScrollJobId, setPendingCommandScrollJobId] = useState<
+    string | null
+  >(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
@@ -290,6 +296,7 @@ export const OrchestratorPage: React.FC = () => {
 
   const handleCommandSelectJob = useCallback(
     (targetTab: FilterTab, id: string) => {
+      setPendingCommandScrollJobId(id);
       const nextParams = new URLSearchParams(searchParams);
       for (const key of [
         "q",
@@ -310,6 +317,24 @@ export const OrchestratorPage: React.FC = () => {
     },
     [isDesktop, navigate, searchParams],
   );
+
+  useEffect(() => {
+    if (!pendingCommandScrollJobId) return;
+    if (selectedJobId !== pendingCommandScrollJobId) return;
+    if (typeof document === "undefined") return;
+
+    const selector = `[data-job-id="${escapeCssAttributeValue(
+      pendingCommandScrollJobId,
+    )}"]`;
+    const target = document.querySelector<HTMLElement>(selector);
+    if (!target) return;
+
+    target.scrollIntoView({
+      behavior: isDesktop ? "smooth" : "auto",
+      block: "center",
+    });
+    setPendingCommandScrollJobId(null);
+  }, [isDesktop, pendingCommandScrollJobId, selectedJobId]);
 
   useEffect(() => {
     if (activeJobs.length === 0) {
