@@ -375,6 +375,32 @@ describe("JobCommandBar", () => {
     expect(screen.queryByText("@ready")).not.toBeInTheDocument();
   });
 
+  it("clears lock on Escape and keeps dialog open", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "ready" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@ready" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+    expect(screen.getByText("@ready")).toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText(
+        "Search jobs by job title or company name...",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("clears active lock when the dialog closes", () => {
     render(
       <JobCommandBar

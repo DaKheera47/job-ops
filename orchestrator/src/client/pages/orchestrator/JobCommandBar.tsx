@@ -157,6 +157,11 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     <CommandDialog
       open={isOpen}
       onOpenChange={handleOpenChange}
+      onEscapeKeyDown={(event) => {
+        if (!activeLock) return;
+        event.preventDefault();
+        setActiveLock(null);
+      }}
       contentClassName={`max-w-4xl transition-[border-color,box-shadow] duration-200 ${activeLock ? lockDialogAccentClass[activeLock] : ""}`}
     >
       <DialogTitle className="sr-only">Job Search</DialogTitle>
