@@ -164,6 +164,18 @@ vi.mock("./orchestrator/OrchestratorSummary", () => ({
   OrchestratorSummary: () => <div data-testid="summary" />,
 }));
 
+vi.mock("./orchestrator/JobCommandBar", () => ({
+  JobCommandBar: ({
+    onSelectJob,
+  }: {
+    onSelectJob: (tab: FilterTab, id: string) => void;
+  }) => (
+    <button type="button" onClick={() => onSelectJob("discovered", "job-2")}>
+      Command Select Job
+    </button>
+  ),
+}));
+
 vi.mock("./orchestrator/OrchestratorFilters", () => ({
   OrchestratorFilters: ({
     onTabChange,
@@ -437,6 +449,40 @@ describe("OrchestratorPage", () => {
     expect(screen.getByTestId("location").textContent).toContain(
       "q=test+search",
     );
+  });
+
+  it("navigates from command search across states and clears active filters", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/ready?source=linkedin&sponsor=confirmed&salaryMode=between&salaryMin=60000&salaryMax=90000&q=backend&sort=title-asc",
+        ]}
+      >
+        <LocationWatcher />
+        <Routes>
+          <Route path="/:tab" element={<OrchestratorPage />} />
+          <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("Command Select Job"));
+
+    await waitFor(() => {
+      const locationText = screen.getByTestId("location").textContent || "";
+      expect(locationText).toContain("/discovered/job-2");
+      expect(locationText).toContain("sort=title-asc");
+      expect(locationText).not.toContain("source=");
+      expect(locationText).not.toContain("sponsor=");
+      expect(locationText).not.toContain("salaryMode=");
+      expect(locationText).not.toContain("salaryMin=");
+      expect(locationText).not.toContain("salaryMax=");
+      expect(locationText).not.toContain("q=");
+    });
   });
 
   it("syncs sorting to URL and removes it when default", () => {

@@ -19,6 +19,7 @@ import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
+import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
@@ -287,6 +288,29 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
+  const handleCommandSelectJob = useCallback(
+    (targetTab: FilterTab, id: string) => {
+      const nextParams = new URLSearchParams(searchParams);
+      for (const key of [
+        "q",
+        "source",
+        "sponsor",
+        "salaryMode",
+        "salaryMin",
+        "salaryMax",
+        "minSalary",
+      ]) {
+        nextParams.delete(key);
+      }
+      const query = nextParams.toString();
+      navigate(`/${targetTab}/${id}${query ? `?${query}` : ""}`);
+      if (!isDesktop) {
+        setIsDetailDrawerOpen(true);
+      }
+    },
+    [isDesktop, navigate, searchParams],
+  );
+
   useEffect(() => {
     if (activeJobs.length === 0) {
       if (selectedJobId) handleSelectJobId(null);
@@ -366,6 +390,7 @@ export const OrchestratorPage: React.FC = () => {
 
         {/* Main content: tabs/filters -> list/detail */}
         <section className="space-y-4">
+          <JobCommandBar jobs={jobs} onSelectJob={handleCommandSelectJob} />
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
