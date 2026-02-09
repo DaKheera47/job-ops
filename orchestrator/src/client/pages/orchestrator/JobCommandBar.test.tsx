@@ -311,7 +311,7 @@ describe("JobCommandBar", () => {
     expect(screen.queryByText("@ready")).not.toBeInTheDocument();
   });
 
-  it("removes lock from badge x button", () => {
+  it("does not show an x remove button on the lock chip", () => {
     render(
       <JobCommandBar
         jobs={[createJob({ id: "job-1", status: "ready" })]}
@@ -325,9 +325,11 @@ describe("JobCommandBar", () => {
     );
     fireEvent.change(input, { target: { value: "@ready" } });
     fireEvent.keyDown(input, { key: "Tab" });
-    fireEvent.click(screen.getByLabelText("Remove ready filter"));
 
-    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
+    expect(screen.getByText("@ready")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Remove ready filter"),
+    ).not.toBeInTheDocument();
   });
 
   it("removes lock with Backspace when query is empty", () => {
@@ -363,14 +365,12 @@ describe("JobCommandBar", () => {
     );
     fireEvent.change(input, { target: { value: "@ready" } });
     fireEvent.keyDown(input, { key: "Tab" });
-    expect(screen.getByLabelText("Remove ready filter")).toBeInTheDocument();
+    expect(screen.getByText("@ready")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     openWithKeyboard();
 
-    expect(
-      screen.queryByLabelText("Remove ready filter"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("@ready")).not.toBeInTheDocument();
   });
 
   it("treats @all as invalid and does not lock", () => {

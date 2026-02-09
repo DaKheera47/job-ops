@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { FilterTab } from "./constants";
-import { defaultStatusToken, statusTokens } from "./constants";
 import {
   extractLeadingAtToken,
   getFilterTab,
@@ -28,6 +27,7 @@ import {
 } from "./JobCommandBar.utils";
 import { JobCommandBarLockBadge } from "./JobCommandBarLockBadge";
 import { JobCommandBarLockSuggestions } from "./JobCommandBarLockSuggestions";
+import { JobStatusBadge } from "./JobStatusBadge";
 
 interface JobCommandBarProps {
   jobs: Job[];
@@ -128,13 +128,12 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
         value={query}
         onValueChange={setQuery}
         onKeyDown={handleInputKeyDown}
+        prefix={
+          activeLock ? (
+            <JobCommandBarLockBadge activeLock={activeLock} />
+          ) : undefined
+        }
       />
-      {activeLock && (
-        <JobCommandBarLockBadge
-          activeLock={activeLock}
-          onClear={() => setActiveLock(null)}
-        />
-      )}
       <CommandList>
         <CommandEmpty>No jobs found.</CommandEmpty>
         {!activeLock && (
@@ -151,8 +150,6 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
               {index > 0 && <CommandSeparator />}
               <CommandGroup heading={group.heading}>
                 {items.map((job) => {
-                  const statusToken =
-                    statusTokens[job.status] ?? defaultStatusToken;
                   return (
                     <CommandItem
                       key={job.id}
@@ -172,13 +169,11 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
                           {job.location ? ` - ${job.location}` : ""}
                         </span>
                       </div>
-                      <CommandShortcut
-                        className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-wide ${statusToken.badge}`}
-                      >
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${statusToken.dot}`}
+                      <CommandShortcut className="ml-2">
+                        <JobStatusBadge
+                          status={job.status}
+                          label={toStateLabel(job.status)}
                         />
-                        {toStateLabel(job.status)}
                       </CommandShortcut>
                     </CommandItem>
                   );
