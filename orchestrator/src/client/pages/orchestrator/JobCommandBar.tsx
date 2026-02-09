@@ -41,6 +41,18 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   open,
   onOpenChange,
 }) => {
+  const lockDialogAccentClass: Record<StatusLock, string> = {
+    ready:
+      "border-emerald-500/50 shadow-[0_0_0_1px_rgba(16,185,129,0.2),0_0_36px_-12px_rgba(16,185,129,0.55)]",
+    discovered:
+      "border-sky-500/50 shadow-[0_0_0_1px_rgba(14,165,233,0.2),0_0_36px_-12px_rgba(14,165,233,0.55)]",
+    applied:
+      "border-emerald-500/50 shadow-[0_0_0_1px_rgba(16,185,129,0.2),0_0_36px_-12px_rgba(16,185,129,0.55)]",
+    skipped:
+      "border-rose-500/50 shadow-[0_0_0_1px_rgba(244,63,94,0.2),0_0_36px_-12px_rgba(244,63,94,0.55)]",
+    expired:
+      "border-zinc-400/40 shadow-[0_0_0_1px_rgba(161,161,170,0.2),0_0_32px_-12px_rgba(161,161,170,0.45)]",
+  };
   const [internalOpen, setInternalOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [activeLock, setActiveLock] = useState<StatusLock | null>(null);
@@ -145,7 +157,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     <CommandDialog
       open={isOpen}
       onOpenChange={handleOpenChange}
-      contentClassName="max-w-4xl"
+      contentClassName={`max-w-4xl transition-[border-color,box-shadow] duration-200 ${activeLock ? lockDialogAccentClass[activeLock] : ""}`}
     >
       <DialogTitle className="sr-only">Job Search</DialogTitle>
       <DialogDescription className="sr-only">
