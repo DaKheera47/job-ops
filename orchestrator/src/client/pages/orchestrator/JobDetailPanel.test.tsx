@@ -80,6 +80,34 @@ vi.mock("../../components/TailoringEditor", () => ({
   ),
 }));
 
+vi.mock("../../components/JobDetailsEditDrawer", () => ({
+  JobDetailsEditDrawer: ({
+    open,
+    onOpenChange,
+    onJobUpdated,
+    job,
+  }: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onJobUpdated: () => Promise<void>;
+    job: Job | null;
+  }) =>
+    open ? (
+      <div data-testid="job-details-edit-drawer">
+        <div>{job?.id}</div>
+        <button
+          type="button"
+          onClick={() => {
+            void onJobUpdated();
+            onOpenChange(false);
+          }}
+        >
+          Save details
+        </button>
+      </div>
+    ) : null,
+}));
+
 vi.mock("@/lib/utils", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/utils")>();
   return {
@@ -251,6 +279,28 @@ describe("JobDetailPanel", () => {
       }),
     );
     expect(onJobUpdated).toHaveBeenCalled();
+  });
+
+  it("opens edit details drawer from menu and saves", async () => {
+    const onJobUpdated = vi.fn().mockResolvedValue(undefined);
+
+    await renderJobDetailPanel({
+      activeTab: "all",
+      activeJobs: [],
+      selectedJob: createJob({ jobDescription: "Original" }),
+      onSelectJobId: vi.fn(),
+      onJobUpdated,
+    });
+
+    fireEvent.click(screen.getByRole("menuitem", { name: /edit details/i }));
+    expect(screen.getByTestId("job-details-edit-drawer")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /save details/i }));
+
+    await waitFor(() => expect(onJobUpdated).toHaveBeenCalled());
+    expect(
+      screen.queryByTestId("job-details-edit-drawer"),
+    ).not.toBeInTheDocument();
   });
 
   it("marks a job as applied from the action button", async () => {

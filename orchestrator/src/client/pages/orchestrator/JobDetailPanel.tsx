@@ -41,6 +41,7 @@ import {
 } from "../../components";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
+import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { useProfile } from "../../hooks/useProfile";
 import type { FilterTab } from "./constants";
 
@@ -69,6 +70,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
+  const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
   const previousSelectedJobIdRef = useRef<string | null>(null);
 
@@ -106,10 +108,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     if (!selectedJob) {
       setIsEditingDescription(false);
       setEditedDescription("");
+      setIsEditDetailsOpen(false);
       return;
     }
     setIsEditingDescription(false);
     setEditedDescription(selectedJob.jobDescription || "");
+    setIsEditDetailsOpen(false);
   }, [selectedJob?.id, selectedJob]);
 
   useEffect(() => {
@@ -432,6 +436,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Edit description
             </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit details
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => void handleCopyInfo()}>
               <Copy className="mr-2 h-4 w-4" />
               Copy info
@@ -684,6 +692,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         </TabsContent>
       </Tabs>
+
+      <JobDetailsEditDrawer
+        open={isEditDetailsOpen}
+        onOpenChange={setIsEditDetailsOpen}
+        job={selectedJob}
+        onJobUpdated={onJobUpdated}
+      />
     </div>
   );
 };
