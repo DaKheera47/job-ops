@@ -122,9 +122,10 @@ describe("AutomaticRunTab", () => {
       expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     });
 
-    expect(screen.getByRole("button", { name: "Glassdoor" })).toBeDisabled();
-    expect(
-      screen.getByTitle(/Glassdoor is available only for:/),
-    ).toBeInTheDocument();
+    const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
+    expect(glassdoorButton).toBeDisabled();
+    expect(glassdoorButton.getAttribute("title")).toContain(
+      "Glassdoor is not available for the selected country.",
+    );
   });
 });

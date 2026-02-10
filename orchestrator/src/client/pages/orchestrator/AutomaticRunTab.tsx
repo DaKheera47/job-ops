@@ -2,7 +2,6 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   formatCountryLabel,
   getCompatibleSourcesForCountry,
-  isGlassdoorCountry,
   isSourceAllowedForCountry,
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
@@ -79,7 +78,7 @@ interface AutomaticRunFormValues {
 type AutomaticPresetSelection = AutomaticPresetId | "custom";
 
 const GLASSDOOR_COUNTRY_REASON =
-  "Glassdoor is available only for: Australia, Austria, Belgium, Brazil, Canada, France, Germany, Hong Kong, India, Ireland, Italy, Mexico, Netherlands, New Zealand, Singapore, Spain, Switzerland, United Kingdom, United States, Vietnam.";
+  "Glassdoor is not available for the selected country.";
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
@@ -539,10 +538,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   source === "glassdoor"
                     ? GLASSDOOR_COUNTRY_REASON
                     : `${sourceLabel[source]} is available only when country is United Kingdom.`;
-                const showDisabledReason =
-                  !allowed &&
-                  (source !== "glassdoor" ||
-                    !isGlassdoorCountry(values.country));
 
                 const button = (
                   <Button
@@ -551,6 +546,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                     size="sm"
                     variant={selected ? "default" : "outline"}
                     disabled={!allowed}
+                    title={!allowed ? disabledReason : undefined}
                     onClick={() => onToggleSource(source, !selected)}
                   >
                     {sourceLabel[source]}
@@ -564,16 +560,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 return (
                   <Tooltip key={source}>
                     <TooltipTrigger asChild>
-                      <span
-                        className="inline-flex"
-                        title={showDisabledReason ? disabledReason : undefined}
-                      >
-                        {button}
-                      </span>
+                      <span className="inline-flex">{button}</span>
                     </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {showDisabledReason ? disabledReason : ""}
-                    </TooltipContent>
+                    <TooltipContent side="top">{disabledReason}</TooltipContent>
                   </Tooltip>
                 );
               })}
