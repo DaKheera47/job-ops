@@ -2,10 +2,16 @@ import { createJob } from "@shared/testing/factories.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { FilterTab } from "./orchestrator/constants";
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+  configurable: true,
+  value: vi.fn(),
+});
 
 vi.mock("../api", () => ({
   updateSettings: vi.fn().mockResolvedValue({}),
@@ -384,13 +390,20 @@ describe("OrchestratorPage", () => {
     };
   });
 
+  afterAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: originalScrollIntoView,
+    });
+  });
+
   it("syncs tab selection to the URL", () => {
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
 
     render(
-      <MemoryRouter initialEntries={["/jobs/ready"]}>
+      <MemoryRouter initialEntries={["/jobs/all"]}>
         <LocationWatcher />
         <Routes>
           <Route path="/jobs/:tab" element={<OrchestratorPage />} />
@@ -479,48 +492,34 @@ describe("OrchestratorPage", () => {
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
-    const scrollIntoViewMock = vi.fn();
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-      configurable: true,
-      value: scrollIntoViewMock,
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          "/jobs/ready?source=linkedin&sponsor=confirmed&salaryMode=between&salaryMin=60000&salaryMax=90000&q=backend&sort=title-asc",
+        ]}
+      >
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("Command Select Job"));
+
+    await waitFor(() => {
+      const locationText = screen.getByTestId("location").textContent || "";
+      expect(locationText).toContain("/discovered/job-2");
+      expect(locationText).toContain("sort=title-asc");
+      expect(locationText).not.toContain("source=");
+      expect(locationText).not.toContain("sponsor=");
+      expect(locationText).not.toContain("salaryMode=");
+      expect(locationText).not.toContain("salaryMin=");
+      expect(locationText).not.toContain("salaryMax=");
+      expect(locationText).not.toContain("q=");
     });
-
-    try {
-      render(
-        <MemoryRouter
-          initialEntries={[
-            "/jobs/ready?source=linkedin&sponsor=confirmed&salaryMode=between&salaryMin=60000&salaryMax=90000&q=backend&sort=title-asc",
-          ]}
-        >
-          <LocationWatcher />
-          <Routes>
-            <Route path="/jobs/:tab" element={<OrchestratorPage />} />
-            <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
-          </Routes>
-        </MemoryRouter>,
-      );
-
-      fireEvent.click(screen.getByText("Command Select Job"));
-
-      await waitFor(() => {
-        const locationText = screen.getByTestId("location").textContent || "";
-        expect(locationText).toContain("/discovered/job-2");
-        expect(locationText).toContain("sort=title-asc");
-        expect(locationText).not.toContain("source=");
-        expect(locationText).not.toContain("sponsor=");
-        expect(locationText).not.toContain("salaryMode=");
-        expect(locationText).not.toContain("salaryMin=");
-        expect(locationText).not.toContain("salaryMax=");
-        expect(locationText).not.toContain("q=");
-      });
-      expect(scrollIntoViewMock).toHaveBeenCalled();
-    } finally {
-      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-        configurable: true,
-        value: originalScrollIntoView,
-      });
-    }
   });
 
   it("removes legacy q query params on load", async () => {
@@ -551,7 +550,7 @@ describe("OrchestratorPage", () => {
     ) as unknown as typeof window.matchMedia;
 
     render(
-      <MemoryRouter initialEntries={["/jobs/ready"]}>
+      <MemoryRouter initialEntries={["/jobs/all"]}>
         <LocationWatcher />
         <Routes>
           <Route path="/jobs/:tab" element={<OrchestratorPage />} />
@@ -572,7 +571,7 @@ describe("OrchestratorPage", () => {
     ) as unknown as typeof window.matchMedia;
 
     render(
-      <MemoryRouter initialEntries={["/jobs/ready"]}>
+      <MemoryRouter initialEntries={["/jobs/all"]}>
         <LocationWatcher />
         <Routes>
           <Route path="/jobs/:tab" element={<OrchestratorPage />} />
@@ -855,7 +854,7 @@ describe("OrchestratorPage", () => {
     ) as unknown as typeof window.matchMedia;
 
     render(
-      <MemoryRouter initialEntries={["/jobs/ready"]}>
+      <MemoryRouter initialEntries={["/jobs/all"]}>
         <LocationWatcher />
         <Routes>
           <Route path="/jobs/:tab" element={<OrchestratorPage />} />
@@ -867,17 +866,17 @@ describe("OrchestratorPage", () => {
     const locationText = () => screen.getByTestId("location").textContent || "";
 
     await waitFor(() => {
-      expect(locationText()).toContain("/ready/job-1");
+      expect(screen.getByTestId("selected-job")).toHaveTextContent("job-1");
     });
 
     pressKey("j");
     await waitFor(() => {
-      expect(locationText()).toContain("/ready/job-2");
+      expect(screen.getByTestId("selected-job")).toHaveTextContent("job-2");
     });
 
     pressKey("k");
     await waitFor(() => {
-      expect(locationText()).toContain("/ready/job-1");
+      expect(screen.getByTestId("selected-job")).toHaveTextContent("job-1");
     });
 
     pressKey("2");

@@ -105,6 +105,7 @@ export const stripHtml = (value: string) =>
 
 export const safeFilenamePart = (value: string) => {
   const cleaned = value.replace(/[^a-z0-9]/gi, "_");
+  if (cleaned.replace(/_/g, "") === "") return "Unknown";
   return cleaned || "Unknown";
 };
 

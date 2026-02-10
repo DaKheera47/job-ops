@@ -74,7 +74,7 @@ describe("OrchestratorFilters", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
 
-    fireEvent.click(screen.getByRole("button", { name: "LinkedIn" }));
+    fireEvent.click(await screen.findByRole("button", { name: /linkedin/i }));
     expect(props.onSourceFilterChange).toHaveBeenCalledWith("linkedin");
 
     fireEvent.click(screen.getByRole("button", { name: "Potential sponsor" }));
@@ -121,7 +121,7 @@ describe("OrchestratorFilters", () => {
     });
   });
 
-  it("resets filters and only shows sources present in jobs", () => {
+  it("resets filters and only shows sources present in jobs", async () => {
     const { props } = renderFilters({
       sourcesWithJobs: ["gradcracker", "manual"],
     });
@@ -132,7 +132,7 @@ describe("OrchestratorFilters", () => {
       screen.queryByRole("button", { name: "LinkedIn" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Gradcracker" }),
+      await screen.findByRole("button", { name: "Gradcracker" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Manual" })).toBeInTheDocument();
 

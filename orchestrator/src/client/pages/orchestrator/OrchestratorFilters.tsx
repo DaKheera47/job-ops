@@ -128,9 +128,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSortChange,
   onResetFilters,
   filteredCount,
-  isFiltersOpen = false,
-  onFiltersOpenChange,
+  isFiltersOpen: isFiltersOpenProp,
+  onFiltersOpenChange: onFiltersOpenChangeProp,
 }) => {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isFiltersOpen = isFiltersOpenProp ?? internalOpen;
+  const onFiltersOpenChange = onFiltersOpenChangeProp ?? setInternalOpen;
+
   const visibleSources = orderedFilterSources.filter((source) =>
     sourcesWithJobs.includes(source),
   );
