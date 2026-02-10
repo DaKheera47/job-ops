@@ -40,14 +40,13 @@ describe("discoverJobsStep", () => {
     resetProgress();
   });
 
-  it("applies jobspySites setting and aggregates source errors", async () => {
+  it("aggregates source errors for enabled sources", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobSpy = await import("../../services/jobspy");
     const ukVisa = await import("../../services/ukvisajobs");
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
-      jobspySites: JSON.stringify(["linkedin"]),
     } as any);
 
     vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
@@ -72,7 +71,7 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs).toHaveLength(1);
     expect(result.sourceErrors).toEqual(["ukvisajobs: login failed"]);
     expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
-      expect.objectContaining({ sites: ["linkedin"] }),
+      expect.objectContaining({ sites: ["indeed", "linkedin"] }),
     );
   });
 
@@ -82,7 +81,6 @@ describe("discoverJobsStep", () => {
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
-      jobspySites: JSON.stringify(["glassdoor"]),
     } as any);
 
     vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
@@ -107,32 +105,6 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs).toHaveLength(1);
     expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
       expect.objectContaining({ sites: ["glassdoor"] }),
-    );
-  });
-
-  it("keeps glassdoor enabled even when jobspySites override omits it", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobSpy = await import("../../services/jobspy");
-
-    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
-      searchTerms: JSON.stringify(["engineer"]),
-      jobspySites: JSON.stringify(["linkedin"]),
-    } as any);
-
-    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
-      success: true,
-      jobs: [],
-    } as any);
-
-    await discoverJobsStep({
-      mergedConfig: {
-        ...config,
-        sources: ["glassdoor", "linkedin"],
-      },
-    });
-
-    expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
-      expect.objectContaining({ sites: ["glassdoor", "linkedin"] }),
     );
   });
 
@@ -231,7 +203,6 @@ describe("discoverJobsStep", () => {
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer", "frontend"]),
-      jobspySites: JSON.stringify(["linkedin"]),
     } as any);
 
     vi.mocked(jobSpy.runJobSpy).mockImplementation(async (options: any) => {

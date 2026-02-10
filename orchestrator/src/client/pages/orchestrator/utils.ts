@@ -166,7 +166,6 @@ export const getEnabledSources = (
   if (!settings) return [...DEFAULT_PIPELINE_SOURCES, "glassdoor"];
 
   const enabled: JobSource[] = [];
-  const jobspySites = settings.jobspySites ?? [];
   const hasUkVisaJobsAuth = Boolean(
     settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint,
   );
@@ -185,9 +184,7 @@ export const getEnabledSources = (
       source === "linkedin" ||
       source === "glassdoor"
     ) {
-      if (source === "glassdoor" || jobspySites.includes(source)) {
-        enabled.push(source);
-      }
+      enabled.push(source);
     }
   }
 

@@ -154,7 +154,6 @@ vi.mock("./orchestrator/usePipelineSources", () => ({
 vi.mock("../hooks/useSettings", () => ({
   useSettings: () => ({
     settings: {
-      jobspySites: ["indeed", "linkedin"],
       ukvisajobsEmail: null,
       ukvisajobsPasswordHint: null,
     },

@@ -11,11 +11,7 @@ type SettingsConversionValueMap = {
   searchTerms: string[];
   jobspyLocation: string;
   jobspyResultsWanted: number;
-  jobspyHoursOld: number;
   jobspyCountryIndeed: string;
-  jobspySites: string[];
-  jobspyLinkedinFetchDescription: boolean;
-  jobspyIsRemote: boolean;
   showSponsorInfo: boolean;
   backupEnabled: boolean;
   backupHour: number;
@@ -55,24 +51,6 @@ function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
   } catch {
     return null;
   }
-}
-
-function normalizeJobspySites(value: string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const site of value) {
-    const trimmed = site.trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
-    normalized.push(trimmed);
-  }
-
-  if (!seen.has("glassdoor")) {
-    normalized.push("glassdoor");
-  }
-
-  return normalized;
 }
 
 function parseBitBoolOrNull(raw: string | undefined): boolean | null {
@@ -147,40 +125,11 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
     serialize: serializeNullableNumber,
     resolve: resolveWithNullishFallback,
   },
-  jobspyHoursOld: {
-    defaultValue: () => parseInt(process.env.JOBSPY_HOURS_OLD || "72", 10),
-    parseOverride: parseIntOrNull,
-    serialize: serializeNullableNumber,
-    resolve: resolveWithNullishFallback,
-  },
   jobspyCountryIndeed: {
     defaultValue: () => process.env.JOBSPY_COUNTRY_INDEED || "UK",
     parseOverride: (raw) => raw ?? null,
     serialize: (value) => value ?? null,
     resolve: resolveWithEmptyStringFallback,
-  },
-  jobspySites: {
-    defaultValue: () =>
-      normalizeJobspySites(
-        (process.env.JOBSPY_SITES || "indeed,linkedin,glassdoor").split(","),
-      ),
-    parseOverride: parseJsonArrayOrNull,
-    serialize: serializeNullableJsonArray,
-    resolve: ({ defaultValue, overrideValue }) =>
-      normalizeJobspySites(overrideValue ?? defaultValue),
-  },
-  jobspyLinkedinFetchDescription: {
-    defaultValue: () =>
-      (process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION || "1") === "1",
-    parseOverride: parseBitBoolOrNull,
-    serialize: serializeBitBool,
-    resolve: resolveWithNullishFallback,
-  },
-  jobspyIsRemote: {
-    defaultValue: () => (process.env.JOBSPY_IS_REMOTE || "0") === "1",
-    parseOverride: parseBitBoolOrNull,
-    serialize: serializeBitBool,
-    resolve: resolveWithNullishFallback,
   },
   showSponsorInfo: {
     defaultValue: () => true,

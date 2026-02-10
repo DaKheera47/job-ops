@@ -90,7 +90,6 @@ const settingsResponse = {
   settings: {
     llmProvider: "openrouter",
     llmApiKeyHint: null,
-    openrouterApiKeyHint: null,
     rxresumeEmail: "",
     rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,

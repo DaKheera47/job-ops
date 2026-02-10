@@ -2,6 +2,7 @@
  * API client for the orchestrator backend.
  */
 
+import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type {
   ApiResponse,
   ApplicationStage,
@@ -24,7 +25,6 @@ import type {
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
-  ResumeProjectsSettings,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -646,37 +646,9 @@ export async function validateResumeConfig(): Promise<ValidationResult> {
   return fetchApi<ValidationResult>("/onboarding/validate/resume");
 }
 
-export async function updateSettings(update: {
-  model?: string | null;
-  modelScorer?: string | null;
-  modelTailoring?: string | null;
-  modelProjectSelection?: string | null;
-  llmProvider?: string | null;
-  llmBaseUrl?: string | null;
-  llmApiKey?: string | null;
-  pipelineWebhookUrl?: string | null;
-  jobCompleteWebhookUrl?: string | null;
-  resumeProjects?: ResumeProjectsSettings | null;
-  ukvisajobsMaxJobs?: number | null;
-  gradcrackerMaxJobsPerTerm?: number | null;
-  searchTerms?: string[] | null;
-  jobspyLocation?: string | null;
-  jobspyResultsWanted?: number | null;
-  jobspyHoursOld?: number | null;
-  jobspyCountryIndeed?: string | null;
-  jobspySites?: string[] | null;
-  jobspyLinkedinFetchDescription?: boolean | null;
-  showSponsorInfo?: boolean | null;
-  openrouterApiKey?: string | null;
-  rxresumeEmail?: string | null;
-  rxresumePassword?: string | null;
-  basicAuthUser?: string | null;
-  basicAuthPassword?: string | null;
-  ukvisajobsEmail?: string | null;
-  ukvisajobsPassword?: string | null;
-  webhookSecret?: string | null;
-  rxresumeBaseResumeId?: string | null;
-}): Promise<AppSettings> {
+export async function updateSettings(
+  update: Partial<UpdateSettingsInput>,
+): Promise<AppSettings> {
   return fetchApi<AppSettings>("/settings", {
     method: "PATCH",
     body: JSON.stringify(update),

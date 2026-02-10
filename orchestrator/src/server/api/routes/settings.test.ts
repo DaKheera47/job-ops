@@ -11,7 +11,7 @@ describe.sequential("Settings API routes", () => {
   beforeEach(async () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
-        OPENROUTER_API_KEY: "secret-key",
+        LLM_API_KEY: "secret-key",
         RXRESUME_EMAIL: "resume@example.com",
       },
     }));
@@ -29,7 +29,6 @@ describe.sequential("Settings API routes", () => {
     expect(Array.isArray(body.data.searchTerms)).toBe(true);
     expect(body.data.rxresumeEmail).toBe("resume@example.com");
     expect(body.data.llmApiKeyHint).toBe("secr");
-    expect(body.data.openrouterApiKeyHint).toBe("secr");
     expect(body.data.basicAuthActive).toBe(false);
   });
 
@@ -47,7 +46,7 @@ describe.sequential("Settings API routes", () => {
       body: JSON.stringify({
         searchTerms: ["engineer"],
         rxresumeEmail: "updated@example.com",
-        openrouterApiKey: "updated-secret",
+        llmApiKey: "updated-secret",
       }),
     });
     const patchBody = await patchRes.json();
@@ -56,7 +55,6 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.overrideSearchTerms).toEqual(["engineer"]);
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
-    expect(patchBody.data.openrouterApiKeyHint).toBe("upda");
   });
 
   it("validates basic auth requirements", async () => {

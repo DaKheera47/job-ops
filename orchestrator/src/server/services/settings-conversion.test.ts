@@ -26,13 +26,13 @@ describe("settings-conversion", () => {
   });
 
   it("round-trips boolean bit settings", () => {
-    expect(serializeSettingValue("jobspyIsRemote", true)).toBe("1");
-    expect(serializeSettingValue("jobspyIsRemote", false)).toBe("0");
+    expect(serializeSettingValue("showSponsorInfo", true)).toBe("1");
+    expect(serializeSettingValue("showSponsorInfo", false)).toBe("0");
 
-    expect(resolveSettingValue("jobspyIsRemote", "1").value).toBe(true);
-    expect(resolveSettingValue("jobspyIsRemote", "0").value).toBe(false);
-    expect(resolveSettingValue("jobspyIsRemote", "true").value).toBe(true);
-    expect(resolveSettingValue("jobspyIsRemote", "false").value).toBe(false);
+    expect(resolveSettingValue("showSponsorInfo", "1").value).toBe(true);
+    expect(resolveSettingValue("showSponsorInfo", "0").value).toBe(false);
+    expect(resolveSettingValue("showSponsorInfo", "true").value).toBe(true);
+    expect(resolveSettingValue("showSponsorInfo", "false").value).toBe(false);
   });
 
   it("round-trips JSON array settings", () => {
@@ -77,26 +77,6 @@ describe("settings-conversion", () => {
     const malformedOverride = resolveSettingValue("searchTerms", "[oops");
     expect(malformedOverride.overrideValue).toBeNull();
     expect(malformedOverride.value).toEqual(["web developer"]);
-  });
-
-  it("always includes glassdoor in resolved jobspySites", () => {
-    delete process.env.JOBSPY_SITES;
-    expect(resolveSettingValue("jobspySites", undefined).value).toEqual([
-      "indeed",
-      "linkedin",
-      "glassdoor",
-    ]);
-
-    process.env.JOBSPY_SITES = "indeed,linkedin";
-    expect(resolveSettingValue("jobspySites", undefined).value).toEqual([
-      "indeed",
-      "linkedin",
-      "glassdoor",
-    ]);
-
-    expect(
-      resolveSettingValue("jobspySites", JSON.stringify(["linkedin"])).value,
-    ).toEqual(["linkedin", "glassdoor"]);
   });
 
   it("round-trips penalizeMissingSalary boolean setting", () => {

@@ -9,7 +9,6 @@ export type {
 } from "./registry";
 export {
   settingsUpdateRegistry,
-  toBitBoolOrNull,
   toJsonOrNull,
   toNormalizedStringOrNull,
   toNumberStringOrNull,

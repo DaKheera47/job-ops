@@ -130,6 +130,15 @@ const migrations = [
   `INSERT OR REPLACE INTO settings(key, value, created_at, updated_at)
    SELECT 'pipelineWebhookUrl', value, created_at, updated_at FROM settings WHERE key = 'webhookUrl'`,
   `DELETE FROM settings WHERE key = 'webhookUrl'`,
+  // Drop legacy settings keys that are no longer read by the app.
+  `DELETE FROM settings
+   WHERE key IN (
+     'jobspyHoursOld',
+     'jobspySites',
+     'jobspyLinkedinFetchDescription',
+     'jobspyIsRemote',
+     'openrouterApiKey'
+   )`,
 
   // Add source column for existing databases (safe to skip if already present)
   `ALTER TABLE jobs ADD COLUMN source TEXT NOT NULL DEFAULT 'gradcracker'`,

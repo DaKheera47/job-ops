@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const originalEnv = { ...process.env };
 
-describe.sequential("envSettings migration", () => {
+describe.sequential("envSettings overrides", () => {
   let tempDir: string;
   let closeDb: (() => void) | null = null;
 
@@ -17,6 +17,7 @@ describe.sequential("envSettings migration", () => {
       DATA_DIR: tempDir,
       NODE_ENV: "test",
       MODEL: "test-model",
+      LLM_API_KEY: "sk-env-default",
     };
 
     await import("../db/migrate");
@@ -30,34 +31,26 @@ describe.sequential("envSettings migration", () => {
     process.env = { ...originalEnv };
   });
 
-  it("migrates stored openrouterApiKey -> llmApiKey for openrouter provider", async () => {
+  it("applies stored llmApiKey override to process env", async () => {
     const settingsRepo = await import("../repositories/settings");
     const { applyStoredEnvOverrides } = await import("./envSettings");
 
-    await settingsRepo.setSetting("llmProvider", "openrouter");
-    await settingsRepo.setSetting("openrouterApiKey", "sk-or-legacy");
-    await settingsRepo.setSetting("llmApiKey", null);
+    await settingsRepo.setSetting("llmApiKey", "sk-db-override");
 
     await applyStoredEnvOverrides();
 
-    expect(await settingsRepo.getSetting("llmApiKey")).toBe("sk-or-legacy");
-    expect(await settingsRepo.getSetting("openrouterApiKey")).toBe(null);
-    expect(process.env.LLM_API_KEY).toBe("sk-or-legacy");
+    expect(await settingsRepo.getSetting("llmApiKey")).toBe("sk-db-override");
+    expect(process.env.LLM_API_KEY).toBe("sk-db-override");
   });
 
-  it("does not migrate openrouterApiKey when provider is not openrouter", async () => {
+  it("restores default env value when override is explicitly cleared", async () => {
     const settingsRepo = await import("../repositories/settings");
     const { applyStoredEnvOverrides } = await import("./envSettings");
 
-    await settingsRepo.setSetting("llmProvider", "openai");
-    await settingsRepo.setSetting("openrouterApiKey", "sk-or-legacy");
-    await settingsRepo.setSetting("llmApiKey", null);
+    await settingsRepo.setSetting("llmApiKey", "");
 
     await applyStoredEnvOverrides();
 
-    expect(await settingsRepo.getSetting("llmApiKey")).toBe(null);
-    expect(await settingsRepo.getSetting("openrouterApiKey")).toBe(
-      "sk-or-legacy",
-    );
+    expect(process.env.LLM_API_KEY).toBe("sk-env-default");
   });
 });

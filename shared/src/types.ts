@@ -599,27 +599,13 @@ export interface AppSettings {
   jobspyResultsWanted: number;
   defaultJobspyResultsWanted: number;
   overrideJobspyResultsWanted: number | null;
-  jobspyHoursOld: number;
-  defaultJobspyHoursOld: number;
-  overrideJobspyHoursOld: number | null;
   jobspyCountryIndeed: string;
   defaultJobspyCountryIndeed: string;
   overrideJobspyCountryIndeed: string | null;
-  jobspySites: string[];
-  defaultJobspySites: string[];
-  overrideJobspySites: string[] | null;
-  jobspyLinkedinFetchDescription: boolean;
-  defaultJobspyLinkedinFetchDescription: boolean;
-  overrideJobspyLinkedinFetchDescription: boolean | null;
-  jobspyIsRemote: boolean;
-  defaultJobspyIsRemote: boolean;
-  overrideJobspyIsRemote: boolean | null;
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
   llmApiKeyHint: string | null;
-  /** @deprecated Use llmApiKeyHint instead. */
-  openrouterApiKeyHint: string | null;
   rxresumeEmail: string | null;
   rxresumePasswordHint: string | null;
   basicAuthUser: string | null;

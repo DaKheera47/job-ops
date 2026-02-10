@@ -32,7 +32,6 @@ import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { arraysEqual } from "@/lib/utils";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -46,18 +45,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
   rxresumeBaseResumeId: null,
-  ukvisajobsMaxJobs: null,
-  gradcrackerMaxJobsPerTerm: null,
-  searchTerms: null,
-  jobspyLocation: null,
-  jobspyResultsWanted: null,
-  jobspyHoursOld: null,
-  jobspyCountryIndeed: null,
-  jobspySites: null,
-  jobspyLinkedinFetchDescription: null,
-  jobspyIsRemote: null,
   showSponsorInfo: null,
-  openrouterApiKey: "",
   rxresumeEmail: "",
   rxresumePassword: "",
   basicAuthUser: "",
@@ -92,18 +80,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
   rxresumeBaseResumeId: null,
-  ukvisajobsMaxJobs: null,
-  gradcrackerMaxJobsPerTerm: null,
-  searchTerms: null,
-  jobspyLocation: null,
-  jobspyResultsWanted: null,
-  jobspyHoursOld: null,
-  jobspyCountryIndeed: null,
-  jobspySites: null,
-  jobspyLinkedinFetchDescription: null,
-  jobspyIsRemote: null,
   showSponsorInfo: null,
-  openrouterApiKey: null,
   rxresumeEmail: null,
   rxresumePassword: null,
   basicAuthUser: null,
@@ -132,18 +109,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   jobCompleteWebhookUrl: data.overrideJobCompleteWebhookUrl ?? "",
   resumeProjects: data.resumeProjects,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId ?? null,
-  ukvisajobsMaxJobs: data.overrideUkvisajobsMaxJobs,
-  gradcrackerMaxJobsPerTerm: data.overrideGradcrackerMaxJobsPerTerm,
-  searchTerms: data.overrideSearchTerms,
-  jobspyLocation: data.overrideJobspyLocation,
-  jobspyResultsWanted: data.overrideJobspyResultsWanted,
-  jobspyHoursOld: data.overrideJobspyHoursOld,
-  jobspyCountryIndeed: data.overrideJobspyCountryIndeed,
-  jobspySites: data.overrideJobspySites,
-  jobspyLinkedinFetchDescription: data.overrideJobspyLinkedinFetchDescription,
-  jobspyIsRemote: data.overrideJobspyIsRemote,
   showSponsorInfo: data.overrideShowSponsorInfo,
-  openrouterApiKey: "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
   basicAuthUser: data.basicAuthUser ?? "",
@@ -171,31 +137,8 @@ const normalizePrivateInput = (value: string | null | undefined) => {
   return trimmed || undefined;
 };
 
-const isSameStringList = (
-  left: string[] | null | undefined,
-  right: string[] | null | undefined,
-) => {
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  return arraysEqual(left, right);
-};
-
-const isSameSortedStringList = (
-  left: string[] | null | undefined,
-  right: string[] | null | undefined,
-) => {
-  if (!left && !right) return true;
-  if (!left || !right) return false;
-  return arraysEqual(left.slice().sort(), right.slice().sort());
-};
-
 const nullIfSame = <T,>(value: T | null | undefined, defaultValue: T) =>
   value === defaultValue ? null : (value ?? null);
-
-const nullIfSameList = (
-  value: string[] | null | undefined,
-  defaultValue: string[],
-) => (isSameStringList(value, defaultValue) ? null : (value ?? null));
 
 const normalizeResumeProjectsForCatalog = (
   catalog: ResumeProjectCatalogItem[],
@@ -231,19 +174,6 @@ const normalizeResumeProjectsForCatalog = (
   return { maxProjects, lockedProjectIds, aiSelectableProjectIds };
 };
 
-const nullIfSameSortedList = (
-  value: string[] | null | undefined,
-  defaultValue: string[],
-) => (isSameSortedStringList(value, defaultValue) ? null : (value ?? null));
-
-const withAlwaysOnGlassdoor = (
-  sites: string[] | null | undefined,
-): string[] => {
-  const unique = new Set((sites ?? []).filter(Boolean));
-  unique.add("glassdoor");
-  return Array.from(unique);
-};
-
 const getDerivedSettings = (settings: AppSettings | null) => {
   const profileProjects = settings?.profileProjects ?? [];
 
@@ -256,8 +186,7 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       projectSelection: settings?.modelProjectSelection ?? "",
       llmProvider: settings?.llmProvider ?? "",
       llmBaseUrl: settings?.llmBaseUrl ?? "",
-      llmApiKeyHint:
-        settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null,
+      llmApiKeyHint: settings?.llmApiKeyHint ?? null,
     },
     pipelineWebhook: {
       effective: settings?.pipelineWebhookUrl ?? "",
@@ -266,52 +195,6 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     jobCompleteWebhook: {
       effective: settings?.jobCompleteWebhookUrl ?? "",
       default: settings?.defaultJobCompleteWebhookUrl ?? "",
-    },
-    ukvisajobs: {
-      effective: settings?.ukvisajobsMaxJobs ?? 50,
-      default: settings?.defaultUkvisajobsMaxJobs ?? 50,
-    },
-    gradcracker: {
-      effective: settings?.gradcrackerMaxJobsPerTerm ?? 50,
-      default: settings?.defaultGradcrackerMaxJobsPerTerm ?? 50,
-    },
-    searchTerms: {
-      effective: settings?.searchTerms ?? [],
-      default: settings?.defaultSearchTerms ?? [],
-    },
-    jobspy: {
-      location: {
-        effective: settings?.jobspyLocation ?? "",
-        default: settings?.defaultJobspyLocation ?? "",
-      },
-      resultsWanted: {
-        effective: settings?.jobspyResultsWanted ?? 200,
-        default: settings?.defaultJobspyResultsWanted ?? 200,
-      },
-      hoursOld: {
-        effective: settings?.jobspyHoursOld ?? 72,
-        default: settings?.defaultJobspyHoursOld ?? 72,
-      },
-      countryIndeed: {
-        effective: settings?.jobspyCountryIndeed ?? "",
-        default: settings?.defaultJobspyCountryIndeed ?? "",
-      },
-      sites: {
-        effective: withAlwaysOnGlassdoor(
-          settings?.jobspySites ?? ["indeed", "linkedin", "glassdoor"],
-        ),
-        default: withAlwaysOnGlassdoor(
-          settings?.defaultJobspySites ?? ["indeed", "linkedin", "glassdoor"],
-        ),
-      },
-      linkedinFetchDescription: {
-        effective: settings?.jobspyLinkedinFetchDescription ?? true,
-        default: settings?.defaultJobspyLinkedinFetchDescription ?? true,
-      },
-      isRemote: {
-        effective: settings?.jobspyIsRemote ?? false,
-        default: settings?.defaultJobspyIsRemote ?? false,
-      },
     },
     display: {
       effective: settings?.showSponsorInfo ?? true,
@@ -324,7 +207,6 @@ const getDerivedSettings = (settings: AppSettings | null) => {
         basicAuthUser: settings?.basicAuthUser ?? "",
       },
       private: {
-        openrouterApiKeyHint: settings?.openrouterApiKeyHint ?? null,
         rxresumePasswordHint: settings?.rxresumePasswordHint ?? null,
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
         basicAuthPasswordHint: settings?.basicAuthPasswordHint ?? null,
@@ -503,10 +385,6 @@ export const SettingsPage: React.FC = () => {
     model,
     pipelineWebhook,
     jobCompleteWebhook,
-    ukvisajobs,
-    gradcracker,
-    searchTerms,
-    jobspy,
     display,
     envSettings,
     defaultResumeProjects,
@@ -635,11 +513,6 @@ export const SettingsPage: React.FC = () => {
         }
       }
 
-      if (dirtyFields.openrouterApiKey) {
-        const value = normalizePrivateInput(data.openrouterApiKey);
-        if (value !== undefined) envPayload.openrouterApiKey = value;
-      }
-
       if (dirtyFields.llmProvider) {
         envPayload.llmProvider = data.llmProvider ?? null;
       }
@@ -677,43 +550,6 @@ export const SettingsPage: React.FC = () => {
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
-        ukvisajobsMaxJobs: nullIfSame(
-          data.ukvisajobsMaxJobs,
-          ukvisajobs.default,
-        ),
-        gradcrackerMaxJobsPerTerm: nullIfSame(
-          data.gradcrackerMaxJobsPerTerm,
-          gradcracker.default,
-        ),
-        searchTerms: nullIfSameList(data.searchTerms, searchTerms.default),
-        jobspyLocation: nullIfSame(
-          data.jobspyLocation,
-          jobspy.location.default,
-        ),
-        jobspyResultsWanted: nullIfSame(
-          data.jobspyResultsWanted,
-          jobspy.resultsWanted.default,
-        ),
-        jobspyHoursOld: nullIfSame(
-          data.jobspyHoursOld,
-          jobspy.hoursOld.default,
-        ),
-        jobspyCountryIndeed: nullIfSame(
-          data.jobspyCountryIndeed,
-          jobspy.countryIndeed.default,
-        ),
-        jobspySites: nullIfSameSortedList(
-          withAlwaysOnGlassdoor(data.jobspySites),
-          jobspy.sites.default,
-        ),
-        jobspyLinkedinFetchDescription: nullIfSame(
-          data.jobspyLinkedinFetchDescription,
-          jobspy.linkedinFetchDescription.default,
-        ),
-        jobspyIsRemote: nullIfSame(
-          data.jobspyIsRemote,
-          jobspy.isRemote.default,
-        ),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
         backupEnabled: nullIfSame(
           data.backupEnabled,

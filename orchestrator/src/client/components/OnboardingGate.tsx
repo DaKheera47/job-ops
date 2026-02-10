@@ -10,6 +10,7 @@ import {
   LLM_PROVIDERS,
   normalizeLlmProvider,
 } from "@client/pages/settings/utils";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type { ValidationResult } from "@shared/types.js";
 import { Check } from "lucide-react";
 import type React from "react";
@@ -182,8 +183,7 @@ export const OnboardingGate: React.FC = () => {
     requiresApiKey: requiresLlmKey,
   } = providerConfig;
 
-  const llmKeyHint =
-    settings?.llmApiKeyHint ?? settings?.openrouterApiKeyHint ?? null;
+  const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
@@ -351,11 +351,7 @@ export const OnboardingGate: React.FC = () => {
         return false;
       }
 
-      const update: {
-        llmProvider?: string;
-        llmBaseUrl?: string | null;
-        llmApiKey?: string;
-      } = {
+      const update: Partial<UpdateSettingsInput> = {
         llmProvider: normalizedProvider,
         llmBaseUrl: showBaseUrl ? baseUrlValue || null : null,
       };

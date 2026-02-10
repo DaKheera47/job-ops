@@ -26,11 +26,7 @@ export const DEMO_DEFAULT_SETTINGS: DemoDefaultSettings = {
   backupMaxCount: "5",
   jobspyLocation: "United States",
   jobspyResultsWanted: "25",
-  jobspyHoursOld: "72",
   jobspyCountryIndeed: "US",
-  jobspySites: JSON.stringify(["linkedin", "indeed", "glassdoor"]),
-  jobspyLinkedinFetchDescription: "1",
-  jobspyIsRemote: "0",
   resumeProjects: JSON.stringify({
     maxProjects: 3,
     lockedProjectIds: ["demo-project-1"],

@@ -66,24 +66,10 @@ export async function discoverJobsStep(args: {
     );
   }
 
-  let jobSpySites = compatibleSources.filter(
+  const jobSpySites = compatibleSources.filter(
     (source): source is "indeed" | "linkedin" | "glassdoor" =>
       source === "indeed" || source === "linkedin" || source === "glassdoor",
   );
-
-  const jobspySitesSettingRaw = settings.jobspySites;
-  if (jobspySitesSettingRaw) {
-    try {
-      const allowed = JSON.parse(jobspySitesSettingRaw);
-      if (Array.isArray(allowed)) {
-        jobSpySites = jobSpySites.filter(
-          (site) => site === "glassdoor" || allowed.includes(site),
-        );
-      }
-    } catch {
-      // ignore JSON parse error
-    }
-  }
 
   const shouldRunJobSpy = jobSpySites.length > 0;
   const shouldRunGradcracker = compatibleSources.includes("gradcracker");
@@ -119,20 +105,7 @@ export async function discoverJobsStep(args: {
       resultsWanted: settings.jobspyResultsWanted
         ? parseInt(settings.jobspyResultsWanted, 10)
         : undefined,
-      hoursOld: settings.jobspyHoursOld
-        ? parseInt(settings.jobspyHoursOld, 10)
-        : undefined,
       countryIndeed: settings.jobspyCountryIndeed ?? undefined,
-      linkedinFetchDescription:
-        settings.jobspyLinkedinFetchDescription !== null &&
-        settings.jobspyLinkedinFetchDescription !== undefined
-          ? settings.jobspyLinkedinFetchDescription === "1"
-          : undefined,
-      isRemote:
-        settings.jobspyIsRemote !== null &&
-        settings.jobspyIsRemote !== undefined
-          ? settings.jobspyIsRemote === "1"
-          : undefined,
       onProgress: (event) => {
         if (event.type === "term_start") {
           progressHelpers.crawlingUpdate({

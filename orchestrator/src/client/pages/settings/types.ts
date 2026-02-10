@@ -13,19 +13,7 @@ export type ModelValues = EffectiveDefault<string> & {
 };
 
 export type WebhookValues = EffectiveDefault<string>;
-export type NumericSettingValues = EffectiveDefault<number>;
-export type SearchTermsValues = EffectiveDefault<string[]>;
 export type DisplayValues = EffectiveDefault<boolean>;
-
-export type JobspyValues = {
-  sites: EffectiveDefault<string[]>;
-  location: EffectiveDefault<string>;
-  resultsWanted: EffectiveDefault<number>;
-  hoursOld: EffectiveDefault<number>;
-  countryIndeed: EffectiveDefault<string>;
-  linkedinFetchDescription: EffectiveDefault<boolean>;
-  isRemote: EffectiveDefault<boolean>;
-};
 
 export type EnvSettingsValues = {
   readable: {
@@ -34,7 +22,6 @@ export type EnvSettingsValues = {
     basicAuthUser: string;
   };
   private: {
-    openrouterApiKeyHint: string | null;
     rxresumePasswordHint: string | null;
     ukvisajobsPasswordHint: string | null;
     basicAuthPasswordHint: string | null;

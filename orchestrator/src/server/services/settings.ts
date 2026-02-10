@@ -130,14 +130,6 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideJobspyResultsWanted = jobspyResultsWantedSetting.overrideValue;
   const jobspyResultsWanted = jobspyResultsWantedSetting.value;
 
-  const jobspyHoursOldSetting = resolveSettingValue(
-    "jobspyHoursOld",
-    overrides.jobspyHoursOld,
-  );
-  const defaultJobspyHoursOld = jobspyHoursOldSetting.defaultValue;
-  const overrideJobspyHoursOld = jobspyHoursOldSetting.overrideValue;
-  const jobspyHoursOld = jobspyHoursOldSetting.value;
-
   const jobspyCountryIndeedSetting = resolveSettingValue(
     "jobspyCountryIndeed",
     overrides.jobspyCountryIndeed,
@@ -145,33 +137,6 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const defaultJobspyCountryIndeed = jobspyCountryIndeedSetting.defaultValue;
   const overrideJobspyCountryIndeed = jobspyCountryIndeedSetting.overrideValue;
   const jobspyCountryIndeed = jobspyCountryIndeedSetting.value;
-
-  const jobspySitesSetting = resolveSettingValue(
-    "jobspySites",
-    overrides.jobspySites,
-  );
-  const defaultJobspySites = jobspySitesSetting.defaultValue;
-  const overrideJobspySites = jobspySitesSetting.overrideValue;
-  const jobspySites = jobspySitesSetting.value;
-
-  const jobspyLinkedinFetchDescriptionSetting = resolveSettingValue(
-    "jobspyLinkedinFetchDescription",
-    overrides.jobspyLinkedinFetchDescription,
-  );
-  const defaultJobspyLinkedinFetchDescription =
-    jobspyLinkedinFetchDescriptionSetting.defaultValue;
-  const overrideJobspyLinkedinFetchDescription =
-    jobspyLinkedinFetchDescriptionSetting.overrideValue;
-  const jobspyLinkedinFetchDescription =
-    jobspyLinkedinFetchDescriptionSetting.value;
-
-  const jobspyIsRemoteSetting = resolveSettingValue(
-    "jobspyIsRemote",
-    overrides.jobspyIsRemote,
-  );
-  const defaultJobspyIsRemote = jobspyIsRemoteSetting.defaultValue;
-  const overrideJobspyIsRemote = jobspyIsRemoteSetting.overrideValue;
-  const jobspyIsRemote = jobspyIsRemoteSetting.value;
 
   const showSponsorInfoSetting = resolveSettingValue(
     "showSponsorInfo",
@@ -274,21 +239,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     jobspyResultsWanted,
     defaultJobspyResultsWanted,
     overrideJobspyResultsWanted,
-    jobspyHoursOld,
-    defaultJobspyHoursOld,
-    overrideJobspyHoursOld,
     jobspyCountryIndeed,
     defaultJobspyCountryIndeed,
     overrideJobspyCountryIndeed,
-    jobspySites,
-    defaultJobspySites,
-    overrideJobspySites,
-    jobspyLinkedinFetchDescription,
-    defaultJobspyLinkedinFetchDescription,
-    overrideJobspyLinkedinFetchDescription,
-    jobspyIsRemote,
-    defaultJobspyIsRemote,
-    overrideJobspyIsRemote,
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,

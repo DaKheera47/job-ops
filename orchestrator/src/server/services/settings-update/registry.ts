@@ -55,12 +55,6 @@ export function toJsonOrNull<T>(value: T | null | undefined): string | null {
   return value !== null && value !== undefined ? JSON.stringify(value) : null;
 }
 
-export function toBitBoolOrNull(
-  value: boolean | null | undefined,
-): string | null {
-  return serializeSettingValue("jobspyIsRemote", value);
-}
-
 function result(
   args: {
     actions?: SettingsUpdateAction[];
@@ -186,48 +180,14 @@ export const settingsUpdateRegistry: Partial<{
       actions: [metadataPersistAction("jobspyResultsWanted", value)],
     }),
   ),
-  jobspyHoursOld: singleAction(({ value }) =>
-    result({
-      actions: [metadataPersistAction("jobspyHoursOld", value)],
-    }),
-  ),
   jobspyCountryIndeed: singleAction(({ value }) =>
     result({ actions: [metadataPersistAction("jobspyCountryIndeed", value)] }),
-  ),
-  jobspySites: singleAction(({ value }) =>
-    result({ actions: [metadataPersistAction("jobspySites", value)] }),
-  ),
-  jobspyLinkedinFetchDescription: singleAction(({ value }) =>
-    result({
-      actions: [metadataPersistAction("jobspyLinkedinFetchDescription", value)],
-    }),
-  ),
-  jobspyIsRemote: singleAction(({ value }) =>
-    result({
-      actions: [metadataPersistAction("jobspyIsRemote", value)],
-    }),
   ),
   showSponsorInfo: singleAction(({ value }) =>
     result({
       actions: [metadataPersistAction("showSponsorInfo", value)],
     }),
   ),
-  openrouterApiKey: singleAction(({ value }) => {
-    console.warn(
-      "[DEPRECATED] Received openrouterApiKey update. Storing as llmApiKey and clearing legacy openrouterApiKey.",
-    );
-    const normalized = toNormalizedStringOrNull(value);
-    return result({
-      actions: [
-        persistAction("llmApiKey", normalized, () => {
-          applyEnvValue("LLM_API_KEY", normalized);
-        }),
-        persistAction("openrouterApiKey", null, () => {
-          applyEnvValue("OPENROUTER_API_KEY", null);
-        }),
-      ],
-    });
-  }),
   llmApiKey: singleAction(({ value }) => {
     const normalized = toNormalizedStringOrNull(value);
     return result({

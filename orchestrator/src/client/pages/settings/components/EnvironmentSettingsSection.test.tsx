@@ -10,7 +10,6 @@ const EnvironmentSettingsHarness = () => {
       rxresumeEmail: "resume@example.com",
       ukvisajobsEmail: "visa@example.com",
       basicAuthUser: "admin",
-      openrouterApiKey: "",
       rxresumePassword: "",
       ukvisajobsPassword: "",
       basicAuthPassword: "",
@@ -30,7 +29,6 @@ const EnvironmentSettingsHarness = () => {
               basicAuthUser: "admin",
             },
             private: {
-              openrouterApiKeyHint: "sk-1",
               rxresumePasswordHint: null,
               ukvisajobsPasswordHint: "pass",
               basicAuthPasswordHint: "abcd",

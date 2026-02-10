@@ -36,17 +36,15 @@ describe("applySettingsUpdates", () => {
       model: "gpt-4o-mini",
       ukvisajobsMaxJobs: 42,
       searchTerms: ["backend", "platform"],
-      jobspyIsRemote: true,
       llmProvider: "openai",
     });
 
-    expect(settingsRepo.setSetting).toHaveBeenCalledTimes(5);
+    expect(settingsRepo.setSetting).toHaveBeenCalledTimes(4);
     expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
       expect.arrayContaining([
         ["model", "gpt-4o-mini"],
         ["ukvisajobsMaxJobs", "42"],
         ["searchTerms", '["backend","platform"]'],
-        ["jobspyIsRemote", "1"],
         ["llmProvider", "openai"],
       ]),
     );
@@ -55,33 +53,6 @@ describe("applySettingsUpdates", () => {
       "openai",
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
-  });
-
-  it("handles deprecated openrouterApiKey migration path", async () => {
-    const settingsRepo = await import("@server/repositories/settings");
-    const envSettings = await import("@server/services/envSettings");
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-    await applySettingsUpdates({
-      openrouterApiKey: " legacy-key ",
-    });
-
-    expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
-      expect.arrayContaining([
-        ["llmApiKey", "legacy-key"],
-        ["openrouterApiKey", null],
-      ]),
-    );
-    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
-      "LLM_API_KEY",
-      "legacy-key",
-    );
-    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
-      "OPENROUTER_API_KEY",
-      null,
-    );
-    expect(warnSpy).toHaveBeenCalledOnce();
-    warnSpy.mockRestore();
   });
 
   it("marks backup scheduler refresh when backup settings are changed", async () => {

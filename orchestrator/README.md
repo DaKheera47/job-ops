@@ -40,7 +40,7 @@ orchestrator/
 
    OpenRouter is the default LLM provider, but LM Studio, Ollama, OpenAI, and Gemini are also supported.
 
-   Deprecated: `OPENROUTER_API_KEY` / `openrouterApiKey`. Use `LLM_API_KEY` / `llmApiKey` instead (legacy values are auto-migrated/copied for compatibility).
+   Use `LLM_API_KEY` / `llmApiKey` to configure providers that require an API key.
 
 3. **Initialize database:**
    ```bash
