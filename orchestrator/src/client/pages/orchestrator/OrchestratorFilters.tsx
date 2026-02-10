@@ -1,3 +1,4 @@
+import { KbdHint } from "@client/components/KbdHint";
 import { getMetaShortcutLabel } from "@client/lib/meta-key";
 import type { JobSource } from "@shared/types.js";
 import { Filter, Search } from "lucide-react";
@@ -154,7 +155,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <TabsList className="h-auto w-full flex-wrap justify-start gap-1 lg:w-auto">
-          {tabs.map((tab) => (
+          {tabs.map((tab, index) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
@@ -166,6 +167,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                   {counts[tab.id]}
                 </span>
               )}
+              <KbdHint shortcut={String(index + 1)} className="ml-0.5" />
             </TabsTrigger>
           ))}
         </TabsList>

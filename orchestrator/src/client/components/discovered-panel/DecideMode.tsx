@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { FitAssessment, JobHeader, TailoredSummary } from "..";
+import { KbdHint } from "../KbdHint";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { getPlainDescription } from "./helpers";
 
@@ -70,6 +71,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
               <XCircle className="mr-2 h-4 w-4" />
             )}
             Skip Job
+            <KbdHint shortcut="s" className="ml-1.5" />
           </Button>
           <Button
             size="default"
@@ -78,6 +80,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
           >
             <Sparkles className="mr-2 h-4 w-4" />
             Start Tailoring
+            <KbdHint shortcut="t" className="ml-1.5" />
           </Button>
         </div>
       </div>
