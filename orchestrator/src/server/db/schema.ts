@@ -17,7 +17,14 @@ export const jobs = sqliteTable("jobs", {
 
   // From crawler
   source: text("source", {
-    enum: ["gradcracker", "indeed", "linkedin", "ukvisajobs", "manual"],
+    enum: [
+      "gradcracker",
+      "indeed",
+      "linkedin",
+      "glassdoor",
+      "ukvisajobs",
+      "manual",
+    ],
   })
     .notNull()
     .default("gradcracker"),

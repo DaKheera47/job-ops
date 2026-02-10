@@ -122,6 +122,7 @@ export type JobSource =
   | "gradcracker"
   | "indeed"
   | "linkedin"
+  | "glassdoor"
   | "ukvisajobs"
   | "manual";
 
