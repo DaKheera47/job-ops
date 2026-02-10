@@ -3,9 +3,19 @@ import json
 import os
 from pathlib import Path
 
+import pandas as pd
 from jobspy import scrape_jobs
 
 PROGRESS_PREFIX = "JOBOPS_PROGRESS "
+COUNTRY_ALIASES = {
+    "uk": "united kingdom",
+    "united kingdom": "united kingdom",
+    "us": "united states",
+    "usa": "united states",
+    "united states": "united states",
+    "türkiye": "turkey",
+    "czech republic": "czechia",
+}
 
 
 def _env_str(name: str, default: str) -> str:
@@ -39,6 +49,42 @@ def _parse_sites(raw: str) -> list[str]:
     return [s.strip() for s in raw.split(",") if s.strip()]
 
 
+def _normalize_country_token(value: str) -> str:
+    normalized = " ".join(value.strip().lower().split())
+    return COUNTRY_ALIASES.get(normalized, normalized)
+
+
+def _is_country_level_location(location: str, country_indeed: str) -> bool:
+    if not location.strip() or not country_indeed.strip():
+        return False
+    return _normalize_country_token(location) == _normalize_country_token(country_indeed)
+
+
+def _scrape_for_sites(
+    *,
+    sites: list[str],
+    search_term: str,
+    location: str | None,
+    results_wanted: int,
+    hours_old: int,
+    country_indeed: str,
+    linkedin_fetch_description: bool,
+    is_remote: bool,
+) -> pd.DataFrame:
+    kwargs: dict[str, object] = {
+        "site_name": sites,
+        "search_term": search_term,
+        "results_wanted": results_wanted,
+        "hours_old": hours_old,
+        "country_indeed": country_indeed,
+        "linkedin_fetch_description": linkedin_fetch_description,
+        "is_remote": is_remote,
+    }
+    if location and location.strip():
+        kwargs["location"] = location
+    return scrape_jobs(**kwargs)
+
+
 def main() -> int:
     sites = _parse_sites(_env_str("JOBSPY_SITES", "indeed,linkedin"))
     search_term = _env_str("JOBSPY_SEARCH_TERM", "web developer")
@@ -68,16 +114,45 @@ def main() -> int:
             "searchTerm": search_term,
         },
     )
-    jobs = scrape_jobs(
-        site_name=sites,
-        search_term=search_term,
-        location=location,
-        results_wanted=results_wanted,
-        hours_old=hours_old,
-        country_indeed=country_indeed,
-        linkedin_fetch_description=linkedin_fetch_description,
-        is_remote=is_remote,
-    )
+    frames: list[pd.DataFrame] = []
+    non_glassdoor_sites = [site for site in sites if site != "glassdoor"]
+
+    if non_glassdoor_sites:
+        frames.append(
+            _scrape_for_sites(
+                sites=non_glassdoor_sites,
+                search_term=search_term,
+                location=location,
+                results_wanted=results_wanted,
+                hours_old=hours_old,
+                country_indeed=country_indeed,
+                linkedin_fetch_description=linkedin_fetch_description,
+                is_remote=is_remote,
+            )
+        )
+
+    if "glassdoor" in sites:
+        glassdoor_location = location
+        if _is_country_level_location(location, country_indeed):
+            # Glassdoor treats location as a city-level filter; country-only values can fail.
+            glassdoor_location = None
+            print(
+                "jobspy: Glassdoor location matched country; using country-only search"
+            )
+        frames.append(
+            _scrape_for_sites(
+                sites=["glassdoor"],
+                search_term=search_term,
+                location=glassdoor_location,
+                results_wanted=results_wanted,
+                hours_old=hours_old,
+                country_indeed=country_indeed,
+                linkedin_fetch_description=linkedin_fetch_description,
+                is_remote=is_remote,
+            )
+        )
+
+    jobs = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
     print(f"Found {len(jobs)} jobs")
     _emit_progress(
