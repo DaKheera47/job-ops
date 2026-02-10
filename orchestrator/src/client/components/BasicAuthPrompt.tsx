@@ -102,8 +102,7 @@ export const BasicAuthPrompt: React.FC = () => {
         <AlertDialogHeader>
           <AlertDialogTitle>Authentication required</AlertDialogTitle>
           <AlertDialogDescription>
-            This write action needs Basic Auth credentials. Use your saved
-            username and password to continue.
+            You are required to authenticate to access this application.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
