@@ -33,6 +33,7 @@ interface JobCommandBarProps {
   onSelectJob: (tab: FilterTab, jobId: string) => void;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  enabled?: boolean;
 }
 
 export const JobCommandBar: React.FC<JobCommandBarProps> = ({
@@ -40,6 +41,7 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
   onSelectJob,
   open,
   onOpenChange,
+  enabled = true,
 }) => {
   const lockDialogAccentClass: Record<StatusLock, string> = {
     ready:
@@ -74,16 +76,19 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     setActiveLock(null);
   }, [setDialogOpen]);
 
-  useHotkeys({
-    "$mod+k": (event) => {
-      event.preventDefault();
-      if (isOpen) {
-        closeDialog();
-        return;
-      }
-      setDialogOpen(true);
+  useHotkeys(
+    {
+      "$mod+k": (event) => {
+        event.preventDefault();
+        if (isOpen) {
+          closeDialog();
+          return;
+        }
+        setDialogOpen(true);
+      },
     },
-  });
+    { enabled },
+  );
 
   const normalizedQuery = query.trim().toLowerCase();
   const scopedJobs = useMemo(() => {

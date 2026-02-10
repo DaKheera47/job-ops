@@ -51,6 +51,8 @@ interface OrchestratorFiltersProps {
   onSortChange: (sort: JobSort) => void;
   onResetFilters: () => void;
   filteredCount: number;
+  isFiltersOpen?: boolean;
+  onFiltersOpenChange?: (open: boolean) => void;
 }
 
 const sponsorOptions: Array<{
@@ -126,8 +128,9 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSortChange,
   onResetFilters,
   filteredCount,
+  isFiltersOpen = false,
+  onFiltersOpenChange,
 }) => {
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const visibleSources = orderedFilterSources.filter((source) =>
     sourcesWithJobs.includes(source),
   );
@@ -188,7 +191,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
             </span>
           </Button>
 
-          <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+          <Sheet open={isFiltersOpen} onOpenChange={onFiltersOpenChange}>
             <SheetTrigger asChild>
               <Button
                 variant="ghost"
@@ -480,7 +483,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                   >
                     Reset
                   </Button>
-                  <Button type="button" onClick={() => setIsDrawerOpen(false)}>
+                  <Button
+                    type="button"
+                    onClick={() => onFiltersOpenChange?.(false)}
+                  >
                     Show {filteredCount.toLocaleString()}{" "}
                     {filteredCount === 1 ? "job" : "jobs"}
                   </Button>

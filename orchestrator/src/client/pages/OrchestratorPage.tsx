@@ -93,11 +93,35 @@ export const OrchestratorPage: React.FC = () => {
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [tailorTrigger, setTailorTrigger] = useState(0);
   const shortcutActionInFlight = useRef(false);
+
+  const isAnyModalOpen =
+    isRunModeModalOpen ||
+    isCommandBarOpen ||
+    isFiltersOpen ||
+    isHelpDialogOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
+  const isAnyModalOpenExcludingCommandBar =
+    isRunModeModalOpen ||
+    isFiltersOpen ||
+    isHelpDialogOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
+  const isAnyModalOpenExcludingHelp =
+    isRunModeModalOpen ||
+    isCommandBarOpen ||
+    isFiltersOpen ||
+    isDetailDrawerOpen ||
+    navOpen;
+
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -339,137 +363,151 @@ export const OrchestratorPage: React.FC = () => {
     [activeJobs, handleSelectJobId],
   );
 
-  useHotkeys({
-    // ── Navigation ──────────────────────────────────────────────────────
-    [SHORTCUTS.nextJob.key]: (e) => {
-      e.preventDefault();
-      navigateJobList(1);
-    },
-    [SHORTCUTS.nextJobArrow.key]: (e) => {
-      e.preventDefault();
-      navigateJobList(1);
-    },
-    [SHORTCUTS.prevJob.key]: (e) => {
-      e.preventDefault();
-      navigateJobList(-1);
-    },
-    [SHORTCUTS.prevJobArrow.key]: (e) => {
-      e.preventDefault();
-      navigateJobList(-1);
-    },
+  useHotkeys(
+    {
+      // ── Navigation ──────────────────────────────────────────────────────
+      [SHORTCUTS.nextJob.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(1);
+      },
+      [SHORTCUTS.nextJobArrow.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(1);
+      },
+      [SHORTCUTS.prevJob.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(-1);
+      },
+      [SHORTCUTS.prevJobArrow.key]: (e) => {
+        e.preventDefault();
+        navigateJobList(-1);
+      },
 
-    // ── Tab switching ───────────────────────────────────────────────────
-    [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
-    [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
-    [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
-    [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
-    [SHORTCUTS.prevTabArrow.key]: (e) => {
-      e.preventDefault();
-      navigateTab(-1);
-    },
-    [SHORTCUTS.nextTabArrow.key]: (e) => {
-      e.preventDefault();
-      navigateTab(1);
-    },
+      // ── Tab switching ───────────────────────────────────────────────────
+      [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
+      [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
+      [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
+      [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
+      [SHORTCUTS.prevTabArrow.key]: (e) => {
+        e.preventDefault();
+        navigateTab(-1);
+      },
+      [SHORTCUTS.nextTabArrow.key]: (e) => {
+        e.preventDefault();
+        navigateTab(1);
+      },
 
-    // ── Search ──────────────────────────────────────────────────────────
-    [SHORTCUTS.searchSlash.key]: (e) => {
-      e.preventDefault();
-      setIsCommandBarOpen(true);
-    },
-
-    // ── Help ────────────────────────────────────────────────────────────
-    [SHORTCUTS.help.key]: (e) => {
-      e.preventDefault();
-      setIsHelpDialogOpen((prev) => !prev);
-    },
-
-    // ── Context actions ─────────────────────────────────────────────────
-    [SHORTCUTS.skip.key]: () => {
-      if (!selectedJob) return;
-      if (!["discovered", "ready"].includes(activeTab)) return;
-      if (shortcutActionInFlight.current) return;
-      shortcutActionInFlight.current = true;
-      const jobId = selectedJob.id;
-      api
-        .skipJob(jobId)
-        .then(async () => {
-          toast.message("Job skipped");
-          selectNextAfterAction(jobId);
-          await loadJobs();
-        })
-        .catch((err: unknown) => {
-          const msg = err instanceof Error ? err.message : "Failed to skip job";
-          toast.error(msg);
-        })
-        .finally(() => {
-          shortcutActionInFlight.current = false;
-        });
-    },
-
-    [SHORTCUTS.markApplied.key]: () => {
-      if (!selectedJob) return;
-      if (activeTab !== "ready") return;
-      if (shortcutActionInFlight.current) return;
-      shortcutActionInFlight.current = true;
-      const jobId = selectedJob.id;
-      api
-        .markAsApplied(jobId)
-        .then(async () => {
-          toast.success("Marked as applied", {
-            description: `${selectedJob.title} at ${selectedJob.employer}`,
+      // ── Context actions ─────────────────────────────────────────────────
+      [SHORTCUTS.skip.key]: () => {
+        if (!selectedJob) return;
+        if (!["discovered", "ready"].includes(activeTab)) return;
+        if (shortcutActionInFlight.current) return;
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+        api
+          .skipJob(jobId)
+          .then(async () => {
+            toast.message("Job skipped");
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : "Failed to skip job";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
           });
-          selectNextAfterAction(jobId);
-          await loadJobs();
-        })
-        .catch((err: unknown) => {
-          const msg =
-            err instanceof Error ? err.message : "Failed to mark as applied";
-          toast.error(msg);
-        })
-        .finally(() => {
-          shortcutActionInFlight.current = false;
-        });
-    },
+      },
 
-    [SHORTCUTS.tailor.key]: () => {
-      if (!selectedJob) return;
-      if (!["discovered", "ready"].includes(activeTab)) return;
-      setTailorTrigger((n) => n + 1);
-    },
+      [SHORTCUTS.markApplied.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        if (shortcutActionInFlight.current) return;
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+        api
+          .markAsApplied(jobId)
+          .then(async () => {
+            toast.success("Marked as applied", {
+              description: `${selectedJob.title} at ${selectedJob.employer}`,
+            });
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error ? err.message : "Failed to mark as applied";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
+          });
+      },
 
-    [SHORTCUTS.viewPdf.key]: () => {
-      if (!selectedJob) return;
-      if (activeTab !== "ready") return;
-      const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
-      window.open(href, "_blank", "noopener,noreferrer");
-    },
+      [SHORTCUTS.tailor.key]: () => {
+        if (!selectedJob) return;
+        if (!["discovered", "ready"].includes(activeTab)) return;
+        setTailorTrigger((n) => n + 1);
+      },
 
-    [SHORTCUTS.downloadPdf.key]: () => {
-      if (!selectedJob) return;
-      if (activeTab !== "ready") return;
-      const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
-      const a = document.createElement("a");
-      a.href = href;
-      a.download = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`;
-      a.click();
-    },
+      [SHORTCUTS.viewPdf.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+        window.open(href, "_blank", "noopener,noreferrer");
+      },
 
-    [SHORTCUTS.openListing.key]: () => {
-      if (!selectedJob) return;
-      const link = selectedJob.applicationLink || selectedJob.jobUrl;
-      if (link) window.open(link, "_blank", "noopener,noreferrer");
-    },
+      [SHORTCUTS.downloadPdf.key]: () => {
+        if (!selectedJob) return;
+        if (activeTab !== "ready") return;
+        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`;
+        a.click();
+      },
 
-    [SHORTCUTS.toggleSelect.key]: () => {
-      if (!selectedJobId) return;
-      toggleSelectJob(selectedJobId);
-    },
+      [SHORTCUTS.openListing.key]: () => {
+        if (!selectedJob) return;
+        const link = selectedJob.applicationLink || selectedJob.jobUrl;
+        if (link) window.open(link, "_blank", "noopener,noreferrer");
+      },
 
-    [SHORTCUTS.clearSelection.key]: () => {
-      if (selectedJobIds.size > 0) clearSelection();
+      [SHORTCUTS.toggleSelect.key]: () => {
+        if (!selectedJobId) return;
+        toggleSelectJob(selectedJobId);
+      },
+
+      [SHORTCUTS.clearSelection.key]: () => {
+        if (selectedJobIds.size > 0) clearSelection();
+      },
     },
-  });
+    { enabled: !isAnyModalOpen },
+  );
+
+  useHotkeys(
+    {
+      // ── Search ──────────────────────────────────────────────────────────
+      [SHORTCUTS.searchSlash.key]: (e) => {
+        e.preventDefault();
+        setIsCommandBarOpen(true);
+      },
+    },
+    { enabled: !isAnyModalOpenExcludingCommandBar },
+  );
+
+  useHotkeys(
+    {
+      // ── Help ────────────────────────────────────────────────────────────
+      [SHORTCUTS.help.key]: (e) => {
+        e.preventDefault();
+        setIsHelpDialogOpen((prev) => !prev);
+      },
+    },
+    { enabled: !isAnyModalOpenExcludingHelp },
+  );
 
   const handleCommandSelectJob = useCallback(
     (targetTab: FilterTab, id: string) => {
@@ -585,12 +623,15 @@ export const OrchestratorPage: React.FC = () => {
             onSelectJob={handleCommandSelectJob}
             open={isCommandBarOpen}
             onOpenChange={setIsCommandBarOpen}
+            enabled={!isAnyModalOpenExcludingCommandBar}
           />
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
             counts={counts}
             onOpenCommandBar={() => setIsCommandBarOpen(true)}
+            isFiltersOpen={isFiltersOpen}
+            onFiltersOpenChange={setIsFiltersOpen}
             sourceFilter={sourceFilter}
             onSourceFilterChange={setSourceFilter}
             sponsorFilter={sponsorFilter}
