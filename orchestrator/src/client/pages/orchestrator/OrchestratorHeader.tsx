@@ -49,7 +49,9 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
 
   return (
     <PageHeader
-      icon={() => <img src="/favicon.png" alt="" className="size-8 rounded-lg" />}
+      icon={() => (
+        <img src="/favicon.png" alt="" className="size-8 rounded-lg" />
+      )}
       title="Job Ops"
       subtitle="Orchestrator"
       navOpen={navOpen}

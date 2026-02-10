@@ -1,7 +1,3 @@
-/**
- * Orchestrator layout with a split list/detail experience.
- */
-
 import { useSettings } from "@client/hooks/useSettings";
 import {
   formatCountryLabel,
@@ -32,14 +28,12 @@ import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
 import { useOrchestratorFilters } from "./orchestrator/useOrchestratorFilters";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
+import { useScrollToJobItem } from "./orchestrator/useScrollToJobItem";
 import {
   getEnabledSources,
   getJobCounts,
   getSourcesWithJobs,
 } from "./orchestrator/utils";
-
-const escapeCssAttributeValue = (value: string) =>
-  value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
 
 export const OrchestratorPage: React.FC = () => {
   const { tab, jobId } = useParams<{ tab: string; jobId?: string }>();
@@ -93,9 +87,6 @@ export const OrchestratorPage: React.FC = () => {
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
-  const [pendingCommandScrollJobId, setPendingCommandScrollJobId] = useState<
-    string | null
-  >(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
@@ -287,9 +278,16 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
+  const { requestScrollToJob } = useScrollToJobItem({
+    activeJobs,
+    selectedJobId,
+    isDesktop,
+    onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
+  });
+
   const handleCommandSelectJob = useCallback(
     (targetTab: FilterTab, id: string) => {
-      setPendingCommandScrollJobId(id);
+      requestScrollToJob(id, { ensureSelected: true });
       const nextParams = new URLSearchParams(searchParams);
       for (const key of [
         "source",
@@ -307,30 +305,8 @@ export const OrchestratorPage: React.FC = () => {
         setIsDetailDrawerOpen(true);
       }
     },
-    [isDesktop, navigate, searchParams],
+    [isDesktop, navigate, requestScrollToJob, searchParams],
   );
-
-  useEffect(() => {
-    if (!pendingCommandScrollJobId) return;
-    if (selectedJobId !== pendingCommandScrollJobId) return;
-    const hasPendingTargetInList = activeJobs.some(
-      (job) => job.id === pendingCommandScrollJobId,
-    );
-    if (!hasPendingTargetInList) return;
-    if (typeof document === "undefined") return;
-
-    const selector = `[data-job-id="${escapeCssAttributeValue(
-      pendingCommandScrollJobId,
-    )}"]`;
-    const target = document.querySelector<HTMLElement>(selector);
-    if (!target) return;
-
-    target.scrollIntoView({
-      behavior: isDesktop ? "smooth" : "auto",
-      block: "center",
-    });
-    setPendingCommandScrollJobId(null);
-  }, [activeJobs, isDesktop, pendingCommandScrollJobId, selectedJobId]);
 
   useEffect(() => {
     if (activeJobs.length === 0) {
