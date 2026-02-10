@@ -1,4 +1,5 @@
 import { useHotkeys } from "@client/hooks/useHotkeys";
+import { useProfile } from "@client/hooks/useProfile";
 import { useSettings } from "@client/hooks/useSettings";
 import { SHORTCUTS } from "@client/lib/shortcut-map";
 import {
@@ -7,11 +8,12 @@ import {
 } from "@shared/location-support.js";
 import type { JobSource } from "@shared/types.js";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
+import { safeFilenamePart } from "@/lib/utils";
 import * as api from "../api";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
@@ -90,6 +92,8 @@ export const OrchestratorPage: React.FC = () => {
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [tailorTrigger, setTailorTrigger] = useState(0);
+  const shortcutActionInFlight = useRef(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 1024px)").matches
@@ -287,7 +291,9 @@ export const OrchestratorPage: React.FC = () => {
     onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
   });
 
-  // ── Keyboard shortcuts: navigation + tab switching ─────────────────────
+  // ── Keyboard shortcuts ──────────────────────────────────────────────────
+  const { personName } = useProfile();
+
   const navigateJobList = useCallback(
     (direction: 1 | -1) => {
       if (activeJobs.length === 0) return;
@@ -307,8 +313,21 @@ export const OrchestratorPage: React.FC = () => {
     [activeJobs, selectedJobId, handleSelectJobId, requestScrollToJob],
   );
 
+  /**
+   * After a destructive/moving action (skip, mark-applied), auto-advance to
+   * the next job in the list -- mirroring handleJobMoved in JobDetailPanel.
+   */
+  const selectNextAfterAction = useCallback(
+    (movedJobId: string) => {
+      const idx = activeJobs.findIndex((j) => j.id === movedJobId);
+      const next = activeJobs[idx + 1] || activeJobs[idx - 1];
+      handleSelectJobId(next?.id ?? null);
+    },
+    [activeJobs, handleSelectJobId],
+  );
+
   useHotkeys({
-    // Navigation
+    // ── Navigation ──────────────────────────────────────────────────────
     [SHORTCUTS.nextJob.key]: (e) => {
       e.preventDefault();
       navigateJobList(1);
@@ -325,11 +344,104 @@ export const OrchestratorPage: React.FC = () => {
       e.preventDefault();
       navigateJobList(-1);
     },
-    // Tab switching
+
+    // ── Tab switching ───────────────────────────────────────────────────
     [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
     [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
     [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
     [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
+
+    // ── Search ──────────────────────────────────────────────────────────
+    [SHORTCUTS.searchSlash.key]: (e) => {
+      e.preventDefault();
+      setIsCommandBarOpen(true);
+    },
+
+    // ── Context actions ─────────────────────────────────────────────────
+    [SHORTCUTS.skip.key]: () => {
+      if (!selectedJob) return;
+      if (!["discovered", "ready"].includes(activeTab)) return;
+      if (shortcutActionInFlight.current) return;
+      shortcutActionInFlight.current = true;
+      const jobId = selectedJob.id;
+      api
+        .skipJob(jobId)
+        .then(async () => {
+          toast.message("Job skipped");
+          selectNextAfterAction(jobId);
+          await loadJobs();
+        })
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : "Failed to skip job";
+          toast.error(msg);
+        })
+        .finally(() => {
+          shortcutActionInFlight.current = false;
+        });
+    },
+
+    [SHORTCUTS.markApplied.key]: () => {
+      if (!selectedJob) return;
+      if (activeTab !== "ready") return;
+      if (shortcutActionInFlight.current) return;
+      shortcutActionInFlight.current = true;
+      const jobId = selectedJob.id;
+      api
+        .markAsApplied(jobId)
+        .then(async () => {
+          toast.success("Marked as applied", {
+            description: `${selectedJob.title} at ${selectedJob.employer}`,
+          });
+          selectNextAfterAction(jobId);
+          await loadJobs();
+        })
+        .catch((err: unknown) => {
+          const msg =
+            err instanceof Error ? err.message : "Failed to mark as applied";
+          toast.error(msg);
+        })
+        .finally(() => {
+          shortcutActionInFlight.current = false;
+        });
+    },
+
+    [SHORTCUTS.tailor.key]: () => {
+      if (!selectedJob) return;
+      if (!["discovered", "ready"].includes(activeTab)) return;
+      setTailorTrigger((n) => n + 1);
+    },
+
+    [SHORTCUTS.viewPdf.key]: () => {
+      if (!selectedJob) return;
+      if (activeTab !== "ready") return;
+      const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+      window.open(href, "_blank", "noopener,noreferrer");
+    },
+
+    [SHORTCUTS.downloadPdf.key]: () => {
+      if (!selectedJob) return;
+      if (activeTab !== "ready") return;
+      const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`;
+      a.click();
+    },
+
+    [SHORTCUTS.openListing.key]: () => {
+      if (!selectedJob) return;
+      const link = selectedJob.applicationLink || selectedJob.jobUrl;
+      if (link) window.open(link, "_blank", "noopener,noreferrer");
+    },
+
+    [SHORTCUTS.toggleSelect.key]: () => {
+      if (!selectedJobId) return;
+      toggleSelectJob(selectedJobId);
+    },
+
+    [SHORTCUTS.clearSelection.key]: () => {
+      if (selectedJobIds.size > 0) clearSelection();
+    },
   });
 
   const handleCommandSelectJob = useCallback(
@@ -483,6 +595,7 @@ export const OrchestratorPage: React.FC = () => {
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
                   onPauseRefreshChange={setIsRefreshPaused}
+                  tailorTrigger={tailorTrigger}
                 />
               </div>
             )}
@@ -538,6 +651,7 @@ export const OrchestratorPage: React.FC = () => {
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
                 onPauseRefreshChange={setIsRefreshPaused}
+                tailorTrigger={tailorTrigger}
               />
             </div>
           </DrawerContent>
