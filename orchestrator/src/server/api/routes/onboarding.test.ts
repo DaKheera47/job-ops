@@ -18,6 +18,7 @@ describe.sequential("Onboarding API routes", () => {
   afterEach(async () => {
     await stopServer({ server, closeDb, tempDir });
     global.fetch = originalFetch;
+    vi.unstubAllEnvs();
   });
 
   describe("POST /api/onboarding/validate/openrouter", () => {
@@ -71,6 +72,22 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.ok).toBe(true);
       // Should be invalid because the key is fake
       expect(body.data.valid).toBe(false);
+    });
+
+    it("does not treat env-only API keys as onboarding completion", async () => {
+      vi.stubEnv("LLM_API_KEY", "env-only-key");
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/llm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider: "openrouter" }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(false);
+      expect(body.data.message).toContain("missing");
     });
   });
 

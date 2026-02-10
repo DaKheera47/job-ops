@@ -153,6 +153,30 @@ export async function applyStoredEnvOverrides(): Promise<void> {
     if (normalizedKey) process.env.LLM_API_KEY = normalizedKey;
   }
 
+  // Bootstrap env-provided LLM settings into DB when no overrides exist yet.
+  // This makes first-run/onboarding consistent for env-configured deployments.
+  const envLlmProvider = normalizeEnvInput(process.env.LLM_PROVIDER);
+  const envLlmBaseUrl = normalizeEnvInput(process.env.LLM_BASE_URL);
+  const envLlmApiKey = normalizeEnvInput(process.env.LLM_API_KEY);
+
+  const storedLlmProvider = normalizeEnvInput(
+    await safeGetSetting("llmProvider"),
+  );
+  const storedLlmBaseUrl = normalizeEnvInput(
+    await safeGetSetting("llmBaseUrl"),
+  );
+  const storedLlmApiKey = normalizeEnvInput(await safeGetSetting("llmApiKey"));
+
+  if (!storedLlmProvider && envLlmProvider) {
+    await safeSetSetting("llmProvider", envLlmProvider);
+  }
+  if (!storedLlmBaseUrl && envLlmBaseUrl) {
+    await safeSetSetting("llmBaseUrl", envLlmBaseUrl);
+  }
+  if (!storedLlmApiKey && envLlmApiKey) {
+    await safeSetSetting("llmApiKey", envLlmApiKey);
+  }
+
   await Promise.all([
     ...readableStringConfig.map(async ({ settingKey, envKey }) => {
       const override = await safeGetSetting(settingKey);

@@ -17,14 +17,44 @@ type ValidationResponse = {
   message: string | null;
 };
 
+function providerRequiresApiKey(provider: string | null | undefined): boolean {
+  const normalized = provider?.trim().toLowerCase() ?? "openrouter";
+  return normalized !== "ollama" && normalized !== "lmstudio";
+}
+
+async function resolveOnboardingApiKey(
+  provider: string | null | undefined,
+  explicitApiKey: string | null | undefined,
+): Promise<string | null> {
+  const providedApiKey = explicitApiKey?.trim();
+  if (providedApiKey) return providedApiKey;
+
+  const storedApiKey = (await getSetting("llmApiKey"))?.trim() || null;
+  if (storedApiKey) return storedApiKey;
+
+  const normalizedProvider = provider?.trim().toLowerCase() ?? "openrouter";
+  if (normalizedProvider === "openrouter") {
+    return (await getSetting("openrouterApiKey"))?.trim() || null;
+  }
+
+  return null;
+}
+
 async function validateLlm(options: {
   apiKey?: string | null;
   provider?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
+  const provider = options.provider?.trim() || process.env.LLM_PROVIDER || null;
+  const apiKey = await resolveOnboardingApiKey(provider, options.apiKey);
+
+  if (providerRequiresApiKey(provider) && !apiKey) {
+    return { valid: false, message: "LLM API key is missing." };
+  }
+
   const llm = new LlmService({
-    apiKey: options.apiKey,
-    provider: options.provider ?? undefined,
+    apiKey,
+    provider: provider ?? undefined,
     baseUrl: options.baseUrl ?? undefined,
   });
   return llm.validateCredentials();
