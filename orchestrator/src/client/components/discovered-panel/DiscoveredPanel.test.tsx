@@ -1,3 +1,4 @@
+import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
@@ -83,68 +84,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const createJob = (overrides: Partial<Job> = {}): Job => ({
-  id: "job-2",
-  source: "linkedin",
-  sourceJobId: null,
-  jobUrlDirect: null,
-  datePosted: null,
-  title: "Backend Engineer",
-  employer: "Acme",
-  employerUrl: null,
-  jobUrl: "https://example.com/job",
-  applicationLink: "https://example.com/apply",
-  disciplines: null,
-  deadline: null,
-  salary: null,
-  location: "London",
-  degreeRequired: null,
-  starting: null,
-  jobDescription: "Build APIs",
-  status: "discovered",
-  suitabilityScore: 55,
-  suitabilityReason: "Ok fit",
-  tailoredSummary: null,
-  tailoredHeadline: null,
-  tailoredSkills: null,
-  selectedProjectIds: null,
-  pdfPath: null,
-  sponsorMatchScore: null,
-  sponsorMatchNames: null,
-  jobType: null,
-  salarySource: null,
-  salaryInterval: null,
-  salaryMinAmount: null,
-  salaryMaxAmount: null,
-  salaryCurrency: null,
-  isRemote: null,
-  jobLevel: null,
-  jobFunction: null,
-  listingType: null,
-  emails: null,
-  companyIndustry: null,
-  companyLogo: null,
-  companyUrlDirect: null,
-  companyAddresses: null,
-  companyNumEmployees: null,
-  companyRevenue: null,
-  companyDescription: null,
-  skills: null,
-  experienceRange: null,
-  companyRating: null,
-  companyReviewsCount: null,
-  vacancyCount: null,
-  workFromHomeType: null,
-  discoveredAt: "2025-01-01T00:00:00Z",
-  processedAt: null,
-  appliedAt: null,
-  createdAt: "2025-01-01T00:00:00Z",
-  updatedAt: "2025-01-02T00:00:00Z",
-  outcome: null,
-  closedAt: null,
-  ...overrides,
-});
-
 describe("DiscoveredPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -152,7 +91,7 @@ describe("DiscoveredPanel", () => {
 
   it("re-runs the fit assessment from the menu", async () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
-    const job = createJob();
+    const job = createJob({ id: "job-2" });
     vi.mocked(api.rescoreJob).mockResolvedValue(job as Job);
 
     render(
@@ -176,7 +115,7 @@ describe("DiscoveredPanel", () => {
 
   it("opens edit details drawer from more actions", async () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
-    const job = createJob();
+    const job = createJob({ id: "job-2" });
 
     render(
       <MemoryRouter>

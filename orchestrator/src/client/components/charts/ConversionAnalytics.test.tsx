@@ -3,7 +3,8 @@
  * Tests real-world edge cases for conversion funnel and analytics
  */
 
-import type { ApplicationStage, StageEvent } from "@shared/types.js";
+import { createJob as createBaseJob } from "@shared/testing/factories.js";
+import type { ApplicationStage, Job, StageEvent } from "@shared/types.js";
 import { render, screen } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -76,13 +77,14 @@ describe("ConversionAnalytics - Edge Cases", () => {
     id: string,
     appliedAt: string | null,
     events: StageEvent[] = [],
-  ) => ({
-    id,
-    datePosted: null,
-    discoveredAt: "2025-01-01T00:00:00Z",
-    appliedAt,
-    events,
-  });
+  ) =>
+    createBaseJob({
+      id,
+      datePosted: null,
+      discoveredAt: "2025-01-01T00:00:00Z",
+      appliedAt,
+      ...({ events } as any),
+    }) as Job & { events: StageEvent[] };
 
   const createEvent = (
     toStage: ApplicationStage,

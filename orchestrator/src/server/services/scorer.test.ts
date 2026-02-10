@@ -2,6 +2,7 @@
  * Tests for scorer.ts - focusing on robust JSON parsing from AI responses
  */
 
+import { createJob } from "@shared/testing/factories";
 import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseJsonFromContent } from "./scorer";
@@ -254,71 +255,6 @@ This score reflects the candidate's technical capabilities while accounting for 
   });
 });
 
-// Helper to create minimal test job
-function createTestJob(overrides: Partial<Job> = {}): Job {
-  return {
-    id: "test-job-1",
-    source: "gradcracker",
-    sourceJobId: "ext-1",
-    jobUrlDirect: null,
-    datePosted: null,
-    title: "Software Engineer",
-    employer: "Test Company",
-    employerUrl: null,
-    jobUrl: "https://example.com/job",
-    applicationLink: null,
-    disciplines: null,
-    deadline: null,
-    salary: null,
-    location: null,
-    degreeRequired: null,
-    starting: null,
-    jobDescription: "A test job",
-    status: "discovered",
-    outcome: null,
-    closedAt: null,
-    suitabilityScore: null,
-    suitabilityReason: null,
-    tailoredSummary: null,
-    tailoredHeadline: null,
-    tailoredSkills: null,
-    selectedProjectIds: null,
-    pdfPath: null,
-    sponsorMatchScore: null,
-    sponsorMatchNames: null,
-    jobType: null,
-    salarySource: null,
-    salaryInterval: null,
-    salaryMinAmount: null,
-    salaryMaxAmount: null,
-    salaryCurrency: null,
-    isRemote: null,
-    jobLevel: null,
-    jobFunction: null,
-    listingType: null,
-    emails: null,
-    companyIndustry: null,
-    companyLogo: null,
-    companyUrlDirect: null,
-    companyAddresses: null,
-    companyNumEmployees: null,
-    companyRevenue: null,
-    companyDescription: null,
-    skills: null,
-    experienceRange: null,
-    companyRating: null,
-    companyReviewsCount: null,
-    vacancyCount: null,
-    workFromHomeType: null,
-    discoveredAt: new Date().toISOString(),
-    processedAt: null,
-    appliedAt: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
 describe("salary penalty", () => {
   let getEffectiveSettingsMock: ReturnType<typeof vi.fn>;
   let getSettingMock: ReturnType<typeof vi.fn>;
@@ -364,7 +300,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(70); // 80 - 10
@@ -387,7 +327,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: "" });
+      const job = createJob({
+        id: "test-job-1",
+        salary: "",
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(70);
@@ -408,7 +352,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: "   " });
+      const job = createJob({
+        id: "test-job-1",
+        salary: "   ",
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(70);
@@ -429,7 +377,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: "Competitive" });
+      const job = createJob({
+        id: "test-job-1",
+        salary: "Competitive",
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(80); // No penalty
@@ -450,7 +402,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: "£40,000 - £50,000" });
+      const job = createJob({
+        id: "test-job-1",
+        salary: "£40,000 - £50,000",
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(80); // No penalty
@@ -473,7 +429,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(80); // No penalty when disabled
@@ -494,7 +454,11 @@ describe("salary penalty", () => {
         data: { score: 50, reason: "Average match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(0); // Clamped, not negative
@@ -515,7 +479,11 @@ describe("salary penalty", () => {
         data: { score: 5, reason: "Weak match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(0); // 5 - 10 = -5, clamped to 0
@@ -536,7 +504,11 @@ describe("salary penalty", () => {
         data: { score: 80, reason: "Good match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(80); // No change with 0 penalty
@@ -557,7 +529,11 @@ describe("salary penalty", () => {
         data: { score: 90, reason: "Excellent match" },
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.score).toBe(65); // 90 - 25
@@ -583,7 +559,11 @@ describe("salary penalty", () => {
         error: "API key not configured",
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       // Mock score base is 50, with keyword bonuses from "Software Engineer"
@@ -606,7 +586,11 @@ describe("salary penalty", () => {
         error: "API key not configured",
       });
 
-      const job = createTestJob({ salary: null });
+      const job = createJob({
+        id: "test-job-1",
+        salary: null,
+        title: "Software Engineer",
+      });
       const result = await scoreJobSuitability(job, {});
 
       expect(result.reason).not.toContain("missing salary");

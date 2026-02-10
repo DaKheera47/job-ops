@@ -1,3 +1,4 @@
+import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
@@ -34,20 +35,6 @@ vi.mock("sonner", () => ({
     error: vi.fn(),
   },
 }));
-
-const createJob = (overrides: Partial<Job> = {}): Job =>
-  ({
-    id: "job-1",
-    title: "Backend Engineer",
-    employer: "Acme",
-    jobUrl: "https://example.com/job",
-    applicationLink: null,
-    location: "London",
-    salary: null,
-    deadline: null,
-    jobDescription: "Build APIs",
-    ...overrides,
-  }) as Job;
 
 describe("JobDetailsEditDrawer", () => {
   beforeEach(() => {

@@ -1,3 +1,4 @@
+import { createJob as createBaseJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +19,7 @@ vi.mock("sonner", () => ({
 }));
 
 const createJob = (overrides: Partial<Job> = {}): Job =>
-  ({
+  createBaseJob({
     id: "job-1",
     tailoredSummary: "Saved summary",
     tailoredHeadline: "Saved headline",
@@ -28,7 +29,7 @@ const createJob = (overrides: Partial<Job> = {}): Job =>
     jobDescription: "Saved description",
     selectedProjectIds: "p1",
     ...overrides,
-  }) as Job;
+  });
 
 const ensureAccordionOpen = (name: string) => {
   const trigger = screen.getByRole("button", { name });

@@ -1,3 +1,4 @@
+import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
@@ -30,7 +31,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   ),
 }));
 
-const mockJob: Job = {
+const mockJob = createJob({
   id: "job-1",
   title: "Software Engineer",
   employer: "Tech Corp",
@@ -38,15 +39,10 @@ const mockJob: Job = {
   salary: "£60,000",
   deadline: "2025-12-31",
   status: "discovered",
-  outcome: null,
-  closedAt: null,
   source: "linkedin",
   suitabilityScore: 85,
   suitabilityReason: "Strong match",
-  sponsorMatchScore: null,
-  sponsorMatchNames: null,
-  // Other fields...
-} as Job;
+});
 
 describe("JobHeader", () => {
   const renderWithRouter = (ui: React.ReactElement) =>

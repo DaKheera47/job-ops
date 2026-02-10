@@ -5,6 +5,7 @@
  * correctly calculates and stores sponsor match scores and names.
  */
 
+import { createJob as createBaseJob } from "@shared/testing/factories";
 import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -53,68 +54,22 @@ vi.mock("../services/ukvisajobs", () => ({
 
 const now = new Date().toISOString();
 
-// Mock job template
-const createMockJob = (overrides: Partial<Job> = {}): Job => ({
-  id: "test-job-1",
-  source: "gradcracker",
-  sourceJobId: null,
-  jobUrlDirect: null,
-  datePosted: null,
-  title: "Software Engineer",
-  employer: "Acme Corporation Ltd",
-  employerUrl: null,
-  jobUrl: "http://test.com/job",
-  applicationLink: null,
-  disciplines: null,
-  deadline: null,
-  salary: null,
-  location: "London",
-  degreeRequired: null,
-  starting: null,
-  jobDescription: "Looking for a TypeScript developer.",
-  status: "discovered",
-  outcome: null,
-  closedAt: null,
-  suitabilityScore: null,
-  suitabilityReason: null,
-  tailoredSummary: null,
-  tailoredHeadline: null,
-  tailoredSkills: null,
-  selectedProjectIds: null,
-  pdfPath: null,
-  sponsorMatchScore: null,
-  sponsorMatchNames: null,
-  jobType: null,
-  salarySource: null,
-  salaryInterval: null,
-  salaryMinAmount: null,
-  salaryMaxAmount: null,
-  salaryCurrency: null,
-  isRemote: null,
-  jobLevel: null,
-  jobFunction: null,
-  listingType: null,
-  emails: null,
-  companyIndustry: null,
-  companyLogo: null,
-  companyUrlDirect: null,
-  companyAddresses: null,
-  companyNumEmployees: null,
-  companyRevenue: null,
-  companyDescription: null,
-  skills: null,
-  experienceRange: null,
-  companyRating: null,
-  companyReviewsCount: null,
-  vacancyCount: null,
-  workFromHomeType: null,
-  discoveredAt: now,
-  processedAt: null,
-  appliedAt: null,
-  createdAt: now,
-  updatedAt: now,
-  ...overrides,
-});
+const createJob = (overrides: Partial<Job> = {}): Job =>
+  createBaseJob({
+    id: "test-job-1",
+    source: "gradcracker",
+    title: "Software Engineer",
+    employer: "Acme Corporation Ltd",
+    location: "London",
+    jobDescription: "Looking for a TypeScript developer.",
+    status: "discovered",
+    suitabilityScore: null,
+    suitabilityReason: null,
+    discoveredAt: now,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  });
 
 describe("Sponsor Match Calculation", () => {
   let searchSponsors: ReturnType<typeof vi.fn>;
@@ -170,7 +125,7 @@ describe("Sponsor Match Calculation", () => {
 
   describe("searchSponsors integration", () => {
     it("should calculate sponsor match score when employer matches a sponsor", async () => {
-      const mockJob = createMockJob({ employer: "Acme Corporation Ltd" });
+      const mockJob = createJob({ employer: "Acme Corporation Ltd" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning a match
@@ -205,7 +160,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should handle 100% perfect matches correctly", async () => {
-      const mockJob = createMockJob({ employer: "Microsoft UK" });
+      const mockJob = createJob({ employer: "Microsoft UK" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning perfect matches
@@ -244,7 +199,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should report single top match when no perfect matches exist", async () => {
-      const mockJob = createMockJob({ employer: "Tech Corp" });
+      const mockJob = createJob({ employer: "Tech Corp" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning partial matches only
@@ -275,7 +230,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should not set sponsor match when no matches found", async () => {
-      const mockJob = createMockJob({ employer: "Unknown Company XYZ" });
+      const mockJob = createJob({ employer: "Unknown Company XYZ" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning no matches
@@ -301,7 +256,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should skip sponsor matching when job has no employer", async () => {
-      const mockJob = createMockJob({ employer: null as unknown as string });
+      const mockJob = createJob({ employer: null as unknown as string });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       const { runPipeline } = await import("./orchestrator");
@@ -321,7 +276,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should skip sponsor matching when job has empty employer string", async () => {
-      const mockJob = createMockJob({ employer: "" });
+      const mockJob = createJob({ employer: "" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       const { runPipeline } = await import("./orchestrator");
@@ -334,7 +289,7 @@ describe("Sponsor Match Calculation", () => {
 
   describe("sponsor match edge cases", () => {
     it("should use correct limit and minScore options", async () => {
-      const mockJob = createMockJob({ employer: "Test Company" });
+      const mockJob = createJob({ employer: "Test Company" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
       searchSponsors.mockReturnValue([]);
 
@@ -348,7 +303,7 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should handle single 100% match correctly", async () => {
-      const mockJob = createMockJob({ employer: "Google UK" });
+      const mockJob = createJob({ employer: "Google UK" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       searchSponsors.mockReturnValue([
@@ -373,11 +328,11 @@ describe("Sponsor Match Calculation", () => {
     });
 
     it("should process multiple jobs with different sponsor matches", async () => {
-      const mockJob1 = createMockJob({
+      const mockJob1 = createJob({
         id: "job-1",
         employer: "Amazon UK",
       });
-      const mockJob2 = createMockJob({
+      const mockJob2 = createJob({
         id: "job-2",
         employer: "Meta Platforms",
       });
