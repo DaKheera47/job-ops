@@ -7,7 +7,7 @@ import {
 } from "@client/components/charts";
 import { PageMain } from "@client/components/layout";
 import type { StageEvent } from "@shared/types.js";
-import { Home, Menu } from "lucide-react";
+import { ChartColumn, Menu } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -189,16 +189,12 @@ export const HomePage: React.FC = () => {
             </Sheet>
 
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
-              <Home className="h-4 w-4 text-muted-foreground" />
+              <ChartColumn className="h-4 w-4 text-muted-foreground" />
             </div>
-            <div className="min-w-0 leading-tight">
-              <div className="text-sm font-semibold tracking-tight">
-                Overview
-              </div>
-              <div className="text-xs text-muted-foreground">
-                Applications over the last {duration} days
-              </div>
+            <div className="text-sm font-semibold tracking-tight">
+              Job Ops
             </div>
+            <div className="text-xs text-muted-foreground">Orchestrator</div>
           </div>
 
           <div className="flex items-center gap-2">
