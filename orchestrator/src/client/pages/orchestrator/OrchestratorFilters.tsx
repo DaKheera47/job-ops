@@ -161,13 +161,13 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
               value={tab.id}
               className="flex-1 flex items-center lg:flex-none gap-1.5"
             >
+              <KbdHint shortcut={String(index + 1)} className="mr-0.5" />
               <span>{tab.label}</span>
               {counts[tab.id] > 0 && (
                 <span className="text-[10px] mt-[2px] tabular-nums opacity-60">
                   {counts[tab.id]}
                 </span>
               )}
-              <KbdHint shortcut={String(index + 1)} className="ml-0.5" />
             </TabsTrigger>
           ))}
         </TabsList>
