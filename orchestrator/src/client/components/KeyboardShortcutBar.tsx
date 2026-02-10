@@ -39,34 +39,40 @@ export const KeyboardShortcutBar: React.FC<KeyboardShortcutBarProps> = ({
   const grouped = groupShortcuts(all);
 
   return (
-    <div className="hidden lg:flex fixed bottom-0 inset-x-0 z-40 items-center justify-center border-t border-border/40 bg-background/80 backdrop-blur-sm px-4 py-1.5 animate-in fade-in slide-in-from-bottom-2 duration-150">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
+    <div className="hidden lg:flex fixed bottom-0 inset-x-0 z-40 items-center justify-center border-t border-border/40 bg-background/90 backdrop-blur-md px-4 py-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+      <div className="flex flex-col gap-3 text-[12px] text-muted-foreground max-w-4xl w-full">
         {groupOrder.map((group) => {
           const defs = grouped[group];
           if (defs.length === 0) return null;
           const deduped = dedupeShortcuts(defs);
           return (
-            <span key={group} className="flex items-center gap-1.5">
-              <span className="font-medium text-muted-foreground/70">
-                {groupLabel[group]}:
+            <div key={group} className="flex items-center gap-4">
+              <span className="font-bold text-muted-foreground/90 uppercase tracking-wider text-[10px] w-20 shrink-0">
+                {groupLabel[group]}
               </span>
-              {deduped.map((item) => (
-                <span
-                  key={item.label}
-                  className="inline-flex items-center gap-1"
-                >
-                  {item.displayKeys.map((dk) => (
-                    <kbd
-                      key={dk}
-                      className="inline-flex items-center justify-center min-w-[1.2rem] h-[1.15rem] px-1 rounded border border-border/60 bg-muted/40 text-[10px] font-mono font-medium leading-none"
-                    >
-                      {dk}
-                    </kbd>
-                  ))}
-                  <span>{item.label}</span>
-                </span>
-              ))}
-            </span>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {deduped.map((item) => (
+                  <span
+                    key={item.label}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <div className="flex gap-1">
+                      {item.displayKeys.map((dk) => (
+                        <kbd
+                          key={dk}
+                          className="inline-flex items-center justify-center min-w-[1.4rem] h-[1.3rem] px-1.5 rounded border border-border/80 bg-muted/60 text-[11px] font-mono font-bold leading-none text-foreground shadow-sm"
+                        >
+                          {dk}
+                        </kbd>
+                      ))}
+                    </div>
+                    <span className="text-muted-foreground/80">
+                      {item.label}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            </div>
           );
         })}
       </div>
