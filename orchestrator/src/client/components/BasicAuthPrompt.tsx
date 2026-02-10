@@ -21,9 +21,8 @@ type PendingPrompt = {
 };
 
 export const BasicAuthPrompt: React.FC = () => {
-  const [pendingRequest, setPendingRequest] = React.useState<PendingPrompt | null>(
-    null,
-  );
+  const [pendingRequest, setPendingRequest] =
+    React.useState<PendingPrompt | null>(null);
   const pendingRequestRef = React.useRef<PendingPrompt | null>(null);
   const usernameInputRef = React.useRef<HTMLInputElement>(null);
   const [username, setUsername] = React.useState("");
@@ -106,7 +105,10 @@ export const BasicAuthPrompt: React.FC = () => {
         </AlertDialogHeader>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="basic-auth-username">
+            <label
+              className="text-sm font-medium"
+              htmlFor="basic-auth-username"
+            >
               Username
             </label>
             <Input
@@ -120,7 +122,10 @@ export const BasicAuthPrompt: React.FC = () => {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium" htmlFor="basic-auth-password">
+            <label
+              className="text-sm font-medium"
+              htmlFor="basic-auth-password"
+            >
               Password
             </label>
             <Input
@@ -139,7 +144,11 @@ export const BasicAuthPrompt: React.FC = () => {
             </p>
           )}
           <AlertDialogFooter>
-            <Button type="button" variant="outline" onClick={() => resolvePrompt(null)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => resolvePrompt(null)}
+            >
               Cancel
             </Button>
             <Button type="submit">Continue</Button>

@@ -178,7 +178,7 @@ function isUnauthorizedResponse<T>(
 ): boolean {
   if (response.status !== 401) return false;
   if ("ok" in parsed) {
-    return !parsed.ok && parsed.error.code === "UNAUTHORIZED";
+    return parsed.ok ? false : parsed.error.code === "UNAUTHORIZED";
   }
   return !parsed.success;
 }
@@ -188,15 +188,29 @@ function toApiError<T>(
   parsed: ApiResponse<T> | LegacyApiResponse<T>,
 ): ApiClientError {
   if ("ok" in parsed) {
-    return new ApiClientError(parsed.error.message || "API request failed", {
+    if (!parsed.ok) {
+      return new ApiClientError(parsed.error.message || "API request failed", {
+        requestId: parsed.meta?.requestId,
+        status: response.status,
+        code: parsed.error.code,
+      });
+    }
+    return new ApiClientError("API request failed", {
       requestId: parsed.meta?.requestId,
       status: response.status,
-      code: parsed.error.code,
     });
   }
-  return new ApiClientError(parsed.error || parsed.message || "API request failed", {
-    status: response.status,
-  });
+  if (parsed.success) {
+    return new ApiClientError(parsed.message || "API request failed", {
+      status: response.status,
+    });
+  }
+  return new ApiClientError(
+    parsed.error || parsed.message || "API request failed",
+    {
+      status: response.status,
+    },
+  );
 }
 
 async function requestBasicAuthCredentials(
@@ -215,8 +229,11 @@ async function fetchAndParse<T>(
   endpoint: string,
   options: RequestInit | undefined,
   authHeader?: string,
-): Promise<{ response: Response; parsed: ApiResponse<T> | LegacyApiResponse<T> }> {
-  const headers = {
+): Promise<{
+  response: Response;
+  parsed: ApiResponse<T> | LegacyApiResponse<T>;
+}> {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...normalizeHeaders(options?.headers),
   };
@@ -254,7 +271,11 @@ async function fetchApi<T>(
   let usernameHint = cachedBasicAuthCredentials?.username;
 
   while (true) {
-    const { response, parsed } = await fetchAndParse(endpoint, options, authHeader);
+    const { response, parsed } = await fetchAndParse(
+      endpoint,
+      options,
+      authHeader,
+    );
 
     if (
       isWriteMethod(method) &&
@@ -268,7 +289,9 @@ async function fetchApi<T>(
         attempt: authAttempt + 1,
         usernameHint,
         errorMessage:
-          authAttempt > 0 ? "Invalid credentials. Please try again." : undefined,
+          authAttempt > 0
+            ? "Invalid credentials. Please try again."
+            : undefined,
       });
       if (!credentials) {
         throw toApiError(response, parsed);
