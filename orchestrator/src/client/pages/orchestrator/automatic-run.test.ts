@@ -42,11 +42,11 @@ describe("automatic-run utilities", () => {
     const limits = deriveExtractorLimits({
       budget: 750,
       searchTerms: ["a", "b", "c"],
-      sources: ["indeed", "linkedin", "gradcracker"],
+      sources: ["indeed", "linkedin", "glassdoor", "gradcracker"],
     });
 
     const cap =
-      2 * limits.jobspyResultsWanted * 3 + limits.gradcrackerMaxJobsPerTerm * 3;
+      3 * limits.jobspyResultsWanted * 3 + limits.gradcrackerMaxJobsPerTerm * 3;
 
     expect(cap).toBeLessThanOrEqual(750);
   });

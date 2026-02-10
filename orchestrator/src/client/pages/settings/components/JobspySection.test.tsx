@@ -48,9 +48,11 @@ describe("JobspySection", () => {
 
     const indeedCheckbox = screen.getByLabelText("Indeed");
     const linkedinCheckbox = screen.getByLabelText("LinkedIn");
+    const glassdoorCheckbox = screen.getByLabelText("Glassdoor");
 
     expect(indeedCheckbox).toBeChecked();
     expect(linkedinCheckbox).toBeChecked();
+    expect(glassdoorCheckbox).not.toBeChecked();
 
     fireEvent.click(indeedCheckbox);
     expect(indeedCheckbox).not.toBeChecked();
@@ -58,6 +60,9 @@ describe("JobspySection", () => {
 
     fireEvent.click(indeedCheckbox);
     expect(indeedCheckbox).toBeChecked();
+
+    fireEvent.click(glassdoorCheckbox);
+    expect(glassdoorCheckbox).toBeChecked();
   });
 
   it("clamps numeric inputs to allowed ranges", () => {

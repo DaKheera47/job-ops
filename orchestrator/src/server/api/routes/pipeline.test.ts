@@ -44,6 +44,17 @@ describe.sequential("Pipeline API routes", () => {
       topN: 5,
       sources: ["gradcracker"],
     });
+
+    const glassdoorRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sources: ["glassdoor"] }),
+    });
+    const glassdoorRunBody = await glassdoorRunRes.json();
+    expect(glassdoorRunBody.ok).toBe(true);
+    expect(runPipeline).toHaveBeenNthCalledWith(2, {
+      sources: ["glassdoor"],
+    });
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {

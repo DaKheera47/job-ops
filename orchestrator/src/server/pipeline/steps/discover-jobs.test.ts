@@ -76,6 +76,40 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("passes glassdoor through to JobSpy when selected", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspySites: JSON.stringify(["glassdoor"]),
+    } as any);
+
+    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
+      success: true,
+      jobs: [
+        {
+          source: "glassdoor",
+          title: "Engineer",
+          employer: "ACME",
+          jobUrl: "https://example.com/job",
+        },
+      ],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["glassdoor"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
+      expect.objectContaining({ sites: ["glassdoor"] }),
+    );
+  });
+
   it("throws when all enabled sources fail", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const ukVisa = await import("../../services/ukvisajobs");

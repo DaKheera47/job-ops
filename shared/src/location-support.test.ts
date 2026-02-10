@@ -49,14 +49,15 @@ describe("location-support", () => {
     expect(isSourceAllowedForCountry("ukvisajobs", "worldwide")).toBe(false);
     expect(isSourceAllowedForCountry("indeed", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("linkedin", "worldwide")).toBe(true);
+    expect(isSourceAllowedForCountry("glassdoor", "united states")).toBe(true);
   });
 
   it("filters incompatible sources while preserving compatible order", () => {
     expect(
       getCompatibleSourcesForCountry(
-        ["gradcracker", "indeed", "ukvisajobs", "linkedin"],
+        ["gradcracker", "indeed", "glassdoor", "ukvisajobs", "linkedin"],
         "united states",
       ),
-    ).toEqual(["indeed", "linkedin"]);
+    ).toEqual(["indeed", "glassdoor", "linkedin"]);
   });
 });

@@ -4,7 +4,7 @@ AI-powered job discovery and application pipeline. Automatically finds jobs, sco
 
 ## Workflow
 
-1. **Search**: Scrapes Gradcracker, Indeed, LinkedIn, and UK Visa Sponsorship jobs.
+1. **Search**: Scrapes Gradcracker, Indeed, LinkedIn, Glassdoor, and UK Visa Sponsorship jobs.
 2. **Score**: AI ranks jobs by suitability using the configured LLM provider (OpenRouter by default).
 3. **Tailor**: Generates a custom resume summary for top-tier matches.
 4. **Export**: Uses [RxResume v4](https://v4.rxresu.me) to create tailored PDFs.

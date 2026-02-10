@@ -1,6 +1,6 @@
 # JobSpy Extractor (How It Works)
 
-This is a simple walkthrough of the JobSpy extractor used for Indeed and LinkedIn.
+This is a simple walkthrough of the JobSpy extractor used for Indeed, LinkedIn, and Glassdoor.
 
 ## Big picture
 
@@ -34,7 +34,7 @@ The Node service (`orchestrator/src/server/services/jobspy.ts`) controls the run
 
 The mapper normalizes fields like salary ranges, converts empty values to null, and keeps extra metadata (skills, company rating, remote flag, etc.) when available.
 
-If a row is missing a valid site (`indeed` or `linkedin`) or a job URL, it gets skipped.
+If a row is missing a valid site (`indeed`, `linkedin`, or `glassdoor`) or a job URL, it gets skipped.
 
 ## Notes
 

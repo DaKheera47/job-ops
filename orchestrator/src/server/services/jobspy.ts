@@ -166,9 +166,7 @@ export async function runJobSpy(
   await mkdir(outputDir, { recursive: true });
 
   const sites = (options.sites ?? ["indeed", "linkedin"])
-    .filter(
-      (s) => s === "indeed" || s === "linkedin" || s === "glassdoor",
-    )
+    .filter((s) => s === "indeed" || s === "linkedin" || s === "glassdoor")
     .join(",");
 
   const searchTerms = resolveSearchTerms(options);
