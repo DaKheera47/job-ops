@@ -130,8 +130,8 @@ export const HomePage: React.FC = () => {
     <>
       <PageHeader
         icon={ChartColumn}
-        title="Job Ops"
-        subtitle="Orchestrator"
+        title="Overview"
+        subtitle="Analytics & Insights"
         showVersionFooter={false}
         actions={
           <DurationSelector value={duration} onChange={handleDurationChange} />
