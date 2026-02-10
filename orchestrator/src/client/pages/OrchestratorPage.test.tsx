@@ -908,11 +908,16 @@ describe("OrchestratorPage", () => {
     pressKey("s");
     await waitFor(() => {
       expect(api.skipJob).toHaveBeenCalledWith("job-1");
+      expect(toast.message).toHaveBeenCalledWith("Job skipped");
     });
 
     pressKey("a");
     await waitFor(() => {
       expect(api.markAsApplied).toHaveBeenCalledWith("job-1");
+      expect(toast.success).toHaveBeenCalledWith(
+        "Marked as applied",
+        expect.anything(),
+      );
     });
 
     // Switch to discovered for move-to-ready shortcut
