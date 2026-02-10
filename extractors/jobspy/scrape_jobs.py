@@ -16,6 +16,28 @@ COUNTRY_ALIASES = {
     "türkiye": "turkey",
     "czech republic": "czechia",
 }
+GLASSDOOR_COUNTRY_TO_CITY = {
+    "australia": "Sydney",
+    "austria": "Vienna",
+    "belgium": "Brussels",
+    "brazil": "Sao Paulo",
+    "canada": "Toronto",
+    "france": "Paris",
+    "germany": "Berlin",
+    "hong kong": "Hong Kong",
+    "india": "Bengaluru",
+    "ireland": "Dublin",
+    "italy": "Milan",
+    "mexico": "Mexico City",
+    "netherlands": "Amsterdam",
+    "new zealand": "Auckland",
+    "singapore": "Singapore",
+    "spain": "Madrid",
+    "switzerland": "Zurich",
+    "united kingdom": "London",
+    "united states": "New York",
+    "vietnam": "Ho Chi Minh City",
+}
 
 
 def _env_str(name: str, default: str) -> str:
@@ -58,6 +80,11 @@ def _is_country_level_location(location: str, country_indeed: str) -> bool:
     if not location.strip() or not country_indeed.strip():
         return False
     return _normalize_country_token(location) == _normalize_country_token(country_indeed)
+
+
+def _glassdoor_city_for_country(country_indeed: str, location: str) -> str | None:
+    country_key = _normalize_country_token(country_indeed or location)
+    return GLASSDOOR_COUNTRY_TO_CITY.get(country_key)
 
 
 def _scrape_for_sites(
@@ -134,11 +161,18 @@ def main() -> int:
     if "glassdoor" in sites:
         glassdoor_location = location
         if _is_country_level_location(location, country_indeed):
-            # Glassdoor treats location as a city-level filter; country-only values can fail.
-            glassdoor_location = None
-            print(
-                "jobspy: Glassdoor location matched country; using country-only search"
-            )
+            # Glassdoor works best with city-level location terms.
+            fallback_city = _glassdoor_city_for_country(country_indeed, location)
+            if fallback_city:
+                glassdoor_location = fallback_city
+                print(
+                    "jobspy: Glassdoor location matched country; using city fallback "
+                    f"({fallback_city})"
+                )
+            else:
+                print(
+                    "jobspy: Glassdoor location matched country; keeping original location"
+                )
         frames.append(
             _scrape_for_sites(
                 sites=["glassdoor"],
