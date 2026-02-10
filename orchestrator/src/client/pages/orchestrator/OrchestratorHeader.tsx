@@ -54,7 +54,6 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
       subtitle="Orchestrator"
       navOpen={navOpen}
       onNavOpenChange={onNavOpenChange}
-      showVersionFooter={false}
       statusIndicator={
         isPipelineRunning ? (
           <StatusIndicator label="Pipeline running" variant="amber" />

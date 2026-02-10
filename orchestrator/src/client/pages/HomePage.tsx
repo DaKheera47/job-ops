@@ -132,7 +132,6 @@ export const HomePage: React.FC = () => {
         icon={ChartColumn}
         title="Overview"
         subtitle="Analytics & Insights"
-        showVersionFooter={false}
         actions={
           <DurationSelector value={duration} onChange={handleDurationChange} />
         }
