@@ -71,8 +71,8 @@ export const OrchestratorPage: React.FC = () => {
       const search = searchParams.toString();
       const suffix = search ? `?${search}` : "";
       const path = newJobId
-        ? `/${newTab}/${newJobId}${suffix}`
-        : `/${newTab}${suffix}`;
+        ? `/jobs/${newTab}/${newJobId}${suffix}`
+        : `/jobs/${newTab}${suffix}`;
       navigate(path, { replace: isReplace });
     },
     [navigate, searchParams],
@@ -302,7 +302,7 @@ export const OrchestratorPage: React.FC = () => {
         nextParams.delete(key);
       }
       const query = nextParams.toString();
-      navigate(`/${targetTab}/${id}${query ? `?${query}` : ""}`);
+      navigate(`/jobs/${targetTab}/${id}${query ? `?${query}` : ""}`);
       if (!isDesktop) {
         setIsDetailDrawerOpen(true);
       }

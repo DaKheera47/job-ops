@@ -16,6 +16,20 @@ import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
 
+/** Backwards-compatibility redirects: old URL paths -> new URL paths */
+const REDIRECTS: Array<{ from: string; to: string }> = [
+  { from: "/", to: "/jobs/ready" },
+  { from: "/home", to: "/overview" },
+  { from: "/ready", to: "/jobs/ready" },
+  { from: "/ready/:jobId", to: "/jobs/ready/:jobId" },
+  { from: "/discovered", to: "/jobs/discovered" },
+  { from: "/discovered/:jobId", to: "/jobs/discovered/:jobId" },
+  { from: "/applied", to: "/jobs/applied" },
+  { from: "/applied/:jobId", to: "/jobs/applied/:jobId" },
+  { from: "/all", to: "/jobs/all" },
+  { from: "/all/:jobId", to: "/jobs/all/:jobId" },
+];
+
 export const App: React.FC = () => {
   const location = useLocation();
   const nodeRef = useRef<HTMLDivElement>(null);
@@ -23,8 +37,8 @@ export const App: React.FC = () => {
 
   // Determine a stable key for transitions to avoid unnecessary unmounts when switching sub-tabs
   const pageKey = React.useMemo(() => {
-    const firstSegment = location.pathname.split("/")[1] || "ready";
-    if (["ready", "discovered", "applied", "all"].includes(firstSegment)) {
+    const firstSegment = location.pathname.split("/")[1] || "jobs";
+    if (firstSegment === "jobs") {
       return "orchestrator";
     }
     return firstSegment;
@@ -51,13 +65,25 @@ export const App: React.FC = () => {
           >
             <div ref={nodeRef}>
               <Routes location={location}>
-                <Route path="/" element={<Navigate to="/ready" replace />} />
-                <Route path="/home" element={<HomePage />} />
+                {/* Backwards-compatibility redirects */}
+                {REDIRECTS.map(({ from, to }) => (
+                  <Route
+                    key={from}
+                    path={from}
+                    element={<Navigate to={to} replace />}
+                  />
+                ))}
+
+                {/* Application routes */}
+                <Route path="/overview" element={<HomePage />} />
                 <Route path="/job/:id" element={<JobPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
-                <Route path="/:tab" element={<OrchestratorPage />} />
-                <Route path="/:tab/:jobId" element={<OrchestratorPage />} />
+                <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+                <Route
+                  path="/jobs/:tab/:jobId"
+                  element={<OrchestratorPage />}
+                />
               </Routes>
             </div>
           </CSSTransition>

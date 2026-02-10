@@ -192,7 +192,9 @@ export const HomePage: React.FC = () => {
               <Home className="h-4 w-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 leading-tight">
-              <div className="text-sm font-semibold tracking-tight">Home</div>
+              <div className="text-sm font-semibold tracking-tight">
+                Overview
+              </div>
               <div className="text-xs text-muted-foreground">
                 Applications over the last {duration} days
               </div>
