@@ -3,7 +3,6 @@
  */
 
 import { createJob } from "@shared/testing/factories";
-import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseJsonFromContent } from "./scorer";
 

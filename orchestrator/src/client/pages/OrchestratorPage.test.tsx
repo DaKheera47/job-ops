@@ -1,5 +1,4 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -77,7 +76,6 @@ const processingJob = createJob({
   jobDescription: "Build APIs",
   status: "processing",
 });
-
 
 const createMatchMedia = (matches: boolean) =>
   vi.fn().mockImplementation((query: string) => ({

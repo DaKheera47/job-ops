@@ -1,5 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
+import type { BulkJobActionResponse } from "@shared/types.js";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,7 +121,11 @@ describe("useBulkJobSelection", () => {
         succeeded: 1,
         failed: 1,
         results: [
-          { jobId: "job-1", ok: true, job: createJob({ id: "job-1", status: "skipped" }) },
+          {
+            jobId: "job-1",
+            ok: true,
+            job: createJob({ id: "job-1", status: "skipped" }),
+          },
           {
             jobId: "job-2",
             ok: false,
@@ -149,8 +153,16 @@ describe("useBulkJobSelection", () => {
       succeeded: 2,
       failed: 0,
       results: [
-        { jobId: "job-1", ok: true, job: createJob({ id: "job-1", status: "ready" }) },
-        { jobId: "job-2", ok: true, job: createJob({ id: "job-2", status: "ready" }) },
+        {
+          jobId: "job-1",
+          ok: true,
+          job: createJob({ id: "job-1", status: "ready" }),
+        },
+        {
+          jobId: "job-2",
+          ok: true,
+          job: createJob({ id: "job-2", status: "ready" }),
+        },
       ],
     });
 

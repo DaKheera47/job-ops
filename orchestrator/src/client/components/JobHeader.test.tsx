@@ -1,5 +1,4 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { Job } from "@shared/types.js";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";

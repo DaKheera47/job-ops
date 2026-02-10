@@ -1,5 +1,4 @@
 import { createJob } from "@shared/testing/factories";
-import type { Job } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pickProjectIdsForJob } from "./projectSelection";
 import { scoreJobSuitability } from "./scorer";

@@ -1,5 +1,4 @@
 import { createAppSettings } from "@shared/testing/factories.js";
-import type { AppSettings } from "@shared/types";
 import { render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";

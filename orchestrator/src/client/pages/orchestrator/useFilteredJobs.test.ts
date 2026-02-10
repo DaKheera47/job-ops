@@ -14,7 +14,6 @@ const baseJob = createJob({
   status: "ready",
 });
 
-
 describe("useFilteredJobs", () => {
   it("filters by sponsor status categories", () => {
     const jobs: Job[] = [

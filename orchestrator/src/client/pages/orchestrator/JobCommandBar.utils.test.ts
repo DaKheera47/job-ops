@@ -1,5 +1,4 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { Job } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
   computeJobMatchScore,

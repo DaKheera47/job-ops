@@ -1,6 +1,6 @@
 import type {
-  AppSettings,
   ApplicationTask,
+  AppSettings,
   Job,
   PipelineRun,
   ResumeProjectCatalogItem,

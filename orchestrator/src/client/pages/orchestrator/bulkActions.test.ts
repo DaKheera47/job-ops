@@ -1,5 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
+import type { BulkJobActionResponse } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
   canBulkMoveToReady,
@@ -16,7 +16,9 @@ describe("bulkActions", () => {
         createJob({ id: "2", status: "ready" }),
       ]),
     ).toBe(true);
-    expect(canBulkSkip([createJob({ id: "1", status: "applied" })])).toBe(false);
+    expect(canBulkSkip([createJob({ id: "1", status: "applied" })])).toBe(
+      false,
+    );
 
     expect(
       canBulkMoveToReady([
@@ -52,7 +54,11 @@ describe("bulkActions", () => {
       succeeded: 1,
       failed: 2,
       results: [
-        { jobId: "job-1", ok: true, job: createJob({ id: "job-1", status: "skipped" }) },
+        {
+          jobId: "job-1",
+          ok: true,
+          job: createJob({ id: "job-1", status: "skipped" }),
+        },
         {
           jobId: "job-2",
           ok: false,
