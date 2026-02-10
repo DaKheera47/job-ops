@@ -344,6 +344,8 @@ const LocationWatcher = () => {
 describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    localStorage.setItem("has-seen-keyboard-shortcuts", "true");
     mockIsPipelineRunning = false;
     mockPipelineTerminalEvent = null;
     mockPipelineSources = ["linkedin"];

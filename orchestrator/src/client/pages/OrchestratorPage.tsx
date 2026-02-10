@@ -545,6 +545,13 @@ export const OrchestratorPage: React.FC = () => {
     }
   }, [isDesktop, isDetailDrawerOpen]);
 
+  useEffect(() => {
+    const hasSeen = localStorage.getItem("has-seen-keyboard-shortcuts");
+    if (!hasSeen) {
+      setIsHelpDialogOpen(true);
+    }
+  }, []);
+
   const onDrawerOpenChange = (open: boolean) => {
     setIsDetailDrawerOpen(open);
     if (!open && !isDesktop) {
@@ -692,7 +699,12 @@ export const OrchestratorPage: React.FC = () => {
       <KeyboardShortcutBar activeTab={activeTab} />
       <KeyboardShortcutDialog
         open={isHelpDialogOpen}
-        onOpenChange={setIsHelpDialogOpen}
+        onOpenChange={(open) => {
+          setIsHelpDialogOpen(open);
+          if (!open) {
+            localStorage.setItem("has-seen-keyboard-shortcuts", "true");
+          }
+        }}
         activeTab={activeTab}
       />
     </>
