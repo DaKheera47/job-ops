@@ -39,7 +39,6 @@ import {
   simulateRescoreJob,
   simulateSummarizeJob,
 } from "../../services/demo-simulator";
-import { createNotionEntry } from "../../services/notion";
 import { getProfile } from "../../services/profile";
 import { scoreJobSuitability } from "../../services/scorer";
 import * as visaSponsors from "../../services/visa-sponsors/index";
@@ -906,7 +905,7 @@ jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/:id/apply - Mark a job as applied and sync to Notion
+ * POST /api/jobs/:id/apply - Mark a job as applied
  */
 jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
   try {
@@ -924,19 +923,6 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     const appliedAtDate = new Date();
     const appliedAt = appliedAtDate.toISOString();
 
-    // Sync to Notion
-    const notionResult = await createNotionEntry({
-      id: job.id,
-      title: job.title,
-      employer: job.employer,
-      applicationLink: job.applicationLink,
-      deadline: job.deadline,
-      salary: job.salary,
-      location: job.location,
-      pdfPath: job.pdfPath,
-      appliedAt,
-    });
-
     transitionStage(
       job.id,
       "applied",
@@ -948,11 +934,9 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       null,
     );
 
-    // Update job status + Notion metadata
     const updatedJob = await jobsRepo.updateJob(job.id, {
       status: "applied",
       appliedAt,
-      notionPageId: notionResult.pageId,
     });
 
     if (updatedJob) {

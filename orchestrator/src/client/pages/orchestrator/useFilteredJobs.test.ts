@@ -31,7 +31,6 @@ const baseJob: Job = {
   tailoredSkills: null,
   selectedProjectIds: null,
   pdfPath: null,
-  notionPageId: null,
   sponsorMatchScore: null,
   sponsorMatchNames: null,
   jobType: null,

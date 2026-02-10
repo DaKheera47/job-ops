@@ -51,10 +51,6 @@ vi.mock("../../pipeline/index", () => {
   };
 });
 
-vi.mock("../../services/notion", () => ({
-  createNotionEntry: vi.fn(),
-}));
-
 vi.mock("../../services/manualJob", () => ({
   inferManualJobDetails: vi.fn(),
 }));

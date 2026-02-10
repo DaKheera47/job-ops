@@ -451,13 +451,7 @@ describe.sequential("Jobs API routes", () => {
     expect(body.meta.requestId).toBeTruthy();
   });
 
-  it("applies a job and syncs to Notion", async () => {
-    const { createNotionEntry } = await import("../../services/notion");
-    vi.mocked(createNotionEntry).mockResolvedValue({
-      success: true,
-      pageId: "page-123",
-    });
-
+  it("applies a job", async () => {
     const { createJob } = await import("../../repositories/jobs");
     const job = await createJob({
       source: "manual",
@@ -473,15 +467,7 @@ describe.sequential("Jobs API routes", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.status).toBe("applied");
-    expect(body.data.notionPageId).toBe("page-123");
     expect(body.data.appliedAt).toBeTruthy();
-    expect(createNotionEntry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: job.id,
-        title: job.title,
-        employer: job.employer,
-      }),
-    );
   });
 
   it("rescoring a job updates the suitability fields", async () => {

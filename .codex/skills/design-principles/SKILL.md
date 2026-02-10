@@ -1,6 +1,6 @@
 ---
 name: design-principles
-description: Enforce a precise, minimal design system inspired by Linear, Notion, and Stripe. Use this skill when building dashboards, admin interfaces, or any UI that needs Jony Ive-level precision - clean, modern, minimalist with taste. Every pixel matters.
+description: Enforce a precise, minimal design system inspired by Linear and Stripe. Use this skill when building dashboards, admin interfaces, or any UI that needs Jony Ive-level precision - clean, modern, minimalist with taste. Every pixel matters.
 ---
 
 # Design Principles
@@ -24,7 +24,7 @@ Enterprise/SaaS UI has more range than you think. Consider these directions:
 
 **Precision & Density** — Tight spacing, monochrome, information-forward. For power users who live in the tool. Think Linear, Raycast, terminal aesthetics.
 
-**Warmth & Approachability** — Generous spacing, soft shadows, friendly colors. For products that want to feel human. Think Notion, Coda, collaborative tools.
+**Warmth & Approachability** — Generous spacing, soft shadows, friendly colors. For products that want to feel human. Think Coda, collaborative tools.
 
 **Sophistication & Trust** — Cool tones, layered depth, financial gravitas. For products handling money or sensitive data. Think Stripe, Mercury, enterprise B2B.
 

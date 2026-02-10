@@ -117,7 +117,6 @@ describe.sequential("demo seed baseline", () => {
             source: schema.jobs.source,
             title: schema.jobs.title,
             employer: schema.jobs.employer,
-            notionPageId: schema.jobs.notionPageId,
           })
           .from(schema.jobs),
         db

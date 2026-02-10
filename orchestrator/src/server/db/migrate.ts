@@ -68,7 +68,6 @@ const migrations = [
     suitability_reason TEXT,
     tailored_summary TEXT,
     pdf_path TEXT,
-    notion_page_id TEXT,
     discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
     processed_at TEXT,
     applied_at TEXT,

@@ -279,7 +279,6 @@ export interface DemoDefaultJob {
   tailoredSkills?: string[];
   selectedProjectIds?: string;
   pdfPath?: string;
-  notionPageId?: string;
   appliedOffsetMinutes?: number;
 }
 
@@ -452,7 +451,6 @@ export const DEMO_BASE_JOBS: DemoDefaultJob[] = [
     tailoredSkills: ["TypeScript", "Architecture", "Mentorship", "SRE"],
     selectedProjectIds: "demo-project-1,demo-project-4,demo-project-5",
     pdfPath: "/pdfs/demo-job-applied-1.pdf",
-    notionPageId: "demo-notion-applied-1",
   },
   {
     id: "demo-job-applied-2",
@@ -478,7 +476,6 @@ export const DEMO_BASE_JOBS: DemoDefaultJob[] = [
     tailoredSkills: ["Data Pipelines", "TypeScript", "SQL", "Observability"],
     selectedProjectIds: "demo-project-1,demo-project-2,demo-project-4",
     pdfPath: "/pdfs/demo-job-applied-2.pdf",
-    notionPageId: "demo-notion-applied-2",
   },
   {
     id: "demo-job-applied-3",
@@ -504,7 +501,6 @@ export const DEMO_BASE_JOBS: DemoDefaultJob[] = [
     tailoredSkills: ["System Design", "Team Leadership", "TypeScript", "APIs"],
     selectedProjectIds: "demo-project-2,demo-project-4,demo-project-5",
     pdfPath: "/pdfs/demo-job-applied-3.pdf",
-    notionPageId: "demo-notion-applied-3",
   },
   {
     id: "demo-job-applied-4",
@@ -530,7 +526,6 @@ export const DEMO_BASE_JOBS: DemoDefaultJob[] = [
     tailoredSkills: ["APIs", "Testing", "TypeScript", "CI/CD"],
     selectedProjectIds: "demo-project-2,demo-project-3,demo-project-4",
     pdfPath: "/pdfs/demo-job-applied-4.pdf",
-    notionPageId: "demo-notion-applied-4",
   },
   {
     id: "demo-job-applied-5",
@@ -556,7 +551,6 @@ export const DEMO_BASE_JOBS: DemoDefaultJob[] = [
     tailoredSkills: ["Reliability", "Node.js", "TypeScript", "Operations"],
     selectedProjectIds: "demo-project-1,demo-project-4,demo-project-5",
     pdfPath: "/pdfs/demo-job-applied-5.pdf",
-    notionPageId: "demo-notion-applied-5",
   },
   {
     id: "demo-job-skipped-1",

@@ -6,7 +6,7 @@ export type JobStatus =
   | "discovered" // Crawled but not processed
   | "processing" // Currently generating resume
   | "ready" // PDF generated, waiting for user to apply
-  | "applied" // User marked as applied (added to Notion)
+  | "applied" // User marked as applied
   | "skipped" // User skipped this job
   | "expired"; // Deadline passed
 
@@ -160,7 +160,6 @@ export interface Job {
   tailoredSkills: string | null; // Generated resume skills (JSON)
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null; // Path to generated PDF
-  notionPageId: string | null; // Notion page ID if synced
   sponsorMatchScore: number | null; // 0-100 fuzzy match score with visa sponsors
   sponsorMatchNames: string | null; // JSON array of matched sponsor names (when 100% matches or top match)
 
@@ -314,7 +313,6 @@ export interface UpdateJobInput {
   tailoredSkills?: string;
   selectedProjectIds?: string;
   pdfPath?: string;
-  notionPageId?: string;
   appliedAt?: string;
   sponsorMatchScore?: number;
   sponsorMatchNames?: string;

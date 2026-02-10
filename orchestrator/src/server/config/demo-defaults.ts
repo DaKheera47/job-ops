@@ -141,7 +141,6 @@ function buildGeneratedJob(
     | "tailoredSkills"
     | "selectedProjectIds"
     | "pdfPath"
-    | "notionPageId"
   >;
 
   if (status === "applied") {
@@ -163,7 +162,6 @@ function buildGeneratedJob(
       tailoredSkills: ["TypeScript", "Node.js", "APIs", "Observability"],
       selectedProjectIds: PROJECT_ID_SETS[idx % PROJECT_ID_SETS.length],
       pdfPath: `/pdfs/demo-job-applied-auto-${n}.pdf`,
-      notionPageId: `demo-notion-applied-auto-${n}`,
     };
   }
 

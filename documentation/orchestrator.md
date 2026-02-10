@@ -7,7 +7,7 @@ This doc explains how the orchestrator thinks about job states, how the "Ready" 
 - `discovered`: The job was found by a crawler/import. It has not been processed into a tailored resume yet.
 - `processing`: The system is currently generating tailoring data and/or the PDF.
 - `ready`: A tailored PDF has been generated and the job is ready for you to apply.
-- `applied`: You marked it as applied. If Notion is configured, a page is created and linked.
+- `applied`: You marked it as applied.
 - `skipped`: You explicitly skipped it (so it stays out of your active queue).
 - `expired`: Deadline has passed. This is a terminal state used for cleanup/triage.
 
@@ -31,7 +31,7 @@ Once a job is `ready`, the Ready panel is the "shipping lane":
 
 - View/download the PDF.
 - Open the job listing.
-- Mark Applied (moves to `applied` and syncs to Notion if configured).
+- Mark Applied (moves to `applied`).
 - Optional: edit tailoring, edit the JD, or regenerate the PDF.
 
 ## Generating PDFs (first time)

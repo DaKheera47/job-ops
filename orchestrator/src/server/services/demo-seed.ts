@@ -66,7 +66,6 @@ export function buildDemoBaseline(now: Date): BuiltDemoBaseline {
         : null,
       selectedProjectIds: job.selectedProjectIds ?? null,
       pdfPath: job.pdfPath ?? null,
-      notionPageId: job.notionPageId ?? null,
       discoveredAt: toIsoFromOffset(now, job.discoveredOffsetMinutes),
       appliedAt:
         job.status === "applied" && typeof job.appliedOffsetMinutes === "number"

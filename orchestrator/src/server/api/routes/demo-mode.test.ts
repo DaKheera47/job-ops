@@ -93,7 +93,7 @@ describe.sequential("Demo mode API behavior", () => {
     }
   });
 
-  it("simulates apply and does not call Notion in demo mode", async () => {
+  it("simulates apply in demo mode", async () => {
     const { server, baseUrl, closeDb, tempDir } = await startServer({
       env: { DEMO_MODE: "true" },
     });
@@ -124,7 +124,6 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.ok).toBe(true);
       expect(body.meta?.simulated).toBe(true);
       expect(body.data.status).toBe("applied");
-      expect(String(body.data.notionPageId)).toMatch(/^demo-notion-/);
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }

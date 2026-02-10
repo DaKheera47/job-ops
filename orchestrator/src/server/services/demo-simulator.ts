@@ -151,7 +151,6 @@ export async function simulateApplyJob(jobId: string): Promise<Job> {
   const updated = await jobsRepo.updateJob(job.id, {
     status: "applied",
     appliedAt: appliedAtDate.toISOString(),
-    notionPageId: `demo-notion-${job.id.slice(0, 8)}`,
   });
   if (!updated) throw new Error("Job not found");
   return updated;
