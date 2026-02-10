@@ -2,6 +2,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   formatCountryLabel,
   getCompatibleSourcesForCountry,
+  isGlassdoorCountry,
   isSourceAllowedForCountry,
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
@@ -76,6 +77,9 @@ interface AutomaticRunFormValues {
 }
 
 type AutomaticPresetSelection = AutomaticPresetId | "custom";
+
+const GLASSDOOR_COUNTRY_REASON =
+  "Glassdoor is available only for: Australia, Austria, Belgium, Brazil, Canada, France, Germany, Hong Kong, India, Ireland, Italy, Mexico, Netherlands, New Zealand, Singapore, Spain, Switzerland, United Kingdom, United States, Vietnam.";
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
@@ -531,7 +535,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   values.country,
                 );
                 const selected = compatiblePipelineSources.includes(source);
-                const disabledReason = `${sourceLabel[source]} is available only when country is United Kingdom.`;
+                const disabledReason =
+                  source === "glassdoor"
+                    ? GLASSDOOR_COUNTRY_REASON
+                    : `${sourceLabel[source]} is available only when country is United Kingdom.`;
+                const showDisabledReason =
+                  !allowed &&
+                  (source !== "glassdoor" ||
+                    !isGlassdoorCountry(values.country));
 
                 const button = (
                   <Button
@@ -553,11 +564,16 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 return (
                   <Tooltip key={source}>
                     <TooltipTrigger asChild>
-                      <span className="inline-flex" title={disabledReason}>
+                      <span
+                        className="inline-flex"
+                        title={showDisabledReason ? disabledReason : undefined}
+                      >
                         {button}
                       </span>
                     </TooltipTrigger>
-                    <TooltipContent side="top">{disabledReason}</TooltipContent>
+                    <TooltipContent side="top">
+                      {showDisabledReason ? disabledReason : ""}
+                    </TooltipContent>
                   </Tooltip>
                 );
               })}

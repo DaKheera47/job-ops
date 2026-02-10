@@ -96,4 +96,35 @@ describe("AutomaticRunTab", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  it("disables glassdoor for unsupported countries with guidance copy", async () => {
+    const onSetPipelineSources = vi.fn();
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={
+          {
+            searchTerms: ["backend engineer"],
+            jobspyCountryIndeed: "japan",
+          } as AppSettings
+        }
+        enabledSources={["linkedin", "glassdoor"]}
+        pipelineSources={["linkedin", "glassdoor"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={onSetPipelineSources}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
+    });
+
+    expect(screen.getByRole("button", { name: "Glassdoor" })).toBeDisabled();
+    expect(
+      screen.getByTitle(/Glassdoor is available only for:/),
+    ).toBeInTheDocument();
+  });
 });

@@ -100,6 +100,30 @@ export const SUPPORTED_COUNTRY_INPUTS = [
 ] as const;
 
 const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
+const GLASSDOOR_SUPPORTED_COUNTRIES = new Set(
+  [
+    "australia",
+    "austria",
+    "belgium",
+    "brazil",
+    "canada",
+    "france",
+    "germany",
+    "hong kong",
+    "india",
+    "ireland",
+    "italy",
+    "mexico",
+    "netherlands",
+    "new zealand",
+    "singapore",
+    "spain",
+    "switzerland",
+    "united kingdom",
+    "united states",
+    "vietnam",
+  ].map((country) => normalizeCountryKey(country)),
+);
 
 export function normalizeCountryKey(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
@@ -125,12 +149,19 @@ export function isUkCountry(country: string | null | undefined): boolean {
   return normalizeCountryKey(country) === "united kingdom";
 }
 
+export function isGlassdoorCountry(
+  country: string | null | undefined,
+): boolean {
+  return GLASSDOOR_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
+}
+
 export function isSourceAllowedForCountry(
   source: JobSource,
   country: string | null | undefined,
 ): boolean {
-  if (!UK_ONLY_SOURCES.has(source)) return true;
-  return isUkCountry(country);
+  if (UK_ONLY_SOURCES.has(source)) return isUkCountry(country);
+  if (source === "glassdoor") return isGlassdoorCountry(country);
+  return true;
 }
 
 export function getCompatibleSourcesForCountry(
