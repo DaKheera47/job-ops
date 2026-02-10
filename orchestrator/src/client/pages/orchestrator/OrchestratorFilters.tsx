@@ -1,5 +1,5 @@
 import { KbdHint } from "@client/components/KbdHint";
-import { getMetaShortcutLabel } from "@client/lib/meta-key";
+import { getDisplayKey, SHORTCUTS } from "@client/lib/shortcut-map";
 import type { JobSource } from "@shared/types.js";
 import { Filter, Search } from "lucide-react";
 import type React from "react";
@@ -146,7 +146,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
   const showSalaryMax =
     salaryFilter.mode === "at_most" || salaryFilter.mode === "between";
-  const commandShortcutLabel = getMetaShortcutLabel("K");
+  const commandShortcutLabel = getDisplayKey(SHORTCUTS.search);
 
   return (
     <Tabs

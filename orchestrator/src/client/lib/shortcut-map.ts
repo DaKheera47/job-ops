@@ -1,3 +1,4 @@
+import { getMetaShortcutLabel } from "@client/lib/meta-key";
 import type { FilterTab } from "@client/pages/orchestrator/constants";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ export const SHORTCUTS = {
   // Meta
   search: {
     key: "$mod+k",
-    displayKey: "Cmd+K",
+    displayKey: "$mod+K",
     label: "Search jobs",
     group: "meta",
   },
@@ -193,6 +194,16 @@ export function groupShortcuts(
 }
 
 /**
+ * Get the platform-correct display label for a shortcut definition.
+ */
+export function getDisplayKey(def: ShortcutDef): string {
+  if (def.displayKey.includes("$mod+")) {
+    return getMetaShortcutLabel(def.displayKey.replace("$mod+", ""));
+  }
+  return def.displayKey;
+}
+
+/**
  * Deduplicate shortcuts that share the same label (e.g. j and ArrowDown both
  * map to "Next job"). Keeps the first occurrence and appends alternative
  * display keys.
@@ -207,12 +218,13 @@ export function dedupeShortcuts(defs: ShortcutDef[]): DisplayShortcut[] {
   const seen = new Map<string, DisplayShortcut>();
   const result: DisplayShortcut[] = [];
   for (const def of defs) {
+    const displayKey = getDisplayKey(def);
     const existing = seen.get(def.label);
     if (existing) {
-      existing.displayKeys.push(def.displayKey);
+      existing.displayKeys.push(displayKey);
     } else {
       const entry: DisplayShortcut = {
-        displayKeys: [def.displayKey],
+        displayKeys: [displayKey],
         label: def.label,
         group: def.group,
       };

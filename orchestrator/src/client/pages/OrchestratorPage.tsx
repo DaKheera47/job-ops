@@ -20,11 +20,7 @@ import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
-import {
-  defaultSortDirection,
-  orderedFilterSources,
-  tabs,
-} from "./orchestrator/constants";
+import { tabs } from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
