@@ -34,6 +34,9 @@ export const BasicAuthPrompt: React.FC = () => {
       const activePrompt = pendingRequestRef.current;
       pendingRequestRef.current = null;
       setPendingRequest(null);
+      setUsername("");
+      setPassword("");
+      setErrorMessage(null);
       activePrompt?.resolve(credentials);
     },
     [],
