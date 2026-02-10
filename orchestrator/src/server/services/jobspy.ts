@@ -105,6 +105,7 @@ function toJobSource(site: unknown): JobSource | null {
   if (raw === "gradcracker") return "gradcracker";
   if (raw === "indeed") return "indeed";
   if (raw === "linkedin") return "linkedin";
+  if (raw === "glassdoor") return "glassdoor";
   return null;
 }
 
@@ -165,7 +166,9 @@ export async function runJobSpy(
   await mkdir(outputDir, { recursive: true });
 
   const sites = (options.sites ?? ["indeed", "linkedin"])
-    .filter((s) => s === "indeed" || s === "linkedin")
+    .filter(
+      (s) => s === "indeed" || s === "linkedin" || s === "glassdoor",
+    )
     .join(",");
 
   const searchTerms = resolveSearchTerms(options);

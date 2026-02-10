@@ -67,8 +67,8 @@ export async function discoverJobsStep(args: {
   }
 
   let jobSpySites = compatibleSources.filter(
-    (source): source is "indeed" | "linkedin" =>
-      source === "indeed" || source === "linkedin",
+    (source): source is "indeed" | "linkedin" | "glassdoor" =>
+      source === "indeed" || source === "linkedin" || source === "glassdoor",
   );
 
   const jobspySitesSettingRaw = settings.jobspySites;
