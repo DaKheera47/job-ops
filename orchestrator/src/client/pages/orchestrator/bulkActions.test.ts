@@ -1,3 +1,4 @@
+import { createJob } from "@shared/testing/factories.js";
 import type { BulkJobActionResponse, Job, JobStatus } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
@@ -7,95 +8,40 @@ import {
   getFailedJobIds,
 } from "./bulkActions";
 
-function createJob(id: string, status: JobStatus): Job {
-  return {
-    id,
-    source: "linkedin",
-    sourceJobId: null,
-    jobUrlDirect: null,
-    datePosted: null,
-    title: "Role",
-    employer: "Acme",
-    employerUrl: null,
-    jobUrl: `https://example.com/${id}`,
-    applicationLink: null,
-    disciplines: null,
-    deadline: null,
-    salary: null,
-    location: null,
-    degreeRequired: null,
-    starting: null,
-    jobDescription: null,
-    status,
-    outcome: null,
-    closedAt: null,
-    suitabilityScore: null,
-    suitabilityReason: null,
-    tailoredSummary: null,
-    tailoredHeadline: null,
-    tailoredSkills: null,
-    selectedProjectIds: null,
-    pdfPath: null,
-    sponsorMatchScore: null,
-    sponsorMatchNames: null,
-    jobType: null,
-    salarySource: null,
-    salaryInterval: null,
-    salaryMinAmount: null,
-    salaryMaxAmount: null,
-    salaryCurrency: null,
-    isRemote: null,
-    jobLevel: null,
-    jobFunction: null,
-    listingType: null,
-    emails: null,
-    companyIndustry: null,
-    companyLogo: null,
-    companyUrlDirect: null,
-    companyAddresses: null,
-    companyNumEmployees: null,
-    companyRevenue: null,
-    companyDescription: null,
-    skills: null,
-    experienceRange: null,
-    companyRating: null,
-    companyReviewsCount: null,
-    vacancyCount: null,
-    workFromHomeType: null,
-    discoveredAt: "2025-01-01T00:00:00Z",
-    processedAt: null,
-    appliedAt: null,
-    createdAt: "2025-01-01T00:00:00Z",
-    updatedAt: "2025-01-01T00:00:00Z",
-  };
-}
-
 describe("bulkActions", () => {
   it("computes eligibility for skip, move-to-ready, and rescore", () => {
     expect(
-      canBulkSkip([createJob("1", "discovered"), createJob("2", "ready")]),
+      canBulkSkip([
+        createJob({ id: "1", status: "discovered" }),
+        createJob({ id: "2", status: "ready" }),
+      ]),
     ).toBe(true);
-    expect(canBulkSkip([createJob("1", "applied")])).toBe(false);
+    expect(canBulkSkip([createJob({ id: "1", status: "applied" })])).toBe(false);
 
     expect(
       canBulkMoveToReady([
-        createJob("1", "discovered"),
-        createJob("2", "discovered"),
+        createJob({ id: "1", status: "discovered" }),
+        createJob({ id: "2", status: "discovered" }),
       ]),
     ).toBe(true);
-    expect(canBulkMoveToReady([createJob("1", "ready")])).toBe(false);
+    expect(canBulkMoveToReady([createJob({ id: "1", status: "ready" })])).toBe(
+      false,
+    );
 
     expect(
       canBulkRescore([
-        createJob("1", "discovered"),
-        createJob("2", "ready"),
-        createJob("3", "applied"),
-        createJob("4", "skipped"),
-        createJob("5", "expired"),
+        createJob({ id: "1", status: "discovered" }),
+        createJob({ id: "2", status: "ready" }),
+        createJob({ id: "3", status: "applied" }),
+        createJob({ id: "4", status: "skipped" }),
+        createJob({ id: "5", status: "expired" }),
       ]),
     ).toBe(true);
     expect(
-      canBulkRescore([createJob("1", "ready"), createJob("2", "processing")]),
+      canBulkRescore([
+        createJob({ id: "1", status: "ready" }),
+        createJob({ id: "2", status: "processing" }),
+      ]),
     ).toBe(false);
   });
 
@@ -106,7 +52,7 @@ describe("bulkActions", () => {
       succeeded: 1,
       failed: 2,
       results: [
-        { jobId: "job-1", ok: true, job: createJob("job-1", "skipped") },
+        { jobId: "job-1", ok: true, job: createJob({ id: "job-1", status: "skipped" }) },
         {
           jobId: "job-2",
           ok: false,

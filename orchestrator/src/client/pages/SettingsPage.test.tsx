@@ -1,3 +1,4 @@
+import { createAppSettings } from "@shared/testing/factories.js";
 import type { AppSettings } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -21,28 +22,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
-const baseSettings: AppSettings = {
+const baseSettings = createAppSettings({
   model: "google/gemini-3-flash-preview",
   defaultModel: "google/gemini-3-flash-preview",
-  overrideModel: null,
   modelScorer: "google/gemini-3-flash-preview",
-  overrideModelScorer: null,
   modelTailoring: "google/gemini-3-flash-preview",
-  overrideModelTailoring: null,
   modelProjectSelection: "google/gemini-3-flash-preview",
-  overrideModelProjectSelection: null,
   llmProvider: "openrouter",
   defaultLlmProvider: "openrouter",
-  overrideLlmProvider: null,
   llmBaseUrl: "https://openrouter.ai",
   defaultLlmBaseUrl: "https://openrouter.ai",
-  overrideLlmBaseUrl: null,
-  pipelineWebhookUrl: "",
-  defaultPipelineWebhookUrl: "",
-  overridePipelineWebhookUrl: null,
-  jobCompleteWebhookUrl: "",
-  defaultJobCompleteWebhookUrl: "",
-  overrideJobCompleteWebhookUrl: null,
   profileProjects: [
     {
       id: "proj-1",
@@ -69,59 +58,15 @@ const baseSettings: AppSettings = {
     lockedProjectIds: [],
     aiSelectableProjectIds: ["proj-1", "proj-2"],
   },
-  overrideResumeProjects: null,
-  ukvisajobsMaxJobs: 50,
-  defaultUkvisajobsMaxJobs: 50,
-  overrideUkvisajobsMaxJobs: null,
-  gradcrackerMaxJobsPerTerm: 50,
-  defaultGradcrackerMaxJobsPerTerm: 50,
-  overrideGradcrackerMaxJobsPerTerm: null,
-  searchTerms: ["engineer"],
-  defaultSearchTerms: ["engineer"],
-  overrideSearchTerms: null,
-  jobspyLocation: "UK",
-  defaultJobspyLocation: "UK",
-  overrideJobspyLocation: null,
   jobspyResultsWanted: 200,
   defaultJobspyResultsWanted: 200,
-  overrideJobspyResultsWanted: null,
   jobspyCountryIndeed: "UK",
   defaultJobspyCountryIndeed: "UK",
-  overrideJobspyCountryIndeed: null,
-  showSponsorInfo: true,
-  defaultShowSponsorInfo: true,
-  overrideShowSponsorInfo: null,
-  llmApiKeyHint: null,
-  rxresumeEmail: "",
-  rxresumePasswordHint: null,
-  basicAuthUser: "",
-  basicAuthPasswordHint: null,
-  ukvisajobsEmail: "",
-  ukvisajobsPasswordHint: null,
-  webhookSecretHint: null,
-  basicAuthActive: false,
-  rxresumeBaseResumeId: null,
-  // Backup settings
-  backupEnabled: false,
-  defaultBackupEnabled: false,
-  overrideBackupEnabled: null,
-  backupHour: 2,
-  defaultBackupHour: 2,
-  overrideBackupHour: null,
-  backupMaxCount: 5,
-  defaultBackupMaxCount: 5,
-  overrideBackupMaxCount: null,
-  // Scoring settings
-  penalizeMissingSalary: false,
-  defaultPenalizeMissingSalary: false,
-  overridePenalizeMissingSalary: null,
-  missingSalaryPenalty: 10,
-  defaultMissingSalaryPenalty: 10,
-  overrideMissingSalaryPenalty: null,
-  autoSkipScoreThreshold: null,
-  defaultAutoSkipScoreThreshold: null,
-  overrideAutoSkipScoreThreshold: null,
-};
+  jobspyLocation: "UK",
+  defaultJobspyLocation: "UK",
+  searchTerms: ["engineer"],
+  defaultSearchTerms: ["engineer"],
+});
 
 const renderPage = () => {
   return render(

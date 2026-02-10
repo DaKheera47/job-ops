@@ -3,7 +3,10 @@
  * Tests real-world edge cases for conversion funnel and analytics
  */
 
-import { createJob as createBaseJob } from "@shared/testing/factories.js";
+import {
+  createJob as createBaseJob,
+  createStageEvent,
+} from "@shared/testing/factories.js";
 import type { ApplicationStage, Job, StageEvent } from "@shared/types.js";
 import { render, screen } from "@testing-library/react";
 import type React from "react";
@@ -89,17 +92,15 @@ describe("ConversionAnalytics - Edge Cases", () => {
   const createEvent = (
     toStage: ApplicationStage,
     occurredAt: number,
-  ): StageEvent => ({
-    id: `event-${toStage}`,
-    applicationId: "job-1",
-    title: `Moved to ${toStage}`,
-    groupId: null,
-    fromStage: "applied",
-    toStage,
-    occurredAt,
-    metadata: null,
-    outcome: null,
-  });
+  ): StageEvent =>
+    createStageEvent({
+      id: `event-${toStage}`,
+      applicationId: "job-1",
+      title: `Moved to ${toStage}`,
+      fromStage: "applied",
+      toStage,
+      occurredAt,
+    });
 
   describe("Empty and Null Data", () => {
     it("handles empty jobsWithEvents array - shows 0% conversion", () => {
