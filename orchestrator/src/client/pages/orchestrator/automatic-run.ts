@@ -71,12 +71,14 @@ export function deriveExtractorLimits(args: {
   const termCount = Math.max(1, args.searchTerms.length);
   const includesIndeed = args.sources.includes("indeed");
   const includesLinkedIn = args.sources.includes("linkedin");
+  const includesGlassdoor = args.sources.includes("glassdoor");
   const includesGradcracker = args.sources.includes("gradcracker");
   const includesUkVisaJobs = args.sources.includes("ukvisajobs");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
     (includesLinkedIn ? termCount : 0) +
+    (includesGlassdoor ? termCount : 0) +
     (includesGradcracker ? termCount : 0) +
     (includesUkVisaJobs ? 1 : 0);
 
@@ -133,13 +135,16 @@ export function calculateAutomaticEstimate(args: {
   const hasUkVisaJobs = sources.includes("ukvisajobs");
   const hasIndeed = sources.includes("indeed");
   const hasLinkedIn = sources.includes("linkedin");
+  const hasGlassdoor = sources.includes("glassdoor");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
     sources,
   });
 
-  const jobspySitesCount = [hasIndeed, hasLinkedIn].filter(Boolean).length;
+  const jobspySitesCount = [hasIndeed, hasLinkedIn, hasGlassdoor].filter(
+    Boolean,
+  ).length;
   const jobspyCap = jobspySitesCount * limits.jobspyResultsWanted * termCount;
   const gradcrackerCap = hasGradcracker
     ? limits.gradcrackerMaxJobsPerTerm * termCount

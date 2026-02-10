@@ -123,6 +123,39 @@ export const JobspySection: React.FC<JobspySectionProps> = ({
                   LinkedIn
                 </label>
               </div>
+              <div className="flex items-center space-x-2">
+                <Controller
+                  name="jobspySites"
+                  control={control}
+                  render={({ field }) => (
+                    <Checkbox
+                      id="site-glassdoor"
+                      checked={
+                        field.value?.includes("glassdoor") ??
+                        sites.default.includes("glassdoor")
+                      }
+                      onCheckedChange={(checked) => {
+                        const current = field.value ?? sites.default;
+                        let next = [...current];
+                        if (checked) {
+                          if (!next.includes("glassdoor"))
+                            next.push("glassdoor");
+                        } else {
+                          next = next.filter((s) => s !== "glassdoor");
+                        }
+                        field.onChange(next);
+                      }}
+                      disabled={isLoading || isSaving}
+                    />
+                  )}
+                />
+                <label
+                  htmlFor="site-glassdoor"
+                  className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Glassdoor
+                </label>
+              </div>
             </div>
             {errors.jobspySites && (
               <p className="text-xs text-destructive">
