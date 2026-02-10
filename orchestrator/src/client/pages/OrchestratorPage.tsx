@@ -20,6 +20,11 @@ import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
+import {
+  defaultSortDirection,
+  orderedFilterSources,
+  tabs,
+} from "./orchestrator/constants";
 import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
 import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
@@ -316,6 +321,15 @@ export const OrchestratorPage: React.FC = () => {
     [activeJobs, selectedJobId, handleSelectJobId, requestScrollToJob],
   );
 
+  const navigateTab = useCallback(
+    (direction: 1 | -1) => {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+      setActiveTab(tabs[nextIndex].id);
+    },
+    [activeTab, setActiveTab],
+  );
+
   /**
    * After a destructive/moving action (skip, mark-applied), auto-advance to
    * the next job in the list -- mirroring handleJobMoved in JobDetailPanel.
@@ -353,6 +367,14 @@ export const OrchestratorPage: React.FC = () => {
     [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
     [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
     [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
+    [SHORTCUTS.prevTabArrow.key]: (e) => {
+      e.preventDefault();
+      navigateTab(-1);
+    },
+    [SHORTCUTS.nextTabArrow.key]: (e) => {
+      e.preventDefault();
+      navigateTab(1);
+    },
 
     // ── Search ──────────────────────────────────────────────────────────
     [SHORTCUTS.searchSlash.key]: (e) => {

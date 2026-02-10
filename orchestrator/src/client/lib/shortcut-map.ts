@@ -71,6 +71,18 @@ export const SHORTCUTS = {
     label: "All Jobs tab",
     group: "tabs",
   },
+  prevTabArrow: {
+    key: "ArrowLeft",
+    displayKey: "\u2190",
+    label: "Previous tab",
+    group: "tabs",
+  },
+  nextTabArrow: {
+    key: "ArrowRight",
+    displayKey: "\u2192",
+    label: "Next tab",
+    group: "tabs",
+  },
 
   // Context actions
   skip: {
