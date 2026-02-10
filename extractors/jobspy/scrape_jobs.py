@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 
-import pandas as pd
 from jobspy import scrape_jobs
 
 PROGRESS_PREFIX = "JOBOPS_PROGRESS "
@@ -70,7 +69,7 @@ def _scrape_for_sites(
     country_indeed: str,
     linkedin_fetch_description: bool,
     is_remote: bool,
-) -> pd.DataFrame:
+):
     kwargs: dict[str, object] = {
         "site_name": sites,
         "search_term": search_term,
@@ -114,22 +113,21 @@ def main() -> int:
             "searchTerm": search_term,
         },
     )
-    frames: list[pd.DataFrame] = []
+    all_records: list[dict[str, object]] = []
     non_glassdoor_sites = [site for site in sites if site != "glassdoor"]
 
     if non_glassdoor_sites:
-        frames.append(
-            _scrape_for_sites(
-                sites=non_glassdoor_sites,
-                search_term=search_term,
-                location=location,
-                results_wanted=results_wanted,
-                hours_old=hours_old,
-                country_indeed=country_indeed,
-                linkedin_fetch_description=linkedin_fetch_description,
-                is_remote=is_remote,
-            )
+        non_glassdoor_jobs = _scrape_for_sites(
+            sites=non_glassdoor_sites,
+            search_term=search_term,
+            location=location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed=country_indeed,
+            linkedin_fetch_description=linkedin_fetch_description,
+            is_remote=is_remote,
         )
+        all_records.extend(non_glassdoor_jobs.to_dict(orient="records"))
 
     if "glassdoor" in sites:
         glassdoor_location = location
@@ -139,40 +137,54 @@ def main() -> int:
             print(
                 "jobspy: Glassdoor location matched country; using country-only search"
             )
-        frames.append(
-            _scrape_for_sites(
-                sites=["glassdoor"],
-                search_term=search_term,
-                location=glassdoor_location,
-                results_wanted=results_wanted,
-                hours_old=hours_old,
-                country_indeed=country_indeed,
-                linkedin_fetch_description=linkedin_fetch_description,
-                is_remote=is_remote,
-            )
+        glassdoor_jobs = _scrape_for_sites(
+            sites=["glassdoor"],
+            search_term=search_term,
+            location=glassdoor_location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed=country_indeed,
+            linkedin_fetch_description=linkedin_fetch_description,
+            is_remote=is_remote,
         )
+        all_records.extend(glassdoor_jobs.to_dict(orient="records"))
 
-    jobs = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-
-    print(f"Found {len(jobs)} jobs")
+    print(f"Found {len(all_records)} jobs")
     _emit_progress(
         "term_complete",
         {
             "termIndex": term_index,
             "termTotal": term_total,
             "searchTerm": search_term,
-            "jobsFoundTerm": int(len(jobs)),
+            "jobsFoundTerm": int(len(all_records)),
         },
     )
 
-    jobs.to_csv(
-        output_csv,
-        quoting=csv.QUOTE_NONNUMERIC,
-        escapechar="\\",
-        index=False,
-    )
+    if all_records:
+        fieldnames: list[str] = []
+        seen_fields: set[str] = set()
+        for row in all_records:
+            for key in row.keys():
+                if key in seen_fields:
+                    continue
+                seen_fields.add(key)
+                fieldnames.append(key)
+        with output_csv.open("w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.DictWriter(
+                csv_file,
+                fieldnames=fieldnames,
+                quoting=csv.QUOTE_NONNUMERIC,
+                escapechar="\\",
+            )
+            writer.writeheader()
+            writer.writerows(all_records)
+    else:
+        output_csv.write_text("", encoding="utf-8")
 
-    jobs.to_json(output_json, orient="records", force_ascii=False)
+    output_json.write_text(
+        json.dumps(all_records, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     print(f"Wrote CSV:  {output_csv}")
     print(f"Wrote JSON: {output_json}")
