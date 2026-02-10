@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { safeFilenamePart } from "@/lib/utils";
 import * as api from "../api";
+import { KeyboardShortcutBar } from "../components/KeyboardShortcutBar";
+import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
@@ -90,6 +92,7 @@ export const OrchestratorPage: React.FC = () => {
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
   const [runMode, setRunMode] = useState<RunMode>("automatic");
   const [isCommandBarOpen, setIsCommandBarOpen] = useState(false);
+  const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [tailorTrigger, setTailorTrigger] = useState(0);
@@ -355,6 +358,12 @@ export const OrchestratorPage: React.FC = () => {
     [SHORTCUTS.searchSlash.key]: (e) => {
       e.preventDefault();
       setIsCommandBarOpen(true);
+    },
+
+    // ── Help ────────────────────────────────────────────────────────────
+    [SHORTCUTS.help.key]: (e) => {
+      e.preventDefault();
+      setIsHelpDialogOpen((prev) => !prev);
     },
 
     // ── Context actions ─────────────────────────────────────────────────
@@ -657,6 +666,13 @@ export const OrchestratorPage: React.FC = () => {
           </DrawerContent>
         </Drawer>
       )}
+
+      <KeyboardShortcutBar activeTab={activeTab} />
+      <KeyboardShortcutDialog
+        open={isHelpDialogOpen}
+        onOpenChange={setIsHelpDialogOpen}
+        activeTab={activeTab}
+      />
     </>
   );
 };
