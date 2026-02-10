@@ -97,7 +97,7 @@ export const OrchestratorPage: React.FC = () => {
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [tailorTrigger, setTailorTrigger] = useState(0);
+  const [tailorToggleTrigger, setTailorToggleTrigger] = useState(0);
   const shortcutActionInFlight = useRef(false);
 
   const isAnyModalOpen =
@@ -449,7 +449,7 @@ export const OrchestratorPage: React.FC = () => {
       [SHORTCUTS.tailor.key]: () => {
         if (!selectedJob) return;
         if (!["discovered", "ready"].includes(activeTab)) return;
-        setTailorTrigger((n) => n + 1);
+        setTailorToggleTrigger((n) => n + 1);
       },
 
       [SHORTCUTS.viewPdf.key]: () => {
@@ -670,7 +670,7 @@ export const OrchestratorPage: React.FC = () => {
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
                   onPauseRefreshChange={setIsRefreshPaused}
-                  tailorTrigger={tailorTrigger}
+                  tailorToggleTrigger={tailorToggleTrigger}
                 />
               </div>
             )}
@@ -726,7 +726,7 @@ export const OrchestratorPage: React.FC = () => {
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
                 onPauseRefreshChange={setIsRefreshPaused}
-                tailorTrigger={tailorTrigger}
+                tailorToggleTrigger={tailorToggleTrigger}
               />
             </div>
           </DrawerContent>

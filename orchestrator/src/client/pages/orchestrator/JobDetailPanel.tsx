@@ -52,8 +52,8 @@ interface JobDetailPanelProps {
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
   onPauseRefreshChange?: (paused: boolean) => void;
-  /** Incremented from parent to trigger tailor mode via keyboard shortcut. */
-  tailorTrigger?: number;
+  /** Incremented from parent to toggle tailor mode via keyboard shortcut. */
+  tailorToggleTrigger?: number;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -63,7 +63,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onSelectJobId,
   onJobUpdated,
   onPauseRefreshChange,
-  tailorTrigger,
+  tailorToggleTrigger,
 }) => {
   const [detailTab, setDetailTab] = useState<
     "overview" | "tailoring" | "description"
@@ -302,7 +302,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
         onTailoringDirtyChange={handleTailoringDirtyChange}
-        tailorTrigger={tailorTrigger}
+        tailorToggleTrigger={tailorToggleTrigger}
       />
     );
   }
@@ -314,7 +314,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         onJobUpdated={onJobUpdated}
         onJobMoved={handleJobMoved}
         onTailoringDirtyChange={handleTailoringDirtyChange}
-        tailorTrigger={tailorTrigger}
+        tailorToggleTrigger={tailorToggleTrigger}
       />
     );
   }
