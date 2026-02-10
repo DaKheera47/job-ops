@@ -20,6 +20,7 @@ vi.mock("../api", () => ({
     lastRun: null,
     nextScheduledRun: null,
   }),
+  getProfile: vi.fn().mockResolvedValue({ personName: "Test User" }),
 }));
 
 vi.mock("sonner", () => ({
