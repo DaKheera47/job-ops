@@ -1,14 +1,13 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   formatCountryLabel,
-  getCompatibleSourcesForCountry,
   isSourceAllowedForCountry,
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
 import { Check, ChevronsUpDown, Loader2, Sparkles, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Accordion,
@@ -71,6 +70,7 @@ interface AutomaticRunFormValues {
   minSuitabilityScore: string;
   runBudget: string;
   country: string;
+  glassdoorLocation: string;
   searchTerms: string[];
   searchTermDraft: string;
 }
@@ -79,6 +79,8 @@ type AutomaticPresetSelection = AutomaticPresetId | "custom";
 
 const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
+const GLASSDOOR_LOCATION_REASON =
+  "Set a Glassdoor city in Advanced settings to enable Glassdoor.";
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
@@ -137,6 +139,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
         runBudget: String(DEFAULT_VALUES.runBudget),
         country: DEFAULT_VALUES.country,
+        glassdoorLocation: "",
         searchTerms: DEFAULT_VALUES.searchTerms,
         searchTermDraft: "",
       },
@@ -147,6 +150,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const minScoreInput = watch("minSuitabilityScore");
   const runBudgetInput = watch("runBudget");
   const countryInput = watch("country");
+  const glassdoorLocationInput = watch("glassdoorLocation");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
 
@@ -167,12 +171,24 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         settings?.jobspyLocation ??
         DEFAULT_VALUES.country,
     );
+    const rememberedCountryKey = rememberedCountry || DEFAULT_VALUES.country;
+    const rememberedLocationRaw = settings?.jobspyLocation?.trim() ?? "";
+    const rememberedLocationNormalized = normalizeCountryKey(
+      rememberedLocationRaw,
+    );
+    const rememberedGlassdoorLocation =
+      rememberedLocationRaw &&
+      rememberedLocationNormalized &&
+      rememberedLocationNormalized !== normalizeCountryKey(rememberedCountryKey)
+        ? rememberedLocationRaw
+        : "";
 
     reset({
       topN: String(topN),
       minSuitabilityScore: String(minSuitabilityScore),
       runBudget: String(rememberedRunBudget),
       country: rememberedCountry || DEFAULT_VALUES.country,
+      glassdoorLocation: rememberedGlassdoorLocation,
       searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
@@ -203,27 +219,40 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       ),
       runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
       country: normalizedCountry || DEFAULT_VALUES.country,
+      glassdoorLocation: glassdoorLocationInput.trim() || undefined,
       searchTerms,
     };
-  }, [topNInput, minScoreInput, runBudgetInput, countryInput, searchTerms]);
+  }, [
+    topNInput,
+    minScoreInput,
+    runBudgetInput,
+    countryInput,
+    glassdoorLocationInput,
+    searchTerms,
+  ]);
+
+  const isSourceAvailableForRun = useCallback(
+    (source: JobSource) => {
+      if (!isSourceAllowedForCountry(source, values.country)) return false;
+      if (source === "glassdoor" && !values.glassdoorLocation) return false;
+      return true;
+    },
+    [values.country, values.glassdoorLocation],
+  );
 
   const compatibleEnabledSources = useMemo(
-    () =>
-      enabledSources.filter((source) =>
-        isSourceAllowedForCountry(source, values.country),
-      ),
-    [enabledSources, values.country],
+    () => enabledSources.filter((source) => isSourceAvailableForRun(source)),
+    [enabledSources, isSourceAvailableForRun],
   );
 
   const compatiblePipelineSources = useMemo(
-    () => getCompatibleSourcesForCountry(pipelineSources, values.country),
-    [pipelineSources, values.country],
+    () => pipelineSources.filter((source) => isSourceAvailableForRun(source)),
+    [pipelineSources, isSourceAvailableForRun],
   );
 
   useEffect(() => {
-    const filtered = getCompatibleSourcesForCountry(
-      pipelineSources,
-      values.country,
+    const filtered = pipelineSources.filter((source) =>
+      isSourceAvailableForRun(source),
     );
     if (filtered.length === pipelineSources.length) return;
     if (filtered.length > 0) {
@@ -235,9 +264,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     }
   }, [
     compatibleEnabledSources,
+    isSourceAvailableForRun,
     onSetPipelineSources,
     pipelineSources,
-    values.country,
   ]);
 
   const estimate = useMemo(
@@ -444,6 +473,23 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         }
                       />
                     </div>
+                    <div className="space-y-2 md:col-span-3">
+                      <Label htmlFor="glassdoor-location">Glassdoor city</Label>
+                      <Input
+                        id="glassdoor-location"
+                        value={glassdoorLocationInput}
+                        onChange={(event) =>
+                          setValue("glassdoorLocation", event.target.value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        placeholder='e.g. "London"'
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Required only for Glassdoor. Use a city (not country) to
+                        keep results localized.
+                      </p>
+                    </div>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -529,14 +575,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           <CardContent className="flex flex-wrap gap-2">
             <TooltipProvider>
               {enabledSources.map((source) => {
-                const allowed = isSourceAllowedForCountry(
+                const countryAllowed = isSourceAllowedForCountry(
                   source,
                   values.country,
                 );
+                const allowed = isSourceAvailableForRun(source);
                 const selected = compatiblePipelineSources.includes(source);
                 const disabledReason =
                   source === "glassdoor"
-                    ? GLASSDOOR_COUNTRY_REASON
+                    ? countryAllowed
+                      ? GLASSDOOR_LOCATION_REASON
+                      : GLASSDOOR_COUNTRY_REASON
                     : `${sourceLabel[source]} is available only when country is United Kingdom.`;
 
                 const button = (

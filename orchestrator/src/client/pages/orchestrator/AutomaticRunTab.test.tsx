@@ -128,4 +128,37 @@ describe("AutomaticRunTab", () => {
       "Glassdoor is not available for the selected country.",
     );
   });
+
+  it("disables glassdoor for supported countries until city is provided", async () => {
+    const onSetPipelineSources = vi.fn();
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={
+          {
+            searchTerms: ["backend engineer"],
+            jobspyCountryIndeed: "united kingdom",
+            jobspyLocation: "United Kingdom",
+          } as AppSettings
+        }
+        enabledSources={["linkedin", "glassdoor"]}
+        pipelineSources={["linkedin", "glassdoor"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={onSetPipelineSources}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
+    });
+
+    const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
+    expect(glassdoorButton).toBeDisabled();
+    expect(glassdoorButton.getAttribute("title")).toContain(
+      "Set a Glassdoor city in Advanced settings to enable Glassdoor.",
+    );
+  });
 });

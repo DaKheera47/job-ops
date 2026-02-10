@@ -257,13 +257,17 @@ export const OrchestratorPage: React.FC = () => {
         searchTerms: values.searchTerms,
         sources: compatibleSources,
       });
+      const jobspyLocation = compatibleSources.includes("glassdoor")
+        ? (values.glassdoorLocation ?? "").trim() ||
+          formatCountryLabel(values.country)
+        : formatCountryLabel(values.country);
       await api.updateSettings({
         searchTerms: values.searchTerms,
         jobspyResultsWanted: limits.jobspyResultsWanted,
         gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
         jobspyCountryIndeed: values.country,
-        jobspyLocation: formatCountryLabel(values.country),
+        jobspyLocation,
       });
       await refreshSettings();
       await startPipelineRun({

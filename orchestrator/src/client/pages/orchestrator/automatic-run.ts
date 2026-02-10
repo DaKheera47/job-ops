@@ -8,6 +8,7 @@ export interface AutomaticRunValues {
   searchTerms: string[];
   runBudget: number;
   country: string;
+  glassdoorLocation?: string;
 }
 
 export interface AutomaticPresetValues {
