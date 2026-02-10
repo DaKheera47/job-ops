@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { tinykeys } from "tinykeys";
 
 type KeyBindingMap = Record<string, (event: KeyboardEvent) => void>;
@@ -24,7 +24,8 @@ function isEditableTarget(event: KeyboardEvent): boolean {
  * - Automatically unsubscribes on unmount.
  * - Guards against firing inside inputs/textareas/contenteditable elements
  *   (so shortcuts don't conflict with the command bar, tailoring editor, etc.).
- * - Uses a stable ref for the binding map so callers don't need to memoize.
+ * - Uses a stable ref for handler updates without rebinding.
+ * - Rebuilds bindings when the key set changes.
  *
  * Modifier shortcuts (e.g. "$mod+K") bypass the input guard because the user
  * explicitly held a modifier -- those are intentional even inside inputs.
@@ -36,13 +37,18 @@ export function useHotkeys(
   const { enabled = true } = options;
   const bindingsRef = useRef(bindings);
   bindingsRef.current = bindings;
+  const bindingSignature = useMemo(
+    () => Object.keys(bindings).sort().join("|"),
+    [bindings],
+  );
 
   useEffect(() => {
     if (!enabled) return;
 
     // Build a guarded version of every binding.
     const guarded: KeyBindingMap = {};
-    for (const key of Object.keys(bindingsRef.current)) {
+    const bindingKeys = bindingSignature ? bindingSignature.split("|") : [];
+    for (const key of bindingKeys) {
       const hasModifier = key
         .split(" ")
         .some((sequence) => MODIFIER_PATTERN.test(sequence));
@@ -56,5 +62,5 @@ export function useHotkeys(
 
     const unsubscribe = tinykeys(window, guarded);
     return unsubscribe;
-  }, [enabled]);
+  }, [enabled, bindingSignature]);
 }
