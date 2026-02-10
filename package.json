@@ -12,9 +12,13 @@
     "check:types:ukvisajobs": "npm --workspace ukvisajobs-extractor run check:types",
     "check:all": "./orchestrator/node_modules/.bin/biome ci .",
     "format:all": "./orchestrator/node_modules/.bin/biome format . --write",
-    "check:types:gradcracker": "npm --workspace gradcracker-extractor run check:types"
+    "check:types:gradcracker": "npm --workspace gradcracker-extractor run check:types",
+    "knip": "knip"
   },
   "devDependencies": {
-    "tsx": "^4.19.2"
+    "@types/node": "^25.2.3",
+    "knip": "^5.83.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
   }
 }
