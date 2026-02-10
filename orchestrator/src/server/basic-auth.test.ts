@@ -71,7 +71,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
       method: "POST",
     });
     expect(postRes.status).toBe(401);
-    expect(postRes.headers.get("www-authenticate")).toMatch(/Basic/);
+    expect(postRes.headers.get("www-authenticate")).toBeNull();
 
     const patchRes = await fetch(`${baseUrl}/api/jobs/123`, {
       method: "PATCH",

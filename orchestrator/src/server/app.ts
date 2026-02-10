@@ -76,7 +76,6 @@ function createBasicAuthGuard() {
     const { enabled } = getAuthConfig();
     if (!enabled || !requiresAuth(req.method, req.path)) return next();
     if (isAuthorized(req)) return next();
-    res.setHeader("WWW-Authenticate", 'Basic realm="Job Ops"');
     fail(res, unauthorized("Authentication required"));
   };
 

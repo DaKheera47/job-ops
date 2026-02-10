@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
+import { BasicAuthPrompt } from "./components/BasicAuthPrompt";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 import { HomePage } from "./pages/HomePage";
@@ -32,6 +33,7 @@ export const App: React.FC = () => {
   return (
     <>
       <OnboardingGate />
+      <BasicAuthPrompt />
       {demoInfo?.demoMode && (
         <div className="w-full border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-100 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
