@@ -8,6 +8,7 @@ type KeyBindingMap = Record<string, (event: KeyboardEvent) => void>;
  * don't fire while the user is typing in a form control.
  */
 const INPUT_TAG_NAMES = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+const MODIFIER_PATTERN = /(?:^|\+)(\$mod|Shift|Control|Meta|Alt)(?:\+|$)/;
 
 function isEditableTarget(event: KeyboardEvent): boolean {
   const target = event.target;
@@ -42,11 +43,9 @@ export function useHotkeys(
     // Build a guarded version of every binding.
     const guarded: KeyBindingMap = {};
     for (const key of Object.keys(bindingsRef.current)) {
-      const hasModifier =
-        key.includes("$mod") ||
-        key.includes("Control") ||
-        key.includes("Meta") ||
-        key.includes("Alt");
+      const hasModifier = key
+        .split(" ")
+        .some((sequence) => MODIFIER_PATTERN.test(sequence));
 
       guarded[key] = (event: KeyboardEvent) => {
         // Skip single-key shortcuts when the user is typing in an input.
