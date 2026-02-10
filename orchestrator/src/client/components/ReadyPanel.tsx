@@ -39,7 +39,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn, copyTextToClipboard, formatJobForWebhook } from "@/lib/utils";
+import {
+  cn,
+  copyTextToClipboard,
+  formatJobForWebhook,
+  safeFilenamePart,
+} from "@/lib/utils";
 import * as api from "../api";
 import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
@@ -58,9 +63,6 @@ interface ReadyPanelProps {
   /** Incremented from parent to trigger tailor mode via keyboard shortcut. */
   tailorTrigger?: number;
 }
-
-const safeFilenamePart = (value: string | null | undefined) =>
-  (value || "Unknown").replace(/[^\w\s-]/g, "").replace(/\s+/g, "_");
 
 export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   job,
@@ -325,7 +327,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           >
             <a
               href={pdfHref}
-              download={`${safeFilenamePart(personName)}_${safeFilenamePart(job.employer)}.pdf`}
+              download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.pdf`}
             >
               <Download className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">Download PDF</span>

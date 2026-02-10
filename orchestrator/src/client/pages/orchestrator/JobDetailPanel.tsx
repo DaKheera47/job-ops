@@ -466,7 +466,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DropdownMenuItem asChild>
                   <a
                     href={selectedPdfHref}
-                    download={`${personName.replace(/\s+/g, "_")}_${safeFilenamePart(selectedJob.employer)}.pdf`}
+                    download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Download PDF
