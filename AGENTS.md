@@ -88,4 +88,4 @@ CI runs on Node 22. If local behavior differs, verify with Node 22 before conclu
 
 # Agent Instructions for plan mode
 
-plan in "stages", and each stage should be commited before moving to the next stage.
+plan in "stages", and each stage should be committed before moving to the next stage.
