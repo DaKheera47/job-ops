@@ -110,6 +110,32 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("keeps glassdoor enabled even when jobspySites override omits it", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspySites: JSON.stringify(["linkedin"]),
+    } as any);
+
+    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
+      success: true,
+      jobs: [],
+    } as any);
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["glassdoor", "linkedin"],
+      },
+    });
+
+    expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
+      expect.objectContaining({ sites: ["glassdoor", "linkedin"] }),
+    );
+  });
+
   it("throws when all enabled sources fail", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const ukVisa = await import("../../services/ukvisajobs");

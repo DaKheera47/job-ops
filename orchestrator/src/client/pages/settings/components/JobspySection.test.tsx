@@ -8,7 +8,7 @@ import { JobspySection } from "./JobspySection";
 const JobspyHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
     defaultValues: {
-      jobspySites: ["indeed", "linkedin"],
+      jobspySites: ["indeed", "linkedin", "glassdoor"],
       jobspyLocation: "UK",
       jobspyResultsWanted: 200,
       jobspyHoursOld: 72,
@@ -24,8 +24,8 @@ const JobspyHarness = () => {
         <JobspySection
           values={{
             sites: {
-              default: ["indeed", "linkedin"],
-              effective: ["indeed", "linkedin"],
+              default: ["indeed", "linkedin", "glassdoor"],
+              effective: ["indeed", "linkedin", "glassdoor"],
             },
             location: { default: "UK", effective: "UK" },
             resultsWanted: { default: 200, effective: 200 },
@@ -48,11 +48,10 @@ describe("JobspySection", () => {
 
     const indeedCheckbox = screen.getByLabelText("Indeed");
     const linkedinCheckbox = screen.getByLabelText("LinkedIn");
-    const glassdoorCheckbox = screen.getByLabelText("Glassdoor");
 
     expect(indeedCheckbox).toBeChecked();
     expect(linkedinCheckbox).toBeChecked();
-    expect(glassdoorCheckbox).not.toBeChecked();
+    expect(screen.queryByLabelText(/glassdoor/i)).not.toBeInTheDocument();
 
     fireEvent.click(indeedCheckbox);
     expect(indeedCheckbox).not.toBeChecked();
@@ -60,9 +59,6 @@ describe("JobspySection", () => {
 
     fireEvent.click(indeedCheckbox);
     expect(indeedCheckbox).toBeChecked();
-
-    fireEvent.click(glassdoorCheckbox);
-    expect(glassdoorCheckbox).toBeChecked();
   });
 
   it("clamps numeric inputs to allowed ranges", () => {

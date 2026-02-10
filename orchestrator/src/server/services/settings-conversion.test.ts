@@ -79,6 +79,26 @@ describe("settings-conversion", () => {
     expect(malformedOverride.value).toEqual(["web developer"]);
   });
 
+  it("always includes glassdoor in resolved jobspySites", () => {
+    delete process.env.JOBSPY_SITES;
+    expect(resolveSettingValue("jobspySites", undefined).value).toEqual([
+      "indeed",
+      "linkedin",
+      "glassdoor",
+    ]);
+
+    process.env.JOBSPY_SITES = "indeed,linkedin";
+    expect(resolveSettingValue("jobspySites", undefined).value).toEqual([
+      "indeed",
+      "linkedin",
+      "glassdoor",
+    ]);
+
+    expect(
+      resolveSettingValue("jobspySites", JSON.stringify(["linkedin"])).value,
+    ).toEqual(["linkedin", "glassdoor"]);
+  });
+
   it("round-trips penalizeMissingSalary boolean setting", () => {
     expect(serializeSettingValue("penalizeMissingSalary", true)).toBe("1");
     expect(serializeSettingValue("penalizeMissingSalary", false)).toBe("0");

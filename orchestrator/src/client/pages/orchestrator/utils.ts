@@ -163,7 +163,7 @@ export const getSourcesWithJobs = (jobs: JobListItem[]): JobSource[] => {
 export const getEnabledSources = (
   settings: AppSettings | null,
 ): JobSource[] => {
-  if (!settings) return [...DEFAULT_PIPELINE_SOURCES];
+  if (!settings) return [...DEFAULT_PIPELINE_SOURCES, "glassdoor"];
 
   const enabled: JobSource[] = [];
   const jobspySites = settings.jobspySites ?? [];
@@ -185,7 +185,9 @@ export const getEnabledSources = (
       source === "linkedin" ||
       source === "glassdoor"
     ) {
-      if (jobspySites.includes(source)) enabled.push(source);
+      if (source === "glassdoor" || jobspySites.includes(source)) {
+        enabled.push(source);
+      }
     }
   }
 

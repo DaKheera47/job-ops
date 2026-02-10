@@ -28,7 +28,7 @@ export const DEMO_DEFAULT_SETTINGS: DemoDefaultSettings = {
   jobspyResultsWanted: "25",
   jobspyHoursOld: "72",
   jobspyCountryIndeed: "US",
-  jobspySites: JSON.stringify(["linkedin", "indeed"]),
+  jobspySites: JSON.stringify(["linkedin", "indeed", "glassdoor"]),
   jobspyLinkedinFetchDescription: "1",
   jobspyIsRemote: "0",
   resumeProjects: JSON.stringify({

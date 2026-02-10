@@ -57,6 +57,24 @@ function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
   }
 }
 
+function normalizeJobspySites(value: string[]): string[] {
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const site of value) {
+    const trimmed = site.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  if (!seen.has("glassdoor")) {
+    normalized.push("glassdoor");
+  }
+
+  return normalized;
+}
+
 function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   if (!raw) return null;
   return raw === "true" || raw === "1";
@@ -143,13 +161,13 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
   },
   jobspySites: {
     defaultValue: () =>
-      (process.env.JOBSPY_SITES || "indeed,linkedin")
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
+      normalizeJobspySites(
+        (process.env.JOBSPY_SITES || "indeed,linkedin,glassdoor").split(","),
+      ),
     parseOverride: parseJsonArrayOrNull,
     serialize: serializeNullableJsonArray,
-    resolve: resolveWithNullishFallback,
+    resolve: ({ defaultValue, overrideValue }) =>
+      normalizeJobspySites(overrideValue ?? defaultValue),
   },
   jobspyLinkedinFetchDescription: {
     defaultValue: () =>

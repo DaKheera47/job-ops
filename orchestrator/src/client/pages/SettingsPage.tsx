@@ -236,6 +236,14 @@ const nullIfSameSortedList = (
   defaultValue: string[],
 ) => (isSameSortedStringList(value, defaultValue) ? null : (value ?? null));
 
+const withAlwaysOnGlassdoor = (
+  sites: string[] | null | undefined,
+): string[] => {
+  const unique = new Set((sites ?? []).filter(Boolean));
+  unique.add("glassdoor");
+  return Array.from(unique);
+};
+
 const getDerivedSettings = (settings: AppSettings | null) => {
   const profileProjects = settings?.profileProjects ?? [];
 
@@ -289,8 +297,12 @@ const getDerivedSettings = (settings: AppSettings | null) => {
         default: settings?.defaultJobspyCountryIndeed ?? "",
       },
       sites: {
-        effective: settings?.jobspySites ?? ["indeed", "linkedin"],
-        default: settings?.defaultJobspySites ?? ["indeed", "linkedin"],
+        effective: withAlwaysOnGlassdoor(
+          settings?.jobspySites ?? ["indeed", "linkedin", "glassdoor"],
+        ),
+        default: withAlwaysOnGlassdoor(
+          settings?.defaultJobspySites ?? ["indeed", "linkedin", "glassdoor"],
+        ),
       },
       linkedinFetchDescription: {
         effective: settings?.jobspyLinkedinFetchDescription ?? true,
@@ -691,7 +703,7 @@ export const SettingsPage: React.FC = () => {
           jobspy.countryIndeed.default,
         ),
         jobspySites: nullIfSameSortedList(
-          data.jobspySites,
+          withAlwaysOnGlassdoor(data.jobspySites),
           jobspy.sites.default,
         ),
         jobspyLinkedinFetchDescription: nullIfSame(

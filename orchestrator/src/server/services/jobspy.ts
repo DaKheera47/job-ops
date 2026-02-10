@@ -165,7 +165,7 @@ export async function runJobSpy(
   const outputDir = join(dataDir, "imports");
   await mkdir(outputDir, { recursive: true });
 
-  const sites = (options.sites ?? ["indeed", "linkedin"])
+  const sites = (options.sites ?? ["indeed", "linkedin", "glassdoor"])
     .filter((s) => s === "indeed" || s === "linkedin" || s === "glassdoor")
     .join(",");
 
@@ -192,7 +192,7 @@ export async function runJobSpy(
           stdio: ["ignore", "pipe", "pipe"],
           env: {
             ...process.env,
-            JOBSPY_SITES: sites || "indeed,linkedin",
+            JOBSPY_SITES: sites || "indeed,linkedin,glassdoor",
             JOBSPY_SEARCH_TERM: searchTerm,
             JOBSPY_TERM_INDEX: String(i + 1),
             JOBSPY_TERM_TOTAL: String(searchTerms.length),
