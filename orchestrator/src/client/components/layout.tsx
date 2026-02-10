@@ -31,7 +31,7 @@ import { isNavActive, NAV_LINKS } from "./navigation";
 // ============================================================================
 
 interface PageHeaderProps {
-  icon: LucideIcon;
+  icon: LucideIcon | React.FC<{ className?: string }>;
   title: string;
   subtitle: string;
   badge?: string;

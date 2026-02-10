@@ -1,6 +1,6 @@
 import { PageHeader, StatusIndicator } from "@client/components/layout";
 import type { JobSource } from "@shared/types.js";
-import { Loader2, Play, Sparkles, Square } from "lucide-react";
+import { Loader2, Play, Square } from "lucide-react";
 import type React from "react";
 import { Button } from "@/components/ui/button";
 
@@ -49,7 +49,7 @@ export const OrchestratorHeader: React.FC<OrchestratorHeaderProps> = ({
 
   return (
     <PageHeader
-      icon={Sparkles}
+      icon={() => <img src="/favicon.png" alt="" className="size-8 rounded-lg" />}
       title="Job Ops"
       subtitle="Orchestrator"
       navOpen={navOpen}
