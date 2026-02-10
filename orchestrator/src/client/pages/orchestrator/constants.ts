@@ -12,6 +12,7 @@ export const orderedSources: JobSource[] = [
   "gradcracker",
   "indeed",
   "linkedin",
+  "glassdoor",
   "ukvisajobs",
 ];
 export const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];
