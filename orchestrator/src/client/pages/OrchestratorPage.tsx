@@ -1,4 +1,6 @@
+import { useHotkeys } from "@client/hooks/useHotkeys";
 import { useSettings } from "@client/hooks/useSettings";
+import { SHORTCUTS } from "@client/lib/shortcut-map";
 import {
   formatCountryLabel,
   getCompatibleSourcesForCountry,
@@ -283,6 +285,51 @@ export const OrchestratorPage: React.FC = () => {
     selectedJobId,
     isDesktop,
     onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
+  });
+
+  // ── Keyboard shortcuts: navigation + tab switching ─────────────────────
+  const navigateJobList = useCallback(
+    (direction: 1 | -1) => {
+      if (activeJobs.length === 0) return;
+      const currentIndex = selectedJobId
+        ? activeJobs.findIndex((j) => j.id === selectedJobId)
+        : -1;
+      const nextIndex = Math.max(
+        0,
+        Math.min(activeJobs.length - 1, currentIndex + direction),
+      );
+      const nextJob = activeJobs[nextIndex];
+      if (nextJob && nextJob.id !== selectedJobId) {
+        handleSelectJobId(nextJob.id);
+        requestScrollToJob(nextJob.id);
+      }
+    },
+    [activeJobs, selectedJobId, handleSelectJobId, requestScrollToJob],
+  );
+
+  useHotkeys({
+    // Navigation
+    [SHORTCUTS.nextJob.key]: (e) => {
+      e.preventDefault();
+      navigateJobList(1);
+    },
+    [SHORTCUTS.nextJobArrow.key]: (e) => {
+      e.preventDefault();
+      navigateJobList(1);
+    },
+    [SHORTCUTS.prevJob.key]: (e) => {
+      e.preventDefault();
+      navigateJobList(-1);
+    },
+    [SHORTCUTS.prevJobArrow.key]: (e) => {
+      e.preventDefault();
+      navigateJobList(-1);
+    },
+    // Tab switching
+    [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
+    [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
+    [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
+    [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
   });
 
   const handleCommandSelectJob = useCallback(
