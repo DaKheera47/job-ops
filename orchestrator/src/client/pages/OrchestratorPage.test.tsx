@@ -21,6 +21,8 @@ vi.mock("../api", () => ({
     nextScheduledRun: null,
   }),
   getProfile: vi.fn().mockResolvedValue({ personName: "Test User" }),
+  skipJob: vi.fn().mockResolvedValue({}),
+  markAsApplied: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("sonner", () => ({
@@ -235,7 +237,13 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
 }));
 
 vi.mock("./orchestrator/JobDetailPanel", () => ({
-  JobDetailPanel: () => <div data-testid="detail-panel" />,
+  JobDetailPanel: ({
+    tailorToggleTrigger = 0,
+  }: {
+    tailorToggleTrigger?: number;
+  }) => (
+    <div data-testid="detail-panel" data-tailor-trigger={tailorToggleTrigger} />
+  ),
 }));
 
 vi.mock("./orchestrator/JobListPanel", () => ({
@@ -334,11 +342,29 @@ vi.mock("../components", () => ({
   ManualImportSheet: () => <div data-testid="manual-import" />,
 }));
 
+vi.mock("../components/KeyboardShortcutDialog", () => ({
+  KeyboardShortcutDialog: ({ open }: { open: boolean }) => (
+    <div data-testid="help-dialog">{open ? "open" : "closed"}</div>
+  ),
+}));
+
 const LocationWatcher = () => {
   const location = useLocation();
   return (
     <div data-testid="location">{location.pathname + location.search}</div>
   );
+};
+
+const pressKey = (key: string, options: Partial<KeyboardEventInit> = {}) => {
+  fireEvent.keyDown(window, { key, ...options });
+};
+
+const pressKeyOn = (
+  target: Element,
+  key: string,
+  options: Partial<KeyboardEventInit> = {},
+) => {
+  fireEvent.keyDown(target, { key, ...options });
 };
 
 describe("OrchestratorPage", () => {
@@ -820,6 +846,178 @@ describe("OrchestratorPage", () => {
       expect(
         screen.getByRole("button", { name: "Recalculate match" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("navigates jobs and tabs with shortcuts", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const locationText = () => screen.getByTestId("location").textContent || "";
+
+    await waitFor(() => {
+      expect(locationText()).toContain("/ready/job-1");
+    });
+
+    pressKey("j");
+    await waitFor(() => {
+      expect(locationText()).toContain("/ready/job-2");
+    });
+
+    pressKey("k");
+    await waitFor(() => {
+      expect(locationText()).toContain("/ready/job-1");
+    });
+
+    pressKey("2");
+    await waitFor(() => {
+      expect(locationText()).toContain("/discovered");
+    });
+
+    pressKey("4");
+    await waitFor(() => {
+      expect(locationText()).toContain("/all");
+    });
+  });
+
+  it("triggers skip, mark applied, and tailor actions from shortcuts", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    pressKey("s");
+    await waitFor(() => {
+      expect(api.skipJob).toHaveBeenCalledWith("job-1");
+    });
+
+    pressKey("a");
+    await waitFor(() => {
+      expect(api.markAsApplied).toHaveBeenCalledWith("job-1");
+    });
+
+    const getTailorTrigger = () =>
+      Number(screen.getByTestId("detail-panel").dataset.tailorTrigger || 0);
+
+    const before = getTailorTrigger();
+    pressKey("t");
+    await waitFor(() => {
+      expect(getTailorTrigger()).toBeGreaterThan(before);
+    });
+  });
+
+  it("toggles the help dialog with shortcut", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
+    pressKey("?", { shiftKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("open");
+    });
+    pressKey("?", { shiftKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
+    });
+  });
+
+  it("disables other shortcuts while help dialog is open", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location").textContent).toContain(
+        "/ready/job-1",
+      );
+    });
+
+    pressKey("?", { shiftKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("open");
+    });
+
+    pressKey("j");
+    await waitFor(() => {
+      expect(screen.getByTestId("location").textContent).toContain(
+        "/ready/job-1",
+      );
+    });
+  });
+
+  it("guards single-key shortcuts while typing but allows modifier combos", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    pressKeyOn(input, "j");
+    await waitFor(() => {
+      expect(screen.getByTestId("location").textContent).toContain(
+        "/ready/job-1",
+      );
+    });
+
+    pressKeyOn(input, "/");
+    await waitFor(() => {
+      expect(screen.getByTestId("command-open")).toHaveTextContent("closed");
+    });
+
+    pressKeyOn(input, "?", { shiftKey: true });
+    await waitFor(() => {
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("open");
     });
   });
 });
