@@ -37,6 +37,9 @@ interface PageHeaderProps {
   badge?: string;
   statusIndicator?: React.ReactNode;
   actions?: React.ReactNode;
+  showVersionFooter?: boolean;
+  navOpen?: boolean;
+  onNavOpenChange?: (open: boolean) => void;
 }
 
 export const PageHeader: React.FC<PageHeaderProps> = ({
@@ -46,10 +49,15 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   badge,
   statusIndicator,
   actions,
+  showVersionFooter = true,
+  navOpen: controlledNavOpen,
+  onNavOpenChange,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [navOpen, setNavOpen] = useState(false);
+  const [internalNavOpen, setInternalNavOpen] = useState(false);
+  const navOpen = controlledNavOpen ?? internalNavOpen;
+  const setNavOpen = onNavOpenChange ?? setInternalNavOpen;
   const { version, updateAvailable } = useVersionCheck();
 
   const handleNavClick = (to: string, activePaths?: string[]) => {
@@ -94,28 +102,30 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                   </button>
                 ))}
               </nav>
-              <div className="mt-auto pt-6 pb-2">
-                <TooltipProvider>
-                  <a
-                    href="https://github.com/DaKheera47/job-ops/releases"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <span>Version {version}</span>
-                    {updateAvailable && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="h-2 w-2 rounded-full bg-emerald-500 cursor-pointer" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Update available</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </a>
-                </TooltipProvider>
-              </div>
+              {showVersionFooter && (
+                <div className="mt-auto pt-6 pb-2">
+                  <TooltipProvider>
+                    <a
+                      href="https://github.com/DaKheera47/job-ops/releases"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span>Version {version}</span>
+                      {updateAvailable && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 cursor-pointer" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Update available</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </a>
+                  </TooltipProvider>
+                </div>
+              )}
             </SheetContent>
           </Sheet>
 
