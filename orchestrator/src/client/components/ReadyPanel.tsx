@@ -60,8 +60,6 @@ interface ReadyPanelProps {
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
   onTailoringDirtyChange?: (isDirty: boolean) => void;
-  /** Incremented from parent to toggle tailor mode via keyboard shortcut. */
-  tailorToggleTrigger?: number;
 }
 
 export const ReadyPanel: React.FC<ReadyPanelProps> = ({
@@ -69,7 +67,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   onJobUpdated,
   onJobMoved,
   onTailoringDirtyChange,
-  tailorToggleTrigger,
 }) => {
   const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
@@ -111,12 +108,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   useEffect(() => {
     return () => onTailoringDirtyChange?.(false);
   }, [onTailoringDirtyChange]);
-
-  // React to keyboard shortcut tailor toggle trigger
-  useEffect(() => {
-    if (!tailorToggleTrigger || !job) return;
-    setMode((prev) => (prev === "ready" ? "tailor" : "ready"));
-  }, [tailorToggleTrigger, job]);
 
   // Compute derived values
   const pdfHref = job

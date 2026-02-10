@@ -97,7 +97,6 @@ export const OrchestratorPage: React.FC = () => {
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [tailorToggleTrigger, setTailorToggleTrigger] = useState(0);
   const shortcutActionInFlight = useRef(false);
 
   const isAnyModalOpen =
@@ -446,10 +445,41 @@ export const OrchestratorPage: React.FC = () => {
           });
       },
 
-      [SHORTCUTS.tailor.key]: () => {
+      [SHORTCUTS.moveToReady.key]: () => {
+        if (activeTab !== "discovered") return;
+        if (shortcutActionInFlight.current) return;
+
+        // Bulk action takes precedence if selection exists
+        if (selectedJobIds.size > 0) {
+          void runBulkAction("move_to_ready");
+          return;
+        }
+
+        // Single action
         if (!selectedJob) return;
-        if (!["discovered", "ready"].includes(activeTab)) return;
-        setTailorToggleTrigger((n) => n + 1);
+
+        shortcutActionInFlight.current = true;
+        const jobId = selectedJob.id;
+
+        api
+          .processJob(jobId)
+          .then(async () => {
+            toast.success("Job moved to Ready", {
+              description: "Your tailored PDF has been generated.",
+            });
+            selectNextAfterAction(jobId);
+            await loadJobs();
+          })
+          .catch((err: unknown) => {
+            const msg =
+              err instanceof Error
+                ? err.message
+                : "Failed to move job to ready";
+            toast.error(msg);
+          })
+          .finally(() => {
+            shortcutActionInFlight.current = false;
+          });
       },
 
       [SHORTCUTS.viewPdf.key]: () => {
@@ -670,7 +700,6 @@ export const OrchestratorPage: React.FC = () => {
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
                   onPauseRefreshChange={setIsRefreshPaused}
-                  tailorToggleTrigger={tailorToggleTrigger}
                 />
               </div>
             )}
@@ -726,7 +755,6 @@ export const OrchestratorPage: React.FC = () => {
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
                 onPauseRefreshChange={setIsRefreshPaused}
-                tailorToggleTrigger={tailorToggleTrigger}
               />
             </div>
           </DrawerContent>

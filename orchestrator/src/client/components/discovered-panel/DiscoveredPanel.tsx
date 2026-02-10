@@ -17,8 +17,6 @@ interface DiscoveredPanelProps {
   onJobUpdated: () => void | Promise<void>;
   onJobMoved: (jobId: string) => void;
   onTailoringDirtyChange?: (isDirty: boolean) => void;
-  /** Incremented from parent to toggle tailor mode via keyboard shortcut. */
-  tailorToggleTrigger?: number;
 }
 
 export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
@@ -26,7 +24,6 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   onJobUpdated,
   onJobMoved,
   onTailoringDirtyChange,
-  tailorToggleTrigger,
 }) => {
   const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
@@ -55,12 +52,6 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   useEffect(() => {
     return () => onTailoringDirtyChange?.(false);
   }, [onTailoringDirtyChange]);
-
-  // React to keyboard shortcut tailor toggle trigger
-  useEffect(() => {
-    if (!tailorToggleTrigger || !job || job.status === "processing") return;
-    setMode((prev) => (prev === "decide" ? "tailor" : "decide"));
-  }, [tailorToggleTrigger, job]);
 
   const handleSkip = async () => {
     if (!job) return;

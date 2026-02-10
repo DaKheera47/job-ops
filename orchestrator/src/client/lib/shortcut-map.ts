@@ -93,12 +93,12 @@ export const SHORTCUTS = {
     group: "actions",
     scope: ["discovered", "ready"],
   },
-  tailor: {
-    key: "t",
-    displayKey: "t",
-    label: "Start / edit tailoring",
+  moveToReady: {
+    key: "r",
+    displayKey: "r",
+    label: "Move to Ready",
     group: "actions",
-    scope: ["discovered", "ready"],
+    scope: ["discovered"],
   },
   markApplied: {
     key: "a",
