@@ -28,4 +28,10 @@ export const isNavActive = (
   pathname: string,
   to: string,
   activePaths?: string[],
-) => pathname === to || (activePaths ? activePaths.includes(pathname) : false);
+) => {
+  if (pathname === to) return true;
+  if (!activePaths) return false;
+  return activePaths.some(
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
+  );
+};
