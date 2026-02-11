@@ -210,6 +210,127 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(inboxBody.data.total).toBe(0);
   });
 
+  it("increments run approved counter when approving a run message", async () => {
+    const { startPostApplicationSyncRun, getPostApplicationSyncRunById } =
+      await import("../../repositories/post-application-sync-runs");
+    const run = await startPostApplicationSyncRun({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+    });
+    const { message, candidateId } = await seedPendingMessage({
+      syncRunId: run.id,
+    });
+
+    const approveRes = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          candidateId,
+        }),
+      },
+    );
+    expect(approveRes.status).toBe(200);
+
+    const updatedRun = await getPostApplicationSyncRunById(run.id);
+    expect(updatedRun?.messagesApproved).toBe(1);
+    expect(updatedRun?.messagesDenied).toBe(0);
+  });
+
+  it("increments run denied counter when denying a run message", async () => {
+    const { startPostApplicationSyncRun, getPostApplicationSyncRunById } =
+      await import("../../repositories/post-application-sync-runs");
+    const run = await startPostApplicationSyncRun({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+    });
+    const { message, candidateId } = await seedPendingMessage({
+      syncRunId: run.id,
+    });
+
+    const denyRes = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/deny`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          candidateId,
+        }),
+      },
+    );
+    expect(denyRes.status).toBe(200);
+
+    const updatedRun = await getPostApplicationSyncRunById(run.id);
+    expect(updatedRun?.messagesApproved).toBe(0);
+    expect(updatedRun?.messagesDenied).toBe(1);
+  });
+
+  it("keeps approved review status when same external message is re-ingested", async () => {
+    const { message, candidateId } = await seedPendingMessage();
+    const { upsertPostApplicationMessage } = await import(
+      "../../repositories/post-application-messages"
+    );
+
+    const approveUrl = `${baseUrl}/api/post-application/inbox/${message.id}/approve`;
+    const first = await fetch(approveUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "gmail",
+        accountKey: "default",
+        candidateId,
+      }),
+    });
+    expect(first.status).toBe(200);
+
+    await upsertPostApplicationMessage({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+      syncRunId: null,
+      externalMessageId: message.externalMessageId,
+      externalThreadId: message.externalThreadId,
+      fromAddress: message.fromAddress,
+      fromDomain: message.fromDomain,
+      senderName: message.senderName,
+      subject: message.subject,
+      receivedAt: Date.now(),
+      snippet: "Updated snippet from re-ingestion",
+      classificationLabel: message.classificationLabel,
+      classificationConfidence: message.classificationConfidence,
+      classificationPayload: message.classificationPayload,
+      relevanceKeywordScore: 95,
+      relevanceLlmScore: null,
+      relevanceFinalScore: 95,
+      relevanceDecision: "relevant",
+      reviewStatus: "pending_review",
+    });
+
+    const denyRes = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/deny`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          candidateId,
+        }),
+      },
+    );
+    const denyBody = await denyRes.json();
+    expect(denyRes.status).toBe(409);
+    expect(denyBody.ok).toBe(false);
+    expect(denyBody.error.code).toBe("CONFLICT");
+  });
+
   it("returns 409 when approving an already decided message", async () => {
     const { message, candidateId } = await seedPendingMessage();
 

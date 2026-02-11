@@ -580,6 +580,7 @@ export async function runGmailIngestionSync(args: {
   let discovered = 0;
   let relevant = 0;
   let classified = 0;
+  let matched = 0;
   let errored = 0;
 
   try {
@@ -688,7 +689,12 @@ export async function runGmailIngestionSync(args: {
             relevanceDecision: "relevant",
             reviewStatus: "pending_review",
           });
-          await runJobMappingForMessage({ message: savedMessage });
+          const mapping = await runJobMappingForMessage({
+            message: savedMessage,
+          });
+          if (mapping.matchedJobId) {
+            matched += 1;
+          }
           relevant += 1;
           classified += 1;
           continue;
@@ -741,7 +747,12 @@ export async function runGmailIngestionSync(args: {
         });
 
         if (isRelevant) {
-          await runJobMappingForMessage({ message: savedMessage });
+          const mapping = await runJobMappingForMessage({
+            message: savedMessage,
+          });
+          if (mapping.matchedJobId) {
+            matched += 1;
+          }
           relevant += 1;
         }
         classified += 1;
@@ -763,6 +774,7 @@ export async function runGmailIngestionSync(args: {
       messagesDiscovered: discovered,
       messagesRelevant: relevant,
       messagesClassified: classified,
+      messagesMatched: matched,
       messagesErrored: errored,
     });
     await updatePostApplicationIntegrationSyncState({
@@ -782,6 +794,7 @@ export async function runGmailIngestionSync(args: {
       messagesDiscovered: discovered,
       messagesRelevant: relevant,
       messagesClassified: classified,
+      messagesMatched: matched,
       messagesErrored: errored,
       errorCode: "GMAIL_SYNC_FAILED",
       errorMessage,

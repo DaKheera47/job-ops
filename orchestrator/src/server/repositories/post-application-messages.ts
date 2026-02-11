@@ -49,6 +49,10 @@ type UpdatePostApplicationMessageReviewDecisionInput = {
   decidedBy?: string | null;
 };
 
+function isTerminalReviewStatus(status: PostApplicationReviewStatus): boolean {
+  return status === "approved" || status === "denied";
+}
+
 function mapRowToPostApplicationMessage(
   row: typeof postApplicationMessages.$inferSelect,
 ): PostApplicationMessage {
@@ -125,6 +129,10 @@ export async function upsertPostApplicationMessage(
   );
 
   if (existing) {
+    const nextReviewStatus = isTerminalReviewStatus(existing.reviewStatus)
+      ? existing.reviewStatus
+      : input.reviewStatus;
+
     await db
       .update(postApplicationMessages)
       .set({
@@ -144,7 +152,7 @@ export async function upsertPostApplicationMessage(
         relevanceLlmScore: input.relevanceLlmScore ?? null,
         relevanceFinalScore: input.relevanceFinalScore,
         relevanceDecision: input.relevanceDecision,
-        reviewStatus: input.reviewStatus,
+        reviewStatus: nextReviewStatus,
         errorCode: input.errorCode ?? null,
         errorMessage: input.errorMessage ?? null,
         updatedAt: nowIso,

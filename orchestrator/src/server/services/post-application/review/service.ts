@@ -24,12 +24,13 @@ import type {
   PostApplicationProvider,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 const {
   jobs,
   postApplicationMessageLinks,
   postApplicationMessages,
+  postApplicationSyncRuns,
   stageEvents,
 } = schema;
 
@@ -337,6 +338,16 @@ export async function approvePostApplicationInboxItem(args: {
       .where(eq(postApplicationMessages.id, message.id))
       .run();
 
+    if (message.syncRunId) {
+      tx.update(postApplicationSyncRuns)
+        .set({
+          messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
+          updatedAt: new Date(decidedAt).toISOString(),
+        })
+        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .run();
+    }
+
     return { stageEventId };
   });
 
@@ -427,6 +438,16 @@ export async function denyPostApplicationInboxItem(args: {
       })
       .where(eq(postApplicationMessages.id, message.id))
       .run();
+
+    if (message.syncRunId) {
+      tx.update(postApplicationSyncRuns)
+        .set({
+          messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
+          updatedAt: new Date(decidedAt).toISOString(),
+        })
+        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .run();
+    }
   });
 
   const updatedMessage = await getPostApplicationMessageById(message.id);
