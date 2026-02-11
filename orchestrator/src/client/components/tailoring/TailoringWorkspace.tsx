@@ -86,8 +86,10 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     markCurrentAsSaved();
   }, [props.job.id, savePayload, markCurrentAsSaved]);
 
-  // Note: Auto-save removed - user must explicitly save via "Save Selection" button
-  // or finalize to persist changes. This prevents race conditions and simplifies state.
+  // Note: Auto-save removed.
+  // Editor mode: user must explicitly save via the "Save Selection" button to persist changes.
+  // Tailor mode: there is no explicit save action; changes only persist when the user finalizes
+  // or otherwise completes the tailoring flow. This prevents race conditions and simplifies state.
 
   const saveChanges = useCallback(
     async ({ showToast = true }: { showToast?: boolean } = {}) => {
