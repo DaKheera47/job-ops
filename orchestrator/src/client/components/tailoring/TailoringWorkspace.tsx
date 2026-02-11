@@ -93,31 +93,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     }
   }, [props.job.id, savePayload, markCurrentAsSaved, tailorProps]);
 
-  useEffect(() => {
-    if (!tailorProps) return;
-    if (isDirty && draftStatus === "saved") {
-      setDraftStatus("unsaved");
-    }
-    if (!isDirty && draftStatus === "unsaved") {
-      setDraftStatus("saved");
-    }
-  }, [tailorProps, isDirty, draftStatus]);
-
-  useEffect(() => {
-    if (!tailorProps) return;
-    if (!isDirty || draftStatus !== "unsaved") return;
-
-    const timeout = setTimeout(async () => {
-      try {
-        setDraftStatus("saving");
-        await persistCurrent();
-      } catch {
-        setDraftStatus("unsaved");
-      }
-    }, 1500);
-
-    return () => clearTimeout(timeout);
-  }, [tailorProps, isDirty, draftStatus, persistCurrent]);
+  // Note: Auto-save removed - user must explicitly save via "Save Selection" button
+  // or finalize to persist changes. This prevents race conditions and simplifies state.
 
   const saveChanges = useCallback(
     async ({ showToast = true }: { showToast?: boolean } = {}) => {
