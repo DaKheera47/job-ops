@@ -54,7 +54,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     setOpenSkillGroupId,
     skillsJson,
     isDirty,
-    markCurrentAsSaved,
     applyIncomingDraft,
     handleToggleProject,
     handleAddSkillGroup,
@@ -82,9 +81,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   );
 
   const persistCurrent = useCallback(async () => {
-    await api.updateJob(props.job.id, savePayload);
-    markCurrentAsSaved();
-  }, [props.job.id, savePayload, markCurrentAsSaved]);
+    const updatedJob = await api.updateJob(props.job.id, savePayload);
+    applyIncomingDraft(updatedJob);
+  }, [props.job.id, savePayload, applyIncomingDraft]);
 
   // Note: Auto-save removed.
   // Editor mode: user must explicitly save via the "Save Selection" button to persist changes.
@@ -97,8 +96,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       try {
         setIsSaving(true);
-        await api.updateJob(props.job.id, savePayload);
-        markCurrentAsSaved();
+        const updatedJob = await api.updateJob(props.job.id, savePayload);
+        applyIncomingDraft(updatedJob);
         if (showToast) toast.success("Changes saved");
         await editorProps.onUpdate();
       } catch (error) {
@@ -108,7 +107,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         setIsSaving(false);
       }
     },
-    [editorProps, props.job.id, savePayload, markCurrentAsSaved],
+    [editorProps, props.job.id, savePayload, applyIncomingDraft],
   );
 
   useEffect(() => {
