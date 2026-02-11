@@ -81,6 +81,7 @@ export function useTailoringDraft({
   );
 
   const lastJobIdRef = useRef(job.id);
+  const jobRef = useRef(job);
 
   const skillsJson = useMemo(
     () => serializeTailoredSkills(fromEditableSkillGroups(skillsDraft)),
@@ -109,42 +110,6 @@ export function useTailoringDraft({
     savedSkillsJson,
     selectedIds,
     savedSelectedIds,
-  ]);
-
-  const syncSavedSnapshot = useCallback(
-    (
-      nextSummary: string,
-      nextHeadline: string,
-      nextDescription: string,
-      nextSelectedIds: Set<string>,
-      nextSkillsDraft: EditableSkillGroup[],
-    ) => {
-      setSavedSummary(nextSummary);
-      setSavedHeadline(nextHeadline);
-      setSavedDescription(nextDescription);
-      setSavedSelectedIds(new Set(nextSelectedIds));
-      setSavedSkillsJson(
-        serializeTailoredSkills(fromEditableSkillGroups(nextSkillsDraft)),
-      );
-    },
-    [],
-  );
-
-  const markCurrentAsSaved = useCallback(() => {
-    syncSavedSnapshot(
-      summary,
-      headline,
-      jobDescription,
-      selectedIds,
-      skillsDraft,
-    );
-  }, [
-    syncSavedSnapshot,
-    summary,
-    headline,
-    jobDescription,
-    selectedIds,
-    skillsDraft,
   ]);
 
   const applyIncomingDraft = useCallback((incomingJob: Job) => {
@@ -176,15 +141,18 @@ export function useTailoringDraft({
       .catch(() => setCatalog([]));
   }, []);
 
+  useEffect(() => {
+    jobRef.current = job;
+  }, [job]);
+
   // Only sync when job ID changes (user switched to a different job)
   // User edits persist until explicitly saved - no auto-sync from server
-  // Note: 'job' is included in deps for correctness, but guarded by job.id check
   useEffect(() => {
     if (job.id !== lastJobIdRef.current) {
       lastJobIdRef.current = job.id;
-      applyIncomingDraft(job);
+      applyIncomingDraft(jobRef.current);
     }
-  }, [job.id, job, applyIncomingDraft]);
+  }, [job.id, applyIncomingDraft]);
 
   useEffect(() => {
     if (
@@ -243,9 +211,7 @@ export function useTailoringDraft({
     setOpenSkillGroupId,
     skillsJson,
     isDirty,
-    markCurrentAsSaved,
     applyIncomingDraft,
-    syncSavedSnapshot,
     handleToggleProject,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
