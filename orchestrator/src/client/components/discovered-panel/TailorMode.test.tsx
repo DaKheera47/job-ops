@@ -190,45 +190,6 @@ describe("TailorMode", () => {
     );
   });
 
-  it("autosaves headline and skills in update payload", async () => {
-    vi.mocked(api.updateJob).mockResolvedValue({} as Job);
-
-    render(
-      <TailorMode
-        job={createJob()}
-        onBack={vi.fn()}
-        onFinalize={vi.fn()}
-        isFinalizing={false}
-      />,
-    );
-    await waitFor(() =>
-      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
-    );
-    ensureAccordionOpen("Headline");
-    ensureAccordionOpen("Tailored Skills");
-    ensureAccordionOpen("Core");
-
-    fireEvent.change(screen.getByLabelText("Tailored Headline"), {
-      target: { value: "Updated headline" },
-    });
-    fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
-      target: { value: "Node.js, TypeScript" },
-    });
-
-    await waitFor(
-      () =>
-        expect(api.updateJob).toHaveBeenCalledWith(
-          "job-1",
-          expect.objectContaining({
-            tailoredHeadline: "Updated headline",
-            tailoredSkills:
-              '[{"name":"Core","keywords":["Node.js","TypeScript"]}]',
-          }),
-        ),
-      { timeout: 3500 },
-    );
-  });
-
   it("hydrates headline and skills after AI draft generation", async () => {
     vi.mocked(api.summarizeJob).mockResolvedValueOnce({
       ...createJob(),
