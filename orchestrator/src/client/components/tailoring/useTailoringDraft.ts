@@ -184,28 +184,14 @@ export function useTailoringDraft({
       .catch(() => setCatalog([]));
   }, []);
 
+  // Only sync when job ID changes (user switched to a different job)
+  // User edits persist until explicitly saved - no auto-sync from server
   useEffect(() => {
     if (job.id !== lastJobIdRef.current) {
       lastJobIdRef.current = job.id;
       applyIncomingDraft(job);
-      return;
     }
-
-    if (isDirty || activeField !== null) return;
-
-    applyIncomingDraft(job);
-  }, [
-    job,
-    job.id,
-    job.tailoredSummary,
-    job.tailoredHeadline,
-    job.tailoredSkills,
-    job.jobDescription,
-    job.selectedProjectIds,
-    isDirty,
-    activeField,
-    applyIncomingDraft,
-  ]);
+  }, [job.id, job, applyIncomingDraft]);
 
   useEffect(() => {
     if (
