@@ -1,4 +1,4 @@
-import { Home, LayoutDashboard, Settings, Shield } from "lucide-react";
+import { Home, Inbox, LayoutDashboard, Settings, Shield } from "lucide-react";
 
 export type NavLink = {
   to: string;
@@ -20,6 +20,7 @@ export const NAV_LINKS: NavLink[] = [
       "/jobs/all",
     ],
   },
+  { to: "/tracking-inbox", label: "Tracking Inbox", icon: Inbox },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
