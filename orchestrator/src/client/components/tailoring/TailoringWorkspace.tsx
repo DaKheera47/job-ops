@@ -70,9 +70,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [draftStatus, setDraftStatus] = useState<
-    "unsaved" | "saving" | "saved"
-  >("saved");
 
   const savePayload = useMemo(
     () => ({
@@ -88,10 +85,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const persistCurrent = useCallback(async () => {
     await api.updateJob(props.job.id, savePayload);
     markCurrentAsSaved();
-    if (tailorProps) {
-      setDraftStatus("saved");
-    }
-  }, [props.job.id, savePayload, markCurrentAsSaved, tailorProps]);
+  }, [props.job.id, savePayload, markCurrentAsSaved]);
 
   // Note: Auto-save removed - user must explicitly save via "Save Selection" button
   // or finalize to persist changes. This prevents race conditions and simplifies state.
@@ -162,7 +156,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
-      setDraftStatus("saved");
 
       toast.success("Draft generated with AI", {
         description: "Review and edit before finalizing.",
@@ -319,24 +312,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to overview
         </button>
-
-        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          {draftStatus === "saving" && (
-            <>
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Saving...
-            </>
-          )}
-          {draftStatus === "saved" && !isDirty && (
-            <>
-              <Check className="h-3 w-3 text-emerald-400" />
-              Saved
-            </>
-          )}
-          {draftStatus === "unsaved" && (
-            <span className="text-amber-400">Unsaved changes</span>
-          )}
-        </div>
       </div>
 
       <div className="flex-1 space-y-4 overflow-y-auto pr-1">
