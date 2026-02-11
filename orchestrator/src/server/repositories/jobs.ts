@@ -127,6 +127,25 @@ export async function getJobById(id: string): Promise<Job | null> {
   return row ? mapRowToJob(row) : null;
 }
 
+export async function listJobSummariesByIds(jobIds: string[]): Promise<
+  Array<{
+    id: string;
+    title: string;
+    employer: string;
+  }>
+> {
+  if (jobIds.length === 0) return [];
+
+  return db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      employer: jobs.employer,
+    })
+    .from(jobs)
+    .where(inArray(jobs.id, jobIds));
+}
+
 /**
  * Get a job by its URL (for deduplication).
  */

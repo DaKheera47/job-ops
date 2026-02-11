@@ -560,6 +560,45 @@ export async function postApplicationProviderConnect(input: {
   );
 }
 
+export async function postApplicationGmailOauthStart(input?: {
+  accountKey?: string;
+}): Promise<{
+  provider: "gmail";
+  accountKey: string;
+  authorizationUrl: string;
+  state: string;
+}> {
+  const params = new URLSearchParams();
+  if (input?.accountKey) params.set("accountKey", input.accountKey);
+  const query = params.toString();
+  return fetchApi<{
+    provider: "gmail";
+    accountKey: string;
+    authorizationUrl: string;
+    state: string;
+  }>(
+    `/post-application/providers/gmail/oauth/start${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function postApplicationGmailOauthExchange(input: {
+  accountKey?: string;
+  state: string;
+  code: string;
+}): Promise<PostApplicationProviderActionResponse> {
+  return fetchApi<PostApplicationProviderActionResponse>(
+    "/post-application/providers/gmail/oauth/exchange",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input.accountKey ? { accountKey: input.accountKey } : {}),
+        state: input.state,
+        code: input.code,
+      }),
+    },
+  );
+}
+
 export async function postApplicationProviderStatus(input?: {
   provider?: PostApplicationProvider;
   accountKey?: string;

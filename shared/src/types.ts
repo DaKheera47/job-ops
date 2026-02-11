@@ -495,6 +495,11 @@ export interface PostApplicationMessageCandidate {
   id: string;
   messageId: string;
   jobId: string;
+  job?: {
+    id: string;
+    title: string;
+    employer: string;
+  };
   score: number;
   rank: number;
   reasons: string[] | null;

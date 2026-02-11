@@ -13,6 +13,8 @@ import { TrackingInboxPage } from "./TrackingInboxPage";
 vi.mock("../api", () => ({
   postApplicationProviderStatus: vi.fn(),
   postApplicationProviderConnect: vi.fn(),
+  postApplicationGmailOauthStart: vi.fn(),
+  postApplicationGmailOauthExchange: vi.fn(),
   postApplicationProviderSync: vi.fn(),
   postApplicationProviderDisconnect: vi.fn(),
   getPostApplicationInbox: vi.fn(),
@@ -154,6 +156,16 @@ describe("TrackingInboxPage", () => {
     vi.mocked(api.postApplicationProviderConnect).mockResolvedValue(
       makeStatusResponse({ action: "connect" }),
     );
+    vi.mocked(api.postApplicationGmailOauthStart).mockResolvedValue({
+      provider: "gmail",
+      accountKey: "default",
+      authorizationUrl:
+        "https://accounts.google.com/o/oauth2/v2/auth?state=test-state",
+      state: "test-state",
+    });
+    vi.mocked(api.postApplicationGmailOauthExchange).mockResolvedValue(
+      makeStatusResponse({ action: "connect" }),
+    );
     vi.mocked(api.postApplicationProviderSync).mockResolvedValue(
       makeStatusResponse({ action: "sync" }),
     );
@@ -173,6 +185,7 @@ describe("TrackingInboxPage", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.clearAllMocks();
   });
 
@@ -252,6 +265,48 @@ describe("TrackingInboxPage", () => {
       expect(toast.error).toHaveBeenCalledWith(
         expect.stringContaining("inbox failed"),
       );
+    });
+  });
+
+  it("connects Gmail via OAuth popup flow", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [],
+      total: 0,
+    });
+    const popup = {
+      closed: false,
+      close: vi.fn(),
+    } as unknown as Window;
+    vi.spyOn(window, "open").mockReturnValue(popup);
+
+    renderPage();
+    await screen.findByText("Provider Controls");
+
+    fireEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(api.postApplicationGmailOauthStart).toHaveBeenCalledWith({
+        accountKey: "default",
+      });
+    });
+
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        origin: window.location.origin,
+        data: {
+          type: "gmail-oauth-result",
+          state: "test-state",
+          code: "oauth-code",
+        },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.postApplicationGmailOauthExchange).toHaveBeenCalledWith({
+        accountKey: "default",
+        state: "test-state",
+        code: "oauth-code",
+      });
     });
   });
 });

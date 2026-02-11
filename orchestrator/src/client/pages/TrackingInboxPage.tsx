@@ -34,6 +34,15 @@ import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
 
 const PROVIDER_OPTIONS: PostApplicationProvider[] = ["gmail", "imap"];
+const GMAIL_OAUTH_RESULT_TYPE = "gmail-oauth-result";
+const GMAIL_OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
+
+type GmailOauthResultMessage = {
+  type: string;
+  state?: string;
+  code?: string;
+  error?: string;
+};
 
 function getFirstCandidateId(item: PostApplicationInboxItem): string {
   if (item.message.matchedJobId) {
@@ -53,7 +62,6 @@ function formatEpochMs(value?: number | null): string {
 export const TrackingInboxPage: React.FC = () => {
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
   const [accountKey, setAccountKey] = useState("default");
-  const [refreshToken, setRefreshToken] = useState("");
   const [maxMessages, setMaxMessages] = useState("100");
   const [searchDays, setSearchDays] = useState("90");
 
@@ -118,22 +126,109 @@ export const TrackingInboxPage: React.FC = () => {
     void refresh();
   }, [refresh]);
 
+  const waitForGmailOauthResult = useCallback(
+    (
+      expectedState: string,
+      popup: Window,
+    ): Promise<{ code?: string; error?: string }> => {
+      return new Promise((resolve, reject) => {
+        let settled = false;
+
+        const close = () => {
+          window.clearTimeout(timeoutId);
+          window.clearInterval(closedCheckId);
+          window.removeEventListener("message", onMessage);
+        };
+
+        const finishResolve = (value: { code?: string; error?: string }) => {
+          if (settled) return;
+          settled = true;
+          close();
+          try {
+            popup.close();
+          } catch {
+            // Ignore cross-window close errors.
+          }
+          resolve(value);
+        };
+
+        const finishReject = (message: string) => {
+          if (settled) return;
+          settled = true;
+          close();
+          reject(new Error(message));
+        };
+
+        const onMessage = (event: MessageEvent<unknown>) => {
+          if (event.origin !== window.location.origin) return;
+          const data = event.data as GmailOauthResultMessage | undefined;
+          if (!data || data.type !== GMAIL_OAUTH_RESULT_TYPE) return;
+          if (data.state !== expectedState) return;
+          finishResolve({
+            ...(data.code ? { code: data.code } : {}),
+            ...(data.error ? { error: data.error } : {}),
+          });
+        };
+
+        const timeoutId = window.setTimeout(() => {
+          finishReject("Timed out waiting for Gmail OAuth response.");
+        }, GMAIL_OAUTH_TIMEOUT_MS);
+
+        const closedCheckId = window.setInterval(() => {
+          if (!popup.closed) return;
+          finishReject("Gmail OAuth window was closed before completion.");
+        }, 250);
+
+        window.addEventListener("message", onMessage);
+      });
+    },
+    [],
+  );
+
   const runProviderAction = useCallback(
     async (action: "connect" | "sync" | "disconnect") => {
       setIsActionLoading(true);
       try {
         if (action === "connect") {
-          if (!refreshToken.trim()) {
-            toast.error("Refresh token is required to connect Gmail.");
+          if (provider !== "gmail") {
+            toast.error(
+              `${provider} connect is not implemented yet. Use Gmail for now.`,
+            );
             return;
           }
 
-          await api.postApplicationProviderConnect({
-            provider,
+          const oauthStart = await api.postApplicationGmailOauthStart({
             accountKey,
-            payload: {
-              refreshToken: refreshToken.trim(),
-            },
+          });
+          const popup = window.open(
+            oauthStart.authorizationUrl,
+            "gmail-oauth-connect",
+            "popup,width=520,height=720",
+          );
+          if (!popup) {
+            toast.error(
+              "Browser blocked the Gmail OAuth popup. Allow popups and retry.",
+            );
+            return;
+          }
+
+          const oauthResult = await waitForGmailOauthResult(
+            oauthStart.state,
+            popup,
+          );
+          if (oauthResult.error) {
+            throw new Error(`Gmail OAuth failed: ${oauthResult.error}`);
+          }
+          if (!oauthResult.code) {
+            throw new Error(
+              "Gmail OAuth did not return an authorization code.",
+            );
+          }
+
+          await api.postApplicationGmailOauthExchange({
+            accountKey,
+            state: oauthStart.state,
+            code: oauthResult.code,
           });
           toast.success("Provider connected");
         } else if (action === "sync") {
@@ -160,7 +255,14 @@ export const TrackingInboxPage: React.FC = () => {
         setIsActionLoading(false);
       }
     },
-    [accountKey, maxMessages, provider, refresh, refreshToken, searchDays],
+    [
+      accountKey,
+      maxMessages,
+      provider,
+      refresh,
+      searchDays,
+      waitForGmailOauthResult,
+    ],
   );
 
   const handleDecision = useCallback(
@@ -247,7 +349,7 @@ export const TrackingInboxPage: React.FC = () => {
             <CardTitle className="text-base">Provider Controls</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="provider">Provider</Label>
                 <Select
@@ -277,20 +379,11 @@ export const TrackingInboxPage: React.FC = () => {
                   onChange={(event) => setAccountKey(event.target.value)}
                 />
               </div>
-
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="refreshToken">
-                  Refresh Token (Gmail connect)
-                </Label>
-                <Input
-                  id="refreshToken"
-                  type="password"
-                  value={refreshToken}
-                  onChange={(event) => setRefreshToken(event.target.value)}
-                  placeholder="Paste Gmail refresh token"
-                />
-              </div>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Gmail connect uses Google OAuth popup and stores encrypted
+              credentials server-side. No manual refresh token paste is needed.
+            </p>
 
             <div className="grid gap-3 md:grid-cols-4">
               <div className="space-y-2">
@@ -420,8 +513,10 @@ export const TrackingInboxPage: React.FC = () => {
                                 key={candidate.id}
                                 value={candidate.id}
                               >
-                                {candidate.jobId} ·{" "}
-                                {Math.round(candidate.score)}%
+                                {candidate.job?.employer && candidate.job?.title
+                                  ? `${candidate.job.employer} — ${candidate.job.title}`
+                                  : candidate.jobId}{" "}
+                                · {Math.round(candidate.score)}%
                               </SelectItem>
                             ))}
                           </SelectContent>

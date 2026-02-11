@@ -11,12 +11,18 @@ describe.sequential("Post-Application Provider actions API", () => {
   let baseUrl: string;
   let closeDb: () => void;
   let tempDir: string;
+  const originalClientId = process.env.GMAIL_OAUTH_CLIENT_ID;
+  const originalClientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
+  const originalRedirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI;
 
   beforeEach(async () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer());
   });
 
   afterEach(async () => {
+    process.env.GMAIL_OAUTH_CLIENT_ID = originalClientId;
+    process.env.GMAIL_OAUTH_CLIENT_SECRET = originalClientSecret;
+    process.env.GMAIL_OAUTH_REDIRECT_URI = originalRedirectUri;
     await stopServer({ server, closeDb, tempDir });
     vi.clearAllMocks();
   });
@@ -165,6 +171,79 @@ describe.sequential("Post-Application Provider actions API", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(body.error.message).toBe("Provider temporarily unavailable");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("starts gmail oauth flow and returns authorization url", async () => {
+    process.env.GMAIL_OAUTH_CLIENT_ID = "client-id";
+    process.env.GMAIL_OAUTH_CLIENT_SECRET = "client-secret";
+    process.env.GMAIL_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/gmail/callback`;
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=primary`,
+      {
+        headers: {
+          "x-request-id": "req-post-app-oauth-start",
+        },
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-request-id")).toBe("req-post-app-oauth-start");
+    expect(body.ok).toBe(true);
+    expect(body.data.provider).toBe("gmail");
+    expect(body.data.accountKey).toBe("primary");
+    expect(typeof body.data.state).toBe("string");
+    expect(body.data.authorizationUrl).toContain(
+      "https://accounts.google.com/o/oauth2/v2/auth",
+    );
+    expect(body.data.authorizationUrl).toContain("response_type=code");
+    expect(body.meta.requestId).toBe("req-post-app-oauth-start");
+  });
+
+  it("returns 400 INVALID_REQUEST when oauth exchange state is invalid", async () => {
+    process.env.GMAIL_OAUTH_CLIENT_ID = "client-id";
+    process.env.GMAIL_OAUTH_CLIENT_SECRET = "client-secret";
+    process.env.GMAIL_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/gmail/callback`;
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/exchange`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountKey: "default",
+          state: "missing-state",
+          code: "oauth-code",
+        }),
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.error.message).toContain("invalid or expired");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("returns 503 SERVICE_UNAVAILABLE when gmail oauth config is missing", async () => {
+    delete process.env.GMAIL_OAUTH_CLIENT_ID;
+    delete process.env.GMAIL_OAUTH_CLIENT_SECRET;
+    delete process.env.GMAIL_OAUTH_REDIRECT_URI;
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
+    expect(body.error.message).toContain("Gmail OAuth is not configured");
     expect(typeof body.meta.requestId).toBe("string");
   });
 });

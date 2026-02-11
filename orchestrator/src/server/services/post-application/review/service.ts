@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { conflict, notFound, unprocessableEntity } from "@infra/errors";
 import { db, schema } from "@server/db";
-import { getJobById } from "@server/repositories/jobs";
+import { getJobById, listJobSummariesByIds } from "@server/repositories/jobs";
 import {
   getPostApplicationMessageCandidateById,
   listPostApplicationMessageCandidatesByMessageIds,
@@ -87,11 +87,28 @@ export async function listPostApplicationInbox(args: {
     listPostApplicationMessageCandidatesByMessageIds(messageIds),
     getLatestPostApplicationMessageLinksByMessageIds(messageIds),
   ]);
+  const jobIds = Array.from(
+    new Set(candidateRows.map((candidate) => candidate.jobId)),
+  );
+  const jobs = await listJobSummariesByIds(jobIds);
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
 
   const candidatesByMessageId = new Map<string, typeof candidateRows>();
   for (const candidate of candidateRows) {
+    const job = jobById.get(candidate.jobId);
     const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
-    existing.push(candidate);
+    existing.push({
+      ...candidate,
+      ...(job
+        ? {
+            job: {
+              id: job.id,
+              title: job.title,
+              employer: job.employer,
+            },
+          }
+        : {}),
+    });
     candidatesByMessageId.set(candidate.messageId, existing);
   }
 

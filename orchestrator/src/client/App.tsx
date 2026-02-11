@@ -10,6 +10,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { BasicAuthPrompt } from "./components/BasicAuthPrompt";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
+import { GmailOauthCallbackPage } from "./pages/GmailOauthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
@@ -77,6 +78,10 @@ export const App: React.FC = () => {
 
                 {/* Application routes */}
                 <Route path="/overview" element={<HomePage />} />
+                <Route
+                  path="/oauth/gmail/callback"
+                  element={<GmailOauthCallbackPage />}
+                />
                 <Route path="/job/:id" element={<JobPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
