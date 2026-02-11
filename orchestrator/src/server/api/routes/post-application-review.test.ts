@@ -139,6 +139,9 @@ describe.sequential("Post-Application Review Workflow API", () => {
       .from(schema.stageEvents)
       .where(eq(schema.stageEvents.applicationId, jobId));
     expect(stageRows).toHaveLength(1);
+    expect(stageRows[0]?.occurredAt).toBe(
+      Math.floor(message.receivedAt / 1000),
+    );
 
     const updatedMessage = await getPostApplicationMessageById(message.id);
     expect(updatedMessage?.reviewStatus).toBe("approved");

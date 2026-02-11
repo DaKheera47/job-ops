@@ -215,7 +215,73 @@ async function gmailApi<T>(token: string, url: string): Promise<T> {
 }
 
 function buildGmailQuery(searchDays: number): string {
-  return `newer_than:${searchDays}d (application OR interview OR recruiter OR hiring OR offer OR assessment OR referral)`;
+  const subjectTerms = [
+    "application",
+    "thank you for applying",
+    "thanks for applying",
+    "application received",
+    "application submitted",
+    "your application",
+    "interview",
+    "assessment",
+    "coding challenge",
+    "take-home",
+    "availability",
+    "offer",
+    "offer letter",
+    "referral",
+    "recruiter",
+    "hiring team",
+    "regret to inform",
+    "not moving forward",
+    "not selected",
+    "application unsuccessful",
+    "moving forward with other candidates",
+    "unable to proceed",
+    "position has been filled",
+    "hiring freeze",
+    "position on hold",
+    "withdrawn",
+  ];
+  const fromTerms = [
+    "careers@",
+    "jobs@",
+    "recruiting@",
+    "talent@",
+    "no-reply@greenhouse.io",
+    "no-reply@us.greenhouse-mail.io",
+    "no-reply@ashbyhq.com",
+    "notification@smartrecruiters.com",
+    "@smartrecruiters.com",
+    "@workablemail.com",
+    "@hire.lever.co",
+    "@myworkday.com",
+    "@workdaymail.com",
+    "@greenhouse.io",
+    "@ashbyhq.com",
+  ];
+  const excludeSubjectTerms = [
+    "newsletter",
+    "webinar",
+    "course",
+    "discount",
+    "event invitation",
+    "job search council",
+    "matched new opportunities",
+  ];
+
+  const quoteTerm = (value: string) => `"${value.replace(/"/g, '\\"')}"`;
+  const subjectBlock = subjectTerms
+    .map((term) => `subject:${quoteTerm(term)}`)
+    .join(" OR ");
+  const fromBlock = fromTerms
+    .map((term) => `from:${quoteTerm(term)}`)
+    .join(" OR ");
+  const excludeClauses = excludeSubjectTerms
+    .map((term) => `-subject:${quoteTerm(term)}`)
+    .join(" ");
+
+  return `newer_than:${searchDays}d ((${subjectBlock}) OR (${fromBlock})) ${excludeClauses}`.trim();
 }
 
 async function listMessageIds(

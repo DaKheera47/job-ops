@@ -227,6 +227,11 @@ export async function approvePostApplicationInboxItem(args: {
       fromStage ??
       "applied";
     const decidedAt = Date.now();
+    const occurredAtSeconds = Math.floor(
+      Number.isFinite(message.receivedAt)
+        ? message.receivedAt / 1000
+        : decidedAt / 1000,
+    );
     const stageEventId = randomUUID();
 
     tx.insert(stageEvents)
@@ -237,7 +242,7 @@ export async function approvePostApplicationInboxItem(args: {
         groupId: "post_application_review",
         fromStage,
         toStage: finalToStage,
-        occurredAt: Math.floor(decidedAt / 1000),
+        occurredAt: occurredAtSeconds,
         metadata: {
           actor: "system",
           eventType: "status_update",
