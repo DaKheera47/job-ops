@@ -207,11 +207,38 @@ describe("TrackingInboxPage", () => {
     await screen.findByText("No pending messages");
 
     expect(screen.getByText("Provider Controls")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sync" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Disconnect" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows connect button and hides disconnect when disconnected", async () => {
+    vi.mocked(api.postApplicationProviderStatus).mockResolvedValue(
+      makeStatusResponse({
+        status: {
+          provider: "gmail",
+          accountKey: "default",
+          connected: false,
+          integration: null,
+        },
+      }),
+    );
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [],
+      total: 0,
+    });
+
+    renderPage();
+
+    await screen.findByText("Provider Controls");
+    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Disconnect" }),
+    ).not.toBeInTheDocument();
   });
 
   it("approves a message and refreshes queue", async () => {
@@ -281,6 +308,16 @@ describe("TrackingInboxPage", () => {
   });
 
   it("connects Gmail via OAuth popup flow", async () => {
+    vi.mocked(api.postApplicationProviderStatus).mockResolvedValue(
+      makeStatusResponse({
+        status: {
+          provider: "gmail",
+          accountKey: "default",
+          connected: false,
+          integration: null,
+        },
+      }),
+    );
     vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
       items: [],
       total: 0,

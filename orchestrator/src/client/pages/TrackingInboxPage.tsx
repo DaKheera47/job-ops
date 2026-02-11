@@ -476,6 +476,7 @@ export const TrackingInboxPage: React.FC = () => {
   );
 
   const pendingCount = inbox.length;
+  const isConnected = Boolean(status?.connected);
   const connectionLabel = useMemo(() => {
     if (!status) return "Unknown";
     if (!status.connected) return "Disconnected";
@@ -569,32 +570,36 @@ export const TrackingInboxPage: React.FC = () => {
                 />
               </div>
               <div className="md:col-span-2 flex flex-wrap items-end gap-2">
-                <Button
-                  onClick={() => void runProviderAction("connect")}
-                  disabled={isActionLoading}
-                  className="gap-2"
-                >
-                  <Link2 className="h-4 w-4" />
-                  Connect
-                </Button>
+                {!isConnected ? (
+                  <Button
+                    onClick={() => void runProviderAction("connect")}
+                    disabled={isActionLoading}
+                    className="gap-2"
+                  >
+                    <Link2 className="h-4 w-4" />
+                    Connect
+                  </Button>
+                ) : null}
                 <Button
                   onClick={() => void runProviderAction("sync")}
-                  disabled={isActionLoading}
+                  disabled={isActionLoading || !isConnected}
                   variant="secondary"
                   className="gap-2"
                 >
                   <Upload className="h-4 w-4" />
                   Sync
                 </Button>
-                <Button
-                  onClick={() => void runProviderAction("disconnect")}
-                  disabled={isActionLoading}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  <Unplug className="h-4 w-4" />
-                  Disconnect
-                </Button>
+                {isConnected ? (
+                  <Button
+                    onClick={() => void runProviderAction("disconnect")}
+                    disabled={isActionLoading}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    <Unplug className="h-4 w-4" />
+                    Disconnect
+                  </Button>
+                ) : null}
               </div>
             </div>
 
