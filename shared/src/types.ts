@@ -544,6 +544,7 @@ export interface PostApplicationProviderActionResponse {
   action: PostApplicationProviderAction;
   accountKey: string;
   status: PostApplicationProviderStatus;
+  message?: string;
 }
 
 export interface PostApplicationInboxItem {

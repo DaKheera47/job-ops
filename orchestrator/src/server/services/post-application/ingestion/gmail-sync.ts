@@ -1,3 +1,4 @@
+import { requestTimeout } from "@infra/errors";
 import { logger } from "@infra/logger";
 import {
   getPostApplicationIntegration,
@@ -24,6 +25,7 @@ import {
 
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
+const GMAIL_HTTP_TIMEOUT_MS = 15_000;
 
 const LLM_CLASSIFICATION_SCHEMA: JsonSchemaDefinition = {
   name: "post_application_email_classification",
@@ -142,7 +144,7 @@ function parseGmailCredentials(
   };
 }
 
-async function resolveGmailAccessToken(
+export async function resolveGmailAccessToken(
   credentials: GmailCredentials,
 ): Promise<GmailCredentials> {
   const now = Date.now();
@@ -169,11 +171,17 @@ async function resolveGmailAccessToken(
     refresh_token: credentials.refreshToken,
   });
 
-  const response = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const response = await fetchWithTimeout(
+    "https://oauth2.googleapis.com/token",
+    {
+      timeoutMs: GMAIL_HTTP_TIMEOUT_MS,
+      init: {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body,
+      },
+    },
+  );
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
@@ -198,12 +206,15 @@ async function resolveGmailAccessToken(
   };
 }
 
-async function gmailApi<T>(token: string, url: string): Promise<T> {
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+export async function gmailApi<T>(token: string, url: string): Promise<T> {
+  const response = await fetchWithTimeout(url, {
+    timeoutMs: GMAIL_HTTP_TIMEOUT_MS,
+    init: {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     },
   });
 
@@ -212,6 +223,35 @@ async function gmailApi<T>(token: string, url: string): Promise<T> {
     throw new Error(`Gmail API request failed (${response.status}).`);
   }
   return data as T;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  args: { timeoutMs: number; init: RequestInit },
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), args.timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...args.init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      error.name === "AbortError"
+    ) {
+      throw requestTimeout(
+        `Gmail request timed out after ${args.timeoutMs}ms for ${url}.`,
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function buildGmailQuery(searchDays: number): string {

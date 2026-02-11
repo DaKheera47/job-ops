@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
+import { logger } from "@infra/logger";
 import {
   POST_APPLICATION_PROVIDER_ACTIONS,
   POST_APPLICATION_PROVIDERS,
@@ -44,15 +45,59 @@ const oauthStateStore = new Map<
   string,
   { accountKey: string; redirectUri: string; createdAt: number }
 >();
-const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+function getOauthStateTtlMs(): number {
+  const parsed = Number.parseInt(
+    process.env.POST_APPLICATION_OAUTH_STATE_TTL_MS ?? "",
+    10,
+  );
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 10 * 60 * 1000;
+}
+
+function getOauthStateMaxEntries(): number {
+  const parsed = Number.parseInt(
+    process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES ?? "",
+    10,
+  );
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1000;
+}
 
 function cleanupOauthState(): void {
   const now = Date.now();
+  const ttlMs = getOauthStateTtlMs();
   for (const [state, entry] of oauthStateStore.entries()) {
-    if (now - entry.createdAt > OAUTH_STATE_TTL_MS) {
+    if (now - entry.createdAt > ttlMs) {
       oauthStateStore.delete(state);
     }
   }
+}
+
+function enforceOauthStateStoreLimit(): void {
+  const maxEntries = getOauthStateMaxEntries();
+  if (oauthStateStore.size < maxEntries) return;
+
+  const overflowCount = oauthStateStore.size - maxEntries + 1;
+  const sortedEntries = Array.from(oauthStateStore.entries()).sort(
+    (a, b) => a[1].createdAt - b[1].createdAt,
+  );
+  for (const [state] of sortedEntries.slice(0, overflowCount)) {
+    oauthStateStore.delete(state);
+  }
+  logger.warn("Evicted OAuth states to enforce memory limit", {
+    route: "post-application/providers/gmail/oauth/start",
+    oauthStateMaxEntries: maxEntries,
+    evictedCount: overflowCount,
+    remaining: oauthStateStore.size,
+  });
+}
+
+function setOauthState(
+  state: string,
+  entry: { accountKey: string; redirectUri: string; createdAt: number },
+): void {
+  cleanupOauthState();
+  enforceOauthStateStoreLimit();
+  oauthStateStore.set(state, entry);
 }
 
 function asNonEmptyString(value: unknown): string | null {
@@ -181,7 +226,7 @@ postApplicationProvidersRouter.get(
       const oauth = resolveGmailOauthConfig(req);
       const state = randomUUID();
 
-      oauthStateStore.set(state, {
+      setOauthState(state, {
         accountKey,
         redirectUri: oauth.redirectUri,
         createdAt: Date.now(),

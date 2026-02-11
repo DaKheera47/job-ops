@@ -37,6 +37,7 @@ export async function executePostApplicationProviderAction(
       action: input.action,
       accountKey: input.accountKey,
       status: result.status,
+      ...(result.message ? { message: result.message } : {}),
     };
   } catch (error) {
     logger.warn("Post-application provider action failed", {

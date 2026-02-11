@@ -195,6 +195,9 @@ export const TrackingInboxPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [activeAction, setActiveAction] = useState<
+    "connect" | "sync" | "disconnect" | null
+  >(null);
 
   const [status, setStatus] = useState<
     | Awaited<ReturnType<typeof api.postApplicationProviderStatus>>["status"]
@@ -326,6 +329,13 @@ export const TrackingInboxPage: React.FC = () => {
   const runProviderAction = useCallback(
     async (action: "connect" | "sync" | "disconnect") => {
       setIsActionLoading(true);
+      setActiveAction(action);
+      const syncToastId =
+        action === "sync"
+          ? toast.loading(
+              "Sync in progress. This may take up to a couple of minutes.",
+            )
+          : null;
       try {
         if (action === "connect") {
           if (provider !== "gmail") {
@@ -376,7 +386,9 @@ export const TrackingInboxPage: React.FC = () => {
             maxMessages: Number(maxMessages),
             searchDays: Number(searchDays),
           });
-          toast.success("Sync started");
+          toast.success("Sync completed", {
+            ...(syncToastId ? { id: syncToastId } : {}),
+          });
         } else {
           await api.postApplicationProviderDisconnect({ provider, accountKey });
           toast.success("Provider disconnected");
@@ -388,8 +400,13 @@ export const TrackingInboxPage: React.FC = () => {
           error instanceof Error
             ? error.message
             : `Failed to ${action} provider connection`;
-        toast.error(message);
+        if (syncToastId) {
+          toast.error(message, { id: syncToastId });
+        } else {
+          toast.error(message);
+        }
       } finally {
+        setActiveAction(null);
         setIsActionLoading(false);
       }
     },
@@ -546,8 +563,8 @@ export const TrackingInboxPage: React.FC = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Gmail connect uses Google OAuth popup and stores encrypted
-              credentials server-side. No manual refresh token paste is needed.
+              Gmail connect uses Google OAuth popup and stores credentials
+              server-side. No manual refresh token paste is needed.
             </p>
 
             <div className="grid gap-3 md:grid-cols-4">
@@ -586,8 +603,12 @@ export const TrackingInboxPage: React.FC = () => {
                   variant="secondary"
                   className="gap-2"
                 >
-                  <Upload className="h-4 w-4" />
-                  Sync
+                  {activeAction === "sync" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  {activeAction === "sync" ? "Syncing..." : "Sync"}
                 </Button>
                 {isConnected ? (
                   <Button

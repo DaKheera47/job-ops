@@ -14,6 +14,10 @@ describe.sequential("Post-Application Provider actions API", () => {
   const originalClientId = process.env.GMAIL_OAUTH_CLIENT_ID;
   const originalClientSecret = process.env.GMAIL_OAUTH_CLIENT_SECRET;
   const originalRedirectUri = process.env.GMAIL_OAUTH_REDIRECT_URI;
+  const originalOauthStateMaxEntries =
+    process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES;
+  const originalOauthStateTtlMs =
+    process.env.POST_APPLICATION_OAUTH_STATE_TTL_MS;
 
   beforeEach(async () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer());
@@ -23,6 +27,9 @@ describe.sequential("Post-Application Provider actions API", () => {
     process.env.GMAIL_OAUTH_CLIENT_ID = originalClientId;
     process.env.GMAIL_OAUTH_CLIENT_SECRET = originalClientSecret;
     process.env.GMAIL_OAUTH_REDIRECT_URI = originalRedirectUri;
+    process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES =
+      originalOauthStateMaxEntries;
+    process.env.POST_APPLICATION_OAUTH_STATE_TTL_MS = originalOauthStateTtlMs;
     await stopServer({ server, closeDb, tempDir });
     vi.clearAllMocks();
   });
@@ -41,6 +48,7 @@ describe.sequential("Post-Application Provider actions API", () => {
         connected: false,
         integration: null,
       },
+      message: "Provider ready",
     });
 
     const res = await fetch(
@@ -69,6 +77,7 @@ describe.sequential("Post-Application Provider actions API", () => {
         connected: false,
         integration: null,
       },
+      message: "Provider ready",
     });
     expect(body.meta.requestId).toBe("req-post-app-1");
     expect(executePostApplicationProviderAction).toHaveBeenCalledWith({
@@ -228,6 +237,80 @@ describe.sequential("Post-Application Provider actions API", () => {
     expect(body.error.code).toBe("INVALID_REQUEST");
     expect(body.error.message).toContain("invalid or expired");
     expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("expires oauth states based on configured ttl", async () => {
+    process.env.GMAIL_OAUTH_CLIENT_ID = "client-id";
+    process.env.GMAIL_OAUTH_CLIENT_SECRET = "client-secret";
+    process.env.GMAIL_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/gmail/callback`;
+    process.env.POST_APPLICATION_OAUTH_STATE_TTL_MS = "1";
+
+    const startRes = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start`,
+    );
+    const startBody = await startRes.json();
+    expect(startRes.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const exchangeRes = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/exchange`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountKey: "default",
+          state: startBody.data.state,
+          code: "oauth-code",
+        }),
+      },
+    );
+    const exchangeBody = await exchangeRes.json();
+    expect(exchangeRes.status).toBe(400);
+    expect(exchangeBody.ok).toBe(false);
+    expect(exchangeBody.error.code).toBe("INVALID_REQUEST");
+    expect(exchangeBody.error.message).toContain("invalid or expired");
+  });
+
+  it("evicts oldest oauth state when store reaches max entries", async () => {
+    process.env.GMAIL_OAUTH_CLIENT_ID = "client-id";
+    process.env.GMAIL_OAUTH_CLIENT_SECRET = "client-secret";
+    process.env.GMAIL_OAUTH_REDIRECT_URI = `${baseUrl}/oauth/gmail/callback`;
+    process.env.POST_APPLICATION_OAUTH_STATE_MAX_ENTRIES = "2";
+
+    const firstStart = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=first`,
+    );
+    const firstBody = await firstStart.json();
+    expect(firstStart.status).toBe(200);
+
+    const secondStart = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=second`,
+    );
+    expect(secondStart.status).toBe(200);
+
+    const thirdStart = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=third`,
+    );
+    expect(thirdStart.status).toBe(200);
+
+    const exchangeRes = await fetch(
+      `${baseUrl}/api/post-application/providers/gmail/oauth/exchange`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountKey: "first",
+          state: firstBody.data.state,
+          code: "oauth-code",
+        }),
+      },
+    );
+    const exchangeBody = await exchangeRes.json();
+    expect(exchangeRes.status).toBe(400);
+    expect(exchangeBody.ok).toBe(false);
+    expect(exchangeBody.error.code).toBe("INVALID_REQUEST");
+    expect(exchangeBody.error.message).toContain("invalid or expired");
   });
 
   it("returns 503 SERVICE_UNAVAILABLE when gmail oauth config is missing", async () => {

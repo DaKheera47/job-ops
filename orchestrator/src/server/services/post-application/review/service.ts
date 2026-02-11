@@ -20,10 +20,11 @@ import type {
   ApplicationStage,
   PostApplicationInboxItem,
   PostApplicationMessage,
+  PostApplicationMessageCandidate,
   PostApplicationProvider,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 
 const {
   jobs,
@@ -95,26 +96,7 @@ export async function listPostApplicationInbox(args: {
     new Set(candidateRows.map((candidate) => candidate.jobId)),
   );
   const jobs = await listJobSummariesByIds(jobIds);
-  const jobById = new Map(jobs.map((job) => [job.id, job]));
-
-  const candidatesByMessageId = new Map<string, typeof candidateRows>();
-  for (const candidate of candidateRows) {
-    const job = jobById.get(candidate.jobId);
-    const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
-    existing.push({
-      ...candidate,
-      ...(job
-        ? {
-            job: {
-              id: job.id,
-              title: job.title,
-              employer: job.employer,
-            },
-          }
-        : {}),
-    });
-    candidatesByMessageId.set(candidate.messageId, existing);
-  }
+  const candidatesByMessageId = buildCandidatesByMessageId(candidateRows, jobs);
 
   const linkByMessageId = new Map(
     latestLinks.map((link) => [link.messageId, link]),
@@ -148,6 +130,46 @@ function resolveJobIdForDecision(args: {
     return args.candidateJobId;
   }
   return args.message.matchedJobId;
+}
+
+function buildCandidatesByMessageId(
+  candidateRows: PostApplicationMessageCandidate[],
+  jobs: Awaited<ReturnType<typeof listJobSummariesByIds>>,
+): Map<string, PostApplicationMessageCandidate[]> {
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
+  const candidatesByMessageId = new Map<
+    string,
+    PostApplicationMessageCandidate[]
+  >();
+
+  for (const candidate of candidateRows) {
+    const job = jobById.get(candidate.jobId);
+    const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
+    existing.push({
+      ...candidate,
+      ...(job
+        ? {
+            job: {
+              id: job.id,
+              title: job.title,
+              employer: job.employer,
+            },
+          }
+        : {}),
+    });
+    candidatesByMessageId.set(candidate.messageId, existing);
+  }
+
+  return candidatesByMessageId;
+}
+
+function isUniqueApprovedLinkConflict(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("unique constraint failed") &&
+    message.includes("post_application_message_links.message_id")
+  );
 }
 
 export async function approvePostApplicationInboxItem(args: {
@@ -210,10 +232,15 @@ export async function approvePostApplicationInboxItem(args: {
     const existingApproved = tx
       .select()
       .from(postApplicationMessageLinks)
-      .where(eq(postApplicationMessageLinks.messageId, message.id))
+      .where(
+        and(
+          eq(postApplicationMessageLinks.messageId, message.id),
+          eq(postApplicationMessageLinks.decision, "approved"),
+        ),
+      )
       .orderBy(desc(postApplicationMessageLinks.decidedAt))
-      .all()
-      .find((link) => link.decision === "approved");
+      .limit(1)
+      .get();
     if (existingApproved) {
       throw conflict(
         `Message '${message.id}' already has an approved link decision.`,
@@ -263,20 +290,29 @@ export async function approvePostApplicationInboxItem(args: {
       })
       .run();
 
-    tx.insert(postApplicationMessageLinks)
-      .values({
-        id: randomUUID(),
-        messageId: message.id,
-        jobId: resolvedJobId,
-        candidateId: candidate?.id ?? null,
-        decision: "approved",
-        stageEventId,
-        decidedAt,
-        decidedBy: args.decidedBy ?? null,
-        notes: args.note ?? null,
-        createdAt: new Date(decidedAt).toISOString(),
-      })
-      .run();
+    try {
+      tx.insert(postApplicationMessageLinks)
+        .values({
+          id: randomUUID(),
+          messageId: message.id,
+          jobId: resolvedJobId,
+          candidateId: candidate?.id ?? null,
+          decision: "approved",
+          stageEventId,
+          decidedAt,
+          decidedBy: args.decidedBy ?? null,
+          notes: args.note ?? null,
+          createdAt: new Date(decidedAt).toISOString(),
+        })
+        .run();
+    } catch (error) {
+      if (isUniqueApprovedLinkConflict(error)) {
+        throw conflict(
+          `Message '${message.id}' already has an approved link decision.`,
+        );
+      }
+      throw error;
+    }
 
     const shouldSetAppliedAt = !targetJob.appliedAt;
     tx.update(jobs)
@@ -449,26 +485,7 @@ export async function listPostApplicationRunMessages(args: {
     new Set(candidateRows.map((candidate) => candidate.jobId)),
   );
   const jobs = await listJobSummariesByIds(jobIds);
-  const jobById = new Map(jobs.map((job) => [job.id, job]));
-
-  const candidatesByMessageId = new Map<string, typeof candidateRows>();
-  for (const candidate of candidateRows) {
-    const job = jobById.get(candidate.jobId);
-    const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
-    existing.push({
-      ...candidate,
-      ...(job
-        ? {
-            job: {
-              id: job.id,
-              title: job.title,
-              employer: job.employer,
-            },
-          }
-        : {}),
-    });
-    candidatesByMessageId.set(candidate.messageId, existing);
-  }
+  const candidatesByMessageId = buildCandidatesByMessageId(candidateRows, jobs);
 
   const linkByMessageId = new Map(
     latestLinks.map((link) => [link.messageId, link]),

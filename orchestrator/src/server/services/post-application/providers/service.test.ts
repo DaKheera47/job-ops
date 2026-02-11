@@ -120,6 +120,7 @@ describe("post-application provider action dispatcher", () => {
       }),
     );
     expect(response.status.connected).toBe(true);
+    expect(response.message).toBe("Gmail integration connected.");
     expect(response.status.integration?.credentials).toEqual(
       expect.objectContaining({
         hasRefreshToken: true,
@@ -146,6 +147,7 @@ describe("post-application provider action dispatcher", () => {
         connected: false,
         integration: null,
       },
+      message: "Gmail provider is not connected.",
     });
   });
 
@@ -179,6 +181,7 @@ describe("post-application provider action dispatcher", () => {
       integrationRepo.disconnectPostApplicationIntegration,
     ).toHaveBeenCalledWith("gmail", "account:gmail:test");
     expect(response.status.connected).toBe(false);
+    expect(response.message).toBe("Gmail integration disconnected.");
     expect(response.status.integration?.credentials).toEqual(
       expect.objectContaining({
         hasRefreshToken: false,
