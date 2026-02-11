@@ -178,6 +178,7 @@ export function useTailoringDraft({
 
   // Only sync when job ID changes (user switched to a different job)
   // User edits persist until explicitly saved - no auto-sync from server
+  // Note: 'job' is included in deps for correctness, but guarded by job.id check
   useEffect(() => {
     if (job.id !== lastJobIdRef.current) {
       lastJobIdRef.current = job.id;
