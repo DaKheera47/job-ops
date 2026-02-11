@@ -18,6 +18,15 @@ type UpsertConnectedIntegrationInput = {
   credentials: IntegrationCredentials;
 };
 
+type UpdatePostApplicationIntegrationSyncStateInput = {
+  provider: PostApplicationProvider;
+  accountKey: string;
+  lastSyncedAt?: number | null;
+  lastError?: string | null;
+  credentials?: IntegrationCredentials | null;
+  status?: PostApplicationIntegrationStatus;
+};
+
 function asCredentials(value: unknown): IntegrationCredentials | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -140,4 +149,32 @@ export async function disconnectPostApplicationIntegration(
     .where(eq(postApplicationIntegrations.id, existing.id));
 
   return getPostApplicationIntegration(provider, accountKey);
+}
+
+export async function updatePostApplicationIntegrationSyncState(
+  input: UpdatePostApplicationIntegrationSyncStateInput,
+): Promise<PostApplicationIntegration | null> {
+  const existing = await getPostApplicationIntegration(
+    input.provider,
+    input.accountKey,
+  );
+  if (!existing) return null;
+
+  const nowIso = new Date().toISOString();
+  await db
+    .update(postApplicationIntegrations)
+    .set({
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.lastSyncedAt !== undefined
+        ? { lastSyncedAt: input.lastSyncedAt }
+        : {}),
+      ...(input.lastError !== undefined ? { lastError: input.lastError } : {}),
+      ...(input.credentials !== undefined
+        ? { credentials: input.credentials }
+        : {}),
+      updatedAt: nowIso,
+    })
+    .where(eq(postApplicationIntegrations.id, existing.id));
+
+  return getPostApplicationIntegration(input.provider, input.accountKey);
 }
