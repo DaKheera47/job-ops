@@ -54,7 +54,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     setOpenSkillGroupId,
     skillsJson,
     isDirty,
-    setActiveField,
     markCurrentAsSaved,
     applyIncomingDraft,
     handleToggleProject,
@@ -114,13 +113,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     if (!editorProps?.onRegisterSave) return;
     editorProps.onRegisterSave(() => saveChanges({ showToast: false }));
   }, [editorProps, saveChanges]);
-
-  const handleFieldBlur = useCallback(
-    (field: "summary" | "headline" | "description" | "skills") => {
-      setActiveField((prev) => (prev === field ? null : prev));
-    },
-    [setActiveField],
-  );
 
   const handleSummarizeEditor = useCallback(async () => {
     if (!editorProps) return;
@@ -273,8 +265,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             onUpdateSkillGroup={handleUpdateSkillGroup}
             onRemoveSkillGroup={handleRemoveSkillGroup}
             onToggleProject={handleToggleProject}
-            onFieldFocus={setActiveField}
-            onFieldBlur={handleFieldBlur}
           />
 
           <div className="flex justify-end border-t pt-4">
@@ -361,8 +351,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           onUpdateSkillGroup={handleUpdateSkillGroup}
           onRemoveSkillGroup={handleRemoveSkillGroup}
           onToggleProject={handleToggleProject}
-          onFieldFocus={setActiveField}
-          onFieldBlur={handleFieldBlur}
         />
       </div>
 

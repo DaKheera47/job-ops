@@ -10,9 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ProjectSelector } from "../discovered-panel/ProjectSelector";
 import type { EditableSkillGroup } from "../tailoring-utils";
-import type { TailoringActiveField } from "./useTailoringDraft";
-
-type FocusableField = Exclude<TailoringActiveField, null>;
 
 interface TailoringSectionsProps {
   catalog: ResumeProjectCatalogItem[];
@@ -35,8 +32,6 @@ interface TailoringSectionsProps {
   ) => void;
   onRemoveSkillGroup: (id: string) => void;
   onToggleProject: (id: string) => void;
-  onFieldFocus: (field: FocusableField) => void;
-  onFieldBlur: (field: FocusableField) => void;
 }
 
 const sectionClass = "rounded-lg border border-border/60 bg-muted/20 px-0";
@@ -62,8 +57,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   onUpdateSkillGroup,
   onRemoveSkillGroup,
   onToggleProject,
-  onFieldFocus,
-  onFieldBlur,
 }) => {
   return (
     <Accordion type="multiple" className="space-y-3">
@@ -80,8 +73,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
             className={`${inputClass} min-h-[120px] max-h-[250px]`}
             value={jobDescription}
             onChange={(event) => onDescriptionChange(event.target.value)}
-            onFocus={() => onFieldFocus("description")}
-            onBlur={() => onFieldBlur("description")}
             placeholder="The raw job description..."
             disabled={disableInputs}
           />
@@ -99,8 +90,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
             className={`${inputClass} min-h-[120px]`}
             value={summary}
             onChange={(event) => onSummaryChange(event.target.value)}
-            onFocus={() => onFieldFocus("summary")}
-            onBlur={() => onFieldBlur("summary")}
             placeholder="Write a tailored summary for this role, or generate with AI..."
             disabled={disableInputs}
           />
@@ -119,8 +108,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
             className={inputClass}
             value={headline}
             onChange={(event) => onHeadlineChange(event.target.value)}
-            onFocus={() => onFieldFocus("headline")}
-            onBlur={() => onFieldBlur("headline")}
             placeholder="Write a concise headline tailored to this role..."
             disabled={disableInputs}
           />
@@ -188,8 +175,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                               event.target.value,
                             )
                           }
-                          onFocus={() => onFieldFocus("skills")}
-                          onBlur={() => onFieldBlur("skills")}
                           placeholder="Backend, Frontend, Infrastructure..."
                           disabled={disableInputs}
                         />
@@ -213,8 +198,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                               event.target.value,
                             )
                           }
-                          onFocus={() => onFieldFocus("skills")}
-                          onBlur={() => onFieldBlur("skills")}
                           placeholder="TypeScript, Node.js, REST APIs..."
                           disabled={disableInputs}
                         />

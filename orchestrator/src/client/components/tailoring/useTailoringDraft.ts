@@ -10,13 +10,6 @@ import {
   toEditableSkillGroups,
 } from "../tailoring-utils";
 
-export type TailoringActiveField =
-  | "summary"
-  | "headline"
-  | "description"
-  | "skills"
-  | null;
-
 const parseSelectedIds = (value: string | null | undefined) =>
   new Set(value?.split(",").filter(Boolean) ?? []);
 
@@ -87,7 +80,6 @@ export function useTailoringDraft({
     serializeTailoredSkills(parseTailoredSkills(job.tailoredSkills)),
   );
 
-  const [activeField, setActiveField] = useState<TailoringActiveField>(null);
   const lastJobIdRef = useRef(job.id);
 
   const skillsJson = useMemo(
@@ -250,8 +242,6 @@ export function useTailoringDraft({
     setOpenSkillGroupId,
     skillsJson,
     isDirty,
-    activeField,
-    setActiveField,
     markCurrentAsSaved,
     applyIncomingDraft,
     syncSavedSnapshot,
