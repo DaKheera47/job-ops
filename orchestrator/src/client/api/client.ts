@@ -22,6 +22,10 @@ import type {
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
   PipelineStatusResponse,
+  PostApplicationInboxItem,
+  PostApplicationProvider,
+  PostApplicationProviderActionResponse,
+  PostApplicationSyncRun,
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
@@ -535,6 +539,170 @@ export async function cancelPipeline(): Promise<{
   }>("/pipeline/cancel", {
     method: "POST",
   });
+}
+
+// Post-Application Tracking API
+export async function postApplicationProviderConnect(input: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  payload?: Record<string, unknown>;
+}): Promise<PostApplicationProviderActionResponse> {
+  const provider = input.provider ?? "gmail";
+  return fetchApi<PostApplicationProviderActionResponse>(
+    `/post-application/providers/${provider}/actions/connect`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input.accountKey ? { accountKey: input.accountKey } : {}),
+        ...(input.payload ? { payload: input.payload } : {}),
+      }),
+    },
+  );
+}
+
+export async function postApplicationProviderStatus(input?: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+}): Promise<PostApplicationProviderActionResponse> {
+  const provider = input?.provider ?? "gmail";
+  return fetchApi<PostApplicationProviderActionResponse>(
+    `/post-application/providers/${provider}/actions/status`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input?.accountKey ? { accountKey: input.accountKey } : {}),
+      }),
+    },
+  );
+}
+
+export async function postApplicationProviderSync(input?: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  maxMessages?: number;
+  searchDays?: number;
+}): Promise<PostApplicationProviderActionResponse> {
+  const provider = input?.provider ?? "gmail";
+  return fetchApi<PostApplicationProviderActionResponse>(
+    `/post-application/providers/${provider}/actions/sync`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input?.accountKey ? { accountKey: input.accountKey } : {}),
+        ...(typeof input?.maxMessages === "number"
+          ? { maxMessages: input.maxMessages }
+          : {}),
+        ...(typeof input?.searchDays === "number"
+          ? { searchDays: input.searchDays }
+          : {}),
+      }),
+    },
+  );
+}
+
+export async function postApplicationProviderDisconnect(input?: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+}): Promise<PostApplicationProviderActionResponse> {
+  const provider = input?.provider ?? "gmail";
+  return fetchApi<PostApplicationProviderActionResponse>(
+    `/post-application/providers/${provider}/actions/disconnect`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(input?.accountKey ? { accountKey: input.accountKey } : {}),
+      }),
+    },
+  );
+}
+
+export async function getPostApplicationInbox(input?: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  limit?: number;
+}): Promise<{ items: PostApplicationInboxItem[]; total: number }> {
+  const params = new URLSearchParams();
+  params.set("provider", input?.provider ?? "gmail");
+  params.set("accountKey", input?.accountKey ?? "default");
+  if (typeof input?.limit === "number")
+    params.set("limit", String(input.limit));
+  const query = params.toString();
+  return fetchApi<{ items: PostApplicationInboxItem[]; total: number }>(
+    `/post-application/inbox?${query}`,
+  );
+}
+
+export async function approvePostApplicationInboxItem(input: {
+  messageId: string;
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  jobId?: string;
+  candidateId?: string;
+  toStage?: ApplicationStage;
+  note?: string;
+  decidedBy?: string;
+}): Promise<{
+  message: PostApplicationInboxItem["message"];
+  stageEventId: string;
+}> {
+  return fetchApi<{
+    message: PostApplicationInboxItem["message"];
+    stageEventId: string;
+  }>(`/post-application/inbox/${encodeURIComponent(input.messageId)}/approve`, {
+    method: "POST",
+    body: JSON.stringify({
+      provider: input.provider ?? "gmail",
+      accountKey: input.accountKey ?? "default",
+      ...(input.jobId ? { jobId: input.jobId } : {}),
+      ...(input.candidateId ? { candidateId: input.candidateId } : {}),
+      ...(input.toStage ? { toStage: input.toStage } : {}),
+      ...(input.note ? { note: input.note } : {}),
+      ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),
+    }),
+  });
+}
+
+export async function denyPostApplicationInboxItem(input: {
+  messageId: string;
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  jobId?: string;
+  candidateId?: string;
+  note?: string;
+  decidedBy?: string;
+}): Promise<{
+  message: PostApplicationInboxItem["message"];
+}> {
+  return fetchApi<{ message: PostApplicationInboxItem["message"] }>(
+    `/post-application/inbox/${encodeURIComponent(input.messageId)}/deny`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        provider: input.provider ?? "gmail",
+        accountKey: input.accountKey ?? "default",
+        ...(input.jobId ? { jobId: input.jobId } : {}),
+        ...(input.candidateId ? { candidateId: input.candidateId } : {}),
+        ...(input.note ? { note: input.note } : {}),
+        ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),
+      }),
+    },
+  );
+}
+
+export async function getPostApplicationRuns(input?: {
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  limit?: number;
+}): Promise<{ runs: PostApplicationSyncRun[]; total: number }> {
+  const params = new URLSearchParams();
+  params.set("provider", input?.provider ?? "gmail");
+  params.set("accountKey", input?.accountKey ?? "default");
+  if (typeof input?.limit === "number")
+    params.set("limit", String(input.limit));
+  const query = params.toString();
+  return fetchApi<{ runs: PostApplicationSyncRun[]; total: number }>(
+    `/post-application/runs?${query}`,
+  );
 }
 
 export async function getDemoInfo(): Promise<DemoInfoResponse> {

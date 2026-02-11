@@ -14,6 +14,7 @@ import { HomePage } from "./pages/HomePage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { TrackingInboxPage } from "./pages/TrackingInboxPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
 
 /** Backwards-compatibility redirects: old URL paths -> new URL paths */
@@ -79,6 +80,7 @@ export const App: React.FC = () => {
                 <Route path="/job/:id" element={<JobPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
+                <Route path="/tracking-inbox" element={<TrackingInboxPage />} />
                 <Route path="/jobs/:tab" element={<OrchestratorPage />} />
                 <Route
                   path="/jobs/:tab/:jobId"
