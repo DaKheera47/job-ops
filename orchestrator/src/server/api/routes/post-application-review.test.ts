@@ -101,6 +101,31 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  it("hides stale pending messages when a link decision already exists", async () => {
+    const { message, jobId, candidateId } = await seedPendingMessage();
+    const { createPostApplicationMessageLink } = await import(
+      "../../repositories/post-application-message-links"
+    );
+
+    await createPostApplicationMessageLink({
+      messageId: message.id,
+      jobId,
+      candidateId,
+      decision: "approved",
+      decidedAt: Date.now(),
+      decidedBy: "tester",
+    });
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/inbox?provider=gmail&accountKey=default`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.total).toBe(0);
+  });
+
   it("approves an inbox item and writes stage event + decision", async () => {
     const { message, candidateId, jobId } = await seedPendingMessage();
     const { db, schema } = await import("../../db");

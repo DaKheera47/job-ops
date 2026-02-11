@@ -119,12 +119,21 @@ export async function listPostApplicationInbox(args: {
   const linkByMessageId = new Map(
     latestLinks.map((link) => [link.messageId, link]),
   );
+  const settledMessageIds = new Set(
+    latestLinks
+      .filter(
+        (link) => link.decision === "approved" || link.decision === "denied",
+      )
+      .map((link) => link.messageId),
+  );
 
-  return messages.map((message) => ({
-    message,
-    candidates: candidatesByMessageId.get(message.id) ?? [],
-    link: linkByMessageId.get(message.id) ?? null,
-  }));
+  return messages
+    .filter((message) => !settledMessageIds.has(message.id))
+    .map((message) => ({
+      message,
+      candidates: candidatesByMessageId.get(message.id) ?? [],
+      link: linkByMessageId.get(message.id) ?? null,
+    }));
 }
 
 function resolveJobIdForDecision(args: {
