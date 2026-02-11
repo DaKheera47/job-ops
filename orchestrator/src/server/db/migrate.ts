@@ -165,7 +165,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS post_application_messages (
     id TEXT PRIMARY KEY,
-    provider TEXT NOT NULL,
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
     sync_run_id TEXT,

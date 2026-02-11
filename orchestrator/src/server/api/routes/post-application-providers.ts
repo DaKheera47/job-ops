@@ -333,7 +333,7 @@ postApplicationProvidersRouter.post(
       throw error;
     }
 
-    let accountKey = "default";
+    let accountKey: string;
     let connectPayload:
       | {
           accountKey?: string;
