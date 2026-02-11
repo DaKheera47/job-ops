@@ -14,6 +14,7 @@ import {
   type JsonSchemaDefinition,
   LlmService,
 } from "@server/services/llm-service";
+import { runJobMappingForMessage } from "../mapping/engine";
 import {
   classifyByKeywords,
   computeKeywordRelevanceScore,
@@ -557,7 +558,7 @@ export async function runGmailIngestionSync(args: {
             snippet: metadata.snippet,
           });
 
-          await upsertPostApplicationMessage({
+          const savedMessage = await upsertPostApplicationMessage({
             provider: "gmail",
             accountKey: args.accountKey,
             integrationId: integration.id,
@@ -581,6 +582,7 @@ export async function runGmailIngestionSync(args: {
             relevanceDecision: "relevant",
             reviewStatus: "pending_review",
           });
+          await runJobMappingForMessage({ message: savedMessage });
           relevant += 1;
           classified += 1;
           continue;
@@ -604,7 +606,7 @@ export async function runGmailIngestionSync(args: {
           finalScore >= POST_APPLICATION_RELEVANCE_MIN_THRESHOLD &&
           llmResult.classificationLabel.toLowerCase() !== "false positive";
 
-        await upsertPostApplicationMessage({
+        const savedMessage = await upsertPostApplicationMessage({
           provider: "gmail",
           accountKey: args.accountKey,
           integrationId: integration.id,
@@ -632,7 +634,10 @@ export async function runGmailIngestionSync(args: {
           reviewStatus: isRelevant ? "pending_review" : "not_relevant",
         });
 
-        if (isRelevant) relevant += 1;
+        if (isRelevant) {
+          await runJobMappingForMessage({ message: savedMessage });
+          relevant += 1;
+        }
         classified += 1;
       } catch (error) {
         errored += 1;

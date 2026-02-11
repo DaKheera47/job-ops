@@ -35,6 +35,12 @@ type UpsertPostApplicationMessageInput = {
   errorMessage?: string | null;
 };
 
+type UpdatePostApplicationMessageSuggestionInput = {
+  id: string;
+  matchedJobId: string | null;
+  reviewStatus: PostApplicationReviewStatus;
+};
+
 function mapRowToPostApplicationMessage(
   row: typeof postApplicationMessages.$inferSelect,
 ): PostApplicationMessage {
@@ -180,4 +186,24 @@ export async function upsertPostApplicationMessage(
     );
   }
   return created;
+}
+
+export async function updatePostApplicationMessageSuggestion(
+  input: UpdatePostApplicationMessageSuggestionInput,
+): Promise<PostApplicationMessage | null> {
+  const nowIso = new Date().toISOString();
+  await db
+    .update(postApplicationMessages)
+    .set({
+      matchedJobId: input.matchedJobId,
+      reviewStatus: input.reviewStatus,
+      updatedAt: nowIso,
+    })
+    .where(eq(postApplicationMessages.id, input.id));
+
+  const [row] = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(eq(postApplicationMessages.id, input.id));
+  return row ? mapRowToPostApplicationMessage(row) : null;
 }
