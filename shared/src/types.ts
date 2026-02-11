@@ -364,6 +364,189 @@ export type ApiResponse<T> =
       meta: ApiMeta;
     };
 
+export const POST_APPLICATION_PROVIDERS = ["gmail", "imap"] as const;
+export type PostApplicationProvider =
+  (typeof POST_APPLICATION_PROVIDERS)[number];
+
+export const POST_APPLICATION_PROVIDER_ACTIONS = [
+  "connect",
+  "status",
+  "sync",
+  "disconnect",
+] as const;
+export type PostApplicationProviderAction =
+  (typeof POST_APPLICATION_PROVIDER_ACTIONS)[number];
+
+export const POST_APPLICATION_INTEGRATION_STATUSES = [
+  "disconnected",
+  "connected",
+  "error",
+] as const;
+export type PostApplicationIntegrationStatus =
+  (typeof POST_APPLICATION_INTEGRATION_STATUSES)[number];
+
+export const POST_APPLICATION_SYNC_RUN_STATUSES = [
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+] as const;
+export type PostApplicationSyncRunStatus =
+  (typeof POST_APPLICATION_SYNC_RUN_STATUSES)[number];
+
+export const POST_APPLICATION_RELEVANCE_DECISIONS = [
+  "relevant",
+  "not_relevant",
+  "needs_llm",
+] as const;
+export type PostApplicationRelevanceDecision =
+  (typeof POST_APPLICATION_RELEVANCE_DECISIONS)[number];
+
+export const POST_APPLICATION_REVIEW_STATUSES = [
+  "pending_review",
+  "approved",
+  "denied",
+  "not_relevant",
+  "no_reliable_match",
+  "errored",
+] as const;
+export type PostApplicationReviewStatus =
+  (typeof POST_APPLICATION_REVIEW_STATUSES)[number];
+
+export const POST_APPLICATION_MATCH_METHODS = [
+  "keyword",
+  "llm_rerank",
+  "hybrid",
+] as const;
+export type PostApplicationMatchMethod =
+  (typeof POST_APPLICATION_MATCH_METHODS)[number];
+
+export const POST_APPLICATION_LINK_DECISIONS = ["approved", "denied"] as const;
+export type PostApplicationLinkDecision =
+  (typeof POST_APPLICATION_LINK_DECISIONS)[number];
+
+export interface PostApplicationIntegration {
+  id: string;
+  provider: PostApplicationProvider;
+  accountKey: string;
+  displayName: string | null;
+  status: PostApplicationIntegrationStatus;
+  credentials: Record<string, unknown> | null;
+  lastConnectedAt: number | null;
+  lastSyncedAt: number | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PostApplicationSyncRun {
+  id: string;
+  provider: PostApplicationProvider;
+  accountKey: string;
+  integrationId: string | null;
+  status: PostApplicationSyncRunStatus;
+  startedAt: number;
+  completedAt: number | null;
+  messagesDiscovered: number;
+  messagesRelevant: number;
+  messagesClassified: number;
+  messagesMatched: number;
+  messagesApproved: number;
+  messagesDenied: number;
+  messagesErrored: number;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PostApplicationMessage {
+  id: string;
+  provider: PostApplicationProvider;
+  accountKey: string;
+  integrationId: string | null;
+  syncRunId: string | null;
+  externalMessageId: string;
+  externalThreadId: string | null;
+  fromAddress: string;
+  fromDomain: string | null;
+  senderName: string | null;
+  subject: string;
+  receivedAt: number;
+  snippet: string;
+  classificationLabel: string | null;
+  classificationConfidence: number | null;
+  classificationPayload: Record<string, unknown> | null;
+  relevanceKeywordScore: number;
+  relevanceLlmScore: number | null;
+  relevanceFinalScore: number;
+  relevanceDecision: PostApplicationRelevanceDecision;
+  reviewStatus: PostApplicationReviewStatus;
+  matchedJobId: string | null;
+  decidedAt: number | null;
+  decidedBy: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PostApplicationMessageCandidate {
+  id: string;
+  messageId: string;
+  jobId: string;
+  score: number;
+  rank: number;
+  reasons: string[] | null;
+  matchMethod: PostApplicationMatchMethod;
+  isHighConfidence: boolean;
+  createdAt: string;
+}
+
+export interface PostApplicationMessageLink {
+  id: string;
+  messageId: string;
+  jobId: string;
+  candidateId: string | null;
+  decision: PostApplicationLinkDecision;
+  stageEventId: string | null;
+  decidedAt: number;
+  decidedBy: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface PostApplicationProviderActionConnectRequest {
+  accountKey?: string;
+  payload?: Record<string, unknown>;
+}
+
+export interface PostApplicationProviderActionSyncRequest {
+  accountKey?: string;
+  maxMessages?: number;
+  searchDays?: number;
+}
+
+export interface PostApplicationProviderStatus {
+  provider: PostApplicationProvider;
+  accountKey: string;
+  connected: boolean;
+  integration: PostApplicationIntegration | null;
+}
+
+export interface PostApplicationProviderActionResponse {
+  provider: PostApplicationProvider;
+  action: PostApplicationProviderAction;
+  accountKey: string;
+  status: PostApplicationProviderStatus;
+}
+
+export interface PostApplicationInboxItem {
+  message: PostApplicationMessage;
+  candidates: PostApplicationMessageCandidate[];
+  link: PostApplicationMessageLink | null;
+}
+
 export interface JobsListResponse<TJob = Job> {
   jobs: TJob[];
   total: number;

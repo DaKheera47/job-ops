@@ -126,6 +126,111 @@ const migrations = [
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
+  `CREATE TABLE IF NOT EXISTS post_application_integrations (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    account_key TEXT NOT NULL DEFAULT 'default',
+    display_name TEXT,
+    status TEXT NOT NULL DEFAULT 'disconnected' CHECK(status IN ('disconnected', 'connected', 'error')),
+    credentials TEXT,
+    last_connected_at INTEGER,
+    last_synced_at INTEGER,
+    last_error TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(provider, account_key)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_sync_runs (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    account_key TEXT NOT NULL DEFAULT 'default',
+    integration_id TEXT,
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
+    started_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    messages_discovered INTEGER NOT NULL DEFAULT 0,
+    messages_relevant INTEGER NOT NULL DEFAULT 0,
+    messages_classified INTEGER NOT NULL DEFAULT 0,
+    messages_matched INTEGER NOT NULL DEFAULT 0,
+    messages_approved INTEGER NOT NULL DEFAULT 0,
+    messages_denied INTEGER NOT NULL DEFAULT 0,
+    messages_errored INTEGER NOT NULL DEFAULT 0,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_messages (
+    id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    account_key TEXT NOT NULL DEFAULT 'default',
+    integration_id TEXT,
+    sync_run_id TEXT,
+    external_message_id TEXT NOT NULL,
+    external_thread_id TEXT,
+    from_address TEXT NOT NULL DEFAULT '',
+    from_domain TEXT,
+    sender_name TEXT,
+    subject TEXT NOT NULL DEFAULT '',
+    received_at INTEGER NOT NULL,
+    snippet TEXT NOT NULL DEFAULT '',
+    classification_label TEXT,
+    classification_confidence REAL,
+    classification_payload TEXT,
+    relevance_keyword_score REAL NOT NULL DEFAULT 0,
+    relevance_llm_score REAL,
+    relevance_final_score REAL NOT NULL DEFAULT 0,
+    relevance_decision TEXT NOT NULL DEFAULT 'needs_llm' CHECK(relevance_decision IN ('relevant', 'not_relevant', 'needs_llm')),
+    review_status TEXT NOT NULL DEFAULT 'pending_review' CHECK(review_status IN ('pending_review', 'approved', 'denied', 'not_relevant', 'no_reliable_match', 'errored')),
+    matched_job_id TEXT,
+    decided_at INTEGER,
+    decided_by TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL,
+    FOREIGN KEY (sync_run_id) REFERENCES post_application_sync_runs(id) ON DELETE SET NULL,
+    FOREIGN KEY (matched_job_id) REFERENCES jobs(id) ON DELETE SET NULL,
+    UNIQUE(provider, account_key, external_message_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_message_candidates (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    score REAL NOT NULL DEFAULT 0,
+    rank INTEGER NOT NULL,
+    reasons TEXT,
+    match_method TEXT NOT NULL DEFAULT 'keyword' CHECK(match_method IN ('keyword', 'llm_rerank', 'hybrid')),
+    is_high_confidence INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (message_id) REFERENCES post_application_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    UNIQUE(message_id, job_id),
+    UNIQUE(message_id, rank)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS post_application_message_links (
+    id TEXT PRIMARY KEY,
+    message_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    candidate_id TEXT,
+    decision TEXT NOT NULL DEFAULT 'denied' CHECK(decision IN ('approved', 'denied')),
+    stage_event_id TEXT,
+    decided_at INTEGER NOT NULL,
+    decided_by TEXT,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (message_id) REFERENCES post_application_messages(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
+    FOREIGN KEY (candidate_id) REFERENCES post_application_message_candidates(id) ON DELETE SET NULL,
+    FOREIGN KEY (stage_event_id) REFERENCES stage_events(id) ON DELETE SET NULL
+  )`,
+
   // Rename settings key: webhookUrl -> pipelineWebhookUrl (safe to re-run)
   `INSERT OR REPLACE INTO settings(key, value, created_at, updated_at)
    SELECT 'pipelineWebhookUrl', value, created_at, updated_at FROM settings WHERE key = 'webhookUrl'`,
@@ -212,6 +317,10 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_tasks_application_id ON tasks(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
   `CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at ON post_application_sync_runs(provider, account_key, started_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_messages_provider_account_review_status ON post_application_messages(provider, account_key, review_status)`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_message_links_message_decision ON post_application_message_links(message_id, decision)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_message_links_message_approved_unique ON post_application_message_links(message_id) WHERE decision = 'approved'`,
 
   // Backfill: Create "Applied" events for legacy jobs that have applied_at set but no event entry
   `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata)
