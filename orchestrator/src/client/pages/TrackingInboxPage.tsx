@@ -3,6 +3,7 @@ import type {
   PostApplicationProvider,
   PostApplicationSyncRun,
 } from "@shared/types";
+import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import {
   CheckCircle2,
   CircleUserRound,
@@ -40,7 +41,9 @@ import { formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
 
-const PROVIDER_OPTIONS: PostApplicationProvider[] = ["gmail", "imap"];
+const PROVIDER_OPTIONS: PostApplicationProvider[] = [
+  ...POST_APPLICATION_PROVIDERS,
+];
 const GMAIL_OAUTH_RESULT_TYPE = "gmail-oauth-result";
 const GMAIL_OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
 
@@ -330,12 +333,7 @@ export const TrackingInboxPage: React.FC = () => {
     async (action: "connect" | "sync" | "disconnect") => {
       setIsActionLoading(true);
       setActiveAction(action);
-      const syncToastId =
-        action === "sync"
-          ? toast.loading(
-              "Sync in progress. This may take up to a couple of minutes.",
-            )
-          : null;
+      let syncToastId: string | number | null = null;
       try {
         if (action === "connect") {
           if (provider !== "gmail") {
@@ -380,11 +378,30 @@ export const TrackingInboxPage: React.FC = () => {
           });
           toast.success("Provider connected");
         } else if (action === "sync") {
+          const parsedMaxMessages = Number.parseInt(maxMessages, 10);
+          const parsedSearchDays = Number.parseInt(searchDays, 10);
+          if (
+            !Number.isFinite(parsedMaxMessages) ||
+            parsedMaxMessages < 1 ||
+            parsedMaxMessages > 500 ||
+            !Number.isFinite(parsedSearchDays) ||
+            parsedSearchDays < 1 ||
+            parsedSearchDays > 365
+          ) {
+            toast.error(
+              "Max messages must be 1-500 and search days must be 1-365 before syncing.",
+            );
+            return;
+          }
+          syncToastId = toast.loading(
+            "Sync in progress. This may take up to a couple of minutes.",
+          );
+
           await api.postApplicationProviderSync({
             provider,
             accountKey,
-            maxMessages: Number(maxMessages),
-            searchDays: Number(searchDays),
+            maxMessages: parsedMaxMessages,
+            searchDays: parsedSearchDays,
           });
           toast.success("Sync completed", {
             ...(syncToastId ? { id: syncToastId } : {}),

@@ -128,7 +128,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS post_application_integrations (
     id TEXT PRIMARY KEY,
-    provider TEXT NOT NULL,
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     display_name TEXT,
     status TEXT NOT NULL DEFAULT 'disconnected' CHECK(status IN ('disconnected', 'connected', 'error')),
@@ -143,7 +143,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS post_application_sync_runs (
     id TEXT PRIMARY KEY,
-    provider TEXT NOT NULL,
+    provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),

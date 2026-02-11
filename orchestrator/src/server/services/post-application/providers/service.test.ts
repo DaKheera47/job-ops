@@ -1,6 +1,6 @@
 import type { PostApplicationIntegration } from "@shared/types";
 import type { Mock } from "vitest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@server/repositories/post-application-integrations", () => ({
   getPostApplicationIntegration: vi.fn().mockResolvedValue(null),
@@ -66,6 +66,11 @@ import { executePostApplicationProviderAction } from "./service";
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, status: 200 }));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("post-application provider registry", () => {

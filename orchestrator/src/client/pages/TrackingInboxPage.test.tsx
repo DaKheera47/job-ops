@@ -381,4 +381,29 @@ describe("TrackingInboxPage", () => {
     await screen.findByRole("dialog");
     expect(screen.getByText("Run Messages")).toBeInTheDocument();
   });
+
+  it("blocks sync and shows validation error for invalid numeric inputs", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [],
+      total: 0,
+    });
+
+    renderPage();
+    await screen.findByText("Provider Controls");
+
+    fireEvent.change(screen.getByLabelText("Max Messages"), {
+      target: { value: "" },
+    });
+    fireEvent.change(screen.getByLabelText("Search Days"), {
+      target: { value: "abc" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sync" }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        "Max messages must be 1-500 and search days must be 1-365 before syncing.",
+      );
+    });
+    expect(api.postApplicationProviderSync).not.toHaveBeenCalled();
+  });
 });
