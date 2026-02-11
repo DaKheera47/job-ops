@@ -5,7 +5,7 @@ import type {
   PostApplicationRelevanceDecision,
   PostApplicationReviewStatus,
 } from "@shared/types";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 
 const { postApplicationMessages } = schema;
@@ -39,6 +39,14 @@ type UpdatePostApplicationMessageSuggestionInput = {
   id: string;
   matchedJobId: string | null;
   reviewStatus: PostApplicationReviewStatus;
+};
+
+type UpdatePostApplicationMessageReviewDecisionInput = {
+  id: string;
+  reviewStatus: Extract<PostApplicationReviewStatus, "approved" | "denied">;
+  matchedJobId: string | null;
+  decidedAt?: number;
+  decidedBy?: string | null;
 };
 
 function mapRowToPostApplicationMessage(
@@ -93,6 +101,16 @@ async function getPostApplicationMessageByExternalId(
         eq(postApplicationMessages.externalMessageId, externalMessageId),
       ),
     );
+  return row ? mapRowToPostApplicationMessage(row) : null;
+}
+
+export async function getPostApplicationMessageById(
+  id: string,
+): Promise<PostApplicationMessage | null> {
+  const [row] = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(eq(postApplicationMessages.id, id));
   return row ? mapRowToPostApplicationMessage(row) : null;
 }
 
@@ -197,6 +215,52 @@ export async function updatePostApplicationMessageSuggestion(
     .set({
       matchedJobId: input.matchedJobId,
       reviewStatus: input.reviewStatus,
+      updatedAt: nowIso,
+    })
+    .where(eq(postApplicationMessages.id, input.id));
+
+  const [row] = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(eq(postApplicationMessages.id, input.id));
+  return row ? mapRowToPostApplicationMessage(row) : null;
+}
+
+export async function listPostApplicationMessagesByReviewStatus(
+  provider: PostApplicationProvider,
+  accountKey: string,
+  reviewStatus: PostApplicationReviewStatus,
+  limit = 50,
+): Promise<PostApplicationMessage[]> {
+  const rows = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(
+      and(
+        eq(postApplicationMessages.provider, provider),
+        eq(postApplicationMessages.accountKey, accountKey),
+        eq(postApplicationMessages.reviewStatus, reviewStatus),
+      ),
+    )
+    .orderBy(desc(postApplicationMessages.receivedAt))
+    .limit(limit);
+
+  return rows.map(mapRowToPostApplicationMessage);
+}
+
+export async function updatePostApplicationMessageReviewDecision(
+  input: UpdatePostApplicationMessageReviewDecisionInput,
+): Promise<PostApplicationMessage | null> {
+  const decidedAt = input.decidedAt ?? Date.now();
+  const nowIso = new Date(decidedAt).toISOString();
+
+  await db
+    .update(postApplicationMessages)
+    .set({
+      reviewStatus: input.reviewStatus,
+      matchedJobId: input.matchedJobId,
+      decidedAt,
+      decidedBy: input.decidedBy ?? null,
       updatedAt: nowIso,
     })
     .where(eq(postApplicationMessages.id, input.id));

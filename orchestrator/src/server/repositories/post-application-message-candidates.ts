@@ -3,7 +3,7 @@ import type {
   PostApplicationMatchMethod,
   PostApplicationMessageCandidate,
 } from "@shared/types";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db";
 
 const { postApplicationMessageCandidates } = schema;
@@ -69,4 +69,31 @@ export async function replacePostApplicationMessageCandidates(
     .where(eq(postApplicationMessageCandidates.messageId, input.messageId))
     .orderBy(asc(postApplicationMessageCandidates.rank));
   return rows.map(mapRowToCandidate);
+}
+
+export async function listPostApplicationMessageCandidatesByMessageIds(
+  messageIds: string[],
+): Promise<PostApplicationMessageCandidate[]> {
+  if (messageIds.length === 0) return [];
+
+  const rows = await db
+    .select()
+    .from(postApplicationMessageCandidates)
+    .where(inArray(postApplicationMessageCandidates.messageId, messageIds))
+    .orderBy(
+      asc(postApplicationMessageCandidates.messageId),
+      asc(postApplicationMessageCandidates.rank),
+    );
+
+  return rows.map(mapRowToCandidate);
+}
+
+export async function getPostApplicationMessageCandidateById(
+  id: string,
+): Promise<PostApplicationMessageCandidate | null> {
+  const [row] = await db
+    .select()
+    .from(postApplicationMessageCandidates)
+    .where(eq(postApplicationMessageCandidates.id, id));
+  return row ? mapRowToCandidate(row) : null;
 }
