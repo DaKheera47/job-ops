@@ -215,9 +215,11 @@ describe("TrackingInboxPage", () => {
 
     renderPage();
 
-    await screen.findByText("Thanks for applying to Roku");
+    await screen.findByText(/thanks for applying to roku/i);
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Agree with suggested job match" }),
+    );
 
     await waitFor(() => {
       expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
@@ -238,9 +240,13 @@ describe("TrackingInboxPage", () => {
 
     renderPage();
 
-    await screen.findByText("Thanks for applying to Roku");
+    await screen.findByText(/thanks for applying to roku/i);
 
-    fireEvent.click(screen.getByRole("button", { name: "Deny" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Disagree with suggested job match",
+      }),
+    );
 
     await waitFor(() => {
       expect(api.denyPostApplicationInboxItem).toHaveBeenCalledWith(
@@ -255,7 +261,7 @@ describe("TrackingInboxPage", () => {
   });
 
   it("shows error toast when refresh fails", async () => {
-    vi.mocked(api.getPostApplicationInbox).mockRejectedValueOnce(
+    vi.mocked(api.getPostApplicationInbox).mockRejectedValue(
       new Error("inbox failed"),
     );
 

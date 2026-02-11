@@ -5,6 +5,7 @@ import type {
 } from "@shared/types";
 import {
   CheckCircle2,
+  CircleUserRound,
   Inbox,
   Link2,
   Loader2,
@@ -28,7 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
@@ -59,6 +59,28 @@ function formatEpochMs(value?: number | null): string {
   return formatDateTime(new Date(value).toISOString()) ?? "n/a";
 }
 
+function getSenderLabel(
+  senderName: string | null,
+  fromAddress: string,
+): string {
+  const preferred = (senderName ?? "").trim();
+  if (preferred) return preferred;
+  const trimmed = fromAddress.trim();
+  if (!trimmed) return "Unknown sender";
+  const bracketIndex = trimmed.indexOf("<");
+  if (bracketIndex > 0) {
+    return trimmed.slice(0, bracketIndex).trim() || trimmed;
+  }
+  return trimmed;
+}
+
+function scoreTextClass(score: number | null): string {
+  if (score === null) return "text-muted-foreground/60";
+  if (score >= 70) return "text-emerald-400/90";
+  if (score >= 50) return "text-foreground/60";
+  return "text-muted-foreground/60";
+}
+
 export const TrackingInboxPage: React.FC = () => {
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
   const [accountKey, setAccountKey] = useState("default");
@@ -77,9 +99,6 @@ export const TrackingInboxPage: React.FC = () => {
   const [runs, setRuns] = useState<PostApplicationSyncRun[]>([]);
 
   const [candidateByMessageId, setCandidateByMessageId] = useState<
-    Record<string, string>
-  >({});
-  const [noteByMessageId, setNoteByMessageId] = useState<
     Record<string, string>
   >({});
 
@@ -268,7 +287,6 @@ export const TrackingInboxPage: React.FC = () => {
   const handleDecision = useCallback(
     async (item: PostApplicationInboxItem, decision: "approve" | "deny") => {
       const candidateId = candidateByMessageId[item.message.id] ?? "";
-      const note = noteByMessageId[item.message.id]?.trim();
 
       if (!candidateId) {
         toast.error("Select a candidate before making a decision.");
@@ -283,7 +301,6 @@ export const TrackingInboxPage: React.FC = () => {
             provider,
             accountKey,
             candidateId,
-            ...(note ? { note } : {}),
           });
           toast.success("Message approved");
         } else {
@@ -292,7 +309,6 @@ export const TrackingInboxPage: React.FC = () => {
             provider,
             accountKey,
             candidateId,
-            ...(note ? { note } : {}),
           });
           toast.success("Message denied");
         }
@@ -308,7 +324,7 @@ export const TrackingInboxPage: React.FC = () => {
         setIsActionLoading(false);
       }
     },
-    [accountKey, candidateByMessageId, noteByMessageId, provider, refresh],
+    [accountKey, candidateByMessageId, provider, refresh],
   );
 
   const pendingCount = inbox.length;
@@ -467,98 +483,111 @@ export const TrackingInboxPage: React.FC = () => {
                 description="Run sync to ingest new job-application emails."
               />
             ) : (
-              <div className="space-y-4">
+              <div className="overflow-hidden rounded-lg border">
                 {inbox.map((item) => (
                   <div
                     key={item.message.id}
-                    className="rounded-lg border p-3 space-y-3"
+                    className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center"
                   >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold truncate">
-                          {item.message.subject}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {item.message.fromAddress} ·{" "}
-                          {formatEpochMs(item.message.receivedAt)}
-                        </p>
+                    <div className="min-w-0 space-y-2">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground">
+                          <CircleUserRound className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold">
+                            {getSenderLabel(
+                              item.message.senderName,
+                              item.message.fromAddress,
+                            )}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {item.message.fromAddress} ·{" "}
+                            {formatEpochMs(item.message.receivedAt)}
+                          </p>
+                        </div>
                       </div>
-                      <Badge variant="outline">
-                        {item.message.classificationLabel ?? "Unknown"}
-                      </Badge>
+
+                      <p className="truncate text-sm font-medium">
+                        {item.message.subject}
+                      </p>
                     </div>
 
-                    <p className="text-sm text-muted-foreground">
-                      {item.message.snippet}
-                    </p>
+                    <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
+                      {(() => {
+                        const selectedCandidateId =
+                          candidateByMessageId[item.message.id] ?? "";
+                        const selectedCandidate = item.candidates.find(
+                          (candidate) => candidate.id === selectedCandidateId,
+                        );
+                        const selectedScore = selectedCandidate
+                          ? Math.round(selectedCandidate.score)
+                          : null;
+                        return (
+                          <>
+                            <Select
+                              value={
+                                candidateByMessageId[item.message.id] ?? ""
+                              }
+                              onValueChange={(value) =>
+                                setCandidateByMessageId((previous) => ({
+                                  ...previous,
+                                  [item.message.id]: value,
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="min-w-0 flex-1">
+                                <SelectValue placeholder="Select candidate" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {item.candidates.map((candidate) => (
+                                  <SelectItem
+                                    key={candidate.id}
+                                    value={candidate.id}
+                                  >
+                                    {candidate.job?.employer ?? candidate.jobId}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <span
+                              className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
+                            >
+                              {selectedScore === null
+                                ? "n/a"
+                                : `${selectedScore}%`}
+                            </span>
 
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="md:col-span-2 space-y-2">
-                        <Label>Candidate match</Label>
-                        <Select
-                          value={candidateByMessageId[item.message.id] ?? ""}
-                          onValueChange={(value) =>
-                            setCandidateByMessageId((previous) => ({
-                              ...previous,
-                              [item.message.id]: value,
-                            }))
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select candidate" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {item.candidates.map((candidate) => (
-                              <SelectItem
-                                key={candidate.id}
-                                value={candidate.id}
+                            <div className="flex shrink-0 items-center gap-2">
+                              <Button
+                                size="sm"
+                                aria-label="Agree with suggested job match"
+                                title="Agree with suggested job match"
+                                onClick={() =>
+                                  void handleDecision(item, "approve")
+                                }
+                                disabled={isActionLoading}
+                                className="h-8 w-8 p-0"
                               >
-                                {candidate.job?.employer && candidate.job?.title
-                                  ? `${candidate.job.employer} — ${candidate.job.title}`
-                                  : candidate.jobId}{" "}
-                                · {Math.round(candidate.score)}%
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Reviewer note</Label>
-                        <Textarea
-                          value={noteByMessageId[item.message.id] ?? ""}
-                          onChange={(event) =>
-                            setNoteByMessageId((previous) => ({
-                              ...previous,
-                              [item.message.id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Optional note"
-                          rows={2}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        onClick={() => void handleDecision(item, "approve")}
-                        disabled={isActionLoading}
-                        className="gap-1.5"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void handleDecision(item, "deny")}
-                        disabled={isActionLoading}
-                        className="gap-1.5"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Deny
-                      </Button>
+                                <CheckCircle2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                aria-label="Disagree with suggested job match"
+                                title="Disagree with suggested job match"
+                                onClick={() =>
+                                  void handleDecision(item, "deny")
+                                }
+                                disabled={isActionLoading}
+                                className="h-8 w-8 p-0"
+                              >
+                                <XCircle className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 ))}
