@@ -20,6 +20,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -81,6 +88,104 @@ function scoreTextClass(score: number | null): string {
   return "text-muted-foreground/60";
 }
 
+type EmailViewerRowProps = {
+  item: PostApplicationInboxItem;
+  selectedCandidateId: string;
+  onCandidateChange: (candidateId: string) => void;
+  onApprove: () => void;
+  onDeny: () => void;
+  isActionLoading: boolean;
+};
+
+const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
+  item,
+  selectedCandidateId,
+  onCandidateChange,
+  onApprove,
+  onDeny,
+  isActionLoading,
+}) => {
+  const selectedCandidate = item.candidates.find(
+    (candidate) => candidate.id === selectedCandidateId,
+  );
+  const selectedScore = selectedCandidate
+    ? Math.round(selectedCandidate.score)
+    : null;
+  const canDecide =
+    item.message.reviewStatus === "pending_review" && !!selectedCandidateId;
+
+  return (
+    <div className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center">
+      <div className="min-w-0 space-y-2">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground">
+            <CircleUserRound className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">
+              {getSenderLabel(
+                item.message.senderName,
+                item.message.fromAddress,
+              )}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {item.message.fromAddress} ·{" "}
+              {formatEpochMs(item.message.receivedAt)}
+            </p>
+          </div>
+        </div>
+
+        <p className="truncate text-sm font-medium">{item.message.subject}</p>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
+        <Select value={selectedCandidateId} onValueChange={onCandidateChange}>
+          <SelectTrigger className="min-w-0 flex-1">
+            <SelectValue placeholder="Select candidate" />
+          </SelectTrigger>
+          <SelectContent>
+            {item.candidates.map((candidate) => (
+              <SelectItem key={candidate.id} value={candidate.id}>
+                {candidate.job?.employer ?? candidate.jobId}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <span
+          className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
+        >
+          {selectedScore === null ? "n/a" : `${selectedScore}%`}
+        </span>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            size="sm"
+            aria-label="Agree with suggested job match"
+            title="Agree with suggested job match"
+            onClick={onApprove}
+            disabled={isActionLoading || !canDecide}
+            className="h-8 w-8 p-0"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            aria-label="Disagree with suggested job match"
+            title="Disagree with suggested job match"
+            onClick={onDeny}
+            disabled={isActionLoading || !canDecide}
+            className="h-8 w-8 p-0"
+          >
+            <XCircle className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const TrackingInboxPage: React.FC = () => {
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
   const [accountKey, setAccountKey] = useState("default");
@@ -97,10 +202,33 @@ export const TrackingInboxPage: React.FC = () => {
   >(null);
   const [inbox, setInbox] = useState<PostApplicationInboxItem[]>([]);
   const [runs, setRuns] = useState<PostApplicationSyncRun[]>([]);
+  const [isRunModalOpen, setIsRunModalOpen] = useState(false);
+  const [isRunMessagesLoading, setIsRunMessagesLoading] = useState(false);
+  const [selectedRun, setSelectedRun] = useState<PostApplicationSyncRun | null>(
+    null,
+  );
+  const [selectedRunItems, setSelectedRunItems] = useState<
+    PostApplicationInboxItem[]
+  >([]);
 
   const [candidateByMessageId, setCandidateByMessageId] = useState<
     Record<string, string>
   >({});
+
+  const primeCandidateSelections = useCallback(
+    (items: PostApplicationInboxItem[]) => {
+      setCandidateByMessageId((previous) => {
+        const next = { ...previous };
+        for (const item of items) {
+          if (!next[item.message.id]) {
+            next[item.message.id] = getFirstCandidateId(item);
+          }
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const loadAll = useCallback(async () => {
     const [statusRes, inboxRes, runsRes] = await Promise.all([
@@ -112,17 +240,8 @@ export const TrackingInboxPage: React.FC = () => {
     setStatus(statusRes.status);
     setInbox(inboxRes.items);
     setRuns(runsRes.runs);
-
-    setCandidateByMessageId((previous) => {
-      const next = { ...previous };
-      for (const item of inboxRes.items) {
-        if (!next[item.message.id]) {
-          next[item.message.id] = getFirstCandidateId(item);
-        }
-      }
-      return next;
-    });
-  }, [provider, accountKey]);
+    primeCandidateSelections(inboxRes.items);
+  }, [provider, accountKey, primeCandidateSelections]);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -327,6 +446,35 @@ export const TrackingInboxPage: React.FC = () => {
     [accountKey, candidateByMessageId, provider, refresh],
   );
 
+  const handleOpenRunMessages = useCallback(
+    async (run: PostApplicationSyncRun) => {
+      setSelectedRun(run);
+      setSelectedRunItems([]);
+      setIsRunModalOpen(true);
+      setIsRunMessagesLoading(true);
+
+      try {
+        const response = await api.getPostApplicationRunMessages({
+          runId: run.id,
+          provider,
+          accountKey,
+        });
+        setSelectedRun(response.run);
+        setSelectedRunItems(response.items);
+        primeCandidateSelections(response.items);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load messages for selected sync run";
+        toast.error(message);
+      } finally {
+        setIsRunMessagesLoading(false);
+      }
+    },
+    [accountKey, primeCandidateSelections, provider],
+  );
+
   const pendingCount = inbox.length;
   const connectionLabel = useMemo(() => {
     if (!status) return "Unknown";
@@ -485,111 +633,22 @@ export const TrackingInboxPage: React.FC = () => {
             ) : (
               <div className="overflow-hidden rounded-lg border">
                 {inbox.map((item) => (
-                  <div
+                  <EmailViewerRow
                     key={item.message.id}
-                    className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center"
-                  >
-                    <div className="min-w-0 space-y-2">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground">
-                          <CircleUserRound className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-semibold">
-                            {getSenderLabel(
-                              item.message.senderName,
-                              item.message.fromAddress,
-                            )}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {item.message.fromAddress} ·{" "}
-                            {formatEpochMs(item.message.receivedAt)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="truncate text-sm font-medium">
-                        {item.message.subject}
-                      </p>
-                    </div>
-
-                    <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
-                      {(() => {
-                        const selectedCandidateId =
-                          candidateByMessageId[item.message.id] ?? "";
-                        const selectedCandidate = item.candidates.find(
-                          (candidate) => candidate.id === selectedCandidateId,
-                        );
-                        const selectedScore = selectedCandidate
-                          ? Math.round(selectedCandidate.score)
-                          : null;
-                        return (
-                          <>
-                            <Select
-                              value={
-                                candidateByMessageId[item.message.id] ?? ""
-                              }
-                              onValueChange={(value) =>
-                                setCandidateByMessageId((previous) => ({
-                                  ...previous,
-                                  [item.message.id]: value,
-                                }))
-                              }
-                            >
-                              <SelectTrigger className="min-w-0 flex-1">
-                                <SelectValue placeholder="Select candidate" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {item.candidates.map((candidate) => (
-                                  <SelectItem
-                                    key={candidate.id}
-                                    value={candidate.id}
-                                  >
-                                    {candidate.job?.employer ?? candidate.jobId}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <span
-                              className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
-                            >
-                              {selectedScore === null
-                                ? "n/a"
-                                : `${selectedScore}%`}
-                            </span>
-
-                            <div className="flex shrink-0 items-center gap-2">
-                              <Button
-                                size="sm"
-                                aria-label="Agree with suggested job match"
-                                title="Agree with suggested job match"
-                                onClick={() =>
-                                  void handleDecision(item, "approve")
-                                }
-                                disabled={isActionLoading}
-                                className="h-8 w-8 p-0"
-                              >
-                                <CheckCircle2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                aria-label="Disagree with suggested job match"
-                                title="Disagree with suggested job match"
-                                onClick={() =>
-                                  void handleDecision(item, "deny")
-                                }
-                                disabled={isActionLoading}
-                                className="h-8 w-8 p-0"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
+                    item={item}
+                    selectedCandidateId={
+                      candidateByMessageId[item.message.id] ?? ""
+                    }
+                    onCandidateChange={(value) =>
+                      setCandidateByMessageId((previous) => ({
+                        ...previous,
+                        [item.message.id]: value,
+                      }))
+                    }
+                    onApprove={() => void handleDecision(item, "approve")}
+                    onDeny={() => void handleDecision(item, "deny")}
+                    isActionLoading={isActionLoading}
+                  />
                 ))}
               </div>
             )}
@@ -606,33 +665,93 @@ export const TrackingInboxPage: React.FC = () => {
             ) : (
               <div className="space-y-2">
                 {runs.map((run) => (
-                  <div
+                  <button
                     key={run.id}
-                    className="rounded-lg border px-3 py-2 flex flex-wrap items-center justify-between gap-2"
+                    type="button"
+                    className="w-full rounded-lg border px-3 py-2 text-left transition-colors hover:bg-muted/30"
+                    onClick={() => void handleOpenRunMessages(run)}
                   >
-                    <div className="text-xs text-muted-foreground">
-                      <p>{run.id}</p>
-                      <p>{formatEpochMs(run.startedAt)}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        <p>{run.id}</p>
+                        <p>{formatEpochMs(run.startedAt)}</p>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <Badge variant="outline">{run.status}</Badge>
+                        <span className="text-muted-foreground">
+                          discovered {run.messagesDiscovered}
+                        </span>
+                        <span className="text-muted-foreground">
+                          relevant {run.messagesRelevant}
+                        </span>
+                        <span className="text-muted-foreground">
+                          matched {run.messagesMatched}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs">
-                      <Badge variant="outline">{run.status}</Badge>
-                      <span className="text-muted-foreground">
-                        discovered {run.messagesDiscovered}
-                      </span>
-                      <span className="text-muted-foreground">
-                        relevant {run.messagesRelevant}
-                      </span>
-                      <span className="text-muted-foreground">
-                        matched {run.messagesMatched}
-                      </span>
-                    </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </CardContent>
         </Card>
       </PageMain>
+
+      <Dialog
+        open={isRunModalOpen}
+        onOpenChange={(open) => {
+          setIsRunModalOpen(open);
+          if (!open) {
+            setSelectedRunItems([]);
+            setSelectedRun(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-6xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-6 py-4">
+            <DialogTitle>Run Messages</DialogTitle>
+            <DialogDescription>
+              {selectedRun
+                ? `Run ${selectedRun.id} • discovered ${selectedRun.messagesDiscovered} • relevant ${selectedRun.messagesRelevant} • matched ${selectedRun.messagesMatched}`
+                : "Review all messages captured in this sync run, including partial matches."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[calc(85vh-92px)] overflow-auto px-6 pb-6">
+            {isRunMessagesLoading ? (
+              <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading run messages...
+              </div>
+            ) : selectedRunItems.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">
+                No messages found for this run.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-lg border">
+                {selectedRunItems.map((item) => (
+                  <EmailViewerRow
+                    key={item.message.id}
+                    item={item}
+                    selectedCandidateId={
+                      candidateByMessageId[item.message.id] ?? ""
+                    }
+                    onCandidateChange={(value) =>
+                      setCandidateByMessageId((previous) => ({
+                        ...previous,
+                        [item.message.id]: value,
+                      }))
+                    }
+                    onApprove={() => void handleDecision(item, "approve")}
+                    onDeny={() => void handleDecision(item, "deny")}
+                    isActionLoading={isActionLoading}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

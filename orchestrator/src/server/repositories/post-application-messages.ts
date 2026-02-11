@@ -248,6 +248,28 @@ export async function listPostApplicationMessagesByReviewStatus(
   return rows.map(mapRowToPostApplicationMessage);
 }
 
+export async function listPostApplicationMessagesBySyncRun(
+  provider: PostApplicationProvider,
+  accountKey: string,
+  syncRunId: string,
+  limit = 300,
+): Promise<PostApplicationMessage[]> {
+  const rows = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(
+      and(
+        eq(postApplicationMessages.provider, provider),
+        eq(postApplicationMessages.accountKey, accountKey),
+        eq(postApplicationMessages.syncRunId, syncRunId),
+      ),
+    )
+    .orderBy(desc(postApplicationMessages.receivedAt))
+    .limit(limit);
+
+  return rows.map(mapRowToPostApplicationMessage);
+}
+
 export async function updatePostApplicationMessageReviewDecision(
   input: UpdatePostApplicationMessageReviewDecisionInput,
 ): Promise<PostApplicationMessage | null> {

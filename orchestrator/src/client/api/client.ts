@@ -744,6 +744,30 @@ export async function getPostApplicationRuns(input?: {
   );
 }
 
+export async function getPostApplicationRunMessages(input: {
+  runId: string;
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  limit?: number;
+}): Promise<{
+  run: PostApplicationSyncRun;
+  items: PostApplicationInboxItem[];
+  total: number;
+}> {
+  const params = new URLSearchParams();
+  params.set("provider", input.provider ?? "gmail");
+  params.set("accountKey", input.accountKey ?? "default");
+  if (typeof input.limit === "number") params.set("limit", String(input.limit));
+  const query = params.toString();
+  return fetchApi<{
+    run: PostApplicationSyncRun;
+    items: PostApplicationInboxItem[];
+    total: number;
+  }>(
+    `/post-application/runs/${encodeURIComponent(input.runId)}/messages?${query}`,
+  );
+}
+
 export async function getDemoInfo(): Promise<DemoInfoResponse> {
   return fetchApi<DemoInfoResponse>("/demo/info");
 }

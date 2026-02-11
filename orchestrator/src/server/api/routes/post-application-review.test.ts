@@ -19,7 +19,9 @@ describe.sequential("Post-Application Review Workflow API", () => {
     await stopServer({ server, closeDb, tempDir });
   });
 
-  async function seedPendingMessage(): Promise<{
+  async function seedPendingMessage(input?: {
+    syncRunId?: string | null;
+  }): Promise<{
     message: PostApplicationMessage;
     jobId: string;
     candidateId: string;
@@ -43,7 +45,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       provider: "gmail",
       accountKey: "default",
       integrationId: null,
-      syncRunId: null,
+      syncRunId: input?.syncRunId ?? null,
       externalMessageId: randomUUID(),
       fromAddress: "roku@smartrecruiters.com",
       fromDomain: "smartrecruiters.com",
@@ -243,6 +245,29 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(body.data.total).toBe(1);
     expect(body.data.runs[0].id).toBe(run.id);
     expect(body.data.runs[0].messagesMatched).toBe(6);
+  });
+
+  it("lists messages for a sync run", async () => {
+    const { startPostApplicationSyncRun } = await import(
+      "../../repositories/post-application-sync-runs"
+    );
+    const run = await startPostApplicationSyncRun({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+    });
+    const { message } = await seedPendingMessage({ syncRunId: run.id });
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/runs/${run.id}/messages?provider=gmail&accountKey=default`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.run.id).toBe(run.id);
+    expect(body.data.total).toBe(1);
+    expect(body.data.items[0].message.id).toBe(message.id);
   });
 
   it("validates message id params", async () => {

@@ -19,6 +19,7 @@ vi.mock("../api", () => ({
   postApplicationProviderDisconnect: vi.fn(),
   getPostApplicationInbox: vi.fn(),
   getPostApplicationRuns: vi.fn(),
+  getPostApplicationRunMessages: vi.fn(),
   approvePostApplicationInboxItem: vi.fn(),
   denyPostApplicationInboxItem: vi.fn(),
 }));
@@ -151,6 +152,11 @@ describe("TrackingInboxPage", () => {
     );
     vi.mocked(api.getPostApplicationRuns).mockResolvedValue({
       runs: [makeRun()],
+      total: 1,
+    });
+    vi.mocked(api.getPostApplicationRunMessages).mockResolvedValue({
+      run: makeRun(),
+      items: [makeInboxItem()],
       total: 1,
     });
     vi.mocked(api.postApplicationProviderConnect).mockResolvedValue(
@@ -314,5 +320,28 @@ describe("TrackingInboxPage", () => {
         code: "oauth-code",
       });
     });
+  });
+
+  it("opens run messages modal from recent sync run", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [makeInboxItem()],
+      total: 1,
+    });
+
+    renderPage();
+    await screen.findByText("Recent Sync Runs");
+
+    fireEvent.click(screen.getByRole("button", { name: /run-1/i }));
+
+    await waitFor(() => {
+      expect(api.getPostApplicationRunMessages).toHaveBeenCalledWith({
+        runId: "run-1",
+        provider: "gmail",
+        accountKey: "default",
+      });
+    });
+
+    await screen.findByRole("dialog");
+    expect(screen.getByText("Run Messages")).toBeInTheDocument();
   });
 });

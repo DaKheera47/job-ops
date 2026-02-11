@@ -10,8 +10,12 @@ import { getLatestPostApplicationMessageLinksByMessageIds } from "@server/reposi
 import {
   getPostApplicationMessageById,
   listPostApplicationMessagesByReviewStatus,
+  listPostApplicationMessagesBySyncRun,
 } from "@server/repositories/post-application-messages";
-import { listPostApplicationSyncRuns } from "@server/repositories/post-application-sync-runs";
+import {
+  getPostApplicationSyncRunById,
+  listPostApplicationSyncRuns,
+} from "@server/repositories/post-application-sync-runs";
 import type {
   ApplicationStage,
   PostApplicationInboxItem,
@@ -395,4 +399,72 @@ export async function listPostApplicationReviewRuns(args: {
     args.accountKey,
     args.limit ?? 20,
   );
+}
+
+export async function listPostApplicationRunMessages(args: {
+  provider: PostApplicationProvider;
+  accountKey: string;
+  runId: string;
+  limit?: number;
+}): Promise<{
+  run: PostApplicationSyncRun;
+  items: PostApplicationInboxItem[];
+}> {
+  const run = await getPostApplicationSyncRunById(args.runId);
+  if (
+    !run ||
+    run.provider !== args.provider ||
+    run.accountKey !== args.accountKey
+  ) {
+    throw notFound(`Post-application sync run '${args.runId}' not found.`);
+  }
+
+  const messages = await listPostApplicationMessagesBySyncRun(
+    args.provider,
+    args.accountKey,
+    args.runId,
+    args.limit ?? 300,
+  );
+
+  const messageIds = messages.map((message) => message.id);
+  const [candidateRows, latestLinks] = await Promise.all([
+    listPostApplicationMessageCandidatesByMessageIds(messageIds),
+    getLatestPostApplicationMessageLinksByMessageIds(messageIds),
+  ]);
+  const jobIds = Array.from(
+    new Set(candidateRows.map((candidate) => candidate.jobId)),
+  );
+  const jobs = await listJobSummariesByIds(jobIds);
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
+
+  const candidatesByMessageId = new Map<string, typeof candidateRows>();
+  for (const candidate of candidateRows) {
+    const job = jobById.get(candidate.jobId);
+    const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
+    existing.push({
+      ...candidate,
+      ...(job
+        ? {
+            job: {
+              id: job.id,
+              title: job.title,
+              employer: job.employer,
+            },
+          }
+        : {}),
+    });
+    candidatesByMessageId.set(candidate.messageId, existing);
+  }
+
+  const linkByMessageId = new Map(
+    latestLinks.map((link) => [link.messageId, link]),
+  );
+
+  const items = messages.map((message) => ({
+    message,
+    candidates: candidatesByMessageId.get(message.id) ?? [],
+    link: linkByMessageId.get(message.id) ?? null,
+  }));
+
+  return { run, items };
 }

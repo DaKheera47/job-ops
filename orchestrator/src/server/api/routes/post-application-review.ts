@@ -8,6 +8,7 @@ import {
   denyPostApplicationInboxItem,
   listPostApplicationInbox,
   listPostApplicationReviewRuns,
+  listPostApplicationRunMessages,
 } from "../../services/post-application/review";
 
 const listQuerySchema = z.object({
@@ -18,6 +19,10 @@ const listQuerySchema = z.object({
 
 const inboxParamsSchema = z.object({
   messageId: z.string().uuid(),
+});
+
+const runParamsSchema = z.object({
+  runId: z.string().uuid(),
 });
 
 const approveBodySchema = z.object({
@@ -73,6 +78,33 @@ postApplicationReviewRouter.get(
         ...(typeof query.limit === "number" ? { limit: query.limit } : {}),
       });
       ok(res, { runs, total: runs.length });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        fail(res, badRequest(error.message, error.flatten()));
+        return;
+      }
+      throw error;
+    }
+  }),
+);
+
+postApplicationReviewRouter.get(
+  "/runs/:runId/messages",
+  asyncRoute(async (req: Request, res: Response) => {
+    try {
+      const query = listQuerySchema.parse(req.query);
+      const { runId } = runParamsSchema.parse(req.params);
+      const result = await listPostApplicationRunMessages({
+        provider: query.provider,
+        accountKey: query.accountKey,
+        runId,
+        ...(typeof query.limit === "number" ? { limit: query.limit } : {}),
+      });
+      ok(res, {
+        run: result.run,
+        items: result.items,
+        total: result.items.length,
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         fail(res, badRequest(error.message, error.flatten()));
