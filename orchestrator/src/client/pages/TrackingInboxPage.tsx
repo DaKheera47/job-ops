@@ -543,6 +543,19 @@ export const TrackingInboxPage: React.FC = () => {
       />
 
       <PageMain className="space-y-4">
+        <section className="space-y-1 px-1">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Application Inbox Matching
+            </h1>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Connect your inbox to ingest related emails, review the suggested
+            job matches, and approve or deny to automatically update your
+            tracking timeline.
+          </p>
+        </section>
+
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Provider Controls</CardTitle>
