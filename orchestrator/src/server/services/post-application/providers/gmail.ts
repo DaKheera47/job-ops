@@ -4,12 +4,9 @@ import {
   getPostApplicationIntegration,
   upsertConnectedPostApplicationIntegration,
 } from "@server/repositories/post-application-integrations";
+import { runGmailIngestionSync } from "@server/services/post-application/ingestion/gmail-sync";
 import type { PostApplicationIntegration } from "@shared/types";
-import {
-  providerInvalidRequest,
-  providerNotImplemented,
-  providerUpstreamError,
-} from "./errors";
+import { providerInvalidRequest, providerUpstreamError } from "./errors";
 import type {
   PostApplicationProviderActionResult,
   PostApplicationProviderAdapter,
@@ -205,8 +202,41 @@ export const gmailProvider: PostApplicationProviderAdapter = {
   async sync(
     args: PostApplicationProviderSyncArgs,
   ): Promise<PostApplicationProviderActionResult> {
-    throw providerNotImplemented(
-      `Gmail sync is not implemented yet for account '${args.accountKey}'.`,
+    const integration = await getPostApplicationIntegration(
+      "gmail",
+      args.accountKey,
+    );
+    if (!integration) {
+      throw providerInvalidRequest(
+        `Gmail account '${args.accountKey}' is not connected.`,
+      );
+    }
+
+    const summary = await runGmailIngestionSync({
+      accountKey: args.accountKey,
+      maxMessages: args.payload?.maxMessages,
+      searchDays: args.payload?.searchDays,
+    });
+
+    const refreshedIntegration = await getPostApplicationIntegration(
+      "gmail",
+      args.accountKey,
+    );
+    logger.info("Gmail sync completed", {
+      provider: "gmail",
+      accountKey: args.accountKey,
+      initiatedBy: args.initiatedBy ?? null,
+      integrationId: integration.id,
+      discovered: summary.discovered,
+      relevant: summary.relevant,
+      classified: summary.classified,
+      errored: summary.errored,
+    });
+
+    return buildStatus(
+      args.accountKey,
+      refreshedIntegration,
+      `Sync complete: discovered=${summary.discovered}, relevant=${summary.relevant}, classified=${summary.classified}, errored=${summary.errored}.`,
     );
   },
 
