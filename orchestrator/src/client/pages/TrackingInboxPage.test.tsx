@@ -1,6 +1,6 @@
 import type {
+  Job,
   JobListItem,
-  JobsListResponse,
   PostApplicationInboxItem,
   PostApplicationProviderActionResponse,
   PostApplicationSyncRun,
@@ -175,7 +175,7 @@ function makeAppliedJob(overrides?: Partial<JobListItem>): JobListItem {
 
 function makeAppliedJobsResponse(
   jobs: JobListItem[],
-): JobsListResponse<JobListItem> {
+): Awaited<ReturnType<typeof api.getJobs>> {
   return {
     jobs,
     total: jobs.length,
@@ -188,6 +188,11 @@ function makeAppliedJobsResponse(
       expired: 0,
     },
     revision: `rev-${jobs.length}`,
+  } as unknown as {
+    jobs: Job[];
+    total: number;
+    byStatus: Record<Job["status"], number>;
+    revision: string;
   };
 }
 
@@ -512,6 +517,40 @@ describe("TrackingInboxPage", () => {
         expect.objectContaining({
           messageId: "message-1",
           jobId: "job-applied-fallback",
+        }),
+      );
+    });
+  });
+
+  it("allows approving no_reliable_match messages with applied-job fallback", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [
+        makeInboxItem({
+          message: {
+            ...makeInboxItem().message,
+            reviewStatus: "no_reliable_match",
+          },
+          candidates: [],
+        }),
+      ],
+      total: 1,
+    });
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeAppliedJobsResponse([makeAppliedJob({ id: "job-manual-1" })]),
+    );
+
+    renderPage();
+    await screen.findByText(/thanks for applying to roku/i);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Agree with suggested job match" }),
+    );
+
+    await waitFor(() => {
+      expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageId: "message-1",
+          jobId: "job-manual-1",
         }),
       );
     });

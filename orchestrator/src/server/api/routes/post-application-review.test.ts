@@ -84,6 +84,49 @@ describe.sequential("Post-Application Review Workflow API", () => {
     return { message, jobId: job.id, candidateId: candidate.id };
   }
 
+  async function seedNoReliableMatchMessage(): Promise<{
+    message: PostApplicationMessage;
+    jobId: string;
+  }> {
+    const { createJob } = await import("../../repositories/jobs");
+    const { upsertPostApplicationMessage } = await import(
+      "../../repositories/post-application-messages"
+    );
+
+    const job = await createJob({
+      source: "manual",
+      title: "Software Engineer",
+      employer: "Acme Corp",
+      jobUrl: `https://example.com/jobs/${randomUUID()}`,
+    });
+
+    const message = await upsertPostApplicationMessage({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+      syncRunId: null,
+      externalMessageId: randomUUID(),
+      fromAddress: "careers@acme.com",
+      fromDomain: "acme.com",
+      senderName: "Acme Careers",
+      subject: "Application update",
+      receivedAt: Date.now(),
+      snippet: "Thanks for applying. We have an update.",
+      classificationLabel: "Application update",
+      classificationConfidence: 0.9,
+      classificationPayload: {
+        companyName: "Acme Corp",
+      },
+      relevanceKeywordScore: 88,
+      relevanceLlmScore: null,
+      relevanceFinalScore: 88,
+      relevanceDecision: "relevant",
+      reviewStatus: "no_reliable_match",
+    });
+
+    return { message, jobId: job.id };
+  }
+
   it("lists pending inbox items with candidates", async () => {
     const { message, candidateId, jobId } = await seedPendingMessage();
 
@@ -124,6 +167,22 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.total).toBe(0);
+  });
+
+  it("includes no_reliable_match messages in inbox for manual assignment", async () => {
+    const { message } = await seedNoReliableMatchMessage();
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/inbox?provider=gmail&accountKey=default`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.total).toBe(1);
+    expect(body.data.items[0].message.id).toBe(message.id);
+    expect(body.data.items[0].message.reviewStatus).toBe("no_reliable_match");
+    expect(body.data.items[0].candidates).toHaveLength(0);
   });
 
   it("approves an inbox item and writes stage event + decision", async () => {
@@ -170,6 +229,30 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
     const updatedMessage = await getPostApplicationMessageById(message.id);
     expect(updatedMessage?.reviewStatus).toBe("approved");
+  });
+
+  it("approves a no_reliable_match message with explicit jobId", async () => {
+    const { message, jobId } = await seedNoReliableMatchMessage();
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          jobId,
+          decidedBy: "tester",
+        }),
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.message.reviewStatus).toBe("approved");
+    expect(body.data.message.matchedJobId).toBe(jobId);
   });
 
   it("denies an inbox item and keeps it out of pending queue", async () => {

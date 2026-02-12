@@ -25,6 +25,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,14 +42,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -173,7 +177,9 @@ const AppliedJobPicker: React.FC<AppliedJobPickerProps> = ({
                       setOpen(false);
                     }}
                   >
-                    <span className="truncate">{formatAppliedJobLabel(job)}</span>
+                    <span className="truncate">
+                      {formatAppliedJobLabel(job)}
+                    </span>
                     <Check
                       className={cn(
                         "ml-auto h-4 w-4 shrink-0",
@@ -223,8 +229,11 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
   const selectedScore = selectedCandidate
     ? Math.round(selectedCandidate.score)
     : null;
+  const isActionableReviewStatus =
+    item.message.reviewStatus === "pending_review" ||
+    item.message.reviewStatus === "no_reliable_match";
   const canDecide =
-    item.message.reviewStatus === "pending_review" &&
+    isActionableReviewStatus &&
     (hasCandidates ? !!selectedCandidateId : !!selectedAppliedJobId);
 
   return (
@@ -421,6 +430,7 @@ export const TrackingInboxPage: React.FC = () => {
   }, [refresh]);
 
   useEffect(() => {
+    if (!provider || !accountKey) return;
     setAppliedJobs([]);
     setAppliedJobByMessageId({});
     setHasAttemptedAppliedJobsLoad(false);
@@ -428,7 +438,9 @@ export const TrackingInboxPage: React.FC = () => {
 
   const hasZeroCandidateItems = useMemo(
     () =>
-      [...inbox, ...selectedRunItems].some((item) => item.candidates.length === 0),
+      [...inbox, ...selectedRunItems].some(
+        (item) => item.candidates.length === 0,
+      ),
     [inbox, selectedRunItems],
   );
 
@@ -677,7 +689,13 @@ export const TrackingInboxPage: React.FC = () => {
         setIsActionLoading(false);
       }
     },
-    [accountKey, appliedJobByMessageId, candidateByMessageId, provider, refresh],
+    [
+      accountKey,
+      appliedJobByMessageId,
+      candidateByMessageId,
+      provider,
+      refresh,
+    ],
   );
 
   const handleOpenRunMessages = useCallback(

@@ -281,7 +281,7 @@ async function persistMappingResult(args: {
   await updatePostApplicationMessageSuggestion({
     id: args.message.id,
     matchedJobId: chosenJobId,
-    reviewStatus: chosenJobId ? "pending_review" : "no_reliable_match",
+    reviewStatus: "pending_review",
   });
 }
 
@@ -299,7 +299,7 @@ export async function runJobMappingForMessage(args: {
     await updatePostApplicationMessageSuggestion({
       id: args.message.id,
       matchedJobId: null,
-      reviewStatus: "no_reliable_match",
+      reviewStatus: "pending_review",
     });
     return { matchedJobId: null, score: 0, usedLlmRerank: false };
   }

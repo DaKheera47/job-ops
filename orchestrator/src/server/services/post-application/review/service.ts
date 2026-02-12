@@ -22,6 +22,7 @@ import type {
   PostApplicationMessage,
   PostApplicationMessageCandidate,
   PostApplicationProvider,
+  PostApplicationReviewStatus,
   PostApplicationSyncRun,
 } from "@shared/types";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -76,17 +77,40 @@ function inferStageFromClassification(
   return null;
 }
 
+const ACTIONABLE_REVIEW_STATUSES: PostApplicationReviewStatus[] = [
+  "pending_review",
+  "no_reliable_match",
+];
+
+function isActionableReviewStatus(
+  status: PostApplicationReviewStatus,
+): boolean {
+  return ACTIONABLE_REVIEW_STATUSES.includes(status);
+}
+
 export async function listPostApplicationInbox(args: {
   provider: PostApplicationProvider;
   accountKey: string;
   limit?: number;
 }): Promise<PostApplicationInboxItem[]> {
-  const messages = await listPostApplicationMessagesByReviewStatus(
-    args.provider,
-    args.accountKey,
-    "pending_review",
-    args.limit ?? 50,
-  );
+  const limit = args.limit ?? 50;
+  const [pendingMessages, noMatchMessages] = await Promise.all([
+    listPostApplicationMessagesByReviewStatus(
+      args.provider,
+      args.accountKey,
+      "pending_review",
+      limit,
+    ),
+    listPostApplicationMessagesByReviewStatus(
+      args.provider,
+      args.accountKey,
+      "no_reliable_match",
+      limit,
+    ),
+  ]);
+  const messages = [...pendingMessages, ...noMatchMessages]
+    .sort((a, b) => b.receivedAt - a.receivedAt)
+    .slice(0, limit);
 
   const messageIds = messages.map((message) => message.id);
   const [candidateRows, latestLinks] = await Promise.all([
@@ -193,7 +217,7 @@ export async function approvePostApplicationInboxItem(args: {
   ) {
     throw notFound(`Post-application message '${args.messageId}' not found.`);
   }
-  if (message.reviewStatus !== "pending_review") {
+  if (!isActionableReviewStatus(message.reviewStatus)) {
     throw conflict(
       `Message '${args.messageId}' is already decided with status '${message.reviewStatus}'.`,
     );
@@ -380,7 +404,7 @@ export async function denyPostApplicationInboxItem(args: {
   ) {
     throw notFound(`Post-application message '${args.messageId}' not found.`);
   }
-  if (message.reviewStatus !== "pending_review") {
+  if (!isActionableReviewStatus(message.reviewStatus)) {
     throw conflict(
       `Message '${args.messageId}' is already decided with status '${message.reviewStatus}'.`,
     );
