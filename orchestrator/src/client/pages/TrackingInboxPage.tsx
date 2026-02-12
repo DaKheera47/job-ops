@@ -100,9 +100,12 @@ export const TrackingInboxPage: React.FC = () => {
     setIsAppliedJobsLoading(true);
     try {
       const response = await api.getJobs({
+        statuses: ["processing", "ready", "applied", "skipped", "expired"],
         view: "list",
       });
-      setAppliedJobs(response.jobs);
+      setAppliedJobs(
+        response.jobs.filter((job) => job.status !== "discovered"),
+      );
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to load jobs";

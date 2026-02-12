@@ -199,4 +199,19 @@ describe("TrackingInboxPage", () => {
       expect(api.approvePostApplicationInboxItem).toHaveBeenCalled();
     });
   });
+
+  it("loads dropdown jobs excluding discovered status", async () => {
+    render(
+      <MemoryRouter>
+        <TrackingInboxPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalledWith({
+        statuses: ["processing", "ready", "applied", "skipped", "expired"],
+        view: "list",
+      });
+    });
+  });
 });
