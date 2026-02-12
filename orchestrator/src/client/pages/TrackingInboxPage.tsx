@@ -6,9 +6,7 @@ import type {
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import {
-  Check,
   CheckCircle2,
-  ChevronsUpDown,
   CircleUserRound,
   Inbox,
   Link2,
@@ -25,14 +23,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -41,11 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
   SelectContent,
@@ -53,7 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn, formatDateTime } from "@/lib/utils";
+import { formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
 
@@ -116,86 +102,16 @@ function formatAppliedJobLabel(job: JobListItem): string {
   return job.id;
 }
 
-type AppliedJobPickerProps = {
-  jobs: JobListItem[];
-  selectedJobId: string;
-  isLoading: boolean;
-  disabled: boolean;
-  onJobChange: (jobId: string) => void;
-};
-
-const AppliedJobPicker: React.FC<AppliedJobPickerProps> = ({
-  jobs,
-  selectedJobId,
-  isLoading,
-  disabled,
-  onJobChange,
-}) => {
-  const [open, setOpen] = useState(false);
-  const selectedJob = jobs.find((job) => job.id === selectedJobId);
-  const triggerLabel = selectedJob
-    ? formatAppliedJobLabel(selectedJob)
-    : isLoading
-      ? "Loading applied jobs..."
-      : "Select applied job";
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-label="Select applied job"
-          aria-expanded={open}
-          disabled={disabled}
-          className="min-w-0 flex-1 justify-between"
-        >
-          <span className="truncate">{triggerLabel}</span>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-[360px] p-0">
-        <Command loop>
-          <CommandInput placeholder="Search applied jobs..." />
-          <CommandList
-            className="max-h-56"
-            onWheelCapture={(event) => event.stopPropagation()}
-          >
-            <CommandEmpty>
-              {isLoading ? "Loading applied jobs..." : "No applied jobs found."}
-            </CommandEmpty>
-            <CommandGroup>
-              {jobs.map((job) => {
-                const selected = selectedJobId === job.id;
-                return (
-                  <CommandItem
-                    key={job.id}
-                    value={`${job.employer} ${job.title} ${job.location ?? ""}`}
-                    onSelect={() => {
-                      onJobChange(job.id);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="truncate">
-                      {formatAppliedJobLabel(job)}
-                    </span>
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4 shrink-0",
-                        selected ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+function formatCandidateLabel(
+  candidate: PostApplicationInboxItem["candidates"][number],
+): string {
+  const employer = candidate.job?.employer?.trim() ?? "";
+  const title = candidate.job?.title?.trim() ?? "";
+  if (employer && title) return `${employer} - ${title}`;
+  if (employer) return employer;
+  if (title) return title;
+  return candidate.jobId;
+}
 
 type EmailViewerRowProps = {
   item: PostApplicationInboxItem;
@@ -235,6 +151,22 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
   const canDecide =
     isActionableReviewStatus &&
     (hasCandidates ? !!selectedCandidateId : !!selectedAppliedJobId);
+  const candidateOptions = item.candidates.map((candidate) => ({
+    value: candidate.id,
+    label: formatCandidateLabel(candidate),
+    searchText: [
+      candidate.job?.employer ?? "",
+      candidate.job?.title ?? "",
+      candidate.jobId,
+    ]
+      .join(" ")
+      .trim(),
+  }));
+  const appliedJobOptions = appliedJobs.map((job) => ({
+    value: job.id,
+    label: formatAppliedJobLabel(job),
+    searchText: `${job.employer} ${job.title} ${job.location ?? ""}`.trim(),
+  }));
 
   return (
     <div className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center">
@@ -262,25 +194,38 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
 
       <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
         {hasCandidates ? (
-          <Select value={selectedCandidateId} onValueChange={onCandidateChange}>
-            <SelectTrigger className="min-w-0 flex-1">
-              <SelectValue placeholder="Select candidate" />
-            </SelectTrigger>
-            <SelectContent>
-              {item.candidates.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  {candidate.job?.employer ?? candidate.jobId}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <AppliedJobPicker
-            jobs={appliedJobs}
-            selectedJobId={selectedAppliedJobId}
-            isLoading={isAppliedJobsLoading}
+          <SearchableDropdown
+            value={selectedCandidateId}
+            options={candidateOptions}
+            onValueChange={onCandidateChange}
+            placeholder="Select candidate"
+            searchPlaceholder="Search candidates..."
+            emptyText="No candidates found."
             disabled={isActionLoading}
-            onJobChange={onAppliedJobChange}
+            triggerClassName="min-w-0 flex-1"
+            contentClassName="w-[360px]"
+            ariaLabel="Select candidate"
+          />
+        ) : (
+          <SearchableDropdown
+            value={selectedAppliedJobId}
+            options={appliedJobOptions}
+            onValueChange={onAppliedJobChange}
+            placeholder={
+              isAppliedJobsLoading
+                ? "Loading applied jobs..."
+                : "Select applied job"
+            }
+            searchPlaceholder="Search applied jobs..."
+            emptyText={
+              isAppliedJobsLoading
+                ? "Loading applied jobs..."
+                : "No applied jobs found."
+            }
+            disabled={isActionLoading}
+            triggerClassName="min-w-0 flex-1"
+            contentClassName="w-[360px]"
+            ariaLabel="Select applied job"
           />
         )}
 

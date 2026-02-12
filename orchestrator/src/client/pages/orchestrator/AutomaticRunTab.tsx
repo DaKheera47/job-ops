@@ -1,4 +1,3 @@
-import * as PopoverPrimitive from "@radix-ui/react-popover";
 import {
   formatCountryLabel,
   isSourceAllowedForCountry,
@@ -6,7 +5,7 @@ import {
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
-import { Check, ChevronsUpDown, Loader2, Sparkles, X } from "lucide-react";
+import { Loader2, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -17,17 +16,9 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
@@ -35,7 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn, sourceLabel } from "@/lib/utils";
+import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
   type AutomaticPresetId,
@@ -131,7 +122,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
       defaultValues: {
@@ -193,7 +183,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchTermDraft: "",
     });
     setAdvancedOpen(false);
-    setCountryMenuOpen(false);
   }, [open, settings, reset]);
 
   const addSearchTerms = (input: string) => {
@@ -311,7 +300,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     }
   };
 
-  const countryOptions = SUPPORTED_COUNTRY_KEYS;
+  const countryOptions = useMemo(
+    () =>
+      SUPPORTED_COUNTRY_KEYS.map((country) => ({
+        value: country,
+        label: formatCountryLabel(country),
+      })),
+    [],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -357,69 +353,20 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
             <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
               <Label className="text-base font-semibold">Country</Label>
-              <Popover open={countryMenuOpen} onOpenChange={setCountryMenuOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={countryMenuOpen}
-                    aria-label={formatCountryLabel(values.country)}
-                    className="h-9 w-full justify-between md:max-w-xs"
-                  >
-                    {formatCountryLabel(values.country)}
-                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverPrimitive.Content
-                  align="start"
-                  sideOffset={4}
-                  className={cn(
-                    "z-50 w-[320px] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
-                    "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-                    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-                    "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
-                    "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-                    "origin-[--radix-popover-content-transform-origin]",
-                  )}
-                >
-                  <Command loop>
-                    <CommandInput placeholder="Search country..." />
-                    <CommandList
-                      className="max-h-56"
-                      onWheelCapture={(event) => event.stopPropagation()}
-                    >
-                      <CommandEmpty>No matching countries.</CommandEmpty>
-                      <CommandGroup>
-                        {countryOptions.map((country) => {
-                          const selected = values.country === country;
-                          const label = formatCountryLabel(country);
-                          return (
-                            <CommandItem
-                              key={country}
-                              value={`${country} ${label}`}
-                              onSelect={() => {
-                                setValue("country", country, {
-                                  shouldDirty: true,
-                                });
-                                setCountryMenuOpen(false);
-                              }}
-                            >
-                              {label}
-                              <Check
-                                className={cn(
-                                  "ml-auto h-4 w-4",
-                                  selected ? "opacity-100" : "opacity-0",
-                                )}
-                              />
-                            </CommandItem>
-                          );
-                        })}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverPrimitive.Content>
-              </Popover>
+              <SearchableDropdown
+                value={values.country}
+                options={countryOptions}
+                onValueChange={(country) =>
+                  setValue("country", country, {
+                    shouldDirty: true,
+                  })
+                }
+                placeholder="Select country"
+                searchPlaceholder="Search country..."
+                emptyText="No matching countries."
+                triggerClassName="h-9 w-full md:max-w-xs"
+                ariaLabel={formatCountryLabel(values.country)}
+              />
             </div>
             <Separator />
             <Accordion
