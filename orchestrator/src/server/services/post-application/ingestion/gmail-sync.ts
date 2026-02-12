@@ -1,5 +1,6 @@
 import { requestTimeout } from "@infra/errors";
 import { logger } from "@infra/logger";
+import { sanitizeUnknown } from "@infra/sanitize";
 import { getAllJobs } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
@@ -33,6 +34,7 @@ import { convert } from "html-to-text";
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
 const GMAIL_HTTP_TIMEOUT_MS = 15_000;
+const ROUTER_EMAIL_CHAR_LIMIT = 12_000;
 
 const SMART_ROUTER_SCHEMA: JsonSchemaDefinition = {
   name: "post_application_email_router",
@@ -148,7 +150,7 @@ function parseGmailCredentials(
   const accessToken = asString(credentials.accessToken) ?? undefined;
   const expiryDate =
     typeof credentials.expiryDate === "number" &&
-    Number.isFinite(credentials.expiryDate)
+      Number.isFinite(credentials.expiryDate)
       ? credentials.expiryDate
       : undefined;
 
@@ -536,6 +538,51 @@ async function classifyWithSmartRouter(args: {
   const overrideModel = await getSetting("model");
   const model =
     overrideModel || process.env.MODEL || "google/gemini-3-flash-preview";
+  const llmEmailText = args.emailText.slice(0, ROUTER_EMAIL_CHAR_LIMIT);
+
+
+  logger.info("Smart router LLM prompt debug", {
+    payload: sanitizeUnknown(
+      {
+        model,
+        activeJobsCount: args.activeJobs.length,
+        emailChars: llmEmailText.length,
+        estimatedTokens: Math.ceil(llmEmailText.length / 4),
+        emailHead: llmEmailText.slice(0, 3000),
+        emailTail:
+          llmEmailText.length > 3000 ? llmEmailText.slice(-3000) : "",
+        activeJobs: args.activeJobs,
+      },
+      { maxString: 3200, maxItems: 50, depth: 4 },
+    ),
+  });
+
+  logger.info(JSON.stringify({
+    model,
+    messages: [
+      {
+        role: "system",
+        content:
+          "You are a smart router for post-application emails. Return only strict JSON. Ignore sensitive data and include only routing fields.",
+      },
+      {
+        role: "user",
+        content: `Route this email to one active job if possible.
+- Choose bestMatchId only from provided active job ids, or null.
+- confidence is 0..100.
+- stageTarget must be one of: ${POST_APPLICATION_ROUTER_STAGE_TARGETS.join("|")}.
+- isRelevant should be true for recruitment/application lifecycle emails.
+- stageEventPayload should be minimal structured data or null.
+
+Active jobs:
+${JSON.stringify(args.activeJobs)}
+
+Email:
+${llmEmailText}`,
+      }]
+  }))
+
+  logger.info("")
 
   const llm = new LlmService();
   const result = await llm.callJson<{
@@ -566,7 +613,7 @@ Active jobs:
 ${JSON.stringify(args.activeJobs)}
 
 Email:
-${args.emailText.slice(0, 12000)}`,
+${llmEmailText}`,
       },
     ],
     jsonSchema: SMART_ROUTER_SCHEMA,
@@ -595,7 +642,7 @@ ${args.emailText.slice(0, 12000)}`,
     isRelevant: Boolean(result.data.isRelevant),
     stageEventPayload:
       result.data.stageEventPayload &&
-      typeof result.data.stageEventPayload === "object"
+        typeof result.data.stageEventPayload === "object"
         ? result.data.stageEventPayload
         : null,
     reason: String(result.data.reason ?? "").trim(),
