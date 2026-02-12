@@ -147,7 +147,7 @@ function parseGmailCredentials(
   const accessToken = asString(credentials.accessToken) ?? undefined;
   const expiryDate =
     typeof credentials.expiryDate === "number" &&
-    Number.isFinite(credentials.expiryDate)
+      Number.isFinite(credentials.expiryDate)
       ? credentials.expiryDate
       : undefined;
 
@@ -534,7 +534,7 @@ ${args.emailText.slice(0, 12000)}`,
     isRelevant: Boolean(result.data.isRelevant),
     stageEventPayload:
       result.data.stageEventPayload &&
-      typeof result.data.stageEventPayload === "object"
+        typeof result.data.stageEventPayload === "object"
         ? result.data.stageEventPayload
         : null,
     reason: String(result.data.reason ?? "").trim(),
@@ -604,6 +604,11 @@ async function createAutoStageEvent(args: {
   const transition = resolveStageTransitionForTarget(args.stageTarget);
   if (transition.toStage === "no_change") return;
 
+  const eventLabel =
+    args.stageTarget === "applied"
+      ? "Email received"
+      : `Logged from email: ${args.stageTarget}`;
+
   transitionStage(
     args.jobId,
     transition.toStage,
@@ -611,7 +616,7 @@ async function createAutoStageEvent(args: {
     {
       actor: "system",
       eventType: "status_update",
-      eventLabel: `Auto-logged ${args.stageTarget}`,
+      eventLabel,
       note: args.note,
       ...(transition.reasonCode ? { reasonCode: transition.reasonCode } : {}),
     },
