@@ -60,7 +60,7 @@ vi.mock("@server/services/llm-service", () => ({
       return Promise.resolve({
         success: true,
         data: {
-          bestMatchId: "job-1",
+          bestMatchIndex: 1,
           confidence: 99,
           stageTarget: "assessment",
           isRelevant: true,
