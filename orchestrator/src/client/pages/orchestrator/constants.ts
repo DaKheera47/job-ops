@@ -41,6 +41,11 @@ export const statusTokens: Record<
     badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
     dot: "bg-emerald-400",
   },
+  in_progress: {
+    label: "In Progress",
+    badge: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
+    dot: "bg-cyan-400",
+  },
   skipped: {
     label: "Skipped",
     badge: "border-rose-500/30 bg-rose-500/10 text-rose-200",
@@ -59,7 +64,12 @@ export const defaultStatusToken = {
   dot: "bg-muted-foreground",
 };
 
-export type FilterTab = "ready" | "discovered" | "applied" | "all";
+export type FilterTab =
+  | "ready"
+  | "discovered"
+  | "applied"
+  | "in_progress"
+  | "all";
 
 export type SortKey =
   | "discoveredAt"
@@ -117,6 +127,7 @@ export const tabs: Array<{
     statuses: ["discovered", "processing"],
   },
   { id: "applied", label: "Applied", statuses: ["applied"] },
+  { id: "in_progress", label: "In Progress", statuses: ["in_progress"] },
   { id: "all", label: "All Jobs", statuses: [] },
 ];
 
@@ -124,5 +135,6 @@ export const emptyStateCopy: Record<FilterTab, string> = {
   ready: "Run the pipeline to discover and process new jobs.",
   discovered: "All discovered jobs have been processed.",
   applied: "You have not applied to any jobs yet.",
+  in_progress: "No in-progress applications yet.",
   all: "No jobs in the system yet. Run the pipeline to get started.",
 };

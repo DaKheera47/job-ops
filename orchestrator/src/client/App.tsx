@@ -28,6 +28,8 @@ const REDIRECTS: Array<{ from: string; to: string }> = [
   { from: "/discovered/:jobId", to: "/jobs/discovered/:jobId" },
   { from: "/applied", to: "/jobs/applied" },
   { from: "/applied/:jobId", to: "/jobs/applied/:jobId" },
+  { from: "/in-progress", to: "/jobs/in_progress" },
+  { from: "/in-progress/:jobId", to: "/jobs/in_progress/:jobId" },
   { from: "/all", to: "/jobs/all" },
   { from: "/all/:jobId", to: "/jobs/all/:jobId" },
 ];

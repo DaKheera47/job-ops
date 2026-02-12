@@ -59,7 +59,13 @@ export const OrchestratorPage: React.FC = () => {
   } = useOrchestratorFilters();
 
   const activeTab = useMemo(() => {
-    const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
+    const validTabs: FilterTab[] = [
+      "ready",
+      "discovered",
+      "applied",
+      "in_progress",
+      "all",
+    ];
     if (tab && validTabs.includes(tab as FilterTab)) {
       return tab as FilterTab;
     }
@@ -83,7 +89,13 @@ export const OrchestratorPage: React.FC = () => {
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
-    const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
+    const validTabs: FilterTab[] = [
+      "ready",
+      "discovered",
+      "applied",
+      "in_progress",
+      "all",
+    ];
     if (tab && !validTabs.includes(tab as FilterTab)) {
       navigateWithContext("ready", null, true);
     }
@@ -386,6 +398,7 @@ export const OrchestratorPage: React.FC = () => {
       [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
       [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
       [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
+      [SHORTCUTS.tabInProgress.key]: () => setActiveTab("in_progress"),
       [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
       [SHORTCUTS.prevTabArrow.key]: (e) => {
         e.preventDefault();

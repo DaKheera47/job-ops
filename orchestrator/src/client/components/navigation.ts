@@ -17,6 +17,7 @@ export const NAV_LINKS: NavLink[] = [
       "/jobs/ready",
       "/jobs/discovered",
       "/jobs/applied",
+      "/jobs/in_progress",
       "/jobs/all",
     ],
   },

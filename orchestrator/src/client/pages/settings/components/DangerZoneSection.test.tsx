@@ -51,7 +51,7 @@ describe("DangerZoneSection", () => {
       <DangerZoneHarness initialStatuses={["applied"]} onClear={onClear} />,
     );
 
-    const appliedButton = screen.getByRole("button", { name: /applied/i });
+    const appliedButton = screen.getByRole("button", { name: /^applied\b/i });
     const clearButton = screen.getByRole("button", { name: /clear selected/i });
 
     expect(clearButton).toBeEnabled();

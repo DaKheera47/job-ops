@@ -66,9 +66,15 @@ export const SHORTCUTS = {
     label: "Applied tab",
     group: "tabs",
   },
-  tabAll: {
+  tabInProgress: {
     key: "4",
     displayKey: "4",
+    label: "In Progress tab",
+    group: "tabs",
+  },
+  tabAll: {
+    key: "5",
+    displayKey: "5",
     label: "All Jobs tab",
     group: "tabs",
   },

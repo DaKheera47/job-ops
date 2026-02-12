@@ -90,6 +90,7 @@ export const jobs = sqliteTable("jobs", {
       "processing",
       "ready",
       "applied",
+      "in_progress",
       "skipped",
       "expired",
     ],

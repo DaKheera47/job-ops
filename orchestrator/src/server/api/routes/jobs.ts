@@ -119,6 +119,7 @@ const updateJobSchema = z.object({
       "processing",
       "ready",
       "applied",
+      "in_progress",
       "skipped",
       "expired",
     ])
@@ -1004,7 +1005,7 @@ jobsRouter.delete("/status/:status", async (req: Request, res: Response) => {
 });
 
 /**
- * DELETE /api/jobs/score/:threshold - Clear jobs with score below threshold (excluding applied)
+ * DELETE /api/jobs/score/:threshold - Clear jobs with score below threshold (excluding post-apply statuses)
  */
 jobsRouter.delete("/score/:threshold", async (req: Request, res: Response) => {
   try {

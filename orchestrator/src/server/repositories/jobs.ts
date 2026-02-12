@@ -56,6 +56,8 @@ export async function getJobListItems(
     salary: jobs.salary,
     location: jobs.location,
     status: jobs.status,
+    outcome: jobs.outcome,
+    closedAt: jobs.closedAt,
     suitabilityScore: jobs.suitabilityScore,
     sponsorMatchScore: jobs.sponsorMatchScore,
     jobType: jobs.jobType,
@@ -294,6 +296,7 @@ export async function getJobStats(): Promise<Record<JobStatus, number>> {
     processing: 0,
     ready: 0,
     applied: 0,
+    in_progress: 0,
     skipped: 0,
     expired: 0,
   };
@@ -350,13 +353,17 @@ export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
 }
 
 /**
- * Delete jobs with suitability score below threshold (excluding applied jobs).
+ * Delete jobs with suitability score below threshold (excluding post-apply jobs).
  */
 export async function deleteJobsBelowScore(threshold: number): Promise<number> {
   const result = await db
     .delete(jobs)
     .where(
-      and(lt(jobs.suitabilityScore, threshold), ne(jobs.status, "applied")),
+      and(
+        lt(jobs.suitabilityScore, threshold),
+        ne(jobs.status, "applied"),
+        ne(jobs.status, "in_progress"),
+      ),
     )
     .run();
   return result.changes;

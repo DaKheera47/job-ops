@@ -75,6 +75,10 @@ export const JobPage: React.FC = () => {
     eventId?: string,
   ) => {
     if (!job) return;
+    if (job.status !== "in_progress") {
+      toast.error("Move this job to In Progress to track stages.");
+      return;
+    }
 
     let toStage: ApplicationStage | "no_change" = values.stage as
       | ApplicationStage
@@ -89,8 +93,7 @@ export const JobPage: React.FC = () => {
       outcome = "withdrawn";
     }
 
-    const currentStage =
-      events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null);
+    const currentStage = events.at(-1)?.toStage ?? "applied";
     const effectiveStage =
       toStage === "no_change" ? (currentStage ?? "applied") : toStage;
 
@@ -183,6 +186,7 @@ export const JobPage: React.FC = () => {
   const currentStage = job
     ? (events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null))
     : null;
+  const canTrackStages = job?.status === "in_progress";
 
   if (!id) {
     return null;
@@ -200,7 +204,7 @@ export const JobPage: React.FC = () => {
             size="sm"
             className="bg-primary text-primary-foreground hover:bg-primary/90"
             onClick={() => setIsLogModalOpen(true)}
-            disabled={!job}
+            disabled={!job || !canTrackStages}
           >
             <PlusCircle className="mr-2 h-4 w-4" />
             Log Event
@@ -250,10 +254,15 @@ export const JobPage: React.FC = () => {
             </div>
           </CardHeader>
           <CardContent>
+            {!canTrackStages && (
+              <div className="mb-4 rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
+                Move this job to In Progress to track application stages.
+              </div>
+            )}
             <JobTimeline
               events={events}
-              onEdit={handleEditEvent}
-              onDelete={confirmDeleteEvent}
+              onEdit={canTrackStages ? handleEditEvent : undefined}
+              onDelete={canTrackStages ? confirmDeleteEvent : undefined}
             />
           </CardContent>
         </Card>

@@ -17,13 +17,13 @@ const { jobs, stageEvents, tasks } = schema;
 
 const STAGE_TO_STATUS: Record<ApplicationStage, JobStatus> = {
   applied: "applied",
-  recruiter_screen: "applied",
-  assessment: "applied",
-  hiring_manager_screen: "applied",
-  technical_interview: "applied",
-  onsite: "applied",
-  offer: "applied",
-  closed: "applied",
+  recruiter_screen: "in_progress",
+  assessment: "in_progress",
+  hiring_manager_screen: "in_progress",
+  technical_interview: "in_progress",
+  onsite: "in_progress",
+  offer: "in_progress",
+  closed: "in_progress",
 };
 
 export const stageEventMetadataSchema = z

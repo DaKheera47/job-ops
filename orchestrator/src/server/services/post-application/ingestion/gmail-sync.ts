@@ -822,7 +822,11 @@ export async function runGmailIngestionSync(args: {
       searchDays,
       maxMessages,
     );
-    const activeJobs = await getAllJobs(["applied", "processing"]);
+    const activeJobs = await getAllJobs([
+      "applied",
+      "in_progress",
+      "processing",
+    ]);
     const activeJobMinified = minifyActiveJobs(activeJobs);
     const activeJobIds = new Set(activeJobMinified.map((job) => job.id));
     const concurrency = Math.max(

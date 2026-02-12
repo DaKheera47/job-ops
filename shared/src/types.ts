@@ -6,7 +6,8 @@ export type JobStatus =
   | "discovered" // Crawled but not processed
   | "processing" // Currently generating resume
   | "ready" // PDF generated, waiting for user to apply
-  | "applied" // User marked as applied
+  | "applied" // Application sent
+  | "in_progress" // In process beyond initial application
   | "skipped" // User skipped this job
   | "expired"; // Deadline passed
 
@@ -210,6 +211,8 @@ export type JobListItem = Pick<
   | "salary"
   | "location"
   | "status"
+  | "outcome"
+  | "closedAt"
   | "suitabilityScore"
   | "sponsorMatchScore"
   | "jobType"

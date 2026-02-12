@@ -48,7 +48,7 @@ export const HomePage: React.FC = () => {
 
     api
       .getJobs({
-        statuses: ["applied"],
+        statuses: ["applied", "in_progress"],
         view: "list",
       })
       .then(async (response) => {

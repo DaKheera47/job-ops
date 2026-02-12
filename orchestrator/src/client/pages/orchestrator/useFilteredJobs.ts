@@ -34,6 +34,12 @@ export const useFilteredJobs = (
       );
     } else if (activeTab === "applied") {
       filtered = filtered.filter((job) => job.status === "applied");
+    } else if (activeTab === "in_progress") {
+      filtered = filtered.filter((job) => job.status === "in_progress");
+    }
+
+    if (activeTab !== "all") {
+      filtered = filtered.filter((job) => job.closedAt == null);
     }
 
     if (sourceFilter !== "all") {

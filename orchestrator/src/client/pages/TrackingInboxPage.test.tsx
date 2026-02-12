@@ -238,7 +238,7 @@ describe("TrackingInboxPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["applied"],
+        statuses: ["applied", "in_progress"],
         view: "list",
       });
     });

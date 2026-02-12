@@ -884,6 +884,11 @@ describe("OrchestratorPage", () => {
 
     pressKey("4");
     await waitFor(() => {
+      expect(locationText()).toContain("/in_progress");
+    });
+
+    pressKey("5");
+    await waitFor(() => {
       expect(locationText()).toContain("/all");
     });
   });

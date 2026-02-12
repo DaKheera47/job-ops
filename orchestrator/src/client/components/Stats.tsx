@@ -27,6 +27,7 @@ const statConfig: Array<{
   { key: "processing", label: "Processing", Icon: Loader2 },
   { key: "ready", label: "Ready", Icon: Sparkles },
   { key: "applied", label: "Applied", Icon: CheckCircle2 },
+  { key: "in_progress", label: "In Progress", Icon: CheckCircle2 },
   { key: "skipped", label: "Skipped", Icon: XCircle },
   { key: "expired", label: "Expired", Icon: Clock },
 ];
@@ -42,7 +43,7 @@ export const Stats: React.FC<StatsProps> = ({ stats }) => {
       </CardHeader>
 
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-7">
           {statConfig.map(({ key, label, Icon }) => (
             <Card key={key} className="bg-muted/20">
               <CardContent className="p-4">

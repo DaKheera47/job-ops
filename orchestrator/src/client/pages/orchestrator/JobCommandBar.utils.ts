@@ -1,11 +1,17 @@
 import type { JobListItem, JobStatus } from "@shared/types.js";
 import type { FilterTab } from "./constants";
 
-export type CommandGroupId = "ready" | "discovered" | "applied" | "other";
+export type CommandGroupId =
+  | "ready"
+  | "discovered"
+  | "applied"
+  | "in_progress"
+  | "other";
 export type StatusLock =
   | "ready"
   | "discovered"
   | "applied"
+  | "in_progress"
   | "skipped"
   | "expired";
 
@@ -14,6 +20,7 @@ export const commandGroupMeta: Array<{ id: CommandGroupId; heading: string }> =
     { id: "ready", heading: "Ready" },
     { id: "discovered", heading: "Discovered" },
     { id: "applied", heading: "Applied" },
+    { id: "in_progress", heading: "In Progress" },
     { id: "other", heading: "Other" },
   ];
 
@@ -21,6 +28,7 @@ const lockAliases: Record<StatusLock, string[]> = {
   ready: ["ready", "rdy"],
   discovered: ["discovered", "discover", "disc"],
   applied: ["applied", "apply", "app"],
+  in_progress: ["in-progress", "in_progress", "inprogress", "progress", "ip"],
   skipped: ["skipped", "skip", "skp"],
   expired: ["expired", "expire", "exp"],
 };
@@ -29,6 +37,7 @@ export const lockLabel: Record<StatusLock, string> = {
   ready: "ready",
   discovered: "discovered",
   applied: "applied",
+  in_progress: "in progress",
   skipped: "skipped",
   expired: "expired",
 };
@@ -75,6 +84,7 @@ export const getCommandGroup = (status: JobStatus): CommandGroupId => {
   if (status === "ready") return "ready";
   if (status === "discovered" || status === "processing") return "discovered";
   if (status === "applied") return "applied";
+  if (status === "in_progress") return "in_progress";
   return "other";
 };
 
@@ -82,6 +92,7 @@ export const getFilterTab = (status: JobStatus): FilterTab => {
   if (status === "ready") return "ready";
   if (status === "discovered" || status === "processing") return "discovered";
   if (status === "applied") return "applied";
+  if (status === "in_progress") return "in_progress";
   return "all";
 };
 
@@ -123,6 +134,7 @@ export const jobMatchesLock = (job: JobListItem, lock: StatusLock) => {
   if (lock === "ready") return job.status === "ready";
   if (lock === "discovered") return job.status === "discovered";
   if (lock === "applied") return job.status === "applied";
+  if (lock === "in_progress") return job.status === "in_progress";
   if (lock === "skipped") return job.status === "skipped";
   if (lock === "expired") return job.status === "expired";
   return false;
@@ -155,6 +167,7 @@ export const groupJobsForCommandBar = (
     ready: [],
     discovered: [],
     applied: [],
+    in_progress: [],
     other: [],
   };
 
