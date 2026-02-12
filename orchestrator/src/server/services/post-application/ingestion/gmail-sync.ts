@@ -28,6 +28,7 @@ import {
   type PostApplicationMessageType,
   type PostApplicationRouterStageTarget,
 } from "@shared/types";
+import { convert } from "html-to-text";
 
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
@@ -407,13 +408,16 @@ function decodeBase64Url(value: string): string {
   return Buffer.from(padded, "base64").toString("utf8");
 }
 
-function htmlToText(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function cleanEmailHtmlForLlm(htmlContent: string): string {
+  return convert(htmlContent, {
+    wordwrap: 130,
+    selectors: [
+      { selector: "img", format: "skip" },
+      { selector: "a", options: { ignoreHref: true } },
+      { selector: "style", format: "skip" },
+      { selector: "script", format: "skip" },
+    ],
+  });
 }
 
 function extractBodyText(payload: GmailFullMessage["payload"]): string {
@@ -426,7 +430,7 @@ function extractBodyText(payload: GmailFullMessage["payload"]): string {
     if (data) {
       const decoded = decodeBase64Url(data);
       if (mimeType.includes("text/html")) {
-        chunks.push(htmlToText(decoded));
+        chunks.push(cleanEmailHtmlForLlm(decoded));
       } else if (mimeType.startsWith("text/")) {
         chunks.push(decoded);
       }
@@ -440,6 +444,10 @@ function extractBodyText(payload: GmailFullMessage["payload"]): string {
   walk(payload);
   return chunks.filter(Boolean).join("\n\n").trim();
 }
+
+export const __test__ = {
+  extractBodyText,
+};
 
 function buildEmailText(input: {
   from: string;
