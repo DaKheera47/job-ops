@@ -78,6 +78,17 @@ orchestrator/
 | POST | `/api/pipeline/run` | Trigger pipeline manually |
 | POST | `/api/webhook/trigger` | Webhook for n8n (use `WEBHOOK_SECRET`) |
 
+### Post-Application Tracking
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/post-application/inbox` | List pending messages for review |
+| POST | `/api/post-application/inbox/:id/approve` | Approve and link to job |
+| POST | `/api/post-application/inbox/:id/deny` | Ignore message |
+| GET | `/api/post-application/runs` | List sync run history |
+| POST | `/api/post-application/gmail/connect` | Initiate Gmail OAuth flow |
+| GET | `/api/post-application/gmail/callback` | Gmail OAuth callback |
+
 ## Daily Flow
 
 1. **17:00 - n8n triggers pipeline:**
@@ -93,6 +104,11 @@ orchestrator/
    - Click "View Job" to open application
    - Download PDF and apply manually
    - Click "Mark Applied" to mark application status
+
+3. **Track responses (optional):**
+   - Connect Gmail in Tracking Inbox settings
+   - Automatic email monitoring for interview invites, offers, rejections
+   - Review and approve/ignore matched emails in the Inbox
 
 ## n8n Setup
 

@@ -9,6 +9,7 @@ AI-powered job discovery and application pipeline. Automatically finds jobs, sco
 3. **Tailor**: Generates a custom resume summary for top-tier matches.
 4. **Export**: Uses [RxResume v4](https://v4.rxresu.me) to create tailored PDFs.
 5. **Manage**: Review and mark jobs as "Applied" via the dashboard (calls webhooks for lifecycle events).
+6. **Track**: Connect your Gmail to automatically track post-application emails (interviews, offers, rejections) via the **Tracking Inbox**. The Smart Router AI matches emails to your applied jobs and updates job application status automatically.
 
 ## Example of generating a tailored resume for a job
 
@@ -37,6 +38,19 @@ https://github.com/user-attachments/assets/06e5e782-47f5-42d0-8b28-b89102d7ea1b
   - Run the pipeline to fetch jobs → score → tailor → export PDFs
 
 - Review jobs in the dashboard and mark stages
+- (Optional) Connect Gmail to enable automatic post-application email tracking
+
+### Post-Application Tracking (Optional)
+
+Once you've applied to jobs, connect your Gmail account to automatically track responses:
+
+1. Go to **Tracking Inbox** in the dashboard
+2. Click **Connect Gmail** and authorize access
+3. The Smart Router AI will analyze incoming emails and match them to your applied jobs
+4. High-confidence matches (95%+) are auto-linked; others appear in your Inbox for review
+5. Interview invites, offers, and rejections automatically update your job timeline
+
+See `documentation/self-hosting.md` for Gmail OAuth setup instructions.
 
 ### Quick Start (commands)
 
@@ -76,6 +90,8 @@ The app will guide you through setup on first launch. The onboarding wizard help
 
 - Technical breakdowns here: `documentation/extractors/README.md`
 - Orchestrator docs here: `documentation/orchestrator.md`
+- Post-application tracking: `documentation/post-application-tracking.md`
+- Full documentation index: `documentation/README.md`
 - Persistent data lives in `./data` (bind-mounted into the container).
 
 ## Notes / sharp edges

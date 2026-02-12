@@ -15,14 +15,14 @@ This doc explains how the orchestrator thinks about job states, how the "Ready" 
 
 There are two main ways a job becomes Ready:
 
-1) **Manual flow (most common)**
+1. **Manual flow (most common)**
    - A job starts in `discovered`.
    - You open it in the Discovered panel, decide to Tailor.
    - In Tailor mode you can edit job description (optional), tailored summary, tailored headline, tailored skills, and project picks.
    - You click **Finalize & Move to Ready**.
    - This runs summarization (if needed), generates the PDF, and sets status to `ready`.
 
-2) **Auto flow (pipeline top picks)**
+2. **Auto flow (pipeline top picks)**
    - The pipeline scores all discovered jobs.
    - It auto-processes the top N above the score threshold.
    - Those jobs go directly to `ready` with PDFs generated.
@@ -58,13 +58,13 @@ If the job description or tailoring changes, regenerate the PDF so it stays in s
 
 ### Typical UI flow
 
-1) Edit job description or tailoring in the Discovered/Tailor view, or use ?Edit job description? in Ready.
-2) If you want AI to re-tailor based on the updated JD, click **Generate draft** (Discovered) or **AI Summarize** (editor).
-3) Click **Finalize & Move to Ready** (if still in Discovered) or **Regenerate PDF** (if already Ready).
+1. Edit job description or tailoring in the Discovered/Tailor view, or use ?Edit job description? in Ready.
+2. If you want AI to re-tailor based on the updated JD, click **Generate draft** (Discovered) or **AI Summarize** (editor).
+3. Click **Finalize & Move to Ready** (if still in Discovered) or **Regenerate PDF** (if already Ready).
 
 ### API flow (for automation)
 
-1) Update the data:
+1. Update the data:
 
 ```bash
 PATCH /api/jobs/:id
@@ -77,17 +77,43 @@ PATCH /api/jobs/:id
 }
 ```
 
-2) (Optional) re-run AI tailoring based on the new JD:
+2. (Optional) re-run AI tailoring based on the new JD:
 
 ```bash
 POST /api/jobs/:id/summarize?force=true
 ```
 
-3) Generate the PDF using current stored fields:
+3. Generate the PDF using current stored fields:
 
 ```bash
 POST /api/jobs/:id/generate-pdf
 ```
+
+## Post-Application Tracking (Tracking Inbox)
+
+After you've applied to jobs, the Tracking Inbox feature automatically monitors your Gmail for responses:
+
+### How it works
+
+1. **Gmail Sync**: Periodically checks your Gmail for recruitment-related emails
+2. **Smart Router AI**: Analyzes each email for:
+   - Relevance (is it about job applications?)
+   - Job matching (which applied job is this about?)
+   - Message type (interview, offer, rejection, update)
+   - Confidence score (0-100%)
+
+3. **Automatic Processing**:
+   - **95-100% confidence**: Auto-linked to the matched job, timeline updated
+   - **50-94% confidence**: Goes to Inbox for review with suggested match
+   - **<50% confidence**: Goes to Inbox as "orphan" if relevant; ignored if not
+
+4. **User Review**: Items in the Inbox wait for your approve/ignore decision
+
+### Gmail Setup
+
+1. Configure Gmail OAuth credentials (see `self-hosting.md`)
+2. In the UI: Tracking Inbox → Connect Gmail
+3. Authorize read-only Gmail access
 
 ## Notes and gotchas
 
