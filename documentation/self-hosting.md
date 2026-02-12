@@ -69,68 +69,51 @@ Notes:
 
 ## Email-to-Job Matching Decision Tree
 
-When Gmail sync runs, each discovered message goes through this full decision tree before it appears as matched (or unmatched) in Tracking Inbox:
+When Gmail sync runs, each discovered message goes through the Smart Router flow below before it appears in Tracking Inbox:
 
 ```mermaid
 flowchart TD
-  A[Message discovered from Gmail list API] --> B[Fetch metadata: From/Subject/Date/Snippet]
-  B --> C[Parse sender + receivedAt]
-  C --> D[Keyword relevance pre-filter]
+  A[Message discovered from Gmail list API] --> B[Fetch metadata + full body]
+  B --> C[Build email payload\nfrom/subject/date/snippet/body]
+  C --> D[Load active jobs\nstatus in applied or processing]
+  D --> E[Minify jobs for LLM\nid + company + title only]
+  E --> F[Smart Router LLM call\nbestMatchId + confidence 0-100 + messageType + isRelevant + stageEventPayload]
 
-  D --> D1{Exclusion terms in subject+snippet?\nnewsletter/weekly roundup/course/promotion/discount/event invitation/webinar/unsubscribe}
-  D1 -- Yes --> D2[Keyword score = 0]
-  D1 -- No --> D3[Compute weighted keyword score 0-100\nsubject + from + snippet rule matches]
+  F --> G{confidence >= 95 and valid bestMatchId?}
+  G -- Yes --> H[processing_status=auto_linked\nmatched_job_id=bestMatchId]
+  H --> I{messageType != other?}
+  I -- Yes --> J[Auto-create stage_event\ninterview/offer/rejection/update]
+  I -- No --> K[No stage event]
 
-  D2 --> E
-  D3 --> E{Policy gate by keyword score}
-  E -- < 60 --> F[Mark not_relevant\nreviewStatus=not_relevant\nStop mapping]
-  E -- >= 95 --> G[Mark relevant via keywords\nclassificationLabel=classifyByKeywords\nreviewStatus=pending_review]
-  E -- 60-94 --> H[Fetch full email body]
+  G -- No --> L{confidence 50-94?}
+  L -- Yes --> M[processing_status=pending_user\ntentative matched_job_id]
 
-  H --> I[LLM classification\nrelevanceScore + classificationLabel + confidence + reason + optional company/job title]
-  I --> J{Relevant after LLM?\nrelevanceScore >= 60\nand label != false positive}
-  J -- No --> K[Mark not_relevant\nreviewStatus=not_relevant\nStop mapping]
-  J -- Yes --> L[Mark relevant via LLM\nreviewStatus=pending_review]
+  L -- No --> N{isRelevant?}
+  N -- Yes --> O[processing_status=pending_user\nmatched_job_id=NULL (orphan)]
+  N -- No --> P[processing_status=ignored]
 
-  G --> M[Run job mapping]
-  L --> M
+  H --> Q[Save message + counters]
+  J --> Q
+  K --> Q
+  M --> Q
+  O --> Q
+  P --> Q
 
-  M --> N[Load candidate jobs filtered to status in applied/ready]
-  N --> O[Deterministic scoring per job]
-  O --> O1[Company overlap max 40\nfrom classification companyName or subject vs job employer]
-  O1 --> O2[Title overlap max 30\nfrom classification jobTitle/subject/snippet vs job title]
-  O2 --> O3[Domain match max 20\nfrom-domain contains employer token or employer URL domain]
-  O3 --> O4[Time proximity 1/2/4/7/10\nby days between email receivedAt and job appliedAt]
-  O4 --> P[Total score clamp 0-100\nSort desc, keep top 5 candidates]
-
-  P --> Q{Top candidate score >= 95?}
-  Q -- Yes --> R[Auto-select top job\nmethod=keyword]
-  Q -- No --> S{Top candidate score < 60?}
-  S -- Yes --> T[No matched job\nstore candidate list only]
-  S -- No --> U[LLM rerank over top candidates]
-
-  U --> V{LLM rerank valid result?\njobId in candidate set}
-  V -- No --> W[Fallback to deterministic top candidate]
-  V -- Yes --> X{LLM score >= 60?}
-  X -- No --> Y[No matched job]
-  X -- Yes --> Z[Select LLM-chosen job\nmethod=llm_rerank]
-
-  R --> AA[Persist candidates + suggestion\nreviewStatus=pending_review]
-  T --> AA
-  W --> AA
-  Y --> AA
-  Z --> AA
-
-  AA --> AB[If matchedJobId exists: increment matched count]
+  Q --> R[Tracking Inbox shows pending_user items]
+  R --> S{User decision}
+  S -- Yes --> T[Approve with selected job\nprocessing_status=manual_linked\ncreate stage_event when messageType != other]
+  S -- No --> U[Deny\nprocessing_status=ignored\nmatched_job_id=NULL]
 ```
 
 Key thresholds and filters:
 
-- Relevance thresholds: `<60` not relevant, `60-94` LLM required, `>=95` high-confidence relevant.
-- LLM relevance guard: still requires `relevanceScore >= 60` and classification label not equal to `false positive`.
-- Mapping thresholds: `<60` no match, `60-94` uncertain (LLM rerank path), `>=95` deterministic auto-match.
-- Candidate pool filter: only jobs in `applied` or `ready` statuses are considered for matching.
-- Candidate cap filter: only top `5` deterministic candidates are passed to reranking/persistence.
+- Router confidence thresholds:
+  - `>=95`: auto-link
+  - `50-94`: pending user review with tentative match
+  - `<50`: pending user orphan if relevant; otherwise ignored
+- Active job context sent to LLM is minimized to `{ id, company, title }` (cost/privacy control).
+- Candidate/link tables are no longer used; match state is stored directly on `post_application_messages`.
+- Tracking Inbox dropdown options are filtered to jobs in `applied` status.
 
 ## Persistent data
 
