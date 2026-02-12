@@ -1,6 +1,9 @@
 import { randomUUID } from "node:crypto";
 import type { Server } from "node:http";
-import type { PostApplicationMessage } from "@shared/types";
+import type {
+  PostApplicationMessage,
+  PostApplicationRouterStageTarget,
+} from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -21,6 +24,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
   async function seedPendingMessage(input?: {
     syncRunId?: string | null;
     matchedJobId?: string | null;
+    stageTarget?: PostApplicationRouterStageTarget;
   }): Promise<{
     message: PostApplicationMessage;
     jobId: string;
@@ -57,7 +61,11 @@ describe.sequential("Post-Application Review Workflow API", () => {
       relevanceLlmScore: 97,
       relevanceDecision: "relevant",
       matchConfidence: 97,
-      messageType: "interview",
+      stageTarget: input?.stageTarget ?? "technical_interview",
+      messageType:
+        input?.stageTarget === "rejected" || input?.stageTarget === "withdrawn"
+          ? "rejection"
+          : "interview",
       stageEventPayload: { note: "from test" },
       processingStatus: "pending_user",
       matchedJobId: input?.matchedJobId ?? job.id,
@@ -154,5 +162,67 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(body.data.run.id).toBe(run.id);
     expect(body.data.total).toBe(1);
     expect(body.data.items[0].message.id).toBe(message.id);
+  });
+
+  it("approves rejected target and sets closed stage with rejected outcome", async () => {
+    const { message, jobId } = await seedPendingMessage({
+      stageTarget: "rejected",
+    });
+    const { db, schema } = await import("../../db");
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          jobId,
+        }),
+      },
+    );
+
+    expect(res.status).toBe(200);
+
+    const stageRows = await db.select().from(schema.stageEvents);
+    expect(stageRows.at(-1)?.toStage).toBe("closed");
+    expect(stageRows.at(-1)?.outcome).toBe("rejected");
+
+    const jobRow = (await db.select().from(schema.jobs)).find(
+      (job) => job.id === jobId,
+    );
+    expect(jobRow?.outcome).toBe("rejected");
+  });
+
+  it("approves withdrawn target and sets closed stage with withdrawn outcome", async () => {
+    const { message, jobId } = await seedPendingMessage({
+      stageTarget: "withdrawn",
+    });
+    const { db, schema } = await import("../../db");
+
+    const res = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          jobId,
+        }),
+      },
+    );
+
+    expect(res.status).toBe(200);
+
+    const stageRows = await db.select().from(schema.stageEvents);
+    expect(stageRows.at(-1)?.toStage).toBe("closed");
+    expect(stageRows.at(-1)?.outcome).toBe("withdrawn");
+
+    const jobRow = (await db.select().from(schema.jobs)).find(
+      (job) => job.id === jobId,
+    );
+    expect(jobRow?.outcome).toBe("withdrawn");
   });
 });

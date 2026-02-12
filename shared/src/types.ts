@@ -412,6 +412,22 @@ export const POST_APPLICATION_MESSAGE_TYPES = [
 export type PostApplicationMessageType =
   (typeof POST_APPLICATION_MESSAGE_TYPES)[number];
 
+export const POST_APPLICATION_ROUTER_STAGE_TARGETS = [
+  "no_change",
+  "applied",
+  "recruiter_screen",
+  "assessment",
+  "hiring_manager_screen",
+  "technical_interview",
+  "onsite",
+  "offer",
+  "rejected",
+  "withdrawn",
+  "closed",
+] as const;
+export type PostApplicationRouterStageTarget =
+  (typeof POST_APPLICATION_ROUTER_STAGE_TARGETS)[number];
+
 export const POST_APPLICATION_PROCESSING_STATUSES = [
   "auto_linked",
   "pending_user",
@@ -477,6 +493,7 @@ export interface PostApplicationMessage {
   relevanceDecision: PostApplicationRelevanceDecision;
   matchedJobId: string | null;
   matchConfidence: number | null;
+  stageTarget: PostApplicationRouterStageTarget | null;
   messageType: PostApplicationMessageType;
   stageEventPayload: Record<string, unknown> | null;
   processingStatus: PostApplicationProcessingStatus;

@@ -1,7 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { requestTimeout } from "@infra/errors";
 import { logger } from "@infra/logger";
-import { db, schema } from "@server/db";
 import { getAllJobs } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
@@ -14,12 +12,22 @@ import {
   startPostApplicationSyncRun,
 } from "@server/repositories/post-application-sync-runs";
 import { getSetting } from "@server/repositories/settings";
+import { transitionStage } from "@server/services/applicationTracking";
 import {
   type JsonSchemaDefinition,
   LlmService,
 } from "@server/services/llm-service";
-import type { Job, PostApplicationMessageType } from "@shared/types";
-import { desc, eq } from "drizzle-orm";
+import {
+  messageTypeFromStageTarget,
+  normalizeStageTarget,
+  resolveStageTransitionForTarget,
+} from "@server/services/post-application/stage-target";
+import {
+  type Job,
+  POST_APPLICATION_ROUTER_STAGE_TARGETS,
+  type PostApplicationMessageType,
+  type PostApplicationRouterStageTarget,
+} from "@shared/types";
 
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
@@ -38,9 +46,11 @@ const SMART_ROUTER_SCHEMA: JsonSchemaDefinition = {
         type: "integer",
         description: "Confidence score 0-100 for routing decision.",
       },
-      messageType: {
+      stageTarget: {
         type: "string",
-        description: "One of: interview, rejection, offer, update, other.",
+        enum: [...POST_APPLICATION_ROUTER_STAGE_TARGETS],
+        description:
+          "Normalized stage target for this message, matching Log Event options.",
       },
       isRelevant: {
         type: "boolean",
@@ -60,7 +70,7 @@ const SMART_ROUTER_SCHEMA: JsonSchemaDefinition = {
     required: [
       "bestMatchId",
       "confidence",
-      "messageType",
+      "stageTarget",
       "isRelevant",
       "stageEventPayload",
       "reason",
@@ -107,6 +117,7 @@ type GmailFullMessage = GmailMetadataMessage & {
 type SmartRouterResult = {
   bestMatchId: string | null;
   confidence: number;
+  stageTarget: PostApplicationRouterStageTarget;
   messageType: PostApplicationMessageType;
   isRelevant: boolean;
   stageEventPayload: Record<string, unknown> | null;
@@ -445,14 +456,6 @@ Body:
 ${input.body}`.trim();
 }
 
-function normalizeMessageType(value: unknown): PostApplicationMessageType {
-  if (value === "interview") return "interview";
-  if (value === "rejection") return "rejection";
-  if (value === "offer") return "offer";
-  if (value === "update") return "update";
-  return "other";
-}
-
 function minifyActiveJobs(jobs: Job[]): Array<{
   id: string;
   company: string;
@@ -477,7 +480,7 @@ async function classifyWithSmartRouter(args: {
   const result = await llm.callJson<{
     bestMatchId: string | null;
     confidence: number;
-    messageType: string;
+    stageTarget: string;
     isRelevant: boolean;
     stageEventPayload: Record<string, unknown> | null;
     reason: string;
@@ -494,7 +497,7 @@ async function classifyWithSmartRouter(args: {
         content: `Route this email to one active job if possible.
 - Choose bestMatchId only from provided active job ids, or null.
 - confidence is 0..100.
-- messageType must be interview|rejection|offer|update|other.
+- stageTarget must be one of: ${POST_APPLICATION_ROUTER_STAGE_TARGETS.join("|")}.
 - isRelevant should be true for recruitment/application lifecycle emails.
 - stageEventPayload should be minimal structured data or null.
 
@@ -519,11 +522,15 @@ ${args.emailText.slice(0, 12000)}`,
     Math.min(100, Math.round(Number(result.data.confidence) || 0)),
   );
   const bestMatchId = asString(result.data.bestMatchId) ?? null;
+  const stageTarget =
+    normalizeStageTarget(result.data.stageTarget) ?? "no_change";
+  const messageType = messageTypeFromStageTarget(stageTarget);
 
   return {
     bestMatchId,
     confidence,
-    messageType: normalizeMessageType(result.data.messageType),
+    stageTarget,
+    messageType,
     isRelevant: Boolean(result.data.isRelevant),
     stageEventPayload:
       result.data.stageEventPayload &&
@@ -588,51 +595,28 @@ function normalizeErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
-function inferAutoStage(messageType: PostApplicationMessageType) {
-  if (messageType === "interview") return "technical_interview" as const;
-  if (messageType === "offer") return "offer" as const;
-  if (messageType === "rejection") return "closed" as const;
-  if (messageType === "update") return "recruiter_screen" as const;
-  return null;
-}
-
 async function createAutoStageEvent(args: {
   jobId: string;
-  messageType: PostApplicationMessageType;
+  stageTarget: PostApplicationRouterStageTarget;
   receivedAt: number;
   note: string;
-  stageEventPayload: Record<string, unknown> | null;
 }): Promise<void> {
-  const toStage = inferAutoStage(args.messageType);
-  if (!toStage) return;
+  const transition = resolveStageTransitionForTarget(args.stageTarget);
+  if (transition.toStage === "no_change") return;
 
-  const latestEvent = db
-    .select()
-    .from(schema.stageEvents)
-    .where(eq(schema.stageEvents.applicationId, args.jobId))
-    .orderBy(desc(schema.stageEvents.occurredAt))
-    .get();
-  const fromStage = latestEvent?.toStage ?? null;
-
-  db.insert(schema.stageEvents)
-    .values({
-      id: randomUUID(),
-      applicationId: args.jobId,
-      title: `Auto-logged ${args.messageType}`,
-      groupId: "post_application_router",
-      fromStage,
-      toStage,
-      occurredAt: Math.floor(args.receivedAt / 1000),
-      metadata: {
-        actor: "system",
-        eventType: "status_update",
-        eventLabel: `Auto-logged ${args.messageType}`,
-        note: args.note,
-        routerPayload: args.stageEventPayload,
-      },
-      outcome: null,
-    })
-    .run();
+  transitionStage(
+    args.jobId,
+    transition.toStage,
+    Math.floor(args.receivedAt / 1000),
+    {
+      actor: "system",
+      eventType: "status_update",
+      eventLabel: `Auto-logged ${args.stageTarget}`,
+      note: args.note,
+      ...(transition.reasonCode ? { reasonCode: transition.reasonCode } : {}),
+    },
+    transition.outcome,
+  );
 }
 
 async function runWithConcurrency<T>(
@@ -779,11 +763,12 @@ export async function runGmailIngestionSync(args: {
           subject,
           receivedAt,
           snippet: metadata.snippet,
-          classificationLabel: routerResult.messageType,
+          classificationLabel: routerResult.stageTarget,
           classificationConfidence: routerResult.confidence / 100,
           classificationPayload: {
             method: "smart_router",
             reason: routerResult.reason,
+            stageTarget: routerResult.stageTarget,
           },
           relevanceLlmScore: routerResult.confidence,
           relevanceDecision: routerResult.isRelevant
@@ -791,6 +776,7 @@ export async function runGmailIngestionSync(args: {
             : "not_relevant",
           matchedJobId: isAutoLinked || isPendingMatch ? matchedJobId : null,
           matchConfidence: routerResult.confidence,
+          stageTarget: routerResult.stageTarget,
           messageType: routerResult.messageType,
           stageEventPayload: routerResult.stageEventPayload,
           processingStatus,
@@ -806,15 +792,13 @@ export async function runGmailIngestionSync(args: {
 
         if (
           savedMessage.processingStatus === "auto_linked" &&
-          savedMessage.matchedJobId &&
-          savedMessage.messageType !== "other"
+          savedMessage.matchedJobId
         ) {
           await createAutoStageEvent({
             jobId: savedMessage.matchedJobId,
-            messageType: savedMessage.messageType,
+            stageTarget: savedMessage.stageTarget ?? "no_change",
             receivedAt: savedMessage.receivedAt,
             note: "Auto-created from Smart Router.",
-            stageEventPayload: savedMessage.stageEventPayload,
           });
         }
       } catch (error) {

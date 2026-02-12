@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { conflict, notFound, unprocessableEntity } from "@infra/errors";
 import { db, schema } from "@server/db";
 import { getJobById, listJobSummariesByIds } from "@server/repositories/jobs";
@@ -12,37 +11,22 @@ import {
   getPostApplicationSyncRunById,
   listPostApplicationSyncRuns,
 } from "@server/repositories/post-application-sync-runs";
+import { transitionStage } from "@server/services/applicationTracking";
+import {
+  resolveStageTransitionForTarget,
+  stageTargetFromMessageType,
+} from "@server/services/post-application/stage-target";
 import type {
   ApplicationStage,
   PostApplicationInboxItem,
   PostApplicationMessage,
   PostApplicationProvider,
+  PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { desc, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-const { jobs, postApplicationSyncRuns, stageEvents } = schema;
-
-const STAGE_TO_JOB_STATUS: Record<ApplicationStage, "applied"> = {
-  applied: "applied",
-  recruiter_screen: "applied",
-  assessment: "applied",
-  hiring_manager_screen: "applied",
-  technical_interview: "applied",
-  onsite: "applied",
-  offer: "applied",
-  closed: "applied",
-};
-
-function inferStageFromMessageType(
-  message: PostApplicationMessage,
-): ApplicationStage | null {
-  if (message.messageType === "interview") return "technical_interview";
-  if (message.messageType === "offer") return "offer";
-  if (message.messageType === "rejection") return "closed";
-  if (message.messageType === "update") return "recruiter_screen";
-  return null;
-}
+const { postApplicationSyncRuns } = schema;
 
 function buildMatchedJobMap(
   items: PostApplicationMessage[],
@@ -82,6 +66,7 @@ export async function approvePostApplicationInboxItem(args: {
   provider: PostApplicationProvider;
   accountKey: string;
   jobId?: string;
+  stageTarget?: PostApplicationRouterStageTarget;
   toStage?: ApplicationStage;
   note?: string;
   decidedBy?: string | null;
@@ -118,70 +103,43 @@ export async function approvePostApplicationInboxItem(args: {
   const updated = db.transaction(() => {
     let stageEventId: string | null = null;
 
-    if (message.messageType !== "other") {
-      const latestEvent = db
-        .select()
-        .from(stageEvents)
-        .where(eq(stageEvents.applicationId, resolvedJobId))
-        .orderBy(desc(stageEvents.occurredAt))
-        .limit(1)
-        .get();
+    const resolvedTarget =
+      args.stageTarget ??
+      (args.toStage as PostApplicationRouterStageTarget | undefined) ??
+      message.stageTarget ??
+      stageTargetFromMessageType(message.messageType);
+    const transition = resolveStageTransitionForTarget(resolvedTarget);
 
-      const fromStage =
-        (latestEvent?.toStage as ApplicationStage | undefined) ?? null;
-      const finalToStage =
-        args.toStage ??
-        inferStageFromMessageType(message) ??
-        fromStage ??
-        "applied";
-
-      const occurredAtSeconds = Math.floor(
-        Number.isFinite(message.receivedAt)
-          ? message.receivedAt / 1000
-          : decidedAt / 1000,
+    if (transition.toStage !== "no_change") {
+      const event = transitionStage(
+        resolvedJobId,
+        transition.toStage,
+        Math.floor(
+          Number.isFinite(message.receivedAt)
+            ? message.receivedAt / 1000
+            : decidedAt / 1000,
+        ),
+        {
+          actor: "system",
+          eventType: "status_update",
+          eventLabel: `Post-application: ${resolvedTarget}`,
+          note: args.note ?? null,
+          reasonCode: transition.reasonCode ?? "post_application_manual_linked",
+        },
+        transition.outcome,
       );
-      stageEventId = randomUUID();
-
-      db.insert(stageEvents)
-        .values({
-          id: stageEventId,
-          applicationId: resolvedJobId,
-          title: `Post-application: ${message.messageType}`,
-          groupId: "post_application_router",
-          fromStage,
-          toStage: finalToStage,
-          occurredAt: occurredAtSeconds,
-          metadata: {
-            actor: "system",
-            eventType: "status_update",
-            eventLabel: `Post-application: ${message.messageType}`,
-            note: args.note ?? null,
-            reasonCode: "post_application_manual_linked",
-          },
-          outcome: null,
-        })
-        .run();
-
-      const shouldSetAppliedAt = !targetJob.appliedAt;
-      db.update(jobs)
-        .set({
-          status: STAGE_TO_JOB_STATUS[finalToStage],
-          ...(shouldSetAppliedAt
-            ? { appliedAt: new Date(decidedAt).toISOString() }
-            : {}),
-          updatedAt: new Date(decidedAt).toISOString(),
-        })
-        .where(eq(jobs.id, resolvedJobId))
-        .run();
+      stageEventId = event.id;
     }
 
-    db.update(postApplicationSyncRuns)
-      .set({
-        messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
-        updatedAt: new Date(decidedAt).toISOString(),
-      })
-      .where(eq(postApplicationSyncRuns.id, message.syncRunId ?? ""))
-      .run();
+    if (message.syncRunId) {
+      db.update(postApplicationSyncRuns)
+        .set({
+          messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
+          updatedAt: new Date(decidedAt).toISOString(),
+        })
+        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .run();
+    }
 
     return { stageEventId };
   });

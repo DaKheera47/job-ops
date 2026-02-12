@@ -371,6 +371,7 @@ export const TrackingInboxPage: React.FC = () => {
             provider,
             accountKey,
             jobId: selectedJobId ?? undefined,
+            stageTarget: item.message.stageTarget ?? undefined,
           });
           toast.success("Message linked");
         } else {

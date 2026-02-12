@@ -5,9 +5,14 @@ import type {
   PostApplicationProcessingStatus,
   PostApplicationProvider,
   PostApplicationRelevanceDecision,
+  PostApplicationRouterStageTarget,
 } from "@shared/types";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
+import {
+  normalizeStageTarget,
+  stageTargetFromMessageType,
+} from "../services/post-application/stage-target";
 
 const { postApplicationMessages } = schema;
 
@@ -30,6 +35,7 @@ type UpsertPostApplicationMessageInput = {
   relevanceLlmScore?: number | null;
   relevanceDecision: PostApplicationRelevanceDecision;
   matchConfidence?: number | null;
+  stageTarget?: PostApplicationRouterStageTarget | null;
   messageType: PostApplicationMessageType;
   stageEventPayload?: Record<string, unknown> | null;
   processingStatus: PostApplicationProcessingStatus;
@@ -67,6 +73,13 @@ function isTerminalProcessingStatus(
 function mapRowToPostApplicationMessage(
   row: typeof postApplicationMessages.$inferSelect,
 ): PostApplicationMessage {
+  const stageEventPayload =
+    (row.stageEventPayload as Record<string, unknown> | null) ?? null;
+  const stageTarget =
+    normalizeStageTarget(stageEventPayload?.suggestedStageTarget) ??
+    normalizeStageTarget(row.classificationLabel) ??
+    stageTargetFromMessageType(row.messageType as PostApplicationMessageType);
+
   return {
     id: row.id,
     provider: row.provider,
@@ -90,9 +103,9 @@ function mapRowToPostApplicationMessage(
       row.relevanceDecision as PostApplicationRelevanceDecision,
     matchedJobId: row.matchedJobId,
     matchConfidence: row.matchConfidence,
+    stageTarget,
     messageType: row.messageType as PostApplicationMessageType,
-    stageEventPayload:
-      (row.stageEventPayload as Record<string, unknown> | null) ?? null,
+    stageEventPayload,
     processingStatus: row.processingStatus as PostApplicationProcessingStatus,
     decidedAt: row.decidedAt,
     decidedBy: row.decidedBy,
@@ -134,6 +147,14 @@ export async function getPostApplicationMessageById(
 export async function upsertPostApplicationMessage(
   input: UpsertPostApplicationMessageInput,
 ): Promise<PostApplicationMessage> {
+  const stageTarget =
+    input.stageTarget ??
+    normalizeStageTarget(input.classificationLabel) ??
+    stageTargetFromMessageType(input.messageType);
+  const stageEventPayload = {
+    ...(input.stageEventPayload ?? {}),
+    suggestedStageTarget: stageTarget,
+  };
   const nowIso = new Date().toISOString();
   const existing = await getPostApplicationMessageByExternalId(
     input.provider,
@@ -167,7 +188,7 @@ export async function upsertPostApplicationMessage(
         relevanceDecision: input.relevanceDecision,
         matchConfidence: input.matchConfidence ?? null,
         messageType: input.messageType,
-        stageEventPayload: input.stageEventPayload ?? null,
+        stageEventPayload,
         processingStatus: nextProcessingStatus,
         matchedJobId: input.matchedJobId ?? null,
         decidedAt: input.decidedAt ?? null,
@@ -213,7 +234,7 @@ export async function upsertPostApplicationMessage(
     relevanceDecision: input.relevanceDecision,
     matchConfidence: input.matchConfidence ?? null,
     messageType: input.messageType,
-    stageEventPayload: input.stageEventPayload ?? null,
+    stageEventPayload,
     processingStatus: input.processingStatus,
     matchedJobId: input.matchedJobId ?? null,
     decidedAt: input.decidedAt ?? null,

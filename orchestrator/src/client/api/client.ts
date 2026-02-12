@@ -25,6 +25,7 @@ import type {
   PostApplicationInboxItem,
   PostApplicationProvider,
   PostApplicationProviderActionResponse,
+  PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
   ProfileStatusResponse,
   ResumeProfile,
@@ -676,6 +677,7 @@ export async function approvePostApplicationInboxItem(input: {
   provider?: PostApplicationProvider;
   accountKey?: string;
   jobId?: string;
+  stageTarget?: PostApplicationRouterStageTarget;
   toStage?: ApplicationStage;
   note?: string;
   decidedBy?: string;
@@ -692,6 +694,7 @@ export async function approvePostApplicationInboxItem(input: {
       provider: input.provider ?? "gmail",
       accountKey: input.accountKey ?? "default",
       ...(input.jobId ? { jobId: input.jobId } : {}),
+      ...(input.stageTarget ? { stageTarget: input.stageTarget } : {}),
       ...(input.toStage ? { toStage: input.toStage } : {}),
       ...(input.note ? { note: input.note } : {}),
       ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),

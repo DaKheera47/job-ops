@@ -41,6 +41,7 @@ function makeInboxItem() {
       relevanceDecision: "relevant" as const,
       matchedJobId: "job-2",
       matchConfidence: 95,
+      stageTarget: "technical_interview" as const,
       messageType: "interview" as const,
       stageEventPayload: null,
       processingStatus: "pending_user" as const,
