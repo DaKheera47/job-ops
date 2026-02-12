@@ -79,17 +79,17 @@ flowchart TD
   D --> E[Minify jobs for LLM\nid + company + title only]
   E --> F[Smart Router LLM call\nbestMatchId + confidence 0-100 + messageType + isRelevant + stageEventPayload]
 
-  F --> G{confidence >= 95 and valid bestMatchId?}
+  F --> G{confidence gte 95 and valid bestMatchId}
   G -- Yes --> H[processing_status=auto_linked\nmatched_job_id=bestMatchId]
-  H --> I{messageType != other?}
+  H --> I{messageType is not other}
   I -- Yes --> J[Auto-create stage_event\ninterview/offer/rejection/update]
   I -- No --> K[No stage event]
 
-  G -- No --> L{confidence 50-94?}
+  G -- No --> L{confidence between 50 and 94}
   L -- Yes --> M[processing_status=pending_user\ntentative matched_job_id]
 
-  L -- No --> N{isRelevant?}
-  N -- Yes --> O[processing_status=pending_user\nmatched_job_id=NULL (orphan)]
+  L -- No --> N{isRelevant}
+  N -- Yes --> O[processing_status=pending_user\nmatched_job_id=NULL orphan]
   N -- No --> P[processing_status=ignored]
 
   H --> Q[Save message + counters]
