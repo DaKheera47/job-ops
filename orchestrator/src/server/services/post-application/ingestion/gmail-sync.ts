@@ -1,6 +1,5 @@
 import { requestTimeout } from "@infra/errors";
 import { logger } from "@infra/logger";
-import { sanitizeUnknown } from "@infra/sanitize";
 import { getAllJobs } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
@@ -735,8 +734,7 @@ async function createAutoStageEvent(args: {
       eventType: "status_update",
       eventLabel,
       note: args.note,
-      reasonCode: "post_application_auto_linked",
-      ...(transition.reasonCode ? { reasonCode: transition.reasonCode } : {}),
+      reasonCode: transition.reasonCode ?? "post_application_auto_linked",
     },
     transition.outcome,
   );

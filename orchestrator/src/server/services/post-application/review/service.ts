@@ -5,7 +5,6 @@ import {
   getPostApplicationMessageById,
   listPostApplicationMessagesByProcessingStatus,
   listPostApplicationMessagesBySyncRun,
-  updatePostApplicationMessageDecision,
 } from "@server/repositories/post-application-messages";
 import {
   getPostApplicationSyncRunById,
@@ -26,7 +25,7 @@ import type {
 } from "@shared/types";
 import { eq, sql } from "drizzle-orm";
 
-const { postApplicationSyncRuns } = schema;
+const { postApplicationMessages, postApplicationSyncRuns } = schema;
 
 function buildMatchedJobMap(
   items: PostApplicationMessage[],
@@ -100,8 +99,25 @@ export async function approvePostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
-  const updated = db.transaction(() => {
+  const updated = db.transaction((tx) => {
     let stageEventId: string | null = null;
+
+    const messageUpdateResult = tx
+      .update(postApplicationMessages)
+      .set({
+        processingStatus: "manual_linked",
+        matchedJobId: resolvedJobId,
+        decidedAt,
+        decidedBy: args.decidedBy ?? null,
+        updatedAt: new Date(decidedAt).toISOString(),
+      })
+      .where(eq(postApplicationMessages.id, message.id))
+      .run();
+    if (messageUpdateResult.changes === 0) {
+      throw notFound(
+        `Post-application message '${message.id}' not found after approval.`,
+      );
+    }
 
     const resolvedTarget =
       args.stageTarget ??
@@ -132,7 +148,7 @@ export async function approvePostApplicationInboxItem(args: {
     }
 
     if (message.syncRunId) {
-      db.update(postApplicationSyncRuns)
+      tx.update(postApplicationSyncRuns)
         .set({
           messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
           updatedAt: new Date(decidedAt).toISOString(),
@@ -144,13 +160,7 @@ export async function approvePostApplicationInboxItem(args: {
     return { stageEventId };
   });
 
-  const updatedMessage = await updatePostApplicationMessageDecision({
-    id: message.id,
-    processingStatus: "manual_linked",
-    matchedJobId: resolvedJobId,
-    decidedAt,
-    decidedBy: args.decidedBy ?? null,
-  });
+  const updatedMessage = await getPostApplicationMessageById(message.id);
 
   if (!updatedMessage) {
     throw notFound(
@@ -184,23 +194,36 @@ export async function denyPostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
-  if (message.syncRunId) {
-    db.update(postApplicationSyncRuns)
+  db.transaction((tx) => {
+    const messageUpdateResult = tx
+      .update(postApplicationMessages)
       .set({
-        messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
+        processingStatus: "ignored",
+        matchedJobId: null,
+        decidedAt,
+        decidedBy: args.decidedBy ?? null,
         updatedAt: new Date(decidedAt).toISOString(),
       })
-      .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+      .where(eq(postApplicationMessages.id, message.id))
       .run();
-  }
+    if (messageUpdateResult.changes === 0) {
+      throw notFound(
+        `Post-application message '${message.id}' not found after denial.`,
+      );
+    }
 
-  const updatedMessage = await updatePostApplicationMessageDecision({
-    id: message.id,
-    processingStatus: "ignored",
-    matchedJobId: null,
-    decidedAt,
-    decidedBy: args.decidedBy ?? null,
+    if (message.syncRunId) {
+      tx.update(postApplicationSyncRuns)
+        .set({
+          messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
+          updatedAt: new Date(decidedAt).toISOString(),
+        })
+        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .run();
+    }
   });
+
+  const updatedMessage = await getPostApplicationMessageById(message.id);
   if (!updatedMessage) {
     throw notFound(
       `Post-application message '${message.id}' not found after denial.`,

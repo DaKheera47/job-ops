@@ -683,11 +683,11 @@ export async function approvePostApplicationInboxItem(input: {
   decidedBy?: string;
 }): Promise<{
   message: PostApplicationInboxItem["message"];
-  stageEventId: string;
+  stageEventId: string | null;
 }> {
   return fetchApi<{
     message: PostApplicationInboxItem["message"];
-    stageEventId: string;
+    stageEventId: string | null;
   }>(`/post-application/inbox/${encodeURIComponent(input.messageId)}/approve`, {
     method: "POST",
     body: JSON.stringify({
