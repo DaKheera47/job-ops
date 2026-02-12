@@ -158,7 +158,7 @@ function parseGmailCredentials(
   const accessToken = asString(credentials.accessToken) ?? undefined;
   const expiryDate =
     typeof credentials.expiryDate === "number" &&
-      Number.isFinite(credentials.expiryDate)
+    Number.isFinite(credentials.expiryDate)
       ? credentials.expiryDate
       : undefined;
 
@@ -651,7 +651,7 @@ ${llmEmailText}`,
     isRelevant: Boolean(result.data.isRelevant),
     stageEventPayload:
       result.data.stageEventPayload &&
-        typeof result.data.stageEventPayload === "object"
+      typeof result.data.stageEventPayload === "object"
         ? result.data.stageEventPayload
         : null,
     reason: String(result.data.reason ?? "").trim(),
