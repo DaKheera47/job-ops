@@ -154,7 +154,10 @@ const AppliedJobPicker: React.FC<AppliedJobPickerProps> = ({
       <PopoverContent align="start" className="w-[360px] p-0">
         <Command loop>
           <CommandInput placeholder="Search applied jobs..." />
-          <CommandList className="max-h-56">
+          <CommandList
+            className="max-h-56"
+            onWheelCapture={(event) => event.stopPropagation()}
+          >
             <CommandEmpty>
               {isLoading ? "Loading applied jobs..." : "No applied jobs found."}
             </CommandEmpty>
