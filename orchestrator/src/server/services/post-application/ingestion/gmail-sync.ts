@@ -420,20 +420,74 @@ function cleanEmailHtmlForLlm(htmlContent: string): string {
   });
 }
 
+function normalizeChunkForDedup(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function decodeTextPart(
+  part: NonNullable<GmailFullMessage["payload"]>,
+): string {
+  const data = part.body?.data;
+  if (!data) return "";
+  const decoded = decodeBase64Url(data);
+  const mimeType = String(part.mimeType ?? "").toLowerCase();
+  if (mimeType.includes("text/html")) {
+    return cleanEmailHtmlForLlm(decoded);
+  }
+  if (mimeType.startsWith("text/")) {
+    return decoded;
+  }
+  return "";
+}
+
 function extractBodyText(payload: GmailFullMessage["payload"]): string {
   if (!payload) return "";
   const chunks: string[] = [];
+  const seen = new Set<string>();
+  const addChunk = (value: string): void => {
+    const chunk = value.trim();
+    if (!chunk) return;
+    const normalized = normalizeChunkForDedup(chunk);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    chunks.push(chunk);
+  };
 
   const walk = (part: NonNullable<GmailFullMessage["payload"]>): void => {
     const mimeType = String(part.mimeType ?? "").toLowerCase();
-    const data = part.body?.data;
-    if (data) {
-      const decoded = decodeBase64Url(data);
-      if (mimeType.includes("text/html")) {
-        chunks.push(cleanEmailHtmlForLlm(decoded));
-      } else if (mimeType.startsWith("text/")) {
-        chunks.push(decoded);
+
+    if (mimeType === "multipart/alternative") {
+      const children = (part.parts ?? []) as Array<
+        NonNullable<GmailFullMessage["payload"]>
+      >;
+      const plainChild = children.find(
+        (child) => String(child.mimeType ?? "").toLowerCase() === "text/plain",
+      );
+      const plainText = plainChild ? decodeTextPart(plainChild).trim() : "";
+      if (plainText.length > 50) {
+        addChunk(plainText);
+        return;
       }
+
+      if (plainText) {
+        addChunk(plainText);
+        return;
+      }
+
+      const htmlChild = children.find((child) =>
+        String(child.mimeType ?? "")
+          .toLowerCase()
+          .includes("text/html"),
+      );
+      if (htmlChild) {
+        addChunk(decodeTextPart(htmlChild));
+        return;
+      }
+    }
+
+    const chunk = decodeTextPart(part);
+    if (chunk) {
+      addChunk(chunk);
     }
 
     for (const child of part.parts ?? []) {
@@ -442,24 +496,23 @@ function extractBodyText(payload: GmailFullMessage["payload"]): string {
   };
 
   walk(payload);
-  return chunks.filter(Boolean).join("\n\n").trim();
+  return chunks.join("\n\n").trim();
 }
 
 export const __test__ = {
   extractBodyText,
+  buildEmailText,
 };
 
 function buildEmailText(input: {
   from: string;
   subject: string;
   date: string;
-  snippet: string;
   body: string;
 }): string {
   return `From: ${input.from}
 Subject: ${input.subject}
 Date: ${input.date}
-Snippet: ${input.snippet}
 Body:
 ${input.body}`.trim();
 }
@@ -743,7 +796,6 @@ export async function runGmailIngestionSync(args: {
           from,
           subject,
           date,
-          snippet: metadata.snippet,
           body,
         });
         const routerResult = await classifyWithSmartRouter({

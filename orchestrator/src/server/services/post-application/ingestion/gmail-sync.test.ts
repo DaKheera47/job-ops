@@ -137,29 +137,93 @@ describe("gmail sync body extraction", () => {
     expect(body).not.toContain("banner.png");
   });
 
-  it("keeps plain text parts and combines multipart text/html payloads", () => {
+  it("uses text/plain only for multipart/alternative when plain text exceeds threshold", () => {
     const payload = {
       mimeType: "multipart/alternative",
       parts: [
         {
           mimeType: "text/plain",
-          body: { data: encodeBase64Url("Plain text section") },
+          body: {
+            data: encodeBase64Url(
+              "This plain text message is definitely longer than fifty characters and should win.",
+            ),
+          },
         },
         {
           mimeType: "text/html",
-          body: { data: encodeBase64Url("<p>HTML <b>section</b></p>") },
+          body: {
+            data: encodeBase64Url(
+              "<p>HTML version should be ignored when plain text is long enough.</p>",
+            ),
+          },
         },
       ],
     };
 
     const body = __test__.extractBodyText(payload);
-    const parts = body.split("\n\n");
+    expect(body).toContain("plain text message");
+    expect(body).not.toContain("HTML version should be ignored");
+  });
 
-    expect(parts[0]).toBe("Plain text section");
-    expect(parts[1]).toContain("HTML section");
+  it("prefers plain text even when multipart/alternative plain text is short", () => {
+    const payload = {
+      mimeType: "multipart/alternative",
+      parts: [
+        {
+          mimeType: "text/plain",
+          body: { data: encodeBase64Url("Too short") },
+        },
+        {
+          mimeType: "text/html",
+          body: {
+            data: encodeBase64Url("<p>Preferred <b>HTML</b> content</p>"),
+          },
+        },
+      ],
+    };
+
+    const body = __test__.extractBodyText(payload);
+    expect(body).toContain("Too short");
+    expect(body).not.toContain("Preferred HTML content");
+  });
+
+  it("deduplicates repeated text chunks across parts", () => {
+    const payload = {
+      mimeType: "multipart/mixed",
+      parts: [
+        {
+          mimeType: "text/plain",
+          body: { data: encodeBase64Url("Repeated sentence here.") },
+        },
+        {
+          mimeType: "text/plain",
+          body: { data: encodeBase64Url("Repeated sentence here.") },
+        },
+      ],
+    };
+
+    const body = __test__.extractBodyText(payload);
+    expect(body).toBe("Repeated sentence here.");
   });
 
   it("returns empty string when payload is missing", () => {
     expect(__test__.extractBodyText(undefined)).toBe("");
+  });
+});
+
+describe("gmail sync prompt assembly", () => {
+  it("omits snippet from email text sent to the llm", () => {
+    const emailText = __test__.buildEmailText({
+      from: "jobs@example.com",
+      subject: "Interview update",
+      date: "Mon, 1 Jan 2026 10:00:00 +0000",
+      body: "Hello from body",
+    });
+
+    expect(emailText).toContain("From: jobs@example.com");
+    expect(emailText).toContain("Subject: Interview update");
+    expect(emailText).toContain("Date: Mon, 1 Jan 2026 10:00:00 +0000");
+    expect(emailText).toContain("Body:\nHello from body");
+    expect(emailText).not.toContain("Snippet:");
   });
 });
