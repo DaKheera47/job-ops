@@ -40,8 +40,17 @@ vi.mock("@/components/ui/chart", () => ({
 }));
 
 vi.mock("recharts", () => ({
-  BarChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="bar-chart">{children}</div>
+  BarChart: ({
+    children,
+    data,
+  }: {
+    children: React.ReactNode;
+    data?: unknown;
+  }) => (
+    <div data-testid="bar-chart">
+      {children}
+      <div data-testid="bar-chart-data">{JSON.stringify(data)}</div>
+    </div>
   ),
   Bar: () => <div data-testid="bar">Bar</div>,
   Cell: () => <div data-testid="cell">Cell</div>,
@@ -326,6 +335,69 @@ describe("ConversionAnalytics - Edge Cases", () => {
 
       // Job should count in all stages it reached
       expect(screen.getByTestId("bar-chart")).toBeInTheDocument();
+    });
+
+    it("adds rejected funnel bar using rejected outcome/reason code only", () => {
+      const today = mockDate.toISOString();
+      const jobs = [
+        createJob("job-1", today, [
+          createEvent("closed", 1704844800000),
+          createStageEvent({
+            id: "event-rejected-1",
+            applicationId: "job-1",
+            toStage: "closed",
+            occurredAt: 1704844800001,
+            outcome: "rejected",
+          }),
+        ]),
+        createJob("job-2", today, [
+          createStageEvent({
+            id: "event-rejected-2",
+            applicationId: "job-2",
+            toStage: "closed",
+            occurredAt: 1704844800002,
+            metadata: { reasonCode: "rejected" },
+          }),
+        ]),
+        createJob("job-3", today, [
+          createStageEvent({
+            id: "event-withdrawn",
+            applicationId: "job-3",
+            toStage: "closed",
+            occurredAt: 1704844800003,
+            outcome: "withdrawn",
+          }),
+        ]),
+      ];
+
+      render(
+        <ConversionAnalytics
+          jobsWithEvents={jobs}
+          error={null}
+          daysToShow={7}
+        />,
+      );
+
+      expect(
+        screen.getByText(
+          "Funnel: Applied → Screening → Interview → Offer → Rejected",
+        ),
+      ).toBeInTheDocument();
+
+      const chartDataRaw = screen.getByTestId("bar-chart-data").textContent;
+      expect(chartDataRaw).not.toBeNull();
+
+      const chartData = JSON.parse(chartDataRaw ?? "[]") as Array<{
+        name: string;
+        value: number;
+      }>;
+      const rejectedDataPoint = chartData.find(
+        (point) => point.name === "Rejected",
+      );
+
+      expect(rejectedDataPoint).toEqual(
+        expect.objectContaining({ name: "Rejected", value: 2 }),
+      );
     });
   });
 
