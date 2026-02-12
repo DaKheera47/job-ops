@@ -41,7 +41,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       jobUrl: `https://example.com/jobs/${randomUUID()}`,
     });
 
-    const message = await upsertPostApplicationMessage({
+    const { message } = await upsertPostApplicationMessage({
       provider: "gmail",
       accountKey: "default",
       integrationId: null,

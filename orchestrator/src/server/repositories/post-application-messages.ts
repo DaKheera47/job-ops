@@ -64,6 +64,13 @@ type UpdatePostApplicationMessageDecisionInput = {
   decidedBy?: string | null;
 };
 
+export type UpsertPostApplicationMessageResult = {
+  message: PostApplicationMessage;
+  wasCreated: boolean;
+  previousProcessingStatus: PostApplicationProcessingStatus | null;
+  autoLinkTransitioned: boolean;
+};
+
 function isTerminalProcessingStatus(
   status: PostApplicationProcessingStatus,
 ): boolean {
@@ -146,7 +153,7 @@ export async function getPostApplicationMessageById(
 
 export async function upsertPostApplicationMessage(
   input: UpsertPostApplicationMessageInput,
-): Promise<PostApplicationMessage> {
+): Promise<UpsertPostApplicationMessageResult> {
   const stageTarget =
     input.stageTarget ??
     normalizeStageTarget(input.classificationLabel) ??
@@ -168,6 +175,9 @@ export async function upsertPostApplicationMessage(
     )
       ? existing.processingStatus
       : input.processingStatus;
+    const autoLinkTransitioned =
+      existing.processingStatus !== "auto_linked" &&
+      nextProcessingStatus === "auto_linked";
 
     await db
       .update(postApplicationMessages)
@@ -209,7 +219,12 @@ export async function upsertPostApplicationMessage(
         `Failed to load updated post-application message ${input.externalMessageId}.`,
       );
     }
-    return updated;
+    return {
+      message: updated,
+      wasCreated: false,
+      previousProcessingStatus: existing.processingStatus,
+      autoLinkTransitioned,
+    };
   }
 
   const id = randomUUID();
@@ -255,7 +270,12 @@ export async function upsertPostApplicationMessage(
       `Failed to load created post-application message ${input.externalMessageId}.`,
     );
   }
-  return created;
+  return {
+    message: created,
+    wasCreated: true,
+    previousProcessingStatus: null,
+    autoLinkTransitioned: input.processingStatus === "auto_linked",
+  };
 }
 
 export async function updatePostApplicationMessageSuggestion(

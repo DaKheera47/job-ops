@@ -147,7 +147,7 @@ function parseGmailCredentials(
   const accessToken = asString(credentials.accessToken) ?? undefined;
   const expiryDate =
     typeof credentials.expiryDate === "number" &&
-      Number.isFinite(credentials.expiryDate)
+    Number.isFinite(credentials.expiryDate)
       ? credentials.expiryDate
       : undefined;
 
@@ -534,7 +534,7 @@ ${args.emailText.slice(0, 12000)}`,
     isRelevant: Boolean(result.data.isRelevant),
     stageEventPayload:
       result.data.stageEventPayload &&
-        typeof result.data.stageEventPayload === "object"
+      typeof result.data.stageEventPayload === "object"
         ? result.data.stageEventPayload
         : null,
     reason: String(result.data.reason ?? "").trim(),
@@ -618,6 +618,7 @@ async function createAutoStageEvent(args: {
       eventType: "status_update",
       eventLabel,
       note: args.note,
+      reasonCode: "post_application_auto_linked",
       ...(transition.reasonCode ? { reasonCode: transition.reasonCode } : {}),
     },
     transition.outcome,
@@ -755,37 +756,38 @@ export async function runGmailIngestionSync(args: {
             ? "pending_user"
             : "ignored";
 
-        const savedMessage = await upsertPostApplicationMessage({
-          provider: "gmail",
-          accountKey: args.accountKey,
-          integrationId: integration.id,
-          syncRunId: syncRun.id,
-          externalMessageId: metadata.id,
-          externalThreadId: metadata.threadId,
-          fromAddress,
-          fromDomain,
-          senderName,
-          subject,
-          receivedAt,
-          snippet: metadata.snippet,
-          classificationLabel: routerResult.stageTarget,
-          classificationConfidence: routerResult.confidence / 100,
-          classificationPayload: {
-            method: "smart_router",
-            reason: routerResult.reason,
+        const { message: savedMessage, autoLinkTransitioned } =
+          await upsertPostApplicationMessage({
+            provider: "gmail",
+            accountKey: args.accountKey,
+            integrationId: integration.id,
+            syncRunId: syncRun.id,
+            externalMessageId: metadata.id,
+            externalThreadId: metadata.threadId,
+            fromAddress,
+            fromDomain,
+            senderName,
+            subject,
+            receivedAt,
+            snippet: metadata.snippet,
+            classificationLabel: routerResult.stageTarget,
+            classificationConfidence: routerResult.confidence / 100,
+            classificationPayload: {
+              method: "smart_router",
+              reason: routerResult.reason,
+              stageTarget: routerResult.stageTarget,
+            },
+            relevanceLlmScore: routerResult.confidence,
+            relevanceDecision: routerResult.isRelevant
+              ? "relevant"
+              : "not_relevant",
+            matchedJobId: isAutoLinked || isPendingMatch ? matchedJobId : null,
+            matchConfidence: routerResult.confidence,
             stageTarget: routerResult.stageTarget,
-          },
-          relevanceLlmScore: routerResult.confidence,
-          relevanceDecision: routerResult.isRelevant
-            ? "relevant"
-            : "not_relevant",
-          matchedJobId: isAutoLinked || isPendingMatch ? matchedJobId : null,
-          matchConfidence: routerResult.confidence,
-          stageTarget: routerResult.stageTarget,
-          messageType: routerResult.messageType,
-          stageEventPayload: routerResult.stageEventPayload,
-          processingStatus,
-        });
+            messageType: routerResult.messageType,
+            stageEventPayload: routerResult.stageEventPayload,
+            processingStatus,
+          });
 
         if (savedMessage.processingStatus !== "ignored") {
           relevant += 1;
@@ -795,10 +797,7 @@ export async function runGmailIngestionSync(args: {
           matched += 1;
         }
 
-        if (
-          savedMessage.processingStatus === "auto_linked" &&
-          savedMessage.matchedJobId
-        ) {
+        if (autoLinkTransitioned && savedMessage.matchedJobId) {
           await createAutoStageEvent({
             jobId: savedMessage.matchedJobId,
             stageTarget: savedMessage.stageTarget ?? "no_change",
