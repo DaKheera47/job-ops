@@ -6,15 +6,12 @@ import type {
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import {
-  CheckCircle2,
-  CircleUserRound,
   Inbox,
   Link2,
   Loader2,
   RefreshCcw,
   Unplug,
   Upload,
-  XCircle,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -31,7 +28,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
   SelectContent,
@@ -42,6 +38,7 @@ import {
 import { formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
+import { EmailViewerList } from "./tracking-inbox/EmailViewerList";
 
 const PROVIDER_OPTIONS: PostApplicationProvider[] = [
   ...POST_APPLICATION_PROVIDERS,
@@ -70,198 +67,6 @@ function formatEpochMs(value?: number | null): string {
   if (!value) return "n/a";
   return formatDateTime(new Date(value).toISOString()) ?? "n/a";
 }
-
-function getSenderLabel(
-  senderName: string | null,
-  fromAddress: string,
-): string {
-  const preferred = (senderName ?? "").trim();
-  if (preferred) return preferred;
-  const trimmed = fromAddress.trim();
-  if (!trimmed) return "Unknown sender";
-  const bracketIndex = trimmed.indexOf("<");
-  if (bracketIndex > 0) {
-    return trimmed.slice(0, bracketIndex).trim() || trimmed;
-  }
-  return trimmed;
-}
-
-function scoreTextClass(score: number | null): string {
-  if (score === null) return "text-muted-foreground/60";
-  if (score >= 70) return "text-emerald-400/90";
-  if (score >= 50) return "text-foreground/60";
-  return "text-muted-foreground/60";
-}
-
-function formatAppliedJobLabel(job: JobListItem): string {
-  const employer = job.employer.trim();
-  const title = job.title.trim();
-  if (employer && title) return `${employer} - ${title}`;
-  if (title) return title;
-  if (employer) return employer;
-  return job.id;
-}
-
-function formatCandidateLabel(
-  candidate: PostApplicationInboxItem["candidates"][number],
-): string {
-  const employer = candidate.job?.employer?.trim() ?? "";
-  const title = candidate.job?.title?.trim() ?? "";
-  if (employer && title) return `${employer} - ${title}`;
-  if (employer) return employer;
-  if (title) return title;
-  return candidate.jobId;
-}
-
-type EmailViewerRowProps = {
-  item: PostApplicationInboxItem;
-  appliedJobs: JobListItem[];
-  selectedCandidateId: string;
-  selectedAppliedJobId: string;
-  onCandidateChange: (candidateId: string) => void;
-  onAppliedJobChange: (jobId: string) => void;
-  onApprove: () => void;
-  onDeny: () => void;
-  isActionLoading: boolean;
-  isAppliedJobsLoading: boolean;
-};
-
-const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
-  item,
-  appliedJobs,
-  selectedCandidateId,
-  selectedAppliedJobId,
-  onCandidateChange,
-  onAppliedJobChange,
-  onApprove,
-  onDeny,
-  isActionLoading,
-  isAppliedJobsLoading,
-}) => {
-  const hasCandidates = item.candidates.length > 0;
-  const selectedCandidate = item.candidates.find(
-    (candidate) => candidate.id === selectedCandidateId,
-  );
-  const selectedScore = selectedCandidate
-    ? Math.round(selectedCandidate.score)
-    : null;
-  const isActionableReviewStatus =
-    item.message.reviewStatus === "pending_review" ||
-    item.message.reviewStatus === "no_reliable_match";
-  const canDecide =
-    isActionableReviewStatus &&
-    (hasCandidates ? !!selectedCandidateId : !!selectedAppliedJobId);
-  const candidateOptions = item.candidates.map((candidate) => ({
-    value: candidate.id,
-    label: formatCandidateLabel(candidate),
-    searchText: [
-      candidate.job?.employer ?? "",
-      candidate.job?.title ?? "",
-      candidate.jobId,
-    ]
-      .join(" ")
-      .trim(),
-  }));
-  const appliedJobOptions = appliedJobs.map((job) => ({
-    value: job.id,
-    label: formatAppliedJobLabel(job),
-    searchText: `${job.employer} ${job.title} ${job.location ?? ""}`.trim(),
-  }));
-
-  return (
-    <div className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center">
-      <div className="min-w-0 space-y-2">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border bg-muted/50 text-muted-foreground">
-            <CircleUserRound className="h-3.5 w-3.5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">
-              {getSenderLabel(
-                item.message.senderName,
-                item.message.fromAddress,
-              )}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {item.message.fromAddress} ·{" "}
-              {formatEpochMs(item.message.receivedAt)}
-            </p>
-          </div>
-        </div>
-
-        <p className="truncate text-sm font-medium">{item.message.subject}</p>
-      </div>
-
-      <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
-        {hasCandidates ? (
-          <SearchableDropdown
-            value={selectedCandidateId}
-            options={candidateOptions}
-            onValueChange={onCandidateChange}
-            placeholder="Select candidate"
-            searchPlaceholder="Search candidates..."
-            emptyText="No candidates found."
-            disabled={isActionLoading}
-            triggerClassName="min-w-0 flex-1"
-            contentClassName="w-[360px]"
-            ariaLabel="Select candidate"
-          />
-        ) : (
-          <SearchableDropdown
-            value={selectedAppliedJobId}
-            options={appliedJobOptions}
-            onValueChange={onAppliedJobChange}
-            placeholder={
-              isAppliedJobsLoading
-                ? "Loading applied jobs..."
-                : "Select applied job"
-            }
-            searchPlaceholder="Search applied jobs..."
-            emptyText={
-              isAppliedJobsLoading
-                ? "Loading applied jobs..."
-                : "No applied jobs found."
-            }
-            disabled={isActionLoading}
-            triggerClassName="min-w-0 flex-1"
-            contentClassName="w-[360px]"
-            ariaLabel="Select applied job"
-          />
-        )}
-
-        <span
-          className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
-        >
-          {selectedScore === null ? "n/a" : `${selectedScore}%`}
-        </span>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <Button
-            size="sm"
-            aria-label="Agree with suggested job match"
-            title="Agree with suggested job match"
-            onClick={onApprove}
-            disabled={isActionLoading || !canDecide}
-            className="h-8 w-8 p-0"
-          >
-            <CheckCircle2 className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            aria-label="Disagree with suggested job match"
-            title="Disagree with suggested job match"
-            onClick={onDeny}
-            disabled={isActionLoading || !canDecide}
-            className="h-8 w-8 p-0"
-          >
-            <XCircle className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export const TrackingInboxPage: React.FC = () => {
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
@@ -327,13 +132,12 @@ export const TrackingInboxPage: React.FC = () => {
     setIsAppliedJobsLoading(true);
     try {
       const response = await api.getJobs({
-        statuses: ["applied"],
         view: "list",
       });
       setAppliedJobs(response.jobs);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to load applied jobs";
+        error instanceof Error ? error.message : "Failed to load jobs";
       toast.error(message);
     } finally {
       setIsAppliedJobsLoading(false);
@@ -381,18 +185,15 @@ export const TrackingInboxPage: React.FC = () => {
     setHasAttemptedAppliedJobsLoad(false);
   }, [provider, accountKey]);
 
-  const hasZeroCandidateItems = useMemo(
-    () =>
-      [...inbox, ...selectedRunItems].some(
-        (item) => item.candidates.length === 0,
-      ),
-    [inbox, selectedRunItems],
+  const hasReviewItems = useMemo(
+    () => inbox.length > 0 || selectedRunItems.length > 0,
+    [inbox.length, selectedRunItems.length],
   );
 
   useEffect(() => {
-    if (!hasZeroCandidateItems) return;
+    if (!hasReviewItems) return;
     void loadAppliedJobs();
-  }, [hasZeroCandidateItems, loadAppliedJobs]);
+  }, [hasReviewItems, loadAppliedJobs]);
 
   useEffect(() => {
     const itemsWithoutCandidates = [...inbox, ...selectedRunItems].filter(
@@ -586,16 +387,14 @@ export const TrackingInboxPage: React.FC = () => {
   const handleDecision = useCallback(
     async (item: PostApplicationInboxItem, decision: "approve" | "deny") => {
       const candidateId = candidateByMessageId[item.message.id] ?? "";
-      const appliedJobId = appliedJobByMessageId[item.message.id] ?? "";
-      const useAppliedJobFallback = item.candidates.length === 0;
+      const candidateJobId =
+        item.candidates.find((candidate) => candidate.id === candidateId)
+          ?.jobId ?? "";
+      const selectedJobId =
+        appliedJobByMessageId[item.message.id] ?? candidateJobId;
 
-      if (useAppliedJobFallback) {
-        if (!appliedJobId) {
-          toast.error("Select an applied job before making a decision.");
-          return;
-        }
-      } else if (!candidateId) {
-        toast.error("Select a candidate before making a decision.");
+      if (!selectedJobId) {
+        toast.error("Select an applied job before making a decision.");
         return;
       }
 
@@ -606,9 +405,7 @@ export const TrackingInboxPage: React.FC = () => {
             messageId: item.message.id,
             provider,
             accountKey,
-            ...(useAppliedJobFallback
-              ? { jobId: appliedJobId }
-              : { candidateId }),
+            jobId: selectedJobId,
           });
           toast.success("Message approved");
         } else {
@@ -616,9 +413,7 @@ export const TrackingInboxPage: React.FC = () => {
             messageId: item.message.id,
             provider,
             accountKey,
-            ...(useAppliedJobFallback
-              ? { jobId: appliedJobId }
-              : { candidateId }),
+            jobId: selectedJobId,
           });
           toast.success("Message denied");
         }
@@ -680,6 +475,16 @@ export const TrackingInboxPage: React.FC = () => {
     if (status.integration?.status === "error") return "Error";
     return "Connected";
   }, [status]);
+
+  const handleAppliedJobChange = useCallback(
+    (messageId: string, value: string) => {
+      setAppliedJobByMessageId((previous) => ({
+        ...previous,
+        [messageId]: value,
+      }));
+    },
+    [],
+  );
 
   return (
     <>
@@ -850,37 +655,18 @@ export const TrackingInboxPage: React.FC = () => {
                 description="Run sync to ingest new job-application emails."
               />
             ) : (
-              <div className="overflow-hidden rounded-lg border">
-                {inbox.map((item) => (
-                  <EmailViewerRow
-                    key={item.message.id}
-                    item={item}
-                    appliedJobs={appliedJobs}
-                    selectedCandidateId={
-                      candidateByMessageId[item.message.id] ?? ""
-                    }
-                    selectedAppliedJobId={
-                      appliedJobByMessageId[item.message.id] ?? ""
-                    }
-                    onCandidateChange={(value) =>
-                      setCandidateByMessageId((previous) => ({
-                        ...previous,
-                        [item.message.id]: value,
-                      }))
-                    }
-                    onAppliedJobChange={(value) =>
-                      setAppliedJobByMessageId((previous) => ({
-                        ...previous,
-                        [item.message.id]: value,
-                      }))
-                    }
-                    onApprove={() => void handleDecision(item, "approve")}
-                    onDeny={() => void handleDecision(item, "deny")}
-                    isActionLoading={isActionLoading}
-                    isAppliedJobsLoading={isAppliedJobsLoading}
-                  />
-                ))}
-              </div>
+              <EmailViewerList
+                items={inbox}
+                appliedJobs={appliedJobs}
+                candidateByMessageId={candidateByMessageId}
+                appliedJobByMessageId={appliedJobByMessageId}
+                onAppliedJobChange={handleAppliedJobChange}
+                onDecision={(item, decision) =>
+                  void handleDecision(item, decision)
+                }
+                isActionLoading={isActionLoading}
+                isAppliedJobsLoading={isAppliedJobsLoading}
+              />
             )}
           </CardContent>
         </Card>
@@ -958,37 +744,18 @@ export const TrackingInboxPage: React.FC = () => {
                 No messages found for this run.
               </p>
             ) : (
-              <div className="overflow-hidden rounded-lg border">
-                {selectedRunItems.map((item) => (
-                  <EmailViewerRow
-                    key={item.message.id}
-                    item={item}
-                    appliedJobs={appliedJobs}
-                    selectedCandidateId={
-                      candidateByMessageId[item.message.id] ?? ""
-                    }
-                    selectedAppliedJobId={
-                      appliedJobByMessageId[item.message.id] ?? ""
-                    }
-                    onCandidateChange={(value) =>
-                      setCandidateByMessageId((previous) => ({
-                        ...previous,
-                        [item.message.id]: value,
-                      }))
-                    }
-                    onAppliedJobChange={(value) =>
-                      setAppliedJobByMessageId((previous) => ({
-                        ...previous,
-                        [item.message.id]: value,
-                      }))
-                    }
-                    onApprove={() => void handleDecision(item, "approve")}
-                    onDeny={() => void handleDecision(item, "deny")}
-                    isActionLoading={isActionLoading}
-                    isAppliedJobsLoading={isAppliedJobsLoading}
-                  />
-                ))}
-              </div>
+              <EmailViewerList
+                items={selectedRunItems}
+                appliedJobs={appliedJobs}
+                candidateByMessageId={candidateByMessageId}
+                appliedJobByMessageId={appliedJobByMessageId}
+                onAppliedJobChange={handleAppliedJobChange}
+                onDecision={(item, decision) =>
+                  void handleDecision(item, decision)
+                }
+                isActionLoading={isActionLoading}
+                isAppliedJobsLoading={isAppliedJobsLoading}
+              />
             )}
           </div>
         </DialogContent>

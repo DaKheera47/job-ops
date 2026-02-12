@@ -320,7 +320,7 @@ describe("TrackingInboxPage", () => {
       expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
         expect.objectContaining({
           messageId: "message-1",
-          candidateId: "candidate-1",
+          jobId: "job-1",
         }),
       );
     });
@@ -347,7 +347,7 @@ describe("TrackingInboxPage", () => {
       expect(api.denyPostApplicationInboxItem).toHaveBeenCalledWith(
         expect.objectContaining({
           messageId: "message-1",
-          candidateId: "candidate-1",
+          jobId: "job-1",
         }),
       );
     });
@@ -481,7 +481,7 @@ describe("TrackingInboxPage", () => {
       expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
         expect.objectContaining({
           messageId: "message-1",
-          candidateId: "candidate-2",
+          jobId: "job-1",
         }),
       );
     });
@@ -503,7 +503,6 @@ describe("TrackingInboxPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["applied"],
         view: "list",
       });
     });
@@ -578,7 +577,6 @@ describe("TrackingInboxPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["applied"],
         view: "list",
       });
     });
@@ -611,7 +609,6 @@ describe("TrackingInboxPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["applied"],
         view: "list",
       });
     });

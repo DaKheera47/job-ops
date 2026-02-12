@@ -9,7 +9,7 @@ import {
 import type { Job, PostApplicationMessage } from "@shared/types";
 
 const MAPPING_HIGH_CONFIDENCE_THRESHOLD = 95;
-const MAPPING_MIN_CONFIDENCE_THRESHOLD = 60;
+const MAPPING_MIN_CONFIDENCE_THRESHOLD = 30;
 const MAX_CANDIDATES = 5;
 
 const RERANK_SCHEMA: JsonSchemaDefinition = {
