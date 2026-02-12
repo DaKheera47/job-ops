@@ -180,11 +180,12 @@ const migrations = [
     classification_label TEXT,
     classification_confidence REAL,
     classification_payload TEXT,
-    relevance_keyword_score REAL NOT NULL DEFAULT 0,
     relevance_llm_score REAL,
-    relevance_final_score REAL NOT NULL DEFAULT 0,
     relevance_decision TEXT NOT NULL DEFAULT 'needs_llm' CHECK(relevance_decision IN ('relevant', 'not_relevant', 'needs_llm')),
-    review_status TEXT NOT NULL DEFAULT 'pending_review' CHECK(review_status IN ('pending_review', 'approved', 'denied', 'not_relevant', 'no_reliable_match', 'errored')),
+    match_confidence INTEGER,
+    message_type TEXT NOT NULL DEFAULT 'other' CHECK(message_type IN ('interview', 'rejection', 'offer', 'update', 'other')),
+    stage_event_payload TEXT,
+    processing_status TEXT NOT NULL DEFAULT 'pending_user' CHECK(processing_status IN ('auto_linked', 'pending_user', 'manual_linked', 'ignored')),
     matched_job_id TEXT,
     decided_at INTEGER,
     decided_by TEXT,
@@ -196,39 +197,6 @@ const migrations = [
     FOREIGN KEY (sync_run_id) REFERENCES post_application_sync_runs(id) ON DELETE SET NULL,
     FOREIGN KEY (matched_job_id) REFERENCES jobs(id) ON DELETE SET NULL,
     UNIQUE(provider, account_key, external_message_id)
-  )`,
-
-  `CREATE TABLE IF NOT EXISTS post_application_message_candidates (
-    id TEXT PRIMARY KEY,
-    message_id TEXT NOT NULL,
-    job_id TEXT NOT NULL,
-    score REAL NOT NULL DEFAULT 0,
-    rank INTEGER NOT NULL,
-    reasons TEXT,
-    match_method TEXT NOT NULL DEFAULT 'keyword' CHECK(match_method IN ('keyword', 'llm_rerank', 'hybrid')),
-    is_high_confidence INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (message_id) REFERENCES post_application_messages(id) ON DELETE CASCADE,
-    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-    UNIQUE(message_id, job_id),
-    UNIQUE(message_id, rank)
-  )`,
-
-  `CREATE TABLE IF NOT EXISTS post_application_message_links (
-    id TEXT PRIMARY KEY,
-    message_id TEXT NOT NULL,
-    job_id TEXT NOT NULL,
-    candidate_id TEXT,
-    decision TEXT NOT NULL DEFAULT 'denied' CHECK(decision IN ('approved', 'denied')),
-    stage_event_id TEXT,
-    decided_at INTEGER NOT NULL,
-    decided_by TEXT,
-    notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (message_id) REFERENCES post_application_messages(id) ON DELETE CASCADE,
-    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-    FOREIGN KEY (candidate_id) REFERENCES post_application_message_candidates(id) ON DELETE SET NULL,
-    FOREIGN KEY (stage_event_id) REFERENCES stage_events(id) ON DELETE SET NULL
   )`,
 
   // Rename settings key: webhookUrl -> pipelineWebhookUrl (safe to re-run)
@@ -292,6 +260,31 @@ const migrations = [
   `ALTER TABLE stage_events ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN group_id TEXT`,
 
+  // Smart-router columns for existing databases.
+  `ALTER TABLE post_application_messages ADD COLUMN match_confidence INTEGER`,
+  `ALTER TABLE post_application_messages ADD COLUMN message_type TEXT NOT NULL DEFAULT 'other' CHECK(message_type IN ('interview', 'rejection', 'offer', 'update', 'other'))`,
+  `ALTER TABLE post_application_messages ADD COLUMN stage_event_payload TEXT`,
+  `ALTER TABLE post_application_messages ADD COLUMN processing_status TEXT NOT NULL DEFAULT 'pending_user' CHECK(processing_status IN ('auto_linked', 'pending_user', 'manual_linked', 'ignored'))`,
+  `UPDATE post_application_messages
+   SET match_confidence = CAST(round(COALESCE(relevance_llm_score, 0)) AS INTEGER)
+   WHERE match_confidence IS NULL`,
+  `UPDATE post_application_messages
+   SET message_type = CASE
+      WHEN lower(COALESCE(classification_label, '')) LIKE '%interview%' THEN 'interview'
+      WHEN lower(COALESCE(classification_label, '')) LIKE '%offer%' THEN 'offer'
+      WHEN lower(COALESCE(classification_label, '')) LIKE '%reject%' THEN 'rejection'
+      WHEN lower(COALESCE(classification_label, '')) IN ('false positive', 'did not apply - inbound request') THEN 'other'
+      ELSE 'update'
+   END`,
+  `UPDATE post_application_messages
+   SET processing_status = CASE
+      WHEN review_status = 'approved' THEN 'manual_linked'
+      WHEN review_status IN ('pending_review', 'no_reliable_match') THEN 'pending_user'
+      ELSE 'ignored'
+   END`,
+  `DROP TABLE IF EXISTS post_application_message_candidates`,
+  `DROP TABLE IF EXISTS post_application_message_links`,
+
   // Ensure pipeline_runs status supports "cancelled" for existing databases.
   `CREATE TABLE IF NOT EXISTS pipeline_runs_new (
     id TEXT PRIMARY KEY,
@@ -318,9 +311,7 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date)`,
   `CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at ON post_application_sync_runs(provider, account_key, started_at)`,
-  `CREATE INDEX IF NOT EXISTS idx_post_app_messages_provider_account_review_status ON post_application_messages(provider, account_key, review_status)`,
-  `CREATE INDEX IF NOT EXISTS idx_post_app_message_links_message_decision ON post_application_message_links(message_id, decision)`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS idx_post_app_message_links_message_approved_unique ON post_application_message_links(message_id) WHERE decision = 'approved'`,
+  `CREATE INDEX IF NOT EXISTS idx_post_app_messages_provider_account_processing_status ON post_application_messages(provider, account_key, processing_status)`,
 
   // Backfill: Create "Applied" events for legacy jobs that have applied_at set but no event entry
   `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata)
@@ -350,11 +341,22 @@ for (const migration of migrations) {
         migration.toLowerCase().includes("alter table tasks add column") ||
         migration
           .toLowerCase()
+          .includes("alter table post_application_messages add column") ||
+        migration
+          .toLowerCase()
           .includes("alter table stage_events add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
     if (isDuplicateColumn) {
       console.log("↩️ Migration skipped (column already exists)");
+      continue;
+    }
+
+    const isLegacyBackfillOnFreshSchema =
+      migration.toLowerCase().includes("update post_application_messages") &&
+      message.toLowerCase().includes("no such column");
+    if (isLegacyBackfillOnFreshSchema) {
+      console.log("↩️ Migration skipped (legacy backfill not applicable)");
       continue;
     }
 

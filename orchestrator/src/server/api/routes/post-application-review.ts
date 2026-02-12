@@ -29,7 +29,6 @@ const approveBodySchema = z.object({
   provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),
   accountKey: z.string().min(1).max(255).default("default"),
   jobId: z.string().uuid().optional(),
-  candidateId: z.string().uuid().optional(),
   toStage: z.enum(APPLICATION_STAGES).optional(),
   note: z.string().max(2000).optional(),
   decidedBy: z.string().max(255).optional(),
@@ -38,9 +37,6 @@ const approveBodySchema = z.object({
 const denyBodySchema = z.object({
   provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),
   accountKey: z.string().min(1).max(255).default("default"),
-  jobId: z.string().uuid().optional(),
-  candidateId: z.string().uuid().optional(),
-  note: z.string().max(2000).optional(),
   decidedBy: z.string().max(255).optional(),
 });
 
@@ -127,7 +123,6 @@ postApplicationReviewRouter.post(
         provider: input.provider,
         accountKey: input.accountKey,
         jobId: input.jobId,
-        candidateId: input.candidateId,
         toStage: input.toStage,
         note: input.note,
         decidedBy: input.decidedBy ?? null,
@@ -155,9 +150,6 @@ postApplicationReviewRouter.post(
         messageId,
         provider: input.provider,
         accountKey: input.accountKey,
-        jobId: input.jobId,
-        candidateId: input.candidateId,
-        note: input.note,
         decidedBy: input.decidedBy ?? null,
       });
 

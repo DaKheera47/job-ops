@@ -19,7 +19,6 @@ type EmailViewerRowProps = {
 export type EmailViewerListProps = {
   items: PostApplicationInboxItem[];
   appliedJobs: JobListItem[];
-  candidateByMessageId: Record<string, string>;
   appliedJobByMessageId: Record<string, string>;
   onAppliedJobChange: (messageId: string, value: string) => void;
   onDecision: (
@@ -52,8 +51,8 @@ function getSenderLabel(
 
 function scoreTextClass(score: number | null): string {
   if (score === null) return "text-muted-foreground/60";
-  if (score >= 70) return "text-emerald-400/90";
-  if (score >= 50) return "text-foreground/60";
+  if (score >= 95) return "text-emerald-400/90";
+  if (score >= 50) return "text-foreground/70";
   return "text-muted-foreground/60";
 }
 
@@ -76,16 +75,9 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
   isActionLoading,
   isAppliedJobsLoading,
 }) => {
-  const selectedCandidate = item.candidates.find(
-    (candidate) => candidate.jobId === selectedAppliedJobId,
-  );
-  const selectedScore = selectedCandidate
-    ? Math.round(selectedCandidate.score)
-    : null;
-  const isActionableReviewStatus =
-    item.message.reviewStatus === "pending_review" ||
-    item.message.reviewStatus === "no_reliable_match";
-  const canDecide = isActionableReviewStatus && !!selectedAppliedJobId;
+  const score = item.message.matchConfidence;
+  const isActionable = item.message.processingStatus === "pending_user";
+  const canDecide = isActionable && !!selectedAppliedJobId;
   const appliedJobOptions = jobs.map((job) => ({
     value: job.id,
     label: formatAppliedJobLabel(job),
@@ -114,9 +106,15 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
         </div>
 
         <p className="truncate text-sm font-medium">{item.message.subject}</p>
+        {item.message.matchedJobId ? null : (
+          <p className="text-xs text-amber-600">
+            Relevant email with no reliable job match. Please select the correct
+            job.
+          </p>
+        )}
       </div>
 
-      <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
+      <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[440px]">
         <SearchableDropdown
           value={selectedAppliedJobId}
           options={appliedJobOptions}
@@ -133,16 +131,16 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
         />
 
         <span
-          className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
+          className={`shrink-0 text-xs tabular-nums ${scoreTextClass(score)}`}
         >
-          {selectedScore === null ? "n/a" : `${selectedScore}%`}
+          {score === null ? "n/a" : `${Math.round(score)}%`}
         </span>
 
         <div className="flex shrink-0 items-center gap-2">
           <Button
             size="sm"
-            aria-label="Agree with suggested job match"
-            title="Agree with suggested job match"
+            aria-label="Confirm email-job match"
+            title="Confirm email-job match"
             onClick={onApprove}
             disabled={isActionLoading || !canDecide}
             className="h-8 w-8 p-0"
@@ -152,10 +150,10 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
           <Button
             size="sm"
             variant="outline"
-            aria-label="Disagree with suggested job match"
-            title="Disagree with suggested job match"
+            aria-label="Ignore this match"
+            title="Ignore this match"
             onClick={onDeny}
-            disabled={isActionLoading || !canDecide}
+            disabled={isActionLoading || !isActionable}
             className="h-8 w-8 p-0"
           >
             <XCircle className="h-4 w-4" />
@@ -169,33 +167,19 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
 export const EmailViewerList: React.FC<EmailViewerListProps> = ({
   items,
   appliedJobs,
-  candidateByMessageId,
   appliedJobByMessageId,
   onAppliedJobChange,
   onDecision,
   isActionLoading,
   isAppliedJobsLoading,
 }) => {
-  const selectedJobByMessageId = new Map<string, string>();
-  for (const item of items) {
-    const explicitJobId = appliedJobByMessageId[item.message.id] ?? "";
-    if (explicitJobId) {
-      selectedJobByMessageId.set(item.message.id, explicitJobId);
-      continue;
-    }
-
-    const selectedCandidateId = candidateByMessageId[item.message.id] ?? "";
-    const candidateJobId =
-      item.candidates.find((candidate) => candidate.id === selectedCandidateId)
-        ?.jobId ?? "";
-    selectedJobByMessageId.set(item.message.id, candidateJobId);
-  }
-
   return (
     <div className="overflow-hidden rounded-lg border">
       {items.map((item) => {
         const selectedAppliedJobId =
-          selectedJobByMessageId.get(item.message.id) ?? "";
+          appliedJobByMessageId[item.message.id] ||
+          item.message.matchedJobId ||
+          "";
 
         return (
           <EmailViewerRow

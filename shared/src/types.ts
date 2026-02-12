@@ -402,28 +402,24 @@ export const POST_APPLICATION_RELEVANCE_DECISIONS = [
 export type PostApplicationRelevanceDecision =
   (typeof POST_APPLICATION_RELEVANCE_DECISIONS)[number];
 
-export const POST_APPLICATION_REVIEW_STATUSES = [
-  "pending_review",
-  "approved",
-  "denied",
-  "not_relevant",
-  "no_reliable_match",
-  "errored",
+export const POST_APPLICATION_MESSAGE_TYPES = [
+  "interview",
+  "rejection",
+  "offer",
+  "update",
+  "other",
 ] as const;
-export type PostApplicationReviewStatus =
-  (typeof POST_APPLICATION_REVIEW_STATUSES)[number];
+export type PostApplicationMessageType =
+  (typeof POST_APPLICATION_MESSAGE_TYPES)[number];
 
-export const POST_APPLICATION_MATCH_METHODS = [
-  "keyword",
-  "llm_rerank",
-  "hybrid",
+export const POST_APPLICATION_PROCESSING_STATUSES = [
+  "auto_linked",
+  "pending_user",
+  "manual_linked",
+  "ignored",
 ] as const;
-export type PostApplicationMatchMethod =
-  (typeof POST_APPLICATION_MATCH_METHODS)[number];
-
-export const POST_APPLICATION_LINK_DECISIONS = ["approved", "denied"] as const;
-export type PostApplicationLinkDecision =
-  (typeof POST_APPLICATION_LINK_DECISIONS)[number];
+export type PostApplicationProcessingStatus =
+  (typeof POST_APPLICATION_PROCESSING_STATUSES)[number];
 
 export interface PostApplicationIntegration {
   id: string;
@@ -477,48 +473,19 @@ export interface PostApplicationMessage {
   classificationLabel: string | null;
   classificationConfidence: number | null;
   classificationPayload: Record<string, unknown> | null;
-  relevanceKeywordScore: number;
   relevanceLlmScore: number | null;
-  relevanceFinalScore: number;
   relevanceDecision: PostApplicationRelevanceDecision;
-  reviewStatus: PostApplicationReviewStatus;
   matchedJobId: string | null;
+  matchConfidence: number | null;
+  messageType: PostApplicationMessageType;
+  stageEventPayload: Record<string, unknown> | null;
+  processingStatus: PostApplicationProcessingStatus;
   decidedAt: number | null;
   decidedBy: string | null;
   errorCode: string | null;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface PostApplicationMessageCandidate {
-  id: string;
-  messageId: string;
-  jobId: string;
-  job?: {
-    id: string;
-    title: string;
-    employer: string;
-  };
-  score: number;
-  rank: number;
-  reasons: string[] | null;
-  matchMethod: PostApplicationMatchMethod;
-  isHighConfidence: boolean;
-  createdAt: string;
-}
-
-export interface PostApplicationMessageLink {
-  id: string;
-  messageId: string;
-  jobId: string;
-  candidateId: string | null;
-  decision: PostApplicationLinkDecision;
-  stageEventId: string | null;
-  decidedAt: number;
-  decidedBy: string | null;
-  notes: string | null;
-  createdAt: string;
 }
 
 export interface PostApplicationProviderActionConnectRequest {
@@ -549,8 +516,11 @@ export interface PostApplicationProviderActionResponse {
 
 export interface PostApplicationInboxItem {
   message: PostApplicationMessage;
-  candidates: PostApplicationMessageCandidate[];
-  link: PostApplicationMessageLink | null;
+  matchedJob?: {
+    id: string;
+    title: string;
+    employer: string;
+  } | null;
 }
 
 export interface JobsListResponse<TJob = Job> {

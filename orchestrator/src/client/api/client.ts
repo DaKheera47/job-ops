@@ -676,7 +676,6 @@ export async function approvePostApplicationInboxItem(input: {
   provider?: PostApplicationProvider;
   accountKey?: string;
   jobId?: string;
-  candidateId?: string;
   toStage?: ApplicationStage;
   note?: string;
   decidedBy?: string;
@@ -693,7 +692,6 @@ export async function approvePostApplicationInboxItem(input: {
       provider: input.provider ?? "gmail",
       accountKey: input.accountKey ?? "default",
       ...(input.jobId ? { jobId: input.jobId } : {}),
-      ...(input.candidateId ? { candidateId: input.candidateId } : {}),
       ...(input.toStage ? { toStage: input.toStage } : {}),
       ...(input.note ? { note: input.note } : {}),
       ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),
@@ -705,9 +703,6 @@ export async function denyPostApplicationInboxItem(input: {
   messageId: string;
   provider?: PostApplicationProvider;
   accountKey?: string;
-  jobId?: string;
-  candidateId?: string;
-  note?: string;
   decidedBy?: string;
 }): Promise<{
   message: PostApplicationInboxItem["message"];
@@ -719,9 +714,6 @@ export async function denyPostApplicationInboxItem(input: {
       body: JSON.stringify({
         provider: input.provider ?? "gmail",
         accountKey: input.accountKey ?? "default",
-        ...(input.jobId ? { jobId: input.jobId } : {}),
-        ...(input.candidateId ? { candidateId: input.candidateId } : {}),
-        ...(input.note ? { note: input.note } : {}),
         ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),
       }),
     },

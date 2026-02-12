@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type {
   PostApplicationMessage,
+  PostApplicationMessageType,
+  PostApplicationProcessingStatus,
   PostApplicationProvider,
   PostApplicationRelevanceDecision,
-  PostApplicationReviewStatus,
 } from "@shared/types";
 import { and, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db";
@@ -26,11 +27,15 @@ type UpsertPostApplicationMessageInput = {
   classificationLabel?: string | null;
   classificationConfidence?: number | null;
   classificationPayload?: Record<string, unknown> | null;
-  relevanceKeywordScore: number;
   relevanceLlmScore?: number | null;
-  relevanceFinalScore: number;
   relevanceDecision: PostApplicationRelevanceDecision;
-  reviewStatus: PostApplicationReviewStatus;
+  matchConfidence?: number | null;
+  messageType: PostApplicationMessageType;
+  stageEventPayload?: Record<string, unknown> | null;
+  processingStatus: PostApplicationProcessingStatus;
+  matchedJobId?: string | null;
+  decidedAt?: number | null;
+  decidedBy?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
 };
@@ -38,19 +43,25 @@ type UpsertPostApplicationMessageInput = {
 type UpdatePostApplicationMessageSuggestionInput = {
   id: string;
   matchedJobId: string | null;
-  reviewStatus: PostApplicationReviewStatus;
+  matchConfidence?: number | null;
+  processingStatus: PostApplicationProcessingStatus;
 };
 
-type UpdatePostApplicationMessageReviewDecisionInput = {
+type UpdatePostApplicationMessageDecisionInput = {
   id: string;
-  reviewStatus: Extract<PostApplicationReviewStatus, "approved" | "denied">;
+  processingStatus: Extract<
+    PostApplicationProcessingStatus,
+    "manual_linked" | "ignored"
+  >;
   matchedJobId: string | null;
   decidedAt?: number;
   decidedBy?: string | null;
 };
 
-function isTerminalReviewStatus(status: PostApplicationReviewStatus): boolean {
-  return status === "approved" || status === "denied";
+function isTerminalProcessingStatus(
+  status: PostApplicationProcessingStatus,
+): boolean {
+  return status !== "pending_user";
 }
 
 function mapRowToPostApplicationMessage(
@@ -74,13 +85,15 @@ function mapRowToPostApplicationMessage(
     classificationConfidence: row.classificationConfidence,
     classificationPayload:
       (row.classificationPayload as Record<string, unknown> | null) ?? null,
-    relevanceKeywordScore: row.relevanceKeywordScore,
     relevanceLlmScore: row.relevanceLlmScore,
-    relevanceFinalScore: row.relevanceFinalScore,
     relevanceDecision:
       row.relevanceDecision as PostApplicationRelevanceDecision,
-    reviewStatus: row.reviewStatus as PostApplicationReviewStatus,
     matchedJobId: row.matchedJobId,
+    matchConfidence: row.matchConfidence,
+    messageType: row.messageType as PostApplicationMessageType,
+    stageEventPayload:
+      (row.stageEventPayload as Record<string, unknown> | null) ?? null,
+    processingStatus: row.processingStatus as PostApplicationProcessingStatus,
     decidedAt: row.decidedAt,
     decidedBy: row.decidedBy,
     errorCode: row.errorCode,
@@ -129,9 +142,11 @@ export async function upsertPostApplicationMessage(
   );
 
   if (existing) {
-    const nextReviewStatus = isTerminalReviewStatus(existing.reviewStatus)
-      ? existing.reviewStatus
-      : input.reviewStatus;
+    const nextProcessingStatus = isTerminalProcessingStatus(
+      existing.processingStatus,
+    )
+      ? existing.processingStatus
+      : input.processingStatus;
 
     await db
       .update(postApplicationMessages)
@@ -148,11 +163,15 @@ export async function upsertPostApplicationMessage(
         classificationLabel: input.classificationLabel ?? null,
         classificationConfidence: input.classificationConfidence ?? null,
         classificationPayload: input.classificationPayload ?? null,
-        relevanceKeywordScore: input.relevanceKeywordScore,
         relevanceLlmScore: input.relevanceLlmScore ?? null,
-        relevanceFinalScore: input.relevanceFinalScore,
         relevanceDecision: input.relevanceDecision,
-        reviewStatus: nextReviewStatus,
+        matchConfidence: input.matchConfidence ?? null,
+        messageType: input.messageType,
+        stageEventPayload: input.stageEventPayload ?? null,
+        processingStatus: nextProcessingStatus,
+        matchedJobId: input.matchedJobId ?? null,
+        decidedAt: input.decidedAt ?? null,
+        decidedBy: input.decidedBy ?? null,
         errorCode: input.errorCode ?? null,
         errorMessage: input.errorMessage ?? null,
         updatedAt: nowIso,
@@ -190,11 +209,15 @@ export async function upsertPostApplicationMessage(
     classificationLabel: input.classificationLabel ?? null,
     classificationConfidence: input.classificationConfidence ?? null,
     classificationPayload: input.classificationPayload ?? null,
-    relevanceKeywordScore: input.relevanceKeywordScore,
     relevanceLlmScore: input.relevanceLlmScore ?? null,
-    relevanceFinalScore: input.relevanceFinalScore,
     relevanceDecision: input.relevanceDecision,
-    reviewStatus: input.reviewStatus,
+    matchConfidence: input.matchConfidence ?? null,
+    messageType: input.messageType,
+    stageEventPayload: input.stageEventPayload ?? null,
+    processingStatus: input.processingStatus,
+    matchedJobId: input.matchedJobId ?? null,
+    decidedAt: input.decidedAt ?? null,
+    decidedBy: input.decidedBy ?? null,
     errorCode: input.errorCode ?? null,
     errorMessage: input.errorMessage ?? null,
     createdAt: nowIso,
@@ -222,7 +245,10 @@ export async function updatePostApplicationMessageSuggestion(
     .update(postApplicationMessages)
     .set({
       matchedJobId: input.matchedJobId,
-      reviewStatus: input.reviewStatus,
+      ...(input.matchConfidence !== undefined
+        ? { matchConfidence: input.matchConfidence }
+        : {}),
+      processingStatus: input.processingStatus,
       updatedAt: nowIso,
     })
     .where(eq(postApplicationMessages.id, input.id));
@@ -234,10 +260,10 @@ export async function updatePostApplicationMessageSuggestion(
   return row ? mapRowToPostApplicationMessage(row) : null;
 }
 
-export async function listPostApplicationMessagesByReviewStatus(
+export async function listPostApplicationMessagesByProcessingStatus(
   provider: PostApplicationProvider,
   accountKey: string,
-  reviewStatus: PostApplicationReviewStatus,
+  processingStatus: PostApplicationProcessingStatus,
   limit = 50,
 ): Promise<PostApplicationMessage[]> {
   const rows = await db
@@ -247,7 +273,7 @@ export async function listPostApplicationMessagesByReviewStatus(
       and(
         eq(postApplicationMessages.provider, provider),
         eq(postApplicationMessages.accountKey, accountKey),
-        eq(postApplicationMessages.reviewStatus, reviewStatus),
+        eq(postApplicationMessages.processingStatus, processingStatus),
       ),
     )
     .orderBy(desc(postApplicationMessages.receivedAt))
@@ -278,8 +304,8 @@ export async function listPostApplicationMessagesBySyncRun(
   return rows.map(mapRowToPostApplicationMessage);
 }
 
-export async function updatePostApplicationMessageReviewDecision(
-  input: UpdatePostApplicationMessageReviewDecisionInput,
+export async function updatePostApplicationMessageDecision(
+  input: UpdatePostApplicationMessageDecisionInput,
 ): Promise<PostApplicationMessage | null> {
   const decidedAt = input.decidedAt ?? Date.now();
   const nowIso = new Date(decidedAt).toISOString();
@@ -287,7 +313,7 @@ export async function updatePostApplicationMessageReviewDecision(
   await db
     .update(postApplicationMessages)
     .set({
-      reviewStatus: input.reviewStatus,
+      processingStatus: input.processingStatus,
       matchedJobId: input.matchedJobId,
       decidedAt,
       decidedBy: input.decidedBy ?? null,

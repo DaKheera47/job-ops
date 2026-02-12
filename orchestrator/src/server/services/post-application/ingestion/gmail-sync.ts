@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { requestTimeout } from "@infra/errors";
 import { logger } from "@infra/logger";
+import { db, schema } from "@server/db";
+import { getAllJobs } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
   updatePostApplicationIntegrationSyncState,
@@ -15,50 +18,53 @@ import {
   type JsonSchemaDefinition,
   LlmService,
 } from "@server/services/llm-service";
-import { runJobMappingForMessage } from "../mapping/engine";
-import {
-  classifyByKeywords,
-  computeKeywordRelevanceScore,
-  computePolicyDecision,
-  POST_APPLICATION_RELEVANCE_MIN_THRESHOLD,
-} from "./relevance";
+import type { Job, PostApplicationMessageType } from "@shared/types";
+import { desc, eq } from "drizzle-orm";
 
 const DEFAULT_SEARCH_DAYS = 90;
 const DEFAULT_MAX_MESSAGES = 100;
 const GMAIL_HTTP_TIMEOUT_MS = 15_000;
 
-const LLM_CLASSIFICATION_SCHEMA: JsonSchemaDefinition = {
-  name: "post_application_email_classification",
+const SMART_ROUTER_SCHEMA: JsonSchemaDefinition = {
+  name: "post_application_email_router",
   schema: {
     type: "object",
     properties: {
-      relevanceScore: {
-        type: "integer",
-        description:
-          "Relevance score between 0-100 for job application tracking relevance.",
-      },
-      classificationLabel: {
-        type: "string",
-        description: "Best matching job application label.",
+      bestMatchId: {
+        type: ["string", "null"],
+        description: "Best matching job id from provided active jobs, or null.",
       },
       confidence: {
-        type: "number",
-        description: "Model confidence from 0 to 1.",
+        type: "integer",
+        description: "Confidence score 0-100 for routing decision.",
       },
-      companyName: {
+      messageType: {
         type: "string",
-        description: "Company name if present.",
+        description: "One of: interview, rejection, offer, update, other.",
       },
-      jobTitle: {
-        type: "string",
-        description: "Job title if present.",
+      isRelevant: {
+        type: "boolean",
+        description:
+          "Whether this is a relevant recruitment/application email.",
+      },
+      stageEventPayload: {
+        type: ["object", "null"],
+        description: "Structured metadata for a potential stage event.",
+        additionalProperties: true,
       },
       reason: {
         type: "string",
-        description: "One sentence reason for the classification.",
+        description: "One sentence reason for the routing decision.",
       },
     },
-    required: ["relevanceScore", "classificationLabel", "confidence", "reason"],
+    required: [
+      "bestMatchId",
+      "confidence",
+      "messageType",
+      "isRelevant",
+      "stageEventPayload",
+      "reason",
+    ],
     additionalProperties: false,
   },
 };
@@ -98,12 +104,12 @@ type GmailFullMessage = GmailMetadataMessage & {
   };
 };
 
-type LlmClassificationResult = {
-  relevanceScore: number;
-  classificationLabel: string;
+type SmartRouterResult = {
+  bestMatchId: string | null;
   confidence: number;
-  companyName?: string;
-  jobTitle?: string;
+  messageType: PostApplicationMessageType;
+  isRelevant: boolean;
+  stageEventPayload: Record<string, unknown> | null;
   reason: string;
 };
 
@@ -439,37 +445,67 @@ Body:
 ${input.body}`.trim();
 }
 
-async function classifyWithLlm(
-  emailText: string,
-): Promise<LlmClassificationResult> {
+function normalizeMessageType(value: unknown): PostApplicationMessageType {
+  if (value === "interview") return "interview";
+  if (value === "rejection") return "rejection";
+  if (value === "offer") return "offer";
+  if (value === "update") return "update";
+  return "other";
+}
+
+function minifyActiveJobs(jobs: Job[]): Array<{
+  id: string;
+  company: string;
+  title: string;
+}> {
+  return jobs.map((job) => ({
+    id: job.id,
+    company: job.employer,
+    title: job.title,
+  }));
+}
+
+async function classifyWithSmartRouter(args: {
+  emailText: string;
+  activeJobs: Array<{ id: string; company: string; title: string }>;
+}): Promise<SmartRouterResult> {
   const overrideModel = await getSetting("model");
   const model =
     overrideModel || process.env.MODEL || "google/gemini-3-flash-preview";
 
   const llm = new LlmService();
-  const result = await llm.callJson<LlmClassificationResult>({
+  const result = await llm.callJson<{
+    bestMatchId: string | null;
+    confidence: number;
+    messageType: string;
+    isRelevant: boolean;
+    stageEventPayload: Record<string, unknown> | null;
+    reason: string;
+  }>({
     model,
     messages: [
       {
         role: "system",
         content:
-          "You classify post-application emails. Return concise, factual JSON.",
+          "You are a smart router for post-application emails. Return only strict JSON. Ignore sensitive data and include only routing fields.",
       },
       {
         role: "user",
-        content: `Classify the email for post-application tracking.
-- Return relevanceScore (0-100).
-- Return classificationLabel using one of:
-Application confirmation, Rejection, Availability request, Information request, Assessment sent, Interview invitation, Referral - Action required, Did not apply - inbound request, Action required from company, Hiring freeze notification, Withdrew application, Offer made, False positive.
-- Return confidence between 0 and 1.
-- Return reason in one sentence.
-- Optionally return companyName and jobTitle.
+        content: `Route this email to one active job if possible.
+- Choose bestMatchId only from provided active job ids, or null.
+- confidence is 0..100.
+- messageType must be interview|rejection|offer|update|other.
+- isRelevant should be true for recruitment/application lifecycle emails.
+- stageEventPayload should be minimal structured data or null.
+
+Active jobs:
+${JSON.stringify(args.activeJobs)}
 
 Email:
-${emailText.slice(0, 12000)}`,
+${args.emailText.slice(0, 12000)}`,
       },
     ],
-    jsonSchema: LLM_CLASSIFICATION_SCHEMA,
+    jsonSchema: SMART_ROUTER_SCHEMA,
     maxRetries: 1,
     retryDelayMs: 400,
   });
@@ -478,22 +514,22 @@ ${emailText.slice(0, 12000)}`,
     throw new Error(`LLM classification failed: ${result.error}`);
   }
 
-  const relevanceScore = Math.max(
+  const confidence = Math.max(
     0,
-    Math.min(100, Math.round(result.data.relevanceScore)),
+    Math.min(100, Math.round(Number(result.data.confidence) || 0)),
   );
-  const confidence =
-    typeof result.data.confidence === "number" &&
-    Number.isFinite(result.data.confidence)
-      ? Math.max(0, Math.min(1, result.data.confidence))
-      : 0;
+  const bestMatchId = asString(result.data.bestMatchId) ?? null;
 
   return {
-    relevanceScore,
-    classificationLabel: String(result.data.classificationLabel ?? "").trim(),
+    bestMatchId,
     confidence,
-    companyName: asString(result.data.companyName) ?? undefined,
-    jobTitle: asString(result.data.jobTitle) ?? undefined,
+    messageType: normalizeMessageType(result.data.messageType),
+    isRelevant: Boolean(result.data.isRelevant),
+    stageEventPayload:
+      result.data.stageEventPayload &&
+      typeof result.data.stageEventPayload === "object"
+        ? result.data.stageEventPayload
+        : null,
     reason: String(result.data.reason ?? "").trim(),
   };
 }
@@ -552,6 +588,72 @@ function normalizeErrorMessage(error: unknown): string {
   return "Unknown error";
 }
 
+function inferAutoStage(messageType: PostApplicationMessageType) {
+  if (messageType === "interview") return "technical_interview" as const;
+  if (messageType === "offer") return "offer" as const;
+  if (messageType === "rejection") return "closed" as const;
+  if (messageType === "update") return "recruiter_screen" as const;
+  return null;
+}
+
+async function createAutoStageEvent(args: {
+  jobId: string;
+  messageType: PostApplicationMessageType;
+  receivedAt: number;
+  note: string;
+  stageEventPayload: Record<string, unknown> | null;
+}): Promise<void> {
+  const toStage = inferAutoStage(args.messageType);
+  if (!toStage) return;
+
+  const latestEvent = db
+    .select()
+    .from(schema.stageEvents)
+    .where(eq(schema.stageEvents.applicationId, args.jobId))
+    .orderBy(desc(schema.stageEvents.occurredAt))
+    .get();
+  const fromStage = latestEvent?.toStage ?? null;
+
+  db.insert(schema.stageEvents)
+    .values({
+      id: randomUUID(),
+      applicationId: args.jobId,
+      title: `Auto-logged ${args.messageType}`,
+      groupId: "post_application_router",
+      fromStage,
+      toStage,
+      occurredAt: Math.floor(args.receivedAt / 1000),
+      metadata: {
+        actor: "system",
+        eventType: "status_update",
+        eventLabel: `Auto-logged ${args.messageType}`,
+        note: args.note,
+        routerPayload: args.stageEventPayload,
+      },
+      outcome: null,
+    })
+    .run();
+}
+
+async function runWithConcurrency<T>(
+  items: T[],
+  concurrency: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  const queue = [...items];
+  const workers = Array.from({ length: Math.max(1, concurrency) }).map(
+    async () => {
+      while (queue.length > 0) {
+        const next = queue.shift();
+        if (!next) return;
+        await worker(next);
+      }
+    },
+  );
+  await Promise.all(workers);
+}
+
 export async function runGmailIngestionSync(args: {
   accountKey: string;
   maxMessages?: number;
@@ -589,6 +691,7 @@ export async function runGmailIngestionSync(args: {
     if (!resolvedCredentials.accessToken) {
       throw new Error("Gmail sync failed to resolve access token.");
     }
+    const accessToken = resolvedCredentials.accessToken;
 
     if (
       resolvedCredentials.accessToken !== parsedCredentials.accessToken ||
@@ -610,100 +713,33 @@ export async function runGmailIngestionSync(args: {
     }
 
     const messageIds = await listMessageIds(
-      resolvedCredentials.accessToken,
+      accessToken,
       searchDays,
       maxMessages,
     );
+    const activeJobs = await getAllJobs(["applied", "processing"]);
+    const activeJobMinified = minifyActiveJobs(activeJobs);
+    const activeJobIds = new Set(activeJobMinified.map((job) => job.id));
+    const concurrency = Math.max(
+      1,
+      Number.parseInt(
+        process.env.POST_APPLICATION_ROUTER_CONCURRENCY ?? "3",
+        10,
+      ) || 3,
+    );
 
-    for (const message of messageIds) {
+    await runWithConcurrency(messageIds, concurrency, async (message) => {
       discovered += 1;
 
       try {
-        const metadata = await getMessageMetadata(
-          resolvedCredentials.accessToken,
-          message.id,
-        );
+        const metadata = await getMessageMetadata(accessToken, message.id);
         const from = headerValue(metadata.headers, "From");
         const subject = headerValue(metadata.headers, "Subject");
         const date = headerValue(metadata.headers, "Date");
         const { fromAddress, fromDomain, senderName } = parseFromHeader(from);
         const receivedAt = parseReceivedAt(date);
 
-        const keywordScore = computeKeywordRelevanceScore({
-          from,
-          subject,
-          snippet: metadata.snippet,
-        });
-        const policyDecision = computePolicyDecision(keywordScore);
-
-        if (!policyDecision.shouldUseLlm && !policyDecision.isRelevant) {
-          await upsertPostApplicationMessage({
-            provider: "gmail",
-            accountKey: args.accountKey,
-            integrationId: integration.id,
-            syncRunId: syncRun.id,
-            externalMessageId: metadata.id,
-            externalThreadId: metadata.threadId,
-            fromAddress,
-            fromDomain,
-            senderName,
-            subject,
-            receivedAt,
-            snippet: metadata.snippet,
-            relevanceKeywordScore: keywordScore,
-            relevanceLlmScore: null,
-            relevanceFinalScore: keywordScore,
-            relevanceDecision: "not_relevant",
-            reviewStatus: "not_relevant",
-          });
-          continue;
-        }
-
-        if (!policyDecision.shouldUseLlm && policyDecision.isRelevant) {
-          const classificationLabel = classifyByKeywords({
-            subject,
-            snippet: metadata.snippet,
-          });
-
-          const savedMessage = await upsertPostApplicationMessage({
-            provider: "gmail",
-            accountKey: args.accountKey,
-            integrationId: integration.id,
-            syncRunId: syncRun.id,
-            externalMessageId: metadata.id,
-            externalThreadId: metadata.threadId,
-            fromAddress,
-            fromDomain,
-            senderName,
-            subject,
-            receivedAt,
-            snippet: metadata.snippet,
-            classificationLabel,
-            classificationConfidence: 0.95,
-            classificationPayload: {
-              method: "keyword",
-            },
-            relevanceKeywordScore: keywordScore,
-            relevanceLlmScore: null,
-            relevanceFinalScore: keywordScore,
-            relevanceDecision: "relevant",
-            reviewStatus: "pending_review",
-          });
-          const mapping = await runJobMappingForMessage({
-            message: savedMessage,
-          });
-          if (mapping.matchedJobId) {
-            matched += 1;
-          }
-          relevant += 1;
-          classified += 1;
-          continue;
-        }
-
-        const fullMessage = await getMessageFull(
-          resolvedCredentials.accessToken,
-          message.id,
-        );
+        const fullMessage = await getMessageFull(accessToken, message.id);
         const body = extractBodyText(fullMessage.payload);
         const emailText = buildEmailText({
           from,
@@ -712,11 +748,23 @@ export async function runGmailIngestionSync(args: {
           snippet: metadata.snippet,
           body,
         });
-        const llmResult = await classifyWithLlm(emailText);
-        const finalScore = llmResult.relevanceScore;
-        const isRelevant =
-          finalScore >= POST_APPLICATION_RELEVANCE_MIN_THRESHOLD &&
-          llmResult.classificationLabel.toLowerCase() !== "false positive";
+        const routerResult = await classifyWithSmartRouter({
+          emailText,
+          activeJobs: activeJobMinified,
+        });
+
+        const matchedJobId =
+          routerResult.bestMatchId && activeJobIds.has(routerResult.bestMatchId)
+            ? routerResult.bestMatchId
+            : null;
+        const isAutoLinked = routerResult.confidence >= 95 && matchedJobId;
+        const isPendingMatch = routerResult.confidence >= 50;
+        const isRelevantOrphan = routerResult.isRelevant;
+        const processingStatus = isAutoLinked
+          ? "auto_linked"
+          : isPendingMatch || isRelevantOrphan
+            ? "pending_user"
+            : "ignored";
 
         const savedMessage = await upsertPostApplicationMessage({
           provider: "gmail",
@@ -731,31 +779,44 @@ export async function runGmailIngestionSync(args: {
           subject,
           receivedAt,
           snippet: metadata.snippet,
-          classificationLabel: llmResult.classificationLabel,
-          classificationConfidence: llmResult.confidence,
+          classificationLabel: routerResult.messageType,
+          classificationConfidence: routerResult.confidence / 100,
           classificationPayload: {
-            method: "llm",
-            reason: llmResult.reason,
-            companyName: llmResult.companyName ?? null,
-            jobTitle: llmResult.jobTitle ?? null,
+            method: "smart_router",
+            reason: routerResult.reason,
           },
-          relevanceKeywordScore: keywordScore,
-          relevanceLlmScore: llmResult.relevanceScore,
-          relevanceFinalScore: finalScore,
-          relevanceDecision: isRelevant ? "relevant" : "not_relevant",
-          reviewStatus: isRelevant ? "pending_review" : "not_relevant",
+          relevanceLlmScore: routerResult.confidence,
+          relevanceDecision: routerResult.isRelevant
+            ? "relevant"
+            : "not_relevant",
+          matchedJobId: isAutoLinked || isPendingMatch ? matchedJobId : null,
+          matchConfidence: routerResult.confidence,
+          messageType: routerResult.messageType,
+          stageEventPayload: routerResult.stageEventPayload,
+          processingStatus,
         });
 
-        if (isRelevant) {
-          const mapping = await runJobMappingForMessage({
-            message: savedMessage,
-          });
-          if (mapping.matchedJobId) {
-            matched += 1;
-          }
+        if (savedMessage.processingStatus !== "ignored") {
           relevant += 1;
         }
         classified += 1;
+        if (savedMessage.matchedJobId) {
+          matched += 1;
+        }
+
+        if (
+          savedMessage.processingStatus === "auto_linked" &&
+          savedMessage.matchedJobId &&
+          savedMessage.messageType !== "other"
+        ) {
+          await createAutoStageEvent({
+            jobId: savedMessage.matchedJobId,
+            messageType: savedMessage.messageType,
+            receivedAt: savedMessage.receivedAt,
+            note: "Auto-created from Smart Router.",
+            stageEventPayload: savedMessage.stageEventPayload,
+          });
+        }
       } catch (error) {
         errored += 1;
         logger.warn("Failed to ingest Gmail message", {
@@ -766,7 +827,7 @@ export async function runGmailIngestionSync(args: {
           error: normalizeErrorMessage(error),
         });
       }
-    }
+    });
 
     await completePostApplicationSyncRun({
       id: syncRun.id,

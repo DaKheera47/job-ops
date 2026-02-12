@@ -53,16 +53,6 @@ type GmailOauthResultMessage = {
   error?: string;
 };
 
-function getFirstCandidateId(item: PostApplicationInboxItem): string {
-  if (item.message.matchedJobId) {
-    const matched = item.candidates.find(
-      (candidate) => candidate.jobId === item.message.matchedJobId,
-    );
-    if (matched) return matched.id;
-  }
-  return item.candidates[0]?.id ?? "";
-}
-
 function formatEpochMs(value?: number | null): string {
   if (!value) return "n/a";
   return formatDateTime(new Date(value).toISOString()) ?? "n/a";
@@ -96,9 +86,6 @@ export const TrackingInboxPage: React.FC = () => {
     PostApplicationInboxItem[]
   >([]);
 
-  const [candidateByMessageId, setCandidateByMessageId] = useState<
-    Record<string, string>
-  >({});
   const [appliedJobByMessageId, setAppliedJobByMessageId] = useState<
     Record<string, string>
   >({});
@@ -106,25 +93,6 @@ export const TrackingInboxPage: React.FC = () => {
   const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
   const [hasAttemptedAppliedJobsLoad, setHasAttemptedAppliedJobsLoad] =
     useState(false);
-
-  const primeCandidateSelections = useCallback(
-    (items: PostApplicationInboxItem[]) => {
-      setCandidateByMessageId((previous) => {
-        const next = { ...previous };
-        for (const item of items) {
-          const selectedCandidateId = next[item.message.id];
-          const hasValidSelection = item.candidates.some(
-            (candidate) => candidate.id === selectedCandidateId,
-          );
-          if (!selectedCandidateId || !hasValidSelection) {
-            next[item.message.id] = getFirstCandidateId(item);
-          }
-        }
-        return next;
-      });
-    },
-    [],
-  );
 
   const loadAppliedJobs = useCallback(async () => {
     if (hasAttemptedAppliedJobsLoad || isAppliedJobsLoading) return;
@@ -154,8 +122,7 @@ export const TrackingInboxPage: React.FC = () => {
     setStatus(statusRes.status);
     setInbox(inboxRes.items);
     setRuns(runsRes.runs);
-    primeCandidateSelections(inboxRes.items);
-  }, [provider, accountKey, primeCandidateSelections]);
+  }, [provider, accountKey]);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -196,15 +163,10 @@ export const TrackingInboxPage: React.FC = () => {
   }, [hasReviewItems, loadAppliedJobs]);
 
   useEffect(() => {
-    const itemsWithoutCandidates = [...inbox, ...selectedRunItems].filter(
-      (item) => item.candidates.length === 0,
-    );
-    if (itemsWithoutCandidates.length === 0) return;
-
     const defaultAppliedJobId = appliedJobs[0]?.id ?? "";
     setAppliedJobByMessageId((previous) => {
       const next = { ...previous };
-      for (const item of itemsWithoutCandidates) {
+      for (const item of [...inbox, ...selectedRunItems]) {
         const selectedJobId = next[item.message.id];
         const hasValidSelection = appliedJobs.some(
           (appliedJob) => appliedJob.id === selectedJobId,
@@ -386,14 +348,10 @@ export const TrackingInboxPage: React.FC = () => {
 
   const handleDecision = useCallback(
     async (item: PostApplicationInboxItem, decision: "approve" | "deny") => {
-      const candidateId = candidateByMessageId[item.message.id] ?? "";
-      const candidateJobId =
-        item.candidates.find((candidate) => candidate.id === candidateId)
-          ?.jobId ?? "";
       const selectedJobId =
-        appliedJobByMessageId[item.message.id] ?? candidateJobId;
+        appliedJobByMessageId[item.message.id] || item.message.matchedJobId;
 
-      if (!selectedJobId) {
+      if (decision === "approve" && !selectedJobId) {
         toast.error("Select an applied job before making a decision.");
         return;
       }
@@ -405,17 +363,16 @@ export const TrackingInboxPage: React.FC = () => {
             messageId: item.message.id,
             provider,
             accountKey,
-            jobId: selectedJobId,
+            jobId: selectedJobId ?? undefined,
           });
-          toast.success("Message approved");
+          toast.success("Message linked");
         } else {
           await api.denyPostApplicationInboxItem({
             messageId: item.message.id,
             provider,
             accountKey,
-            jobId: selectedJobId,
           });
-          toast.success("Message denied");
+          toast.success("Message ignored");
         }
 
         await refresh();
@@ -429,13 +386,7 @@ export const TrackingInboxPage: React.FC = () => {
         setIsActionLoading(false);
       }
     },
-    [
-      accountKey,
-      appliedJobByMessageId,
-      candidateByMessageId,
-      provider,
-      refresh,
-    ],
+    [accountKey, appliedJobByMessageId, provider, refresh],
   );
 
   const handleOpenRunMessages = useCallback(
@@ -453,7 +404,6 @@ export const TrackingInboxPage: React.FC = () => {
         });
         setSelectedRun(response.run);
         setSelectedRunItems(response.items);
-        primeCandidateSelections(response.items);
       } catch (error) {
         const message =
           error instanceof Error
@@ -464,7 +414,7 @@ export const TrackingInboxPage: React.FC = () => {
         setIsRunMessagesLoading(false);
       }
     },
-    [accountKey, primeCandidateSelections, provider],
+    [accountKey, provider],
   );
 
   const pendingCount = inbox.length;
@@ -658,7 +608,6 @@ export const TrackingInboxPage: React.FC = () => {
               <EmailViewerList
                 items={inbox}
                 appliedJobs={appliedJobs}
-                candidateByMessageId={candidateByMessageId}
                 appliedJobByMessageId={appliedJobByMessageId}
                 onAppliedJobChange={handleAppliedJobChange}
                 onDecision={(item, decision) =>
@@ -747,7 +696,6 @@ export const TrackingInboxPage: React.FC = () => {
               <EmailViewerList
                 items={selectedRunItems}
                 appliedJobs={appliedJobs}
-                candidateByMessageId={candidateByMessageId}
                 appliedJobByMessageId={appliedJobByMessageId}
                 onAppliedJobChange={handleAppliedJobChange}
                 onDecision={(item, decision) =>

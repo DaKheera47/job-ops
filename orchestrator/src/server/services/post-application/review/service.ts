@@ -3,14 +3,10 @@ import { conflict, notFound, unprocessableEntity } from "@infra/errors";
 import { db, schema } from "@server/db";
 import { getJobById, listJobSummariesByIds } from "@server/repositories/jobs";
 import {
-  getPostApplicationMessageCandidateById,
-  listPostApplicationMessageCandidatesByMessageIds,
-} from "@server/repositories/post-application-message-candidates";
-import { getLatestPostApplicationMessageLinksByMessageIds } from "@server/repositories/post-application-message-links";
-import {
   getPostApplicationMessageById,
-  listPostApplicationMessagesByReviewStatus,
+  listPostApplicationMessagesByProcessingStatus,
   listPostApplicationMessagesBySyncRun,
+  updatePostApplicationMessageDecision,
 } from "@server/repositories/post-application-messages";
 import {
   getPostApplicationSyncRunById,
@@ -20,20 +16,12 @@ import type {
   ApplicationStage,
   PostApplicationInboxItem,
   PostApplicationMessage,
-  PostApplicationMessageCandidate,
   PostApplicationProvider,
-  PostApplicationReviewStatus,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
-const {
-  jobs,
-  postApplicationMessageLinks,
-  postApplicationMessages,
-  postApplicationSyncRuns,
-  stageEvents,
-} = schema;
+const { jobs, postApplicationSyncRuns, stageEvents } = schema;
 
 const STAGE_TO_JOB_STATUS: Record<ApplicationStage, "applied"> = {
   applied: "applied",
@@ -46,46 +34,27 @@ const STAGE_TO_JOB_STATUS: Record<ApplicationStage, "applied"> = {
   closed: "applied",
 };
 
-function normalizeLabel(value: string | null): string {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function inferStageFromClassification(
-  label: string | null,
+function inferStageFromMessageType(
+  message: PostApplicationMessage,
 ): ApplicationStage | null {
-  const normalized = normalizeLabel(label);
-  if (!normalized) return null;
-
-  if (normalized === "interview invitation") return "technical_interview";
-  if (normalized === "assessment sent") return "assessment";
-  if (normalized === "offer made") return "offer";
-  if (
-    normalized === "rejection" ||
-    normalized === "hiring freeze notification" ||
-    normalized === "withdrew application"
-  ) {
-    return "closed";
-  }
-  if (
-    normalized === "availability request" ||
-    normalized === "information request" ||
-    normalized === "referral - action required"
-  ) {
-    return "recruiter_screen";
-  }
-
+  if (message.messageType === "interview") return "technical_interview";
+  if (message.messageType === "offer") return "offer";
+  if (message.messageType === "rejection") return "closed";
+  if (message.messageType === "update") return "recruiter_screen";
   return null;
 }
 
-const ACTIONABLE_REVIEW_STATUSES: PostApplicationReviewStatus[] = [
-  "pending_review",
-  "no_reliable_match",
-];
-
-function isActionableReviewStatus(
-  status: PostApplicationReviewStatus,
-): boolean {
-  return ACTIONABLE_REVIEW_STATUSES.includes(status);
+function buildMatchedJobMap(
+  items: PostApplicationMessage[],
+  jobs: Awaited<ReturnType<typeof listJobSummariesByIds>>,
+): PostApplicationInboxItem[] {
+  const jobById = new Map(jobs.map((job) => [job.id, job]));
+  return items.map((message) => ({
+    message,
+    matchedJob: message.matchedJobId
+      ? (jobById.get(message.matchedJobId) ?? null)
+      : null,
+  }));
 }
 
 export async function listPostApplicationInbox(args: {
@@ -94,107 +63,18 @@ export async function listPostApplicationInbox(args: {
   limit?: number;
 }): Promise<PostApplicationInboxItem[]> {
   const limit = args.limit ?? 50;
-  const [pendingMessages, noMatchMessages] = await Promise.all([
-    listPostApplicationMessagesByReviewStatus(
-      args.provider,
-      args.accountKey,
-      "pending_review",
-      limit,
-    ),
-    listPostApplicationMessagesByReviewStatus(
-      args.provider,
-      args.accountKey,
-      "no_reliable_match",
-      limit,
-    ),
-  ]);
-  const messages = [...pendingMessages, ...noMatchMessages]
-    .sort((a, b) => b.receivedAt - a.receivedAt)
-    .slice(0, limit);
+  const messages = await listPostApplicationMessagesByProcessingStatus(
+    args.provider,
+    args.accountKey,
+    "pending_user",
+    limit,
+  );
 
-  const messageIds = messages.map((message) => message.id);
-  const [candidateRows, latestLinks] = await Promise.all([
-    listPostApplicationMessageCandidatesByMessageIds(messageIds),
-    getLatestPostApplicationMessageLinksByMessageIds(messageIds),
-  ]);
   const jobIds = Array.from(
-    new Set(candidateRows.map((candidate) => candidate.jobId)),
-  );
+    new Set(messages.map((message) => message.matchedJobId).filter(Boolean)),
+  ) as string[];
   const jobs = await listJobSummariesByIds(jobIds);
-  const candidatesByMessageId = buildCandidatesByMessageId(candidateRows, jobs);
-
-  const linkByMessageId = new Map(
-    latestLinks.map((link) => [link.messageId, link]),
-  );
-  const settledMessageIds = new Set(
-    latestLinks
-      .filter(
-        (link) => link.decision === "approved" || link.decision === "denied",
-      )
-      .map((link) => link.messageId),
-  );
-
-  return messages
-    .filter((message) => !settledMessageIds.has(message.id))
-    .map((message) => ({
-      message,
-      candidates: candidatesByMessageId.get(message.id) ?? [],
-      link: linkByMessageId.get(message.id) ?? null,
-    }));
-}
-
-function resolveJobIdForDecision(args: {
-  message: PostApplicationMessage;
-  explicitJobId?: string;
-  candidateJobId?: string;
-}): string | null {
-  if (args.explicitJobId && args.explicitJobId.trim().length > 0) {
-    return args.explicitJobId;
-  }
-  if (args.candidateJobId && args.candidateJobId.trim().length > 0) {
-    return args.candidateJobId;
-  }
-  return args.message.matchedJobId;
-}
-
-function buildCandidatesByMessageId(
-  candidateRows: PostApplicationMessageCandidate[],
-  jobs: Awaited<ReturnType<typeof listJobSummariesByIds>>,
-): Map<string, PostApplicationMessageCandidate[]> {
-  const jobById = new Map(jobs.map((job) => [job.id, job]));
-  const candidatesByMessageId = new Map<
-    string,
-    PostApplicationMessageCandidate[]
-  >();
-
-  for (const candidate of candidateRows) {
-    const job = jobById.get(candidate.jobId);
-    const existing = candidatesByMessageId.get(candidate.messageId) ?? [];
-    existing.push({
-      ...candidate,
-      ...(job
-        ? {
-            job: {
-              id: job.id,
-              title: job.title,
-              employer: job.employer,
-            },
-          }
-        : {}),
-    });
-    candidatesByMessageId.set(candidate.messageId, existing);
-  }
-
-  return candidatesByMessageId;
-}
-
-function isUniqueApprovedLinkConflict(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("unique constraint failed") &&
-    message.includes("post_application_message_links.message_id")
-  );
+  return buildMatchedJobMap(messages, jobs);
 }
 
 export async function approvePostApplicationInboxItem(args: {
@@ -202,11 +82,10 @@ export async function approvePostApplicationInboxItem(args: {
   provider: PostApplicationProvider;
   accountKey: string;
   jobId?: string;
-  candidateId?: string;
   toStage?: ApplicationStage;
   note?: string;
   decidedBy?: string | null;
-}): Promise<{ message: PostApplicationMessage; stageEventId: string }> {
+}): Promise<{ message: PostApplicationMessage; stageEventId: string | null }> {
   const message = await getPostApplicationMessageById(args.messageId);
   if (!message) {
     throw notFound(`Post-application message '${args.messageId}' not found.`);
@@ -217,34 +96,16 @@ export async function approvePostApplicationInboxItem(args: {
   ) {
     throw notFound(`Post-application message '${args.messageId}' not found.`);
   }
-  if (!isActionableReviewStatus(message.reviewStatus)) {
+  if (message.processingStatus !== "pending_user") {
     throw conflict(
-      `Message '${args.messageId}' is already decided with status '${message.reviewStatus}'.`,
+      `Message '${args.messageId}' is already decided with status '${message.processingStatus}'.`,
     );
   }
 
-  const candidate = args.candidateId
-    ? await getPostApplicationMessageCandidateById(args.candidateId)
-    : null;
-  if (args.candidateId && (!candidate || candidate.messageId !== message.id)) {
-    throw unprocessableEntity(
-      `Candidate '${args.candidateId}' is invalid for message '${args.messageId}'.`,
-    );
-  }
-
-  const resolvedJobId = resolveJobIdForDecision({
-    message,
-    explicitJobId: args.jobId,
-    candidateJobId: candidate?.jobId,
-  });
+  const resolvedJobId = args.jobId ?? message.matchedJobId;
   if (!resolvedJobId) {
     throw unprocessableEntity(
-      "Approval requires a resolved jobId from payload, candidate, or message suggestion.",
-    );
-  }
-  if (candidate && candidate.jobId !== resolvedJobId) {
-    throw unprocessableEntity(
-      `Candidate '${candidate.id}' does not map to job '${resolvedJobId}'.`,
+      "Approval requires a resolved jobId from payload or message suggestion.",
     );
   }
 
@@ -253,145 +114,99 @@ export async function approvePostApplicationInboxItem(args: {
     throw notFound(`Job '${resolvedJobId}' not found.`);
   }
 
-  const approved = db.transaction((tx) => {
-    const existingApproved = tx
-      .select()
-      .from(postApplicationMessageLinks)
-      .where(
-        and(
-          eq(postApplicationMessageLinks.messageId, message.id),
-          eq(postApplicationMessageLinks.decision, "approved"),
-        ),
-      )
-      .orderBy(desc(postApplicationMessageLinks.decidedAt))
-      .limit(1)
-      .get();
-    if (existingApproved) {
-      throw conflict(
-        `Message '${message.id}' already has an approved link decision.`,
+  const decidedAt = Date.now();
+  const updated = db.transaction(() => {
+    let stageEventId: string | null = null;
+
+    if (message.messageType !== "other") {
+      const latestEvent = db
+        .select()
+        .from(stageEvents)
+        .where(eq(stageEvents.applicationId, resolvedJobId))
+        .orderBy(desc(stageEvents.occurredAt))
+        .limit(1)
+        .get();
+
+      const fromStage =
+        (latestEvent?.toStage as ApplicationStage | undefined) ?? null;
+      const finalToStage =
+        args.toStage ??
+        inferStageFromMessageType(message) ??
+        fromStage ??
+        "applied";
+
+      const occurredAtSeconds = Math.floor(
+        Number.isFinite(message.receivedAt)
+          ? message.receivedAt / 1000
+          : decidedAt / 1000,
       );
-    }
+      stageEventId = randomUUID();
 
-    const latestEvent = tx
-      .select()
-      .from(stageEvents)
-      .where(eq(stageEvents.applicationId, resolvedJobId))
-      .orderBy(desc(stageEvents.occurredAt))
-      .limit(1)
-      .get();
-
-    const fromStage =
-      (latestEvent?.toStage as ApplicationStage | undefined) ?? null;
-    const finalToStage =
-      args.toStage ??
-      inferStageFromClassification(message.classificationLabel) ??
-      fromStage ??
-      "applied";
-    const decidedAt = Date.now();
-    const occurredAtSeconds = Math.floor(
-      Number.isFinite(message.receivedAt)
-        ? message.receivedAt / 1000
-        : decidedAt / 1000,
-    );
-    const stageEventId = randomUUID();
-
-    tx.insert(stageEvents)
-      .values({
-        id: stageEventId,
-        applicationId: resolvedJobId,
-        title: `Post-application review: ${message.classificationLabel ?? "Update"}`,
-        groupId: "post_application_review",
-        fromStage,
-        toStage: finalToStage,
-        occurredAt: occurredAtSeconds,
-        metadata: {
-          actor: "system",
-          eventType: "status_update",
-          eventLabel: `Post-application review: ${message.classificationLabel ?? "Update"}`,
-          note: args.note ?? null,
-          reasonCode: "post_application_approved",
-        },
-        outcome: null,
-      })
-      .run();
-
-    try {
-      tx.insert(postApplicationMessageLinks)
+      db.insert(stageEvents)
         .values({
-          id: randomUUID(),
-          messageId: message.id,
-          jobId: resolvedJobId,
-          candidateId: candidate?.id ?? null,
-          decision: "approved",
-          stageEventId,
-          decidedAt,
-          decidedBy: args.decidedBy ?? null,
-          notes: args.note ?? null,
-          createdAt: new Date(decidedAt).toISOString(),
+          id: stageEventId,
+          applicationId: resolvedJobId,
+          title: `Post-application: ${message.messageType}`,
+          groupId: "post_application_router",
+          fromStage,
+          toStage: finalToStage,
+          occurredAt: occurredAtSeconds,
+          metadata: {
+            actor: "system",
+            eventType: "status_update",
+            eventLabel: `Post-application: ${message.messageType}`,
+            note: args.note ?? null,
+            reasonCode: "post_application_manual_linked",
+          },
+          outcome: null,
         })
         .run();
-    } catch (error) {
-      if (isUniqueApprovedLinkConflict(error)) {
-        throw conflict(
-          `Message '${message.id}' already has an approved link decision.`,
-        );
-      }
-      throw error;
-    }
 
-    const shouldSetAppliedAt = !targetJob.appliedAt;
-    tx.update(jobs)
-      .set({
-        status: STAGE_TO_JOB_STATUS[finalToStage],
-        ...(shouldSetAppliedAt
-          ? { appliedAt: new Date(decidedAt).toISOString() }
-          : {}),
-        updatedAt: new Date(decidedAt).toISOString(),
-      })
-      .where(eq(jobs.id, resolvedJobId))
-      .run();
-
-    tx.update(postApplicationMessages)
-      .set({
-        reviewStatus: "approved",
-        matchedJobId: resolvedJobId,
-        decidedAt,
-        decidedBy: args.decidedBy ?? null,
-        updatedAt: new Date(decidedAt).toISOString(),
-      })
-      .where(eq(postApplicationMessages.id, message.id))
-      .run();
-
-    if (message.syncRunId) {
-      tx.update(postApplicationSyncRuns)
+      const shouldSetAppliedAt = !targetJob.appliedAt;
+      db.update(jobs)
         .set({
-          messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
+          status: STAGE_TO_JOB_STATUS[finalToStage],
+          ...(shouldSetAppliedAt
+            ? { appliedAt: new Date(decidedAt).toISOString() }
+            : {}),
           updatedAt: new Date(decidedAt).toISOString(),
         })
-        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .where(eq(jobs.id, resolvedJobId))
         .run();
     }
+
+    db.update(postApplicationSyncRuns)
+      .set({
+        messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
+        updatedAt: new Date(decidedAt).toISOString(),
+      })
+      .where(eq(postApplicationSyncRuns.id, message.syncRunId ?? ""))
+      .run();
 
     return { stageEventId };
   });
 
-  const updatedMessage = await getPostApplicationMessageById(message.id);
+  const updatedMessage = await updatePostApplicationMessageDecision({
+    id: message.id,
+    processingStatus: "manual_linked",
+    matchedJobId: resolvedJobId,
+    decidedAt,
+    decidedBy: args.decidedBy ?? null,
+  });
+
   if (!updatedMessage) {
     throw notFound(
       `Post-application message '${message.id}' not found after approval.`,
     );
   }
 
-  return { message: updatedMessage, stageEventId: approved.stageEventId };
+  return { message: updatedMessage, stageEventId: updated.stageEventId };
 }
 
 export async function denyPostApplicationInboxItem(args: {
   messageId: string;
   provider: PostApplicationProvider;
   accountKey: string;
-  jobId?: string;
-  candidateId?: string;
-  note?: string;
   decidedBy?: string | null;
 }): Promise<{ message: PostApplicationMessage }> {
   const message = await getPostApplicationMessageById(args.messageId);
@@ -404,77 +219,30 @@ export async function denyPostApplicationInboxItem(args: {
   ) {
     throw notFound(`Post-application message '${args.messageId}' not found.`);
   }
-  if (!isActionableReviewStatus(message.reviewStatus)) {
+  if (message.processingStatus !== "pending_user") {
     throw conflict(
-      `Message '${args.messageId}' is already decided with status '${message.reviewStatus}'.`,
+      `Message '${args.messageId}' is already decided with status '${message.processingStatus}'.`,
     );
-  }
-
-  const candidate = args.candidateId
-    ? await getPostApplicationMessageCandidateById(args.candidateId)
-    : null;
-  if (args.candidateId && (!candidate || candidate.messageId !== message.id)) {
-    throw unprocessableEntity(
-      `Candidate '${args.candidateId}' is invalid for message '${args.messageId}'.`,
-    );
-  }
-
-  const resolvedJobId = resolveJobIdForDecision({
-    message,
-    explicitJobId: args.jobId,
-    candidateJobId: candidate?.jobId,
-  });
-  if (!resolvedJobId) {
-    throw unprocessableEntity(
-      "Deny requires a resolved jobId from payload, candidate, or message suggestion.",
-    );
-  }
-
-  const job = await getJobById(resolvedJobId);
-  if (!job) {
-    throw notFound(`Job '${resolvedJobId}' not found.`);
   }
 
   const decidedAt = Date.now();
-  db.transaction((tx) => {
-    tx.insert(postApplicationMessageLinks)
-      .values({
-        id: randomUUID(),
-        messageId: message.id,
-        jobId: resolvedJobId,
-        candidateId: candidate?.id ?? null,
-        decision: "denied",
-        stageEventId: null,
-        decidedAt,
-        decidedBy: args.decidedBy ?? null,
-        notes: args.note ?? null,
-        createdAt: new Date(decidedAt).toISOString(),
-      })
-      .run();
-
-    tx.update(postApplicationMessages)
+  if (message.syncRunId) {
+    db.update(postApplicationSyncRuns)
       .set({
-        reviewStatus: "denied",
-        matchedJobId: resolvedJobId,
-        decidedAt,
-        decidedBy: args.decidedBy ?? null,
+        messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
         updatedAt: new Date(decidedAt).toISOString(),
       })
-      .where(eq(postApplicationMessages.id, message.id))
+      .where(eq(postApplicationSyncRuns.id, message.syncRunId))
       .run();
+  }
 
-    if (message.syncRunId) {
-      tx.update(postApplicationSyncRuns)
-        .set({
-          messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
-          updatedAt: new Date(decidedAt).toISOString(),
-        })
-        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
-        .run();
-    }
+  const updatedMessage = await updatePostApplicationMessageDecision({
+    id: message.id,
+    processingStatus: "ignored",
+    matchedJobId: null,
+    decidedAt,
+    decidedBy: args.decidedBy ?? null,
   });
-
-  const updatedMessage = await getPostApplicationMessageById(message.id);
   if (!updatedMessage) {
     throw notFound(
       `Post-application message '${message.id}' not found after denial.`,
@@ -521,26 +289,10 @@ export async function listPostApplicationRunMessages(args: {
     args.limit ?? 300,
   );
 
-  const messageIds = messages.map((message) => message.id);
-  const [candidateRows, latestLinks] = await Promise.all([
-    listPostApplicationMessageCandidatesByMessageIds(messageIds),
-    getLatestPostApplicationMessageLinksByMessageIds(messageIds),
-  ]);
   const jobIds = Array.from(
-    new Set(candidateRows.map((candidate) => candidate.jobId)),
-  );
+    new Set(messages.map((message) => message.matchedJobId).filter(Boolean)),
+  ) as string[];
   const jobs = await listJobSummariesByIds(jobIds);
-  const candidatesByMessageId = buildCandidatesByMessageId(candidateRows, jobs);
 
-  const linkByMessageId = new Map(
-    latestLinks.map((link) => [link.messageId, link]),
-  );
-
-  const items = messages.map((message) => ({
-    message,
-    candidates: candidatesByMessageId.get(message.id) ?? [],
-    link: linkByMessageId.get(message.id) ?? null,
-  }));
-
-  return { run, items };
+  return { run, items: buildMatchedJobMap(messages, jobs) };
 }

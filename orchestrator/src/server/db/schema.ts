@@ -9,11 +9,10 @@ import {
   INTERVIEW_OUTCOMES,
   INTERVIEW_TYPES,
   POST_APPLICATION_INTEGRATION_STATUSES,
-  POST_APPLICATION_LINK_DECISIONS,
-  POST_APPLICATION_MATCH_METHODS,
+  POST_APPLICATION_MESSAGE_TYPES,
+  POST_APPLICATION_PROCESSING_STATUSES,
   POST_APPLICATION_PROVIDERS,
   POST_APPLICATION_RELEVANCE_DECISIONS,
-  POST_APPLICATION_REVIEW_STATUSES,
   POST_APPLICATION_SYNC_RUN_STATUSES,
 } from "@shared/types";
 import { sql } from "drizzle-orm";
@@ -262,19 +261,24 @@ export const postApplicationMessages = sqliteTable(
     classificationLabel: text("classification_label"),
     classificationConfidence: real("classification_confidence"),
     classificationPayload: text("classification_payload", { mode: "json" }),
-    relevanceKeywordScore: real("relevance_keyword_score").notNull().default(0),
     relevanceLlmScore: real("relevance_llm_score"),
-    relevanceFinalScore: real("relevance_final_score").notNull().default(0),
     relevanceDecision: text("relevance_decision", {
       enum: POST_APPLICATION_RELEVANCE_DECISIONS,
     })
       .notNull()
       .default("needs_llm"),
-    reviewStatus: text("review_status", {
-      enum: POST_APPLICATION_REVIEW_STATUSES,
+    matchConfidence: integer("match_confidence"),
+    messageType: text("message_type", {
+      enum: POST_APPLICATION_MESSAGE_TYPES,
     })
       .notNull()
-      .default("pending_review"),
+      .default("other"),
+    stageEventPayload: text("stage_event_payload", { mode: "json" }),
+    processingStatus: text("processing_status", {
+      enum: POST_APPLICATION_PROCESSING_STATUSES,
+    })
+      .notNull()
+      .default("pending_user"),
     matchedJobId: text("matched_job_id").references(() => jobs.id, {
       onDelete: "set null",
     }),
@@ -290,71 +294,8 @@ export const postApplicationMessages = sqliteTable(
       "idx_post_app_messages_provider_account_external_unique",
     ).on(table.provider, table.accountKey, table.externalMessageId),
     providerAccountReviewStatusIndex: index(
-      "idx_post_app_messages_provider_account_review_status",
-    ).on(table.provider, table.accountKey, table.reviewStatus),
-  }),
-);
-
-export const postApplicationMessageCandidates = sqliteTable(
-  "post_application_message_candidates",
-  {
-    id: text("id").primaryKey(),
-    messageId: text("message_id")
-      .notNull()
-      .references(() => postApplicationMessages.id, { onDelete: "cascade" }),
-    jobId: text("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    score: real("score").notNull().default(0),
-    rank: integer("rank").notNull(),
-    reasons: text("reasons", { mode: "json" }),
-    matchMethod: text("match_method", { enum: POST_APPLICATION_MATCH_METHODS })
-      .notNull()
-      .default("keyword"),
-    isHighConfidence: integer("is_high_confidence", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-  },
-  (table) => ({
-    messageJobUnique: uniqueIndex(
-      "idx_post_app_message_candidates_message_job_unique",
-    ).on(table.messageId, table.jobId),
-    messageRankUnique: uniqueIndex(
-      "idx_post_app_message_candidates_message_rank_unique",
-    ).on(table.messageId, table.rank),
-  }),
-);
-
-export const postApplicationMessageLinks = sqliteTable(
-  "post_application_message_links",
-  {
-    id: text("id").primaryKey(),
-    messageId: text("message_id")
-      .notNull()
-      .references(() => postApplicationMessages.id, { onDelete: "cascade" }),
-    jobId: text("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    candidateId: text("candidate_id").references(
-      () => postApplicationMessageCandidates.id,
-      { onDelete: "set null" },
-    ),
-    decision: text("decision", { enum: POST_APPLICATION_LINK_DECISIONS })
-      .notNull()
-      .default("denied"),
-    stageEventId: text("stage_event_id").references(() => stageEvents.id, {
-      onDelete: "set null",
-    }),
-    decidedAt: integer("decided_at", { mode: "number" }).notNull(),
-    decidedBy: text("decided_by"),
-    notes: text("notes"),
-    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-  },
-  (table) => ({
-    messageDecisionIndex: index(
-      "idx_post_app_message_links_message_decision",
-    ).on(table.messageId, table.decision),
+      "idx_post_app_messages_provider_account_processing_status",
+    ).on(table.provider, table.accountKey, table.processingStatus),
   }),
 );
 
@@ -382,11 +323,3 @@ export type PostApplicationMessageRow =
   typeof postApplicationMessages.$inferSelect;
 export type NewPostApplicationMessageRow =
   typeof postApplicationMessages.$inferInsert;
-export type PostApplicationMessageCandidateRow =
-  typeof postApplicationMessageCandidates.$inferSelect;
-export type NewPostApplicationMessageCandidateRow =
-  typeof postApplicationMessageCandidates.$inferInsert;
-export type PostApplicationMessageLinkRow =
-  typeof postApplicationMessageLinks.$inferSelect;
-export type NewPostApplicationMessageLinkRow =
-  typeof postApplicationMessageLinks.$inferInsert;
