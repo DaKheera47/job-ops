@@ -209,7 +209,7 @@ describe("TrackingInboxPage", () => {
 
     await waitFor(() => {
       expect(api.getJobs).toHaveBeenCalledWith({
-        statuses: ["processing", "ready", "applied", "skipped", "expired"],
+        statuses: ["applied"],
         view: "list",
       });
     });
