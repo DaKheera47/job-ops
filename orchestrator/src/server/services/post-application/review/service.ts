@@ -17,6 +17,9 @@ import {
 } from "@server/services/post-application/stage-target";
 import type {
   ApplicationStage,
+  BulkPostApplicationActionRequest,
+  BulkPostApplicationActionResponse,
+  BulkPostApplicationActionResult,
   PostApplicationInboxItem,
   PostApplicationMessage,
   PostApplicationProvider,
@@ -231,6 +234,100 @@ export async function denyPostApplicationInboxItem(args: {
   }
 
   return { message: updatedMessage };
+}
+
+export async function bulkPostApplicationInboxAction(
+  args: BulkPostApplicationActionRequest & { decidedBy?: string | null },
+): Promise<BulkPostApplicationActionResponse> {
+  const { provider, accountKey, action, decidedBy } = args;
+
+  const pendingItems = await listPostApplicationInbox({
+    provider,
+    accountKey,
+    limit: 1000,
+  });
+
+  const results: BulkPostApplicationActionResult[] = [];
+  let skipped = 0;
+
+  for (const item of pendingItems) {
+    const { message, matchedJob } = item;
+
+    if (action === "approve") {
+      if (!matchedJob) {
+        skipped++;
+        results.push({
+          messageId: message.id,
+          ok: false,
+          error: {
+            code: "NO_SUGGESTED_MATCH",
+            message: "Message has no suggested job match",
+          },
+        });
+        continue;
+      }
+
+      try {
+        const result = await approvePostApplicationInboxItem({
+          messageId: message.id,
+          provider,
+          accountKey,
+          jobId: matchedJob.id,
+          decidedBy,
+        });
+        results.push({
+          messageId: message.id,
+          ok: true,
+          message: result.message,
+          stageEventId: result.stageEventId,
+        });
+      } catch (error) {
+        results.push({
+          messageId: message.id,
+          ok: false,
+          error: {
+            code: "APPROVE_FAILED",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        });
+      }
+    } else {
+      try {
+        const result = await denyPostApplicationInboxItem({
+          messageId: message.id,
+          provider,
+          accountKey,
+          decidedBy,
+        });
+        results.push({
+          messageId: message.id,
+          ok: true,
+          message: result.message,
+        });
+      } catch (error) {
+        results.push({
+          messageId: message.id,
+          ok: false,
+          error: {
+            code: "DENY_FAILED",
+            message: error instanceof Error ? error.message : "Unknown error",
+          },
+        });
+      }
+    }
+  }
+
+  const succeeded = results.filter((r) => r.ok).length;
+  const failed = results.length - succeeded;
+
+  return {
+    action,
+    requested: pendingItems.length,
+    succeeded,
+    failed,
+    skipped,
+    results,
+  };
 }
 
 export async function listPostApplicationReviewRuns(args: {

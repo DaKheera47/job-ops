@@ -1,5 +1,6 @@
 export {
   approvePostApplicationInboxItem,
+  bulkPostApplicationInboxAction,
   denyPostApplicationInboxItem,
   listPostApplicationInbox,
   listPostApplicationReviewRuns,

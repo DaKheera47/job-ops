@@ -6,16 +6,28 @@ import type {
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import {
+  CheckCircle,
   Inbox,
   Link2,
   Loader2,
   RefreshCcw,
   Unplug,
   Upload,
+  XCircle,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -93,6 +105,12 @@ export const TrackingInboxPage: React.FC = () => {
   const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
   const [hasAttemptedAppliedJobsLoad, setHasAttemptedAppliedJobsLoad] =
     useState(false);
+
+  const [bulkActionDialog, setBulkActionDialog] = useState<{
+    isOpen: boolean;
+    action: "approve" | "deny" | null;
+    itemCount: number;
+  }>({ isOpen: false, action: null, itemCount: 0 });
 
   const loadAppliedJobs = useCallback(async () => {
     if (hasAttemptedAppliedJobsLoad || isAppliedJobsLoading) return;
@@ -397,6 +415,74 @@ export const TrackingInboxPage: React.FC = () => {
     [accountKey, appliedJobByMessageId, provider, refresh],
   );
 
+  const handleBulkAction = useCallback(
+    async (action: "approve" | "deny") => {
+      if (inbox.length === 0) return;
+
+      setIsActionLoading(true);
+      setBulkActionDialog({ isOpen: false, action: null, itemCount: 0 });
+
+      try {
+        const result = await api.bulkPostApplicationInboxAction({
+          action,
+          provider,
+          accountKey,
+        });
+
+        const { succeeded, failed, skipped } = result;
+        const actionLabel = action === "approve" ? "approved" : "ignored";
+
+        if (failed === 0 && skipped === 0) {
+          toast.success(`All ${succeeded} messages ${actionLabel}`);
+        } else if (failed === 0) {
+          toast.success(
+            `${succeeded} messages ${actionLabel}, ${skipped} skipped (no suggested match)`,
+          );
+        } else {
+          toast.error(
+            `${succeeded} ${actionLabel}, ${failed} failed, ${skipped} skipped`,
+          );
+        }
+
+        await refresh();
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : `Failed to ${action} messages`;
+        toast.error(message);
+      } finally {
+        setIsActionLoading(false);
+      }
+    },
+    [accountKey, inbox.length, provider, refresh],
+  );
+
+  const openBulkActionDialog = useCallback(
+    (action: "approve" | "deny") => {
+      const eligibleCount =
+        action === "approve"
+          ? inbox.filter((item) => item.matchedJob).length
+          : inbox.length;
+
+      if (eligibleCount === 0) {
+        toast.error(
+          action === "approve"
+            ? "No messages with suggested job matches to approve"
+            : "No messages to ignore",
+        );
+        return;
+      }
+
+      setBulkActionDialog({
+        isOpen: true,
+        action,
+        itemCount: eligibleCount,
+      });
+    },
+    [inbox],
+  );
+
   const handleOpenRunMessages = useCallback(
     async (run: PostApplicationSyncRun) => {
       setSelectedRun(run);
@@ -598,8 +684,32 @@ export const TrackingInboxPage: React.FC = () => {
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Pending Review Queue</CardTitle>
+            {inbox.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  disabled={isActionLoading}
+                  onClick={() => openBulkActionDialog("approve")}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Approve All
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  disabled={isActionLoading}
+                  onClick={() => openBulkActionDialog("deny")}
+                >
+                  <XCircle className="h-4 w-4" />
+                  Ignore All
+                </Button>
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -716,6 +826,42 @@ export const TrackingInboxPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={bulkActionDialog.isOpen}
+        onOpenChange={(open) =>
+          setBulkActionDialog((previous) => ({ ...previous, isOpen: open }))
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkActionDialog.action === "approve"
+                ? "Approve All Messages?"
+                : "Ignore All Messages?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkActionDialog.action === "approve"
+                ? `This will approve ${bulkActionDialog.itemCount} message${bulkActionDialog.itemCount === 1 ? "" : "s"} with suggested job matches. Messages without matches will be skipped.`
+                : `This will ignore all ${bulkActionDialog.itemCount} pending message${bulkActionDialog.itemCount === 1 ? "" : "s"}.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (bulkActionDialog.action) {
+                  void handleBulkAction(bulkActionDialog.action);
+                }
+              }}
+            >
+              {bulkActionDialog.action === "approve"
+                ? "Approve All"
+                : "Ignore All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

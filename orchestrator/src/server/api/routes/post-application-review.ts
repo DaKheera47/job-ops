@@ -9,6 +9,7 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import {
   approvePostApplicationInboxItem,
+  bulkPostApplicationInboxAction,
   denyPostApplicationInboxItem,
   listPostApplicationInbox,
   listPostApplicationReviewRuns,
@@ -40,6 +41,13 @@ const approveBodySchema = z.object({
 });
 
 const denyBodySchema = z.object({
+  provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),
+  accountKey: z.string().min(1).max(255).default("default"),
+  decidedBy: z.string().max(255).optional(),
+});
+
+const bulkActionBodySchema = z.object({
+  action: z.enum(["approve", "deny"]),
   provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),
   accountKey: z.string().min(1).max(255).default("default"),
   decidedBy: z.string().max(255).optional(),
@@ -154,6 +162,30 @@ postApplicationReviewRouter.post(
 
       const result = await denyPostApplicationInboxItem({
         messageId,
+        provider: input.provider,
+        accountKey: input.accountKey,
+        decidedBy: input.decidedBy ?? null,
+      });
+
+      ok(res, result);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        fail(res, badRequest(error.message, error.flatten()));
+        return;
+      }
+      throw error;
+    }
+  }),
+);
+
+postApplicationReviewRouter.post(
+  "/inbox/bulk",
+  asyncRoute(async (req: Request, res: Response) => {
+    try {
+      const input = bulkActionBodySchema.parse(req.body ?? {});
+
+      const result = await bulkPostApplicationInboxAction({
+        action: input.action,
         provider: input.provider,
         accountKey: input.accountKey,
         decidedBy: input.decidedBy ?? null,

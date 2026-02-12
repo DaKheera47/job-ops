@@ -11,6 +11,8 @@ import type {
   BackupInfo,
   BulkJobActionRequest,
   BulkJobActionResponse,
+  BulkPostApplicationAction,
+  BulkPostApplicationActionResponse,
   DemoInfoResponse,
   Job,
   JobListItem,
@@ -715,6 +717,26 @@ export async function denyPostApplicationInboxItem(input: {
     {
       method: "POST",
       body: JSON.stringify({
+        provider: input.provider ?? "gmail",
+        accountKey: input.accountKey ?? "default",
+        ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),
+      }),
+    },
+  );
+}
+
+export async function bulkPostApplicationInboxAction(input: {
+  action: BulkPostApplicationAction;
+  provider?: PostApplicationProvider;
+  accountKey?: string;
+  decidedBy?: string;
+}): Promise<BulkPostApplicationActionResponse> {
+  return fetchApi<BulkPostApplicationActionResponse>(
+    "/post-application/inbox/bulk",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        action: input.action,
         provider: input.provider ?? "gmail",
         accountKey: input.accountKey ?? "default",
         ...(input.decidedBy ? { decidedBy: input.decidedBy } : {}),

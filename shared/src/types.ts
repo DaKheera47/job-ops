@@ -540,6 +540,39 @@ export interface PostApplicationInboxItem {
   } | null;
 }
 
+export type BulkPostApplicationAction = "approve" | "deny";
+
+export interface BulkPostApplicationActionRequest {
+  action: BulkPostApplicationAction;
+  provider: PostApplicationProvider;
+  accountKey: string;
+}
+
+export type BulkPostApplicationActionResult =
+  | {
+      messageId: string;
+      ok: true;
+      message: PostApplicationMessage;
+      stageEventId?: string | null;
+    }
+  | {
+      messageId: string;
+      ok: false;
+      error: {
+        code: string;
+        message: string;
+      };
+    };
+
+export interface BulkPostApplicationActionResponse {
+  action: BulkPostApplicationAction;
+  requested: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  results: BulkPostApplicationActionResult[];
+}
+
 export interface JobsListResponse<TJob = Job> {
   jobs: TJob[];
   total: number;
