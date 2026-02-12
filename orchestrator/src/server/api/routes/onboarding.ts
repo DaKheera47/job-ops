@@ -101,7 +101,11 @@ async function validateRxresume(
     return { valid: false, message: "RxResume credentials are missing." };
   }
 
-  const result = await RxResumeClient.verifyCredentials(rxEmail, rxPassword, rxUrl);
+  const result = await RxResumeClient.verifyCredentials(
+    rxEmail,
+    rxPassword,
+    rxUrl,
+  );
 
   if (result.ok) {
     return { valid: true, message: null };
