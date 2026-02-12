@@ -129,3 +129,8 @@ git pull
 docker compose pull
 docker compose up -d
 ```
+
+## Self-hosted Reactive Resume
+
+If you are also self-hosting Reactive Resume, you should configure the url
+by setting `RXRESUME_URL` to your instance (e.g. `http://rxresume.local.net`).

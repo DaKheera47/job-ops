@@ -95,12 +95,17 @@ async function validateRxresume(
 ): Promise<ValidationResponse> {
   const rxEmail = email?.trim() || process.env.RXRESUME_EMAIL || "";
   const rxPassword = password?.trim() || process.env.RXRESUME_PASSWORD || "";
+  const rxUrl = process.env.RXRESUME_URL || "https://v4.rxresu.me";
 
   if (!rxEmail || !rxPassword) {
     return { valid: false, message: "RxResume credentials are missing." };
   }
 
-  const result = await RxResumeClient.verifyCredentials(rxEmail, rxPassword);
+  const result = await RxResumeClient.verifyCredentials(
+    rxEmail,
+    rxPassword,
+    rxUrl,
+  );
 
   if (result.ok) {
     return { valid: true, message: null };
