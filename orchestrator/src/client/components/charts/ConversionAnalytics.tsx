@@ -62,6 +62,7 @@ const FUNNEL_STAGES = [
   { key: "screening", label: "Screening", color: "#8b5cf6" },
   { key: "interview", label: "Interview", color: "#f59e0b" },
   { key: "offer", label: "Offer", color: "#10b981" },
+  { key: "rejected", label: "Rejected", color: "#ef4444" },
 ] as const;
 
 // Stages that count as "screening"
@@ -87,6 +88,9 @@ const CONVERSION_STAGES = new Set([
 // Stages that count as "offer"
 const OFFER_STAGES = new Set(["offer"]);
 
+const isRejectedEvent = (event: StageEvent) =>
+  event.outcome === "rejected" || event.metadata?.reasonCode === "rejected";
+
 const toDateKey = (value: Date) => {
   const year = value.getFullYear();
   const month = `${value.getMonth() + 1}`.padStart(2, "0");
@@ -100,6 +104,7 @@ const buildFunnelData = (jobsWithEvents: JobWithEvents[]): FunnelStage[] => {
   let screening = 0;
   let interview = 0;
   let offer = 0;
+  let rejected = 0;
 
   for (const job of jobsWithEvents) {
     if (!job.appliedAt) continue;
@@ -133,6 +138,11 @@ const buildFunnelData = (jobsWithEvents: JobWithEvents[]): FunnelStage[] => {
         break;
       }
     }
+
+    const reachedRejected = job.events.some(isRejectedEvent);
+    if (reachedRejected) {
+      rejected++;
+    }
   }
 
   return [
@@ -140,6 +150,7 @@ const buildFunnelData = (jobsWithEvents: JobWithEvents[]): FunnelStage[] => {
     { name: "Screening", value: screening, fill: FUNNEL_STAGES[1].color },
     { name: "Interview", value: interview, fill: FUNNEL_STAGES[2].color },
     { name: "Offer", value: offer, fill: FUNNEL_STAGES[3].color },
+    { name: "Rejected", value: rejected, fill: FUNNEL_STAGES[4].color },
   ];
 };
 
@@ -312,7 +323,7 @@ export function ConversionAnalytics({
             {/* Funnel Chart */}
             <div>
               <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-                Funnel: Applied → Screening → Interview → Offer
+                Funnel: Applied → Screening → Interview → Offer → Rejected
               </h4>
               <ChartContainer
                 config={chartConfig}
