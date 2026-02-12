@@ -574,10 +574,6 @@ function normalizeBestMatchIndex(value: unknown, max: number): number | null {
   return rounded;
 }
 
-function isRouterPromptDebugEnabled(): boolean {
-  return true;
-}
-
 async function classifyWithSmartRouter(args: {
   emailText: string;
   activeJobs: Array<{ id: string; company: string; title: string }>;
@@ -610,21 +606,6 @@ Email:
 ${llmEmailText}`,
     },
   ];
-
-  if (isRouterPromptDebugEnabled()) {
-    logger.info("Smart router outbound LLM payload", {
-      payload: sanitizeUnknown(
-        {
-          model,
-          activeJobsCount: indexedActiveJobs.length,
-          emailChars: llmEmailText.length,
-          estimatedTokens: Math.ceil(llmEmailText.length / 4),
-          messages,
-        },
-        { maxString: 5000, maxItems: 60, depth: 5 },
-      ),
-    });
-  }
 
   const llm = new LlmService();
   const result = await llm.callJson<{
