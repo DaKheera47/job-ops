@@ -39,7 +39,7 @@ function makeInboxItem() {
       classificationPayload: null,
       relevanceLlmScore: 95,
       relevanceDecision: "relevant" as const,
-      matchedJobId: "job-1",
+      matchedJobId: "job-2",
       matchConfidence: 95,
       messageType: "interview" as const,
       stageEventPayload: null,
@@ -52,7 +52,7 @@ function makeInboxItem() {
       updatedAt: new Date().toISOString(),
     },
     matchedJob: {
-      id: "job-1",
+      id: "job-2",
       title: "Software Engineer",
       employer: "Example",
     },
@@ -98,7 +98,7 @@ beforeEach(() => {
       {
         id: "job-1",
         source: "manual",
-        title: "Software Engineer",
+        title: "Software Engineer I",
         employer: "Example",
         jobUrl: "https://example.com/job-1",
         applicationLink: null,
@@ -118,13 +118,36 @@ beforeEach(() => {
         appliedAt: null,
         updatedAt: new Date().toISOString(),
       },
+      {
+        id: "job-2",
+        source: "manual",
+        title: "Software Engineer II",
+        employer: "Example",
+        jobUrl: "https://example.com/job-2",
+        applicationLink: null,
+        datePosted: null,
+        deadline: null,
+        salary: null,
+        location: null,
+        status: "applied",
+        suitabilityScore: null,
+        sponsorMatchScore: null,
+        jobType: null,
+        jobFunction: null,
+        salaryMinAmount: null,
+        salaryMaxAmount: null,
+        salaryCurrency: null,
+        discoveredAt: new Date().toISOString(),
+        appliedAt: null,
+        updatedAt: new Date().toISOString(),
+      },
     ],
-    total: 1,
+    total: 2,
     byStatus: {
       discovered: 0,
       processing: 0,
       ready: 0,
-      applied: 1,
+      applied: 2,
       skipped: 0,
       expired: 0,
     },
@@ -198,6 +221,11 @@ describe("TrackingInboxPage", () => {
     await waitFor(() => {
       expect(api.approvePostApplicationInboxItem).toHaveBeenCalled();
     });
+    expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-2",
+      }),
+    );
   });
 
   it("loads dropdown jobs excluding discovered status", async () => {

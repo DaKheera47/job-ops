@@ -173,7 +173,13 @@ export const TrackingInboxPage: React.FC = () => {
           (appliedJob) => appliedJob.id === selectedJobId,
         );
         if (!selectedJobId || !hasValidSelection) {
-          next[item.message.id] = defaultAppliedJobId;
+          const matchedJobId = item.message.matchedJobId ?? "";
+          const hasValidMatchedJob = appliedJobs.some(
+            (appliedJob) => appliedJob.id === matchedJobId,
+          );
+          next[item.message.id] = hasValidMatchedJob
+            ? matchedJobId
+            : defaultAppliedJobId;
         }
       }
       return next;
