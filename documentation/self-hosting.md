@@ -67,53 +67,41 @@ Notes:
 - JobOps requests `gmail.readonly` scope.
 - If Google returns no refresh token, disconnect and re-connect to force a fresh consent flow.
 
-## Email-to-Job Matching Decision Tree
+## Email-to-Job Matching Overview
 
-When Gmail sync runs, each discovered message goes through the Smart Router flow below before it appears in Tracking Inbox:
+When Gmail sync runs, your emails are automatically analyzed and routed. Here's what happens:
 
 ```mermaid
 flowchart TD
-  A[Message discovered from Gmail list API] --> B[Fetch metadata + full body]
-  B --> C[Build email payload\nfrom/subject/date/snippet/body]
-  C --> D[Load active jobs\nstatus in applied or processing]
-  D --> E[Minify jobs for LLM\nid + company + title only]
-  E --> F[Smart Router LLM call\nbestMatchId + confidence 0-100 + messageType + isRelevant + stageEventPayload]
+    A[Recruitment email arrives in Gmail] --> B[Smart Router AI analyzes content]
+    B --> C{How confident is the match?}
 
-  F --> G{confidence gte 95 and valid bestMatchId}
-  G -- Yes --> H[processing_status=auto_linked\nmatched_job_id=bestMatchId]
-  H --> I{messageType is not other}
-  I -- Yes --> J[Auto-create stage_event\ninterview/offer/rejection/update]
-  I -- No --> K[No stage event]
+    C -->|95-100%| D[Auto-linked to job]
+    D --> E[Timeline updated automatically]
 
-  G -- No --> L{confidence between 50 and 94}
-  L -- Yes --> M[processing_status=pending_user\ntentative matched_job_id]
+    C -->|50-94%| F[Goes to Inbox for review<br/>with suggested job match]
 
-  L -- No --> N{isRelevant}
-  N -- Yes --> O[processing_status=pending_user\nmatched_job_id=NULL orphan]
-  N -- No --> P[processing_status=ignored]
+    C -->|<50%| G{Is it relevant?}
+    G -->|Yes| H[Goes to Inbox as orphan<br/>relevant but job unclear]
+    G -->|No| I[Ignored - not job-related]
 
-  H --> Q[Save message + counters]
-  J --> Q
-  K --> Q
-  M --> Q
-  O --> Q
-  P --> Q
-
-  Q --> R[Tracking Inbox shows pending_user items]
-  R --> S{User decision}
-  S -- Yes --> T[Approve with selected job\nprocessing_status=manual_linked\ncreate stage_event when messageType != other]
-  S -- No --> U[Deny\nprocessing_status=ignored\nmatched_job_id=NULL]
+    F --> J{You review in Inbox}
+    H --> J
+    J -->|Approve| K[Linked to selected job<br/>Timeline updated]
+    J -->|Ignore| L[Marked as not relevant]
 ```
 
-Key thresholds and filters:
+**What the AI looks for:**
+- Content relevance - Is this about job applications?
+- Job matching - Which of your tracked jobs is this about?
+- Message type - Interview, offer, rejection, or update?
 
-- Router confidence thresholds:
-  - `>=95`: auto-link
-  - `50-94`: pending user review with tentative match
-  - `<50`: pending user orphan if relevant; otherwise ignored
-- Active job context sent to LLM is minimized to `{ id, company, title }` (cost/privacy control).
-- Candidate/link tables are no longer used; match state is stored directly on `post_application_messages`.
-- Tracking Inbox dropdown options are filtered to jobs in `applied` status.
+**Your control:**
+- High-confidence matches (95%+) happen automatically
+- Everything else appears in your Inbox for a quick yes/no decision
+- You can always correct the job match when approving
+
+**Privacy note:** Only job ID, company name, and title are sent to the AI for matching. Full email content stays local.
 
 ## Persistent data
 
