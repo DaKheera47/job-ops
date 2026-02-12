@@ -68,7 +68,8 @@ describe.sequential("Post-Application Review Workflow API", () => {
           : "interview",
       stageEventPayload: { note: "from test" },
       processingStatus: "pending_user",
-      matchedJobId: input?.matchedJobId ?? job.id,
+      matchedJobId:
+        input?.matchedJobId === undefined ? job.id : input.matchedJobId,
     });
 
     return { message, jobId: job.id };
@@ -118,6 +119,55 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(stageRows.length).toBeGreaterThan(0);
   });
 
+  it("returns conflict on second approve and increments sync-run approval once", async () => {
+    const { startPostApplicationSyncRun, getPostApplicationSyncRunById } =
+      await import("../../repositories/post-application-sync-runs");
+    const run = await startPostApplicationSyncRun({
+      provider: "gmail",
+      accountKey: "default",
+      integrationId: null,
+    });
+    const { message, jobId } = await seedPendingMessage({ syncRunId: run.id });
+
+    const firstRes = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          jobId,
+          decidedBy: "tester",
+        }),
+      },
+    );
+    expect(firstRes.status).toBe(200);
+
+    const secondRes = await fetch(
+      `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "gmail",
+          accountKey: "default",
+          jobId,
+          decidedBy: "tester",
+        }),
+      },
+    );
+    const secondBody = await secondRes.json();
+
+    expect(secondRes.status).toBe(409);
+    expect(secondBody.ok).toBe(false);
+    expect(secondBody.error.code).toBe("CONFLICT");
+
+    const updatedRun = await getPostApplicationSyncRunById(run.id);
+    expect(updatedRun?.messagesApproved).toBe(1);
+    expect(updatedRun?.messagesDenied).toBe(0);
+  });
+
   it("denies an inbox item as ignored", async () => {
     const { message } = await seedPendingMessage();
 
@@ -139,6 +189,31 @@ describe.sequential("Post-Application Review Workflow API", () => {
     expect(denyBody.ok).toBe(true);
     expect(denyBody.data.message.processingStatus).toBe("ignored");
     expect(denyBody.data.message.matchedJobId).toBeNull();
+  });
+
+  it("counts no-suggested-match approve items as skipped, not failed", async () => {
+    await seedPendingMessage({ matchedJobId: null });
+
+    const res = await fetch(`${baseUrl}/api/post-application/inbox/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "approve",
+        provider: "gmail",
+        accountKey: "default",
+        decidedBy: "tester",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.requested).toBe(1);
+    expect(body.data.succeeded).toBe(0);
+    expect(body.data.skipped).toBe(1);
+    expect(body.data.failed).toBe(0);
+    expect(body.data.results[0].ok).toBe(false);
+    expect(body.data.results[0].error.code).toBe("NO_SUGGESTED_MATCH");
   });
 
   it("lists messages for a sync run", async () => {

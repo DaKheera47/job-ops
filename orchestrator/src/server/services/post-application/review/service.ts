@@ -1,4 +1,9 @@
-import { conflict, notFound, unprocessableEntity } from "@infra/errors";
+import {
+  AppError,
+  conflict,
+  notFound,
+  unprocessableEntity,
+} from "@infra/errors";
 import { db, schema } from "@server/db";
 import { getJobById, listJobSummariesByIds } from "@server/repositories/jobs";
 import {
@@ -26,7 +31,7 @@ import type {
   PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 const { postApplicationMessages, postApplicationSyncRuns } = schema;
 
@@ -104,6 +109,7 @@ export async function approvePostApplicationInboxItem(args: {
   const decidedAt = Date.now();
   const updated = db.transaction((tx) => {
     let stageEventId: string | null = null;
+    const decidedAtIso = new Date(decidedAt).toISOString();
 
     const messageUpdateResult = tx
       .update(postApplicationMessages)
@@ -112,13 +118,18 @@ export async function approvePostApplicationInboxItem(args: {
         matchedJobId: resolvedJobId,
         decidedAt,
         decidedBy: args.decidedBy ?? null,
-        updatedAt: new Date(decidedAt).toISOString(),
+        updatedAt: decidedAtIso,
       })
-      .where(eq(postApplicationMessages.id, message.id))
+      .where(
+        and(
+          eq(postApplicationMessages.id, message.id),
+          eq(postApplicationMessages.processingStatus, "pending_user"),
+        ),
+      )
       .run();
     if (messageUpdateResult.changes === 0) {
-      throw notFound(
-        `Post-application message '${message.id}' not found after approval.`,
+      throw conflict(
+        `Message '${message.id}' was already decided by another request.`,
       );
     }
 
@@ -154,7 +165,7 @@ export async function approvePostApplicationInboxItem(args: {
       tx.update(postApplicationSyncRuns)
         .set({
           messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
-          updatedAt: new Date(decidedAt).toISOString(),
+          updatedAt: decidedAtIso,
         })
         .where(eq(postApplicationSyncRuns.id, message.syncRunId))
         .run();
@@ -198,6 +209,7 @@ export async function denyPostApplicationInboxItem(args: {
 
   const decidedAt = Date.now();
   db.transaction((tx) => {
+    const decidedAtIso = new Date(decidedAt).toISOString();
     const messageUpdateResult = tx
       .update(postApplicationMessages)
       .set({
@@ -205,13 +217,18 @@ export async function denyPostApplicationInboxItem(args: {
         matchedJobId: null,
         decidedAt,
         decidedBy: args.decidedBy ?? null,
-        updatedAt: new Date(decidedAt).toISOString(),
+        updatedAt: decidedAtIso,
       })
-      .where(eq(postApplicationMessages.id, message.id))
+      .where(
+        and(
+          eq(postApplicationMessages.id, message.id),
+          eq(postApplicationMessages.processingStatus, "pending_user"),
+        ),
+      )
       .run();
     if (messageUpdateResult.changes === 0) {
-      throw notFound(
-        `Post-application message '${message.id}' not found after denial.`,
+      throw conflict(
+        `Message '${message.id}' was already decided by another request.`,
       );
     }
 
@@ -219,7 +236,7 @@ export async function denyPostApplicationInboxItem(args: {
       tx.update(postApplicationSyncRuns)
         .set({
           messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
-          updatedAt: new Date(decidedAt).toISOString(),
+          updatedAt: decidedAtIso,
         })
         .where(eq(postApplicationSyncRuns.id, message.syncRunId))
         .run();
@@ -249,6 +266,7 @@ export async function bulkPostApplicationInboxAction(
 
   const results: BulkPostApplicationActionResult[] = [];
   let skipped = 0;
+  let failed = 0;
 
   for (const item of pendingItems) {
     const { message, matchedJob } = item;
@@ -282,6 +300,19 @@ export async function bulkPostApplicationInboxAction(
           stageEventId: result.stageEventId,
         });
       } catch (error) {
+        if (error instanceof AppError && error.code === "CONFLICT") {
+          skipped++;
+          results.push({
+            messageId: message.id,
+            ok: false,
+            error: {
+              code: "ALREADY_DECIDED",
+              message: error.message,
+            },
+          });
+          continue;
+        }
+        failed++;
         results.push({
           messageId: message.id,
           ok: false,
@@ -305,6 +336,19 @@ export async function bulkPostApplicationInboxAction(
           message: result.message,
         });
       } catch (error) {
+        if (error instanceof AppError && error.code === "CONFLICT") {
+          skipped++;
+          results.push({
+            messageId: message.id,
+            ok: false,
+            error: {
+              code: "ALREADY_DECIDED",
+              message: error.message,
+            },
+          });
+          continue;
+        }
+        failed++;
         results.push({
           messageId: message.id,
           ok: false,
@@ -318,7 +362,6 @@ export async function bulkPostApplicationInboxAction(
   }
 
   const succeeded = results.filter((r) => r.ok).length;
-  const failed = results.length - succeeded;
 
   return {
     action,
