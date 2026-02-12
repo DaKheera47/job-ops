@@ -1,11 +1,14 @@
 import type {
+  JobListItem,
   PostApplicationInboxItem,
   PostApplicationProvider,
   PostApplicationSyncRun,
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
 import {
+  Check,
   CheckCircle2,
+  ChevronsUpDown,
   CircleUserRound,
   Inbox,
   Link2,
@@ -31,13 +34,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import { EmptyState, PageHeader, PageMain } from "../components";
 
@@ -91,23 +103,117 @@ function scoreTextClass(score: number | null): string {
   return "text-muted-foreground/60";
 }
 
+function formatAppliedJobLabel(job: JobListItem): string {
+  const employer = job.employer.trim();
+  const title = job.title.trim();
+  if (employer && title) return `${employer} - ${title}`;
+  if (title) return title;
+  if (employer) return employer;
+  return job.id;
+}
+
+type AppliedJobPickerProps = {
+  jobs: JobListItem[];
+  selectedJobId: string;
+  isLoading: boolean;
+  disabled: boolean;
+  onJobChange: (jobId: string) => void;
+};
+
+const AppliedJobPicker: React.FC<AppliedJobPickerProps> = ({
+  jobs,
+  selectedJobId,
+  isLoading,
+  disabled,
+  onJobChange,
+}) => {
+  const [open, setOpen] = useState(false);
+  const selectedJob = jobs.find((job) => job.id === selectedJobId);
+  const triggerLabel = selectedJob
+    ? formatAppliedJobLabel(selectedJob)
+    : isLoading
+      ? "Loading applied jobs..."
+      : "Select applied job";
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-label="Select applied job"
+          aria-expanded={open}
+          disabled={disabled}
+          className="min-w-0 flex-1 justify-between"
+        >
+          <span className="truncate">{triggerLabel}</span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[360px] p-0">
+        <Command loop>
+          <CommandInput placeholder="Search applied jobs..." />
+          <CommandList className="max-h-56">
+            <CommandEmpty>
+              {isLoading ? "Loading applied jobs..." : "No applied jobs found."}
+            </CommandEmpty>
+            <CommandGroup>
+              {jobs.map((job) => {
+                const selected = selectedJobId === job.id;
+                return (
+                  <CommandItem
+                    key={job.id}
+                    value={`${job.employer} ${job.title} ${job.location ?? ""}`}
+                    onSelect={() => {
+                      onJobChange(job.id);
+                      setOpen(false);
+                    }}
+                  >
+                    <span className="truncate">{formatAppliedJobLabel(job)}</span>
+                    <Check
+                      className={cn(
+                        "ml-auto h-4 w-4 shrink-0",
+                        selected ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
 type EmailViewerRowProps = {
   item: PostApplicationInboxItem;
+  appliedJobs: JobListItem[];
   selectedCandidateId: string;
+  selectedAppliedJobId: string;
   onCandidateChange: (candidateId: string) => void;
+  onAppliedJobChange: (jobId: string) => void;
   onApprove: () => void;
   onDeny: () => void;
   isActionLoading: boolean;
+  isAppliedJobsLoading: boolean;
 };
 
 const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
   item,
+  appliedJobs,
   selectedCandidateId,
+  selectedAppliedJobId,
   onCandidateChange,
+  onAppliedJobChange,
   onApprove,
   onDeny,
   isActionLoading,
+  isAppliedJobsLoading,
 }) => {
+  const hasCandidates = item.candidates.length > 0;
   const selectedCandidate = item.candidates.find(
     (candidate) => candidate.id === selectedCandidateId,
   );
@@ -115,7 +221,8 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
     ? Math.round(selectedCandidate.score)
     : null;
   const canDecide =
-    item.message.reviewStatus === "pending_review" && !!selectedCandidateId;
+    item.message.reviewStatus === "pending_review" &&
+    (hasCandidates ? !!selectedCandidateId : !!selectedAppliedJobId);
 
   return (
     <div className="flex flex-col gap-3 border-b bg-card/40 px-3 py-3 last:border-b-0 lg:flex-row lg:items-center">
@@ -142,18 +249,28 @@ const EmailViewerRow: React.FC<EmailViewerRowProps> = ({
       </div>
 
       <div className="flex min-w-0 items-center gap-2 lg:ml-auto lg:w-[420px]">
-        <Select value={selectedCandidateId} onValueChange={onCandidateChange}>
-          <SelectTrigger className="min-w-0 flex-1">
-            <SelectValue placeholder="Select candidate" />
-          </SelectTrigger>
-          <SelectContent>
-            {item.candidates.map((candidate) => (
-              <SelectItem key={candidate.id} value={candidate.id}>
-                {candidate.job?.employer ?? candidate.jobId}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {hasCandidates ? (
+          <Select value={selectedCandidateId} onValueChange={onCandidateChange}>
+            <SelectTrigger className="min-w-0 flex-1">
+              <SelectValue placeholder="Select candidate" />
+            </SelectTrigger>
+            <SelectContent>
+              {item.candidates.map((candidate) => (
+                <SelectItem key={candidate.id} value={candidate.id}>
+                  {candidate.job?.employer ?? candidate.jobId}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <AppliedJobPicker
+            jobs={appliedJobs}
+            selectedJobId={selectedAppliedJobId}
+            isLoading={isAppliedJobsLoading}
+            disabled={isActionLoading}
+            onJobChange={onAppliedJobChange}
+          />
+        )}
 
         <span
           className={`shrink-0 text-xs tabular-nums ${scoreTextClass(selectedScore)}`}
@@ -220,13 +337,24 @@ export const TrackingInboxPage: React.FC = () => {
   const [candidateByMessageId, setCandidateByMessageId] = useState<
     Record<string, string>
   >({});
+  const [appliedJobByMessageId, setAppliedJobByMessageId] = useState<
+    Record<string, string>
+  >({});
+  const [appliedJobs, setAppliedJobs] = useState<JobListItem[]>([]);
+  const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
+  const [hasAttemptedAppliedJobsLoad, setHasAttemptedAppliedJobsLoad] =
+    useState(false);
 
   const primeCandidateSelections = useCallback(
     (items: PostApplicationInboxItem[]) => {
       setCandidateByMessageId((previous) => {
         const next = { ...previous };
         for (const item of items) {
-          if (!next[item.message.id]) {
+          const selectedCandidateId = next[item.message.id];
+          const hasValidSelection = item.candidates.some(
+            (candidate) => candidate.id === selectedCandidateId,
+          );
+          if (!selectedCandidateId || !hasValidSelection) {
             next[item.message.id] = getFirstCandidateId(item);
           }
         }
@@ -235,6 +363,25 @@ export const TrackingInboxPage: React.FC = () => {
     },
     [],
   );
+
+  const loadAppliedJobs = useCallback(async () => {
+    if (hasAttemptedAppliedJobsLoad || isAppliedJobsLoading) return;
+    setHasAttemptedAppliedJobsLoad(true);
+    setIsAppliedJobsLoading(true);
+    try {
+      const response = await api.getJobs({
+        statuses: ["applied"],
+        view: "list",
+      });
+      setAppliedJobs(response.jobs);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load applied jobs";
+      toast.error(message);
+    } finally {
+      setIsAppliedJobsLoading(false);
+    }
+  }, [hasAttemptedAppliedJobsLoad, isAppliedJobsLoading]);
 
   const loadAll = useCallback(async () => {
     const [statusRes, inboxRes, runsRes] = await Promise.all([
@@ -269,6 +416,45 @@ export const TrackingInboxPage: React.FC = () => {
     setIsLoading(true);
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    setAppliedJobs([]);
+    setAppliedJobByMessageId({});
+    setHasAttemptedAppliedJobsLoad(false);
+  }, [provider, accountKey]);
+
+  const hasZeroCandidateItems = useMemo(
+    () =>
+      [...inbox, ...selectedRunItems].some((item) => item.candidates.length === 0),
+    [inbox, selectedRunItems],
+  );
+
+  useEffect(() => {
+    if (!hasZeroCandidateItems) return;
+    void loadAppliedJobs();
+  }, [hasZeroCandidateItems, loadAppliedJobs]);
+
+  useEffect(() => {
+    const itemsWithoutCandidates = [...inbox, ...selectedRunItems].filter(
+      (item) => item.candidates.length === 0,
+    );
+    if (itemsWithoutCandidates.length === 0) return;
+
+    const defaultAppliedJobId = appliedJobs[0]?.id ?? "";
+    setAppliedJobByMessageId((previous) => {
+      const next = { ...previous };
+      for (const item of itemsWithoutCandidates) {
+        const selectedJobId = next[item.message.id];
+        const hasValidSelection = appliedJobs.some(
+          (appliedJob) => appliedJob.id === selectedJobId,
+        );
+        if (!selectedJobId || !hasValidSelection) {
+          next[item.message.id] = defaultAppliedJobId;
+        }
+      }
+      return next;
+    });
+  }, [appliedJobs, inbox, selectedRunItems]);
 
   const waitForGmailOauthResult = useCallback(
     (
@@ -440,8 +626,15 @@ export const TrackingInboxPage: React.FC = () => {
   const handleDecision = useCallback(
     async (item: PostApplicationInboxItem, decision: "approve" | "deny") => {
       const candidateId = candidateByMessageId[item.message.id] ?? "";
+      const appliedJobId = appliedJobByMessageId[item.message.id] ?? "";
+      const useAppliedJobFallback = item.candidates.length === 0;
 
-      if (!candidateId) {
+      if (useAppliedJobFallback) {
+        if (!appliedJobId) {
+          toast.error("Select an applied job before making a decision.");
+          return;
+        }
+      } else if (!candidateId) {
         toast.error("Select a candidate before making a decision.");
         return;
       }
@@ -453,7 +646,9 @@ export const TrackingInboxPage: React.FC = () => {
             messageId: item.message.id,
             provider,
             accountKey,
-            candidateId,
+            ...(useAppliedJobFallback
+              ? { jobId: appliedJobId }
+              : { candidateId }),
           });
           toast.success("Message approved");
         } else {
@@ -461,7 +656,9 @@ export const TrackingInboxPage: React.FC = () => {
             messageId: item.message.id,
             provider,
             accountKey,
-            candidateId,
+            ...(useAppliedJobFallback
+              ? { jobId: appliedJobId }
+              : { candidateId }),
           });
           toast.success("Message denied");
         }
@@ -477,7 +674,7 @@ export const TrackingInboxPage: React.FC = () => {
         setIsActionLoading(false);
       }
     },
-    [accountKey, candidateByMessageId, provider, refresh],
+    [accountKey, appliedJobByMessageId, candidateByMessageId, provider, refresh],
   );
 
   const handleOpenRunMessages = useCallback(
@@ -692,8 +889,12 @@ export const TrackingInboxPage: React.FC = () => {
                   <EmailViewerRow
                     key={item.message.id}
                     item={item}
+                    appliedJobs={appliedJobs}
                     selectedCandidateId={
                       candidateByMessageId[item.message.id] ?? ""
+                    }
+                    selectedAppliedJobId={
+                      appliedJobByMessageId[item.message.id] ?? ""
                     }
                     onCandidateChange={(value) =>
                       setCandidateByMessageId((previous) => ({
@@ -701,9 +902,16 @@ export const TrackingInboxPage: React.FC = () => {
                         [item.message.id]: value,
                       }))
                     }
+                    onAppliedJobChange={(value) =>
+                      setAppliedJobByMessageId((previous) => ({
+                        ...previous,
+                        [item.message.id]: value,
+                      }))
+                    }
                     onApprove={() => void handleDecision(item, "approve")}
                     onDeny={() => void handleDecision(item, "deny")}
                     isActionLoading={isActionLoading}
+                    isAppliedJobsLoading={isAppliedJobsLoading}
                   />
                 ))}
               </div>
@@ -789,8 +997,12 @@ export const TrackingInboxPage: React.FC = () => {
                   <EmailViewerRow
                     key={item.message.id}
                     item={item}
+                    appliedJobs={appliedJobs}
                     selectedCandidateId={
                       candidateByMessageId[item.message.id] ?? ""
+                    }
+                    selectedAppliedJobId={
+                      appliedJobByMessageId[item.message.id] ?? ""
                     }
                     onCandidateChange={(value) =>
                       setCandidateByMessageId((previous) => ({
@@ -798,9 +1010,16 @@ export const TrackingInboxPage: React.FC = () => {
                         [item.message.id]: value,
                       }))
                     }
+                    onAppliedJobChange={(value) =>
+                      setAppliedJobByMessageId((previous) => ({
+                        ...previous,
+                        [item.message.id]: value,
+                      }))
+                    }
                     onApprove={() => void handleDecision(item, "approve")}
                     onDeny={() => void handleDecision(item, "deny")}
                     isActionLoading={isActionLoading}
+                    isAppliedJobsLoading={isAppliedJobsLoading}
                   />
                 ))}
               </div>

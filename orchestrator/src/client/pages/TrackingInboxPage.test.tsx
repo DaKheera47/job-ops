@@ -1,9 +1,17 @@
 import type {
+  JobListItem,
+  JobsListResponse,
   PostApplicationInboxItem,
   PostApplicationProviderActionResponse,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,6 +25,7 @@ vi.mock("../api", () => ({
   postApplicationGmailOauthExchange: vi.fn(),
   postApplicationProviderSync: vi.fn(),
   postApplicationProviderDisconnect: vi.fn(),
+  getJobs: vi.fn(),
   getPostApplicationInbox: vi.fn(),
   getPostApplicationRuns: vi.fn(),
   getPostApplicationRunMessages: vi.fn(),
@@ -137,6 +146,51 @@ function makeRun(): PostApplicationSyncRun {
   };
 }
 
+function makeAppliedJob(overrides?: Partial<JobListItem>): JobListItem {
+  return {
+    id: "job-applied-1",
+    source: "linkedin",
+    title: "Frontend Engineer",
+    employer: "Roku",
+    jobUrl: "https://example.com/jobs/job-applied-1",
+    applicationLink: "https://example.com/apply/job-applied-1",
+    datePosted: "2026-02-01",
+    deadline: null,
+    salary: null,
+    location: "London",
+    status: "applied",
+    suitabilityScore: 88,
+    sponsorMatchScore: null,
+    jobType: null,
+    jobFunction: null,
+    salaryMinAmount: null,
+    salaryMaxAmount: null,
+    salaryCurrency: null,
+    discoveredAt: new Date().toISOString(),
+    appliedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+function makeAppliedJobsResponse(
+  jobs: JobListItem[],
+): JobsListResponse<JobListItem> {
+  return {
+    jobs,
+    total: jobs.length,
+    byStatus: {
+      discovered: 0,
+      processing: 0,
+      ready: 0,
+      applied: jobs.length,
+      skipped: 0,
+      expired: 0,
+    },
+    revision: `rev-${jobs.length}`,
+  };
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/tracking-inbox"]}>
@@ -177,6 +231,9 @@ describe("TrackingInboxPage", () => {
     );
     vi.mocked(api.postApplicationProviderDisconnect).mockResolvedValue(
       makeStatusResponse({ action: "disconnect" }),
+    );
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeAppliedJobsResponse([makeAppliedJob()]),
     );
     vi.mocked(api.approvePostApplicationInboxItem).mockResolvedValue({
       message: makeInboxItem().message,
@@ -380,6 +437,150 @@ describe("TrackingInboxPage", () => {
 
     await screen.findByRole("dialog");
     expect(screen.getByText("Run Messages")).toBeInTheDocument();
+  });
+
+  it("re-primes candidate selection for run messages when cached candidate id is stale", async () => {
+    const inboxItem = makeInboxItem();
+    const runItem = makeInboxItem({
+      candidates: [
+        {
+          ...inboxItem.candidates[0],
+          id: "candidate-2",
+        },
+      ],
+    });
+
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [inboxItem],
+      total: 1,
+    });
+    vi.mocked(api.getPostApplicationRunMessages).mockResolvedValue({
+      run: makeRun(),
+      items: [runItem],
+      total: 1,
+    });
+
+    renderPage();
+    await screen.findByText("Recent Sync Runs");
+
+    fireEvent.click(screen.getByRole("button", { name: /run-1/i }));
+    const dialog = await screen.findByRole("dialog");
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Agree with suggested job match",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageId: "message-1",
+          candidateId: "candidate-2",
+        }),
+      );
+    });
+  });
+
+  it("uses applied-job fallback when approving a zero-candidate queue message", async () => {
+    vi.mocked(api.getPostApplicationInbox)
+      .mockResolvedValueOnce({
+        items: [makeInboxItem({ candidates: [] })],
+        total: 1,
+      })
+      .mockResolvedValueOnce({ items: [], total: 0 });
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeAppliedJobsResponse([makeAppliedJob({ id: "job-applied-fallback" })]),
+    );
+
+    renderPage();
+    await screen.findByText(/thanks for applying to roku/i);
+
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalledWith({
+        statuses: ["applied"],
+        view: "list",
+      });
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Agree with suggested job match" }),
+    );
+
+    await waitFor(() => {
+      expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageId: "message-1",
+          jobId: "job-applied-fallback",
+        }),
+      );
+    });
+  });
+
+  it("uses applied-job fallback when approving a zero-candidate run message", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [makeInboxItem()],
+      total: 1,
+    });
+    vi.mocked(api.getPostApplicationRunMessages).mockResolvedValue({
+      run: makeRun(),
+      items: [makeInboxItem({ candidates: [] })],
+      total: 1,
+    });
+    vi.mocked(api.getJobs).mockResolvedValue(
+      makeAppliedJobsResponse([makeAppliedJob({ id: "job-applied-run" })]),
+    );
+
+    renderPage();
+    await screen.findByText("Recent Sync Runs");
+
+    fireEvent.click(screen.getByRole("button", { name: /run-1/i }));
+    const dialog = await screen.findByRole("dialog");
+
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalledWith({
+        statuses: ["applied"],
+        view: "list",
+      });
+    });
+
+    fireEvent.click(
+      within(dialog).getByRole("button", {
+        name: "Agree with suggested job match",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(api.approvePostApplicationInboxItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageId: "message-1",
+          jobId: "job-applied-run",
+        }),
+      );
+    });
+  });
+
+  it("disables decisions for zero-candidate messages when there are no applied jobs", async () => {
+    vi.mocked(api.getPostApplicationInbox).mockResolvedValue({
+      items: [makeInboxItem({ candidates: [] })],
+      total: 1,
+    });
+    vi.mocked(api.getJobs).mockResolvedValue(makeAppliedJobsResponse([]));
+
+    renderPage();
+    await screen.findByText(/thanks for applying to roku/i);
+
+    await waitFor(() => {
+      expect(api.getJobs).toHaveBeenCalledWith({
+        statuses: ["applied"],
+        view: "list",
+      });
+    });
+
+    const approveButton = screen.getByRole("button", {
+      name: "Agree with suggested job match",
+    });
+    expect(approveButton).toBeDisabled();
   });
 
   it("blocks sync and shows validation error for invalid numeric inputs", async () => {
