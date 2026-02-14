@@ -235,6 +235,28 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobCheck?.closedAt).toBeNull();
   });
 
+  it("sets closedAt when a closed stage event is logged without outcome", async () => {
+    const job = await jobsRepo.createJob({
+      source: "manual",
+      title: "Platform Engineer",
+      employer: "Infra Co",
+      jobUrl: "https://example.com/job/7",
+    });
+
+    const now = Math.floor(Date.now() / 1000);
+    applicationTracking.transitionStage(job.id, "applied", now - 100);
+    applicationTracking.transitionStage(job.id, "closed", now);
+
+    const jobCheck = await db
+      .select()
+      .from(schema.jobs)
+      .where(eq(schema.jobs.id, job.id))
+      .get();
+    expect(jobCheck?.status).toBe("in_progress");
+    expect(jobCheck?.outcome).toBeNull();
+    expect(jobCheck?.closedAt).toBe(now);
+  });
+
   it("preserves explicit outcome when updating metadata", async () => {
     const job = await jobsRepo.createJob({
       source: "manual",

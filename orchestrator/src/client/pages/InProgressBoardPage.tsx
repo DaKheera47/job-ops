@@ -147,7 +147,7 @@ export const InProgressBoardPage: React.FC = () => {
                           No jobs
                         </div>
                       ) : (
-                        laneCards.map(({ job, latestEventAt }) => (
+                        laneCards.map(({ job, latestEventAt, stage }) => (
                           <Link
                             key={job.id}
                             to={`/job/${job.id}`}
@@ -166,7 +166,16 @@ export const InProgressBoardPage: React.FC = () => {
                               {job.employer}
                             </div>
                             <div className="mt-2 flex items-center gap-2">
-                              <JobStatusBadge status={job.status} />
+                              {stage === "closed" ? (
+                                <Badge variant="destructive">Closed</Badge>
+                              ) : (
+                                <JobStatusBadge status={job.status} />
+                              )}
+                              {stage === "closed" && job.outcome ? (
+                                <Badge variant="outline" className="capitalize">
+                                  {job.outcome.replaceAll("_", " ")}
+                                </Badge>
+                              ) : null}
                             </div>
                             <div className="mt-2 text-[11px] text-muted-foreground/80">
                               {latestEventAt != null

@@ -151,6 +151,10 @@ export function transitionStage(
       if (finalToStage === "applied" && !job.appliedAt) {
         updates.appliedAt = new Date().toISOString();
       }
+
+      if (finalToStage === "closed") {
+        updates.closedAt = timestamp;
+      }
     }
 
     if (outcome) {
@@ -242,13 +246,14 @@ export function updateStageEvent(
         storedOutcome ??
         inferredOutcome ??
         (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
-      const closedAt = outcome
-        ? storedOutcome || inferredOutcome
+      const closedAt =
+        lastStage === "closed"
           ? lastEvent.occurredAt
-          : (job.closedAt ?? null)
-        : closingStage
-          ? (job.closedAt ?? null)
-          : null;
+          : outcome
+            ? storedOutcome || inferredOutcome
+              ? lastEvent.occurredAt
+              : (job.closedAt ?? null)
+            : null;
 
       tx.update(jobs)
         .set({
@@ -300,13 +305,14 @@ export function deleteStageEvent(eventId: string): void {
         storedOutcome ??
         inferredOutcome ??
         (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
-      const closedAt = outcome
-        ? storedOutcome || inferredOutcome
+      const closedAt =
+        lastStage === "closed"
           ? lastEvent.occurredAt
-          : (job.closedAt ?? null)
-        : closingStage
-          ? (job.closedAt ?? null)
-          : null;
+          : outcome
+            ? storedOutcome || inferredOutcome
+              ? lastEvent.occurredAt
+              : (job.closedAt ?? null)
+            : null;
 
       tx.update(jobs)
         .set({

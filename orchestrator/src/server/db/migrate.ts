@@ -413,6 +413,33 @@ const migrations = [
    WHERE applied_at IS NOT NULL
      AND id NOT IN (SELECT application_id FROM stage_events WHERE to_stage = 'applied')`,
 
+  // Backfill: Create "Closed" events for legacy jobs already closed via outcome.
+  `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata, outcome)
+   SELECT
+     'backfill-closed-' || jobs.id,
+     jobs.id,
+     'Closed',
+     (
+       SELECT se.to_stage
+       FROM stage_events se
+       WHERE se.application_id = jobs.id
+       ORDER BY se.occurred_at DESC, se.id DESC
+       LIMIT 1
+     ),
+     'closed',
+     COALESCE(
+       jobs.closed_at,
+       CAST(strftime('%s', jobs.applied_at) AS INTEGER),
+       CAST(strftime('%s', jobs.updated_at) AS INTEGER),
+       CAST(strftime('%s', jobs.discovered_at) AS INTEGER),
+       CAST(strftime('%s', 'now') AS INTEGER)
+     ),
+     '{"eventLabel":"Closed","actor":"system"}',
+     jobs.outcome
+   FROM jobs
+   WHERE jobs.outcome IS NOT NULL
+     AND jobs.id NOT IN (SELECT application_id FROM stage_events WHERE to_stage = 'closed')`,
+
   // Backfill: Sync legacy workflow status from latest stage event.
   `UPDATE jobs
    SET
