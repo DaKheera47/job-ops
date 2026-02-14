@@ -412,6 +412,56 @@ const migrations = [
    FROM jobs
    WHERE applied_at IS NOT NULL
      AND id NOT IN (SELECT application_id FROM stage_events WHERE to_stage = 'applied')`,
+
+  // Backfill: Sync legacy workflow status from latest stage event.
+  `UPDATE jobs
+   SET
+     status = 'in_progress',
+     updated_at = datetime('now')
+   WHERE status = 'applied'
+     AND COALESCE((
+       SELECT se.to_stage
+       FROM stage_events se
+       WHERE se.application_id = jobs.id
+       ORDER BY se.occurred_at DESC, se.id DESC
+       LIMIT 1
+     ), 'applied') IN (
+       'recruiter_screen',
+       'assessment',
+       'hiring_manager_screen',
+       'technical_interview',
+       'onsite',
+       'offer',
+       'closed'
+     )`,
+
+  // Backfill: Mark closed applications from latest stage event.
+  `UPDATE jobs
+   SET
+     status = 'in_progress',
+     closed_at = (
+       SELECT se.occurred_at
+       FROM stage_events se
+       WHERE se.application_id = jobs.id
+       ORDER BY se.occurred_at DESC, se.id DESC
+       LIMIT 1
+     ),
+     outcome = COALESCE((
+       SELECT se.outcome
+       FROM stage_events se
+       WHERE se.application_id = jobs.id
+       ORDER BY se.occurred_at DESC, se.id DESC
+       LIMIT 1
+     ), outcome),
+     updated_at = datetime('now')
+   WHERE status IN ('applied', 'in_progress')
+     AND COALESCE((
+       SELECT se.to_stage
+       FROM stage_events se
+       WHERE se.application_id = jobs.id
+       ORDER BY se.occurred_at DESC, se.id DESC
+       LIMIT 1
+     ), 'applied') = 'closed'`,
 ];
 
 console.log("🔧 Running database migrations...");
