@@ -32,7 +32,8 @@ Apply & Track
 ## 🚀 Quick Start (10 Min)
 ```bash
 # 1. Download
-curl -o docker-compose.yml https://raw.githubusercontent.com/DaKheera47/job-ops/main/docker-compose.yml
+git clone https://github.com/DaKheera47/job-ops.git
+cd job-ops
 
 # 2. Start (Pulls pre-built image)
 docker compose up -d
