@@ -258,7 +258,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       await onJobUpdated();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to move to in progress";
+        error instanceof Error
+          ? error.message
+          : "Failed to move to in progress";
       toast.error(message);
     }
   };

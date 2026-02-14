@@ -42,10 +42,6 @@ export const OrchestratorSummary: React.FC<OrchestratorSummaryProps> = ({
           <span className="tabular-nums">{stats.applied}</span> applied
         </span>
         <span className="text-border">•</span>
-        <span>
-          <span className="tabular-nums">{stats.in_progress}</span> in progress
-        </span>
-        <span className="text-border">•</span>
         <span className="font-medium text-foreground/60">
           {totalJobs} jobs total
         </span>

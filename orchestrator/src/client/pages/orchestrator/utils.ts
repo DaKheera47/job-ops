@@ -139,15 +139,14 @@ export const getJobCounts = (
     ready: 0,
     discovered: 0,
     applied: 0,
-    in_progress: 0,
     all: jobs.length,
   };
 
   for (const job of jobs) {
     if (job.closedAt != null) continue;
+    if (job.status === "in_progress") continue;
     if (job.status === "ready") byTab.ready += 1;
     if (job.status === "applied") byTab.applied += 1;
-    if (job.status === "in_progress") byTab.in_progress += 1;
     if (job.status === "discovered" || job.status === "processing")
       byTab.discovered += 1;
   }

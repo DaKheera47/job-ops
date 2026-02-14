@@ -59,13 +59,7 @@ export const OrchestratorPage: React.FC = () => {
   } = useOrchestratorFilters();
 
   const activeTab = useMemo(() => {
-    const validTabs: FilterTab[] = [
-      "ready",
-      "discovered",
-      "applied",
-      "in_progress",
-      "all",
-    ];
+    const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
     if (tab && validTabs.includes(tab as FilterTab)) {
       return tab as FilterTab;
     }
@@ -89,17 +83,15 @@ export const OrchestratorPage: React.FC = () => {
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
-    const validTabs: FilterTab[] = [
-      "ready",
-      "discovered",
-      "applied",
-      "in_progress",
-      "all",
-    ];
+    if (tab === "in_progress") {
+      navigate("/applications/in-progress", { replace: true });
+      return;
+    }
+    const validTabs: FilterTab[] = ["ready", "discovered", "applied", "all"];
     if (tab && !validTabs.includes(tab as FilterTab)) {
       navigateWithContext("ready", null, true);
     }
-  }, [tab, navigateWithContext]);
+  }, [tab, navigate, navigateWithContext]);
 
   const [navOpen, setNavOpen] = useState(false);
   const [isRunModeModalOpen, setIsRunModeModalOpen] = useState(false);
@@ -398,7 +390,6 @@ export const OrchestratorPage: React.FC = () => {
       [SHORTCUTS.tabReady.key]: () => setActiveTab("ready"),
       [SHORTCUTS.tabDiscovered.key]: () => setActiveTab("discovered"),
       [SHORTCUTS.tabApplied.key]: () => setActiveTab("applied"),
-      [SHORTCUTS.tabInProgress.key]: () => setActiveTab("in_progress"),
       [SHORTCUTS.tabAll.key]: () => setActiveTab("all"),
       [SHORTCUTS.prevTabArrow.key]: (e) => {
         e.preventDefault();

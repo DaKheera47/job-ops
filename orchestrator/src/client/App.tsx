@@ -12,6 +12,7 @@ import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 import { GmailOauthCallbackPage } from "./pages/GmailOauthCallbackPage";
 import { HomePage } from "./pages/HomePage";
+import { InProgressBoardPage } from "./pages/InProgressBoardPage";
 import { JobPage } from "./pages/JobPage";
 import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -28,8 +29,10 @@ const REDIRECTS: Array<{ from: string; to: string }> = [
   { from: "/discovered/:jobId", to: "/jobs/discovered/:jobId" },
   { from: "/applied", to: "/jobs/applied" },
   { from: "/applied/:jobId", to: "/jobs/applied/:jobId" },
-  { from: "/in-progress", to: "/jobs/in_progress" },
-  { from: "/in-progress/:jobId", to: "/jobs/in_progress/:jobId" },
+  { from: "/in-progress", to: "/applications/in-progress" },
+  { from: "/in-progress/:jobId", to: "/applications/in-progress" },
+  { from: "/jobs/in_progress", to: "/applications/in-progress" },
+  { from: "/jobs/in_progress/:jobId", to: "/applications/in-progress" },
   { from: "/all", to: "/jobs/all" },
   { from: "/all/:jobId", to: "/jobs/all/:jobId" },
 ];
@@ -85,6 +88,10 @@ export const App: React.FC = () => {
                   element={<GmailOauthCallbackPage />}
                 />
                 <Route path="/job/:id" element={<JobPage />} />
+                <Route
+                  path="/applications/in-progress"
+                  element={<InProgressBoardPage />}
+                />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
                 <Route path="/tracking-inbox" element={<TrackingInboxPage />} />

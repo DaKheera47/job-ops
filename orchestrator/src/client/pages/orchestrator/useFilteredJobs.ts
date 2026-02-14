@@ -24,7 +24,7 @@ export const useFilteredJobs = (
   sort: JobSort,
 ) =>
   useMemo(() => {
-    let filtered = jobs;
+    let filtered = jobs.filter((job) => job.status !== "in_progress");
 
     if (activeTab === "ready") {
       filtered = filtered.filter((job) => job.status === "ready");
@@ -34,8 +34,6 @@ export const useFilteredJobs = (
       );
     } else if (activeTab === "applied") {
       filtered = filtered.filter((job) => job.status === "applied");
-    } else if (activeTab === "in_progress") {
-      filtered = filtered.filter((job) => job.status === "in_progress");
     }
 
     if (activeTab !== "all") {
