@@ -250,6 +250,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     }
   };
 
+  const handleMoveToInProgress = async () => {
+    if (!selectedJob) return;
+    try {
+      await api.updateJob(selectedJob.id, { status: "in_progress" });
+      toast.success("Moved to in progress");
+      await onJobUpdated();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to move to in progress";
+      toast.error(message);
+    }
+  };
+
   const handleCopyInfo = async () => {
     if (!selectedJob) return;
     try {
@@ -280,6 +293,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     ? `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`
     : "#";
   const canApply = selectedJob?.status === "ready";
+  const canMoveToInProgress = selectedJob?.status === "applied";
   const canProcess = selectedJob
     ? ["discovered", "ready"].includes(selectedJob.status)
     : false;
@@ -404,6 +418,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
             Applied
+          </Button>
+        )}
+
+        {canMoveToInProgress && (
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-xs bg-cyan-600/20 text-cyan-300 hover:bg-cyan-600/30 border border-cyan-500/30"
+            onClick={handleMoveToInProgress}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Move to In Progress
           </Button>
         )}
 

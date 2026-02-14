@@ -261,6 +261,30 @@ describe("JobDetailPanel", () => {
     expect(onJobUpdated).toHaveBeenCalled();
   });
 
+  it("moves an applied job to in progress from the action button", async () => {
+    const onJobUpdated = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(api.updateJob).mockResolvedValue(undefined as any);
+
+    await renderJobDetailPanel({
+      activeTab: "all",
+      activeJobs: [],
+      selectedJob: createJob({ status: "applied" }),
+      onSelectJobId: vi.fn(),
+      onJobUpdated,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /move to in progress/i }),
+    );
+
+    await waitFor(() =>
+      expect(api.updateJob).toHaveBeenCalledWith("job-1", {
+        status: "in_progress",
+      }),
+    );
+    expect(onJobUpdated).toHaveBeenCalled();
+  });
+
   it("skips a job from the menu", async () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.skipJob).mockResolvedValue(undefined as any);
