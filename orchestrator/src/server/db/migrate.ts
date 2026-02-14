@@ -285,6 +285,10 @@ const migrations = [
   `DROP TABLE IF EXISTS post_application_message_candidates`,
   `DROP TABLE IF EXISTS post_application_message_links`,
 
+  // Protect child tables (stage_events/tasks/interviews) during parent table rebuilds.
+  // Without this, dropping/replacing `jobs` can cascade-delete historical stage data.
+  `PRAGMA foreign_keys = OFF`,
+
   // Ensure pipeline_runs status supports "cancelled" for existing databases.
   `CREATE TABLE IF NOT EXISTS pipeline_runs_new (
     id TEXT PRIMARY KEY,
@@ -386,6 +390,7 @@ const migrations = [
   FROM jobs`,
   `DROP TABLE IF EXISTS jobs`,
   `ALTER TABLE jobs_new RENAME TO jobs`,
+  `PRAGMA foreign_keys = ON`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
