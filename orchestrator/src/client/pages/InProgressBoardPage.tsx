@@ -43,6 +43,13 @@ const resolveCurrentStage = (
 export const InProgressBoardPage: React.FC = () => {
   const [cards, setCards] = React.useState<BoardCard[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [dragging, setDragging] = React.useState<{
+    jobId: string;
+    fromStage: ApplicationStage;
+  } | null>(null);
+  const [dropTargetStage, setDropTargetStage] =
+    React.useState<ApplicationStage | null>(null);
+  const [movingJobId, setMovingJobId] = React.useState<string | null>(null);
 
   const loadBoard = React.useCallback(async () => {
     try {
@@ -110,6 +117,51 @@ export const InProgressBoardPage: React.FC = () => {
     return grouped;
   }, [cards]);
 
+  const handleDropToStage = React.useCallback(
+    async (toStage: ApplicationStage) => {
+      if (!dragging || dragging.fromStage === toStage) {
+        setDropTargetStage(null);
+        return;
+      }
+
+      const { jobId } = dragging;
+      const previousCards = cards;
+      const nowEpoch = Math.floor(Date.now() / 1000);
+
+      setMovingJobId(jobId);
+      setCards((current) =>
+        current.map((card) =>
+          card.job.id === jobId
+            ? { ...card, stage: toStage, latestEventAt: nowEpoch }
+            : card,
+        ),
+      );
+
+      try {
+        await api.transitionJobStage(jobId, {
+          toStage,
+          metadata: {
+            actor: "user",
+            eventType: "status_update",
+            eventLabel: `Moved to ${STAGE_LABELS[toStage]}`,
+          },
+        });
+        toast.success(`Moved to ${STAGE_LABELS[toStage]}`);
+        await loadBoard();
+      } catch (error) {
+        setCards(previousCards);
+        const message =
+          error instanceof Error ? error.message : "Failed to move stage";
+        toast.error(message);
+      } finally {
+        setMovingJobId(null);
+        setDragging(null);
+        setDropTargetStage(null);
+      }
+    },
+    [cards, dragging, loadBoard],
+  );
+
   return (
     <>
       <PageHeader
@@ -130,7 +182,25 @@ export const InProgressBoardPage: React.FC = () => {
                 return (
                   <section
                     key={stage}
-                    className="w-[320px] rounded-xl border border-border/50 bg-muted/10"
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      if (!dragging || dragging.fromStage === stage) return;
+                      setDropTargetStage(stage);
+                    }}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      void handleDropToStage(stage);
+                    }}
+                    onDragLeave={() => {
+                      if (dropTargetStage === stage) {
+                        setDropTargetStage(null);
+                      }
+                    }}
+                    className={cn(
+                      "w-[320px] rounded-xl border border-border/50 bg-muted/10 transition-colors",
+                      dropTargetStage === stage &&
+                        "border-sky-400/60 bg-sky-500/10",
+                    )}
                   >
                     <header className="flex items-center justify-between border-b border-border/40 px-3 py-2.5">
                       <h2 className="text-sm font-semibold tracking-wide">
@@ -151,9 +221,19 @@ export const InProgressBoardPage: React.FC = () => {
                           <Link
                             key={job.id}
                             to={`/job/${job.id}`}
+                            draggable={movingJobId !== job.id}
+                            onDragStart={(event) => {
+                              setDragging({ jobId: job.id, fromStage: stage });
+                              event.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragEnd={() => {
+                              setDragging(null);
+                              setDropTargetStage(null);
+                            }}
                             className={cn(
                               "block rounded-lg border border-border/40 bg-background/80 p-3 transition-colors",
                               "hover:border-border hover:bg-background",
+                              movingJobId === job.id && "opacity-70",
                             )}
                           >
                             <div className="mb-2 flex items-start justify-between gap-2">
