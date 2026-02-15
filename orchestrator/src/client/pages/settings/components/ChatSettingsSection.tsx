@@ -39,12 +39,6 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Ghostwriter is always on. Configure only writing style here.
-          </p>
-
-          <Separator />
-
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="chatStyleTone" className="text-sm font-medium">
