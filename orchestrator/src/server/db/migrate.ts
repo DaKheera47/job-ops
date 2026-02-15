@@ -451,6 +451,25 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_job_chat_threads_job_updated ON job_chat_threads(job_id, updated_at)`,
   `CREATE INDEX IF NOT EXISTS idx_job_chat_messages_thread_created ON job_chat_messages(thread_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_job_chat_runs_thread_status ON job_chat_runs(thread_id, status)`,
+  // Ensure only one running run per thread; backfill any duplicates first.
+  `WITH ranked AS (
+      SELECT
+        id,
+        ROW_NUMBER() OVER (PARTITION BY thread_id ORDER BY started_at DESC, id DESC) AS rank_in_thread
+      FROM job_chat_runs
+      WHERE status = 'running'
+    )
+    UPDATE job_chat_runs
+    SET
+      status = 'failed',
+      error_code = COALESCE(error_code, 'CONFLICT'),
+      error_message = COALESCE(error_message, 'Recovered duplicate running run during migration'),
+      completed_at = COALESCE(completed_at, CAST(strftime('%s', 'now') AS INTEGER)),
+      updated_at = datetime('now')
+    WHERE id IN (SELECT id FROM ranked WHERE rank_in_thread > 1)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_job_chat_runs_thread_running_unique
+   ON job_chat_runs(thread_id)
+   WHERE status = 'running'`,
 
   // Backfill: Create "Applied" events for legacy jobs that have applied_at set but no event entry
   `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata)

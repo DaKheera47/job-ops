@@ -356,4 +356,23 @@ describe("ghostwriter service", () => {
     expect(result).toEqual({ cancelled: false, alreadyFinished: true });
     expect(mocks.repo.completeRun).not.toHaveBeenCalled();
   });
+
+  it("maps createRun unique constraint races to conflict", async () => {
+    mocks.repo.createMessage.mockResolvedValue(baseUserMessage);
+    mocks.repo.createRun.mockRejectedValue(
+      new Error(
+        "UNIQUE constraint failed: job_chat_runs.thread_id (idx_job_chat_runs_thread_running_unique)",
+      ),
+    );
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "hello",
+      }),
+    ).rejects.toMatchObject({
+      code: "CONFLICT",
+      status: 409,
+    });
+  });
 });

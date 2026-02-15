@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
+import type { JobChatMessage, JobChatRun } from "@shared/types";
 import {
   badRequest,
   conflict,
@@ -50,6 +51,14 @@ function chunkText(value: string, maxChunk = 60): string[] {
     cursor += maxChunk;
   }
   return chunks;
+}
+
+function isRunningRunUniqueConstraintError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return (
+    message.includes("idx_job_chat_runs_thread_running_unique") ||
+    message.includes("UNIQUE constraint failed: job_chat_runs.thread_id")
+  );
 }
 
 async function resolveLlmRuntimeSettings(): Promise<LlmRuntimeSettings> {
@@ -202,23 +211,41 @@ async function runAssistantReply(
 
   const requestId = getRequestId() ?? "unknown";
 
-  const assistantMessage = await jobChatRepo.createMessage({
-    threadId: options.threadId,
-    jobId: options.jobId,
-    role: "assistant",
-    content: "",
-    status: "partial",
-    version: options.version ?? 1,
-    replacesMessageId: options.replaceMessageId ?? null,
-  });
+  let run: JobChatRun;
+  try {
+    run = await jobChatRepo.createRun({
+      threadId: options.threadId,
+      jobId: options.jobId,
+      model: llmConfig.model,
+      provider: llmConfig.provider,
+      requestId,
+    });
+  } catch (error) {
+    if (isRunningRunUniqueConstraintError(error)) {
+      throw conflict("A chat generation is already running for this thread");
+    }
+    throw error;
+  }
 
-  const run = await jobChatRepo.createRun({
-    threadId: options.threadId,
-    jobId: options.jobId,
-    model: llmConfig.model,
-    provider: llmConfig.provider,
-    requestId,
-  });
+  let assistantMessage: JobChatMessage;
+  try {
+    assistantMessage = await jobChatRepo.createMessage({
+      threadId: options.threadId,
+      jobId: options.jobId,
+      role: "assistant",
+      content: "",
+      status: "partial",
+      version: options.version ?? 1,
+      replacesMessageId: options.replaceMessageId ?? null,
+    });
+  } catch (error) {
+    await jobChatRepo.completeRun(run.id, {
+      status: "failed",
+      errorCode: "INTERNAL_ERROR",
+      errorMessage: "Failed to create assistant message",
+    });
+    throw error;
+  }
 
   const controller = new AbortController();
   abortControllers.set(run.id, controller);
