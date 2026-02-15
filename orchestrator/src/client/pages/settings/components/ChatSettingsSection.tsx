@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -28,17 +29,51 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   isLoading,
   isSaving,
 }) => {
-  const { tone, formality, constraints, doNotUse } = values;
+  const { enabled, tone, formality, constraints, doNotUse } = values;
 
-  const { control, register } = useFormContext<UpdateSettingsInput>();
+  const { control, register, watch } = useFormContext<UpdateSettingsInput>();
+  const isEnabled = watch("jobChatEnabled") ?? enabled.default;
 
   return (
     <AccordionItem value="chat" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
-        <span className="text-base font-semibold">Ghostwriter</span>
+        <span className="text-base font-semibold">Job Chat Copilot</span>
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
+          <div className="flex items-start space-x-3">
+            <Controller
+              name="jobChatEnabled"
+              control={control}
+              render={({ field }) => (
+                <Checkbox
+                  id="jobChatEnabled"
+                  checked={field.value ?? enabled.default}
+                  onCheckedChange={(checked) => {
+                    field.onChange(
+                      checked === "indeterminate" ? null : checked === true,
+                    );
+                  }}
+                  disabled={isLoading || isSaving}
+                />
+              )}
+            />
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="jobChatEnabled"
+                className="text-sm font-medium leading-none cursor-pointer"
+              >
+                Enable per-job copilot chat
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Adds a persistent chat thread on each job page with prefilled
+                job and profile context.
+              </p>
+            </div>
+          </div>
+
+          <Separator />
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="chatStyleTone" className="text-sm font-medium">
@@ -49,9 +84,9 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value || tone.default}
+                    value={field.value ?? tone.default}
                     onValueChange={(value) => field.onChange(value)}
-                    disabled={isLoading || isSaving}
+                    disabled={isLoading || isSaving || !isEnabled}
                   >
                     <SelectTrigger id="chatStyleTone">
                       <SelectValue placeholder="Select tone" />
@@ -79,9 +114,9 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value || formality.default}
+                    value={field.value ?? formality.default}
                     onValueChange={(value) => field.onChange(value)}
-                    disabled={isLoading || isSaving}
+                    disabled={isLoading || isSaving || !isEnabled}
                   >
                     <SelectTrigger id="chatStyleFormality">
                       <SelectValue placeholder="Select formality" />
@@ -101,8 +136,8 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             label="Constraints"
             inputProps={register("chatStyleConstraints")}
             placeholder="Example: keep answers under 120 words and include bullet points"
-            disabled={isLoading || isSaving}
-            helper="Optional global writing constraints used by Ghostwriter replies."
+            disabled={isLoading || isSaving || !isEnabled}
+            helper="Optional global writing constraints used by job chat replies."
             current={constraints.effective || "—"}
           />
 
@@ -110,7 +145,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             label="Do-not-use terms"
             inputProps={register("chatStyleDoNotUse")}
             placeholder="Example: synergize, leverage"
-            disabled={isLoading || isSaving}
+            disabled={isLoading || isSaving || !isEnabled}
             helper="Optional comma-separated words or phrases to avoid."
             current={doNotUse.effective || "—"}
           />
@@ -118,6 +153,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
           <Separator />
 
           <div className="grid gap-2 text-sm sm:grid-cols-2">
+            <div>
+              <div className="text-xs text-muted-foreground">Enabled</div>
+              <div className="break-words font-mono text-xs">
+                Effective: {enabled.effective ? "Yes" : "No"} | Default:{" "}
+                {enabled.default ? "Yes" : "No"}
+              </div>
+            </div>
             <div>
               <div className="text-xs text-muted-foreground">Tone</div>
               <div className="break-words font-mono text-xs">

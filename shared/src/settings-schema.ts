@@ -54,6 +54,7 @@ export const updateSettingsSchema = z
       .optional(),
     jobspyCountryIndeed: z.string().trim().max(100).nullable().optional(),
     showSponsorInfo: z.boolean().nullable().optional(),
+    jobChatEnabled: z.boolean().nullable().optional(),
     chatStyleTone: z.string().trim().max(100).nullable().optional(),
     chatStyleFormality: z.string().trim().max(100).nullable().optional(),
     chatStyleConstraints: z.string().trim().max(4000).nullable().optional(),

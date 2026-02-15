@@ -47,6 +47,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   resumeProjects: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
+  jobChatEnabled: null,
   chatStyleTone: "",
   chatStyleFormality: "",
   chatStyleConstraints: "",
@@ -86,6 +87,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   resumeProjects: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
+  jobChatEnabled: null,
   chatStyleTone: null,
   chatStyleFormality: null,
   chatStyleConstraints: null,
@@ -119,6 +121,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   resumeProjects: data.resumeProjects,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId ?? null,
   showSponsorInfo: data.overrideShowSponsorInfo,
+  jobChatEnabled: data.overrideJobChatEnabled,
   chatStyleTone: data.overrideChatStyleTone ?? "",
   chatStyleFormality: data.overrideChatStyleFormality ?? "",
   chatStyleConstraints: data.overrideChatStyleConstraints ?? "",
@@ -214,6 +217,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       default: settings?.defaultShowSponsorInfo ?? true,
     },
     chat: {
+      enabled: {
+        effective: settings?.jobChatEnabled ?? false,
+        default: settings?.defaultJobChatEnabled ?? false,
+      },
       tone: {
         effective: settings?.chatStyleTone ?? "professional",
         default: settings?.defaultChatStyleTone ?? "professional",
@@ -583,6 +590,7 @@ export const SettingsPage: React.FC = () => {
         resumeProjects: resumeProjectsOverride,
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
+        jobChatEnabled: nullIfSame(data.jobChatEnabled, chat.enabled.default),
         chatStyleTone: normalizeString(data.chatStyleTone),
         chatStyleFormality: normalizeString(data.chatStyleFormality),
         chatStyleConstraints: normalizeString(data.chatStyleConstraints),

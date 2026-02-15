@@ -472,23 +472,6 @@ export async function listJobChatThreads(jobId: string): Promise<{
   return fetchApi<{ threads: JobChatThread[] }>(`/jobs/${jobId}/chat/threads`);
 }
 
-export async function listJobGhostwriterMessages(
-  jobId: string,
-  options?: { limit?: number; offset?: number },
-): Promise<{ messages: JobChatMessage[] }> {
-  const params = new URLSearchParams();
-  if (typeof options?.limit === "number") {
-    params.set("limit", String(options.limit));
-  }
-  if (typeof options?.offset === "number") {
-    params.set("offset", String(options.offset));
-  }
-  const query = params.toString();
-  return fetchApi<{ messages: JobChatMessage[] }>(
-    `/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`,
-  );
-}
-
 export async function createJobChatThread(
   jobId: string,
   input?: { title?: string | null },
@@ -556,23 +539,6 @@ export async function streamJobChatMessage(
   );
 }
 
-export async function streamJobGhostwriterMessage(
-  jobId: string,
-  input: { content: string; signal?: AbortSignal },
-  handlers: {
-    onEvent: (event: JobChatStreamEvent) => void;
-  },
-): Promise<void> {
-  return streamSseEvents(
-    `/jobs/${jobId}/chat/messages`,
-    { content: input.content, stream: true },
-    {
-      onEvent: handlers.onEvent,
-      signal: input.signal,
-    },
-  );
-}
-
 export async function cancelJobChatRun(
   jobId: string,
   threadId: string,
@@ -580,19 +546,6 @@ export async function cancelJobChatRun(
 ): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
   return fetchApi<{ cancelled: boolean; alreadyFinished: boolean }>(
     `/jobs/${jobId}/chat/threads/${threadId}/runs/${runId}/cancel`,
-    {
-      method: "POST",
-      body: JSON.stringify({}),
-    },
-  );
-}
-
-export async function cancelJobGhostwriterRun(
-  jobId: string,
-  runId: string,
-): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
-  return fetchApi<{ cancelled: boolean; alreadyFinished: boolean }>(
-    `/jobs/${jobId}/chat/runs/${runId}/cancel`,
     {
       method: "POST",
       body: JSON.stringify({}),
@@ -625,24 +578,6 @@ export async function streamRegenerateJobChatMessage(
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/threads/${threadId}/messages/${assistantMessageId}/regenerate`,
-    { stream: true },
-    {
-      onEvent: handlers.onEvent,
-      signal: input.signal,
-    },
-  );
-}
-
-export async function streamRegenerateJobGhostwriterMessage(
-  jobId: string,
-  assistantMessageId: string,
-  input: { signal?: AbortSignal },
-  handlers: {
-    onEvent: (event: JobChatStreamEvent) => void;
-  },
-): Promise<void> {
-  return streamSseEvents(
-    `/jobs/${jobId}/chat/messages/${assistantMessageId}/regenerate`,
     { stream: true },
     {
       onEvent: handlers.onEvent,

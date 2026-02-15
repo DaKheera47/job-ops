@@ -26,6 +26,7 @@ export type SettingKey =
   | "jobspyResultsWanted"
   | "jobspyCountryIndeed"
   | "showSponsorInfo"
+  | "jobChatEnabled"
   | "chatStyleTone"
   | "chatStyleFormality"
   | "chatStyleConstraints"

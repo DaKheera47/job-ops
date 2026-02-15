@@ -188,6 +188,11 @@ export const settingsUpdateRegistry: Partial<{
       actions: [metadataPersistAction("showSponsorInfo", value)],
     }),
   ),
+  jobChatEnabled: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("jobChatEnabled", value)],
+    }),
+  ),
   chatStyleTone: singleAction(({ value }) =>
     result({
       actions: [metadataPersistAction("chatStyleTone", value)],
