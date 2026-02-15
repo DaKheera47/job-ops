@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import * as api from "../../api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
-import { RunControls } from "./RunControls";
 
 type GhostwriterPanelProps = {
   job: Job;
@@ -237,7 +236,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   }, [isStreaming, job.id, loadMessages, messages, onStreamEvent]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col">
       <div
         ref={messageListRef}
         className="min-h-0 flex-1 overflow-y-auto border-b border-border/50 pb-3 pr-1"
@@ -249,15 +248,15 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         />
       </div>
 
-      <div className="mt-4 space-y-3">
-        <RunControls
+      <div className="mt-4">
+        <Composer
+          disabled={isLoading || isStreaming}
           isStreaming={isStreaming}
           canRegenerate={canRegenerate}
-          onStop={stopStreaming}
           onRegenerate={regenerate}
+          onStop={stopStreaming}
+          onSend={sendMessage}
         />
-
-        <Composer disabled={isLoading || isStreaming} onSend={sendMessage} />
       </div>
     </div>
   );
