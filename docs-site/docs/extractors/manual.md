@@ -13,7 +13,13 @@ User pastes raw description, AI infers structure, user reviews edits, then impor
 
 ## 1) Input
 
-User pastes a job description in the **Manual Import** UI.
+Manual import accepts:
+
+- plain text job descriptions
+- raw HTML job descriptions
+- job links/URLs
+
+When a URL is provided, backend fetch attempts depend on whether the page can be resolved with `curl`. Some job sites block or heavily script content, so certain links will not resolve cleanly.
 
 ## 2) AI inference
 
@@ -27,9 +33,13 @@ Service:
 
 Behavior:
 
-- Sends raw text to configured LLM
+- Converts the provided input into text context and sends it to the configured LLM
 - Extracts structured fields (title, employer, location, salary, etc.)
 - Returns inferred JSON for user review
+
+Practical limit:
+
+- The inference quality ceiling is mostly the configured model capability and context behavior. Better model quality generally yields better field extraction.
 
 If no LLM key is configured, inference is skipped and user can fill fields manually.
 
