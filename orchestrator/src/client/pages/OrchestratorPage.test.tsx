@@ -1030,7 +1030,7 @@ describe("OrchestratorPage", () => {
 
     pressKeyOn(input, "?", { shiftKey: true });
     await waitFor(() => {
-      expect(screen.getByTestId("help-dialog")).toHaveTextContent("open");
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
     });
   });
 });
