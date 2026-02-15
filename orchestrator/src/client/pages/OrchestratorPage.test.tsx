@@ -932,6 +932,7 @@ describe("OrchestratorPage", () => {
 
     pressKey("r");
     await waitFor(() => {
+      expect(toast.message).toHaveBeenCalledWith("Moving job to Ready...");
       // Mock useOrchestratorData returns selectedJob as job-1 always
       expect(api.processJob).toHaveBeenCalledWith("job-1");
     });
