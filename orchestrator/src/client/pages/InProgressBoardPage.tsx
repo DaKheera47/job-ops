@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/select";
 import { cn, formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
-import { JobStatusBadge } from "./orchestrator/JobStatusBadge";
 
 type BoardCard = {
   job: JobListItem;
@@ -43,6 +42,10 @@ const sortByTitle = (a: BoardCard, b: BoardCard) =>
 
 const sortByCompany = (a: BoardCard, b: BoardCard) =>
   a.job.employer.localeCompare(b.job.employer);
+
+const BOARD_STAGES = APPLICATION_STAGES.filter(
+  (stage) => stage !== "applied",
+) as ApplicationStage[];
 
 const resolveCurrentStage = (
   events: StageEvent[] | null,
@@ -230,7 +233,7 @@ export const InProgressBoardPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto pb-2">
             <div className="flex min-w-max items-start gap-4">
-              {APPLICATION_STAGES.map((stage) => {
+              {BOARD_STAGES.map((stage) => {
                 const laneCards = lanes[stage];
                 return (
                   <section
@@ -301,18 +304,19 @@ export const InProgressBoardPage: React.FC = () => {
                             <div className="text-xs text-muted-foreground/90">
                               {job.employer}
                             </div>
-                            <div className="mt-2 flex items-center gap-2">
-                              {stage === "closed" ? (
+                            {stage === "closed" && (
+                              <div className="mt-2 flex items-center gap-2">
                                 <Badge variant="destructive">Closed</Badge>
-                              ) : (
-                                <JobStatusBadge status={job.status} />
-                              )}
-                              {stage === "closed" && job.outcome ? (
-                                <Badge variant="outline" className="capitalize">
-                                  {job.outcome.replaceAll("_", " ")}
-                                </Badge>
-                              ) : null}
-                            </div>
+                                {job.outcome ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="capitalize"
+                                  >
+                                    {job.outcome.replaceAll("_", " ")}
+                                  </Badge>
+                                ) : null}
+                              </div>
+                            )}
                             <div className="mt-2 text-[11px] text-muted-foreground/70">
                               {latestEventAt != null
                                 ? `Updated ${formatTimestamp(latestEventAt)}`
