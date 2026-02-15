@@ -8,6 +8,9 @@ import {
   APPLICATION_TASK_TYPES,
   INTERVIEW_OUTCOMES,
   INTERVIEW_TYPES,
+  JOB_CHAT_MESSAGE_ROLES,
+  JOB_CHAT_MESSAGE_STATUSES,
+  JOB_CHAT_RUN_STATUSES,
   POST_APPLICATION_INTEGRATION_STATUSES,
   POST_APPLICATION_MESSAGE_TYPES,
   POST_APPLICATION_PROCESSING_STATUSES,
@@ -170,6 +173,87 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   errorMessage: text("error_message"),
 });
 
+export const jobChatThreads = sqliteTable(
+  "job_chat_threads",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    title: text("title"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+    lastMessageAt: text("last_message_at"),
+  },
+  (table) => ({
+    jobUpdatedIndex: index("idx_job_chat_threads_job_updated").on(
+      table.jobId,
+      table.updatedAt,
+    ),
+  }),
+);
+
+export const jobChatMessages = sqliteTable(
+  "job_chat_messages",
+  {
+    id: text("id").primaryKey(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => jobChatThreads.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    role: text("role", { enum: JOB_CHAT_MESSAGE_ROLES }).notNull(),
+    content: text("content").notNull().default(""),
+    status: text("status", { enum: JOB_CHAT_MESSAGE_STATUSES })
+      .notNull()
+      .default("partial"),
+    tokensIn: integer("tokens_in"),
+    tokensOut: integer("tokens_out"),
+    version: integer("version").notNull().default(1),
+    replacesMessageId: text("replaces_message_id"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    threadCreatedIndex: index("idx_job_chat_messages_thread_created").on(
+      table.threadId,
+      table.createdAt,
+    ),
+  }),
+);
+
+export const jobChatRuns = sqliteTable(
+  "job_chat_runs",
+  {
+    id: text("id").primaryKey(),
+    threadId: text("thread_id")
+      .notNull()
+      .references(() => jobChatThreads.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    status: text("status", { enum: JOB_CHAT_RUN_STATUSES })
+      .notNull()
+      .default("running"),
+    model: text("model"),
+    provider: text("provider"),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: integer("started_at", { mode: "number" }).notNull(),
+    completedAt: integer("completed_at", { mode: "number" }),
+    requestId: text("request_id"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    threadStatusIndex: index("idx_job_chat_runs_thread_status").on(
+      table.threadId,
+      table.status,
+    ),
+  }),
+);
+
 export const settings = sqliteTable("settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
@@ -310,6 +394,12 @@ export type InterviewRow = typeof interviews.$inferSelect;
 export type NewInterviewRow = typeof interviews.$inferInsert;
 export type PipelineRunRow = typeof pipelineRuns.$inferSelect;
 export type NewPipelineRunRow = typeof pipelineRuns.$inferInsert;
+export type JobChatThreadRow = typeof jobChatThreads.$inferSelect;
+export type NewJobChatThreadRow = typeof jobChatThreads.$inferInsert;
+export type JobChatMessageRow = typeof jobChatMessages.$inferSelect;
+export type NewJobChatMessageRow = typeof jobChatMessages.$inferInsert;
+export type JobChatRunRow = typeof jobChatRuns.$inferSelect;
+export type NewJobChatRunRow = typeof jobChatRuns.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;
 export type NewSettingsRow = typeof settings.$inferInsert;
 export type PostApplicationIntegrationRow =

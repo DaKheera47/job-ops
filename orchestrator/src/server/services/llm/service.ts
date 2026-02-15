@@ -79,6 +79,7 @@ export class LlmService {
       jsonSchema,
       maxRetries = 0,
       retryDelayMs = 500,
+      signal,
     } = options;
     const jobId = options.jobId;
 
@@ -94,6 +95,7 @@ export class LlmService {
         maxRetries,
         retryDelayMs,
         jobId,
+        signal,
       });
 
       if (result.success) {
@@ -173,9 +175,17 @@ export class LlmService {
     maxRetries: number;
     retryDelayMs: number;
     jobId?: string;
+    signal?: AbortSignal;
   }): Promise<LlmResponse<T>> {
-    const { mode, model, messages, jsonSchema, maxRetries, retryDelayMs } =
-      args;
+    const {
+      mode,
+      model,
+      messages,
+      jsonSchema,
+      maxRetries,
+      retryDelayMs,
+      signal,
+    } = args;
     const jobId = args.jobId;
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -202,6 +212,7 @@ export class LlmService {
           method: "POST",
           headers,
           body: JSON.stringify(body),
+          signal,
         });
 
         if (!response.ok) {

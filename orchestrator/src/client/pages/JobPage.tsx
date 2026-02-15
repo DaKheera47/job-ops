@@ -24,6 +24,7 @@ import { formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { JobHeader } from "../components/JobHeader";
+import { JobChatPanel } from "../components/job-chat/JobChatPanel";
 import {
   type LogEventFormValues,
   LogEventModal,
@@ -348,6 +349,8 @@ export const JobPage: React.FC = () => {
               </CardContent>
             </Card>
           )}
+
+          {job && <JobChatPanel job={job} />}
         </div>
       </div>
 

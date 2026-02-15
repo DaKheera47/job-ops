@@ -188,6 +188,31 @@ export const settingsUpdateRegistry: Partial<{
       actions: [metadataPersistAction("showSponsorInfo", value)],
     }),
   ),
+  jobChatEnabled: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("jobChatEnabled", value)],
+    }),
+  ),
+  chatStyleTone: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("chatStyleTone", value)],
+    }),
+  ),
+  chatStyleFormality: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("chatStyleFormality", value)],
+    }),
+  ),
+  chatStyleConstraints: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("chatStyleConstraints", value)],
+    }),
+  ),
+  chatStyleDoNotUse: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("chatStyleDoNotUse", value)],
+    }),
+  ),
   llmApiKey: singleAction(({ value }) => {
     const normalized = toNormalizedStringOrNull(value);
     return result({

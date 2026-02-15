@@ -146,6 +146,47 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideShowSponsorInfo = showSponsorInfoSetting.overrideValue;
   const showSponsorInfo = showSponsorInfoSetting.value;
 
+  const jobChatEnabledSetting = resolveSettingValue(
+    "jobChatEnabled",
+    overrides.jobChatEnabled,
+  );
+  const defaultJobChatEnabled = jobChatEnabledSetting.defaultValue;
+  const overrideJobChatEnabled = jobChatEnabledSetting.overrideValue;
+  const jobChatEnabled = jobChatEnabledSetting.value;
+
+  const chatStyleToneSetting = resolveSettingValue(
+    "chatStyleTone",
+    overrides.chatStyleTone,
+  );
+  const defaultChatStyleTone = chatStyleToneSetting.defaultValue;
+  const overrideChatStyleTone = chatStyleToneSetting.overrideValue;
+  const chatStyleTone = chatStyleToneSetting.value;
+
+  const chatStyleFormalitySetting = resolveSettingValue(
+    "chatStyleFormality",
+    overrides.chatStyleFormality,
+  );
+  const defaultChatStyleFormality = chatStyleFormalitySetting.defaultValue;
+  const overrideChatStyleFormality = chatStyleFormalitySetting.overrideValue;
+  const chatStyleFormality = chatStyleFormalitySetting.value;
+
+  const chatStyleConstraintsSetting = resolveSettingValue(
+    "chatStyleConstraints",
+    overrides.chatStyleConstraints,
+  );
+  const defaultChatStyleConstraints = chatStyleConstraintsSetting.defaultValue;
+  const overrideChatStyleConstraints =
+    chatStyleConstraintsSetting.overrideValue;
+  const chatStyleConstraints = chatStyleConstraintsSetting.value;
+
+  const chatStyleDoNotUseSetting = resolveSettingValue(
+    "chatStyleDoNotUse",
+    overrides.chatStyleDoNotUse,
+  );
+  const defaultChatStyleDoNotUse = chatStyleDoNotUseSetting.defaultValue;
+  const overrideChatStyleDoNotUse = chatStyleDoNotUseSetting.overrideValue;
+  const chatStyleDoNotUse = chatStyleDoNotUseSetting.value;
+
   const backupEnabledSetting = resolveSettingValue(
     "backupEnabled",
     overrides.backupEnabled,
@@ -245,6 +286,21 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
+    jobChatEnabled,
+    defaultJobChatEnabled,
+    overrideJobChatEnabled,
+    chatStyleTone,
+    defaultChatStyleTone,
+    overrideChatStyleTone,
+    chatStyleFormality,
+    defaultChatStyleFormality,
+    overrideChatStyleFormality,
+    chatStyleConstraints,
+    defaultChatStyleConstraints,
+    overrideChatStyleConstraints,
+    chatStyleDoNotUse,
+    defaultChatStyleDoNotUse,
+    overrideChatStyleDoNotUse,
     backupEnabled,
     defaultBackupEnabled,
     overrideBackupEnabled,

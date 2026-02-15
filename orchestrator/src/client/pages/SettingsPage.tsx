@@ -1,6 +1,7 @@
 import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
 import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
+import { ChatSettingsSection } from "@client/pages/settings/components/ChatSettingsSection";
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection";
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection";
 import { EnvironmentSettingsSection } from "@client/pages/settings/components/EnvironmentSettingsSection";
@@ -46,6 +47,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   resumeProjects: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
+  jobChatEnabled: null,
+  chatStyleTone: "",
+  chatStyleFormality: "",
+  chatStyleConstraints: "",
+  chatStyleDoNotUse: "",
   rxresumeEmail: "",
   rxresumePassword: "",
   basicAuthUser: "",
@@ -81,6 +87,11 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   resumeProjects: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
+  jobChatEnabled: null,
+  chatStyleTone: null,
+  chatStyleFormality: null,
+  chatStyleConstraints: null,
+  chatStyleDoNotUse: null,
   rxresumeEmail: null,
   rxresumePassword: null,
   basicAuthUser: null,
@@ -110,6 +121,11 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   resumeProjects: data.resumeProjects,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId ?? null,
   showSponsorInfo: data.overrideShowSponsorInfo,
+  jobChatEnabled: data.overrideJobChatEnabled,
+  chatStyleTone: data.overrideChatStyleTone ?? "",
+  chatStyleFormality: data.overrideChatStyleFormality ?? "",
+  chatStyleConstraints: data.overrideChatStyleConstraints ?? "",
+  chatStyleDoNotUse: data.overrideChatStyleDoNotUse ?? "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
   basicAuthUser: data.basicAuthUser ?? "",
@@ -199,6 +215,28 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     display: {
       effective: settings?.showSponsorInfo ?? true,
       default: settings?.defaultShowSponsorInfo ?? true,
+    },
+    chat: {
+      enabled: {
+        effective: settings?.jobChatEnabled ?? false,
+        default: settings?.defaultJobChatEnabled ?? false,
+      },
+      tone: {
+        effective: settings?.chatStyleTone ?? "professional",
+        default: settings?.defaultChatStyleTone ?? "professional",
+      },
+      formality: {
+        effective: settings?.chatStyleFormality ?? "medium",
+        default: settings?.defaultChatStyleFormality ?? "medium",
+      },
+      constraints: {
+        effective: settings?.chatStyleConstraints ?? "",
+        default: settings?.defaultChatStyleConstraints ?? "",
+      },
+      doNotUse: {
+        effective: settings?.chatStyleDoNotUse ?? "",
+        default: settings?.defaultChatStyleDoNotUse ?? "",
+      },
     },
     envSettings: {
       readable: {
@@ -386,6 +424,7 @@ export const SettingsPage: React.FC = () => {
     pipelineWebhook,
     jobCompleteWebhook,
     display,
+    chat,
     envSettings,
     defaultResumeProjects,
     profileProjects,
@@ -551,6 +590,11 @@ export const SettingsPage: React.FC = () => {
         resumeProjects: resumeProjectsOverride,
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
+        jobChatEnabled: nullIfSame(data.jobChatEnabled, chat.enabled.default),
+        chatStyleTone: normalizeString(data.chatStyleTone),
+        chatStyleFormality: normalizeString(data.chatStyleFormality),
+        chatStyleConstraints: normalizeString(data.chatStyleConstraints),
+        chatStyleDoNotUse: normalizeString(data.chatStyleDoNotUse),
         backupEnabled: nullIfSame(
           data.backupEnabled,
           backup.backupEnabled.default,
@@ -727,6 +771,11 @@ export const SettingsPage: React.FC = () => {
           />
           <DisplaySettingsSection
             values={display}
+            isLoading={isLoading}
+            isSaving={isSaving}
+          />
+          <ChatSettingsSection
+            values={chat}
             isLoading={isLoading}
             isSaving={isSaving}
           />

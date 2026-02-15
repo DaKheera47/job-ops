@@ -15,6 +15,9 @@ import type {
   BulkPostApplicationActionResponse,
   DemoInfoResponse,
   Job,
+  JobChatMessage,
+  JobChatStreamEvent,
+  JobChatThread,
   JobListItem,
   JobOutcome,
   JobSource,
@@ -388,6 +391,199 @@ export async function updateJob(
     method: "PATCH",
     body: JSON.stringify(update),
   });
+}
+
+async function streamSseEvents(
+  endpoint: string,
+  input: Record<string, unknown>,
+  handlers: {
+    onEvent: (event: JobChatStreamEvent) => void;
+    signal?: AbortSignal;
+  },
+): Promise<void> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (cachedBasicAuthCredentials) {
+    headers.Authorization = encodeBasicAuth(cachedBasicAuthCredentials);
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(input),
+    signal: handlers.signal,
+  });
+
+  if (!response.ok) {
+    let errorMessage = `Stream request failed with status ${response.status}`;
+    try {
+      const payload = await response.json();
+      const parsed = normalizeApiResponse(payload);
+      if ("ok" in parsed && !parsed.ok) {
+        errorMessage = parsed.error.message || errorMessage;
+      }
+    } catch {
+      // ignore parse errors; keep status-based message
+    }
+    throw new ApiClientError(errorMessage, {
+      status: response.status,
+    });
+  }
+
+  if (!response.body) {
+    throw new ApiClientError("Streaming not supported by this browser");
+  }
+
+  const decoder = new TextDecoder();
+  const reader = response.body.getReader();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let separatorIndex = buffer.indexOf("\n\n");
+    while (separatorIndex !== -1) {
+      const frame = buffer.slice(0, separatorIndex);
+      buffer = buffer.slice(separatorIndex + 2);
+      const dataLines = frame
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trim())
+        .filter(Boolean);
+
+      for (const line of dataLines) {
+        try {
+          handlers.onEvent(JSON.parse(line) as JobChatStreamEvent);
+        } catch {
+          // Ignore malformed events to keep stream resilient
+        }
+      }
+      separatorIndex = buffer.indexOf("\n\n");
+    }
+  }
+}
+
+export async function listJobChatThreads(jobId: string): Promise<{
+  threads: JobChatThread[];
+}> {
+  return fetchApi<{ threads: JobChatThread[] }>(`/jobs/${jobId}/chat/threads`);
+}
+
+export async function createJobChatThread(
+  jobId: string,
+  input?: { title?: string | null },
+): Promise<{ thread: JobChatThread }> {
+  return fetchApi<{ thread: JobChatThread }>(`/jobs/${jobId}/chat/threads`, {
+    method: "POST",
+    body: JSON.stringify({
+      title: input?.title ?? null,
+    }),
+  });
+}
+
+export async function listJobChatMessages(
+  jobId: string,
+  threadId: string,
+  options?: { limit?: number; offset?: number },
+): Promise<{ messages: JobChatMessage[] }> {
+  const params = new URLSearchParams();
+  if (typeof options?.limit === "number") {
+    params.set("limit", String(options.limit));
+  }
+  if (typeof options?.offset === "number") {
+    params.set("offset", String(options.offset));
+  }
+  const query = params.toString();
+  return fetchApi<{ messages: JobChatMessage[] }>(
+    `/jobs/${jobId}/chat/threads/${threadId}/messages${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function sendJobChatMessage(
+  jobId: string,
+  threadId: string,
+  input: { content: string },
+): Promise<{
+  userMessage: JobChatMessage;
+  assistantMessage: JobChatMessage | null;
+  runId: string;
+}> {
+  return fetchApi<{
+    userMessage: JobChatMessage;
+    assistantMessage: JobChatMessage | null;
+    runId: string;
+  }>(`/jobs/${jobId}/chat/threads/${threadId}/messages`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function streamJobChatMessage(
+  jobId: string,
+  threadId: string,
+  input: { content: string; signal?: AbortSignal },
+  handlers: {
+    onEvent: (event: JobChatStreamEvent) => void;
+  },
+): Promise<void> {
+  return streamSseEvents(
+    `/jobs/${jobId}/chat/threads/${threadId}/messages`,
+    { content: input.content, stream: true },
+    {
+      onEvent: handlers.onEvent,
+      signal: input.signal,
+    },
+  );
+}
+
+export async function cancelJobChatRun(
+  jobId: string,
+  threadId: string,
+  runId: string,
+): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
+  return fetchApi<{ cancelled: boolean; alreadyFinished: boolean }>(
+    `/jobs/${jobId}/chat/threads/${threadId}/runs/${runId}/cancel`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export async function regenerateJobChatMessage(
+  jobId: string,
+  threadId: string,
+  assistantMessageId: string,
+): Promise<{ runId: string; assistantMessage: JobChatMessage | null }> {
+  return fetchApi<{ runId: string; assistantMessage: JobChatMessage | null }>(
+    `/jobs/${jobId}/chat/threads/${threadId}/messages/${assistantMessageId}/regenerate`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
+export async function streamRegenerateJobChatMessage(
+  jobId: string,
+  threadId: string,
+  assistantMessageId: string,
+  input: { signal?: AbortSignal },
+  handlers: {
+    onEvent: (event: JobChatStreamEvent) => void;
+  },
+): Promise<void> {
+  return streamSseEvents(
+    `/jobs/${jobId}/chat/threads/${threadId}/messages/${assistantMessageId}/regenerate`,
+    { stream: true },
+    {
+      onEvent: handlers.onEvent,
+      signal: input.signal,
+    },
+  );
 }
 
 export async function processJob(

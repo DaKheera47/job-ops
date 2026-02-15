@@ -30,6 +30,8 @@ export interface LlmRequestOptions<_T> {
   retryDelayMs?: number;
   /** Job ID for logging purposes */
   jobId?: string;
+  /** Optional abort signal for cancellation */
+  signal?: AbortSignal;
 }
 
 export interface LlmResult<T> {

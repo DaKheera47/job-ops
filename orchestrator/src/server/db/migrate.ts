@@ -92,6 +92,51 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS job_chat_threads (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    title TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_message_at TEXT,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS job_chat_messages (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('system', 'user', 'assistant', 'tool')),
+    content TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'partial' CHECK(status IN ('complete', 'partial', 'cancelled', 'failed')),
+    tokens_in INTEGER,
+    tokens_out INTEGER,
+    version INTEGER NOT NULL DEFAULT 1,
+    replaces_message_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (thread_id) REFERENCES job_chat_threads(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS job_chat_runs (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'cancelled', 'failed')),
+    model TEXT,
+    provider TEXT,
+    error_code TEXT,
+    error_message TEXT,
+    started_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    request_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (thread_id) REFERENCES job_chat_threads(id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+
   `CREATE TABLE IF NOT EXISTS stage_events (
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,
@@ -403,6 +448,9 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_interviews_application_id ON interviews(application_id)`,
   `CREATE INDEX IF NOT EXISTS idx_post_app_sync_runs_provider_account_started_at ON post_application_sync_runs(provider, account_key, started_at)`,
   `CREATE INDEX IF NOT EXISTS idx_post_app_messages_provider_account_processing_status ON post_application_messages(provider, account_key, processing_status)`,
+  `CREATE INDEX IF NOT EXISTS idx_job_chat_threads_job_updated ON job_chat_threads(job_id, updated_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_job_chat_messages_thread_created ON job_chat_messages(thread_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_job_chat_runs_thread_status ON job_chat_runs(thread_id, status)`,
 
   // Backfill: Create "Applied" events for legacy jobs that have applied_at set but no event entry
   `INSERT INTO stage_events (id, application_id, title, from_stage, to_stage, occurred_at, metadata)
