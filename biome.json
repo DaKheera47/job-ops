@@ -5,7 +5,12 @@
     "indentWidth": 2
   },
   "files": {
-    "includes": ["**", "!!**/dist"]
+    "includes": [
+      "**",
+      "!!**/dist/**",
+      "!!docs-site/.docusaurus/**",
+      "!!docs-site/build/**"
+    ]
   },
   "css": {
     "parser": {
