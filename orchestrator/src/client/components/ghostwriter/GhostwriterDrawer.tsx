@@ -41,7 +41,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
 
       <SheetContent
         side="right"
-        className="flex w-full flex-col p-0 sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]"
+        className="w-full p-0 sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]"
       >
         <div className="border-b border-border/50 p-4">
           <SheetHeader>

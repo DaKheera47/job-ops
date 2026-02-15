@@ -70,6 +70,20 @@ export async function listThreadsForJob(
   return rows.map(mapThread);
 }
 
+export async function getOrCreateThreadForJob(input: {
+  jobId: string;
+  title?: string | null;
+}): Promise<JobChatThread> {
+  const existing = await listThreadsForJob(input.jobId);
+  if (existing.length > 0) {
+    return existing[0];
+  }
+  return createThread({
+    jobId: input.jobId,
+    title: input.title ?? null,
+  });
+}
+
 export async function getThreadById(
   threadId: string,
 ): Promise<JobChatThread | null> {

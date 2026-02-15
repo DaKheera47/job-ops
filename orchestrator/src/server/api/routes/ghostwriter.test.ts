@@ -39,7 +39,54 @@ vi.mock("../../services/ghostwriter", () => ({
       updatedAt: new Date().toISOString(),
     },
   ]),
+  listMessagesForJob: vi.fn(async () => [
+    {
+      id: "message-1",
+      threadId: "thread-1",
+      jobId: "job-1",
+      role: "user",
+      content: "hello",
+      status: "complete",
+      tokensIn: 1,
+      tokensOut: null,
+      version: 1,
+      replacesMessageId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ]),
   sendMessage: vi.fn(async () => ({
+    userMessage: {
+      id: "user-1",
+      threadId: "thread-1",
+      jobId: "job-1",
+      role: "user",
+      content: "hello",
+      status: "complete",
+      tokensIn: 1,
+      tokensOut: null,
+      version: 1,
+      replacesMessageId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    assistantMessage: {
+      id: "assistant-1",
+      threadId: "thread-1",
+      jobId: "job-1",
+      role: "assistant",
+      content: "hi",
+      status: "complete",
+      tokensIn: 1,
+      tokensOut: 1,
+      version: 1,
+      replacesMessageId: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    runId: "run-1",
+  })),
+  sendMessageForJob: vi.fn(async () => ({
     userMessage: {
       id: "user-1",
       threadId: "thread-1",
@@ -104,8 +151,8 @@ describe.sequential("Ghostwriter API", () => {
     await stopServer({ server, closeDb, tempDir });
   });
 
-  it("lists threads with request id metadata", async () => {
-    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/threads`, {
+  it("lists messages with request id metadata", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/messages`, {
       headers: {
         "x-request-id": "chat-req-1",
       },
@@ -115,34 +162,18 @@ describe.sequential("Ghostwriter API", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("x-request-id")).toBe("chat-req-1");
     expect(body.ok).toBe(true);
-    expect(body.data.threads.length).toBe(1);
+    expect(body.data.messages.length).toBe(1);
     expect(body.meta.requestId).toBe("chat-req-1");
   });
 
-  it("creates thread and sends a message", async () => {
-    const threadRes = await fetch(`${baseUrl}/api/jobs/job-1/chat/threads`, {
+  it("sends a message in the per-job conversation", async () => {
+    const messageRes = await fetch(`${baseUrl}/api/jobs/job-1/chat/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title: "My thread" }),
+      body: JSON.stringify({ content: "hello" }),
     });
-    const threadBody = await threadRes.json();
-
-    expect(threadRes.status).toBe(201);
-    expect(threadBody.ok).toBe(true);
-    expect(threadBody.data.thread.id).toBe("thread-created");
-
-    const messageRes = await fetch(
-      `${baseUrl}/api/jobs/job-1/chat/threads/thread-1/messages`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ content: "hello" }),
-      },
-    );
     const messageBody = await messageRes.json();
 
     expect(messageRes.status).toBe(200);
