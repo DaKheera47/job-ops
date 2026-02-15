@@ -65,8 +65,9 @@ const config: Config = {
           dropdownActiveClassDisabled: true,
         },
         {
-          href: "/overview",
-          label: "Back to App",
+          type: "html",
+          value:
+            '<a class="navbar__item navbar__link" href="/overview">Back to App</a>',
           position: "right",
         },
         {
