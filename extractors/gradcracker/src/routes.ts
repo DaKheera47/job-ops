@@ -91,9 +91,6 @@ router.addHandler(
     // Wait until the job cards are rendered
     await page.waitForSelector("article[wire\\:key]", { timeout: 10000 });
 
-    // Add delay to see the page load
-    await page.waitForTimeout(3000);
-
     const toAbsolute = (href: string | null) => {
       if (!href) return null;
       try {
@@ -245,9 +242,6 @@ router.addHandler(
 
     // Wait for job content to be present
     await page.waitForSelector(".body-content", { timeout: 10000 });
-
-    // Optional delay if you want to visually see it while debugging
-    await page.waitForTimeout(2000);
 
     const jobDescription =
       (await page.locator(".body-content").textContent())?.trim() || null;
