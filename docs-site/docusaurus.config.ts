@@ -65,6 +65,11 @@ const config: Config = {
           dropdownActiveClassDisabled: true,
         },
         {
+          href: "/overview",
+          label: "Back to App",
+          position: "right",
+        },
+        {
           href: "https://github.com/DaKheera47/job-ops",
           label: "GitHub",
           position: "right",
