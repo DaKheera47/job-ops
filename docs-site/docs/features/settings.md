@@ -145,6 +145,7 @@ curl -X POST "http://localhost:3001/api/backups"
 
 ## Related pages
 
+- [Reactive Resume](./reactive-resume)
 - [Overview](./overview)
 - [Orchestrator](./orchestrator)
 - [Ghostwriter](./ghostwriter)

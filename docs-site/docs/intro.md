@@ -29,6 +29,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Webhooks, service accounts, and basic auth controls
   - Backup scheduling, scoring thresholds, and danger-zone cleanup tools
 
+- **[Reactive Resume](/docs/next/features/reactive-resume)**
+  - Base resume selection and RxResume integration
+  - Project inclusion controls (must-include, AI-selectable, max)
+  - PDF generation behavior and troubleshooting
+
 - **[Applications Overview](/docs/next/features/overview)**
   - Applications-per-day trend
   - Conversion analytics and funnel

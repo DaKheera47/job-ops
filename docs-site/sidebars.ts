@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
         "features/overview",
         "features/orchestrator",
         "features/settings",
+        "features/reactive-resume",
         "features/in-progress-board",
         "features/ghostwriter",
         "features/post-application-tracking",
