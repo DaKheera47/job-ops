@@ -8,6 +8,8 @@ import {
   Shield,
 } from "lucide-react";
 
+declare const __APP_VERSION__: string;
+
 export type NavLink = {
   to: string;
   label: string;
@@ -15,6 +17,16 @@ export type NavLink = {
   activePaths?: string[];
   external?: boolean;
 };
+
+const releaseVersion = (() => {
+  if (typeof __APP_VERSION__ !== "string") return null;
+  const match = __APP_VERSION__.match(/^v\d+\.\d+\.\d+/);
+  return match ? match[0] : null;
+})();
+
+const docsLabel = releaseVersion
+  ? `Documentation (${releaseVersion})`
+  : "Documentation";
 
 export const NAV_LINKS: NavLink[] = [
   { to: "/overview", label: "Overview", icon: Home },
@@ -36,7 +48,7 @@ export const NAV_LINKS: NavLink[] = [
     activePaths: ["/applications/in-progress"],
   },
   { to: "/tracking-inbox", label: "Tracking Inbox", icon: Inbox },
-  { to: "/docs", label: "Documentation", icon: BookOpen, external: true },
+  { to: "/docs", label: docsLabel, icon: BookOpen, external: true },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
