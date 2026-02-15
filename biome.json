@@ -7,9 +7,9 @@
   "files": {
     "includes": [
       "**",
-      "!!**/dist/**",
-      "!!docs-site/.docusaurus/**",
-      "!!docs-site/build/**"
+      "!!**/dist",
+      "!!docs-site/.docusaurus",
+      "!!docs-site/build"
     ]
   },
   "css": {
