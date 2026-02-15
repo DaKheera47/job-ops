@@ -43,7 +43,8 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
           <SheetHeader>
             <SheetTitle>Ghostwriter</SheetTitle>
             <SheetDescription>
-              Chat with context from this job and your writing style.
+              The Ghostwriter will use the context of this job and your resume,
+          along with your writing style to help you craft the perfect message.
             </SheetDescription>
           </SheetHeader>
           {job && (
