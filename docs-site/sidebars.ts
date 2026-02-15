@@ -14,6 +14,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "features/overview",
         "features/orchestrator",
+        "features/in-progress-board",
         "features/ghostwriter",
         "features/post-application-tracking",
         "features/visa-sponsors",
