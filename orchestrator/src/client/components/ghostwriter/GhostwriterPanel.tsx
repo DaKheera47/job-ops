@@ -236,19 +236,32 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   }, [isStreaming, job.id, loadMessages, messages, onStreamEvent]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div className='flex h-full min-h-0 flex-1 flex-col'>
       <div
         ref={messageListRef}
-        className="min-h-0 flex-1 overflow-y-auto border-b border-border/50 pb-3 pr-1"
+        className='min-h-0 flex-1 overflow-y-auto border-b border-border/50 pb-3 pr-1'
       >
-        <MessageList
-          messages={messages}
-          isStreaming={isStreaming}
-          streamingMessageId={streamingMessageId}
-        />
+        {messages.length === 0 && !isLoading ? (
+          <div className='flex h-full min-h-[260px] justify-center px-3 flex-col text-left'>
+            <h4 className='font-medium'>
+              {job.title} at {job.employer}
+            </h4>
+            <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
+              Ghostwriter already has this job description, your resume and your writing style preferences. Ask for
+              tailored response drafts, or concise role-fit
+              talking points.
+            </p>
+          </div>
+        ) : (
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            streamingMessageId={streamingMessageId}
+          />
+        )}
       </div>
 
-      <div className="mt-4">
+      <div className='mt-4'>
         <Composer
           disabled={isLoading || isStreaming}
           isStreaming={isStreaming}
