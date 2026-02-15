@@ -28,6 +28,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Use fit assessment and score to prioritize applications
   - Mark jobs as applied to trigger webhooks and analytics
 
+- **[Post-Application Workflow](/docs/next/workflows/post-application-workflow)**
+  - Track events manually for direct control
+  - Or configure automatic Gmail sync and inbox review
+  - Move confirmed updates into in-progress tracking
+
 ## Feature Documentation
 
 - **[Orchestrator](/docs/features/orchestrator)**

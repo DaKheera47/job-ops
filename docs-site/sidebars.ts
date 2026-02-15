@@ -11,7 +11,10 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Workflows",
-      items: ["workflows/find-jobs-and-apply-workflow"],
+      items: [
+        "workflows/find-jobs-and-apply-workflow",
+        "workflows/post-application-workflow",
+      ],
     },
     {
       type: "category",

@@ -92,4 +92,5 @@ Once a job is marked `applied`, it becomes part of:
 - [Reactive Resume](../features/reactive-resume)
 - [Settings](../features/settings)
 - [Overview](../features/overview)
+- [Post-Application Workflow](./post-application-workflow)
 - [Post-Application Tracking](../features/post-application-tracking)
