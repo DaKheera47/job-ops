@@ -464,7 +464,7 @@ const migrations = [
       status = 'failed',
       error_code = COALESCE(error_code, 'CONFLICT'),
       error_message = COALESCE(error_message, 'Recovered duplicate running run during migration'),
-      completed_at = COALESCE(completed_at, CAST(strftime('%s', 'now') AS INTEGER)),
+      completed_at = COALESCE(completed_at, CAST(strftime('%s', 'now') AS INTEGER) * 1000),
       updated_at = datetime('now')
     WHERE id IN (SELECT id FROM ranked WHERE rank_in_thread > 1)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_job_chat_runs_thread_running_unique

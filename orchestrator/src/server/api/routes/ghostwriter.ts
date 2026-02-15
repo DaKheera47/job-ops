@@ -1,4 +1,5 @@
 import { asyncRoute, fail, ok } from "@infra/http";
+import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { badRequest, toAppError } from "@server/infra/errors";
 import { type Request, type Response, Router } from "express";
@@ -34,7 +35,69 @@ function getJobId(req: Request): string {
 }
 
 function writeSse(res: Response, event: unknown): void {
+  if (res.writableEnded || res.destroyed) return;
   res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+function setupSseStream(
+  req: Request,
+  res: Response,
+  onDisconnectRun?: (runId: string) => Promise<void>,
+): {
+  setRunId: (runId: string) => void;
+  isClosed: () => boolean;
+  cleanup: () => void;
+} {
+  res.status(200);
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+
+  let closed = false;
+  let activeRunId: string | null = null;
+  let disconnectHandled = false;
+
+  const handleDisconnect = () => {
+    if (disconnectHandled) return;
+    disconnectHandled = true;
+    if (!activeRunId || !onDisconnectRun) return;
+
+    void onDisconnectRun(activeRunId).catch((error) => {
+      logger.warn("Ghostwriter stream disconnect cancellation failed", {
+        runId: activeRunId,
+        error,
+      });
+    });
+  };
+
+  const heartbeat = setInterval(() => {
+    if (res.writableEnded || res.destroyed) return;
+    res.write(": heartbeat\n\n");
+  }, 30000);
+
+  const onClose = () => {
+    closed = true;
+    clearInterval(heartbeat);
+    handleDisconnect();
+  };
+
+  req.on("close", onClose);
+
+  return {
+    setRunId: (runId: string) => {
+      activeRunId = runId;
+      if (closed) {
+        handleDisconnect();
+      }
+    },
+    isClosed: () => closed,
+    cleanup: () => {
+      clearInterval(heartbeat);
+      req.off("close", onClose);
+    },
+  };
 }
 
 ghostwriterRouter.get(
@@ -75,25 +138,29 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        const sse = setupSseStream(req, res, async (runId: string) => {
+          await ghostwriterService.cancelRunForJob({
+            jobId,
+            runId,
+          });
+        });
 
         try {
           await ghostwriterService.sendMessageForJob({
             jobId,
             content: parsed.data.content,
             stream: {
-              onReady: ({ runId, threadId, messageId, requestId }) =>
+              onReady: ({ runId, threadId, messageId, requestId }) => {
+                sse.setRunId(runId);
+                if (sse.isClosed()) return;
                 writeSse(res, {
                   type: "ready",
                   runId,
                   threadId,
                   messageId,
                   requestId,
-                }),
+                });
+              },
               onDelta: ({ runId, messageId, delta }) =>
                 writeSse(res, {
                   type: "delta",
@@ -132,7 +199,10 @@ ghostwriterRouter.post(
             requestId: res.getHeader("x-request-id") || "unknown",
           });
         } finally {
-          res.end();
+          sse.cleanup();
+          if (!res.writableEnded) {
+            res.end();
+          }
         }
 
         return;
@@ -191,25 +261,29 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        const sse = setupSseStream(req, res, async (runId: string) => {
+          await ghostwriterService.cancelRunForJob({
+            jobId,
+            runId,
+          });
+        });
 
         try {
           await ghostwriterService.regenerateMessageForJob({
             jobId,
             assistantMessageId,
             stream: {
-              onReady: ({ runId, threadId, messageId, requestId }) =>
+              onReady: ({ runId, threadId, messageId, requestId }) => {
+                sse.setRunId(runId);
+                if (sse.isClosed()) return;
                 writeSse(res, {
                   type: "ready",
                   runId,
                   threadId,
                   messageId,
                   requestId,
-                }),
+                });
+              },
               onDelta: ({ runId, messageId, delta }) =>
                 writeSse(res, {
                   type: "delta",
@@ -248,7 +322,10 @@ ghostwriterRouter.post(
             requestId: res.getHeader("x-request-id") || "unknown",
           });
         } finally {
-          res.end();
+          sse.cleanup();
+          if (!res.writableEnded) {
+            res.end();
+          }
         }
 
         return;
@@ -346,11 +423,13 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        const sse = setupSseStream(req, res, async (runId: string) => {
+          await ghostwriterService.cancelRun({
+            jobId,
+            threadId,
+            runId,
+          });
+        });
 
         try {
           await ghostwriterService.sendMessage({
@@ -358,14 +437,17 @@ ghostwriterRouter.post(
             threadId,
             content: parsed.data.content,
             stream: {
-              onReady: ({ runId, messageId, requestId }) =>
+              onReady: ({ runId, messageId, requestId }) => {
+                sse.setRunId(runId);
+                if (sse.isClosed()) return;
                 writeSse(res, {
                   type: "ready",
                   runId,
                   threadId,
                   messageId,
                   requestId,
-                }),
+                });
+              },
               onDelta: ({ runId, messageId, delta }) =>
                 writeSse(res, {
                   type: "delta",
@@ -404,7 +486,10 @@ ghostwriterRouter.post(
             requestId: res.getHeader("x-request-id") || "unknown",
           });
         } finally {
-          res.end();
+          sse.cleanup();
+          if (!res.writableEnded) {
+            res.end();
+          }
         }
 
         return;
@@ -469,11 +554,13 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        const sse = setupSseStream(req, res, async (runId: string) => {
+          await ghostwriterService.cancelRun({
+            jobId,
+            threadId,
+            runId,
+          });
+        });
 
         try {
           await ghostwriterService.regenerateMessage({
@@ -481,14 +568,17 @@ ghostwriterRouter.post(
             threadId,
             assistantMessageId,
             stream: {
-              onReady: ({ runId, messageId, requestId }) =>
+              onReady: ({ runId, messageId, requestId }) => {
+                sse.setRunId(runId);
+                if (sse.isClosed()) return;
                 writeSse(res, {
                   type: "ready",
                   runId,
                   threadId,
                   messageId,
                   requestId,
-                }),
+                });
+              },
               onDelta: ({ runId, messageId, delta }) =>
                 writeSse(res, {
                   type: "delta",
@@ -527,7 +617,10 @@ ghostwriterRouter.post(
             requestId: res.getHeader("x-request-id") || "unknown",
           });
         } finally {
-          res.end();
+          sse.cleanup();
+          if (!res.writableEnded) {
+            res.end();
+          }
         }
 
         return;

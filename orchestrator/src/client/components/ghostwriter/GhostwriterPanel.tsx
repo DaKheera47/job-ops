@@ -30,7 +30,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     if (distanceToBottom < 120 || isStreaming) {
       container.scrollTop = container.scrollHeight;
     }
-  });
+  }, [messages, isStreaming]);
 
   const loadMessages = useCallback(async () => {
     const data = await api.listJobGhostwriterMessages(job.id, {
@@ -181,14 +181,19 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   );
 
   const stopStreaming = useCallback(async () => {
-    if (!activeRunId) return;
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setIsStreaming(false);
+    setStreamingMessageId(null);
+    const runId = activeRunId;
+    setActiveRunId(null);
+
+    if (!runId) {
+      return;
+    }
+
     try {
-      await api.cancelJobGhostwriterRun(job.id, activeRunId);
-      streamAbortRef.current?.abort();
-      streamAbortRef.current = null;
-      setIsStreaming(false);
-      setActiveRunId(null);
-      setStreamingMessageId(null);
+      await api.cancelJobGhostwriterRun(job.id, runId);
       await loadMessages();
     } catch (error) {
       const message =

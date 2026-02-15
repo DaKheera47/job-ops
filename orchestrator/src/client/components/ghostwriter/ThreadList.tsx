@@ -26,7 +26,8 @@ function formatRelativeTime(value: string | null): string {
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
   if (absMs < hour) {
-    const minutes = Math.max(1, Math.round(diffMs / minute));
+    const magnitudeMinutes = Math.max(1, Math.round(absMs / minute));
+    const minutes = Math.sign(diffMs) * magnitudeMinutes;
     return `Updated ${rtf.format(minutes, "minute")}`;
   }
   if (absMs < day) {

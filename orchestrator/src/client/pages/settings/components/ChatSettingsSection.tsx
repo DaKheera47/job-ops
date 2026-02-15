@@ -49,7 +49,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value ?? tone.default}
+                    value={field.value || tone.default}
                     onValueChange={(value) => field.onChange(value)}
                     disabled={isLoading || isSaving}
                   >
@@ -79,7 +79,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value ?? formality.default}
+                    value={field.value || formality.default}
                     onValueChange={(value) => field.onChange(value)}
                     disabled={isLoading || isSaving}
                   >
