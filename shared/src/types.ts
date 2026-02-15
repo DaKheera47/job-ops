@@ -28,7 +28,7 @@ export const STAGE_LABELS: Record<ApplicationStage, string> = {
   applied: "Applied",
   recruiter_screen: "Recruiter Screen",
   assessment: "Assessment",
-  hiring_manager_screen: "Hiring Manager Screen",
+  hiring_manager_screen: "Team Match",
   technical_interview: "Technical Interview",
   onsite: "Final Round",
   offer: "Offer",

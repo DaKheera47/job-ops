@@ -678,7 +678,7 @@ export const DEMO_BASE_STAGE_EVENTS: DemoDefaultStageEvent[] = [
     toStage: "hiring_manager_screen",
     title: "Hiring manager interview",
     occurredOffsetMinutes: 1320,
-    metadata: { eventLabel: "Hiring Manager Screen", actor: "user" },
+    metadata: { eventLabel: "Team Match", actor: "user" },
   },
   {
     id: "demo-event-offer-4",
