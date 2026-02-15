@@ -1,3 +1,4 @@
+import { getMetaShortcutLabel, isMetaKeyPressed } from "@client/lib/meta-key";
 import { RefreshCcw, Send, Square } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
@@ -38,7 +39,7 @@ export const Composer: React.FC<ComposerProps> = ({
         onChange={(event) => setValue(event.target.value)}
         disabled={disabled}
         onKeyDown={(event) => {
-          if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+          if (isMetaKeyPressed(event) && event.key === "Enter") {
             event.preventDefault();
             void submit();
           }
@@ -47,7 +48,7 @@ export const Composer: React.FC<ComposerProps> = ({
       />
       <div className="flex items-center justify-between">
         <div className="text-[10px] text-muted-foreground">
-          Cmd/Ctrl+Enter to send
+          {getMetaShortcutLabel("Enter")} to send
         </div>
         <div className="flex items-center gap-1">
           {isStreaming ? (
