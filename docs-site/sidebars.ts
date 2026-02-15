@@ -12,6 +12,7 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Core Features",
       items: [
+        "features/overview",
         "features/orchestrator",
         "features/ghostwriter",
         "features/post-application-tracking",

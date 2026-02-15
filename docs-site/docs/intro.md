@@ -24,6 +24,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - PDF generation and regeneration
   - Post-application tracking overview
 
+- **[Applications Overview](/docs/next/features/overview)**
+  - Applications-per-day trend
+  - Conversion analytics and funnel
+  - Duration window controls (`7d`, `14d`, `30d`, `90d`)
+
 - **[Ghostwriter](/docs/features/ghostwriter)**
   - One persistent conversation per job
   - Streaming responses, stop, and regenerate
