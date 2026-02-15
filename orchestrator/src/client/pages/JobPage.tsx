@@ -23,8 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
+import { GhostwriterPanel } from "../components/ghostwriter/GhostwriterPanel";
 import { JobHeader } from "../components/JobHeader";
-import { JobChatPanel } from "../components/job-chat/JobChatPanel";
 import {
   type LogEventFormValues,
   LogEventModal,
@@ -350,7 +350,7 @@ export const JobPage: React.FC = () => {
             </Card>
           )}
 
-          {job && <JobChatPanel job={job} />}
+          {job && <GhostwriterPanel job={job} />}
         </div>
       </div>
 

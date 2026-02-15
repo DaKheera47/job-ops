@@ -15,11 +15,11 @@ import { MessageList } from "./MessageList";
 import { RunControls } from "./RunControls";
 import { ThreadList } from "./ThreadList";
 
-type JobChatPanelProps = {
+type GhostwriterPanelProps = {
   job: Job;
 };
 
-export const JobChatPanel: React.FC<JobChatPanelProps> = ({ job }) => {
+export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   const [threads, setThreads] = useState<JobChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<JobChatMessage[]>([]);

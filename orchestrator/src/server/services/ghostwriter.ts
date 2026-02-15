@@ -7,9 +7,9 @@ import {
   requestTimeout,
   upstreamError,
 } from "../infra/errors";
-import * as jobChatRepo from "../repositories/job-chat";
+import * as jobChatRepo from "../repositories/ghostwriter";
 import * as settingsRepo from "../repositories/settings";
-import { buildJobChatPromptContext } from "./job-chat-context";
+import { buildJobChatPromptContext } from "./ghostwriter-context";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 

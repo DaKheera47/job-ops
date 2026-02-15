@@ -3,9 +3,9 @@ import { runWithRequestContext } from "@infra/request-context";
 import { badRequest, toAppError } from "@server/infra/errors";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import * as jobChatService from "../../services/job-chat";
+import * as ghostwriterService from "../../services/ghostwriter";
 
-export const jobChatRouter = Router({ mergeParams: true });
+export const ghostwriterRouter = Router({ mergeParams: true });
 
 const createThreadSchema = z.object({
   title: z.string().trim().max(200).nullable().optional(),
@@ -37,19 +37,19 @@ function writeSse(res: Response, event: unknown): void {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
-jobChatRouter.get(
+ghostwriterRouter.get(
   "/threads",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
 
     await runWithRequestContext({ jobId }, async () => {
-      const threads = await jobChatService.listThreads(jobId);
+      const threads = await ghostwriterService.listThreads(jobId);
       ok(res, { threads });
     });
   }),
 );
 
-jobChatRouter.post(
+ghostwriterRouter.post(
   "/threads",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -62,7 +62,7 @@ jobChatRouter.post(
     }
 
     await runWithRequestContext({ jobId }, async () => {
-      const thread = await jobChatService.createThread({
+      const thread = await ghostwriterService.createThread({
         jobId,
         title: parsed.data.title,
       });
@@ -71,7 +71,7 @@ jobChatRouter.post(
   }),
 );
 
-jobChatRouter.get(
+ghostwriterRouter.get(
   "/threads/:threadId/messages",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -89,7 +89,7 @@ jobChatRouter.get(
     }
 
     await runWithRequestContext({ jobId }, async () => {
-      const messages = await jobChatService.listMessages({
+      const messages = await ghostwriterService.listMessages({
         jobId,
         threadId,
         limit: parsed.data.limit,
@@ -100,7 +100,7 @@ jobChatRouter.get(
   }),
 );
 
-jobChatRouter.post(
+ghostwriterRouter.post(
   "/threads/:threadId/messages",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -126,7 +126,7 @@ jobChatRouter.post(
         res.flushHeaders?.();
 
         try {
-          await jobChatService.sendMessage({
+          await ghostwriterService.sendMessage({
             jobId,
             threadId,
             content: parsed.data.content,
@@ -183,7 +183,7 @@ jobChatRouter.post(
         return;
       }
 
-      const result = await jobChatService.sendMessage({
+      const result = await ghostwriterService.sendMessage({
         jobId,
         threadId,
         content: parsed.data.content,
@@ -198,7 +198,7 @@ jobChatRouter.post(
   }),
 );
 
-jobChatRouter.post(
+ghostwriterRouter.post(
   "/threads/:threadId/runs/:runId/cancel",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -210,7 +210,7 @@ jobChatRouter.post(
     }
 
     await runWithRequestContext({ jobId }, async () => {
-      const result = await jobChatService.cancelRun({
+      const result = await ghostwriterService.cancelRun({
         jobId,
         threadId,
         runId,
@@ -221,7 +221,7 @@ jobChatRouter.post(
   }),
 );
 
-jobChatRouter.post(
+ghostwriterRouter.post(
   "/threads/:threadId/messages/:assistantMessageId/regenerate",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -249,7 +249,7 @@ jobChatRouter.post(
         res.flushHeaders?.();
 
         try {
-          await jobChatService.regenerateMessage({
+          await ghostwriterService.regenerateMessage({
             jobId,
             threadId,
             assistantMessageId,
@@ -306,7 +306,7 @@ jobChatRouter.post(
         return;
       }
 
-      const result = await jobChatService.regenerateMessage({
+      const result = await ghostwriterService.regenerateMessage({
         jobId,
         threadId,
         assistantMessageId,
