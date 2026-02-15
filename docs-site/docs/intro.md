@@ -24,6 +24,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - PDF generation and regeneration
   - Post-application tracking overview
 
+- **[Settings](/docs/next/features/settings)**
+  - LLM provider/model and task-specific overrides
+  - Webhooks, service accounts, and basic auth controls
+  - Backup scheduling, scoring thresholds, and danger-zone cleanup tools
+
 - **[Applications Overview](/docs/next/features/overview)**
   - Applications-per-day trend
   - Conversion analytics and funnel
