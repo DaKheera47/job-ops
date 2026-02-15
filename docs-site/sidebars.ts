@@ -38,6 +38,7 @@ const sidebars: SidebarsConfig = {
       label: "Self-Hosting & Ops",
       items: [
         "getting-started/self-hosting",
+        "getting-started/database-backups",
         "troubleshooting/common-problems",
       ],
     },

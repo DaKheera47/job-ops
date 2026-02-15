@@ -16,6 +16,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Environment variables reference
   - Demo mode deployment
 
+- **[Database Backups](/docs/next/getting-started/database-backups)**
+  - Automatic backup scheduling and retention
+  - Manual backup creation/deletion
+  - Restore workflow and troubleshooting
+
 ## Feature Documentation
 
 - **[Orchestrator](/docs/features/orchestrator)**

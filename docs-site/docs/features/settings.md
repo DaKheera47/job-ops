@@ -81,6 +81,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Enable/disable automatic daily backups
 - Configure backup hour (UTC) and max retained backups
 - Create or delete backups manually
+- See [Database Backups](../getting-started/database-backups) for full backup/restore guidance.
 
 ### Scoring Settings
 
@@ -146,6 +147,7 @@ curl -X POST "http://localhost:3001/api/backups"
 ## Related pages
 
 - [Reactive Resume](./reactive-resume)
+- [Database Backups](../getting-started/database-backups)
 - [Overview](./overview)
 - [Orchestrator](./orchestrator)
 - [Ghostwriter](./ghostwriter)
