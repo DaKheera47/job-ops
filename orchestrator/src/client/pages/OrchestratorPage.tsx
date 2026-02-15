@@ -464,6 +464,7 @@ export const OrchestratorPage: React.FC = () => {
 
         shortcutActionInFlight.current = true;
         const jobId = selectedJob.id;
+        toast.message("Moving job to Ready...");
 
         api
           .processJob(jobId)

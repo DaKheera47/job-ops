@@ -112,6 +112,10 @@ export function useBulkJobSelection({
       const selectedAtStartSet = new Set(selectedAtStart);
       try {
         setBulkActionInFlight(action);
+        if (action === "move_to_ready") {
+          toast.message("Moving jobs to Ready...");
+        }
+
         const result = await api.bulkJobAction({
           action,
           jobIds: selectedAtStart,
