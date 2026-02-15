@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Columns3,
   Home,
   Inbox,
@@ -12,6 +13,7 @@ export type NavLink = {
   label: string;
   icon: typeof Home;
   activePaths?: string[];
+  external?: boolean;
 };
 
 export const NAV_LINKS: NavLink[] = [
@@ -34,6 +36,7 @@ export const NAV_LINKS: NavLink[] = [
     activePaths: ["/applications/in-progress"],
   },
   { to: "/tracking-inbox", label: "Tracking Inbox", icon: Inbox },
+  { to: "/docs", label: "Documentation", icon: BookOpen, external: true },
   { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
   { to: "/settings", label: "Settings", icon: Settings },
 ];

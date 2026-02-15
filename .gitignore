@@ -6,6 +6,8 @@
 node_modules/
 **/node_modules/
 **/.package-lock.json
+**/.docusaurus/
+docs-site/build/
 
 # Data directory (bind mount in Docker)
 data/

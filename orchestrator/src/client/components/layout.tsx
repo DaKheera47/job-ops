@@ -60,12 +60,22 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const setNavOpen = onNavOpenChange ?? setInternalNavOpen;
   const { version, updateAvailable } = useVersionCheck();
 
-  const handleNavClick = (to: string, activePaths?: string[]) => {
+  const handleNavClick = (
+    to: string,
+    activePaths?: string[],
+    external?: boolean,
+  ) => {
     if (isNavActive(location.pathname, to, activePaths)) {
       setNavOpen(false);
       return;
     }
     setNavOpen(false);
+    if (external) {
+      setTimeout(() => {
+        window.location.href = to;
+      }, 150);
+      return;
+    }
     setTimeout(() => navigate(to), 150);
   };
 
@@ -85,22 +95,24 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {NAV_LINKS.map(({ to, label, icon: NavIcon, activePaths }) => (
-                  <button
-                    key={to}
-                    type="button"
-                    onClick={() => handleNavClick(to, activePaths)}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                      isNavActive(location.pathname, to, activePaths)
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    <NavIcon className="h-4 w-4" />
-                    {label}
-                  </button>
-                ))}
+                {NAV_LINKS.map(
+                  ({ to, label, icon: NavIcon, activePaths, external }) => (
+                    <button
+                      key={to}
+                      type="button"
+                      onClick={() => handleNavClick(to, activePaths, external)}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                        isNavActive(location.pathname, to, activePaths)
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      <NavIcon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ),
+                )}
               </nav>
               {showVersionFooter && (
                 <div className="mt-auto pt-6 pb-2">

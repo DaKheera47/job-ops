@@ -1,5 +1,9 @@
 # JobOps Documentation
 
+> [!IMPORTANT]
+> The source of truth is now `docs-site/docs/` (served at `/docs`).
+> This `documentation/` directory is retained temporarily for migration compatibility.
+
 Welcome to the JobOps documentation. This folder contains comprehensive guides for setting up, configuring, and using JobOps.
 
 ## Getting Started

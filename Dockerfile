@@ -32,6 +32,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Copy package files for dependency installation
 COPY package*.json ./
+COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
@@ -49,10 +50,15 @@ RUN npx camoufox-js fetch
 # Copy source code
 WORKDIR /app
 COPY shared ./shared
+COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+
+# Build documentation site bundle
+WORKDIR /app/docs-site
+RUN npm run build
 
 # Build client bundle
 WORKDIR /app/orchestrator
@@ -88,6 +94,7 @@ COPY --from=builder /ms-playwright /ms-playwright
 
 # Copy package files
 COPY package*.json ./
+COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
@@ -100,6 +107,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Copy built assets and source code from builder
 COPY --from=builder /app/orchestrator/dist ./orchestrator/dist
+COPY --from=builder /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
 COPY extractors/gradcracker ./extractors/gradcracker

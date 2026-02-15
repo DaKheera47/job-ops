@@ -75,3 +75,8 @@ jobs:
         if: matrix.project == 'orchestrator'
         run: npm --workspace orchestrator run build:client
         working-directory: .
+
+      - name: Build documentation site
+        if: matrix.project == 'orchestrator'
+        run: npm run check:docs
+        working-directory: .

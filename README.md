@@ -69,7 +69,7 @@ docker compose up -d
 | **Gradcracker** | STEM / Grads (UK) |
 | **UK Visa Jobs** | Sponsorship (UK) |
 
-*(More extractors can be added via TypeScript - see `documentation/extractors`)*
+*(More extractors can be added via TypeScript - see `/docs/extractors/overview`)*
 
 ## Post-App Tracking (Killer Feature)
 
@@ -78,7 +78,7 @@ Connect Gmail → AI routes emails to your applied jobs.
 * "We'd like to interview you..." → **Status: Interviewing** (Auto-updated)
 * "Unfortunately..." → **Status: Rejected** (Auto-updated)
 
-See `documentation/post-application-tracking.md` for setup.
+See `/docs/features/post-application-tracking` for setup.
 
 ## Accounts & Setup
 
@@ -92,10 +92,11 @@ The onboarding wizard at `localhost:3005` will guide you through connecting thes
 
 ## Documentation
 
-* [Extractors Guide](https://www.google.com/search?q=documentation/extractors/README.md) - How to configure crawl targets.
-* [Orchestrator](https://www.google.com/search?q=documentation/orchestrator.md) - How the pipeline works.
-* [Self-Hosting](https://www.google.com/search?q=documentation/self-hosting.md) - Advanced Docker & Gmail setup.
-* [Tracking](https://www.google.com/search?q=documentation/post-application-tracking.md) - Email integration details.
+* [Documentation Home](/docs/) - Start here for guides and architecture.
+* [Extractors Guide](/docs/extractors/overview) - How to configure crawl targets.
+* [Orchestrator](/docs/features/orchestrator) - How the pipeline works.
+* [Self-Hosting](/docs/getting-started/self-hosting) - Advanced Docker and Gmail setup.
+* [Tracking](/docs/features/post-application-tracking) - Email integration details.
 
 **Note on Analytics**: The alpha version includes anonymous analytics (Umami) to help debug performance. To opt-out, block `umami.dakheera47.com` in your firewall/DNS.
 
