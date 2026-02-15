@@ -1,6 +1,5 @@
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
-import type { JobChatMessage, JobChatRun } from "@shared/types";
 import {
   badRequest,
   conflict,
@@ -51,14 +50,6 @@ function chunkText(value: string, maxChunk = 60): string[] {
     cursor += maxChunk;
   }
   return chunks;
-}
-
-function isRunningRunUniqueConstraintError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes("idx_job_chat_runs_thread_running_unique") ||
-    message.includes("UNIQUE constraint failed: job_chat_runs.thread_id")
-  );
 }
 
 async function resolveLlmRuntimeSettings(): Promise<LlmRuntimeSettings> {
@@ -113,7 +104,6 @@ type GenerateReplyOptions = {
   stream?: {
     onReady: (payload: {
       runId: string;
-      threadId: string;
       messageId: string;
       requestId: string;
     }) => void;
@@ -139,23 +129,15 @@ type GenerateReplyOptions = {
   };
 };
 
-async function ensureJobThread(jobId: string, title?: string | null) {
-  return jobChatRepo.getOrCreateThreadForJob({
-    jobId,
-    title: title ?? null,
-  });
-}
-
 export async function createThread(input: {
   jobId: string;
   title?: string | null;
 }) {
-  return ensureJobThread(input.jobId, input.title);
+  return jobChatRepo.createThread(input);
 }
 
 export async function listThreads(jobId: string) {
-  const thread = await ensureJobThread(jobId);
-  return [thread];
+  return jobChatRepo.listThreadsForJob(jobId);
 }
 
 export async function listMessages(input: {
@@ -170,18 +152,6 @@ export async function listMessages(input: {
   }
 
   return jobChatRepo.listMessagesForThread(input.threadId, {
-    limit: input.limit,
-    offset: input.offset,
-  });
-}
-
-export async function listMessagesForJob(input: {
-  jobId: string;
-  limit?: number;
-  offset?: number;
-}) {
-  const thread = await ensureJobThread(input.jobId);
-  return jobChatRepo.listMessagesForThread(thread.id, {
     limit: input.limit,
     offset: input.offset,
   });
@@ -211,47 +181,28 @@ async function runAssistantReply(
 
   const requestId = getRequestId() ?? "unknown";
 
-  let run: JobChatRun;
-  try {
-    run = await jobChatRepo.createRun({
-      threadId: options.threadId,
-      jobId: options.jobId,
-      model: llmConfig.model,
-      provider: llmConfig.provider,
-      requestId,
-    });
-  } catch (error) {
-    if (isRunningRunUniqueConstraintError(error)) {
-      throw conflict("A chat generation is already running for this thread");
-    }
-    throw error;
-  }
+  const assistantMessage = await jobChatRepo.createMessage({
+    threadId: options.threadId,
+    jobId: options.jobId,
+    role: "assistant",
+    content: "",
+    status: "partial",
+    version: options.version ?? 1,
+    replacesMessageId: options.replaceMessageId ?? null,
+  });
 
-  let assistantMessage: JobChatMessage;
-  try {
-    assistantMessage = await jobChatRepo.createMessage({
-      threadId: options.threadId,
-      jobId: options.jobId,
-      role: "assistant",
-      content: "",
-      status: "partial",
-      version: options.version ?? 1,
-      replacesMessageId: options.replaceMessageId ?? null,
-    });
-  } catch (error) {
-    await jobChatRepo.completeRun(run.id, {
-      status: "failed",
-      errorCode: "INTERNAL_ERROR",
-      errorMessage: "Failed to create assistant message",
-    });
-    throw error;
-  }
+  const run = await jobChatRepo.createRun({
+    threadId: options.threadId,
+    jobId: options.jobId,
+    model: llmConfig.model,
+    provider: llmConfig.provider,
+    requestId,
+  });
 
   const controller = new AbortController();
   abortControllers.set(run.id, controller);
   options.stream?.onReady({
     runId: run.id,
-    threadId: options.threadId,
     messageId: assistantMessage.id,
     requestId,
   });
@@ -344,32 +295,9 @@ async function runAssistantReply(
       },
     );
 
-    const runAfterComplete = await jobChatRepo.completeRunIfRunning(run.id, {
+    await jobChatRepo.completeRun(run.id, {
       status: "completed",
     });
-
-    if (!runAfterComplete || runAfterComplete.status !== "completed") {
-      if (runAfterComplete?.status === "cancelled") {
-        const cancelledMessage = await jobChatRepo.updateMessage(
-          assistantMessage.id,
-          {
-            content: accumulated,
-            status: "cancelled",
-            tokensIn: estimateTokenCount(options.prompt),
-            tokensOut: estimateTokenCount(accumulated),
-          },
-        );
-        options.stream?.onCancelled({
-          runId: run.id,
-          message: cancelledMessage,
-        });
-      }
-      return {
-        runId: run.id,
-        messageId: assistantMessage.id,
-        message: accumulated,
-      };
-    }
 
     options.stream?.onCompleted({
       runId: run.id,
@@ -472,20 +400,6 @@ export async function sendMessage(input: {
   };
 }
 
-export async function sendMessageForJob(input: {
-  jobId: string;
-  content: string;
-  stream?: GenerateReplyOptions["stream"];
-}) {
-  const thread = await ensureJobThread(input.jobId);
-  return sendMessage({
-    jobId: input.jobId,
-    threadId: thread.id,
-    content: input.content,
-    stream: input.stream,
-  });
-}
-
 export async function regenerateMessage(input: {
   jobId: string;
   threadId: string;
@@ -549,20 +463,6 @@ export async function regenerateMessage(input: {
   };
 }
 
-export async function regenerateMessageForJob(input: {
-  jobId: string;
-  assistantMessageId: string;
-  stream?: GenerateReplyOptions["stream"];
-}) {
-  const thread = await ensureJobThread(input.jobId);
-  return regenerateMessage({
-    jobId: input.jobId,
-    threadId: thread.id,
-    assistantMessageId: input.assistantMessageId,
-    stream: input.stream,
-  });
-}
-
 export async function cancelRun(input: {
   jobId: string;
   threadId: string;
@@ -585,33 +485,14 @@ export async function cancelRun(input: {
     controller.abort();
   }
 
-  const runAfterCancel = await jobChatRepo.completeRunIfRunning(input.runId, {
+  await jobChatRepo.completeRun(input.runId, {
     status: "cancelled",
     errorCode: "REQUEST_TIMEOUT",
     errorMessage: "Generation cancelled by user",
   });
 
-  if (!runAfterCancel || runAfterCancel.status !== "cancelled") {
-    return {
-      cancelled: false,
-      alreadyFinished: true,
-    };
-  }
-
   return {
     cancelled: true,
     alreadyFinished: false,
   };
-}
-
-export async function cancelRunForJob(input: {
-  jobId: string;
-  runId: string;
-}): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
-  const thread = await ensureJobThread(input.jobId);
-  return cancelRun({
-    jobId: input.jobId,
-    threadId: thread.id,
-    runId: input.runId,
-  });
 }

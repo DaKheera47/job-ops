@@ -70,20 +70,6 @@ export async function listThreadsForJob(
   return rows.map(mapThread);
 }
 
-export async function getOrCreateThreadForJob(input: {
-  jobId: string;
-  title?: string | null;
-}): Promise<JobChatThread> {
-  const existing = await listThreadsForJob(input.jobId);
-  if (existing.length > 0) {
-    return existing[0];
-  }
-  return createThread({
-    jobId: input.jobId,
-    title: input.title ?? null,
-  });
-}
-
 export async function getThreadById(
   threadId: string,
 ): Promise<JobChatThread | null> {
@@ -338,31 +324,6 @@ export async function completeRun(
       updatedAt: nowIso,
     })
     .where(eq(jobChatRuns.id, runId));
-
-  return getRunById(runId);
-}
-
-export async function completeRunIfRunning(
-  runId: string,
-  input: {
-    status: Exclude<JobChatRunStatus, "running">;
-    errorCode?: string | null;
-    errorMessage?: string | null;
-  },
-): Promise<JobChatRun | null> {
-  const nowEpoch = Date.now();
-  const nowIso = new Date(nowEpoch).toISOString();
-
-  await db
-    .update(jobChatRuns)
-    .set({
-      status: input.status,
-      completedAt: nowEpoch,
-      errorCode: input.errorCode ?? null,
-      errorMessage: input.errorMessage ?? null,
-      updatedAt: nowIso,
-    })
-    .where(and(eq(jobChatRuns.id, runId), eq(jobChatRuns.status, "running")));
 
   return getRunById(runId);
 }

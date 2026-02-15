@@ -1,16 +1,27 @@
-import type { Job, JobChatMessage, JobChatStreamEvent } from "@shared/types";
+import type {
+  Job,
+  JobChatMessage,
+  JobChatStreamEvent,
+  JobChatThread,
+} from "@shared/types";
+import { MessageSquare } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as api from "../../api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { RunControls } from "./RunControls";
+import { ThreadList } from "./ThreadList";
 
 type GhostwriterPanelProps = {
   job: Job;
 };
 
 export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
+  const [threads, setThreads] = useState<JobChatThread[]>([]);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -18,13 +29,16 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     null,
   );
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
-
   const messageListRef = useRef<HTMLDivElement | null>(null);
+
   const streamAbortRef = useRef<AbortController | null>(null);
-  const messageCount = messages.length;
+  const activeThreadIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (messageCount === 0) return;
+    activeThreadIdRef.current = activeThreadId;
+  }, [activeThreadId]);
+
+  useEffect(() => {
     const container = messageListRef.current;
     if (!container) return;
     const distanceToBottom =
@@ -32,19 +46,45 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     if (distanceToBottom < 120 || isStreaming) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [messageCount, isStreaming]);
+  });
 
-  const loadMessages = useCallback(async () => {
-    const data = await api.listJobGhostwriterMessages(job.id, {
-      limit: 300,
+  const loadThreadMessages = useCallback(
+    async (threadId: string) => {
+      const data = await api.listJobChatMessages(job.id, threadId, {
+        limit: 300,
+      });
+      setMessages(data.messages);
+    },
+    [job.id],
+  );
+
+  const createThread = useCallback(async () => {
+    const created = await api.createJobChatThread(job.id, {
+      title: `${job.title} @ ${job.employer}`,
     });
-    setMessages(data.messages);
-  }, [job.id]);
+    setThreads((current) => [created.thread, ...current]);
+    setActiveThreadId(created.thread.id);
+    setMessages([]);
+    return created.thread;
+  }, [job.id, job.title, job.employer]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      await loadMessages();
+      const data = await api.listJobChatThreads(job.id);
+      const nextThreads = data.threads;
+      setThreads(nextThreads);
+
+      let threadId = nextThreads[0]?.id ?? null;
+      if (!threadId) {
+        const created = await createThread();
+        threadId = created.id;
+      }
+
+      setActiveThreadId(threadId);
+      if (threadId) {
+        await loadThreadMessages(threadId);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to load Ghostwriter";
@@ -52,7 +92,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [loadMessages]);
+  }, [job.id, createThread, loadThreadMessages]);
 
   useEffect(() => {
     void load();
@@ -68,9 +108,8 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         setActiveRunId(event.runId);
         setStreamingMessageId(event.messageId);
         setMessages((current) => {
-          if (current.some((message) => message.id === event.messageId)) {
+          if (current.some((message) => message.id === event.messageId))
             return current;
-          }
           return [
             ...current,
             {
@@ -135,11 +174,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
 
   const sendMessage = useCallback(
     async (content: string) => {
-      if (isStreaming) return;
+      if (!activeThreadIdRef.current || isStreaming) return;
 
+      const threadId = activeThreadIdRef.current;
       const optimisticUser: JobChatMessage = {
         id: `tmp-user-${Date.now()}`,
-        threadId: messages[messages.length - 1]?.threadId || "pending-thread",
+        threadId,
         jobId: job.id,
         role: "user",
         content,
@@ -159,13 +199,14 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       streamAbortRef.current = controller;
 
       try {
-        await api.streamJobGhostwriterMessage(
+        await api.streamJobChatMessage(
           job.id,
+          threadId,
           { content, signal: controller.signal },
           { onEvent: onStreamEvent },
         );
 
-        await loadMessages();
+        await loadThreadMessages(threadId);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -179,30 +220,25 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         setIsStreaming(false);
       }
     },
-    [isStreaming, job.id, loadMessages, messages, onStreamEvent],
+    [isStreaming, job.id, loadThreadMessages, onStreamEvent],
   );
 
   const stopStreaming = useCallback(async () => {
-    streamAbortRef.current?.abort();
-    streamAbortRef.current = null;
-    setIsStreaming(false);
-    setStreamingMessageId(null);
-    const runId = activeRunId;
-    setActiveRunId(null);
-
-    if (!runId) {
-      return;
-    }
-
+    if (!activeThreadId || !activeRunId) return;
     try {
-      await api.cancelJobGhostwriterRun(job.id, runId);
-      await loadMessages();
+      await api.cancelJobChatRun(job.id, activeThreadId, activeRunId);
+      streamAbortRef.current?.abort();
+      streamAbortRef.current = null;
+      setIsStreaming(false);
+      setActiveRunId(null);
+      setStreamingMessageId(null);
+      await loadThreadMessages(activeThreadId);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to stop run";
       toast.error(message);
     }
-  }, [activeRunId, job.id, loadMessages]);
+  }, [activeThreadId, activeRunId, job.id, loadThreadMessages]);
 
   const canRegenerate = useMemo(() => {
     if (isStreaming || messages.length === 0) return false;
@@ -211,7 +247,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   }, [isStreaming, messages]);
 
   const regenerate = useCallback(async () => {
-    if (isStreaming || messages.length === 0) return;
+    if (!activeThreadId || isStreaming || messages.length === 0) return;
     const last = messages[messages.length - 1];
     if (last.role !== "assistant") return;
 
@@ -220,13 +256,14 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     streamAbortRef.current = controller;
 
     try {
-      await api.streamRegenerateJobGhostwriterMessage(
+      await api.streamRegenerateJobChatMessage(
         job.id,
+        activeThreadId,
         last.id,
         { signal: controller.signal },
         { onEvent: onStreamEvent },
       );
-      await loadMessages();
+      await loadThreadMessages(activeThreadId);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
         return;
@@ -240,44 +277,60 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       streamAbortRef.current = null;
       setIsStreaming(false);
     }
-  }, [isStreaming, job.id, loadMessages, messages, onStreamEvent]);
+  }, [
+    activeThreadId,
+    isStreaming,
+    job.id,
+    loadThreadMessages,
+    messages,
+    onStreamEvent,
+  ]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
-      <div
-        ref={messageListRef}
-        className="min-h-0 flex-1 overflow-y-auto border-b border-border/50 pb-3 pr-1"
-      >
-        {messages.length === 0 && !isLoading ? (
-          <div className="flex h-full min-h-[260px] justify-center px-3 flex-col text-left">
-            <h4 className="font-medium">
-              {job.title} at {job.employer}
-            </h4>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Ghostwriter already has this job description, your resume and your
-              writing style preferences. Ask for tailored response drafts, or
-              concise role-fit talking points.
-            </p>
-          </div>
-        ) : (
+    <Card className="border-border/50">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <MessageSquare className="h-4 w-4" />
+          Ghostwriter
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <ThreadList
+          threads={threads}
+          activeThreadId={activeThreadId}
+          onSelectThread={(threadId) => {
+            setActiveThreadId(threadId);
+            void loadThreadMessages(threadId);
+          }}
+          onCreateThread={() => {
+            void createThread();
+          }}
+          disabled={isLoading || isStreaming}
+        />
+
+        <div
+          ref={messageListRef}
+          className="max-h-[420px] overflow-y-auto rounded-md border border-border/50 p-3"
+        >
           <MessageList
             messages={messages}
             isStreaming={isStreaming}
             streamingMessageId={streamingMessageId}
           />
-        )}
-      </div>
+        </div>
 
-      <div className="mt-4">
-        <Composer
-          disabled={isLoading || isStreaming}
+        <RunControls
           isStreaming={isStreaming}
           canRegenerate={canRegenerate}
-          onRegenerate={regenerate}
           onStop={stopStreaming}
+          onRegenerate={regenerate}
+        />
+
+        <Composer
+          disabled={isLoading || isStreaming || !activeThreadId}
           onSend={sendMessage}
         />
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
