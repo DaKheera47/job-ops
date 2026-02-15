@@ -7,7 +7,6 @@ import {
   FileText,
   Loader2,
   MoreHorizontal,
-  PanelRightOpen,
   RefreshCcw,
   Save,
   XCircle,
@@ -25,14 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -48,7 +39,7 @@ import {
   JobHeader,
   TailoredSummary,
 } from "../../components";
-import { GhostwriterPanel } from "../../components/ghostwriter/GhostwriterPanel";
+import { GhostwriterDrawer } from "../../components/ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
@@ -81,7 +72,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [hasUnsavedTailoring, setHasUnsavedTailoring] = useState(false);
   const [processingJobId, setProcessingJobId] = useState<string | null>(null);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
-  const [isGhostwriterOpen, setIsGhostwriterOpen] = useState(false);
   const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
   const previousSelectedJobIdRef = useRef<string | null>(null);
 
@@ -323,37 +313,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     return (
       <div className="space-y-3">
         <div className="flex justify-end">
-          <Sheet open={isGhostwriterOpen} onOpenChange={setIsGhostwriterOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1.5 text-xs"
-                disabled={!selectedJob}
-              >
-                <PanelRightOpen className="h-3.5 w-3.5" />
-                Ghostwriter
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-full p-0 sm:max-w-none lg:w-[40vw]"
-            >
-              <div className="h-full overflow-y-auto p-4">
-                <SheetHeader>
-                  <SheetTitle>Ghostwriter</SheetTitle>
-                  <SheetDescription>
-                    Chat with context from this job and your writing style.
-                  </SheetDescription>
-                </SheetHeader>
-                {selectedJob && (
-                  <div className="mt-4">
-                    <GhostwriterPanel job={selectedJob} />
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+          <GhostwriterDrawer job={selectedJob} />
         </div>
         <DiscoveredPanel
           job={selectedJob}
@@ -369,37 +329,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     return (
       <div className="space-y-3">
         <div className="flex justify-end">
-          <Sheet open={isGhostwriterOpen} onOpenChange={setIsGhostwriterOpen}>
-            <SheetTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 gap-1.5 text-xs"
-                disabled={!selectedJob}
-              >
-                <PanelRightOpen className="h-3.5 w-3.5" />
-                Ghostwriter
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-full p-0 sm:max-w-none lg:w-[40vw]"
-            >
-              <div className="h-full overflow-y-auto p-4">
-                <SheetHeader>
-                  <SheetTitle>Ghostwriter</SheetTitle>
-                  <SheetDescription>
-                    Chat with context from this job and your writing style.
-                  </SheetDescription>
-                </SheetHeader>
-                {selectedJob && (
-                  <div className="mt-4">
-                    <GhostwriterPanel job={selectedJob} />
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
+          <GhostwriterDrawer job={selectedJob} />
         </div>
         <ReadyPanel
           job={selectedJob}

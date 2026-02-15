@@ -12,7 +12,6 @@ import {
   CalendarClock,
   ClipboardList,
   DollarSign,
-  PanelRightOpen,
   PlusCircle,
 } from "lucide-react";
 import React from "react";
@@ -21,18 +20,10 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import { formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
-import { GhostwriterPanel } from "../components/ghostwriter/GhostwriterPanel";
+import { GhostwriterDrawer } from "../components/ghostwriter/GhostwriterDrawer";
 import { JobHeader } from "../components/JobHeader";
 import {
   type LogEventFormValues,
@@ -49,7 +40,6 @@ export const JobPage: React.FC = () => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
-  const [isGhostwriterOpen, setIsGhostwriterOpen] = React.useState(false);
   const [eventToDelete, setEventToDelete] = React.useState<string | null>(null);
   const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
     null,
@@ -281,119 +271,88 @@ export const JobPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        <Sheet open={isGhostwriterOpen} onOpenChange={setIsGhostwriterOpen}>
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <Card className="border-border/50">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarClock className="h-4 w-4" />
+                  Application details
+                </CardTitle>
+                <GhostwriterDrawer job={job} />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Current Stage
+                </div>
+                <div className="mt-1 text-sm font-medium">
+                  {currentStage
+                    ? STAGE_LABELS[currentStage as ApplicationStage] ||
+                      currentStage
+                    : job?.status}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Outcome
+                </div>
+                <div className="mt-1 text-sm font-medium">
+                  {job?.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
+                </div>
+              </div>
+              {job?.closedAt && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Closed On
+                  </div>
+                  <div className="mt-1 text-sm font-medium">
+                    {formatTimestamp(job.closedAt)}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {tasks.length > 0 && (
             <Card className="border-border/50">
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <CalendarClock className="h-4 w-4" />
-                    Application details
-                  </CardTitle>
-                  <SheetTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 gap-1.5 text-xs"
-                      disabled={!job}
-                    >
-                      <PanelRightOpen className="h-3.5 w-3.5" />
-                      Ghostwriter
-                    </Button>
-                  </SheetTrigger>
-                </div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarClock className="h-4 w-4" />
+                  Upcoming tasks
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Current Stage
-                  </div>
-                  <div className="mt-1 text-sm font-medium">
-                    {currentStage
-                      ? STAGE_LABELS[currentStage as ApplicationStage] ||
-                        currentStage
-                      : job?.status}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Outcome
-                  </div>
-                  <div className="mt-1 text-sm font-medium">
-                    {job?.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
-                  </div>
-                </div>
-                {job?.closedAt && (
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      Closed On
+              <CardContent>
+                <div className="space-y-3">
+                  {tasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className="flex items-start justify-between gap-4"
+                    >
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-foreground/90">
+                          {task.title}
+                        </div>
+                        {task.notes && (
+                          <div className="text-xs text-muted-foreground">
+                            {task.notes}
+                          </div>
+                        )}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase tracking-wide"
+                      >
+                        {formatTimestamp(task.dueDate)}
+                      </Badge>
                     </div>
-                    <div className="mt-1 text-sm font-medium">
-                      {formatTimestamp(job.closedAt)}
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </CardContent>
             </Card>
-
-            {tasks.length > 0 && (
-              <Card className="border-border/50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <CalendarClock className="h-4 w-4" />
-                    Upcoming tasks
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        className="flex items-start justify-between gap-4"
-                      >
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium text-foreground/90">
-                            {task.title}
-                          </div>
-                          {task.notes && (
-                            <div className="text-xs text-muted-foreground">
-                              {task.notes}
-                            </div>
-                          )}
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="text-[10px] uppercase tracking-wide"
-                        >
-                          {formatTimestamp(task.dueDate)}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <SheetContent
-              side="right"
-              className="w-full p-0 sm:max-w-none lg:w-[40vw]"
-            >
-              <div className="h-full overflow-y-auto p-4">
-                <SheetHeader>
-                  <SheetTitle>Ghostwriter</SheetTitle>
-                  <SheetDescription>
-                    Chat with context from this job and your writing style.
-                  </SheetDescription>
-                </SheetHeader>
-                {job && (
-                  <div className="mt-4">
-                    <GhostwriterPanel job={job} />
-                  </div>
-                )}
-              </div>
-            </SheetContent>
-          </div>
-        </Sheet>
+          )}
+        </div>
       </div>
 
       <LogEventModal
