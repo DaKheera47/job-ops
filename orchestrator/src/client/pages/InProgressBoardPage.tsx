@@ -5,12 +5,20 @@ import {
   STAGE_LABELS,
   type StageEvent,
 } from "@shared/types.js";
-import { Columns3, ExternalLink } from "lucide-react";
+import { ArrowDownAZ, Columns3, ExternalLink, Plus } from "lucide-react";
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn, formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
 import { JobStatusBadge } from "./orchestrator/JobStatusBadge";
@@ -30,6 +38,12 @@ const sortByRecent = (a: BoardCard, b: BoardCard) => {
   return Date.parse(b.job.discoveredAt) - Date.parse(a.job.discoveredAt);
 };
 
+const sortByTitle = (a: BoardCard, b: BoardCard) =>
+  a.job.title.localeCompare(b.job.title);
+
+const sortByCompany = (a: BoardCard, b: BoardCard) =>
+  a.job.employer.localeCompare(b.job.employer);
+
 const resolveCurrentStage = (
   events: StageEvent[] | null,
 ): { stage: ApplicationStage; latestEventAt: number | null } => {
@@ -41,6 +55,7 @@ const resolveCurrentStage = (
 };
 
 export const InProgressBoardPage: React.FC = () => {
+  const navigate = useNavigate();
   const [cards, setCards] = React.useState<BoardCard[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [dragging, setDragging] = React.useState<{
@@ -50,6 +65,9 @@ export const InProgressBoardPage: React.FC = () => {
   const [dropTargetStage, setDropTargetStage] =
     React.useState<ApplicationStage | null>(null);
   const [movingJobId, setMovingJobId] = React.useState<string | null>(null);
+  const [sortMode, setSortMode] = React.useState<
+    "updated" | "title" | "company"
+  >("updated");
 
   const loadBoard = React.useCallback(async () => {
     try {
@@ -95,6 +113,13 @@ export const InProgressBoardPage: React.FC = () => {
   }, [loadBoard]);
 
   const lanes = React.useMemo(() => {
+    const sortFn =
+      sortMode === "title"
+        ? sortByTitle
+        : sortMode === "company"
+          ? sortByCompany
+          : sortByRecent;
+
     const grouped: Record<ApplicationStage, BoardCard[]> = {
       applied: [],
       recruiter_screen: [],
@@ -111,11 +136,11 @@ export const InProgressBoardPage: React.FC = () => {
     }
 
     for (const stage of APPLICATION_STAGES) {
-      grouped[stage].sort(sortByRecent);
+      grouped[stage].sort(sortFn);
     }
 
     return grouped;
-  }, [cards]);
+  }, [cards, sortMode]);
 
   const handleDropToStage = React.useCallback(
     async (toStage: ApplicationStage) => {
@@ -168,6 +193,34 @@ export const InProgressBoardPage: React.FC = () => {
         icon={Columns3}
         title="In Progress Board"
         subtitle="Kanban view of application stages"
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Select
+              value={sortMode}
+              onValueChange={(value) =>
+                setSortMode(value as "updated" | "title" | "company")
+              }
+            >
+              <SelectTrigger className="h-8 w-[132px] text-xs">
+                <ArrowDownAZ className="mr-1.5 h-3.5 w-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated">Recent</SelectItem>
+                <SelectItem value="title">Title</SelectItem>
+                <SelectItem value="company">Company</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => navigate("/jobs/ready")}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add
+            </Button>
+          </div>
+        }
       />
       <PageMain className="max-w-[1600px]">
         {isLoading ? (
@@ -176,7 +229,7 @@ export const InProgressBoardPage: React.FC = () => {
           </div>
         ) : (
           <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-4">
+            <div className="flex min-w-max items-start gap-4">
               {APPLICATION_STAGES.map((stage) => {
                 const laneCards = lanes[stage];
                 return (
@@ -197,24 +250,27 @@ export const InProgressBoardPage: React.FC = () => {
                       }
                     }}
                     className={cn(
-                      "w-[320px] rounded-xl border border-border/50 bg-muted/10 transition-colors",
+                      "w-[320px] self-start rounded-xl border border-border/70 bg-muted/30 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.8)] transition-colors",
                       dropTargetStage === stage &&
-                        "border-sky-400/60 bg-sky-500/10",
+                        "border-sky-400/70 bg-sky-500/15",
                     )}
                   >
-                    <header className="flex items-center justify-between border-b border-border/40 px-3 py-2.5">
-                      <h2 className="text-sm font-semibold tracking-wide">
+                    <header className="flex items-center justify-between border-b border-border/60 px-3 py-2.5">
+                      <h2 className="text-xs font-semibold tracking-[0.03em] text-foreground/90 uppercase">
                         {STAGE_LABELS[stage]}
                       </h2>
-                      <Badge variant="secondary" className="tabular-nums">
+                      <Badge
+                        variant="outline"
+                        className="tabular-nums border-border/50 bg-transparent text-foreground/70"
+                      >
                         {laneCards.length}
                       </Badge>
                     </header>
 
-                    <div className="max-h-[calc(100vh-16rem)] space-y-2 overflow-y-auto p-3">
+                    <div className="max-h-[calc(100vh-15rem)] space-y-2 overflow-y-auto p-2.5">
                       {laneCards.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-border/40 p-3 text-xs text-muted-foreground">
-                          No jobs
+                        <div className="rounded-md border border-dashed border-border/35 bg-background/20 px-2.5 py-2 text-[11px] text-muted-foreground/80">
+                          Drop a card here or log a stage.
                         </div>
                       ) : (
                         laneCards.map(({ job, latestEventAt, stage }) => (
@@ -231,18 +287,18 @@ export const InProgressBoardPage: React.FC = () => {
                               setDropTargetStage(null);
                             }}
                             className={cn(
-                              "block rounded-lg border border-border/40 bg-background/80 p-3 transition-colors",
-                              "hover:border-border hover:bg-background",
+                              "block rounded-lg border border-border/60 bg-background/95 p-3 shadow-[0_8px_20px_-18px_rgba(0,0,0,1)] transition-colors",
+                              "hover:border-border hover:bg-background hover:shadow-[0_12px_24px_-16px_rgba(0,0,0,1)]",
                               movingJobId === job.id && "opacity-70",
                             )}
                           >
                             <div className="mb-2 flex items-start justify-between gap-2">
-                              <div className="line-clamp-2 text-sm font-medium">
+                              <div className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
                                 {job.title}
                               </div>
                               <ExternalLink className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground/90">
                               {job.employer}
                             </div>
                             <div className="mt-2 flex items-center gap-2">
@@ -257,7 +313,7 @@ export const InProgressBoardPage: React.FC = () => {
                                 </Badge>
                               ) : null}
                             </div>
-                            <div className="mt-2 text-[11px] text-muted-foreground/80">
+                            <div className="mt-2 text-[11px] text-muted-foreground/70">
                               {latestEventAt != null
                                 ? `Updated ${formatTimestamp(latestEventAt)}`
                                 : "No stage events yet"}
