@@ -15,6 +15,7 @@ const sidebars: SidebarsConfig = {
         "features/orchestrator",
         "features/ghostwriter",
         "features/post-application-tracking",
+        "features/visa-sponsors",
       ],
     },
     {

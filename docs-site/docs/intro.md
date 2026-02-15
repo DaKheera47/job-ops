@@ -37,6 +37,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Privacy and security details
   - API reference
 
+- **[Visa Sponsors](/docs/next/features/visa-sponsors)**
+  - Search licensed UK sponsor organizations
+  - Review company routes and sponsor ratings
+  - Trigger manual data refresh
+
 ## Extractors
 
 - **[Extractors Overview](/docs/extractors/overview)**
