@@ -104,6 +104,7 @@ type GenerateReplyOptions = {
   stream?: {
     onReady: (payload: {
       runId: string;
+      threadId: string;
       messageId: string;
       requestId: string;
     }) => void;
@@ -129,15 +130,23 @@ type GenerateReplyOptions = {
   };
 };
 
+async function ensureJobThread(jobId: string) {
+  return jobChatRepo.getOrCreateThreadForJob({
+    jobId,
+    title: null,
+  });
+}
+
 export async function createThread(input: {
   jobId: string;
   title?: string | null;
 }) {
-  return jobChatRepo.createThread(input);
+  return ensureJobThread(input.jobId);
 }
 
 export async function listThreads(jobId: string) {
-  return jobChatRepo.listThreadsForJob(jobId);
+  const thread = await ensureJobThread(jobId);
+  return [thread];
 }
 
 export async function listMessages(input: {
@@ -152,6 +161,18 @@ export async function listMessages(input: {
   }
 
   return jobChatRepo.listMessagesForThread(input.threadId, {
+    limit: input.limit,
+    offset: input.offset,
+  });
+}
+
+export async function listMessagesForJob(input: {
+  jobId: string;
+  limit?: number;
+  offset?: number;
+}) {
+  const thread = await ensureJobThread(input.jobId);
+  return jobChatRepo.listMessagesForThread(thread.id, {
     limit: input.limit,
     offset: input.offset,
   });
@@ -203,6 +224,7 @@ async function runAssistantReply(
   abortControllers.set(run.id, controller);
   options.stream?.onReady({
     runId: run.id,
+    threadId: options.threadId,
     messageId: assistantMessage.id,
     requestId,
   });
@@ -400,6 +422,20 @@ export async function sendMessage(input: {
   };
 }
 
+export async function sendMessageForJob(input: {
+  jobId: string;
+  content: string;
+  stream?: GenerateReplyOptions["stream"];
+}) {
+  const thread = await ensureJobThread(input.jobId);
+  return sendMessage({
+    jobId: input.jobId,
+    threadId: thread.id,
+    content: input.content,
+    stream: input.stream,
+  });
+}
+
 export async function regenerateMessage(input: {
   jobId: string;
   threadId: string;
@@ -463,6 +499,20 @@ export async function regenerateMessage(input: {
   };
 }
 
+export async function regenerateMessageForJob(input: {
+  jobId: string;
+  assistantMessageId: string;
+  stream?: GenerateReplyOptions["stream"];
+}) {
+  const thread = await ensureJobThread(input.jobId);
+  return regenerateMessage({
+    jobId: input.jobId,
+    threadId: thread.id,
+    assistantMessageId: input.assistantMessageId,
+    stream: input.stream,
+  });
+}
+
 export async function cancelRun(input: {
   jobId: string;
   threadId: string;
@@ -495,4 +545,16 @@ export async function cancelRun(input: {
     cancelled: true,
     alreadyFinished: false,
   };
+}
+
+export async function cancelRunForJob(input: {
+  jobId: string;
+  runId: string;
+}): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
+  const thread = await ensureJobThread(input.jobId);
+  return cancelRun({
+    jobId: input.jobId,
+    threadId: thread.id,
+    runId: input.runId,
+  });
 }

@@ -37,7 +37,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
       </SheetTrigger>
       <SheetContent
         side="right"
-        className="w-full p-0 sm:max-w-none lg:w-[60vw]"
+        className="w-full p-0 sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]"
       >
         <div className="h-full overflow-y-auto p-4">
           <SheetHeader>

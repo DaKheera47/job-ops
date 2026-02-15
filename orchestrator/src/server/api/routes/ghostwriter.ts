@@ -38,6 +38,233 @@ function writeSse(res: Response, event: unknown): void {
 }
 
 ghostwriterRouter.get(
+  "/messages",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const parsed = listMessagesQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return fail(
+        res,
+        badRequest(parsed.error.message, parsed.error.flatten()),
+      );
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      const messages = await ghostwriterService.listMessagesForJob({
+        jobId,
+        limit: parsed.data.limit,
+        offset: parsed.data.offset,
+      });
+      ok(res, { messages });
+    });
+  }),
+);
+
+ghostwriterRouter.post(
+  "/messages",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+
+    const parsed = sendMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        badRequest(parsed.error.message, parsed.error.flatten()),
+      );
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      if (parsed.data.stream) {
+        res.status(200);
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders?.();
+
+        try {
+          await ghostwriterService.sendMessageForJob({
+            jobId,
+            content: parsed.data.content,
+            stream: {
+              onReady: ({ runId, threadId, messageId, requestId }) =>
+                writeSse(res, {
+                  type: "ready",
+                  runId,
+                  threadId,
+                  messageId,
+                  requestId,
+                }),
+              onDelta: ({ runId, messageId, delta }) =>
+                writeSse(res, {
+                  type: "delta",
+                  runId,
+                  messageId,
+                  delta,
+                }),
+              onCompleted: ({ runId, message }) =>
+                writeSse(res, {
+                  type: "completed",
+                  runId,
+                  message,
+                }),
+              onCancelled: ({ runId, message }) =>
+                writeSse(res, {
+                  type: "cancelled",
+                  runId,
+                  message,
+                }),
+              onError: ({ runId, code, message, requestId }) =>
+                writeSse(res, {
+                  type: "error",
+                  runId,
+                  code,
+                  message,
+                  requestId,
+                }),
+            },
+          });
+        } catch (error) {
+          const appError = toAppError(error);
+          writeSse(res, {
+            type: "error",
+            code: appError.code,
+            message: appError.message,
+            requestId: res.getHeader("x-request-id") || "unknown",
+          });
+        } finally {
+          res.end();
+        }
+
+        return;
+      }
+
+      const result = await ghostwriterService.sendMessageForJob({
+        jobId,
+        content: parsed.data.content,
+      });
+
+      ok(res, {
+        userMessage: result.userMessage,
+        assistantMessage: result.assistantMessage,
+        runId: result.runId,
+      });
+    });
+  }),
+);
+
+ghostwriterRouter.post(
+  "/runs/:runId/cancel",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const runId = req.params.runId;
+    if (!runId) {
+      return fail(res, badRequest("Missing run id"));
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      const result = await ghostwriterService.cancelRunForJob({
+        jobId,
+        runId,
+      });
+
+      ok(res, result);
+    });
+  }),
+);
+
+ghostwriterRouter.post(
+  "/messages/:assistantMessageId/regenerate",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const assistantMessageId = req.params.assistantMessageId;
+    if (!assistantMessageId) {
+      return fail(res, badRequest("Missing message id"));
+    }
+
+    const parsed = regenerateSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return fail(
+        res,
+        badRequest(parsed.error.message, parsed.error.flatten()),
+      );
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      if (parsed.data.stream) {
+        res.status(200);
+        res.setHeader("Content-Type", "text/event-stream");
+        res.setHeader("Cache-Control", "no-cache, no-transform");
+        res.setHeader("Connection", "keep-alive");
+        res.flushHeaders?.();
+
+        try {
+          await ghostwriterService.regenerateMessageForJob({
+            jobId,
+            assistantMessageId,
+            stream: {
+              onReady: ({ runId, threadId, messageId, requestId }) =>
+                writeSse(res, {
+                  type: "ready",
+                  runId,
+                  threadId,
+                  messageId,
+                  requestId,
+                }),
+              onDelta: ({ runId, messageId, delta }) =>
+                writeSse(res, {
+                  type: "delta",
+                  runId,
+                  messageId,
+                  delta,
+                }),
+              onCompleted: ({ runId, message }) =>
+                writeSse(res, {
+                  type: "completed",
+                  runId,
+                  message,
+                }),
+              onCancelled: ({ runId, message }) =>
+                writeSse(res, {
+                  type: "cancelled",
+                  runId,
+                  message,
+                }),
+              onError: ({ runId, code, message, requestId }) =>
+                writeSse(res, {
+                  type: "error",
+                  runId,
+                  code,
+                  message,
+                  requestId,
+                }),
+            },
+          });
+        } catch (error) {
+          const appError = toAppError(error);
+          writeSse(res, {
+            type: "error",
+            code: appError.code,
+            message: appError.message,
+            requestId: res.getHeader("x-request-id") || "unknown",
+          });
+        } finally {
+          res.end();
+        }
+
+        return;
+      }
+
+      const result = await ghostwriterService.regenerateMessageForJob({
+        jobId,
+        assistantMessageId,
+      });
+
+      ok(res, result);
+    });
+  }),
+);
+
+ghostwriterRouter.get(
   "/threads",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
