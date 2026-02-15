@@ -18,6 +18,12 @@ Welcome to the JobOps documentation. This folder contains comprehensive guides f
   - PDF generation and regeneration
   - Post-application tracking overview
 
+- **[Ghostwriter](./ghostwriter.md)** - Context-aware per-job chat assistant
+  - One persistent conversation per job
+  - Streaming responses, stop, and regenerate
+  - Markdown rendering and drawer UX behavior
+  - Writing style settings impact
+
 - **[Post-Application Tracking](./post-application-tracking.md)** - Email-to-job matching
   - How the Smart Router AI works
   - Gmail integration setup
@@ -58,6 +64,7 @@ JobOps uses specialized extractors to gather jobs from different sources:
 documentation/
 ├── self-hosting.md          # Deployment guide
 ├── orchestrator.md          # Core workflow documentation
+├── ghostwriter.md           # Ghostwriter feature documentation
 ├── post-application-tracking.md  # Email tracking feature
 └── extractors/              # Job source extractors
     ├── README.md

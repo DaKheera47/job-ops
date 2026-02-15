@@ -30,9 +30,22 @@ There are two main ways a job becomes Ready:
 Once a job is `ready`, the Ready panel is the "shipping lane":
 
 - View/download the PDF.
+- Open Ghostwriter for context-aware drafting tied to the current job.
 - Open the job listing.
 - Mark Applied (moves to `applied`).
 - Optional: edit tailoring, edit the JD, or regenerate the PDF.
+
+## Ghostwriter (per-job context chat)
+
+Ghostwriter is always on and is available in both `discovered` and `ready` job views.
+
+- It uses the current job context, profile context, and your global writing style settings.
+- Conversation state is persistent per job.
+- Responses stream in real time and can be cancelled.
+- Regenerate is available for the last assistant response.
+- Messages render as Markdown.
+
+For full details and API surface, see [Ghostwriter](./ghostwriter.md).
 
 ## Generating PDFs (first time)
 
