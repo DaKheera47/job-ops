@@ -39,7 +39,6 @@ import {
   JobHeader,
   TailoredSummary,
 } from "../../components";
-import { GhostwriterDrawer } from "../../components/ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
@@ -311,33 +310,23 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   if (activeTab === "discovered") {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-end">
-          <GhostwriterDrawer job={selectedJob} />
-        </div>
-        <DiscoveredPanel
-          job={selectedJob}
-          onJobUpdated={onJobUpdated}
-          onJobMoved={handleJobMoved}
-          onTailoringDirtyChange={handleTailoringDirtyChange}
-        />
-      </div>
+      <DiscoveredPanel
+        job={selectedJob}
+        onJobUpdated={onJobUpdated}
+        onJobMoved={handleJobMoved}
+        onTailoringDirtyChange={handleTailoringDirtyChange}
+      />
     );
   }
 
   if (activeTab === "ready") {
     return (
-      <div className="space-y-3">
-        <div className="flex justify-end">
-          <GhostwriterDrawer job={selectedJob} />
-        </div>
-        <ReadyPanel
-          job={selectedJob}
-          onJobUpdated={onJobUpdated}
-          onJobMoved={handleJobMoved}
-          onTailoringDirtyChange={handleTailoringDirtyChange}
-        />
-      </div>
+      <ReadyPanel
+        job={selectedJob}
+        onJobUpdated={onJobUpdated}
+        onJobMoved={handleJobMoved}
+        onTailoringDirtyChange={handleTailoringDirtyChange}
+      />
     );
   }
 
@@ -591,7 +580,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 className="text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                 onClick={() => setDetailTab("description")}
               >
-                View full description 
+                View full description
               </button>
             </div>
           </div>

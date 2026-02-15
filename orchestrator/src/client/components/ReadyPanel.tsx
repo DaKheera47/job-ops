@@ -50,6 +50,7 @@ import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
 import { TailorMode } from "./discovered-panel/TailorMode";
+import { GhostwriterDrawer } from "./ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 import { KbdHint } from "./KbdHint";
 
@@ -297,18 +298,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       ───────────────────────────────────────────────────────────────────── */}
       <div className="pb-4 border-b border-border/40">
         <div className="grid gap-2 sm:grid-cols-2">
-          {/* Show PDF - to verify quickly without download */}
-          <Button
-            asChild
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-          >
-            <a href={pdfHref} target="_blank" rel="noopener noreferrer">
-              <FileText className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">View PDF</span>
-              <KbdHint shortcut="p" className="ml-auto" />
-            </a>
-          </Button>
+          <GhostwriterDrawer
+            job={job}
+            triggerClassName="h-9 w-full justify-center gap-1 px-2 text-xs"
+          />
 
           {/* Download PDF - primary artifact action */}
           <Button
@@ -448,6 +441,15 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <DropdownMenuSeparator />
 
             {/* Utility actions */}
+            <DropdownMenuItem
+              onSelect={() =>
+                window.open(pdfHref, "_blank", "noopener,noreferrer")
+              }
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              View PDF
+            </DropdownMenuItem>
+
             <DropdownMenuItem onSelect={handleCopyInfo}>
               <Copy className="mr-2 h-4 w-4" />
               Copy job info
