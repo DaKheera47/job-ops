@@ -40,7 +40,7 @@ export const MessageList: React.FC<MessageListProps> = ({
               <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                 {isUser
                   ? "You"
-                  : `Copilot${message.version > 1 ? ` v${message.version}` : ""}`}
+                  : `Ghostwriter${message.version > 1 ? ` v${message.version}` : ""}`}
               </div>
               {isActiveStreaming ? (
                 <StreamingMessage content={message.content} />

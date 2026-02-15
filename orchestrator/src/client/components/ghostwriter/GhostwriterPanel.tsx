@@ -4,11 +4,9 @@ import type {
   JobChatStreamEvent,
   JobChatThread,
 } from "@shared/types";
-import { MessageSquare } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as api from "../../api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -23,6 +21,9 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   const [threads, setThreads] = useState<JobChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
+  const [threadPreviews, setThreadPreviews] = useState<Record<string, string>>(
+    {},
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
@@ -54,6 +55,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         limit: 300,
       });
       setMessages(data.messages);
+      const preview = [...data.messages]
+        .reverse()
+        .find((message) => !!message.content.trim())?.content;
+      if (preview) {
+        setThreadPreviews((current) => ({ ...current, [threadId]: preview }));
+      }
     },
     [job.id],
   );
@@ -63,6 +70,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       title: `${job.title} @ ${job.employer}`,
     });
     setThreads((current) => [created.thread, ...current]);
+    setThreadPreviews((current) => ({ ...current, [created.thread.id]: "" }));
     setActiveThreadId(created.thread.id);
     setMessages([]);
     return created.thread;
@@ -144,6 +152,13 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
               : message,
           ),
         );
+        const threadId = activeThreadIdRef.current;
+        if (threadId) {
+          setThreadPreviews((current) => ({
+            ...current,
+            [threadId]: `${current[threadId] ?? ""}${event.delta}`.trim(),
+          }));
+        }
         return;
       }
 
@@ -159,6 +174,10 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         setStreamingMessageId(null);
         setActiveRunId(null);
         setIsStreaming(false);
+        setThreadPreviews((current) => ({
+          ...current,
+          [event.message.threadId]: event.message.content,
+        }));
         return;
       }
 
@@ -193,6 +212,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       };
 
       setMessages((current) => [...current, optimisticUser]);
+      setThreadPreviews((current) => ({ ...current, [threadId]: content }));
       setIsStreaming(true);
 
       const controller = new AbortController();
@@ -287,16 +307,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   ]);
 
   return (
-    <Card className="border-border/50">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <MessageSquare className="h-4 w-4" />
-          Ghostwriter
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[16rem_minmax(0,1fr)]">
         <ThreadList
+          job={job}
           threads={threads}
+          previews={threadPreviews}
           activeThreadId={activeThreadId}
           onSelectThread={(threadId) => {
             setActiveThreadId(threadId);
@@ -308,29 +324,33 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
           disabled={isLoading || isStreaming}
         />
 
-        <div
-          ref={messageListRef}
-          className="max-h-[420px] overflow-y-auto rounded-md border border-border/50 p-3"
-        >
-          <MessageList
-            messages={messages}
-            isStreaming={isStreaming}
-            streamingMessageId={streamingMessageId}
-          />
+        <div className="flex min-h-0 flex-1 flex-col border-t border-border/50 pt-4 md:border-t-0 md:border-l md:pl-4 md:pt-0">
+          <div
+            ref={messageListRef}
+            className="min-h-0 flex-1 overflow-y-auto pr-1"
+          >
+            <MessageList
+              messages={messages}
+              isStreaming={isStreaming}
+              streamingMessageId={streamingMessageId}
+            />
+          </div>
+
+          <div className="mt-4 space-y-3 border-t border-border/50 pt-3">
+            <RunControls
+              isStreaming={isStreaming}
+              canRegenerate={canRegenerate}
+              onStop={stopStreaming}
+              onRegenerate={regenerate}
+            />
+
+            <Composer
+              disabled={isLoading || isStreaming || !activeThreadId}
+              onSend={sendMessage}
+            />
+          </div>
         </div>
-
-        <RunControls
-          isStreaming={isStreaming}
-          canRegenerate={canRegenerate}
-          onStop={stopStreaming}
-          onRegenerate={regenerate}
-        />
-
-        <Composer
-          disabled={isLoading || isStreaming || !activeThreadId}
-          onSend={sendMessage}
-        />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
