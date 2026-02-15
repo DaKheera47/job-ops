@@ -139,10 +139,10 @@ type GenerateReplyOptions = {
   };
 };
 
-async function ensureJobThread(jobId: string) {
+async function ensureJobThread(jobId: string, title?: string | null) {
   return jobChatRepo.getOrCreateThreadForJob({
     jobId,
-    title: null,
+    title: title ?? null,
   });
 }
 
@@ -150,7 +150,7 @@ export async function createThread(input: {
   jobId: string;
   title?: string | null;
 }) {
-  return ensureJobThread(input.jobId);
+  return ensureJobThread(input.jobId, input.title);
 }
 
 export async function listThreads(jobId: string) {

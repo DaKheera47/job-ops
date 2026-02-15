@@ -68,6 +68,7 @@ vi.mock("./llm/service", () => ({
 import {
   cancelRun,
   cancelRunForJob,
+  createThread,
   regenerateMessage,
   sendMessage,
   sendMessageForJob,
@@ -238,6 +239,18 @@ describe("ghostwriter service", () => {
           message.role !== "system" && message.role !== "user",
       ),
     ).toEqual([{ role: "assistant", content: "Draft response" }]);
+  });
+
+  it("passes title when creating the first thread", async () => {
+    await createThread({
+      jobId: "job-1",
+      title: "Initial thread title",
+    });
+
+    expect(mocks.repo.getOrCreateThreadForJob).toHaveBeenCalledWith({
+      jobId: "job-1",
+      title: "Initial thread title",
+    });
   });
 
   it("rejects empty message content", async () => {
