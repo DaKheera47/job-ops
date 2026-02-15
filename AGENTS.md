@@ -57,6 +57,23 @@ Use consistent status/code mapping:
 - No raw sensitive payload logging or raw upstream body throws.
 - New/changed webhook or LLM payloads are sanitized and documented.
 
+## Documentation Standards (Condensed)
+
+When adding or updating user-facing docs:
+
+- Use this feature-page structure:
+  1. **What it is**
+  2. **Why it exists**
+  3. **How to use it**
+  4. **Common problems**
+  5. **Related pages**
+- Include frontmatter keys: `id`, `title`, `description`, `sidebar_position`.
+- Prefer concrete, step-by-step instructions over abstract explanation.
+- Include copy-pasteable examples where relevant.
+- State defaults and constraints explicitly.
+- Link related docs with `/docs/...` URLs.
+- Any user-visible behavior change should include corresponding docs updates.
+
 ## Validation / Verification
 
 Before marking work complete, verify changes with the same checks used by CI.
