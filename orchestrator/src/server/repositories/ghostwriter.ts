@@ -341,3 +341,28 @@ export async function completeRun(
 
   return getRunById(runId);
 }
+
+export async function completeRunIfRunning(
+  runId: string,
+  input: {
+    status: Exclude<JobChatRunStatus, "running">;
+    errorCode?: string | null;
+    errorMessage?: string | null;
+  },
+): Promise<JobChatRun | null> {
+  const nowEpoch = Date.now();
+  const nowIso = new Date(nowEpoch).toISOString();
+
+  await db
+    .update(jobChatRuns)
+    .set({
+      status: input.status,
+      completedAt: nowEpoch,
+      errorCode: input.errorCode ?? null,
+      errorMessage: input.errorMessage ?? null,
+      updatedAt: nowIso,
+    })
+    .where(and(eq(jobChatRuns.id, runId), eq(jobChatRuns.status, "running")));
+
+  return getRunById(runId);
+}

@@ -562,11 +562,18 @@ export async function cancelRun(input: {
     controller.abort();
   }
 
-  await jobChatRepo.completeRun(input.runId, {
+  const runAfterCancel = await jobChatRepo.completeRunIfRunning(input.runId, {
     status: "cancelled",
     errorCode: "REQUEST_TIMEOUT",
     errorMessage: "Generation cancelled by user",
   });
+
+  if (!runAfterCancel || runAfterCancel.status !== "cancelled") {
+    return {
+      cancelled: false,
+      alreadyFinished: true,
+    };
+  }
 
   return {
     cancelled: true,
