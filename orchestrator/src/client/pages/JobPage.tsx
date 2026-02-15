@@ -184,7 +184,10 @@ export const JobPage: React.FC = () => {
   };
 
   const currentStage = job
-    ? (events.at(-1)?.toStage ?? (job.status === "applied" ? "applied" : null))
+    ? (events.at(-1)?.toStage ??
+      (job.status === "applied" || job.status === "in_progress"
+        ? "applied"
+        : null))
     : null;
   const canTrackStages = job?.status === "in_progress";
 

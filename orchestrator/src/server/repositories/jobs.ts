@@ -353,7 +353,7 @@ export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
 }
 
 /**
- * Delete jobs with suitability score below threshold (excluding post-apply jobs).
+ * Delete jobs with suitability score below threshold (excluding applied and in_progress jobs).
  */
 export async function deleteJobsBelowScore(threshold: number): Promise<number> {
   const result = await db

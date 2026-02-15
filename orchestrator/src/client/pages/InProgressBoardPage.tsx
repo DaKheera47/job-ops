@@ -28,6 +28,8 @@ type BoardCard = {
   latestEventAt: number | null;
 };
 
+type BoardStage = Exclude<ApplicationStage, "applied">;
+
 const sortByRecent = (a: BoardCard, b: BoardCard) => {
   if (a.latestEventAt != null && b.latestEventAt != null) {
     return b.latestEventAt - a.latestEventAt;
@@ -45,7 +47,10 @@ const sortByCompany = (a: BoardCard, b: BoardCard) =>
 
 const BOARD_STAGES = APPLICATION_STAGES.filter(
   (stage) => stage !== "applied",
-) as ApplicationStage[];
+) as BoardStage[];
+
+const toBoardStage = (stage: ApplicationStage): BoardStage =>
+  stage === "applied" ? "recruiter_screen" : stage;
 
 const getCardLeftAccentClass = (stage: ApplicationStage) => {
   if (stage === "technical_interview") {
@@ -136,8 +141,7 @@ export const InProgressBoardPage: React.FC = () => {
           ? sortByCompany
           : sortByRecent;
 
-    const grouped: Record<ApplicationStage, BoardCard[]> = {
-      applied: [],
+    const grouped: Record<BoardStage, BoardCard[]> = {
       recruiter_screen: [],
       assessment: [],
       hiring_manager_screen: [],
@@ -148,10 +152,10 @@ export const InProgressBoardPage: React.FC = () => {
     };
 
     for (const card of cards) {
-      grouped[card.stage].push(card);
+      grouped[toBoardStage(card.stage)].push(card);
     }
 
-    for (const stage of APPLICATION_STAGES) {
+    for (const stage of BOARD_STAGES) {
       grouped[stage].sort(sortFn);
     }
 
