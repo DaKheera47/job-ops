@@ -76,7 +76,22 @@ jobs:
         run: npm --workspace orchestrator run build:client
         working-directory: .
 
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces --include-workspace-root
+        working-directory: .
+
       - name: Build documentation site
-        if: matrix.project == 'orchestrator'
         run: npm run check:docs
         working-directory: .
