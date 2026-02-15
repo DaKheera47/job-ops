@@ -106,7 +106,7 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
 
 function buildSystemPrompt(style: JobChatStyle): string {
   return compactJoin([
-    "You are a job application copilot for a single job.",
+    "You are Ghostwriter, a job-application writing assistant for a single job.",
     "Use only the provided job and profile context unless the user gives extra details.",
     "Do not claim actions were executed. You are read-only and advisory.",
     "If details are missing, say what is missing before making assumptions.",
@@ -143,11 +143,6 @@ async function resolveStyle(): Promise<JobChatStyle> {
     constraints,
     doNotUse,
   };
-}
-
-export async function isJobChatEnabled(): Promise<boolean> {
-  const overrides = await settingsRepo.getAllSettings();
-  return resolveSettingValue("jobChatEnabled", overrides.jobChatEnabled).value;
 }
 
 export async function buildJobChatPromptContext(

@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import * as api from "../../api";
-import { useSettings } from "../../hooks/useSettings";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 import { RunControls } from "./RunControls";
@@ -21,9 +20,6 @@ type JobChatPanelProps = {
 };
 
 export const JobChatPanel: React.FC<JobChatPanelProps> = ({ job }) => {
-  const { settings } = useSettings();
-  const enabled = settings?.jobChatEnabled ?? false;
-
   const [threads, setThreads] = useState<JobChatThread[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
@@ -73,11 +69,6 @@ export const JobChatPanel: React.FC<JobChatPanelProps> = ({ job }) => {
   }, [job.id, job.title, job.employer]);
 
   const load = useCallback(async () => {
-    if (!enabled) {
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const data = await api.listJobChatThreads(job.id);
@@ -96,12 +87,12 @@ export const JobChatPanel: React.FC<JobChatPanelProps> = ({ job }) => {
       }
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to load job chat";
+        error instanceof Error ? error.message : "Failed to load Ghostwriter";
       toast.error(message);
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, job.id, createThread, loadThreadMessages]);
+  }, [job.id, createThread, loadThreadMessages]);
 
   useEffect(() => {
     void load();
@@ -295,28 +286,12 @@ export const JobChatPanel: React.FC<JobChatPanelProps> = ({ job }) => {
     onStreamEvent,
   ]);
 
-  if (!enabled) {
-    return (
-      <Card className="border-border/50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <MessageSquare className="h-4 w-4" />
-            Job Copilot
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Enable this in Settings → Job Chat Copilot.
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="border-border/50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <MessageSquare className="h-4 w-4" />
-          Job Copilot
+          Ghostwriter
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

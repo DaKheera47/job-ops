@@ -146,14 +146,6 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideShowSponsorInfo = showSponsorInfoSetting.overrideValue;
   const showSponsorInfo = showSponsorInfoSetting.value;
 
-  const jobChatEnabledSetting = resolveSettingValue(
-    "jobChatEnabled",
-    overrides.jobChatEnabled,
-  );
-  const defaultJobChatEnabled = jobChatEnabledSetting.defaultValue;
-  const overrideJobChatEnabled = jobChatEnabledSetting.overrideValue;
-  const jobChatEnabled = jobChatEnabledSetting.value;
-
   const chatStyleToneSetting = resolveSettingValue(
     "chatStyleTone",
     overrides.chatStyleTone,
@@ -286,9 +278,6 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
-    jobChatEnabled,
-    defaultJobChatEnabled,
-    overrideJobChatEnabled,
     chatStyleTone,
     defaultChatStyleTone,
     overrideChatStyleTone,

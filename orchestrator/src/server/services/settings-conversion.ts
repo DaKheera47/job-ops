@@ -13,7 +13,6 @@ type SettingsConversionValueMap = {
   jobspyResultsWanted: number;
   jobspyCountryIndeed: string;
   showSponsorInfo: boolean;
-  jobChatEnabled: boolean;
   chatStyleTone: string;
   chatStyleFormality: string;
   chatStyleConstraints: string;
@@ -138,14 +137,6 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
   },
   showSponsorInfo: {
     defaultValue: () => true,
-    parseOverride: parseBitBoolOrNull,
-    serialize: serializeBitBool,
-    resolve: resolveWithNullishFallback,
-  },
-  jobChatEnabled: {
-    defaultValue: () =>
-      (process.env.JOB_CHAT_ENABLED || "").toLowerCase() === "true" ||
-      process.env.JOB_CHAT_ENABLED === "1",
     parseOverride: parseBitBoolOrNull,
     serialize: serializeBitBool,
     resolve: resolveWithNullishFallback,

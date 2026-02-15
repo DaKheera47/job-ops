@@ -90,7 +90,7 @@ vi.mock("../../services/job-chat", () => ({
   })),
 }));
 
-describe.sequential("Job Chat API", () => {
+describe.sequential("Ghostwriter API", () => {
   let server: Server;
   let baseUrl: string;
   let closeDb: () => void;

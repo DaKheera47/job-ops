@@ -913,9 +913,6 @@ export interface AppSettings {
   showSponsorInfo: boolean;
   defaultShowSponsorInfo: boolean;
   overrideShowSponsorInfo: boolean | null;
-  jobChatEnabled: boolean;
-  defaultJobChatEnabled: boolean;
-  overrideJobChatEnabled: boolean | null;
   chatStyleTone: string;
   defaultChatStyleTone: string;
   overrideChatStyleTone: string | null;

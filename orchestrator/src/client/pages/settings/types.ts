@@ -15,7 +15,6 @@ export type ModelValues = EffectiveDefault<string> & {
 export type WebhookValues = EffectiveDefault<string>;
 export type DisplayValues = EffectiveDefault<boolean>;
 export type ChatValues = {
-  enabled: EffectiveDefault<boolean>;
   tone: EffectiveDefault<string>;
   formality: EffectiveDefault<string>;
   constraints: EffectiveDefault<string>;

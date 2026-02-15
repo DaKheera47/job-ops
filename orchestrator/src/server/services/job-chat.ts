@@ -9,10 +9,7 @@ import {
 } from "../infra/errors";
 import * as jobChatRepo from "../repositories/job-chat";
 import * as settingsRepo from "../repositories/settings";
-import {
-  buildJobChatPromptContext,
-  isJobChatEnabled,
-} from "./job-chat-context";
+import { buildJobChatPromptContext } from "./job-chat-context";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 
@@ -98,15 +95,6 @@ async function buildConversationMessages(
     }));
 }
 
-async function ensureChatEnabled(): Promise<void> {
-  const enabled = await isJobChatEnabled();
-  if (!enabled) {
-    throw badRequest(
-      "Job chat is disabled. Enable it in Settings > Job Chat Copilot.",
-    );
-  }
-}
-
 type GenerateReplyOptions = {
   jobId: string;
   threadId: string;
@@ -145,12 +133,10 @@ export async function createThread(input: {
   jobId: string;
   title?: string | null;
 }) {
-  await ensureChatEnabled();
   return jobChatRepo.createThread(input);
 }
 
 export async function listThreads(jobId: string) {
-  await ensureChatEnabled();
   return jobChatRepo.listThreadsForJob(jobId);
 }
 
@@ -160,7 +146,6 @@ export async function listMessages(input: {
   limit?: number;
   offset?: number;
 }) {
-  await ensureChatEnabled();
   const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
   if (!thread) {
     throw notFound("Thread not found for this job");
@@ -175,8 +160,6 @@ export async function listMessages(input: {
 async function runAssistantReply(
   options: GenerateReplyOptions,
 ): Promise<{ runId: string; messageId: string; message: string }> {
-  await ensureChatEnabled();
-
   const thread = await jobChatRepo.getThreadForJob(
     options.jobId,
     options.threadId,
@@ -382,8 +365,6 @@ export async function sendMessage(input: {
   content: string;
   stream?: GenerateReplyOptions["stream"];
 }) {
-  await ensureChatEnabled();
-
   const content = input.content.trim();
   if (!content) {
     throw badRequest("Message content is required");
@@ -425,8 +406,6 @@ export async function regenerateMessage(input: {
   assistantMessageId: string;
   stream?: GenerateReplyOptions["stream"];
 }) {
-  await ensureChatEnabled();
-
   const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
   if (!thread) {
     throw notFound("Thread not found for this job");
@@ -489,8 +468,6 @@ export async function cancelRun(input: {
   threadId: string;
   runId: string;
 }): Promise<{ cancelled: boolean; alreadyFinished: boolean }> {
-  await ensureChatEnabled();
-
   const run = await jobChatRepo.getRunById(input.runId);
   if (!run || run.threadId !== input.threadId || run.jobId !== input.jobId) {
     throw notFound("Run not found for this thread");
