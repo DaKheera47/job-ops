@@ -21,6 +21,13 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Manual backup creation/deletion
   - Restore workflow and troubleshooting
 
+## Workflows
+
+- **[Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow)**
+  - Run pipeline first, then review discovered and ready jobs
+  - Use fit assessment and score to prioritize applications
+  - Mark jobs as applied to trigger webhooks and analytics
+
 ## Feature Documentation
 
 - **[Orchestrator](/docs/features/orchestrator)**

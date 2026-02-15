@@ -10,6 +10,11 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: "category",
+      label: "Workflows",
+      items: ["workflows/find-jobs-and-apply-workflow"],
+    },
+    {
+      type: "category",
       label: "Core Features",
       items: [
         "features/overview",
