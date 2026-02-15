@@ -344,9 +344,32 @@ async function runAssistantReply(
       },
     );
 
-    await jobChatRepo.completeRun(run.id, {
+    const runAfterComplete = await jobChatRepo.completeRunIfRunning(run.id, {
       status: "completed",
     });
+
+    if (!runAfterComplete || runAfterComplete.status !== "completed") {
+      if (runAfterComplete?.status === "cancelled") {
+        const cancelledMessage = await jobChatRepo.updateMessage(
+          assistantMessage.id,
+          {
+            content: accumulated,
+            status: "cancelled",
+            tokensIn: estimateTokenCount(options.prompt),
+            tokensOut: estimateTokenCount(accumulated),
+          },
+        );
+        options.stream?.onCancelled({
+          runId: run.id,
+          message: cancelledMessage,
+        });
+      }
+      return {
+        runId: run.id,
+        messageId: assistantMessage.id,
+        message: accumulated,
+      };
+    }
 
     options.stream?.onCompleted({
       runId: run.id,

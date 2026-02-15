@@ -155,11 +155,11 @@ describe("ghostwriter service", () => {
       id: "run-1",
       threadId: "thread-1",
       jobId: "job-1",
-      status: "cancelled",
+      status: "completed",
       model: "model-a",
       provider: "openrouter",
-      errorCode: "REQUEST_TIMEOUT",
-      errorMessage: "Generation cancelled by user",
+      errorCode: null,
+      errorMessage: null,
       startedAt: Date.now(),
       completedAt: Date.now(),
       requestId: "req-123",
@@ -305,6 +305,21 @@ describe("ghostwriter service", () => {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    mocks.repo.completeRunIfRunning.mockResolvedValue({
+      id: "run-1",
+      threadId: "thread-1",
+      jobId: "job-1",
+      status: "cancelled",
+      model: "model-a",
+      provider: "openrouter",
+      errorCode: "REQUEST_TIMEOUT",
+      errorMessage: "Generation cancelled by user",
+      startedAt: Date.now(),
+      completedAt: Date.now(),
+      requestId: "req-123",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
     mocks.llmCallJson.mockImplementation(async () => {
       await vi.advanceTimersByTimeAsync(1);
       return {
@@ -338,6 +353,69 @@ describe("ghostwriter service", () => {
     expect(onReady).toHaveBeenCalled();
     expect(onCancelled).toHaveBeenCalled();
     expect(onCompleted).not.toHaveBeenCalled();
+    expect(result.assistantMessage?.status).toBe("cancelled");
+  });
+
+  it("keeps cancellation when completion races at finish", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-race",
+      content: "",
+      status: "partial",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...assistantPartial,
+      content: "Thanks for your question.",
+      status: "complete",
+      tokensOut: 7,
+    };
+    const assistantCancelled: JobChatMessage = {
+      ...assistantPartial,
+      content: "Thanks for your question.",
+      status: "cancelled",
+      tokensOut: 7,
+    };
+
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage
+      .mockResolvedValueOnce(assistantComplete)
+      .mockResolvedValueOnce(assistantCancelled);
+    mocks.repo.getMessageById.mockResolvedValue(assistantCancelled);
+    mocks.repo.completeRunIfRunning.mockResolvedValueOnce({
+      id: "run-1",
+      threadId: "thread-1",
+      jobId: "job-1",
+      status: "cancelled",
+      model: "model-a",
+      provider: "openrouter",
+      errorCode: "REQUEST_TIMEOUT",
+      errorMessage: "Generation cancelled by user",
+      startedAt: Date.now(),
+      completedAt: Date.now(),
+      requestId: "req-123",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const onCompleted = vi.fn();
+    const onCancelled = vi.fn();
+
+    const result = await sendMessageForJob({
+      jobId: "job-1",
+      content: "Tell me about this role",
+      stream: {
+        onReady: vi.fn(),
+        onDelta: vi.fn(),
+        onCompleted,
+        onCancelled,
+        onError: vi.fn(),
+      },
+    });
+
+    expect(onCompleted).not.toHaveBeenCalled();
+    expect(onCancelled).toHaveBeenCalledTimes(1);
     expect(result.assistantMessage?.status).toBe("cancelled");
   });
 
