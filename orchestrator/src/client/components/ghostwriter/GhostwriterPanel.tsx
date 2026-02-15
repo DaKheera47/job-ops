@@ -21,8 +21,10 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const messageCount = messages.length;
 
   useEffect(() => {
+    if (messageCount === 0) return;
     const container = messageListRef.current;
     if (!container) return;
     const distanceToBottom =
@@ -30,7 +32,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     if (distanceToBottom < 120 || isStreaming) {
       container.scrollTop = container.scrollHeight;
     }
-  }, [messages, isStreaming]);
+  }, [messageCount, isStreaming]);
 
   const loadMessages = useCallback(async () => {
     const data = await api.listJobGhostwriterMessages(job.id, {
