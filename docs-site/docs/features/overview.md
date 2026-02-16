@@ -17,6 +17,12 @@ It visualizes:
 - Application-to-response conversion
 - Funnel progression (Applied, Screening, Interview, Offer, Rejected)
 
+### Graph-level views
+
+![Applications per day graph](/img/features/overview-applications-graph.png)
+
+![Funnel progression graph](/img/features/overview-funnel-graph.png)
+
 ## Why it exists
 
 The page helps you measure whether your current sourcing and tailoring approach is producing responses, not just applications.

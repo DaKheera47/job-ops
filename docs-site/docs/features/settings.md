@@ -38,6 +38,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 ### Model
 
+![Model settings section](/img/features/settings-model-section.png)
+
 - Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `gemini`)
 - Set provider-specific base URL/API key when required
 - Configure default model plus task-specific overrides:
@@ -47,15 +49,21 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 ### Webhooks
 
+![Webhooks settings section](/img/features/settings-webhooks-section.png)
+
 - Pipeline status webhook: called on run completion/failure
 - Job completion webhook: called when a job is marked applied
 - Optional webhook secret (sent as bearer token)
 
 ### Display Settings
 
+![Display settings section](/img/features/settings-display-section.png)
+
 - Toggle visa sponsor badge visibility in job lists/details
 
 ### Ghostwriter
+
+![Ghostwriter settings section](/img/features/settings-ghostwriter-section.png)
 
 - Set global writing defaults:
   - Tone
@@ -64,6 +72,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Do-not-use terms
 
 ### Reactive Resume
+
+![Reactive Resume settings section](/img/features/settings-reactive-resume-section.png)
 
 - Select a template/base resume
 - Configure project selection behavior:
@@ -76,9 +86,11 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Configure service accounts:
   - RxResume email/password
   - UKVisaJobs email/password
-- Optional basic authentication for write operations
+  - Optional basic authentication for write operations
 
 ### Backup
+
+![Backup settings section](/img/features/settings-backup-section.png)
 
 - Enable/disable automatic daily backups
 - Configure backup hour (UTC) and max retained backups
@@ -87,11 +99,15 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 ### Scoring Settings
 
+![Scoring settings section](/img/features/settings-scoring-section.png)
+
 - Penalize missing salary data
 - Set penalty amount
 - Optional auto-skip threshold for low-score jobs
 
 ### Danger Zone
+
+![Danger Zone settings section](/img/features/settings-danger-zone-section.png)
 
 - Clear jobs by selected statuses
 - Clear jobs below a score threshold
