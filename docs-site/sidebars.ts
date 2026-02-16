@@ -22,6 +22,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "features/overview",
         "features/pipeline-run",
+        "features/job-search-bar",
         "features/orchestrator",
         "features/settings",
         "features/reactive-resume",

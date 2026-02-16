@@ -46,6 +46,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Presets, source/country compatibility, and advanced settings
   - Run estimate and start conditions
 
+- **[Job Search Bar](./features/job-search-bar)**
+  - Open with `Cmd+K` / `Ctrl+K` or the Search button
+  - Fuzzy search across title, company, and location
+  - Use `@status` lock syntax to scope results quickly
+
 - **[Settings](/docs/next/features/settings)**
   - LLM provider/model and task-specific overrides
   - Webhooks, service accounts, and basic auth controls
