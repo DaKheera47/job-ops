@@ -40,7 +40,7 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/stages" \
   }'
 ```
 
-## Option B: Automatic Gmail syncing ("automatic bing bong")
+## Option B: Automatic Gmail syncing
 
 Use this when you want JobOps to ingest recruitment emails and suggest/apply updates.
 
