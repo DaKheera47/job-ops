@@ -56,6 +56,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - `?` shortcut help dialog and `Control` hint bar behavior
   - Tab-specific actions like skip, move to ready, and mark applied
 
+- **[Multi-Select and Bulk Actions](./features/multi-select-and-bulk-actions)**
+  - Select many jobs using row checkboxes or select-all
+  - Run bulk move, skip, and rescore actions from the floating action bar
+  - Keyboard support for select, clear, and fast bulk move-to-ready
+
 - **[Settings](/docs/next/features/settings)**
   - LLM provider/model and task-specific overrides
   - Webhooks, service accounts, and basic auth controls
