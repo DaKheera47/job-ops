@@ -27,8 +27,9 @@ Every doc should include:
 - Prefer concrete steps over abstract prose.
 - Provide copy-pasteable examples.
 - State defaults and constraints explicitly.
-- Link related docs using canonical `/docs/...` URLs.
-- Do not use `/docs/next/...` or relative links for user-facing cross-doc references.
+- Use absolute `/docs/...` URLs and include the version segment when needed.
+- For current docs, use `/docs/next/...` links.
+- For versioned docs, link within that version (for example `/docs/...` in `version-0.1.20`).
 
 ## PR expectations
 

@@ -12,8 +12,8 @@ Pipeline Run is the Jobs-page run modal for starting either:
 - an **Automatic** pipeline run
 - a **Manual** one-job import
 
-For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow).
-For manual import internals, read [Manual Import Extractor](/docs/extractors/manual).
+For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow).
+For manual import internals, read [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Why it exists
 
@@ -83,7 +83,7 @@ Manual mode opens direct import flow in the same modal.
 
 Use it when you already have a specific job description or link and do not want full discovery.
 
-For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](/docs/extractors/manual).
+For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](/docs/next/extractors/manual).
 
 ## Common problems
 
@@ -106,7 +106,7 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 ## Related pages
 
-- [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow)
-- [Manual Import Extractor](/docs/extractors/manual)
-- [Orchestrator](/docs/features/orchestrator)
-- [Overview](/docs/features/overview)
+- [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow)
+- [Manual Import Extractor](/docs/next/extractors/manual)
+- [Orchestrator](/docs/next/features/orchestrator)
+- [Overview](/docs/next/features/overview)

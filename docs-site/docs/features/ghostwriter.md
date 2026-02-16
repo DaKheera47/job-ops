@@ -86,6 +86,6 @@ Compatibility thread endpoints remain, but UI behavior is one thread per job.
 
 ## Related pages
 
-- [Settings](/docs/features/settings)
-- [Reactive Resume](/docs/features/reactive-resume)
-- [Orchestrator](/docs/features/orchestrator)
+- [Settings](/docs/next/features/settings)
+- [Reactive Resume](/docs/next/features/reactive-resume)
+- [Orchestrator](/docs/next/features/orchestrator)

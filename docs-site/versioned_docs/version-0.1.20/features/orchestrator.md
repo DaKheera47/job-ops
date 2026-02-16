@@ -114,7 +114,6 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 ## Related pages
 
-- [Pipeline Run](/docs/features/pipeline-run)
 - [Ghostwriter](/docs/features/ghostwriter)
-- [Reactive Resume](/docs/features/reactive-resume)
 - [Post-Application Tracking](/docs/features/post-application-tracking)
+- [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow)
