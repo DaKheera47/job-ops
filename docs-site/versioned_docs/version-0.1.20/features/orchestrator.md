@@ -116,4 +116,3 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 - [Ghostwriter](/docs/features/ghostwriter)
 - [Post-Application Tracking](/docs/features/post-application-tracking)
-- [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow)
