@@ -169,16 +169,6 @@ export function createApp() {
     await handleTracerRedirect(req, res, slug, "GET /cv/:slug");
   });
 
-  // Backward compatibility for existing generated links.
-  app.get("/t/:token", async (req, res) => {
-    const token = req.params.token?.trim();
-    if (!token) {
-      res.status(404).type("text/plain; charset=utf-8").send("Not found");
-      return;
-    }
-    await handleTracerRedirect(req, res, token, "GET /t/:token");
-  });
-
   // Serve static files for generated PDFs
   const pdfDir = join(getDataDir(), "pdfs");
   if (isDemoMode()) {
