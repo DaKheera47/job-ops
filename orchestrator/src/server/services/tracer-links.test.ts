@@ -130,7 +130,7 @@ describe("tracer-links service", () => {
       expect.objectContaining({
         jobId: "job-1",
         sourcePath: "basics.url.href",
-        slugPrefix: "sarfaraz-amazon",
+        slugPrefix: "amazon",
       }),
     );
   });

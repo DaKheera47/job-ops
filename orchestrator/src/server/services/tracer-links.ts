@@ -68,26 +68,9 @@ function deriveSourceLabel(sourcePath: string, linkNode: LinkNode): string {
   return sourcePath;
 }
 
-function extractFirstNameFromResumeData(resumeData: unknown): string | null {
-  if (!isRecord(resumeData)) return null;
-  const basics = resumeData.basics;
-  if (!isRecord(basics)) return null;
-
-  const fullName = typeof basics.name === "string" ? basics.name.trim() : "";
-  if (!fullName) return null;
-
-  const [firstToken] = fullName.split(/\s+/).filter(Boolean);
-  return firstToken ?? null;
-}
-
-function buildReadableSlugPrefix(
-  resumeData: unknown,
-  companyName?: string | null,
-): string {
-  const firstNameRaw = extractFirstNameFromResumeData(resumeData);
-  const firstName = sanitizeLettersOnly(firstNameRaw, "candidate", 20);
+function buildReadableSlugPrefix(companyName?: string | null): string {
   const company = sanitizeLettersOnly(companyName, "company", 30);
-  return `${firstName}-${company}`;
+  return company;
 }
 
 function collectUrlTargets(
@@ -221,7 +204,7 @@ export async function rewriteResumeLinksWithTracer(args: {
 }): Promise<{ rewrittenLinks: number }> {
   const targets: LinkTarget[] = [];
   collectUrlTargets(args.resumeData, "", targets);
-  const slugPrefix = buildReadableSlugPrefix(args.resumeData, args.companyName);
+  const slugPrefix = buildReadableSlugPrefix(args.companyName);
 
   for (const target of targets) {
     const destinationUrlHash = hashText(target.destinationUrl);
