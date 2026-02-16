@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import * as api from "../../api";
+import { useTracerReadiness } from "../../hooks/useTracerReadiness";
 import { TailoringSections } from "./TailoringSections";
 import { useTailoringDraft } from "./useTailoringDraft";
 
@@ -70,6 +71,16 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
+    useTracerReadiness();
+
+  const tracerEnableBlocked =
+    !tracerLinksEnabled && !tracerReadiness?.canEnable;
+  const tracerEnableBlockedReason =
+    tracerReadiness?.canEnable === false
+      ? (tracerReadiness.reason ??
+        "Verify tracer links in Settings before enabling this job.")
+      : null;
 
   const savePayload = useMemo(
     () => ({
@@ -186,8 +197,16 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       await api.generateJobPdf(props.job.id);
       toast.success("Resume PDF generated");
       await editorProps.onUpdate();
-    } catch {
-      toast.error("PDF generation failed");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "PDF generation failed";
+      if (/tracer/i.test(message)) {
+        toast.error("Tracer links are unavailable right now", {
+          description: message,
+        });
+      } else {
+        toast.error(message);
+      }
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -267,6 +286,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             skillsDraft={skillsDraft}
             selectedIds={selectedIds}
             tracerLinksEnabled={tracerLinksEnabled}
+            tracerEnableBlocked={tracerEnableBlocked}
+            tracerEnableBlockedReason={tracerEnableBlockedReason}
+            tracerReadinessChecking={isTracerReadinessChecking}
             openSkillGroupId={openSkillGroupId}
             disableInputs={disableInputs}
             onSummaryChange={setSummary}
@@ -355,6 +377,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           skillsDraft={skillsDraft}
           selectedIds={selectedIds}
           tracerLinksEnabled={tracerLinksEnabled}
+          tracerEnableBlocked={tracerEnableBlocked}
+          tracerEnableBlockedReason={tracerEnableBlockedReason}
+          tracerReadinessChecking={isTracerReadinessChecking}
           openSkillGroupId={openSkillGroupId}
           disableInputs={disableInputs}
           onSummaryChange={setSummary}

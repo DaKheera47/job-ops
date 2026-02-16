@@ -20,6 +20,9 @@ interface TailoringSectionsProps {
   skillsDraft: EditableSkillGroup[];
   selectedIds: Set<string>;
   tracerLinksEnabled: boolean;
+  tracerEnableBlocked: boolean;
+  tracerEnableBlockedReason: string | null;
+  tracerReadinessChecking?: boolean;
   openSkillGroupId: string;
   disableInputs: boolean;
   onSummaryChange: (value: string) => void;
@@ -51,6 +54,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   skillsDraft,
   selectedIds,
   tracerLinksEnabled,
+  tracerEnableBlocked,
+  tracerEnableBlockedReason,
+  tracerReadinessChecking = false,
   openSkillGroupId,
   disableInputs,
   onSummaryChange,
@@ -63,6 +69,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   onToggleProject,
   onTracerLinksEnabledChange,
 }) => {
+  const tracerToggleDisabled =
+    disableInputs || (!tracerLinksEnabled && tracerEnableBlocked);
+
   return (
     <Accordion type="multiple" className="space-y-3">
       <AccordionItem value="job-description" className={sectionClass}>
@@ -261,15 +270,24 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                 onCheckedChange={(checked) =>
                   onTracerLinksEnabledChange(Boolean(checked))
                 }
-                disabled={disableInputs}
+                disabled={tracerToggleDisabled}
               />
               <span className="text-sm font-medium text-foreground">
                 Enable tracer links for this job
               </span>
             </label>
             <p className="mt-2 text-xs text-muted-foreground">
-              When enabled, outgoing resume links are rewritten to JobOps tracer
-              links on the next PDF generation. Existing PDFs are unchanged.
+              {tracerReadinessChecking
+                ? "Checking tracer-link readiness..."
+                : "When enabled, outgoing resume links are rewritten to JobOps tracer links on the next PDF generation. Existing PDFs are unchanged."}
+            </p>
+            {tracerEnableBlockedReason && !tracerLinksEnabled ? (
+              <p className="mt-2 text-xs text-destructive">
+                Tracer links are unavailable: {tracerEnableBlockedReason}
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs text-muted-foreground/80">
+              No raw IP is stored. Analytics are privacy-safe and anonymous.
             </p>
           </div>
         </AccordionContent>

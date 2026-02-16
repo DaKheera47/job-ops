@@ -6,6 +6,7 @@ import * as jobsRepo from "../../repositories/jobs";
 import {
   getJobTracerLinksAnalytics,
   getTracerAnalytics,
+  getTracerReadiness,
 } from "../../services/tracer-links";
 
 export const tracerLinksRouter = Router();
@@ -29,6 +30,17 @@ const paramsSchema = z.object({
   jobId: z.string().trim().min(1).max(255),
 });
 
+const readinessQuerySchema = z.object({
+  force: z
+    .preprocess((value) => {
+      if (value === undefined) return false;
+      if (typeof value === "boolean") return value;
+      const lowered = String(value).trim().toLowerCase();
+      return lowered === "1" || lowered === "true" || lowered === "yes";
+    }, z.boolean())
+    .optional(),
+});
+
 function assertTimeRange(
   from: number | undefined,
   to: number | undefined,
@@ -38,6 +50,33 @@ function assertTimeRange(
   }
   return null;
 }
+
+function resolveRequestOrigin(req: Request): string | null {
+  const forwardedProto = req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+  const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || req.header("host")?.trim();
+  const protocol = (forwardedProto || req.protocol || "").trim();
+  if (!host || !protocol) return null;
+  return `${protocol}://${host}`;
+}
+
+tracerLinksRouter.get(
+  "/readiness",
+  asyncRoute(async (req: Request, res: Response) => {
+    const parsed = readinessQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      fail(res, badRequest(parsed.error.message, parsed.error.flatten()));
+      return;
+    }
+
+    const readiness = await getTracerReadiness({
+      requestOrigin: resolveRequestOrigin(req),
+      force: parsed.data.force ?? false,
+    });
+
+    ok(res, readiness);
+  }),
+);
 
 tracerLinksRouter.get(
   "/analytics",

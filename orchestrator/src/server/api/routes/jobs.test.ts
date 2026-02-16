@@ -175,6 +175,104 @@ describe.sequential("Jobs API routes", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  it("blocks enabling tracer links when readiness check fails", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Tracer Blocked",
+      employer: "Example Co",
+      jobUrl: "https://example.com/job/tracer-blocked",
+      jobDescription: "Test description",
+    });
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://my-jobops.example.com";
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(async (input: any, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "https://my-jobops.example.com/health") {
+        return new Response("unavailable", { status: 503 });
+      }
+      return realFetch(input, init);
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tracerLinksEnabled: true }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(409);
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("CONFLICT");
+      expect(body.error.message).toMatch(/health check returned http 503/i);
+      expect(typeof body.meta.requestId).toBe("string");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
+  });
+
+  it("allows updates for already-enabled tracer links without re-gating", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const { updateJob } = await import("../../repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Tracer Already On",
+      employer: "Example Co",
+      jobUrl: "https://example.com/job/tracer-enabled",
+      jobDescription: "Test description",
+    });
+    await updateJob(job.id, { tracerLinksEnabled: true });
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://my-jobops.example.com";
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(async (input: any, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "https://my-jobops.example.com/health") {
+        return new Response("unavailable", { status: 503 });
+      }
+      return realFetch(input, init);
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Tracer Already On (Edited)",
+          tracerLinksEnabled: true,
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.title).toBe("Tracer Already On (Edited)");
+      expect(body.data.tracerLinksEnabled).toBe(true);
+      expect(mockFetch).not.toHaveBeenCalledWith(
+        "https://my-jobops.example.com/health",
+        expect.anything(),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
+  });
+
   it("returns 404 when patching a missing job", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/missing-id`, {
       method: "PATCH",

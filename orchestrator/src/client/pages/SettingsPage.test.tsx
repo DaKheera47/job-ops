@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
 import { SettingsPage } from "./SettingsPage";
 
 vi.mock("../api", () => ({
@@ -11,6 +12,10 @@ vi.mock("../api", () => ({
   updateSettings: vi.fn(),
   clearDatabase: vi.fn(),
   deleteJobsByStatus: vi.fn(),
+  getTracerReadiness: vi.fn(),
+  getBackups: vi.fn().mockResolvedValue({ backups: [], nextScheduled: null }),
+  createManualBackup: vi.fn(),
+  deleteBackup: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -78,6 +83,16 @@ const renderPage = () => {
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetTracerReadinessCache();
+    vi.mocked(api.getTracerReadiness).mockResolvedValue({
+      status: "ready",
+      canEnable: true,
+      publicBaseUrl: "https://my-jobops.example.com",
+      healthUrl: "https://my-jobops.example.com/health",
+      checkedAt: Date.now(),
+      lastSuccessAt: Date.now(),
+      reason: null,
+    });
   });
 
   it("saves trimmed model overrides", async () => {

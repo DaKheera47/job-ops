@@ -40,6 +40,7 @@ import type {
   StageEventMetadata,
   StageTransitionTarget,
   TracerAnalyticsResponse,
+  TracerReadinessResponse,
   ValidationResult,
   VisaSponsor,
   VisaSponsorSearchResponse,
@@ -420,6 +421,17 @@ export async function getTracerAnalytics(options?: {
   const query = params.toString();
   return fetchApi<TracerAnalyticsResponse>(
     `/tracer-links/analytics${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getTracerReadiness(options?: {
+  force?: boolean;
+}): Promise<TracerReadinessResponse> {
+  const params = new URLSearchParams();
+  if (options?.force) params.set("force", "1");
+  const query = params.toString();
+  return fetchApi<TracerReadinessResponse>(
+    `/tracer-links/readiness${query ? `?${query}` : ""}`,
   );
 }
 

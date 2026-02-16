@@ -456,6 +456,18 @@ export interface JobTracerLinksResponse {
   links: JobTracerLinkAnalyticsItem[];
 }
 
+export type TracerReadinessStatus = "ready" | "unconfigured" | "unavailable";
+
+export interface TracerReadinessResponse {
+  status: TracerReadinessStatus;
+  canEnable: boolean;
+  publicBaseUrl: string | null;
+  healthUrl: string | null;
+  checkedAt: number;
+  lastSuccessAt: number | null;
+  reason: string | null;
+}
+
 export const POST_APPLICATION_PROVIDERS = ["gmail", "imap"] as const;
 export type PostApplicationProvider =
   (typeof POST_APPLICATION_PROVIDERS)[number];

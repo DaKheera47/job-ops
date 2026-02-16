@@ -3,6 +3,7 @@ import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
 import { TailoringEditor } from "./TailoringEditor";
 
 vi.mock("../api", () => ({
@@ -10,6 +11,7 @@ vi.mock("../api", () => ({
   updateJob: vi.fn().mockResolvedValue({}),
   summarizeJob: vi.fn(),
   generateJobPdf: vi.fn(),
+  getTracerReadiness: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -42,6 +44,16 @@ const ensureAccordionOpen = (name: string) => {
 describe("TailoringEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetTracerReadinessCache();
+    vi.mocked(api.getTracerReadiness).mockResolvedValue({
+      status: "ready",
+      canEnable: true,
+      publicBaseUrl: "https://my-jobops.example.com",
+      healthUrl: "https://my-jobops.example.com/health",
+      checkedAt: Date.now(),
+      lastSuccessAt: Date.now(),
+      reason: null,
+    });
   });
 
   it("does not rehydrate local edits from same-job prop updates", async () => {
@@ -250,6 +262,7 @@ describe("TailoringEditor", () => {
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
+    await waitFor(() => expect(api.getTracerReadiness).toHaveBeenCalled());
     ensureAccordionOpen("Tracer Links");
 
     fireEvent.click(screen.getByLabelText("Enable tracer links for this job"));

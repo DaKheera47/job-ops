@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import * as api from "../api";
+import { useTracerReadiness } from "../hooks/useTracerReadiness";
 
 interface JobDetailsEditDrawerProps {
   open: boolean;
@@ -85,6 +86,8 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
   const [draft, setDraft] = useState<JobDetailsDraft>(emptyDraft);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
+    useTracerReadiness();
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +97,14 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
   }, [job, open]);
 
   const hasJob = !!job;
+  const tracerCanEnable = Boolean(tracerReadiness?.canEnable);
+  const tracerEnableBlocked = !draft.tracerLinksEnabled && !tracerCanEnable;
+  const tracerEnableBlockedReason =
+    tracerReadiness?.canEnable === false
+      ? (tracerReadiness.reason ??
+        "Tracer links are unavailable right now. Verify Tracer Links in Settings.")
+      : null;
+
   const isDirty = useMemo(() => {
     if (!job) return false;
     const current = normalizeFromJob(job);
@@ -136,6 +147,17 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
     }
     if (applicationLink && !isValidUrl(applicationLink)) {
       setValidationError("Application URL must be a valid URL.");
+      return;
+    }
+    if (
+      draft.tracerLinksEnabled &&
+      !job.tracerLinksEnabled &&
+      !tracerCanEnable
+    ) {
+      setValidationError(
+        tracerEnableBlockedReason ??
+          "Tracer links are unavailable right now. Verify Tracer Links in Settings.",
+      );
       return;
     }
 
@@ -301,15 +323,25 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                           tracerLinksEnabled: Boolean(checked),
                         }))
                       }
-                      disabled={isSaving}
+                      disabled={isSaving || tracerEnableBlocked}
                     />
                     <span className="text-sm font-medium">
                       Enable tracer links for this job
                     </span>
                   </label>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Applies on the next PDF generation. Existing PDFs are not
-                    modified.
+                    {isTracerReadinessChecking
+                      ? "Checking tracer-link readiness..."
+                      : "Applies on the next PDF generation. Existing PDFs are not modified."}
+                  </p>
+                  {tracerEnableBlockedReason && !draft.tracerLinksEnabled ? (
+                    <p className="mt-2 text-xs text-destructive">
+                      Tracer links are unavailable: {tracerEnableBlockedReason}
+                    </p>
+                  ) : null}
+                  <p className="mt-2 text-xs text-muted-foreground/80">
+                    No raw IP is stored. Analytics are privacy-safe and
+                    anonymous.
                   </p>
                 </div>
 

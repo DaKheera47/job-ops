@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
+import { logger } from "@infra/logger";
 import type {
   JobTracerLinksResponse,
   TracerAnalyticsResponse,
+  TracerReadinessResponse,
 } from "@shared/types";
 import * as tracerLinksRepo from "../repositories/tracer-links";
 
@@ -19,6 +21,17 @@ type LinkTarget = {
 
 const BOT_UA_PATTERN =
   /\b(bot|crawler|spider|preview|scanner|security|headless|curl|wget|slackbot|discordbot|facebookexternalhit|whatsapp|skypeuripreview|linkedinbot|googleimageproxy)\b/i;
+const TRACER_READINESS_TIMEOUT_MS = 5_000;
+const TRACER_READINESS_CACHE_TTL_MS = 5 * 60_000;
+
+type TracerReadinessCacheEntry = {
+  baseUrl: string | null;
+  checkedAt: number;
+  response: TracerReadinessResponse;
+};
+
+let tracerReadinessCache: TracerReadinessCacheEntry | null = null;
+let tracerReadinessLastSuccessAt: number | null = null;
 
 function hashText(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -60,6 +73,103 @@ function normalizeBaseUrl(value: string | null | undefined): string | null {
   if (!trimmed) return null;
   if (!isHttpUrl(trimmed)) return null;
   return trimmed.replace(/\/+$/, "");
+}
+
+function isLocalOrPrivateHostname(hostnameRaw: string): boolean {
+  const hostname = hostnameRaw.trim().toLowerCase();
+  if (!hostname) return true;
+
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  const ipv4Match = hostname.match(
+    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
+  );
+  if (ipv4Match) {
+    const octets = ipv4Match.slice(1).map((part) => Number(part));
+    if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return true;
+    const [first, second] = octets;
+    if (
+      first === 10 ||
+      first === 127 ||
+      first === 0 ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168)
+    ) {
+      return true;
+    }
+  }
+
+  if (hostname.includes(":")) {
+    if (
+      hostname === "::1" ||
+      hostname.startsWith("fe80:") ||
+      hostname.startsWith("fc") ||
+      hostname.startsWith("fd")
+    ) {
+      return true;
+    }
+  }
+
+  if (!hostname.includes(".") && !hostname.includes(":")) {
+    return true;
+  }
+
+  return false;
+}
+
+function resolveTracerReadinessBaseUrl(args: {
+  requestOrigin?: string | null;
+}): string | null {
+  const fromEnv = normalizeBaseUrl(process.env.JOBOPS_PUBLIC_BASE_URL ?? null);
+  if (fromEnv) return fromEnv;
+  return normalizeBaseUrl(args.requestOrigin);
+}
+
+function makeTracerReadinessResponse(
+  status: TracerReadinessResponse["status"],
+  args: {
+    baseUrl: string | null;
+    checkedAt: number;
+    reason: string | null;
+  },
+): TracerReadinessResponse {
+  return {
+    status,
+    canEnable: status === "ready",
+    publicBaseUrl: args.baseUrl,
+    healthUrl: args.baseUrl ? `${args.baseUrl}/health` : null,
+    checkedAt: args.checkedAt,
+    lastSuccessAt: tracerReadinessLastSuccessAt,
+    reason: args.reason,
+  };
+}
+
+async function fetchWithTimeout(
+  input: string,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        accept: "application/json,text/plain",
+      },
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function deriveSourceLabel(sourcePath: string, linkNode: LinkNode): string {
@@ -194,6 +304,119 @@ export function resolveTracerPublicBaseUrl(args: {
   const fromRequest = normalizeBaseUrl(args.requestOrigin);
   if (fromRequest) return fromRequest;
   return normalizeBaseUrl(process.env.JOBOPS_PUBLIC_BASE_URL ?? null);
+}
+
+export async function getTracerReadiness(
+  args: { requestOrigin?: string | null; force?: boolean } = {},
+): Promise<TracerReadinessResponse> {
+  const baseUrl = resolveTracerReadinessBaseUrl({
+    requestOrigin: args.requestOrigin,
+  });
+  const checkedAt = Date.now();
+  const force = Boolean(args.force);
+
+  const cached = tracerReadinessCache;
+  if (
+    !force &&
+    cached &&
+    cached.baseUrl === baseUrl &&
+    checkedAt - cached.checkedAt < TRACER_READINESS_CACHE_TTL_MS
+  ) {
+    return cached.response;
+  }
+
+  let response: TracerReadinessResponse;
+
+  if (!baseUrl) {
+    response = makeTracerReadinessResponse("unconfigured", {
+      baseUrl: null,
+      checkedAt,
+      reason:
+        "No public JobOps base URL is configured. Set JOBOPS_PUBLIC_BASE_URL.",
+    });
+  } else {
+    let hostname: string | null = null;
+    try {
+      hostname = new URL(baseUrl).hostname;
+    } catch {
+      hostname = null;
+    }
+
+    if (!hostname || isLocalOrPrivateHostname(hostname)) {
+      response = makeTracerReadinessResponse("unavailable", {
+        baseUrl,
+        checkedAt,
+        reason:
+          "Configured public URL must be internet-reachable (not localhost/private network).",
+      });
+    } else {
+      const healthUrl = `${baseUrl}/health`;
+
+      try {
+        const healthResponse = await fetchWithTimeout(
+          healthUrl,
+          TRACER_READINESS_TIMEOUT_MS,
+        );
+
+        if (!healthResponse.ok) {
+          response = makeTracerReadinessResponse("unavailable", {
+            baseUrl,
+            checkedAt,
+            reason: `Health check returned HTTP ${healthResponse.status}.`,
+          });
+        } else {
+          tracerReadinessLastSuccessAt = checkedAt;
+          response = makeTracerReadinessResponse("ready", {
+            baseUrl,
+            checkedAt,
+            reason: null,
+          });
+        }
+      } catch (error) {
+        const reason =
+          error instanceof Error && error.name === "AbortError"
+            ? `Health check timed out after ${TRACER_READINESS_TIMEOUT_MS}ms.`
+            : error instanceof Error
+              ? `Health check failed: ${error.message}.`
+              : "Health check failed.";
+
+        response = makeTracerReadinessResponse("unavailable", {
+          baseUrl,
+          checkedAt,
+          reason,
+        });
+      }
+    }
+  }
+
+  tracerReadinessCache = {
+    baseUrl,
+    checkedAt,
+    response,
+  };
+
+  if (response.status === "ready") {
+    logger.info("Tracer readiness check passed", {
+      route: "tracer-readiness",
+      publicBaseUrl: response.publicBaseUrl,
+      checkedAt: response.checkedAt,
+    });
+  } else {
+    logger.warn("Tracer readiness check failed", {
+      route: "tracer-readiness",
+      status: response.status,
+      publicBaseUrl: response.publicBaseUrl,
+      reason: response.reason,
+      checkedAt: response.checkedAt,
+    });
+  }
+
+  return response;
+}
+
+export function _resetTracerReadinessCacheForTests(): void {
+  tracerReadinessCache = null;
+  tracerReadinessLastSuccessAt = null;
 }
 
 export async function rewriteResumeLinksWithTracer(args: {

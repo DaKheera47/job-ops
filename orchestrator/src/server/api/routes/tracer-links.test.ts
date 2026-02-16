@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Server } from "node:http";
 import { and, eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Tracer links routes", () => {
@@ -172,5 +172,51 @@ describe.sequential("Tracer links routes", () => {
         ),
       );
     expect(persistedEvents.length).toBe(1);
+  });
+
+  it("returns tracer readiness contract", async () => {
+    const realFetch = global.fetch;
+    const healthUrl = "https://my-jobops.example.com/health";
+    const mockFetch = vi.fn(async (input: any, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === healthUrl) {
+        return new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      return realFetch(input, init);
+    });
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://my-jobops.example.com";
+    vi.stubGlobal("fetch", mockFetch);
+
+    try {
+      const res = await fetch(`${baseUrl}/api/tracer-links/readiness?force=1`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        ok: boolean;
+        data?: {
+          status: string;
+          canEnable: boolean;
+          publicBaseUrl: string | null;
+        };
+        meta?: { requestId?: string };
+      };
+
+      expect(body.ok).toBe(true);
+      expect(body.meta?.requestId).toBeTruthy();
+      expect(body.data?.status).toBe("ready");
+      expect(body.data?.canEnable).toBe(true);
+      expect(body.data?.publicBaseUrl).toBe("https://my-jobops.example.com");
+    } finally {
+      vi.unstubAllGlobals();
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
   });
 });

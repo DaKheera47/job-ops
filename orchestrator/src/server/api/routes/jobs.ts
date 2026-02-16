@@ -41,6 +41,7 @@ import {
 } from "../../services/demo-simulator";
 import { getProfile } from "../../services/profile";
 import { scoreJobSuitability } from "../../services/scorer";
+import { getTracerReadiness } from "../../services/tracer-links";
 import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const jobsRouter = Router();
@@ -668,6 +669,51 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
 jobsRouter.patch("/:id", async (req: Request, res: Response) => {
   try {
     const input = updateJobSchema.parse(req.body);
+    const currentJob = await jobsRepo.getJobById(req.params.id);
+
+    if (!currentJob) {
+      const err = new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found",
+      });
+      logger.warn("Job update failed", {
+        route: "PATCH /api/jobs/:id",
+        jobId: req.params.id,
+        status: err.status,
+        code: err.code,
+      });
+      fail(res, err);
+      return;
+    }
+
+    const isTurningTracerLinksOn =
+      input.tracerLinksEnabled === true && !currentJob.tracerLinksEnabled;
+
+    if (isTurningTracerLinksOn) {
+      const readiness = await getTracerReadiness({
+        requestOrigin: resolveRequestOrigin(req),
+        force: true,
+      });
+
+      if (!readiness.canEnable) {
+        throw new AppError({
+          status: 409,
+          code: "CONFLICT",
+          message:
+            readiness.reason ??
+            "Tracer links are unavailable right now. Verify Tracer Links in Settings.",
+          details: {
+            tracerReadiness: {
+              status: readiness.status,
+              checkedAt: readiness.checkedAt,
+              publicBaseUrl: readiness.publicBaseUrl,
+            },
+          },
+        });
+      }
+    }
+
     const job = await jobsRepo.updateJob(req.params.id, input);
 
     if (!job) {

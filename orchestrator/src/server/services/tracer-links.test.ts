@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as tracerLinksRepo from "../repositories/tracer-links";
 import {
+  _resetTracerReadinessCacheForTests,
+  getTracerReadiness,
   resolveTracerPublicBaseUrl,
   resolveTracerRedirect,
   rewriteResumeLinksWithTracer,
@@ -22,10 +24,14 @@ describe("tracer-links service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetTracerReadinessCacheForTests();
+    vi.unstubAllGlobals();
     delete process.env.JOBOPS_PUBLIC_BASE_URL;
   });
 
   afterEach(() => {
+    _resetTracerReadinessCacheForTests();
+    vi.unstubAllGlobals();
     if (originalEnv === undefined) {
       delete process.env.JOBOPS_PUBLIC_BASE_URL;
     } else {
@@ -185,6 +191,58 @@ describe("tracer-links service", () => {
         referrerHost: "mail.example.com",
         ipHash: expect.any(String),
         uniqueFingerprintHash: expect.any(String),
+      }),
+    );
+  });
+
+  it("reports unconfigured readiness when no public base URL is available", async () => {
+    const readiness = await getTracerReadiness({ requestOrigin: null });
+
+    expect(readiness.status).toBe("unconfigured");
+    expect(readiness.canEnable).toBe(false);
+    expect(readiness.publicBaseUrl).toBeNull();
+    expect(readiness.reason).toMatch(/no public jobops base url/i);
+  });
+
+  it("reports unavailable readiness for localhost/private origins", async () => {
+    const readiness = await getTracerReadiness({
+      requestOrigin: "http://localhost:3000",
+    });
+
+    expect(readiness.status).toBe("unavailable");
+    expect(readiness.canEnable).toBe(false);
+    expect(readiness.reason).toMatch(/internet-reachable/i);
+  });
+
+  it("reports ready readiness when health check succeeds", async () => {
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://my-jobops.example.com";
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(async (input: any, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "https://my-jobops.example.com/health") {
+        return new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        });
+      }
+      return realFetch(input, init);
+    });
+    vi.stubGlobal("fetch", mockFetch);
+
+    const readiness = await getTracerReadiness({
+      requestOrigin: null,
+      force: true,
+    });
+
+    expect(readiness.status).toBe("ready");
+    expect(readiness.canEnable).toBe(true);
+    expect(readiness.publicBaseUrl).toBe("https://my-jobops.example.com");
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://my-jobops.example.com/health",
+      expect.objectContaining({
+        method: "GET",
       }),
     );
   });

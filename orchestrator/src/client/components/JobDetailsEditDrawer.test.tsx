@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 
 vi.mock("@/components/ui/sheet", () => ({
@@ -27,6 +28,7 @@ vi.mock("../api", () => ({
   updateJob: vi.fn(),
   checkSponsor: vi.fn(),
   rescoreJob: vi.fn(),
+  getTracerReadiness: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -39,6 +41,16 @@ vi.mock("sonner", () => ({
 describe("JobDetailsEditDrawer", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetTracerReadinessCache();
+    vi.mocked(api.getTracerReadiness).mockResolvedValue({
+      status: "ready",
+      canEnable: true,
+      publicBaseUrl: "https://my-jobops.example.com",
+      healthUrl: "https://my-jobops.example.com/health",
+      checkedAt: Date.now(),
+      lastSuccessAt: Date.now(),
+      reason: null,
+    });
   });
 
   it("saves details and reruns sponsor check when employer changes", async () => {
@@ -153,6 +165,7 @@ describe("JobDetailsEditDrawer", () => {
       />,
     );
 
+    await waitFor(() => expect(api.getTracerReadiness).toHaveBeenCalled());
     fireEvent.click(screen.getByLabelText("Enable tracer links for this job"));
     fireEvent.click(screen.getByRole("button", { name: /save details/i }));
 
