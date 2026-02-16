@@ -21,6 +21,7 @@ const sidebars: SidebarsConfig = {
       label: "Core Features",
       items: [
         "features/overview",
+        "features/pipeline-run",
         "features/orchestrator",
         "features/settings",
         "features/reactive-resume",

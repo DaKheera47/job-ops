@@ -41,6 +41,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - PDF generation and regeneration
   - Post-application tracking overview
 
+- **[Pipeline Run](./features/pipeline-run)**
+  - Run modal controls (`Automatic` vs `Manual`)
+  - Presets, source/country compatibility, and advanced settings
+  - Run estimate and start conditions
+
 - **[Settings](/docs/next/features/settings)**
   - LLM provider/model and task-specific overrides
   - Webhooks, service accounts, and basic auth controls
