@@ -5,40 +5,45 @@ description: How to use Run Mode (Automatic vs Manual), presets, source controls
 sidebar_position: 2
 ---
 
-This page documents the **Pipeline Run controls** in the Jobs page run modal.
+## What it is
 
-For end-to-end sequence, read [Find Jobs and Apply Workflow](../workflows/find-jobs-and-apply-workflow).
-For manual import internals, read [Manual Import Extractor](../extractors/manual).
+Pipeline Run is the Jobs-page run modal for starting either:
 
-## What this page covers
+- an **Automatic** pipeline run
+- a **Manual** one-job import
 
-- Automatic vs Manual run modes
-- Presets and advanced knobs in Automatic mode
-- Country/source compatibility and Glassdoor behavior
-- Run estimates and when the run button is disabled
+For end-to-end sequence, read [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow).
+For manual import internals, read [Manual Import Extractor](/docs/extractors/manual).
 
-## Open the Run modal
+## Why it exists
 
-From the Jobs page, use the top-right run control.
+The modal provides one place to control run volume, source compatibility, and processing aggressiveness before consuming compute/time.
 
-The modal has two tabs:
+It helps you:
 
-- **Automatic**: configure and start a full pipeline run
-- **Manual**: import one job directly
+- choose speed vs depth with presets
+- avoid invalid source/country combinations
+- understand estimated run cost before starting
 
-## Automatic tab
+## How to use it
 
-### Presets
+1. Open the Jobs page and use the top-right run control.
+2. Choose either **Automatic** or **Manual** tab.
+3. Configure required inputs and start run.
 
-Three presets set default values for run aggressiveness:
+### Automatic tab
+
+#### Presets
+
+Three presets set defaults for run aggressiveness:
 
 - **Fast**: lower processing volume, higher score threshold
 - **Balanced**: middle-ground defaults
 - **Detailed**: higher processing volume, lower score threshold
 
-If you edit values manually, the UI shows **Custom**.
+If values are edited manually, the UI shows **Custom**.
 
-### Country and source compatibility
+#### Country and source compatibility
 
 - Country selection affects which sources are available.
 - UK-only sources are disabled for non-UK countries.
@@ -46,26 +51,24 @@ If you edit values manually, the UI shows **Custom**.
   - selected country supports Glassdoor
   - a **Glassdoor city** is set in Advanced settings
 
-Incompatible sources are disabled with tooltips explaining why.
+Incompatible sources are disabled with explanatory tooltips.
 
-### Advanced settings
-
-Advanced settings lets you tune:
+#### Advanced settings
 
 - **Resumes tailored** (`topN`)
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
 - **Glassdoor city** (required only for Glassdoor)
 
-### Search terms
+#### Search terms
 
-- Add terms by pressing Enter or using commas.
-- Multiple terms increase discovery breadth and total runtime.
-- At least one search term is required to start a run.
+- Add terms with Enter or commas.
+- Multiple terms increase discovery breadth and runtime.
+- At least one search term is required.
 
-### Estimate + run gating
+#### Estimate and run gating
 
-The footer estimate shows expected discovered jobs and resume processing range.
+The footer estimate shows expected discovered jobs and resume-processing range.
 
 `Start run now` is disabled when:
 
@@ -74,17 +77,36 @@ The footer estimate shows expected discovered jobs and resume processing range.
 - no compatible sources are selected
 - no search terms are present
 
-## Manual tab
+### Manual tab
 
-Manual mode opens the direct import flow in the same modal.
+Manual mode opens direct import flow in the same modal.
 
-Use this when you already have a specific job description/link and do not want a full pipeline run.
+Use it when you already have a specific job description or link and do not want full discovery.
 
-For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](../extractors/manual).
+For accepted input formats, inference behavior, and limits, see [Manual Import Extractor](/docs/extractors/manual).
 
-## Scope boundary
+## Common problems
 
-This page focuses on run controls only. It intentionally does not duplicate:
+### Start button stays disabled
 
-- end-to-end application sequencing: [Find Jobs and Apply Workflow](../workflows/find-jobs-and-apply-workflow)
-- manual import API/storage details: [Manual Import Extractor](../extractors/manual)
+- Ensure at least one search term is present.
+- Ensure at least one compatible source is selected.
+- Wait for active save/run operations to finish.
+
+### Glassdoor cannot be enabled
+
+- Verify selected country supports Glassdoor.
+- Set a Glassdoor city in Advanced settings.
+
+### Run takes longer than expected
+
+- Reduce term count.
+- Use `Fast` preset or lower `Max jobs discovered`.
+- Disable high-cost source combinations where acceptable.
+
+## Related pages
+
+- [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow)
+- [Manual Import Extractor](/docs/extractors/manual)
+- [Orchestrator](/docs/features/orchestrator)
+- [Overview](/docs/features/overview)
