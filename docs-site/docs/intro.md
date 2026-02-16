@@ -51,6 +51,11 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
   - Fuzzy search across title, company, and location
   - Use `@status` lock syntax to scope results quickly
 
+- **[Keyboard Shortcuts](./features/keyboard-shortcuts)**
+  - Full Jobs-page shortcut reference by context
+  - `?` shortcut help dialog and `Control` hint bar behavior
+  - Tab-specific actions like skip, move to ready, and mark applied
+
 - **[Settings](/docs/next/features/settings)**
   - LLM provider/model and task-specific overrides
   - Webhooks, service accounts, and basic auth controls

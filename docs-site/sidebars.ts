@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
         "features/overview",
         "features/pipeline-run",
         "features/job-search-bar",
+        "features/keyboard-shortcuts",
         "features/orchestrator",
         "features/settings",
         "features/reactive-resume",
