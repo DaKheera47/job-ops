@@ -60,6 +60,6 @@ Use it to quickly answer:
 
 ## Related pages
 
-- [Orchestrator](/docs/features/orchestrator)
-- [Post-Application Tracking](/docs/features/post-application-tracking)
-- [Troubleshooting](/docs/troubleshooting/common-problems)
+- [Orchestrator](/docs/next/features/orchestrator)
+- [Post-Application Tracking](/docs/next/features/post-application-tracking)
+- [Troubleshooting](/docs/next/troubleshooting/common-problems)
