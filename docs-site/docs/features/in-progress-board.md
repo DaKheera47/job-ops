@@ -86,5 +86,5 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/stage-events" \
 ## Related pages
 
 - [Overview](/docs/next/features/overview)
-- [Orchestrator](/docs/features/orchestrator)
-- [Post-Application Tracking](/docs/features/post-application-tracking)
+- [Orchestrator](/docs/next/features/orchestrator)
+- [Post-Application Tracking](/docs/next/features/post-application-tracking)
