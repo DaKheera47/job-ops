@@ -9,6 +9,8 @@ sidebar_position: 1
 
 The Overview page is the analytics dashboard for your pipeline outcomes.
 
+![Overview dashboard](/img/features/overview-dashboard.png)
+
 It visualizes:
 
 - Applications per day

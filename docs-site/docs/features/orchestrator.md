@@ -9,6 +9,8 @@ sidebar_position: 1
 
 The Orchestrator is the primary jobs workspace in JobOps.
 
+![Orchestrator jobs workspace](/img/features/orchestrator-jobs.png)
+
 It controls:
 
 - job lifecycle states

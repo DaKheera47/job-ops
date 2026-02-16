@@ -9,6 +9,8 @@ sidebar_position: 3
 
 The In Progress Board is a kanban view for jobs that have moved beyond initial application.
 
+![In Progress Board kanban lanes](/img/features/in-progress-board.png)
+
 It groups jobs into post-application lanes:
 
 - Recruiter Screen

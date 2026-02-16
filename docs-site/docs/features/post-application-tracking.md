@@ -7,6 +7,8 @@ sidebar_position: 3
 
 The Tracking Inbox monitors Gmail for job-application responses and updates timelines.
 
+![Tracking Inbox review queue](/img/features/tracking-inbox.png)
+
 ## Overview
 
 1. Scans Gmail for recruitment-related emails

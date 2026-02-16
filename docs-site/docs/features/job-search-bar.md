@@ -7,6 +7,8 @@ sidebar_position: 3
 
 The Job Search Bar is the quickest way to jump to any job from the Jobs page.
 
+![Job search command bar](/img/features/job-search-bar.png)
+
 ## Open it
 
 Use either:

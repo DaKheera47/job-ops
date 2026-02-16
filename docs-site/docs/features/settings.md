@@ -9,6 +9,8 @@ sidebar_position: 2
 
 The Settings page is the control center for app-wide behavior.
 
+![Settings page sections](/img/features/settings.png)
+
 It lets you configure:
 
 - LLM provider and models
