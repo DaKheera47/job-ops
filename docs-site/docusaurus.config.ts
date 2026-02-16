@@ -14,7 +14,7 @@ const siteBaseUrl = normalizedBaseUrl.endsWith("/")
 const config: Config = {
   title: "JobOps Documentation",
   tagline: "Self-hosted job search automation docs",
-  favicon: "img/favicon.ico",
+  favicon: "img/favicon.png",
   future: {
     v4: true,
   },
@@ -54,7 +54,7 @@ const config: Config = {
       title: "JobOps Docs",
       logo: {
         alt: "JobOps",
-        src: "img/logo.svg",
+        src: "img/favicon.png",
       },
       items: [
         {
