@@ -24,7 +24,7 @@ interface PipelineProgress {
     | "failed";
   message: string;
   detail?: string;
-  crawlingSource: "gradcracker" | "jobspy" | "ukvisajobs" | null;
+  crawlingSource: "gradcracker" | "jobspy" | "ukvisajobs" | "adzuna" | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
   crawlingTermsProcessed: number;
@@ -84,6 +84,7 @@ const sourceLabel: Record<
   gradcracker: "Gradcracker",
   jobspy: "JobSpy",
   ukvisajobs: "UKVisaJobs",
+  adzuna: "Adzuna",
 };
 
 const clamp = (value: number, min: number, max: number) =>

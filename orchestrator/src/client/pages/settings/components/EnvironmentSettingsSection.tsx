@@ -91,6 +91,28 @@ export const EnvironmentSettingsSection: React.FC<
                 />
               </div>
             </div>
+
+            <div className="space-y-4">
+              <div className="text-sm font-semibold">Adzuna</div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <SettingsInput
+                  label="App ID"
+                  inputProps={register("adzunaAppId")}
+                  placeholder="your-app-id"
+                  disabled={isLoading || isSaving}
+                  error={errors.adzunaAppId?.message as string | undefined}
+                />
+                <SettingsInput
+                  label="App Key"
+                  inputProps={register("adzunaAppKey")}
+                  type="password"
+                  placeholder="Enter new app key"
+                  disabled={isLoading || isSaving}
+                  error={errors.adzunaAppKey?.message as string | undefined}
+                  current={formatSecretHint(privateValues.adzunaAppKeyHint)}
+                />
+              </div>
+            </div>
           </div>
 
           <Separator />

@@ -695,6 +695,7 @@ describe("OrchestratorPage", () => {
         jobspyResultsWanted: 150,
         gradcrackerMaxJobsPerTerm: 150,
         ukvisajobsMaxJobs: 150,
+        adzunaMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
         jobspyLocation: "United Kingdom",
       });

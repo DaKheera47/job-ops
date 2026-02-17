@@ -76,4 +76,20 @@ describe("automatic-run utilities", () => {
       "api",
     ]);
   });
+
+  it("includes adzuna in estimate caps", () => {
+    const estimate = calculateAutomaticEstimate({
+      values: {
+        topN: 10,
+        minSuitabilityScore: 50,
+        searchTerms: ["backend", "platform"],
+        runBudget: 120,
+        country: "united kingdom",
+      },
+      sources: ["adzuna"],
+    });
+
+    expect(estimate.discovered.cap).toBeGreaterThan(0);
+    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+  });
 });

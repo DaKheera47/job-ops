@@ -171,6 +171,9 @@ export const getEnabledSources = (
   const hasUkVisaJobsAuth = Boolean(
     settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint,
   );
+  const hasAdzunaAuth = Boolean(
+    settings.adzunaAppId?.trim() && settings.adzunaAppKeyHint,
+  );
 
   for (const source of orderedSources) {
     if (source === "gradcracker") {
@@ -179,6 +182,10 @@ export const getEnabledSources = (
     }
     if (source === "ukvisajobs") {
       if (hasUkVisaJobsAuth) enabled.push(source);
+      continue;
+    }
+    if (source === "adzuna") {
+      if (hasAdzunaAuth) enabled.push(source);
       continue;
     }
     if (

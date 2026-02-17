@@ -294,6 +294,7 @@ export const OrchestratorPage: React.FC = () => {
         jobspyResultsWanted: limits.jobspyResultsWanted,
         gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
+        adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
         jobspyLocation,
       });

@@ -57,6 +57,8 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   basicAuthPassword: "",
   ukvisajobsEmail: "",
   ukvisajobsPassword: "",
+  adzunaAppId: "",
+  adzunaAppKey: "",
   webhookSecret: "",
   enableBasicAuth: false,
   backupEnabled: null,
@@ -96,6 +98,9 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   basicAuthPassword: null,
   ukvisajobsEmail: null,
   ukvisajobsPassword: null,
+  adzunaAppId: null,
+  adzunaAppKey: null,
+  adzunaMaxJobsPerTerm: null,
   webhookSecret: null,
   enableBasicAuth: undefined,
   backupEnabled: null,
@@ -129,6 +134,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   basicAuthPassword: "",
   ukvisajobsEmail: data.ukvisajobsEmail ?? "",
   ukvisajobsPassword: "",
+  adzunaAppId: data.adzunaAppId ?? "",
+  adzunaAppKey: "",
   webhookSecret: "",
   enableBasicAuth: data.basicAuthActive,
   backupEnabled: data.overrideBackupEnabled,
@@ -235,11 +242,13 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       readable: {
         rxresumeEmail: settings?.rxresumeEmail ?? "",
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
+        adzunaAppId: settings?.adzunaAppId ?? "",
         basicAuthUser: settings?.basicAuthUser ?? "",
       },
       private: {
         rxresumePasswordHint: settings?.rxresumePasswordHint ?? null,
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
+        adzunaAppKeyHint: settings?.adzunaAppKeyHint ?? null,
         basicAuthPasswordHint: settings?.basicAuthPasswordHint ?? null,
         webhookSecretHint: settings?.webhookSecretHint ?? null,
       },
@@ -527,6 +536,10 @@ export const SettingsPage: React.FC = () => {
         envPayload.ukvisajobsEmail = normalizeString(data.ukvisajobsEmail);
       }
 
+      if (dirtyFields.adzunaAppId || dirtyFields.adzunaAppKey) {
+        envPayload.adzunaAppId = normalizeString(data.adzunaAppId);
+      }
+
       if (data.enableBasicAuth === false) {
         envPayload.basicAuthUser = null;
         envPayload.basicAuthPassword = null;
@@ -566,6 +579,11 @@ export const SettingsPage: React.FC = () => {
       if (dirtyFields.ukvisajobsPassword) {
         const value = normalizePrivateInput(data.ukvisajobsPassword);
         if (value !== undefined) envPayload.ukvisajobsPassword = value;
+      }
+
+      if (dirtyFields.adzunaAppKey) {
+        const value = normalizePrivateInput(data.adzunaAppKey);
+        if (value !== undefined) envPayload.adzunaAppKey = value;
       }
 
       if (dirtyFields.webhookSecret) {

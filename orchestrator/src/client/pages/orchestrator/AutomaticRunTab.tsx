@@ -153,6 +153,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     const rememberedRunBudget =
       settings?.jobspyResultsWanted ??
+      settings?.adzunaMaxJobsPerTerm ??
       settings?.gradcrackerMaxJobsPerTerm ??
       settings?.ukvisajobsMaxJobs ??
       DEFAULT_VALUES.runBudget;
@@ -533,7 +534,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                     ? countryAllowed
                       ? GLASSDOOR_LOCATION_REASON
                       : GLASSDOOR_COUNTRY_REASON
-                    : `${sourceLabel[source]} is available only when country is United Kingdom.`;
+                    : source === "gradcracker" || source === "ukvisajobs"
+                      ? `${sourceLabel[source]} is available only when country is United Kingdom.`
+                      : `${sourceLabel[source]} is not available for the selected country.`;
 
                 const button = (
                   <Button
