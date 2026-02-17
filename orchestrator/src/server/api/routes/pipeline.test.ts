@@ -55,6 +55,17 @@ describe.sequential("Pipeline API routes", () => {
     expect(runPipeline).toHaveBeenNthCalledWith(2, {
       sources: ["glassdoor"],
     });
+
+    const adzunaRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sources: ["adzuna"] }),
+    });
+    const adzunaRunBody = await adzunaRunRes.json();
+    expect(adzunaRunBody.ok).toBe(true);
+    expect(runPipeline).toHaveBeenNthCalledWith(3, {
+      sources: ["adzuna"],
+    });
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {

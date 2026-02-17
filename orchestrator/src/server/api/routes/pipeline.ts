@@ -99,7 +99,14 @@ const runPipelineSchema = z.object({
   minSuitabilityScore: z.number().min(0).max(100).optional(),
   sources: z
     .array(
-      z.enum(["gradcracker", "indeed", "linkedin", "glassdoor", "ukvisajobs"]),
+      z.enum([
+        "gradcracker",
+        "indeed",
+        "linkedin",
+        "glassdoor",
+        "ukvisajobs",
+        "adzuna",
+      ]),
     )
     .min(1)
     .optional(),

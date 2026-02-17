@@ -14,7 +14,7 @@ export type PipelineStep =
   | "cancelled"
   | "failed";
 
-export type CrawlSource = "gradcracker" | "jobspy" | "ukvisajobs";
+export type CrawlSource = "gradcracker" | "jobspy" | "ukvisajobs" | "adzuna";
 
 export interface PipelineProgress {
   step: PipelineStep;
