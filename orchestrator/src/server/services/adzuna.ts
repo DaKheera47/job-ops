@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
@@ -11,6 +12,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ADZUNA_DIR = join(__dirname, "../../../../extractors/adzuna");
 const DATASET_PATH = join(ADZUNA_DIR, "storage/datasets/default/jobs.json");
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+const require = createRequire(import.meta.url);
+const TSX_CLI_PATH = resolveTsxCliPath();
 
 type AdzunaRawJob = Record<string, unknown>;
 
@@ -49,6 +52,14 @@ export interface AdzunaResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+}
+
+function resolveTsxCliPath(): string | null {
+  try {
+    return require.resolve("tsx/dist/cli.mjs");
+  } catch {
+    return null;
+  }
 }
 
 function parseAdzunaProgressLine(line: string): AdzunaProgressEvent | null {
@@ -159,12 +170,18 @@ export async function runAdzuna(
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
       : ["web developer"];
+  if (!TSX_CLI_PATH) {
+    return {
+      success: false,
+      jobs: [],
+      error: "Unable to resolve tsx runtime for Adzuna extractor",
+    };
+  }
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const child = spawn("npm", ["run", "start"], {
+      const child = spawn(process.execPath, [TSX_CLI_PATH, "src/main.ts"], {
         cwd: ADZUNA_DIR,
-        shell: true,
         stdio: ["ignore", "pipe", "pipe"],
         env: {
           ...process.env,
