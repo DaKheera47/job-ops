@@ -49,7 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        project: [orchestrator, gradcracker-extractor, ukvisajobs-extractor]
+        project:
+          - orchestrator
+          - adzuna-extractor
+          - gradcracker-extractor
+          - ukvisajobs-extractor
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
