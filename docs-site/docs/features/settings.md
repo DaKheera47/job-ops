@@ -86,6 +86,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Configure service accounts:
   - RxResume email/password
   - UKVisaJobs email/password
+  - Adzuna app ID/app key
   - Optional basic authentication for write operations
 
 ### Backup

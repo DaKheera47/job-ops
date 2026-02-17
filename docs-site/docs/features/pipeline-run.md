@@ -47,6 +47,7 @@ If values are edited manually, the UI shows **Custom**.
 
 - Country selection affects which sources are available.
 - UK-only sources are disabled for non-UK countries.
+- Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
 - Glassdoor can be enabled only when:
   - selected country supports Glassdoor
   - a **Glassdoor city** is set in Advanced settings
@@ -97,6 +98,11 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 - Verify selected country supports Glassdoor.
 - Set a Glassdoor city in Advanced settings.
+
+### Adzuna is not selectable
+
+- Set `Adzuna App ID` and `Adzuna App Key` in **Settings > Environment & Accounts**.
+- Verify the selected country is one of Adzuna's supported markets.
 
 ### Run takes longer than expected
 
