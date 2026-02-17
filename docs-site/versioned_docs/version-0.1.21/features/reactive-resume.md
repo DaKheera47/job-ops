@@ -74,6 +74,16 @@ At generation time:
 
 ## Setup and configuration
 
+### Account requirements (important)
+
+Before connecting Reactive Resume to JobOps:
+
+1. Create your account on **RxResume v4** at [v4.rxresu.me/auth/register](https://v4.rxresu.me/auth/register).
+2. Use a **native email + password** account (not Google/GitHub/other OAuth login).
+3. Generate/store that password so JobOps can use it for API login.
+
+JobOps cannot use OAuth-based RxResume logins for this integration.
+
 ### 1) Configure RxResume credentials
 
 Configure in Settings:
@@ -171,7 +181,8 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 ### No resumes appear in dropdown
 
-- Confirm credentials are valid for `rxresu.me`/your configured RxResume URL.
+- Confirm credentials are valid for [v4.rxresu.me](https://v4.rxresu.me)/your configured RxResume URL.
+- Confirm the RxResume account is a native email/password account (not OAuth-only).
 - Confirm the selected RxResume account actually has resumes.
 
 ### Project list is empty in settings

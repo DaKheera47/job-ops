@@ -664,7 +664,16 @@ export const OnboardingGate: React.FC = () => {
                   Link your RxResume account
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Used to export tailored PDFs.
+                  Used to export tailored PDFs. Create an account{" "}
+                  <a
+                    className="underline underline-offset-2"
+                    href="https://v4.rxresu.me/auth/register"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    here
+                  </a>{" "}
+                  on RxResume v4 using email/password.
                 </p>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
