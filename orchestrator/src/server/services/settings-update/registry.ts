@@ -164,6 +164,11 @@ export const settingsUpdateRegistry: Partial<{
       actions: [metadataPersistAction("ukvisajobsMaxJobs", value)],
     }),
   ),
+  adzunaMaxJobsPerTerm: singleAction(({ value }) =>
+    result({
+      actions: [metadataPersistAction("adzunaMaxJobsPerTerm", value)],
+    }),
+  ),
   gradcrackerMaxJobsPerTerm: singleAction(({ value }) =>
     result({
       actions: [metadataPersistAction("gradcrackerMaxJobsPerTerm", value)],
@@ -274,6 +279,26 @@ export const settingsUpdateRegistry: Partial<{
       actions: [
         persistAction("ukvisajobsPassword", normalized, () => {
           applyEnvValue("UKVISAJOBS_PASSWORD", normalized);
+        }),
+      ],
+    });
+  }),
+  adzunaAppId: singleAction(({ value }) => {
+    const normalized = toNormalizedStringOrNull(value);
+    return result({
+      actions: [
+        persistAction("adzunaAppId", normalized, () => {
+          applyEnvValue("ADZUNA_APP_ID", normalized);
+        }),
+      ],
+    });
+  }),
+  adzunaAppKey: singleAction(({ value }) => {
+    const normalized = toNormalizedStringOrNull(value);
+    return result({
+      actions: [
+        persistAction("adzunaAppKey", normalized, () => {
+          applyEnvValue("ADZUNA_APP_KEY", normalized);
         }),
       ],
     });

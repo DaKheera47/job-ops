@@ -52,15 +52,24 @@ describe("location-support", () => {
     expect(isSourceAllowedForCountry("linkedin", "worldwide")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "japan")).toBe(false);
+    expect(isSourceAllowedForCountry("adzuna", "united states")).toBe(true);
+    expect(isSourceAllowedForCountry("adzuna", "japan")).toBe(false);
   });
 
   it("filters incompatible sources while preserving compatible order", () => {
     expect(
       getCompatibleSourcesForCountry(
-        ["gradcracker", "indeed", "glassdoor", "ukvisajobs", "linkedin"],
+        [
+          "gradcracker",
+          "indeed",
+          "glassdoor",
+          "ukvisajobs",
+          "adzuna",
+          "linkedin",
+        ],
         "united states",
       ),
-    ).toEqual(["indeed", "glassdoor", "linkedin"]);
+    ).toEqual(["indeed", "glassdoor", "adzuna", "linkedin"]);
   });
 
   it("supports glassdoor only in explicitly supported countries", () => {

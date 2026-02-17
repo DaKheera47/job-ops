@@ -124,6 +124,29 @@ const GLASSDOOR_SUPPORTED_COUNTRIES = new Set(
     "vietnam",
   ].map((country) => normalizeCountryKey(country)),
 );
+const ADZUNA_SUPPORTED_COUNTRIES = new Set(
+  [
+    "united kingdom",
+    "united states",
+    "austria",
+    "australia",
+    "belgium",
+    "brazil",
+    "canada",
+    "switzerland",
+    "germany",
+    "spain",
+    "france",
+    "india",
+    "italy",
+    "mexico",
+    "netherlands",
+    "new zealand",
+    "poland",
+    "singapore",
+    "south africa",
+  ].map((country) => normalizeCountryKey(country)),
+);
 
 export function normalizeCountryKey(value: string | null | undefined): string {
   const normalized = value?.trim().toLowerCase() ?? "";
@@ -161,6 +184,8 @@ export function isSourceAllowedForCountry(
 ): boolean {
   if (UK_ONLY_SOURCES.has(source)) return isUkCountry(country);
   if (source === "glassdoor") return isGlassdoorCountry(country);
+  if (source === "adzuna")
+    return ADZUNA_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   return true;
 }
 

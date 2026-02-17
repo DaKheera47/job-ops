@@ -7,6 +7,7 @@ type SettingMetadata<T, Input = T | null | undefined> = {
 
 type SettingsConversionValueMap = {
   ukvisajobsMaxJobs: number;
+  adzunaMaxJobsPerTerm: number;
   gradcrackerMaxJobsPerTerm: number;
   searchTerms: string[];
   jobspyLocation: string;
@@ -96,6 +97,13 @@ function resolveWithEmptyStringFallback(args: {
 export const settingsConversionMetadata: SettingsConversionMetadata = {
   ukvisajobsMaxJobs: {
     defaultValue: () => 50,
+    parseOverride: parseIntOrNull,
+    serialize: serializeNullableNumber,
+    resolve: resolveWithNullishFallback,
+  },
+  adzunaMaxJobsPerTerm: {
+    defaultValue: () =>
+      parseInt(process.env.ADZUNA_MAX_JOBS_PER_TERM || "50", 10),
     parseOverride: parseIntOrNull,
     serialize: serializeNullableNumber,
     resolve: resolveWithNullishFallback,

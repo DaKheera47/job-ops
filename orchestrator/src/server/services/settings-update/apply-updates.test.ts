@@ -35,22 +35,36 @@ describe("applySettingsUpdates", () => {
     const plan = await applySettingsUpdates({
       model: "gpt-4o-mini",
       ukvisajobsMaxJobs: 42,
+      adzunaMaxJobsPerTerm: 25,
       searchTerms: ["backend", "platform"],
       llmProvider: "openai",
+      adzunaAppId: "app-id",
+      adzunaAppKey: "app-key",
     });
 
-    expect(settingsRepo.setSetting).toHaveBeenCalledTimes(4);
+    expect(settingsRepo.setSetting).toHaveBeenCalledTimes(7);
     expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
       expect.arrayContaining([
         ["model", "gpt-4o-mini"],
         ["ukvisajobsMaxJobs", "42"],
+        ["adzunaMaxJobsPerTerm", "25"],
         ["searchTerms", '["backend","platform"]'],
         ["llmProvider", "openai"],
+        ["adzunaAppId", "app-id"],
+        ["adzunaAppKey", "app-key"],
       ]),
     );
     expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
       "LLM_PROVIDER",
       "openai",
+    );
+    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
+      "ADZUNA_APP_ID",
+      "app-id",
+    );
+    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
+      "ADZUNA_APP_KEY",
+      "app-key",
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
   });
