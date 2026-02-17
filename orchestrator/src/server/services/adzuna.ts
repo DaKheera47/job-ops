@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
@@ -60,6 +60,11 @@ function resolveTsxCliPath(): string | null {
   } catch {
     return null;
   }
+}
+
+function canRunNpmCommand(): boolean {
+  const result = spawnSync("npm", ["--version"], { stdio: "ignore" });
+  return !result.error && result.status === 0;
 }
 
 function parseAdzunaProgressLine(line: string): AdzunaProgressEvent | null {
@@ -170,30 +175,38 @@ export async function runAdzuna(
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
       : ["web developer"];
-  if (!TSX_CLI_PATH) {
+  const useNpmCommand = canRunNpmCommand();
+  if (!useNpmCommand && !TSX_CLI_PATH) {
     return {
       success: false,
       jobs: [],
-      error: "Unable to resolve tsx runtime for Adzuna extractor",
+      error: "Unable to execute Adzuna extractor (npm/tsx unavailable)",
     };
   }
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const child = spawn(process.execPath, [TSX_CLI_PATH, "src/main.ts"], {
-        cwd: ADZUNA_DIR,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          JOBOPS_EMIT_PROGRESS: "1",
-          ADZUNA_APP_ID: appId,
-          ADZUNA_APP_KEY: appKey,
-          ADZUNA_COUNTRY: country,
-          ADZUNA_MAX_JOBS_PER_TERM: String(maxJobsPerTerm),
-          ADZUNA_SEARCH_TERMS: JSON.stringify(searchTerms),
-          ADZUNA_OUTPUT_JSON: DATASET_PATH,
-        },
-      });
+      const extractorEnv = {
+        ...process.env,
+        JOBOPS_EMIT_PROGRESS: "1",
+        ADZUNA_APP_ID: appId,
+        ADZUNA_APP_KEY: appKey,
+        ADZUNA_COUNTRY: country,
+        ADZUNA_MAX_JOBS_PER_TERM: String(maxJobsPerTerm),
+        ADZUNA_SEARCH_TERMS: JSON.stringify(searchTerms),
+        ADZUNA_OUTPUT_JSON: DATASET_PATH,
+      };
+      const child = useNpmCommand
+        ? spawn("npm", ["run", "start"], {
+            cwd: ADZUNA_DIR,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: extractorEnv,
+          })
+        : spawn(process.execPath, [TSX_CLI_PATH!, "src/main.ts"], {
+            cwd: ADZUNA_DIR,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: extractorEnv,
+          });
 
       const handleLine = (line: string, stream: NodeJS.WriteStream) => {
         const progressEvent = parseAdzunaProgressLine(line);
