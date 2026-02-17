@@ -35,6 +35,7 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
@@ -52,6 +53,7 @@ WORKDIR /app
 COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
+COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
@@ -97,6 +99,7 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
@@ -110,6 +113,7 @@ COPY --from=builder /app/orchestrator/dist ./orchestrator/dist
 COPY --from=builder /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
+COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
