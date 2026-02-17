@@ -202,11 +202,19 @@ export async function runAdzuna(
             stdio: ["ignore", "pipe", "pipe"],
             env: extractorEnv,
           })
-        : spawn(process.execPath, [TSX_CLI_PATH!, "src/main.ts"], {
-            cwd: ADZUNA_DIR,
-            stdio: ["ignore", "pipe", "pipe"],
-            env: extractorEnv,
-          });
+        : (() => {
+            const tsxCliPath = TSX_CLI_PATH;
+            if (!tsxCliPath) {
+              throw new Error(
+                "Unable to execute Adzuna extractor (npm/tsx unavailable)",
+              );
+            }
+            return spawn(process.execPath, [tsxCliPath, "src/main.ts"], {
+              cwd: ADZUNA_DIR,
+              stdio: ["ignore", "pipe", "pipe"],
+              env: extractorEnv,
+            });
+          })();
 
       const handleLine = (line: string, stream: NodeJS.WriteStream) => {
         const progressEvent = parseAdzunaProgressLine(line);

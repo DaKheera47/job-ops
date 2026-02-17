@@ -1,6 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { toNumberOrNull, toStringOrNull } from "job-ops-shared/utils/type-conversion";
+import {
+  toNumberOrNull,
+  toStringOrNull,
+} from "job-ops-shared/utils/type-conversion";
 
 const API_BASE = "https://api.adzuna.com/v1/api";
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
