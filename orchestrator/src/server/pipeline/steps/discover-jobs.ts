@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import {
   formatCountryLabel,
+  getAdzunaCountryCode,
   isSourceAllowedForCountry,
   normalizeCountryKey,
 } from "@shared/location-support.js";
@@ -12,28 +13,6 @@ import { runCrawler } from "../../services/crawler";
 import { runJobSpy } from "../../services/jobspy";
 import { runUkVisaJobs } from "../../services/ukvisajobs";
 import { progressHelpers, updateProgress } from "../progress";
-
-const ADZUNA_COUNTRY_CODE_BY_KEY: Record<string, string> = {
-  "united kingdom": "gb",
-  "united states": "us",
-  austria: "at",
-  australia: "au",
-  belgium: "be",
-  brazil: "br",
-  canada: "ca",
-  switzerland: "ch",
-  germany: "de",
-  spain: "es",
-  france: "fr",
-  india: "in",
-  italy: "it",
-  mexico: "mx",
-  netherlands: "nl",
-  "new zealand": "nz",
-  poland: "pl",
-  singapore: "sg",
-  "south africa": "za",
-};
 
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
@@ -180,7 +159,7 @@ export async function discoverJobsStep(args: {
       detail: "Adzuna: fetching jobs...",
     });
 
-    const adzunaCountryCode = ADZUNA_COUNTRY_CODE_BY_KEY[selectedCountry];
+    const adzunaCountryCode = getAdzunaCountryCode(selectedCountry);
     if (!adzunaCountryCode) {
       sourceErrors.push(
         `adzuna: unsupported country ${formatCountryLabel(selectedCountry)}`,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCountryLabel,
+  getAdzunaCountryCode,
   getCompatibleSourcesForCountry,
   isGlassdoorCountry,
   isSourceAllowedForCountry,
@@ -78,5 +79,11 @@ describe("location-support", () => {
     expect(isGlassdoorCountry("usa")).toBe(true);
     expect(isGlassdoorCountry("japan")).toBe(false);
     expect(isGlassdoorCountry("worldwide")).toBe(false);
+  });
+
+  it("maps adzuna country keys to adzuna api country codes", () => {
+    expect(getAdzunaCountryCode("united states")).toBe("us");
+    expect(getAdzunaCountryCode("UK")).toBe("gb");
+    expect(getAdzunaCountryCode("japan")).toBeNull();
   });
 });
