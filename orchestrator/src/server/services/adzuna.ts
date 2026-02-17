@@ -202,7 +202,7 @@ export async function runAdzuna(
             stdio: ["ignore", "pipe", "pipe"],
             env: extractorEnv,
           })
-        : spawn(process.execPath, [TSX_CLI_PATH!, "src/main.ts"], {
+        : spawn(process.execPath, [TSX_CLI_PATH ?? "", "src/main.ts"], {
             cwd: ADZUNA_DIR,
             stdio: ["ignore", "pipe", "pipe"],
             env: extractorEnv,
