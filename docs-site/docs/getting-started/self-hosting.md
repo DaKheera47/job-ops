@@ -67,6 +67,10 @@ In Google Cloud:
 - Restart container
 - Open Tracking Inbox and click **Connect Gmail**
 
+For a full step-by-step setup, exact scope requirements, and troubleshooting, see:
+
+- [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
+
 ## Email-to-job matching overview
 
 ```mermaid

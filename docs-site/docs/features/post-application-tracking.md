@@ -52,6 +52,10 @@ GMAIL_OAUTH_REDIRECT_URI=https://your-domain.com/oauth/gmail/callback
 
 Then connect in UI via **Tracking Inbox → Connect Gmail**.
 
+Detailed setup guide:
+
+- [Gmail OAuth Setup](/docs/next/getting-started/gmail-oauth-setup)
+
 ## Using the inbox
 
 - Review pending items in Tracking Inbox
@@ -67,6 +71,7 @@ Confidence interpretation:
 ## Privacy and security
 
 - Scope requested: `gmail.readonly`
+- Full scope: `https://www.googleapis.com/auth/gmail.readonly`
 - Minimal metadata sent for matching
 - Email data stays local in your instance
 
@@ -78,8 +83,8 @@ Confidence interpretation:
 | POST   | `/api/post-application/inbox/:id/approve` | Approve message       |
 | POST   | `/api/post-application/inbox/:id/deny`    | Ignore message        |
 | GET    | `/api/post-application/runs`              | List sync runs        |
-| POST   | `/api/post-application/gmail/connect`     | Start OAuth flow      |
-| GET    | `/api/post-application/gmail/callback`    | OAuth callback        |
+| GET    | `/api/post-application/providers/gmail/oauth/start` | Start OAuth flow |
+| POST   | `/api/post-application/providers/gmail/oauth/exchange` | Exchange OAuth code |
 
 ## Common issues
 

@@ -6,7 +6,10 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Getting Started",
-      items: ["getting-started/self-hosting"],
+      items: [
+        "getting-started/self-hosting",
+        "getting-started/gmail-oauth-setup",
+      ],
     },
     {
       type: "category",
@@ -51,6 +54,7 @@ const sidebars: SidebarsConfig = {
       label: "Self-Hosting & Ops",
       items: [
         "getting-started/self-hosting",
+        "getting-started/gmail-oauth-setup",
         "getting-started/database-backups",
         "troubleshooting/common-problems",
       ],
