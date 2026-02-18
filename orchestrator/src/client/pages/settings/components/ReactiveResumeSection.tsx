@@ -21,11 +21,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { clampInt } from "@/lib/utils";
-import { BaseResumeSelection } from "./BaseResumeSelection";
 import {
   toggleAiSelectable,
   toggleMustInclude,
 } from "../resume-projects-state";
+import { BaseResumeSelection } from "./BaseResumeSelection";
 
 type ReactiveResumeSectionProps = {
   rxResumeBaseResumeIdDraft: string | null;

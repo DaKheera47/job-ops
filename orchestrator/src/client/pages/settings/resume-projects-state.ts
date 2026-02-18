@@ -27,7 +27,11 @@ export function toggleMustInclude(args: {
   return {
     ...settings,
     lockedProjectIds: nextLocked,
-    maxProjects: clampInt(settings.maxProjects, nextLocked.length, maxProjectsTotal),
+    maxProjects: clampInt(
+      settings.maxProjects,
+      nextLocked.length,
+      maxProjectsTotal,
+    ),
   };
 }
 
