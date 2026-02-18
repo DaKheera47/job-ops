@@ -60,8 +60,7 @@ For details, see [Ghostwriter](/docs/next/features/ghostwriter).
 ### Opening documentation from the sidebar
 
 1. Open the sidebar menu.
-2. In the footer section under `Version <build>`, click **Documentation**.
-3. The docs open in a new browser tab. The external-link icon indicates this behavior.
+2. In the footer section under `Version <build>`, click **Documentation**, which opens the locally hosted docs in a new tab.
 
 ### Generating PDFs
 

@@ -57,12 +57,6 @@ Ghostwriter is available in `discovered` and `ready` job views.
 
 For details, see [Ghostwriter](/docs/next/features/ghostwriter).
 
-### Opening documentation from the sidebar
-
-1. Open the sidebar menu.
-2. In the footer section under `Version <build>`, click **Documentation**.
-3. The docs open in a new browser tab. The external-link icon indicates this behavior.
-
 ### Generating PDFs
 
 PDF generation uses:
