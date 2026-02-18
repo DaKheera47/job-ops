@@ -4,9 +4,7 @@
     {
       "type": "category",
       "label": "Getting Started",
-      "items": [
-        "getting-started/self-hosting"
-      ]
+      "items": ["getting-started/self-hosting"]
     },
     {
       "type": "category",
@@ -58,17 +56,12 @@
     {
       "type": "category",
       "label": "Troubleshooting",
-      "items": [
-        "troubleshooting/common-problems"
-      ]
+      "items": ["troubleshooting/common-problems"]
     },
     {
       "type": "category",
       "label": "Reference / FAQ",
-      "items": [
-        "reference/faq",
-        "reference/documentation-style-guide"
-      ]
+      "items": ["reference/faq", "reference/documentation-style-guide"]
     }
   ]
 }
