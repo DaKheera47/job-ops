@@ -1,5 +1,5 @@
 import type { ResumeProjectCatalogItem } from "@shared/types.js";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import type React from "react";
 import {
   Accordion,
@@ -28,6 +28,13 @@ interface TailoringSectionsProps {
   disableInputs: boolean;
   onSummaryChange: (value: string) => void;
   onHeadlineChange: (value: string) => void;
+  onRevertSummary: () => void;
+  onRevertHeadline: () => void;
+  onRevertSkills: () => void;
+  canRevertSummary: boolean;
+  canRevertHeadline: boolean;
+  canRevertSkills: boolean;
+  revertDisabledReason?: string | null;
   onDescriptionChange: (value: string) => void;
   onSkillGroupOpenChange: (value: string) => void;
   onAddSkillGroup: () => void;
@@ -63,6 +70,13 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   disableInputs,
   onSummaryChange,
   onHeadlineChange,
+  onRevertSummary,
+  onRevertHeadline,
+  onRevertSkills,
+  canRevertSummary,
+  canRevertHeadline,
+  canRevertSkills,
+  revertDisabledReason = null,
   onDescriptionChange,
   onSkillGroupOpenChange,
   onAddSkillGroup,
@@ -98,6 +112,24 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
       <AccordionItem value="summary" className={sectionClass}>
         <AccordionTrigger className={triggerClass}>Summary</AccordionTrigger>
         <AccordionContent className="px-3 pb-3 pt-1">
+          <div className="mb-2 flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              onClick={onRevertSummary}
+              disabled={disableInputs || !canRevertSummary}
+              title={
+                !canRevertSummary
+                  ? (revertDisabledReason ?? undefined)
+                  : undefined
+              }
+            >
+              <RotateCcw className="mr-1 h-3.5 w-3.5" />
+              Revert to original
+            </Button>
+          </div>
           <label htmlFor="tailor-summary-edit" className="sr-only">
             Tailored Summary
           </label>
@@ -115,6 +147,24 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
       <AccordionItem value="headline" className={sectionClass}>
         <AccordionTrigger className={triggerClass}>Headline</AccordionTrigger>
         <AccordionContent className="px-3 pb-3 pt-1">
+          <div className="mb-2 flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              onClick={onRevertHeadline}
+              disabled={disableInputs || !canRevertHeadline}
+              title={
+                !canRevertHeadline
+                  ? (revertDisabledReason ?? undefined)
+                  : undefined
+              }
+            >
+              <RotateCcw className="mr-1 h-3.5 w-3.5" />
+              Revert to original
+            </Button>
+          </div>
           <label htmlFor="tailor-headline-edit" className="sr-only">
             Tailored Headline
           </label>
@@ -136,6 +186,22 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         </AccordionTrigger>
         <AccordionContent className="px-3 pb-3 pt-1">
           <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2 text-[11px]"
+              onClick={onRevertSkills}
+              disabled={disableInputs || !canRevertSkills}
+              title={
+                !canRevertSkills
+                  ? (revertDisabledReason ?? undefined)
+                  : undefined
+              }
+            >
+              <RotateCcw className="mr-1 h-3.5 w-3.5" />
+              Revert to original
+            </Button>
             <Button
               type="button"
               size="sm"

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { parseTailoredSkills } from "./tailoring-utils";
+import {
+  getOriginalHeadline,
+  getOriginalSkills,
+  getOriginalSummary,
+  parseTailoredSkills,
+} from "./tailoring-utils";
 
 describe("parseTailoredSkills", () => {
   it("parses object-based tailored skills payload", () => {
@@ -43,5 +48,46 @@ describe("parseTailoredSkills", () => {
     expect(parseTailoredSkills(JSON.stringify({ name: "Backend" }))).toEqual(
       [],
     );
+  });
+
+  it("extracts original summary and headline from profile basics", () => {
+    const profile = {
+      basics: {
+        summary: " Base summary ",
+        label: " Base headline ",
+      },
+    };
+
+    expect(getOriginalSummary(profile)).toBe("Base summary");
+    expect(getOriginalHeadline(profile)).toBe("Base headline");
+  });
+
+  it("extracts original skills from profile skills items", () => {
+    const profile = {
+      sections: {
+        skills: {
+          items: [
+            {
+              id: "1",
+              name: "Backend",
+              description: "",
+              level: 0,
+              keywords: [" Node.js ", "TypeScript"],
+              visible: true,
+            },
+          ],
+        },
+      },
+    };
+
+    expect(getOriginalSkills(profile)).toEqual([
+      { name: "Backend", keywords: ["Node.js", "TypeScript"] },
+    ]);
+  });
+
+  it("returns defaults when profile sections are missing", () => {
+    expect(getOriginalSummary(null)).toBe("");
+    expect(getOriginalHeadline(null)).toBe("");
+    expect(getOriginalSkills(null)).toEqual([]);
   });
 });

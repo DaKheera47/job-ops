@@ -3,6 +3,7 @@ import type { Job } from "@shared/types.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
+import { useProfile } from "../../hooks/useProfile";
 import { _resetTracerReadinessCache } from "../../hooks/useTracerReadiness";
 import { TailorMode } from "./TailorMode";
 
@@ -11,6 +12,10 @@ vi.mock("../../api", () => ({
   updateJob: vi.fn(),
   summarizeJob: vi.fn(),
   getTracerReadiness: vi.fn(),
+}));
+
+vi.mock("../../hooks/useProfile", () => ({
+  useProfile: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -52,6 +57,32 @@ describe("TailorMode", () => {
       checkedAt: Date.now(),
       lastSuccessAt: Date.now(),
       reason: null,
+    });
+    vi.mocked(useProfile).mockReturnValue({
+      profile: {
+        basics: {
+          summary: "Original base summary",
+          label: "Original base headline",
+        },
+        sections: {
+          skills: {
+            items: [
+              {
+                id: "s1",
+                name: "Backend",
+                description: "",
+                level: 0,
+                keywords: ["Node.js", "TypeScript"],
+                visible: true,
+              },
+            ],
+          },
+        },
+      },
+      error: null,
+      isLoading: false,
+      personName: "Resume",
+      refreshProfile: vi.fn(),
     });
   });
 
@@ -269,5 +300,42 @@ describe("TailorMode", () => {
     ensureAccordionOpen("Backend");
     expect(screen.getByDisplayValue("Backend")).toBeInTheDocument();
     expect(screen.getByDisplayValue("Node.js, Kafka")).toBeInTheDocument();
+  });
+
+  it("reverts summary/headline/skills to base CV values", async () => {
+    render(
+      <TailorMode
+        job={createJob()}
+        onBack={vi.fn()}
+        onFinalize={vi.fn()}
+        isFinalizing={false}
+      />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    ensureAccordionOpen("Summary");
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Revert to original" })[0],
+    );
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Original base summary",
+    );
+
+    ensureAccordionOpen("Headline");
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Revert to original" })[1],
+    );
+    expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+      "Original base headline",
+    );
+
+    ensureAccordionOpen("Tailored Skills");
+    fireEvent.click(
+      screen.getAllByRole("button", { name: "Revert to original" })[2],
+    );
+    ensureAccordionOpen("Backend");
+    expect(screen.getByDisplayValue("Node.js, TypeScript")).toBeInTheDocument();
   });
 });

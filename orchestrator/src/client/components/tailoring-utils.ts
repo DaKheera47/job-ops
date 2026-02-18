@@ -1,3 +1,5 @@
+import type { ResumeProfile } from "@shared/types";
+
 export interface TailoredSkillGroup {
   name: string;
   keywords: string[];
@@ -92,4 +94,43 @@ export function fromEditableSkillGroups(
   }
 
   return normalized;
+}
+
+export function getOriginalSummary(profile: ResumeProfile | null): string {
+  if (!profile) return "";
+  return profile.basics?.summary?.trim() ?? "";
+}
+
+export function getOriginalHeadline(profile: ResumeProfile | null): string {
+  if (!profile) return "";
+  return profile.basics?.label?.trim() ?? "";
+}
+
+export function getOriginalSkills(
+  profile: ResumeProfile | null,
+): TailoredSkillGroup[] {
+  if (!profile) return [];
+
+  const items = profile.sections?.skills?.items;
+  if (!Array.isArray(items)) return [];
+
+  const groups: TailoredSkillGroup[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const name =
+      typeof item.name === "string"
+        ? item.name.trim()
+        : typeof item.description === "string"
+          ? item.description.trim()
+          : "";
+    const keywordsRaw = Array.isArray(item.keywords) ? item.keywords : [];
+    const keywords = keywordsRaw
+      .filter((value: unknown): value is string => typeof value === "string")
+      .map((value: string) => value.trim())
+      .filter(Boolean);
+    if (!name && keywords.length === 0) continue;
+    groups.push({ name, keywords });
+  }
+
+  return groups;
 }

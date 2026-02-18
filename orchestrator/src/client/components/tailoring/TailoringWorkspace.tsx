@@ -6,7 +6,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import * as api from "../../api";
+import { useProfile } from "../../hooks/useProfile";
 import { useTracerReadiness } from "../../hooks/useTracerReadiness";
+import {
+  fromEditableSkillGroups,
+  getOriginalHeadline,
+  getOriginalSkills,
+  getOriginalSummary,
+  serializeTailoredSkills,
+  toEditableSkillGroups,
+} from "../tailoring-utils";
 import { canFinalizeTailoring } from "./rules";
 import { TailoringSections } from "./TailoringSections";
 import { useTailoringDraft } from "./useTailoringDraft";
@@ -55,6 +64,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     tracerLinksEnabled,
     setTracerLinksEnabled,
     skillsDraft,
+    setSkillsDraft,
     openSkillGroupId,
     setOpenSkillGroupId,
     skillsJson,
@@ -73,8 +83,24 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const { profile, error: profileError } = useProfile();
   const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
     useTracerReadiness();
+
+  const originalSummary = useMemo(() => getOriginalSummary(profile), [profile]);
+  const originalHeadline = useMemo(
+    () => getOriginalHeadline(profile),
+    [profile],
+  );
+  const originalSkillsDraft = useMemo(
+    () => toEditableSkillGroups(getOriginalSkills(profile)),
+    [profile],
+  );
+  const originalSkillsJson = useMemo(
+    () => serializeTailoredSkills(fromEditableSkillGroups(originalSkillsDraft)),
+    [originalSkillsDraft],
+  );
+  const canUseOriginalValues = !profileError;
 
   const tracerEnableBlocked =
     !tracerLinksEnabled && !tracerReadiness?.canEnable;
@@ -233,6 +259,18 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     tailorProps.onFinalize();
   }, [tailorProps, isDirty, persistCurrent]);
 
+  const handleRevertSummary = useCallback(() => {
+    setSummary(originalSummary);
+  }, [originalSummary, setSummary]);
+
+  const handleRevertHeadline = useCallback(() => {
+    setHeadline(originalHeadline);
+  }, [originalHeadline, setHeadline]);
+
+  const handleRevertSkills = useCallback(() => {
+    setSkillsDraft(originalSkillsDraft);
+  }, [originalSkillsDraft, setSkillsDraft]);
+
   const disableInputs = editorProps
     ? isSummarizing || isGeneratingPdf || isSaving
     : isGenerating || Boolean(tailorProps?.isFinalizing) || isSaving;
@@ -296,6 +334,21 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             disableInputs={disableInputs}
             onSummaryChange={setSummary}
             onHeadlineChange={setHeadline}
+            onRevertSummary={handleRevertSummary}
+            onRevertHeadline={handleRevertHeadline}
+            onRevertSkills={handleRevertSkills}
+            canRevertSummary={
+              canUseOriginalValues && summary !== originalSummary
+            }
+            canRevertHeadline={
+              canUseOriginalValues && headline !== originalHeadline
+            }
+            canRevertSkills={
+              canUseOriginalValues && skillsJson !== originalSkillsJson
+            }
+            revertDisabledReason={
+              canUseOriginalValues ? null : "Original base CV unavailable."
+            }
             onDescriptionChange={setJobDescription}
             onSkillGroupOpenChange={setOpenSkillGroupId}
             onAddSkillGroup={handleAddSkillGroup}
@@ -388,6 +441,19 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           disableInputs={disableInputs}
           onSummaryChange={setSummary}
           onHeadlineChange={setHeadline}
+          onRevertSummary={handleRevertSummary}
+          onRevertHeadline={handleRevertHeadline}
+          onRevertSkills={handleRevertSkills}
+          canRevertSummary={canUseOriginalValues && summary !== originalSummary}
+          canRevertHeadline={
+            canUseOriginalValues && headline !== originalHeadline
+          }
+          canRevertSkills={
+            canUseOriginalValues && skillsJson !== originalSkillsJson
+          }
+          revertDisabledReason={
+            canUseOriginalValues ? null : "Original base CV unavailable."
+          }
           onDescriptionChange={setJobDescription}
           onSkillGroupOpenChange={setOpenSkillGroupId}
           onAddSkillGroup={handleAddSkillGroup}

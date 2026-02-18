@@ -224,6 +224,7 @@ export function useTailoringDraft({
     selectedIds,
     selectedIdsCsv,
     skillsDraft,
+    setSkillsDraft,
     openSkillGroupId,
     setOpenSkillGroupId,
     skillsJson,
