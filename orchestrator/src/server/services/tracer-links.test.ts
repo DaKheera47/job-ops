@@ -251,4 +251,32 @@ describe("tracer-links service", () => {
       }),
     );
   });
+
+  it("classifies browser-like bot user agents as bot family", async () => {
+    vi.mocked(tracerLinksRepo.findActiveTracerLinkByToken).mockResolvedValue({
+      id: "link-2",
+      token: "tok-bot",
+      jobId: "job-1",
+      destinationUrl: "https://github.com/example",
+      sourcePath: "sections.profiles.items[0].url.href",
+      sourceLabel: "GitHub",
+    });
+
+    await resolveTracerRedirect({
+      token: "tok-bot",
+      requestId: "req-bot",
+      ip: "203.0.113.13",
+      userAgent: "Mozilla/5.0 Chrome/126.0.0.0 LinkedInBot",
+      referrer: null,
+    });
+
+    expect(
+      vi.mocked(tracerLinksRepo.insertTracerClickEvent),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isLikelyBot: true,
+        uaFamily: "bot",
+      }),
+    );
+  });
 });

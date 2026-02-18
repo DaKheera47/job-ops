@@ -306,12 +306,12 @@ function classifyDeviceType(userAgent: string): string {
 
 function classifyUaFamily(userAgent: string): string {
   const ua = userAgent.toLowerCase();
+  if (BOT_UA_PATTERN.test(ua)) return "bot";
   if (ua.includes("edg/")) return "edge";
   if (ua.includes("opr/") || ua.includes("opera")) return "opera";
   if (ua.includes("chrome/")) return "chrome";
   if (ua.includes("firefox/")) return "firefox";
   if (ua.includes("safari/")) return "safari";
-  if (BOT_UA_PATTERN.test(ua)) return "bot";
   return "unknown";
 }
 
