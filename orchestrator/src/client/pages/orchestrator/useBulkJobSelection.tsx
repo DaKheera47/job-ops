@@ -125,7 +125,6 @@ export function useBulkJobSelection({
 
       const selectedAtStartSet = new Set(selectedAtStart);
       let progressToastId: string | number | undefined;
-      let isProgressToastHidden = false;
       let finalResult: BulkJobActionResponse | null = null;
       let streamError: string | null = null;
       let latestProgress = {
@@ -142,8 +141,6 @@ export function useBulkJobSelection({
       };
 
       const upsertProgressToast = () => {
-        if (isProgressToastHidden) return;
-
         progressToastId = toast.loading(getProgressTitle(), {
           description: (
             <BulkActionProgressToast
@@ -153,15 +150,6 @@ export function useBulkJobSelection({
               failed={latestProgress.failed}
             />
           ),
-          cancel: {
-            label: "Hide",
-            onClick: () => {
-              isProgressToastHidden = true;
-              if (progressToastId !== undefined) {
-                toast.dismiss(progressToastId);
-              }
-            },
-          },
           ...(progressToastId !== undefined ? { id: progressToastId } : {}),
           duration: Number.POSITIVE_INFINITY,
         });
@@ -267,7 +255,7 @@ export function useBulkJobSelection({
           error instanceof Error ? error.message : "Failed to run bulk action";
         toast.error(message);
       } finally {
-        if (!isProgressToastHidden && progressToastId !== undefined) {
+        if (progressToastId !== undefined) {
           toast.dismiss(progressToastId);
         }
         setBulkActionInFlight(null);

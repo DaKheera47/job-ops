@@ -200,6 +200,8 @@ describe("useBulkJobSelection", () => {
     });
 
     expect(toast.loading).toHaveBeenCalled();
+    const firstLoadingCall = vi.mocked(toast.loading).mock.calls[0];
+    expect(firstLoadingCall[1]).not.toHaveProperty("cancel");
 
     act(() => {
       result.current.toggleSelectJob("job-2");
