@@ -560,8 +560,9 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
     !clientDisconnected && !res.writableEnded && !res.destroyed;
 
   const sendEvent = (event: BulkJobActionStreamEvent) => {
-    if (!isResponseWritable()) return;
+    if (!isResponseWritable()) return false;
     writeSseData(res, event);
+    return true;
   };
 
   try {
@@ -576,6 +577,18 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
     });
 
     for (const jobId of dedupedJobIds) {
+      if (!isResponseWritable()) {
+        logger.info("Client disconnected; stopping bulk job stream", {
+          route: "POST /api/jobs/bulk-actions/stream",
+          action,
+          requested,
+          succeeded,
+          failed,
+          requestId,
+        });
+        break;
+      }
+
       const result = await executeBulkActionForJob(action, jobId);
       results.push(result);
       if (result.ok) succeeded += 1;
