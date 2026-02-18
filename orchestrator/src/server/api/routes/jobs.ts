@@ -566,15 +566,27 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
   };
 
   try {
-    sendEvent({
-      type: "started",
-      action,
-      requested,
-      completed: 0,
-      succeeded: 0,
-      failed: 0,
-      requestId,
-    });
+    if (
+      !sendEvent({
+        type: "started",
+        action,
+        requested,
+        completed: 0,
+        succeeded: 0,
+        failed: 0,
+        requestId,
+      })
+    ) {
+      logger.info("Client disconnected before bulk stream started", {
+        route: "POST /api/jobs/bulk-actions/stream",
+        action,
+        requested,
+        succeeded,
+        failed,
+        requestId,
+      });
+      return;
+    }
 
     for (const jobId of dedupedJobIds) {
       if (!isResponseWritable()) {
@@ -594,16 +606,28 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       if (result.ok) succeeded += 1;
       else failed += 1;
 
-      sendEvent({
-        type: "progress",
-        action,
-        requested,
-        completed: results.length,
-        succeeded,
-        failed,
-        result,
-        requestId,
-      });
+      if (
+        !sendEvent({
+          type: "progress",
+          action,
+          requested,
+          completed: results.length,
+          succeeded,
+          failed,
+          result,
+          requestId,
+        })
+      ) {
+        logger.info("Client disconnected while writing bulk stream progress", {
+          route: "POST /api/jobs/bulk-actions/stream",
+          action,
+          requested,
+          succeeded,
+          failed,
+          requestId,
+        });
+        break;
+      }
     }
 
     sendEvent({
