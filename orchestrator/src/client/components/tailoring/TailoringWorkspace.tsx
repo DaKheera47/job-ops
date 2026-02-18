@@ -1,6 +1,7 @@
 import type { Job } from "@shared/types.js";
 import { ArrowLeft, Check, FileText, Loader2, Sparkles } from "lucide-react";
 import type React from "react";
+import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ import {
   getOriginalHeadline,
   getOriginalSkills,
   getOriginalSummary,
+  parseTailoredSkills,
   serializeTailoredSkills,
   toEditableSkillGroups,
 } from "../tailoring-utils";
@@ -43,6 +45,7 @@ interface TailoringWorkspaceTailorProps extends TailoringWorkspaceBaseProps {
 type TailoringWorkspaceProps =
   | TailoringWorkspaceEditorProps
   | TailoringWorkspaceTailorProps;
+type TailoringSectionsProps = ComponentProps<typeof TailoringSections>;
 
 export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   props,
@@ -101,6 +104,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     [originalSkillsDraft],
   );
   const canUseOriginalValues = !profileError;
+  const [aiSummaryDraft, setAiSummaryDraft] = useState(summary);
+  const [aiHeadlineDraft, setAiHeadlineDraft] = useState(headline);
+  const [aiSkillsJsonDraft, setAiSkillsJsonDraft] = useState(skillsJson);
 
   const tracerEnableBlocked =
     !tracerLinksEnabled && !tracerReadiness?.canEnable;
@@ -175,6 +181,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
+      setAiSummaryDraft(updatedJob.tailoredSummary ?? "");
+      setAiHeadlineDraft(updatedJob.tailoredHeadline ?? "");
+      setAiSkillsJsonDraft(updatedJob.tailoredSkills ?? "");
       toast.success("AI Summary & Projects generated");
       await editorProps.onUpdate();
     } catch (error) {
@@ -198,6 +207,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
+      setAiSummaryDraft(updatedJob.tailoredSummary ?? "");
+      setAiHeadlineDraft(updatedJob.tailoredHeadline ?? "");
+      setAiSkillsJsonDraft(updatedJob.tailoredSkills ?? "");
 
       toast.success("Draft generated with AI", {
         description: "Review and edit before finalizing.",
@@ -259,23 +271,116 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     tailorProps.onFinalize();
   }, [tailorProps, isDirty, persistCurrent]);
 
-  const handleRevertSummary = useCallback(() => {
+  const handleUndoSummary = useCallback(() => {
     setSummary(originalSummary);
   }, [originalSummary, setSummary]);
 
-  const handleRevertHeadline = useCallback(() => {
+  const handleUndoHeadline = useCallback(() => {
     setHeadline(originalHeadline);
   }, [originalHeadline, setHeadline]);
 
-  const handleRevertSkills = useCallback(() => {
+  const handleUndoSkills = useCallback(() => {
     setSkillsDraft(originalSkillsDraft);
   }, [originalSkillsDraft, setSkillsDraft]);
+
+  const handleRedoSummary = useCallback(() => {
+    setSummary(aiSummaryDraft);
+  }, [aiSummaryDraft, setSummary]);
+
+  const handleRedoHeadline = useCallback(() => {
+    setHeadline(aiHeadlineDraft);
+  }, [aiHeadlineDraft, setHeadline]);
+
+  const handleRedoSkills = useCallback(() => {
+    setSkillsDraft(
+      toEditableSkillGroups(parseTailoredSkills(aiSkillsJsonDraft)),
+    );
+  }, [aiSkillsJsonDraft, setSkillsDraft]);
 
   const disableInputs = editorProps
     ? isSummarizing || isGeneratingPdf || isSaving
     : isGenerating || Boolean(tailorProps?.isFinalizing) || isSaving;
 
   const canFinalize = canFinalizeTailoring(summary);
+  const tailoringSectionsProps = useMemo<TailoringSectionsProps>(
+    () => ({
+      catalog,
+      isCatalogLoading,
+      summary,
+      headline,
+      jobDescription,
+      skillsDraft,
+      selectedIds,
+      tracerLinksEnabled,
+      tracerEnableBlocked,
+      tracerEnableBlockedReason,
+      tracerReadinessChecking: isTracerReadinessChecking,
+      openSkillGroupId,
+      disableInputs,
+      onSummaryChange: setSummary,
+      onHeadlineChange: setHeadline,
+      onUndoSummary: handleUndoSummary,
+      onUndoHeadline: handleUndoHeadline,
+      onUndoSkills: handleUndoSkills,
+      onRedoSummary: handleRedoSummary,
+      onRedoHeadline: handleRedoHeadline,
+      onRedoSkills: handleRedoSkills,
+      canUndoSummary: canUseOriginalValues && summary !== originalSummary,
+      canUndoHeadline: canUseOriginalValues && headline !== originalHeadline,
+      canUndoSkills: canUseOriginalValues && skillsJson !== originalSkillsJson,
+      canRedoSummary: summary !== aiSummaryDraft,
+      canRedoHeadline: headline !== aiHeadlineDraft,
+      canRedoSkills: skillsJson !== aiSkillsJsonDraft,
+      undoDisabledReason: canUseOriginalValues
+        ? null
+        : "Original base CV unavailable.",
+      onDescriptionChange: setJobDescription,
+      onSkillGroupOpenChange: setOpenSkillGroupId,
+      onAddSkillGroup: handleAddSkillGroup,
+      onUpdateSkillGroup: handleUpdateSkillGroup,
+      onRemoveSkillGroup: handleRemoveSkillGroup,
+      onToggleProject: handleToggleProject,
+      onTracerLinksEnabledChange: setTracerLinksEnabled,
+    }),
+    [
+      catalog,
+      isCatalogLoading,
+      summary,
+      headline,
+      jobDescription,
+      skillsDraft,
+      selectedIds,
+      tracerLinksEnabled,
+      tracerEnableBlocked,
+      tracerEnableBlockedReason,
+      isTracerReadinessChecking,
+      openSkillGroupId,
+      disableInputs,
+      setSummary,
+      setHeadline,
+      handleUndoSummary,
+      handleUndoHeadline,
+      handleUndoSkills,
+      handleRedoSummary,
+      handleRedoHeadline,
+      handleRedoSkills,
+      canUseOriginalValues,
+      originalSummary,
+      originalHeadline,
+      skillsJson,
+      originalSkillsJson,
+      aiSummaryDraft,
+      aiHeadlineDraft,
+      aiSkillsJsonDraft,
+      setJobDescription,
+      setOpenSkillGroupId,
+      handleAddSkillGroup,
+      handleUpdateSkillGroup,
+      handleRemoveSkillGroup,
+      handleToggleProject,
+      setTracerLinksEnabled,
+    ],
+  );
 
   if (editorProps) {
     return (
@@ -318,45 +423,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         </div>
 
         <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
-          <TailoringSections
-            catalog={catalog}
-            isCatalogLoading={isCatalogLoading}
-            summary={summary}
-            headline={headline}
-            jobDescription={jobDescription}
-            skillsDraft={skillsDraft}
-            selectedIds={selectedIds}
-            tracerLinksEnabled={tracerLinksEnabled}
-            tracerEnableBlocked={tracerEnableBlocked}
-            tracerEnableBlockedReason={tracerEnableBlockedReason}
-            tracerReadinessChecking={isTracerReadinessChecking}
-            openSkillGroupId={openSkillGroupId}
-            disableInputs={disableInputs}
-            onSummaryChange={setSummary}
-            onHeadlineChange={setHeadline}
-            onRevertSummary={handleRevertSummary}
-            onRevertHeadline={handleRevertHeadline}
-            onRevertSkills={handleRevertSkills}
-            canRevertSummary={
-              canUseOriginalValues && summary !== originalSummary
-            }
-            canRevertHeadline={
-              canUseOriginalValues && headline !== originalHeadline
-            }
-            canRevertSkills={
-              canUseOriginalValues && skillsJson !== originalSkillsJson
-            }
-            revertDisabledReason={
-              canUseOriginalValues ? null : "Original base CV unavailable."
-            }
-            onDescriptionChange={setJobDescription}
-            onSkillGroupOpenChange={setOpenSkillGroupId}
-            onAddSkillGroup={handleAddSkillGroup}
-            onUpdateSkillGroup={handleUpdateSkillGroup}
-            onRemoveSkillGroup={handleRemoveSkillGroup}
-            onToggleProject={handleToggleProject}
-            onTracerLinksEnabledChange={setTracerLinksEnabled}
-          />
+          <TailoringSections {...tailoringSectionsProps} />
 
           <div className="flex justify-end border-t pt-4">
             <Button
@@ -425,43 +492,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           </Button>
         </div>
 
-        <TailoringSections
-          catalog={catalog}
-          isCatalogLoading={isCatalogLoading}
-          summary={summary}
-          headline={headline}
-          jobDescription={jobDescription}
-          skillsDraft={skillsDraft}
-          selectedIds={selectedIds}
-          tracerLinksEnabled={tracerLinksEnabled}
-          tracerEnableBlocked={tracerEnableBlocked}
-          tracerEnableBlockedReason={tracerEnableBlockedReason}
-          tracerReadinessChecking={isTracerReadinessChecking}
-          openSkillGroupId={openSkillGroupId}
-          disableInputs={disableInputs}
-          onSummaryChange={setSummary}
-          onHeadlineChange={setHeadline}
-          onRevertSummary={handleRevertSummary}
-          onRevertHeadline={handleRevertHeadline}
-          onRevertSkills={handleRevertSkills}
-          canRevertSummary={canUseOriginalValues && summary !== originalSummary}
-          canRevertHeadline={
-            canUseOriginalValues && headline !== originalHeadline
-          }
-          canRevertSkills={
-            canUseOriginalValues && skillsJson !== originalSkillsJson
-          }
-          revertDisabledReason={
-            canUseOriginalValues ? null : "Original base CV unavailable."
-          }
-          onDescriptionChange={setJobDescription}
-          onSkillGroupOpenChange={setOpenSkillGroupId}
-          onAddSkillGroup={handleAddSkillGroup}
-          onUpdateSkillGroup={handleUpdateSkillGroup}
-          onRemoveSkillGroup={handleRemoveSkillGroup}
-          onToggleProject={handleToggleProject}
-          onTracerLinksEnabledChange={setTracerLinksEnabled}
-        />
+        <TailoringSections {...tailoringSectionsProps} />
       </div>
 
       <Separator className="my-4 opacity-50" />

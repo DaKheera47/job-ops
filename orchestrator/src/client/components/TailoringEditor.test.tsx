@@ -309,33 +309,38 @@ describe("TailoringEditor", () => {
     );
   });
 
-  it("reverts summary/headline/skills to base CV values", async () => {
+  it("supports undo to template and redo to AI draft", async () => {
     render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
     await waitFor(() =>
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
     ensureAccordionOpen("Summary");
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Revert to original" })[0],
-    );
+    fireEvent.click(screen.getAllByLabelText("Undo to template")[0]);
     expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
       "Original base summary",
     );
+    fireEvent.click(screen.getAllByLabelText("Redo to AI draft")[0]);
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Saved summary",
+    );
 
     ensureAccordionOpen("Headline");
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Revert to original" })[1],
-    );
+    fireEvent.click(screen.getAllByLabelText("Undo to template")[1]);
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
       "Original base headline",
     );
+    fireEvent.click(screen.getAllByLabelText("Redo to AI draft")[1]);
+    expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
+      "Saved headline",
+    );
 
     ensureAccordionOpen("Tailored Skills");
-    fireEvent.click(
-      screen.getAllByRole("button", { name: "Revert to original" })[2],
-    );
+    fireEvent.click(screen.getAllByLabelText("Undo to template")[2]);
     ensureAccordionOpen("Backend");
     expect(screen.getByDisplayValue("Node.js, TypeScript")).toBeInTheDocument();
+    fireEvent.click(screen.getAllByLabelText("Redo to AI draft")[2]);
+    ensureAccordionOpen("Core");
+    expect(screen.getByDisplayValue("React, TypeScript")).toBeInTheDocument();
   });
 });
