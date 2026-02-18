@@ -221,7 +221,7 @@ export async function generatePdf(
     try {
       let selectedSet: Set<string>;
 
-      if (selectedProjectIds) {
+      if (selectedProjectIds !== null && selectedProjectIds !== undefined) {
         selectedSet = new Set(
           selectedProjectIds
             .split(",")

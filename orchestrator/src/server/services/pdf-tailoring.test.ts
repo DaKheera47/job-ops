@@ -274,7 +274,7 @@ describe("PDF Service Tailoring Logic", () => {
   });
 
   it("keeps projects section visible when selected project list is explicitly empty", async () => {
-    await generatePdf("job-empty-projects", {}, "desc", "base.json", ", ");
+    await generatePdf("job-empty-projects", {}, "desc", "base.json", "");
 
     expect(mockRxResumeClient.create).toHaveBeenCalled();
     const savedResumeJson = mockRxResumeClient.getLastCreateData();
