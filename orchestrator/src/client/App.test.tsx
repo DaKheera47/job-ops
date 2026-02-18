@@ -1,12 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { trackEvent } from "@/lib/analytics";
 import { App } from "./App";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 
 vi.mock("./hooks/useDemoInfo", () => ({
   useDemoInfo: vi.fn(),
+}));
+
+vi.mock("@/lib/analytics", () => ({
+  trackEvent: vi.fn(),
 }));
 
 vi.mock("react-transition-group", () => ({
@@ -63,7 +68,7 @@ describe("App demo banner", () => {
     vi.clearAllMocks();
   });
 
-  it("shows a Star repo link in demo mode", () => {
+  it("shows a Star repo link in demo mode and tracks click", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: true,
       resetCadenceHours: 6,
@@ -79,11 +84,15 @@ describe("App demo banner", () => {
       </MemoryRouter>,
     );
 
-    const link = screen.getByRole("link", { name: /star repo/i });
+    const link = screen.getByRole("link", { name: /star .*repo/i });
     expect(link).toHaveAttribute(
       "href",
       "https://github.com/DaKheera47/job-ops",
     );
+    fireEvent.click(link);
+    expect(trackEvent).toHaveBeenCalledWith("star_repo_click", {
+      location: "demo_mode_banner",
+    });
   });
 
   it("does not render the demo banner CTA when demo mode is disabled", () => {
@@ -102,6 +111,6 @@ describe("App demo banner", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole("link", { name: /star repo/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /star .*repo/i })).toBeNull();
   });
 });

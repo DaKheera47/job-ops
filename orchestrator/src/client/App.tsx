@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
+import { trackEvent } from "@/lib/analytics";
 import { BasicAuthPrompt } from "./components/BasicAuthPrompt";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
@@ -64,6 +65,9 @@ export const App: React.FC = () => {
             href="https://github.com/DaKheera47/job-ops"
             target="_blank"
             rel="noreferrer"
+            onClick={() =>
+              trackEvent("star_repo_click", { location: "demo_mode_banner" })
+            }
           >
             Star the repo on GitHub
           </a>
