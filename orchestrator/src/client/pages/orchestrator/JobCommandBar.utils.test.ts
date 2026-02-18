@@ -19,7 +19,7 @@ describe("JobCommandBar score helpers", () => {
     expect(score).toBe(0);
   });
 
-  it("ranks exact and fuzzy matches above non-matches for a query", () => {
+  it("keeps only relevant matches when a query is provided", () => {
     const grouped = groupJobsForCommandBar(
       [
         createJob({
@@ -44,10 +44,22 @@ describe("JobCommandBar score helpers", () => {
       "backend",
     );
 
-    expect(grouped.ready.map((job) => job.id)).toEqual([
-      "exact",
-      "fuzzy",
-      "no-match",
-    ]);
+    expect(grouped.ready.map((job) => job.id)).toEqual(["exact", "fuzzy"]);
+  });
+
+  it("filters out weak fuzzy matches below the relevance floor", () => {
+    const grouped = groupJobsForCommandBar(
+      [
+        createJob({
+          id: "weak-fuzzy",
+          title: "Backend Engineer",
+          employer: "Platform Co",
+          discoveredAt: "2025-01-02T00:00:00Z",
+        }),
+      ],
+      "bde",
+    );
+
+    expect(grouped.ready).toEqual([]);
   });
 });

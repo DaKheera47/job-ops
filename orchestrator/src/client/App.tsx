@@ -7,6 +7,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 
 import { Toaster } from "@/components/ui/sonner";
+import { trackEvent } from "@/lib/analytics";
 import { BasicAuthPrompt } from "./components/BasicAuthPrompt";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
@@ -59,7 +60,19 @@ export const App: React.FC = () => {
       {demoInfo?.demoMode && (
         <div className="w-full border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-100 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
-          {demoInfo.resetCadenceHours} hours.
+          {demoInfo.resetCadenceHours} hours.{" "}
+          <a
+            className="font-semibold underline underline-offset-2 hover:text-amber-50"
+            href="https://github.com/DaKheera47/job-ops"
+            target="_blank"
+            rel="noreferrer"
+            onClick={() =>
+              trackEvent("star_repo_click", { location: "demo_mode_banner" })
+            }
+          >
+            Star the repo on GitHub
+          </a>
+          .
         </div>
       )}
       <div>

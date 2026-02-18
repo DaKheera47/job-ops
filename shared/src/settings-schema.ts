@@ -32,6 +32,13 @@ export const updateSettingsSchema = z
     resumeProjects: resumeProjectsSchema.nullable().optional(),
     rxresumeBaseResumeId: z.string().trim().max(200).nullable().optional(),
     ukvisajobsMaxJobs: z.number().int().min(1).max(1000).nullable().optional(),
+    adzunaMaxJobsPerTerm: z
+      .number()
+      .int()
+      .min(1)
+      .max(1000)
+      .nullable()
+      .optional(),
     gradcrackerMaxJobsPerTerm: z
       .number()
       .int()
@@ -64,6 +71,8 @@ export const updateSettingsSchema = z
     basicAuthPassword: z.string().trim().max(2000).nullable().optional(),
     ukvisajobsEmail: z.string().trim().max(200).nullable().optional(),
     ukvisajobsPassword: z.string().trim().max(2000).nullable().optional(),
+    adzunaAppId: z.string().trim().max(200).nullable().optional(),
+    adzunaAppKey: z.string().trim().max(2000).nullable().optional(),
     webhookSecret: z.string().trim().max(2000).nullable().optional(),
     enableBasicAuth: z.boolean().optional(),
     backupEnabled: z.boolean().nullable().optional(),

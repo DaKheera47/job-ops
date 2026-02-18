@@ -60,7 +60,7 @@ docker compose up -d
 
 ## Why JobOps?
 
-* **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor** + specialized boards (Gradcracker, UK Visa Jobs).
+* **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor, Adzuna** + specialized boards (Gradcracker, UK Visa Jobs).
 * **AI Scoring**: Ranks jobs by fit against *your* profile using your preferred LLM (OpenRouter/OpenAI/Gemini).
 * **Auto-Tailoring**: Generates custom resumes (PDFs) for every application using RxResume v4.
 * **Email Tracking**: Connect Gmail to auto-detect interviews, offers, and rejections.
@@ -81,6 +81,7 @@ docker compose up -d
 | **LinkedIn** | Global / General |
 | **Indeed** | Global / General |
 | **Glassdoor** | Global / General |
+| **Adzuna** | Multi-country API source |
 | **Gradcracker** | STEM / Grads (UK) |
 | **UK Visa Jobs** | Sponsorship (UK) |
 

@@ -25,6 +25,20 @@ describe("settings-conversion", () => {
     expect(resolved.defaultValue).toBe(50);
   });
 
+  it("round-trips adzuna numeric settings", () => {
+    process.env.ADZUNA_MAX_JOBS_PER_TERM = "";
+    const serialized = serializeSettingValue("adzunaMaxJobsPerTerm", 75);
+    expect(serialized).toBe("75");
+
+    const resolved = resolveSettingValue(
+      "adzunaMaxJobsPerTerm",
+      serialized ?? undefined,
+    );
+    expect(resolved.overrideValue).toBe(75);
+    expect(resolved.value).toBe(75);
+    expect(resolved.defaultValue).toBe(50);
+  });
+
   it("round-trips boolean bit settings", () => {
     expect(serializeSettingValue("showSponsorInfo", true)).toBe("1");
     expect(serializeSettingValue("showSponsorInfo", false)).toBe("0");

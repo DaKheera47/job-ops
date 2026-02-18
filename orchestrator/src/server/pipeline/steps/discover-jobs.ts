@@ -1,12 +1,14 @@
 import { logger } from "@infra/logger";
 import {
   formatCountryLabel,
+  getAdzunaCountryCode,
   isSourceAllowedForCountry,
   normalizeCountryKey,
 } from "@shared/location-support.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
+import { runAdzuna } from "../../services/adzuna";
 import { runCrawler } from "../../services/crawler";
 import { runJobSpy } from "../../services/jobspy";
 import { runUkVisaJobs } from "../../services/ukvisajobs";
@@ -72,11 +74,13 @@ export async function discoverJobsStep(args: {
   );
 
   const shouldRunJobSpy = jobSpySites.length > 0;
+  const shouldRunAdzuna = compatibleSources.includes("adzuna");
   const shouldRunGradcracker = compatibleSources.includes("gradcracker");
   const shouldRunUkVisaJobs = compatibleSources.includes("ukvisajobs");
 
   const totalSources =
     Number(shouldRunJobSpy) +
+    Number(shouldRunAdzuna) +
     Number(shouldRunGradcracker) +
     Number(shouldRunUkVisaJobs);
   let completedSources = 0;
@@ -143,6 +147,89 @@ export async function discoverJobsStep(args: {
     }
 
     markSourceComplete();
+  }
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
+
+  if (shouldRunAdzuna) {
+    progressHelpers.startSource("adzuna", completedSources, totalSources, {
+      termsTotal: searchTerms.length,
+      detail: "Adzuna: fetching jobs...",
+    });
+
+    const adzunaCountryCode = getAdzunaCountryCode(selectedCountry);
+    if (!adzunaCountryCode) {
+      sourceErrors.push(
+        `adzuna: unsupported country ${formatCountryLabel(selectedCountry)}`,
+      );
+      markSourceComplete();
+    } else {
+      const adzunaMaxJobsPerTerm = settings.adzunaMaxJobsPerTerm
+        ? parseInt(settings.adzunaMaxJobsPerTerm, 10)
+        : 50;
+
+      const adzunaResult = await runAdzuna({
+        country: adzunaCountryCode,
+        searchTerms,
+        maxJobsPerTerm: adzunaMaxJobsPerTerm,
+        onProgress: (event) => {
+          if (event.type === "term_start") {
+            progressHelpers.crawlingUpdate({
+              source: "adzuna",
+              termsProcessed: Math.max(event.termIndex - 1, 0),
+              termsTotal: event.termTotal,
+              phase: "list",
+              currentUrl: event.searchTerm,
+            });
+            updateProgress({
+              step: "crawling",
+              detail: `Adzuna: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+            });
+            return;
+          }
+
+          if (event.type === "page_fetched") {
+            progressHelpers.crawlingUpdate({
+              source: "adzuna",
+              termsProcessed: Math.max(event.termIndex - 1, 0),
+              termsTotal: event.termTotal,
+              listPagesProcessed: event.pageNo,
+              jobPagesEnqueued: event.totalCollected,
+              jobPagesProcessed: event.totalCollected,
+              phase: "list",
+              currentUrl: `page ${event.pageNo}`,
+            });
+            updateProgress({
+              step: "crawling",
+              detail: `Adzuna: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo} (${event.totalCollected} collected)`,
+            });
+            return;
+          }
+
+          progressHelpers.crawlingUpdate({
+            source: "adzuna",
+            termsProcessed: event.termIndex,
+            termsTotal: event.termTotal,
+            phase: "list",
+            currentUrl: event.searchTerm,
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `Adzuna: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+          });
+        },
+      });
+
+      if (!adzunaResult.success) {
+        sourceErrors.push(`adzuna: ${adzunaResult.error ?? "unknown error"}`);
+      } else {
+        discoveredJobs.push(...adzunaResult.jobs);
+      }
+
+      markSourceComplete();
+    }
   }
 
   if (args.shouldCancel?.()) {

@@ -96,6 +96,15 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideUkvisajobsMaxJobs = ukvisajobsMaxJobsSetting.overrideValue;
   const ukvisajobsMaxJobs = ukvisajobsMaxJobsSetting.value;
 
+  const adzunaMaxJobsPerTermSetting = resolveSettingValue(
+    "adzunaMaxJobsPerTerm",
+    overrides.adzunaMaxJobsPerTerm,
+  );
+  const defaultAdzunaMaxJobsPerTerm = adzunaMaxJobsPerTermSetting.defaultValue;
+  const overrideAdzunaMaxJobsPerTerm =
+    adzunaMaxJobsPerTermSetting.overrideValue;
+  const adzunaMaxJobsPerTerm = adzunaMaxJobsPerTermSetting.value;
+
   const gradcrackerMaxJobsPerTermSetting = resolveSettingValue(
     "gradcrackerMaxJobsPerTerm",
     overrides.gradcrackerMaxJobsPerTerm,
@@ -260,6 +269,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     ukvisajobsMaxJobs,
     defaultUkvisajobsMaxJobs,
     overrideUkvisajobsMaxJobs,
+    adzunaMaxJobsPerTerm,
+    defaultAdzunaMaxJobsPerTerm,
+    overrideAdzunaMaxJobsPerTerm,
     gradcrackerMaxJobsPerTerm,
     defaultGradcrackerMaxJobsPerTerm,
     overrideGradcrackerMaxJobsPerTerm,

@@ -2,6 +2,7 @@ import type { Job, JobListItem, JobStatus } from "@shared/types";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
+import { subscribeToEventSource } from "../../lib/sse";
 
 const initialStats: Record<JobStatus, number> = {
   discovered: 0,
@@ -320,73 +321,67 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
   useEffect(() => {
     if (typeof EventSource === "undefined") return;
 
-    const eventSource = new EventSource("/api/pipeline/progress");
+    const unsubscribe = subscribeToEventSource<unknown>(
+      "/api/pipeline/progress",
+      {
+        onOpen: () => {
+          setIsPipelineSseConnected(true);
+        },
+        onMessage: (payload) => {
+          if (!payload || typeof payload !== "object") return;
+          const step = (payload as { step?: unknown }).step;
+          if (typeof step !== "string") return;
+          if (
+            !ACTIVE_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
+            !TERMINAL_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
+            step !== "idle"
+          ) {
+            return;
+          }
 
-    eventSource.onopen = () => {
-      setIsPipelineSseConnected(true);
-    };
+          const typedStep = step as PipelineProgressStep;
+          const isActiveStep = ACTIVE_PIPELINE_STEPS.has(typedStep);
+          if (isActiveStep) {
+            observePipelineState({ isRunning: true, terminal: null });
+          } else if (typedStep === "idle") {
+            observePipelineState({ isRunning: false, terminal: null });
+          }
 
-    eventSource.onmessage = (event) => {
-      let payload: unknown;
-      try {
-        payload = JSON.parse(event.data);
-      } catch {
-        return;
-      }
+          if (isActiveStep) {
+            const now = Date.now();
+            if (now - lastSseRefreshAtRef.current >= 2500) {
+              lastSseRefreshAtRef.current = now;
+              void checkForJobChanges();
+            }
+            return;
+          }
 
-      if (!payload || typeof payload !== "object") return;
-      const step = (payload as { step?: unknown }).step;
-      if (typeof step !== "string") return;
-      if (
-        !ACTIVE_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
-        !TERMINAL_PIPELINE_STEPS.has(step as PipelineProgressStep) &&
-        step !== "idle"
-      ) {
-        return;
-      }
-
-      const typedStep = step as PipelineProgressStep;
-      const isActiveStep = ACTIVE_PIPELINE_STEPS.has(typedStep);
-      if (isActiveStep) {
-        observePipelineState({ isRunning: true, terminal: null });
-      } else if (typedStep === "idle") {
-        observePipelineState({ isRunning: false, terminal: null });
-      }
-
-      if (isActiveStep) {
-        const now = Date.now();
-        if (now - lastSseRefreshAtRef.current >= 2500) {
-          lastSseRefreshAtRef.current = now;
-          void checkForJobChanges();
-        }
-        return;
-      }
-
-      if (TERMINAL_PIPELINE_STEPS.has(typedStep)) {
-        const eventPayload = payload as PipelineProgressEvent;
-        const terminal = typedStep as PipelineTerminalStatus;
-        observePipelineState({
-          isRunning: false,
-          terminal: {
-            status: terminal,
-            errorMessage: eventPayload.error ?? null,
-            signature: buildTerminalSignature({
-              status: terminal,
-              startedAt: eventPayload.startedAt,
-              completedAt: eventPayload.completedAt,
-            }),
-          },
-        });
-        void loadJobs();
-      }
-    };
-
-    eventSource.onerror = () => {
-      setIsPipelineSseConnected(false);
-    };
+          if (TERMINAL_PIPELINE_STEPS.has(typedStep)) {
+            const eventPayload = payload as PipelineProgressEvent;
+            const terminal = typedStep as PipelineTerminalStatus;
+            observePipelineState({
+              isRunning: false,
+              terminal: {
+                status: terminal,
+                errorMessage: eventPayload.error ?? null,
+                signature: buildTerminalSignature({
+                  status: terminal,
+                  startedAt: eventPayload.startedAt,
+                  completedAt: eventPayload.completedAt,
+                }),
+              },
+            });
+            void loadJobs();
+          }
+        },
+        onError: () => {
+          setIsPipelineSseConnected(false);
+        },
+      },
+    );
 
     return () => {
-      eventSource.close();
+      unsubscribe();
     };
   }, [checkForJobChanges, loadJobs, observePipelineState]);
 

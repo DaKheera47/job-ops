@@ -1,7 +1,8 @@
 import { asyncRoute, fail, ok } from "@infra/http";
 import { runWithRequestContext } from "@infra/request-context";
+import { setupSse, writeSseData } from "@infra/sse";
 import { badRequest, toAppError } from "@server/infra/errors";
-import { type Request, type Response, Router } from "express";
+import { type Request, Router } from "express";
 import { z } from "zod";
 import * as ghostwriterService from "../../services/ghostwriter";
 
@@ -31,10 +32,6 @@ function getJobId(req: Request): string {
     throw badRequest("Missing job id");
   }
   return jobId;
-}
-
-function writeSse(res: Response, event: unknown): void {
-  res.write(`data: ${JSON.stringify(event)}\n\n`);
 }
 
 ghostwriterRouter.get(
@@ -75,11 +72,10 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        setupSse(res, {
+          cacheControl: "no-cache, no-transform",
+          flushHeaders: true,
+        });
 
         try {
           await ghostwriterService.sendMessageForJob({
@@ -87,7 +83,7 @@ ghostwriterRouter.post(
             content: parsed.data.content,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "ready",
                   runId,
                   threadId,
@@ -95,26 +91,26 @@ ghostwriterRouter.post(
                   requestId,
                 }),
               onDelta: ({ runId, messageId, delta }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "delta",
                   runId,
                   messageId,
                   delta,
                 }),
               onCompleted: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "completed",
                   runId,
                   message,
                 }),
               onCancelled: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "cancelled",
                   runId,
                   message,
                 }),
               onError: ({ runId, code, message, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "error",
                   runId,
                   code,
@@ -125,7 +121,7 @@ ghostwriterRouter.post(
           });
         } catch (error) {
           const appError = toAppError(error);
-          writeSse(res, {
+          writeSseData(res, {
             type: "error",
             code: appError.code,
             message: appError.message,
@@ -191,11 +187,10 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        setupSse(res, {
+          cacheControl: "no-cache, no-transform",
+          flushHeaders: true,
+        });
 
         try {
           await ghostwriterService.regenerateMessageForJob({
@@ -203,7 +198,7 @@ ghostwriterRouter.post(
             assistantMessageId,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "ready",
                   runId,
                   threadId,
@@ -211,26 +206,26 @@ ghostwriterRouter.post(
                   requestId,
                 }),
               onDelta: ({ runId, messageId, delta }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "delta",
                   runId,
                   messageId,
                   delta,
                 }),
               onCompleted: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "completed",
                   runId,
                   message,
                 }),
               onCancelled: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "cancelled",
                   runId,
                   message,
                 }),
               onError: ({ runId, code, message, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "error",
                   runId,
                   code,
@@ -241,7 +236,7 @@ ghostwriterRouter.post(
           });
         } catch (error) {
           const appError = toAppError(error);
-          writeSse(res, {
+          writeSseData(res, {
             type: "error",
             code: appError.code,
             message: appError.message,
@@ -346,11 +341,10 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        setupSse(res, {
+          cacheControl: "no-cache, no-transform",
+          flushHeaders: true,
+        });
 
         try {
           await ghostwriterService.sendMessage({
@@ -359,7 +353,7 @@ ghostwriterRouter.post(
             content: parsed.data.content,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "ready",
                   runId,
                   threadId,
@@ -367,26 +361,26 @@ ghostwriterRouter.post(
                   requestId,
                 }),
               onDelta: ({ runId, messageId, delta }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "delta",
                   runId,
                   messageId,
                   delta,
                 }),
               onCompleted: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "completed",
                   runId,
                   message,
                 }),
               onCancelled: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "cancelled",
                   runId,
                   message,
                 }),
               onError: ({ runId, code, message, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "error",
                   runId,
                   code,
@@ -397,7 +391,7 @@ ghostwriterRouter.post(
           });
         } catch (error) {
           const appError = toAppError(error);
-          writeSse(res, {
+          writeSseData(res, {
             type: "error",
             code: appError.code,
             message: appError.message,
@@ -469,11 +463,10 @@ ghostwriterRouter.post(
 
     await runWithRequestContext({ jobId }, async () => {
       if (parsed.data.stream) {
-        res.status(200);
-        res.setHeader("Content-Type", "text/event-stream");
-        res.setHeader("Cache-Control", "no-cache, no-transform");
-        res.setHeader("Connection", "keep-alive");
-        res.flushHeaders?.();
+        setupSse(res, {
+          cacheControl: "no-cache, no-transform",
+          flushHeaders: true,
+        });
 
         try {
           await ghostwriterService.regenerateMessage({
@@ -482,7 +475,7 @@ ghostwriterRouter.post(
             assistantMessageId,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "ready",
                   runId,
                   threadId,
@@ -490,26 +483,26 @@ ghostwriterRouter.post(
                   requestId,
                 }),
               onDelta: ({ runId, messageId, delta }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "delta",
                   runId,
                   messageId,
                   delta,
                 }),
               onCompleted: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "completed",
                   runId,
                   message,
                 }),
               onCancelled: ({ runId, message }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "cancelled",
                   runId,
                   message,
                 }),
               onError: ({ runId, code, message, requestId }) =>
-                writeSse(res, {
+                writeSseData(res, {
                   type: "error",
                   runId,
                   code,
@@ -520,7 +513,7 @@ ghostwriterRouter.post(
           });
         } catch (error) {
           const appError = toAppError(error);
-          writeSse(res, {
+          writeSseData(res, {
             type: "error",
             code: appError.code,
             message: appError.message,

@@ -125,6 +125,7 @@ export type JobSource =
   | "linkedin"
   | "glassdoor"
   | "ukvisajobs"
+  | "adzuna"
   | "manual";
 
 export interface Job {
@@ -721,6 +722,43 @@ export interface BulkJobActionResponse {
   results: BulkJobActionResult[];
 }
 
+export type BulkJobActionStreamEvent =
+  | {
+      type: "started";
+      action: BulkJobAction;
+      requested: number;
+      completed: number;
+      succeeded: number;
+      failed: number;
+      requestId: string;
+    }
+  | {
+      type: "progress";
+      action: BulkJobAction;
+      requested: number;
+      completed: number;
+      succeeded: number;
+      failed: number;
+      result: BulkJobActionResult;
+      requestId: string;
+    }
+  | {
+      type: "completed";
+      action: BulkJobAction;
+      requested: number;
+      completed: number;
+      succeeded: number;
+      failed: number;
+      results: BulkJobActionResult[];
+      requestId: string;
+    }
+  | {
+      type: "error";
+      code: string;
+      message: string;
+      requestId: string;
+    };
+
 export const JOB_CHAT_MESSAGE_ROLES = [
   "system",
   "user",
@@ -996,6 +1034,9 @@ export interface AppSettings {
   ukvisajobsMaxJobs: number;
   defaultUkvisajobsMaxJobs: number;
   overrideUkvisajobsMaxJobs: number | null;
+  adzunaMaxJobsPerTerm: number;
+  defaultAdzunaMaxJobsPerTerm: number;
+  overrideAdzunaMaxJobsPerTerm: number | null;
   gradcrackerMaxJobsPerTerm: number;
   defaultGradcrackerMaxJobsPerTerm: number;
   overrideGradcrackerMaxJobsPerTerm: number | null;
@@ -1033,6 +1074,8 @@ export interface AppSettings {
   basicAuthPasswordHint: string | null;
   ukvisajobsEmail: string | null;
   ukvisajobsPasswordHint: string | null;
+  adzunaAppId: string | null;
+  adzunaAppKeyHint: string | null;
   webhookSecretHint: string | null;
   basicAuthActive: boolean;
   // Backup settings

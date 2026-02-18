@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formatCountryLabel,
+  getAdzunaCountryCode,
   getCompatibleSourcesForCountry,
   isGlassdoorCountry,
   isSourceAllowedForCountry,
@@ -52,15 +53,24 @@ describe("location-support", () => {
     expect(isSourceAllowedForCountry("linkedin", "worldwide")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "japan")).toBe(false);
+    expect(isSourceAllowedForCountry("adzuna", "united states")).toBe(true);
+    expect(isSourceAllowedForCountry("adzuna", "japan")).toBe(false);
   });
 
   it("filters incompatible sources while preserving compatible order", () => {
     expect(
       getCompatibleSourcesForCountry(
-        ["gradcracker", "indeed", "glassdoor", "ukvisajobs", "linkedin"],
+        [
+          "gradcracker",
+          "indeed",
+          "glassdoor",
+          "ukvisajobs",
+          "adzuna",
+          "linkedin",
+        ],
         "united states",
       ),
-    ).toEqual(["indeed", "glassdoor", "linkedin"]);
+    ).toEqual(["indeed", "glassdoor", "adzuna", "linkedin"]);
   });
 
   it("supports glassdoor only in explicitly supported countries", () => {
@@ -69,5 +79,11 @@ describe("location-support", () => {
     expect(isGlassdoorCountry("usa")).toBe(true);
     expect(isGlassdoorCountry("japan")).toBe(false);
     expect(isGlassdoorCountry("worldwide")).toBe(false);
+  });
+
+  it("maps adzuna country keys to adzuna api country codes", () => {
+    expect(getAdzunaCountryCode("united states")).toBe("us");
+    expect(getAdzunaCountryCode("UK")).toBe("gb");
+    expect(getAdzunaCountryCode("japan")).toBeNull();
   });
 });

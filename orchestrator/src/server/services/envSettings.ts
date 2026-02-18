@@ -8,6 +8,7 @@ const readableStringConfig: { settingKey: SettingKey; envKey: string }[] = [
   { settingKey: "llmBaseUrl", envKey: "LLM_BASE_URL" },
   { settingKey: "rxresumeEmail", envKey: "RXRESUME_EMAIL" },
   { settingKey: "ukvisajobsEmail", envKey: "UKVISAJOBS_EMAIL" },
+  { settingKey: "adzunaAppId", envKey: "ADZUNA_APP_ID" },
   { settingKey: "basicAuthUser", envKey: "BASIC_AUTH_USER" },
 ];
 
@@ -36,6 +37,11 @@ const privateStringConfig: {
     settingKey: "ukvisajobsPassword",
     envKey: "UKVISAJOBS_PASSWORD",
     hintKey: "ukvisajobsPasswordHint",
+  },
+  {
+    settingKey: "adzunaAppKey",
+    envKey: "ADZUNA_APP_KEY",
+    hintKey: "adzunaAppKeyHint",
   },
   {
     settingKey: "basicAuthPassword",

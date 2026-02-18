@@ -39,6 +39,7 @@ export const jobs = sqliteTable("jobs", {
       "linkedin",
       "glassdoor",
       "ukvisajobs",
+      "adzuna",
       "manual",
     ],
   })

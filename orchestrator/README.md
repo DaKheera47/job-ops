@@ -86,8 +86,8 @@ orchestrator/
 | POST | `/api/post-application/inbox/:id/approve` | Approve and link to job |
 | POST | `/api/post-application/inbox/:id/deny` | Ignore message |
 | GET | `/api/post-application/runs` | List sync run history |
-| POST | `/api/post-application/gmail/connect` | Initiate Gmail OAuth flow |
-| GET | `/api/post-application/gmail/callback` | Gmail OAuth callback |
+| GET | `/api/post-application/providers/gmail/oauth/start` | Initiate Gmail OAuth flow |
+| POST | `/api/post-application/providers/gmail/oauth/exchange` | Exchange OAuth code |
 
 ## Daily Flow
 

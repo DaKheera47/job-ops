@@ -12,6 +12,8 @@ const EnvironmentSettingsHarness = () => {
       basicAuthUser: "admin",
       rxresumePassword: "",
       ukvisajobsPassword: "",
+      adzunaAppId: "adzuna-id",
+      adzunaAppKey: "",
       basicAuthPassword: "",
       webhookSecret: "",
       enableBasicAuth: true,
@@ -26,11 +28,13 @@ const EnvironmentSettingsHarness = () => {
             readable: {
               rxresumeEmail: "resume@example.com",
               ukvisajobsEmail: "visa@example.com",
+              adzunaAppId: "adzuna-id",
               basicAuthUser: "admin",
             },
             private: {
               rxresumePasswordHint: null,
               ukvisajobsPasswordHint: "pass",
+              adzunaAppKeyHint: "adzu",
               basicAuthPasswordHint: "abcd",
               webhookSecretHint: "sec-",
             },
@@ -50,8 +54,10 @@ describe("EnvironmentSettingsSection", () => {
 
     expect(screen.getByDisplayValue("resume@example.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("adzuna-id")).toBeInTheDocument();
 
     expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
+    expect(screen.getByText(/adzu\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument();
     expect(screen.getByText("Not set")).toBeInTheDocument();
 

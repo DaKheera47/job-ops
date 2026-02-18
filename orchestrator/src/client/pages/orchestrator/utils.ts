@@ -16,6 +16,9 @@ const compareString = (a: string, b: string) =>
   a.localeCompare(b, undefined, { sensitivity: "base" });
 const compareNumber = (a: number, b: number) => a - b;
 
+export const clampNumber = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
 export const parseSalaryBounds = (
   job: JobListItem,
 ): { min: number; max: number } | null => {
@@ -171,6 +174,9 @@ export const getEnabledSources = (
   const hasUkVisaJobsAuth = Boolean(
     settings.ukvisajobsEmail?.trim() && settings.ukvisajobsPasswordHint,
   );
+  const hasAdzunaAuth = Boolean(
+    settings.adzunaAppId?.trim() && settings.adzunaAppKeyHint,
+  );
 
   for (const source of orderedSources) {
     if (source === "gradcracker") {
@@ -179,6 +185,10 @@ export const getEnabledSources = (
     }
     if (source === "ukvisajobs") {
       if (hasUkVisaJobsAuth) enabled.push(source);
+      continue;
+    }
+    if (source === "adzuna") {
+      if (hasAdzunaAuth) enabled.push(source);
       continue;
     }
     if (

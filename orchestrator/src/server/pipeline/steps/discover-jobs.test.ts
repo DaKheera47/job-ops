@@ -19,6 +19,10 @@ vi.mock("../../services/crawler", () => ({
   runCrawler: vi.fn(),
 }));
 
+vi.mock("../../services/adzuna", () => ({
+  runAdzuna: vi.fn(),
+}));
+
 vi.mock("../../services/ukvisajobs", () => ({
   runUkVisaJobs: vi.fn(),
 }));
@@ -155,6 +159,63 @@ describe("discoverJobsStep", () => {
         },
       }),
     ).rejects.toThrow("All sources failed: ukvisajobs: boom");
+  });
+
+  it("runs adzuna when selected and country is compatible", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const adzuna = await import("../../services/adzuna");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+    } as any);
+
+    vi.mocked(adzuna.runAdzuna).mockResolvedValue({
+      success: true,
+      jobs: [
+        {
+          source: "adzuna",
+          sourceJobId: "adzu-1",
+          title: "Engineer",
+          employer: "ACME",
+          jobUrl: "https://example.com/job",
+          applicationLink: "https://example.com/job",
+        },
+      ],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["adzuna"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(vi.mocked(adzuna.runAdzuna)).toHaveBeenCalledWith(
+      expect.objectContaining({ country: "us" }),
+    );
+  });
+
+  it("skips adzuna for unsupported countries", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const adzuna = await import("../../services/adzuna");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "japan",
+    } as any);
+
+    await expect(
+      discoverJobsStep({
+        mergedConfig: {
+          ...config,
+          sources: ["adzuna"],
+        },
+      }),
+    ).rejects.toThrow("No compatible sources for selected country: Japan");
+
+    expect(vi.mocked(adzuna.runAdzuna)).not.toHaveBeenCalled();
   });
 
   it("maps Gradcracker progress callback into live crawling counters", async () => {
@@ -340,6 +401,7 @@ describe("discoverJobsStep", () => {
 
   it("does not throw when no sources are requested", async () => {
     const settingsRepo = await import("../../repositories/settings");
+    const adzuna = await import("../../services/adzuna");
     const jobSpy = await import("../../services/jobspy");
     const crawler = await import("../../services/crawler");
     const ukVisa = await import("../../services/ukvisajobs");
@@ -359,6 +421,7 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs).toEqual([]);
     expect(result.sourceErrors).toEqual([]);
     expect(vi.mocked(jobSpy.runJobSpy)).not.toHaveBeenCalled();
+    expect(vi.mocked(adzuna.runAdzuna)).not.toHaveBeenCalled();
     expect(vi.mocked(crawler.runCrawler)).not.toHaveBeenCalled();
     expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
   });

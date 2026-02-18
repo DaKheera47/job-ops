@@ -5,7 +5,7 @@
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-
+import { subscribeToEventSource } from "@/client/lib/sse";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -24,7 +24,7 @@ interface PipelineProgress {
     | "failed";
   message: string;
   detail?: string;
-  crawlingSource: "gradcracker" | "jobspy" | "ukvisajobs" | null;
+  crawlingSource: "gradcracker" | "jobspy" | "ukvisajobs" | "adzuna" | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
   crawlingTermsProcessed: number;
@@ -84,6 +84,7 @@ const sourceLabel: Record<
   gradcracker: "Gradcracker",
   jobspy: "JobSpy",
   ukvisajobs: "UKVisaJobs",
+  adzuna: "Adzuna",
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -160,26 +161,23 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       return;
     }
 
-    const eventSource = new EventSource("/api/pipeline/progress");
-
-    eventSource.onopen = () => {
-      setIsConnected(true);
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        setProgress(JSON.parse(event.data));
-      } catch {
-        // Ignore parse errors
-      }
-    };
-
-    eventSource.onerror = () => {
-      setIsConnected(false);
-    };
+    const unsubscribe = subscribeToEventSource<PipelineProgress>(
+      "/api/pipeline/progress",
+      {
+        onOpen: () => {
+          setIsConnected(true);
+        },
+        onMessage: (payload) => {
+          setProgress(payload);
+        },
+        onError: () => {
+          setIsConnected(false);
+        },
+      },
+    );
 
     return () => {
-      eventSource.close();
+      unsubscribe();
       setIsConnected(false);
     };
   }, [isRunning]);
