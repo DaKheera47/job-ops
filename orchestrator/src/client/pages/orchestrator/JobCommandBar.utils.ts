@@ -34,6 +34,7 @@ export const lockLabel: Record<StatusLock, string> = {
 };
 
 const tokenRegex = /^\s*@([a-z-]*)/i;
+const MINIMUM_MATCH_SCORE = 600;
 
 const parseTime = (value: string | null) => {
   if (!value) return Number.NaN;
@@ -158,24 +159,29 @@ export const groupJobsForCommandBar = (
     other: [],
   };
 
-  const sorted = [...scopedJobs].sort((a, b) => {
-    if (normalizedQuery) {
-      const firstScore = computeJobMatchScore(a, normalizedQuery);
-      const secondScore = computeJobMatchScore(b, normalizedQuery);
-      if (firstScore !== secondScore) return secondScore - firstScore;
-    }
+  const scoredJobs = normalizedQuery
+    ? scopedJobs
+        .map((job) => ({
+          job,
+          score: computeJobMatchScore(job, normalizedQuery),
+        }))
+        .filter(({ score }) => score >= MINIMUM_MATCH_SCORE)
+    : scopedJobs.map((job) => ({ job, score: 0 }));
 
-    const first = parseTime(a.discoveredAt);
-    const second = parseTime(b.discoveredAt);
+  const sorted = scoredJobs.sort((a, b) => {
+    if (normalizedQuery && a.score !== b.score) return b.score - a.score;
+
+    const first = parseTime(a.job.discoveredAt);
+    const second = parseTime(b.job.discoveredAt);
     if (!Number.isNaN(first) && !Number.isNaN(second)) {
       return second - first;
     }
     if (!Number.isNaN(first)) return -1;
     if (!Number.isNaN(second)) return 1;
-    return b.id.localeCompare(a.id);
+    return b.job.id.localeCompare(a.job.id);
   });
 
-  for (const job of sorted) {
+  for (const { job } of sorted) {
     groups[getCommandGroup(job.status)].push(job);
   }
   return groups;

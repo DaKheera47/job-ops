@@ -24,6 +24,8 @@ Search matches job fields with fuzzy ranking:
 - company/employer
 - location
 
+By default, very low-relevance matches are hidden so results stay focused on likely intent.
+
 Results are grouped by status sections:
 
 - Ready
