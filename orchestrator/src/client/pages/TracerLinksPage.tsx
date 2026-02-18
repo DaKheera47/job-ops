@@ -9,7 +9,12 @@ import { BarChart3, Link2, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
-import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   ChartContainer,
   ChartTooltip,
@@ -30,7 +35,7 @@ import {
 const chartConfig = {
   clicks: {
     label: "Clicks",
-    color: "hsl(var(--foreground))",
+    color: "var(--chart-1)",
   },
 };
 
@@ -81,13 +86,21 @@ function formatDayLabel(day: string): string {
   });
 }
 
+function normalizeHeadingLabel(
+  label: string | null | undefined,
+): string | null {
+  const text = (label ?? "").trim();
+  if (!text) return null;
+  if (/^[a-z]+\..*\.url\.href$/i.test(text)) return null;
+  return text;
+}
+
 export const TracerLinksPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<TracerAnalyticsResponse | null>(
     null,
   );
   const [jobDrilldown, setJobDrilldown] =
     useState<JobTracerLinksResponse | null>(null);
-  const [jobIdInput, setJobIdInput] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [includeBots, setIncludeBots] = useState(false);
@@ -186,7 +199,6 @@ export const TracerLinksPage: React.FC = () => {
   const selectedJobId = jobDrilldown?.job.id ?? null;
 
   const handleSelectTopJob = (job: TracerAnalyticsTopJob) => {
-    setJobIdInput(job.jobId);
     void loadJobDrilldown(job.jobId);
   };
 
@@ -199,61 +211,49 @@ export const TracerLinksPage: React.FC = () => {
       />
 
       <PageMain>
-        <SectionCard>
-          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
-            <div className="space-y-1">
-              <Label htmlFor="tracer-from-date">From date</Label>
-              <Input
-                id="tracer-from-date"
-                type="date"
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="tracer-to-date">To date</Label>
-              <Input
-                id="tracer-to-date"
-                type="date"
-                value={toDate}
-                onChange={(event) => setToDate(event.target.value)}
-              />
-            </div>
-            <label
-              htmlFor="tracer-include-bots"
-              className="flex cursor-pointer items-end gap-2 pb-2"
-            >
-              <Checkbox
-                id="tracer-include-bots"
-                checked={includeBots}
-                onCheckedChange={(checked) => setIncludeBots(Boolean(checked))}
-              />
-              <span className="text-sm">Include likely bots</span>
-            </label>
-            <div className="space-y-1">
-              <Label htmlFor="tracer-job-id">Job ID (drilldown)</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="tracer-job-id"
-                  value={jobIdInput}
-                  onChange={(event) => setJobIdInput(event.target.value)}
-                  placeholder="job-123"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void loadJobDrilldown(jobIdInput.trim())}
-                  disabled={isDrilldownLoading}
-                >
-                  {isDrilldownLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Load"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
+        <SectionCard className="p-0">
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="filters" className="border-none">
+              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                <div className="text-sm font-semibold">Filters</div>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <div className="space-y-1">
+                    <Label htmlFor="tracer-from-date">From date</Label>
+                    <Input
+                      id="tracer-from-date"
+                      type="date"
+                      value={fromDate}
+                      onChange={(event) => setFromDate(event.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="tracer-to-date">To date</Label>
+                    <Input
+                      id="tracer-to-date"
+                      type="date"
+                      value={toDate}
+                      onChange={(event) => setToDate(event.target.value)}
+                    />
+                  </div>
+                  <label
+                    htmlFor="tracer-include-bots"
+                    className="flex cursor-pointer items-end gap-2 pb-2"
+                  >
+                    <Checkbox
+                      id="tracer-include-bots"
+                      checked={includeBots}
+                      onCheckedChange={(checked) =>
+                        setIncludeBots(Boolean(checked))
+                      }
+                    />
+                    <span className="text-sm">Include likely bots</span>
+                  </label>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </SectionCard>
 
         {error && (
@@ -261,6 +261,27 @@ export const TracerLinksPage: React.FC = () => {
             <p className="text-sm text-destructive">{error}</p>
           </SectionCard>
         )}
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Total Views</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {totalViews.toLocaleString()}
+            </p>
+          </SectionCard>
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Unique Jobs Reached</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {uniqueJobsReached.toLocaleString()}
+            </p>
+          </SectionCard>
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Human Clicks</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {humanClicks.toLocaleString()}
+            </p>
+          </SectionCard>
+        </div>
 
         <SectionCard className="space-y-4">
           <div className="flex items-center justify-between gap-4">
@@ -295,7 +316,7 @@ export const TracerLinksPage: React.FC = () => {
                 />
                 <YAxis axisLine={false} tickLine={false} width={30} />
                 <ChartTooltip
-                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.35 }}
+                  cursor={{ fill: "var(--color-clicks)", opacity: 0.18 }}
                   content={
                     <ChartTooltipContent
                       nameKey="clicks"
@@ -313,28 +334,7 @@ export const TracerLinksPage: React.FC = () => {
           )}
         </SectionCard>
 
-        <div className="grid gap-3 md:grid-cols-3">
-          <SectionCard className="space-y-1">
-            <p className="text-xs text-muted-foreground">Total Views</p>
-            <p className="text-3xl font-semibold tabular-nums">
-              {totalViews.toLocaleString()}
-            </p>
-          </SectionCard>
-          <SectionCard className="space-y-1">
-            <p className="text-xs text-muted-foreground">Unique Jobs Reached</p>
-            <p className="text-3xl font-semibold tabular-nums">
-              {uniqueJobsReached.toLocaleString()}
-            </p>
-          </SectionCard>
-          <SectionCard className="space-y-1">
-            <p className="text-xs text-muted-foreground">Human Clicks</p>
-            <p className="text-3xl font-semibold tabular-nums">
-              {humanClicks.toLocaleString()}
-            </p>
-          </SectionCard>
-        </div>
-
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+        <section className="grid gap-4 lg:grid-cols-2">
           <SectionCard>
             <div className="mb-3">
               <h3 className="text-sm font-semibold">Application Activity</h3>
@@ -403,12 +403,17 @@ export const TracerLinksPage: React.FC = () => {
                     className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        <Link2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="truncate">
-                          {row.sourceLabel || row.sourcePath}
-                        </span>
-                      </div>
+                      {normalizeHeadingLabel(row.sourceLabel) ? (
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Link2 className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate">
+                            {normalizeHeadingLabel(row.sourceLabel)}
+                          </span>
+                        </div>
+                      ) : null}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {row.destinationUrl}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">
                         Last click: {formatUnixTimestamp(row.lastClickedAt)}
                       </p>
@@ -426,7 +431,7 @@ export const TracerLinksPage: React.FC = () => {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Select a job in Application Activity or enter a Job ID above.
+                Select a job in Application Activity to inspect link details.
               </p>
             )}
           </SectionCard>

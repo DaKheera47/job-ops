@@ -175,7 +175,30 @@ async function fetchWithTimeout(
 function deriveSourceLabel(sourcePath: string, linkNode: LinkNode): string {
   const label = typeof linkNode.label === "string" ? linkNode.label.trim() : "";
   if (label.length > 0) return label.slice(0, 200);
-  return sourcePath;
+  if (sourcePath === "basics.url.href") return "Portfolio";
+
+  const sectionMatch = sourcePath.match(
+    /^sections\.([a-z]+)\.items\[(\d+)\]\.url\.href$/,
+  );
+  if (sectionMatch) {
+    const section = sectionMatch[1];
+    const index = Number(sectionMatch[2]);
+    const nth = Number.isFinite(index) ? index + 1 : null;
+    const sectionLabels: Record<string, string> = {
+      profiles: "Profile",
+      projects: "Project",
+      experience: "Experience",
+      education: "Education",
+      awards: "Award",
+      certificates: "Certificate",
+      publications: "Publication",
+      volunteer: "Volunteer",
+    };
+    const baseLabel = sectionLabels[section] ?? "Resume";
+    return nth ? `${baseLabel} Link ${nth}` : `${baseLabel} Link`;
+  }
+
+  return "Resume Link";
 }
 
 function buildReadableSlugPrefix(companyName?: string | null): string {

@@ -139,6 +139,15 @@ describe("tracer-links service", () => {
         slugPrefix: "amazon",
       }),
     );
+    expect(
+      vi.mocked(tracerLinksRepo.getOrCreateTracerLink),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-1",
+        sourcePath: "sections.projects.items[0].url.href",
+        sourceLabel: "Project Link 1",
+      }),
+    );
   });
 
   it("resolves public base url from request origin first, then env fallback", () => {
