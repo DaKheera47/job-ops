@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generatePdf } from "./pdf";
 import { getProfile } from "./profile";
 
+process.env.DATA_DIR = "/tmp";
+
 // Define mock data in hoisted block
 const { mocks, mockProfile, mockRxResumeClient } = vi.hoisted(() => {
   const profile = {
@@ -85,6 +87,7 @@ vi.mock("node:fs/promises", async () => {
 
 vi.mock("fs", () => ({
   existsSync: vi.fn().mockReturnValue(true),
+  mkdirSync: vi.fn(),
   createWriteStream: vi.fn().mockReturnValue({
     on: vi.fn(),
     write: vi.fn(),
@@ -92,6 +95,7 @@ vi.mock("fs", () => ({
   }),
   default: {
     existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn(),
     createWriteStream: vi.fn().mockReturnValue({
       on: vi.fn(),
       write: vi.fn(),
@@ -102,6 +106,7 @@ vi.mock("fs", () => ({
 
 vi.mock("node:fs", () => ({
   existsSync: vi.fn().mockReturnValue(true),
+  mkdirSync: vi.fn(),
   createWriteStream: vi.fn().mockReturnValue({
     on: vi.fn(),
     write: vi.fn(),
@@ -109,6 +114,7 @@ vi.mock("node:fs", () => ({
   }),
   default: {
     existsSync: vi.fn().mockReturnValue(true),
+    mkdirSync: vi.fn(),
     createWriteStream: vi.fn().mockReturnValue({
       on: vi.fn(),
       write: vi.fn(),
