@@ -67,6 +67,9 @@ describe.sequential("Tracer links routes", () => {
 
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("https://github.com/example");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("pragma")).toBe("no-cache");
+    expect(res.headers.get("expires")).toBe("0");
 
     const clickRows = await db
       .select()
