@@ -141,6 +141,13 @@ vi.mock("./projectSelection", () => ({
   pickProjectIdsForJob: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock("./tracer-links", () => ({
+  resolveTracerPublicBaseUrl: vi.fn().mockReturnValue("https://jobops.example"),
+  rewriteResumeLinksWithTracer: vi
+    .fn()
+    .mockResolvedValue({ rewrittenLinks: 0 }),
+}));
+
 vi.mock("./resumeProjects", () => ({
   extractProjectsFromProfile: vi
     .fn()
