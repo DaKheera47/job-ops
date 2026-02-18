@@ -15,7 +15,7 @@ vi.mock("../../api", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
-    custom: vi.fn(),
+    loading: vi.fn(),
     dismiss: vi.fn(),
     error: vi.fn(),
     success: vi.fn(),
@@ -102,7 +102,7 @@ const mockStreamBulkAction = (
 describe("useBulkJobSelection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(toast.custom).mockReturnValue("bulk-progress-toast");
+    vi.mocked(toast.loading).mockReturnValue("bulk-progress-toast");
   });
 
   it("caps select-all to the API max", () => {
@@ -199,7 +199,7 @@ describe("useBulkJobSelection", () => {
       runPromise = result.current.runBulkAction("skip");
     });
 
-    expect(toast.custom).toHaveBeenCalled();
+    expect(toast.loading).toHaveBeenCalled();
 
     act(() => {
       result.current.toggleSelectJob("job-2");

@@ -17,6 +17,15 @@ import type { FilterTab } from "./constants";
 
 const MAX_BULK_ACTION_JOB_IDS = 100;
 
+const bulkActionLabel: Record<BulkJobAction, string> = {
+  move_to_ready: "Moving jobs to Ready...",
+  skip: "Skipping selected jobs...",
+  rescore: "Calculating match scores...",
+};
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
 interface UseBulkJobSelectionArgs {
   activeJobs: JobListItem[];
   activeTab: FilterTab;
@@ -126,30 +135,36 @@ export function useBulkJobSelection({
         failed: 0,
       };
 
+      const getProgressTitle = () => {
+        const safeRequested = Math.max(latestProgress.requested, 1);
+        const safeCompleted = clamp(latestProgress.completed, 0, safeRequested);
+        return `${safeCompleted}/${safeRequested} ${bulkActionLabel[action]}`;
+      };
+
       const upsertProgressToast = () => {
         if (isProgressToastHidden) return;
 
-        progressToastId = toast.custom(
-          () => (
+        progressToastId = toast.loading(getProgressTitle(), {
+          description: (
             <BulkActionProgressToast
-              action={action}
               requested={latestProgress.requested}
               completed={latestProgress.completed}
               succeeded={latestProgress.succeeded}
               failed={latestProgress.failed}
-              onDismiss={() => {
-                isProgressToastHidden = true;
-                if (progressToastId !== undefined) {
-                  toast.dismiss(progressToastId);
-                }
-              }}
             />
           ),
-          {
-            ...(progressToastId !== undefined ? { id: progressToastId } : {}),
-            duration: Number.POSITIVE_INFINITY,
+          cancel: {
+            label: "Hide",
+            onClick: () => {
+              isProgressToastHidden = true;
+              if (progressToastId !== undefined) {
+                toast.dismiss(progressToastId);
+              }
+            },
           },
-        );
+          ...(progressToastId !== undefined ? { id: progressToastId } : {}),
+          duration: Number.POSITIVE_INFINITY,
+        });
       };
 
       try {
