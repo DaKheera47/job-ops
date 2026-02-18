@@ -12,6 +12,8 @@ vi.mock("../../api", () => ({
 
 vi.mock("sonner", () => ({
   toast: {
+    custom: vi.fn(),
+    dismiss: vi.fn(),
     error: vi.fn(),
     success: vi.fn(),
   },
@@ -33,6 +35,7 @@ const deferred = <T>(): Deferred<T> => {
 describe("useBulkJobSelection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(toast.custom).mockReturnValue("bulk-progress-toast");
   });
 
   it("caps select-all to the API max", () => {
@@ -109,6 +112,8 @@ describe("useBulkJobSelection", () => {
       runPromise = result.current.runBulkAction("skip");
     });
 
+    expect(toast.custom).toHaveBeenCalled();
+
     act(() => {
       result.current.toggleSelectJob("job-2");
       result.current.toggleSelectJob("job-3");
@@ -139,6 +144,7 @@ describe("useBulkJobSelection", () => {
     await waitFor(() => {
       expect(Array.from(result.current.selectedJobIds)).toEqual(["job-3"]);
     });
+    expect(toast.dismiss).toHaveBeenCalled();
   });
 
   it("runs bulk rescore and reports success copy", async () => {

@@ -2,6 +2,7 @@ import type { BulkJobAction, JobListItem } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
+import { BulkActionProgressToast } from "./BulkActionProgressToast";
 import {
   canBulkMoveToReady,
   canBulkRescore,
@@ -11,6 +12,23 @@ import {
 import type { FilterTab } from "./constants";
 
 const MAX_BULK_ACTION_JOB_IDS = 100;
+const BULK_PROGRESS_START = 6;
+const BULK_PROGRESS_MAX_IN_FLIGHT = 96;
+const BULK_PROGRESS_TICK_MS = 200;
+const BULK_PROGRESS_TARGET_MS = 10_000;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
+const getEstimatedBulkProgress = (elapsedMs: number) => {
+  const ratio = 1 - Math.exp(-elapsedMs / BULK_PROGRESS_TARGET_MS);
+  return clamp(
+    BULK_PROGRESS_START +
+      ratio * (BULK_PROGRESS_MAX_IN_FLIGHT - BULK_PROGRESS_START),
+    BULK_PROGRESS_START,
+    BULK_PROGRESS_MAX_IN_FLIGHT,
+  );
+};
 
 interface UseBulkJobSelectionArgs {
   activeJobs: JobListItem[];
@@ -110,11 +128,43 @@ export function useBulkJobSelection({
       }
 
       const selectedAtStartSet = new Set(selectedAtStart);
+      let progressToastId: string | number | undefined;
+      let progressIntervalId: ReturnType<typeof setInterval> | null = null;
+      let isProgressToastHidden = false;
+      const progressStartedAt = Date.now();
+
+      const upsertProgressToast = (progress: number) => {
+        if (isProgressToastHidden) return;
+
+        progressToastId = toast.custom(
+          () => (
+            <BulkActionProgressToast
+              action={action}
+              progress={progress}
+              onDismiss={() => {
+                isProgressToastHidden = true;
+                if (progressToastId !== undefined) {
+                  toast.dismiss(progressToastId);
+                }
+              }}
+            />
+          ),
+          {
+            ...(progressToastId !== undefined ? { id: progressToastId } : {}),
+            duration: Number.POSITIVE_INFINITY,
+          },
+        );
+      };
+
       try {
         setBulkActionInFlight(action);
-        if (action === "move_to_ready") {
-          toast.message("Moving jobs to Ready...");
-        }
+        upsertProgressToast(BULK_PROGRESS_START);
+        progressIntervalId = setInterval(() => {
+          const nextProgress = getEstimatedBulkProgress(
+            Date.now() - progressStartedAt,
+          );
+          upsertProgressToast(nextProgress);
+        }, BULK_PROGRESS_TICK_MS);
 
         const result = await api.bulkJobAction({
           action,
@@ -157,6 +207,12 @@ export function useBulkJobSelection({
           error instanceof Error ? error.message : "Failed to run bulk action";
         toast.error(message);
       } finally {
+        if (progressIntervalId) {
+          clearInterval(progressIntervalId);
+        }
+        if (!isProgressToastHidden && progressToastId !== undefined) {
+          toast.dismiss(progressToastId);
+        }
         setBulkActionInFlight(null);
       }
     },
