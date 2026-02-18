@@ -273,6 +273,18 @@ describe("PDF Service Tailoring Logic", () => {
     expect(projects.find((p: any) => p.id === "p2").visible).toBe(true);
   });
 
+  it("keeps projects section visible when selected project list is explicitly empty", async () => {
+    await generatePdf("job-empty-projects", {}, "desc", "base.json", ", ");
+
+    expect(mockRxResumeClient.create).toHaveBeenCalled();
+    const savedResumeJson = mockRxResumeClient.getLastCreateData();
+    const projects = savedResumeJson.sections.projects.items;
+
+    expect(projects.find((p: any) => p.id === "p1").visible).toBe(false);
+    expect(projects.find((p: any) => p.id === "p2").visible).toBe(false);
+    expect(savedResumeJson.sections.projects.visible).toBe(true);
+  });
+
   it("should fall back to AI selection if selectedProjectIds is null/undefined", async () => {
     // Setup AI selection mock for this test
     vi.mocked(projectSelection.pickProjectIdsForJob).mockResolvedValue(["p1"]);

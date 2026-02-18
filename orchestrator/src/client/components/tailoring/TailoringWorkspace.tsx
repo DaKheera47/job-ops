@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import * as api from "../../api";
 import { useTracerReadiness } from "../../hooks/useTracerReadiness";
+import { canFinalizeTailoring } from "./rules";
 import { TailoringSections } from "./TailoringSections";
 import { useTailoringDraft } from "./useTailoringDraft";
 
@@ -235,7 +236,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     ? isSummarizing || isGeneratingPdf || isSaving
     : isGenerating || Boolean(tailorProps?.isFinalizing) || isSaving;
 
-  const canFinalize = summary.trim().length > 0 && selectedIds.size > 0;
+  const canFinalize = canFinalizeTailoring(summary);
 
   if (editorProps) {
     return (
@@ -399,7 +400,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       <div className="space-y-2">
         {!canFinalize && (
           <p className="text-center text-[10px] text-muted-foreground">
-            Add a summary and select at least one project to{" "}
+            Add a summary to{" "}
             {finalizeVariant === "ready" ? "regenerate" : "finalize"}.
           </p>
         )}

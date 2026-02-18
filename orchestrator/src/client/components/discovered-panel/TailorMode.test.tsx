@@ -88,6 +88,21 @@ describe("TailorMode", () => {
     );
   });
 
+  it("allows finalize when summary exists even if no project is selected", async () => {
+    render(
+      <TailorMode
+        job={createJob({ selectedProjectIds: "" })}
+        onBack={vi.fn()}
+        onFinalize={vi.fn()}
+        isFinalizing={false}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Finalize & Move to Ready" }),
+    ).toBeEnabled();
+  });
+
   it("resets local state when job id changes", async () => {
     const { rerender } = render(
       <TailorMode

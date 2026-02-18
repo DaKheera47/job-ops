@@ -22,6 +22,10 @@ import {
 } from "@/components/ui/table";
 import { clampInt } from "@/lib/utils";
 import { BaseResumeSelection } from "./BaseResumeSelection";
+import {
+  toggleAiSelectable,
+  toggleMustInclude,
+} from "../resume-projects-state";
 
 type ReactiveResumeSectionProps = {
   rxResumeBaseResumeIdDraft: string | null;
@@ -202,48 +206,14 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                                       }
                                       onCheckedChange={(checked) => {
                                         if (!field.value) return;
-                                        const isChecked = checked === true;
-                                        const lockedIds =
-                                          field.value.lockedProjectIds.slice();
-                                        const selectableIds =
-                                          field.value.aiSelectableProjectIds.slice();
-
-                                        if (isChecked) {
-                                          if (!lockedIds.includes(project.id))
-                                            lockedIds.push(project.id);
-                                          const nextSelectable =
-                                            selectableIds.filter(
-                                              (id) => id !== project.id,
-                                            );
-                                          const minCap = lockedIds.length;
-                                          field.onChange({
-                                            ...field.value,
-                                            lockedProjectIds: lockedIds,
-                                            aiSelectableProjectIds:
-                                              nextSelectable,
-                                            maxProjects: Math.max(
-                                              field.value.maxProjects,
-                                              minCap,
-                                            ),
-                                          });
-                                          return;
-                                        }
-
-                                        const nextLocked = lockedIds.filter(
-                                          (id) => id !== project.id,
-                                        );
-                                        if (!selectableIds.includes(project.id))
-                                          selectableIds.push(project.id);
-                                        field.onChange({
-                                          ...field.value,
-                                          lockedProjectIds: nextLocked,
-                                          aiSelectableProjectIds: selectableIds,
-                                          maxProjects: clampInt(
-                                            field.value.maxProjects,
-                                            nextLocked.length,
+                                        field.onChange(
+                                          toggleMustInclude({
+                                            settings: field.value,
+                                            projectId: project.id,
+                                            checked: checked === true,
                                             maxProjectsTotal,
-                                          ),
-                                        });
+                                          }),
+                                        );
                                       }}
                                     />
                                   </TableCell>
@@ -259,21 +229,13 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                                       }
                                       onCheckedChange={(checked) => {
                                         if (!field.value) return;
-                                        const isChecked = checked === true;
-                                        const selectableIds =
-                                          field.value.aiSelectableProjectIds.slice();
-                                        const nextSelectable = isChecked
-                                          ? selectableIds.includes(project.id)
-                                            ? selectableIds
-                                            : [...selectableIds, project.id]
-                                          : selectableIds.filter(
-                                              (id) => id !== project.id,
-                                            );
-                                        field.onChange({
-                                          ...field.value,
-                                          aiSelectableProjectIds:
-                                            nextSelectable,
-                                        });
+                                        field.onChange(
+                                          toggleAiSelectable({
+                                            settings: field.value,
+                                            projectId: project.id,
+                                            checked: checked === true,
+                                          }),
+                                        );
                                       }}
                                     />
                                   </TableCell>
