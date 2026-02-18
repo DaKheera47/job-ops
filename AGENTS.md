@@ -36,6 +36,14 @@ Use consistent status/code mapping:
 - Log structured objects, not free-form dumps.
 - Include useful context fields (e.g. `requestId`, `pipelineRunId`, `jobId`, `route`, `status`).
 
+## SSE Standards
+
+- Use centralized SSE helpers by default.
+- Server: use `orchestrator/src/server/infra/sse.ts` for setup, data writes, comments, and heartbeats.
+- Client (`EventSource`): use `orchestrator/src/client/lib/sse.ts` for subscription/open/message/error plumbing.
+- Do not duplicate raw SSE setup (`Content-Type`, `Connection`, heartbeat loops, or ad-hoc `JSON.parse` event parsing) when these helpers apply.
+- Keep feature payload types domain-local (pipeline, ghostwriter, bulk actions), but reuse shared transport plumbing.
+
 ## Redaction and Sanitization
 
 - Always sanitize objects before logging or returning in error `details`.
