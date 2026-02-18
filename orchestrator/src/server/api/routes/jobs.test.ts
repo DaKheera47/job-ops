@@ -515,6 +515,7 @@ describe.sequential("Jobs API routes", () => {
     expect(events[0].requested).toBe(3);
     expect(events.filter((event) => event.type === "progress")).toHaveLength(3);
     expect(events.at(-1)?.type).toBe("completed");
+    expect(events.at(-1)?.completed).toBe(3);
     expect(events.at(-1)?.succeeded).toBe(2);
     expect(events.at(-1)?.failed).toBe(1);
   });

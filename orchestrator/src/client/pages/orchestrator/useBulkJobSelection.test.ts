@@ -72,6 +72,7 @@ const asStreamEvents = (
     type: "completed",
     action: response.action,
     requested: response.requested,
+    completed: response.requested,
     succeeded: response.succeeded,
     failed: response.failed,
     results: response.results,

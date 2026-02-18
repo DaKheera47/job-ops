@@ -196,7 +196,7 @@ export function useBulkJobSelection({
 
               latestProgress = {
                 requested: event.requested,
-                completed: event.requested,
+                completed: event.completed,
                 succeeded: event.succeeded,
                 failed: event.failed,
               };

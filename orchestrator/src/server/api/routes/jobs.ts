@@ -636,6 +636,7 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       type: "completed",
       action,
       requested,
+      completed: results.length,
       succeeded,
       failed,
       results,

@@ -645,6 +645,7 @@ export type BulkJobActionStreamEvent =
       type: "completed";
       action: BulkJobAction;
       requested: number;
+      completed: number;
       succeeded: number;
       failed: number;
       results: BulkJobActionResult[];
