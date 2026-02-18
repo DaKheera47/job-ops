@@ -645,14 +645,27 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       requestId,
     });
 
-    sendEvent({
-      type: "error",
-      code: err.code,
-      message: err.message,
-      requestId,
-    });
+    if (
+      !sendEvent({
+        type: "error",
+        code: err.code,
+        message: err.message,
+        requestId,
+      })
+    ) {
+      logger.info("Skipping stream error event because client disconnected", {
+        route: "POST /api/jobs/bulk-actions/stream",
+        action,
+        requested,
+        succeeded,
+        failed,
+        requestId,
+      });
+    }
   } finally {
-    res.end();
+    if (!res.writableEnded && !res.destroyed) {
+      res.end();
+    }
   }
 });
 
