@@ -45,6 +45,18 @@ const StatusPill: React.FC<{ status: JobStatus }> = ({ status }) => {
   );
 };
 
+const TracerPill: React.FC<{ enabled: boolean }> = ({ enabled }) => (
+  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80">
+    <span
+      className={cn(
+        "h-1.5 w-1.5 rounded-full opacity-80",
+        enabled ? "bg-violet-500" : "bg-slate-500",
+      )}
+    />
+    {enabled ? "Tracer On" : "Tracer Off"}
+  </span>
+);
+
 const ScoreMeter: React.FC<{ score: number | null }> = ({ score }) => {
   if (score == null) {
     return <span className="text-[10px] text-muted-foreground/60">-</span>;
@@ -256,6 +268,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
       <div className="flex items-center justify-between gap-2 py-1 border-y border-border/30">
         <div className="flex items-center gap-4">
           <StatusPill status={job.status} />
+          <TracerPill enabled={job.tracerLinksEnabled} />
           {showSponsorInfo && (
             <SponsorPill
               score={job.sponsorMatchScore}

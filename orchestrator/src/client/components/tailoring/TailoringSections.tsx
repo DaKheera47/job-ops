@@ -286,9 +286,6 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                 Tracer links are unavailable: {tracerEnableBlockedReason}
               </p>
             ) : null}
-            <p className="mt-2 text-xs text-muted-foreground/80">
-              No raw IP is stored. Analytics are privacy-safe and anonymous.
-            </p>
           </div>
         </AccordionContent>
       </AccordionItem>
