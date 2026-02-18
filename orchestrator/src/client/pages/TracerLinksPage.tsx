@@ -5,7 +5,7 @@ import type {
   TracerAnalyticsResponse,
   TracerAnalyticsTopJob,
 } from "@shared/types.js";
-import { BarChart3, Link2, Loader2 } from "lucide-react";
+import { BarChart3, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
@@ -21,6 +21,13 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -86,15 +93,6 @@ function formatDayLabel(day: string): string {
   });
 }
 
-function normalizeHeadingLabel(
-  label: string | null | undefined,
-): string | null {
-  const text = (label ?? "").trim();
-  if (!text) return null;
-  if (/^[a-z]+\..*\.url\.href$/i.test(text)) return null;
-  return text;
-}
-
 export const TracerLinksPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<TracerAnalyticsResponse | null>(
     null,
@@ -106,6 +104,7 @@ export const TracerLinksPage: React.FC = () => {
   const [includeBots, setIncludeBots] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
+  const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(
@@ -199,6 +198,7 @@ export const TracerLinksPage: React.FC = () => {
   const selectedJobId = jobDrilldown?.job.id ?? null;
 
   const handleSelectTopJob = (job: TracerAnalyticsTopJob) => {
+    setIsDrilldownOpen(true);
     void loadJobDrilldown(job.jobId);
   };
 
@@ -334,108 +334,102 @@ export const TracerLinksPage: React.FC = () => {
           )}
         </SectionCard>
 
-        <section className="grid gap-4 lg:grid-cols-2">
-          <SectionCard>
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold">Application Activity</h3>
-            </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Job</TableHead>
-                  <TableHead className="w-[90px]">Clicks</TableHead>
-                  <TableHead className="w-[140px]">Last active</TableHead>
+        <SectionCard>
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold">Application Activity</h3>
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Job</TableHead>
+                <TableHead className="w-[90px]">Clicks</TableHead>
+                <TableHead className="w-[140px]">Last active</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(analytics?.topJobs ?? []).map((row) => (
+                <TableRow
+                  key={row.jobId}
+                  className="cursor-pointer"
+                  data-state={
+                    selectedJobId === row.jobId ? "selected" : undefined
+                  }
+                  onClick={() => handleSelectTopJob(row)}
+                >
+                  <TableCell>
+                    <div className="font-medium">{row.title}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {row.employer}
+                    </div>
+                  </TableCell>
+                  <TableCell>{row.clicks}</TableCell>
+                  <TableCell>
+                    {formatRecentActivity(row.lastClickedAt)}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(analytics?.topJobs ?? []).map((row) => (
-                  <TableRow
-                    key={row.jobId}
-                    className="cursor-pointer"
-                    data-state={
-                      selectedJobId === row.jobId ? "selected" : undefined
-                    }
-                    onClick={() => handleSelectTopJob(row)}
+              ))}
+              {(analytics?.topJobs.length ?? 0) === 0 && !isLoading && (
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    className="text-sm text-muted-foreground"
                   >
-                    <TableCell>
-                      <div className="font-medium">{row.title}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {row.employer}
-                      </div>
-                    </TableCell>
-                    <TableCell>{row.clicks}</TableCell>
-                    <TableCell>
-                      {formatRecentActivity(row.lastClickedAt)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(analytics?.topJobs.length ?? 0) === 0 && !isLoading && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={3}
-                      className="text-sm text-muted-foreground"
-                    >
-                      No tracer-link activity yet.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </SectionCard>
+                    No tracer-link activity yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </SectionCard>
 
-          <SectionCard>
-            <div className="mb-3">
-              <h3 className="text-sm font-semibold">
-                Job Drilldown
-                {jobDrilldown ? `: ${jobDrilldown.job.employer}` : ""}
-              </h3>
-            </div>
-            {isDrilldownLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading drilldown...
-              </div>
-            ) : jobDrilldown ? (
-              <div className="space-y-2">
-                {jobDrilldown.links.map((row) => (
-                  <div
-                    key={row.tracerLinkId}
-                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      {normalizeHeadingLabel(row.sourceLabel) ? (
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          <Link2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="truncate">
-                            {normalizeHeadingLabel(row.sourceLabel)}
-                          </span>
-                        </div>
-                      ) : null}
-                      <p className="truncate text-xs text-muted-foreground">
-                        {row.destinationUrl}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        Last click: {formatUnixTimestamp(row.lastClickedAt)}
+        <Dialog open={isDrilldownOpen} onOpenChange={setIsDrilldownOpen}>
+          <DialogContent className="max-h-[80vh] max-w-3xl overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>
+                Job Links{jobDrilldown ? `: ${jobDrilldown.job.title}` : ""}
+              </DialogTitle>
+              <DialogDescription>
+                Destination links and click activity for the selected job.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 overflow-y-auto pr-1">
+              {isDrilldownLoading ? (
+                <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading links...
+                </div>
+              ) : jobDrilldown ? (
+                <>
+                  {jobDrilldown.links.map((row) => (
+                    <div
+                      key={row.tracerLinkId}
+                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm">{row.destinationUrl}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          Last click: {formatUnixTimestamp(row.lastClickedAt)}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold tabular-nums">
+                        {row.clicks} Clicks
                       </p>
                     </div>
-                    <p className="text-sm font-semibold tabular-nums">
-                      {row.clicks} Clicks
+                  ))}
+                  {jobDrilldown.links.length === 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      No tracer links recorded for this job yet.
                     </p>
-                  </div>
-                ))}
-                {jobDrilldown.links.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No tracer links recorded for this job yet.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Select a job in Application Activity to inspect link details.
-              </p>
-            )}
-          </SectionCard>
-        </section>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Select a job from Application Activity.
+                </p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </PageMain>
     </>
   );
