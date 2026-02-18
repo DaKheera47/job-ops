@@ -287,6 +287,42 @@ describe.sequential("Jobs API routes", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  it("prefers JOBOPS_PUBLIC_BASE_URL over forwarded headers for generate-pdf origin", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const { generateFinalPdf } = await import("../../pipeline/index");
+    const job = await createJob({
+      source: "manual",
+      title: "Origin Test",
+      employer: "Example Co",
+      jobUrl: "https://example.com/job/origin-test",
+      jobDescription: "Test description",
+    });
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://canonical.jobops.example";
+
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}/generate-pdf`, {
+        method: "POST",
+        headers: {
+          "x-forwarded-proto": "http",
+          "x-forwarded-host": "attacker.example",
+        },
+      });
+
+      expect(res.status).toBe(200);
+      expect(vi.mocked(generateFinalPdf)).toHaveBeenCalledWith(job.id, {
+        requestOrigin: "https://canonical.jobops.example",
+      });
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
+  });
+
   it("returns 409 when patching to a duplicate job URL", async () => {
     const { createJob } = await import("../../repositories/jobs");
     const first = await createJob({
