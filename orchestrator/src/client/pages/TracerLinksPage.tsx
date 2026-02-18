@@ -1,20 +1,23 @@
 import * as api from "@client/api";
 import { PageHeader, PageMain, SectionCard } from "@client/components/layout";
 import type {
+  JobTracerLinkAnalyticsItem,
   JobTracerLinksResponse,
   TracerAnalyticsResponse,
   TracerAnalyticsTopJob,
 } from "@shared/types.js";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Copy, ExternalLink, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import {
   ChartContainer,
   ChartTooltip,
@@ -38,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { copyTextToClipboard } from "@/lib/utils";
 
 const chartConfig = {
   clicks: {
@@ -93,6 +97,21 @@ function formatDayLabel(day: string): string {
   });
 }
 
+function formatRelativeTime(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "No activity yet";
+  const diffSeconds = Math.max(0, Math.floor(Date.now() / 1000) - value);
+  if (diffSeconds < 60) return "just now";
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+  }
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24)
+    return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+}
+
 export const TracerLinksPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<TracerAnalyticsResponse | null>(
     null,
@@ -105,6 +124,7 @@ export const TracerLinksPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
+  const [drilldownMode, setDrilldownMode] = useState<"human" | "all">("human");
   const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(
@@ -196,6 +216,62 @@ export const TracerLinksPage: React.FC = () => {
   }, [chartData.length, query.from, query.to]);
 
   const selectedJobId = jobDrilldown?.job.id ?? null;
+  const drilldownGroupedLinks = useMemo(() => {
+    if (!jobDrilldown) {
+      return { active: [], inactive: [] } as const;
+    }
+
+    const hasActivity = (row: JobTracerLinkAnalyticsItem) =>
+      drilldownMode === "human" ? row.humanClicks > 0 : row.clicks > 0;
+    const uniqueOpens = (row: JobTracerLinkAnalyticsItem) =>
+      drilldownMode === "human" ? row.humanClicks : row.uniqueOpens;
+
+    const active = jobDrilldown.links.filter(hasActivity).sort((a, b) => {
+      const lastClickDelta = (b.lastClickedAt ?? 0) - (a.lastClickedAt ?? 0);
+      if (lastClickDelta !== 0) return lastClickDelta;
+      const uniqueDelta = uniqueOpens(b) - uniqueOpens(a);
+      if (uniqueDelta !== 0) return uniqueDelta;
+      return b.humanClicks - a.humanClicks;
+    });
+
+    const inactive = jobDrilldown.links
+      .filter((row) => !hasActivity(row))
+      .sort((a, b) => a.destinationUrl.localeCompare(b.destinationUrl));
+
+    return { active, inactive } as const;
+  }, [drilldownMode, jobDrilldown]);
+  const drilldownSummary = useMemo(() => {
+    if (!jobDrilldown) return null;
+    const rows = jobDrilldown.links;
+    const uniqueHumans = rows.reduce(
+      (total, row) => total + row.humanClicks,
+      0,
+    );
+    const totalClicks = rows.reduce(
+      (total, row) =>
+        total + (drilldownMode === "human" ? row.humanClicks : row.clicks),
+      0,
+    );
+    const lastActivityAt = rows.reduce<number | null>((latest, row) => {
+      const count = drilldownMode === "human" ? row.humanClicks : row.clicks;
+      if (count <= 0 || row.lastClickedAt === null) return latest;
+      if (latest === null || row.lastClickedAt > latest)
+        return row.lastClickedAt;
+      return latest;
+    }, null);
+    return { uniqueHumans, totalClicks, lastActivityAt };
+  }, [drilldownMode, jobDrilldown]);
+
+  const handleCopyDestination = async (destinationUrl: string) => {
+    try {
+      await copyTextToClipboard(destinationUrl);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
+  const getRowClicks = (row: JobTracerLinkAnalyticsItem) =>
+    drilldownMode === "human" ? row.humanClicks : row.clicks;
 
   const handleSelectTopJob = (job: TracerAnalyticsTopJob) => {
     setIsDrilldownOpen(true);
@@ -400,7 +476,53 @@ export const TracerLinksPage: React.FC = () => {
                 </div>
               ) : jobDrilldown ? (
                 <>
-                  {jobDrilldown.links.map((row) => (
+                  <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                    <div className="grid gap-2 text-xs sm:grid-cols-3">
+                      <p>
+                        Unique humans:{" "}
+                        <span className="font-semibold tabular-nums">
+                          {drilldownSummary?.uniqueHumans ?? 0}
+                        </span>
+                      </p>
+                      <p>
+                        Total clicks:{" "}
+                        <span className="font-semibold tabular-nums">
+                          {drilldownSummary?.totalClicks ?? 0}
+                        </span>
+                      </p>
+                      <p>
+                        Last activity:{" "}
+                        <span className="font-semibold">
+                          {formatRelativeTime(
+                            drilldownSummary?.lastActivityAt ?? null,
+                          )}
+                        </span>
+                      </p>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          drilldownMode === "human" ? "default" : "outline"
+                        }
+                        onClick={() => setDrilldownMode("human")}
+                      >
+                        Human only
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={
+                          drilldownMode === "all" ? "default" : "outline"
+                        }
+                        onClick={() => setDrilldownMode("all")}
+                      >
+                        Human + bots
+                      </Button>
+                    </div>
+                  </div>
+                  {drilldownGroupedLinks.active.map((row) => (
                     <div
                       key={row.tracerLinkId}
                       className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
@@ -411,11 +533,100 @@ export const TracerLinksPage: React.FC = () => {
                           Last click: {formatUnixTimestamp(row.lastClickedAt)}
                         </p>
                       </div>
-                      <p className="text-sm font-semibold tabular-nums">
-                        {row.clicks} Clicks
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold tabular-nums">
+                          {getRowClicks(row)} Clicks
+                        </p>
+                        <a
+                          href={row.destinationUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex"
+                        >
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </a>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() =>
+                            void handleCopyDestination(row.destinationUrl)
+                          }
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
+                  {drilldownGroupedLinks.inactive.length > 0 && (
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="inactive-links">
+                        <AccordionTrigger className="py-2 text-sm hover:no-underline">
+                          No activity yet (
+                          {drilldownGroupedLinks.inactive.length})
+                        </AccordionTrigger>
+                        <AccordionContent className="space-y-2 pt-1">
+                          {drilldownGroupedLinks.inactive.map((row) => (
+                            <div
+                              key={row.tracerLinkId}
+                              className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm">
+                                  {row.destinationUrl}
+                                </p>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  Last click:{" "}
+                                  {formatUnixTimestamp(row.lastClickedAt)}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold tabular-nums">
+                                  {getRowClicks(row)} Clicks
+                                </p>
+                                <a
+                                  href={row.destinationUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex"
+                                >
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7"
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                  </Button>
+                                </a>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() =>
+                                    void handleCopyDestination(
+                                      row.destinationUrl,
+                                    )
+                                  }
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
                   {jobDrilldown.links.length === 0 && (
                     <p className="text-sm text-muted-foreground">
                       No tracer links recorded for this job yet.
