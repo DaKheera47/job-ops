@@ -3,11 +3,18 @@ import { PageHeader, PageMain, SectionCard } from "@client/components/layout";
 import type {
   JobTracerLinksResponse,
   TracerAnalyticsResponse,
+  TracerAnalyticsTopJob,
 } from "@shared/types.js";
-import { BarChart3, Loader2 } from "lucide-react";
+import { BarChart3, Link2, Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +27,35 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const chartConfig = {
+  clicks: {
+    label: "Clicks",
+    color: "hsl(var(--foreground))",
+  },
+};
+
 function formatUnixTimestamp(value: number | null): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return "-";
   return new Date(value * 1000).toLocaleString();
+}
+
+function formatRecentActivity(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "-";
+  const date = new Date(value * 1000);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const timeText = date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  if (date >= today) return `Today ${timeText}`;
+  if (date >= yesterday) return `Yesterday ${timeText}`;
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 function toUnixStartOfDay(value: string): number | undefined {
@@ -39,13 +72,22 @@ function toUnixEndOfDay(value: string): number | undefined {
   return Math.floor(date.getTime() / 1000);
 }
 
+function formatDayLabel(day: string): string {
+  const date = new Date(`${day}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return day;
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export const TracerLinksPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<TracerAnalyticsResponse | null>(
     null,
   );
   const [jobDrilldown, setJobDrilldown] =
     useState<JobTracerLinksResponse | null>(null);
-  const [jobId, setJobId] = useState("");
+  const [jobIdInput, setJobIdInput] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [includeBots, setIncludeBots] = useState(false);
@@ -55,14 +97,41 @@ export const TracerLinksPage: React.FC = () => {
 
   const query = useMemo(
     () => ({
-      jobId: jobId.trim() || undefined,
       from: toUnixStartOfDay(fromDate),
       to: toUnixEndOfDay(toDate),
       includeBots,
       limit: 20,
     }),
-    [jobId, fromDate, toDate, includeBots],
+    [fromDate, toDate, includeBots],
   );
+
+  const loadJobDrilldown = async (targetJobId: string) => {
+    if (!targetJobId) {
+      setError("Enter a Job ID to load link drilldown.");
+      setJobDrilldown(null);
+      return;
+    }
+
+    try {
+      setIsDrilldownLoading(true);
+      setError(null);
+      const response = await api.getJobTracerLinks(targetJobId, {
+        from: query.from,
+        to: query.to,
+        includeBots,
+      });
+      setJobDrilldown(response);
+    } catch (fetchError) {
+      const message =
+        fetchError instanceof Error
+          ? fetchError.message
+          : "Failed to load job tracer links.";
+      setError(message);
+      setJobDrilldown(null);
+    } finally {
+      setIsDrilldownLoading(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -93,33 +162,32 @@ export const TracerLinksPage: React.FC = () => {
     };
   }, [query]);
 
-  const handleLoadJobDrilldown = async () => {
-    const trimmedJobId = jobId.trim();
-    if (!trimmedJobId) {
-      setError("Enter a Job ID to load link drilldown.");
-      setJobDrilldown(null);
-      return;
+  const chartData = analytics?.timeSeries ?? [];
+  const totalViews = analytics?.totals.clicks ?? 0;
+  const humanClicks = analytics?.totals.humanClicks ?? 0;
+  const uniqueJobsReached = useMemo(() => {
+    if (!analytics) return 0;
+    const jobIds = new Set(analytics.topJobs.map((job) => job.jobId));
+    if (jobIds.size > 0) return jobIds.size;
+    for (const row of analytics.topLinks) {
+      jobIds.add(row.jobId);
     }
+    return jobIds.size;
+  }, [analytics]);
 
-    try {
-      setIsDrilldownLoading(true);
-      setError(null);
-      const response = await api.getJobTracerLinks(trimmedJobId, {
-        from: query.from,
-        to: query.to,
-        includeBots,
-      });
-      setJobDrilldown(response);
-    } catch (fetchError) {
-      const message =
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Failed to load job tracer links.";
-      setError(message);
-      setJobDrilldown(null);
-    } finally {
-      setIsDrilldownLoading(false);
+  const visibleDays = useMemo(() => {
+    if (query.from && query.to && query.to >= query.from) {
+      const secondsPerDay = 24 * 60 * 60;
+      return Math.floor((query.to - query.from) / secondsPerDay) + 1;
     }
+    return chartData.length > 0 ? chartData.length : 30;
+  }, [chartData.length, query.from, query.to]);
+
+  const selectedJobId = jobDrilldown?.job.id ?? null;
+
+  const handleSelectTopJob = (job: TracerAnalyticsTopJob) => {
+    setJobIdInput(job.jobId);
+    void loadJobDrilldown(job.jobId);
   };
 
   return (
@@ -132,17 +200,7 @@ export const TracerLinksPage: React.FC = () => {
 
       <PageMain>
         <SectionCard>
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="space-y-1">
-              <Label htmlFor="tracer-job-id">Job ID (optional)</Label>
-              <Input
-                id="tracer-job-id"
-                value={jobId}
-                onChange={(event) => setJobId(event.target.value)}
-                placeholder="job-123"
-              />
-            </div>
-
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
             <div className="space-y-1">
               <Label htmlFor="tracer-from-date">From date</Label>
               <Input
@@ -152,7 +210,6 @@ export const TracerLinksPage: React.FC = () => {
                 onChange={(event) => setFromDate(event.target.value)}
               />
             </div>
-
             <div className="space-y-1">
               <Label htmlFor="tracer-to-date">To date</Label>
               <Input
@@ -162,36 +219,40 @@ export const TracerLinksPage: React.FC = () => {
                 onChange={(event) => setToDate(event.target.value)}
               />
             </div>
-
-            <div className="flex items-end">
-              <label
-                htmlFor="tracer-include-bots"
-                className="flex cursor-pointer items-center gap-2 pb-2"
-              >
-                <Checkbox
-                  id="tracer-include-bots"
-                  checked={includeBots}
-                  onCheckedChange={(checked) =>
-                    setIncludeBots(Boolean(checked))
-                  }
-                />
-                <span className="text-sm">Include likely bots</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void handleLoadJobDrilldown()}
-              disabled={isDrilldownLoading}
+            <label
+              htmlFor="tracer-include-bots"
+              className="flex cursor-pointer items-end gap-2 pb-2"
             >
-              {isDrilldownLoading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Load Job Drilldown
-            </Button>
+              <Checkbox
+                id="tracer-include-bots"
+                checked={includeBots}
+                onCheckedChange={(checked) => setIncludeBots(Boolean(checked))}
+              />
+              <span className="text-sm">Include likely bots</span>
+            </label>
+            <div className="space-y-1">
+              <Label htmlFor="tracer-job-id">Job ID (drilldown)</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="tracer-job-id"
+                  value={jobIdInput}
+                  onChange={(event) => setJobIdInput(event.target.value)}
+                  placeholder="job-123"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void loadJobDrilldown(jobIdInput.trim())}
+                  disabled={isDrilldownLoading}
+                >
+                  {isDrilldownLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Load"
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
         </SectionCard>
 
@@ -201,198 +262,175 @@ export const TracerLinksPage: React.FC = () => {
           </SectionCard>
         )}
 
-        <SectionCard>
-          <div className="mb-3 text-sm font-semibold">Global Totals</div>
+        <SectionCard className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold">
+                Resume Clicks Last {visibleDays} Days
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Daily click activity from tracer links.
+              </p>
+            </div>
+          </div>
           {isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex h-[240px] items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading analytics...
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-md border border-border/60 p-3">
-                <div className="text-xs text-muted-foreground">Clicks</div>
-                <div className="text-xl font-semibold">
-                  {analytics?.totals.clicks ?? 0}
-                </div>
-              </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <div className="text-xs text-muted-foreground">
-                  Unique opens
-                </div>
-                <div className="text-xl font-semibold">
-                  {analytics?.totals.uniqueOpens ?? 0}
-                </div>
-              </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <div className="text-xs text-muted-foreground">
-                  Human clicks
-                </div>
-                <div className="text-xl font-semibold">
-                  {analytics?.totals.humanClicks ?? 0}
-                </div>
-              </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <div className="text-xs text-muted-foreground">Bot clicks</div>
-                <div className="text-xl font-semibold">
-                  {analytics?.totals.botClicks ?? 0}
-                </div>
-              </div>
-            </div>
+            <ChartContainer config={chartConfig} className="h-[240px] w-full">
+              <BarChart
+                data={chartData}
+                margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={8}
+                  minTickGap={24}
+                  tickFormatter={(value) => formatDayLabel(String(value))}
+                />
+                <YAxis axisLine={false} tickLine={false} width={30} />
+                <ChartTooltip
+                  cursor={{ fill: "hsl(var(--muted))", opacity: 0.35 }}
+                  content={
+                    <ChartTooltipContent
+                      nameKey="clicks"
+                      labelFormatter={(value) => formatDayLabel(String(value))}
+                    />
+                  }
+                />
+                <Bar
+                  dataKey="clicks"
+                  fill="var(--color-clicks)"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ChartContainer>
           )}
         </SectionCard>
 
-        <SectionCard>
-          <div className="mb-3 text-sm font-semibold">Top Links</div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Job</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Clicks</TableHead>
-                <TableHead>Unique</TableHead>
-                <TableHead>Last click</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(analytics?.topLinks ?? []).map((row) => (
-                <TableRow key={row.tracerLinkId}>
-                  <TableCell className="align-top">
-                    <div className="font-medium">{row.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {row.employer}
-                    </div>
-                  </TableCell>
-                  <TableCell className="align-top">
-                    <div className="font-mono text-xs">{row.sourcePath}</div>
-                    <div className="max-w-[280px] truncate text-xs text-muted-foreground">
-                      {row.destinationUrl}
-                    </div>
-                  </TableCell>
-                  <TableCell>{row.clicks}</TableCell>
-                  <TableCell>{row.uniqueOpens}</TableCell>
-                  <TableCell>
-                    {formatUnixTimestamp(row.lastClickedAt)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {(analytics?.topLinks?.length ?? 0) === 0 && !isLoading && (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-sm text-muted-foreground"
-                  >
-                    No tracer-link clicks yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </SectionCard>
-
-        <SectionCard>
-          <div className="mb-3 text-sm font-semibold">Top Jobs</div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Job</TableHead>
-                <TableHead>Clicks</TableHead>
-                <TableHead>Unique</TableHead>
-                <TableHead>Human</TableHead>
-                <TableHead>Bot</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(analytics?.topJobs ?? []).map((row) => (
-                <TableRow key={row.jobId}>
-                  <TableCell>
-                    <div className="font-medium">{row.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {row.employer}
-                    </div>
-                  </TableCell>
-                  <TableCell>{row.clicks}</TableCell>
-                  <TableCell>{row.uniqueOpens}</TableCell>
-                  <TableCell>{row.humanClicks}</TableCell>
-                  <TableCell>{row.botClicks}</TableCell>
-                </TableRow>
-              ))}
-              {(analytics?.topJobs?.length ?? 0) === 0 && !isLoading && (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-sm text-muted-foreground"
-                  >
-                    No jobs with tracer-link activity yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </SectionCard>
-
-        <SectionCard>
-          <div className="mb-3 text-sm font-semibold">Job Drilldown</div>
-          {jobDrilldown ? (
-            <>
-              <div className="mb-3 text-sm text-muted-foreground">
-                {jobDrilldown.job.title} ({jobDrilldown.job.employer}) - tracer
-                links{" "}
-                {jobDrilldown.job.tracerLinksEnabled ? "enabled" : "disabled"}
-              </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Source</TableHead>
-                    <TableHead>Destination</TableHead>
-                    <TableHead>Clicks</TableHead>
-                    <TableHead>Unique</TableHead>
-                    <TableHead>Last click</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {jobDrilldown.links.map((row) => (
-                    <TableRow key={row.tracerLinkId}>
-                      <TableCell>
-                        <div className="font-mono text-xs">
-                          {row.sourcePath}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          /cv/{row.token}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-[360px] truncate text-xs">
-                          {row.destinationUrl}
-                        </div>
-                      </TableCell>
-                      <TableCell>{row.clicks}</TableCell>
-                      <TableCell>{row.uniqueOpens}</TableCell>
-                      <TableCell>
-                        {formatUnixTimestamp(row.lastClickedAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {jobDrilldown.links.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-sm text-muted-foreground"
-                      >
-                        No tracer links recorded for this job yet.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Enter a Job ID and click "Load Job Drilldown" to inspect
-              link-level metrics.
+        <div className="grid gap-3 md:grid-cols-3">
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Total Views</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {totalViews.toLocaleString()}
             </p>
-          )}
-        </SectionCard>
+          </SectionCard>
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Unique Jobs Reached</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {uniqueJobsReached.toLocaleString()}
+            </p>
+          </SectionCard>
+          <SectionCard className="space-y-1">
+            <p className="text-xs text-muted-foreground">Human Clicks</p>
+            <p className="text-3xl font-semibold tabular-nums">
+              {humanClicks.toLocaleString()}
+            </p>
+          </SectionCard>
+        </div>
+
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)]">
+          <SectionCard>
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold">Application Activity</h3>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Job</TableHead>
+                  <TableHead className="w-[90px]">Clicks</TableHead>
+                  <TableHead className="w-[140px]">Last active</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(analytics?.topJobs ?? []).map((row) => (
+                  <TableRow
+                    key={row.jobId}
+                    className="cursor-pointer"
+                    data-state={
+                      selectedJobId === row.jobId ? "selected" : undefined
+                    }
+                    onClick={() => handleSelectTopJob(row)}
+                  >
+                    <TableCell>
+                      <div className="font-medium">{row.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {row.employer}
+                      </div>
+                    </TableCell>
+                    <TableCell>{row.clicks}</TableCell>
+                    <TableCell>
+                      {formatRecentActivity(row.lastClickedAt)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {(analytics?.topJobs.length ?? 0) === 0 && !isLoading && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="text-sm text-muted-foreground"
+                    >
+                      No tracer-link activity yet.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </SectionCard>
+
+          <SectionCard>
+            <div className="mb-3">
+              <h3 className="text-sm font-semibold">
+                Job Drilldown
+                {jobDrilldown ? `: ${jobDrilldown.job.employer}` : ""}
+              </h3>
+            </div>
+            {isDrilldownLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading drilldown...
+              </div>
+            ) : jobDrilldown ? (
+              <div className="space-y-2">
+                {jobDrilldown.links.map((row) => (
+                  <div
+                    key={row.tracerLinkId}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 text-sm font-medium">
+                        <Link2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="truncate">
+                          {row.sourceLabel || row.sourcePath}
+                        </span>
+                      </div>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Last click: {formatUnixTimestamp(row.lastClickedAt)}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums">
+                      {row.clicks} Clicks
+                    </p>
+                  </div>
+                ))}
+                {jobDrilldown.links.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No tracer links recorded for this job yet.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Select a job in Application Activity or enter a Job ID above.
+              </p>
+            )}
+          </SectionCard>
+        </section>
       </PageMain>
     </>
   );
