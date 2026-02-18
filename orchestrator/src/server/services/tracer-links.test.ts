@@ -299,6 +299,8 @@ describe("tracer-links service", () => {
     });
 
     expect(redirect).toBeNull();
-    expect(vi.mocked(tracerLinksRepo.insertTracerClickEvent)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(tracerLinksRepo.insertTracerClickEvent),
+    ).not.toHaveBeenCalled();
   });
 });
