@@ -235,8 +235,17 @@ function collectUrlTargets(
           sourceLabel: deriveSourceLabel(sourcePath, linkNode),
           destinationUrl: rawHref,
           applyTracerUrl: (url: string) => {
-            (value as { href: string; label: string }).href = url;
-            (value as { href: string; label: string }).label = url;
+            const linkValue = value as { href?: unknown; label?: unknown };
+            const currentLabel =
+              typeof linkValue.label === "string" ? linkValue.label.trim() : "";
+
+            linkValue.href = url;
+
+            // Preserve descriptive labels; only rewrite label text when it was
+            // empty or mirrored the original destination URL.
+            if (!currentLabel || currentLabel === rawHref) {
+              linkValue.label = url;
+            }
           },
         });
       }

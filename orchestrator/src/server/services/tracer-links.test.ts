@@ -106,9 +106,7 @@ describe("tracer-links service", () => {
     expect(resumeData.basics.url.href).toBe(
       "https://jobops.example.com/cv/tok-1",
     );
-    expect(resumeData.basics.url.label).toBe(
-      "https://jobops.example.com/cv/tok-1",
-    );
+    expect(resumeData.basics.url.label).toBe("Portfolio");
     expect(resumeData.sections.projects.items[0].url.href).toBe(
       "https://jobops.example.com/cv/tok-2",
     );
@@ -118,9 +116,7 @@ describe("tracer-links service", () => {
     expect(resumeData.sections.profiles.items[0].url.href).toBe(
       "https://jobops.example.com/cv/tok-3",
     );
-    expect(resumeData.sections.profiles.items[0].url.label).toBe(
-      "https://jobops.example.com/cv/tok-3",
-    );
+    expect(resumeData.sections.profiles.items[0].url.label).toBe("GitHub");
 
     // Non-http links are untouched.
     expect(resumeData.sections.projects.items[1].url.href).toBe(
