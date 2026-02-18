@@ -551,7 +551,16 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
     flushHeaders: true,
   });
 
+  let clientDisconnected = false;
+  res.on("close", () => {
+    clientDisconnected = true;
+  });
+
+  const isResponseWritable = () =>
+    !clientDisconnected && !res.writableEnded && !res.destroyed;
+
   const sendEvent = (event: BulkJobActionStreamEvent) => {
+    if (!isResponseWritable()) return;
     writeSseData(res, event);
   };
 
