@@ -241,7 +241,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         </AccordionContent>
       </AccordionItem>
 
-      {(isCatalogLoading || catalog.length > 0) && (
+      {!isCatalogLoading && catalog.length > 0 && (
         <AccordionItem value="projects" className={sectionClass}>
           <AccordionTrigger className={triggerClass}>
             Selected Projects
