@@ -1,4 +1,5 @@
 import { Progress } from "@/components/ui/progress";
+import { clampNumber } from "./utils";
 
 interface BulkActionProgressToastProps {
   completed: number;
@@ -7,9 +8,6 @@ interface BulkActionProgressToastProps {
   failed: number;
 }
 
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
-
 export function BulkActionProgressToast({
   completed,
   requested,
@@ -17,7 +15,7 @@ export function BulkActionProgressToast({
   failed,
 }: BulkActionProgressToastProps) {
   const safeRequested = Math.max(requested, 1);
-  const safeCompleted = clamp(completed, 0, safeRequested);
+  const safeCompleted = clampNumber(completed, 0, safeRequested);
   const progressValue = Math.round((safeCompleted / safeRequested) * 100);
 
   return (

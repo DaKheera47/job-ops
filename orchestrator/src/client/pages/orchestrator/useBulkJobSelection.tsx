@@ -14,6 +14,7 @@ import {
   getFailedJobIds,
 } from "./bulkActions";
 import type { FilterTab } from "./constants";
+import { clampNumber } from "./utils";
 
 const MAX_BULK_ACTION_JOB_IDS = 100;
 
@@ -22,9 +23,6 @@ const bulkActionLabel: Record<BulkJobAction, string> = {
   skip: "Skipping selected jobs...",
   rescore: "Calculating match scores...",
 };
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
 
 interface UseBulkJobSelectionArgs {
   activeJobs: JobListItem[];
@@ -136,7 +134,11 @@ export function useBulkJobSelection({
 
       const getProgressTitle = () => {
         const safeRequested = Math.max(latestProgress.requested, 1);
-        const safeCompleted = clamp(latestProgress.completed, 0, safeRequested);
+        const safeCompleted = clampNumber(
+          latestProgress.completed,
+          0,
+          safeRequested,
+        );
         return `${safeCompleted}/${safeRequested} ${bulkActionLabel[action]}`;
       };
 

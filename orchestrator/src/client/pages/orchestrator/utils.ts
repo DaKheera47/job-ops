@@ -16,6 +16,9 @@ const compareString = (a: string, b: string) =>
   a.localeCompare(b, undefined, { sensitivity: "base" });
 const compareNumber = (a: number, b: number) => a - b;
 
+export const clampNumber = (value: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, value));
+
 export const parseSalaryBounds = (
   job: JobListItem,
 ): { min: number; max: number } | null => {
