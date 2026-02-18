@@ -2,7 +2,7 @@
  * Shared layout components for consistent page structure.
  */
 
-import { type LucideIcon, Menu } from "lucide-react";
+import { ExternalLink, type LucideIcon, Menu } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -60,22 +60,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const setNavOpen = onNavOpenChange ?? setInternalNavOpen;
   const { version, updateAvailable } = useVersionCheck();
 
-  const handleNavClick = (
-    to: string,
-    activePaths?: string[],
-    external?: boolean,
-  ) => {
+  const handleNavClick = (to: string, activePaths?: string[]) => {
     if (isNavActive(location.pathname, to, activePaths)) {
       setNavOpen(false);
       return;
     }
     setNavOpen(false);
-    if (external) {
-      setTimeout(() => {
-        window.location.href = to;
-      }, 150);
-      return;
-    }
     setTimeout(() => navigate(to), 150);
   };
 
@@ -95,46 +85,59 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                 <SheetTitle>JobOps</SheetTitle>
               </SheetHeader>
               <nav className="mt-6 flex flex-col gap-2">
-                {NAV_LINKS.map(
-                  ({ to, label, icon: NavIcon, activePaths, external }) => (
-                    <button
-                      key={to}
-                      type="button"
-                      onClick={() => handleNavClick(to, activePaths, external)}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
-                        isNavActive(location.pathname, to, activePaths)
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      <NavIcon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  ),
-                )}
+                {NAV_LINKS.map(({ to, label, icon: NavIcon, activePaths }) => (
+                  <button
+                    key={to}
+                    type="button"
+                    onClick={() => handleNavClick(to, activePaths)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground text-left",
+                      isNavActive(location.pathname, to, activePaths)
+                        ? "bg-accent text-accent-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    <NavIcon className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
               </nav>
               {showVersionFooter && (
                 <div className="mt-auto pt-6 pb-2">
                   <TooltipProvider>
-                    <a
-                      href="https://github.com/DaKheera47/job-ops/releases"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <span>Version {version}</span>
-                      {updateAvailable && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="h-2 w-2 rounded-full bg-emerald-500 cursor-pointer" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Update available</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </a>
+                    <div className="flex flex-col items-start gap-2">
+                      <a
+                        href="https://github.com/DaKheera47/job-ops/releases"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        <span className="truncate">Version {version}</span>
+                        {updateAvailable && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="h-2 w-2 shrink-0 cursor-pointer rounded-full bg-emerald-500" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Update available</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </a>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setNavOpen(false);
+                          window.open("/docs", "_blank", "noopener,noreferrer");
+                        }}
+                        className="h-7 gap-1.5 px-2 text-xs"
+                      >
+                        <span>Documentation</span>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </TooltipProvider>
                 </div>
               )}
