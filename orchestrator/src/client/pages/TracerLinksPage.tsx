@@ -243,10 +243,7 @@ export const TracerLinksPage: React.FC = () => {
   const drilldownSummary = useMemo(() => {
     if (!jobDrilldown) return null;
     const rows = jobDrilldown.links;
-    const uniqueHumans = rows.reduce(
-      (total, row) => total + row.humanClicks,
-      0,
-    );
+    const humanClicks = rows.reduce((total, row) => total + row.humanClicks, 0);
     const totalClicks = rows.reduce(
       (total, row) =>
         total + (drilldownMode === "human" ? row.humanClicks : row.clicks),
@@ -259,7 +256,7 @@ export const TracerLinksPage: React.FC = () => {
         return row.lastClickedAt;
       return latest;
     }, null);
-    return { uniqueHumans, totalClicks, lastActivityAt };
+    return { humanClicks, totalClicks, lastActivityAt };
   }, [drilldownMode, jobDrilldown]);
 
   const handleCopyDestination = async (destinationUrl: string) => {
@@ -479,9 +476,9 @@ export const TracerLinksPage: React.FC = () => {
                   <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
                     <div className="grid gap-2 text-xs sm:grid-cols-3">
                       <p>
-                        Unique humans:{" "}
+                        Human clicks:{" "}
                         <span className="font-semibold tabular-nums">
-                          {drilldownSummary?.uniqueHumans ?? 0}
+                          {drilldownSummary?.humanClicks ?? 0}
                         </span>
                       </p>
                       <p>
