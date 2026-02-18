@@ -21,8 +21,8 @@ export function BulkActionProgressToast({
   const progressValue = Math.round((safeCompleted / safeRequested) * 100);
 
   return (
-    <div className="mt-2 space-y-1.5">
-      <Progress value={progressValue} className="h-1.5" />
+    <div className="mt-2 w-full space-y-1.5">
+      <Progress value={progressValue} className="h-1.5 w-full" />
       <p className="tabular-nums text-xs text-muted-foreground">
         {succeeded} succeeded, {failed} failed
       </p>
