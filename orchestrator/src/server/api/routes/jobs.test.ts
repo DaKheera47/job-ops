@@ -431,6 +431,94 @@ describe.sequential("Jobs API routes", () => {
     ).toBe("NOT_FOUND");
   });
 
+  it("streams bulk action progress with done counters", async () => {
+    const { createJob, updateJob } = await import("../../repositories/jobs");
+    const discovered = await createJob({
+      source: "manual",
+      title: "Discovered Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bulk-stream-1",
+      jobDescription: "Test description",
+    });
+    const ready = await createJob({
+      source: "manual",
+      title: "Ready Role",
+      employer: "Beta",
+      jobUrl: "https://example.com/job/bulk-stream-2",
+      jobDescription: "Test description",
+    });
+    const applied = await createJob({
+      source: "manual",
+      title: "Applied Role",
+      employer: "Gamma",
+      jobUrl: "https://example.com/job/bulk-stream-3",
+      jobDescription: "Test description",
+    });
+    await updateJob(ready.id, { status: "ready" });
+    await updateJob(applied.id, { status: "applied" });
+
+    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "skip",
+        jobIds: [discovered.id, ready.id, applied.id],
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("text/event-stream");
+
+    const reader = res.body?.getReader();
+    expect(reader).toBeDefined();
+    if (!reader) return;
+
+    const decoder = new TextDecoder();
+    const events: any[] = [];
+    let buffer = "";
+    let hasCompleted = false;
+
+    try {
+      while (!hasCompleted) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let separatorIndex = buffer.indexOf("\n\n");
+        while (separatorIndex !== -1) {
+          const frame = buffer.slice(0, separatorIndex);
+          buffer = buffer.slice(separatorIndex + 2);
+
+          const dataLines = frame
+            .split("\n")
+            .filter((line) => line.startsWith("data:"))
+            .map((line) => line.slice(5).trim())
+            .filter(Boolean);
+
+          for (const line of dataLines) {
+            const event = JSON.parse(line);
+            events.push(event);
+            if (event.type === "completed") {
+              hasCompleted = true;
+            }
+          }
+
+          separatorIndex = buffer.indexOf("\n\n");
+        }
+      }
+    } finally {
+      await reader.cancel();
+    }
+
+    expect(events[0].type).toBe("started");
+    expect(events[0].completed).toBe(0);
+    expect(events[0].requested).toBe(3);
+    expect(events.filter((event) => event.type === "progress")).toHaveLength(3);
+    expect(events.at(-1)?.type).toBe("completed");
+    expect(events.at(-1)?.succeeded).toBe(2);
+    expect(events.at(-1)?.failed).toBe(1);
+  });
+
   it("validates bulk action payloads", async () => {
     const tooManyIds = Array.from(
       { length: 101 },

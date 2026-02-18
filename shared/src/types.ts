@@ -621,6 +621,42 @@ export interface BulkJobActionResponse {
   results: BulkJobActionResult[];
 }
 
+export type BulkJobActionStreamEvent =
+  | {
+      type: "started";
+      action: BulkJobAction;
+      requested: number;
+      completed: number;
+      succeeded: number;
+      failed: number;
+      requestId: string;
+    }
+  | {
+      type: "progress";
+      action: BulkJobAction;
+      requested: number;
+      completed: number;
+      succeeded: number;
+      failed: number;
+      result: BulkJobActionResult;
+      requestId: string;
+    }
+  | {
+      type: "completed";
+      action: BulkJobAction;
+      requested: number;
+      succeeded: number;
+      failed: number;
+      results: BulkJobActionResult[];
+      requestId: string;
+    }
+  | {
+      type: "error";
+      code: string;
+      message: string;
+      requestId: string;
+    };
+
 export const JOB_CHAT_MESSAGE_ROLES = [
   "system",
   "user",

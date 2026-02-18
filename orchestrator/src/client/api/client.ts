@@ -11,6 +11,7 @@ import type {
   BackupInfo,
   BulkJobActionRequest,
   BulkJobActionResponse,
+  BulkJobActionStreamEvent,
   BulkPostApplicationAction,
   BulkPostApplicationActionResponse,
   DemoInfoResponse,
@@ -393,11 +394,11 @@ export async function updateJob(
   });
 }
 
-async function streamSseEvents(
+async function streamSseEvents<TEvent>(
   endpoint: string,
-  input: Record<string, unknown>,
+  input: unknown,
   handlers: {
-    onEvent: (event: JobChatStreamEvent) => void;
+    onEvent: (event: TEvent) => void;
     signal?: AbortSignal;
   },
 ): Promise<void> {
@@ -456,7 +457,7 @@ async function streamSseEvents(
 
       for (const line of dataLines) {
         try {
-          handlers.onEvent(JSON.parse(line) as JobChatStreamEvent);
+          handlers.onEvent(JSON.parse(line) as TEvent);
         } catch {
           // Ignore malformed events to keep stream resilient
         }
@@ -708,6 +709,20 @@ export async function bulkJobAction(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function streamBulkJobAction(
+  input: BulkJobActionRequest,
+  handlers: {
+    onEvent: (event: BulkJobActionStreamEvent) => void;
+    signal?: AbortSignal;
+  },
+): Promise<void> {
+  return streamSseEvents<BulkJobActionStreamEvent>(
+    "/jobs/bulk-actions/stream",
+    input,
+    handlers,
+  );
 }
 
 export async function getJobStageEvents(id: string): Promise<StageEvent[]> {

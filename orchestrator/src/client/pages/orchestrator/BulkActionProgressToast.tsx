@@ -5,7 +5,10 @@ import { Progress } from "@/components/ui/progress";
 
 interface BulkActionProgressToastProps {
   action: BulkJobAction;
-  progress: number;
+  completed: number;
+  requested: number;
+  succeeded: number;
+  failed: number;
   onDismiss: () => void;
 }
 
@@ -20,10 +23,15 @@ const clamp = (value: number, min: number, max: number) =>
 
 export function BulkActionProgressToast({
   action,
-  progress,
+  completed,
+  requested,
+  succeeded,
+  failed,
   onDismiss,
 }: BulkActionProgressToastProps) {
-  const roundedProgress = Math.round(clamp(progress, 0, 100));
+  const safeRequested = Math.max(requested, 1);
+  const safeCompleted = clamp(completed, 0, safeRequested);
+  const progressValue = Math.round((safeCompleted / safeRequested) * 100);
 
   return (
     <div className="w-[320px] space-y-2">
@@ -31,7 +39,7 @@ export function BulkActionProgressToast({
         <div className="flex min-w-0 items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
           <span className="tabular-nums text-lg font-semibold leading-none">
-            {roundedProgress}%
+            {safeCompleted}/{safeRequested}
           </span>
           <span className="truncate text-sm text-muted-foreground">
             {actionLabel[action]}
@@ -47,7 +55,12 @@ export function BulkActionProgressToast({
           Hide
         </Button>
       </div>
-      <Progress value={roundedProgress} className="h-1.5" />
+      <Progress value={progressValue} className="h-1.5" />
+      {(succeeded > 0 || failed > 0) && (
+        <div className="text-xs text-muted-foreground tabular-nums">
+          {succeeded} succeeded, {failed} failed
+        </div>
+      )}
     </div>
   );
 }

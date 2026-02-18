@@ -1,12 +1,14 @@
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
+import { setupSse, writeSseData } from "@infra/sse";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
   type BulkJobAction,
   type BulkJobActionResponse,
   type BulkJobActionResult,
+  type BulkJobActionStreamEvent,
   type Job,
   type JobListItem,
   type JobStatus,
@@ -520,6 +522,115 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
     });
 
     fail(res, err);
+  }
+});
+
+/**
+ * POST /api/jobs/bulk-actions/stream - Run a bulk action and stream per-job progress via SSE
+ */
+jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
+  const parsed = bulkActionRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return fail(
+      res,
+      badRequest("Invalid bulk action request", parsed.error.flatten()),
+    );
+  }
+
+  const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
+  const requestId = String(res.getHeader("x-request-id") || "unknown");
+  const action = parsed.data.action;
+  const requested = dedupedJobIds.length;
+  const results: BulkJobActionResult[] = [];
+  let succeeded = 0;
+  let failed = 0;
+
+  setupSse(res, {
+    cacheControl: "no-cache, no-transform",
+    disableBuffering: true,
+    flushHeaders: true,
+  });
+
+  const sendEvent = (event: BulkJobActionStreamEvent) => {
+    writeSseData(res, event);
+  };
+
+  try {
+    sendEvent({
+      type: "started",
+      action,
+      requested,
+      completed: 0,
+      succeeded: 0,
+      failed: 0,
+      requestId,
+    });
+
+    for (const jobId of dedupedJobIds) {
+      const result = await executeBulkActionForJob(action, jobId);
+      results.push(result);
+      if (result.ok) succeeded += 1;
+      else failed += 1;
+
+      sendEvent({
+        type: "progress",
+        action,
+        requested,
+        completed: results.length,
+        succeeded,
+        failed,
+        result,
+        requestId,
+      });
+    }
+
+    sendEvent({
+      type: "completed",
+      action,
+      requested,
+      succeeded,
+      failed,
+      results,
+      requestId,
+    });
+
+    logger.info("Bulk job action stream completed", {
+      route: "POST /api/jobs/bulk-actions/stream",
+      action,
+      requested,
+      succeeded,
+      failed,
+      requestId,
+    });
+  } catch (error) {
+    const err =
+      error instanceof AppError
+        ? error
+        : new AppError({
+            status: 500,
+            code: "INTERNAL_ERROR",
+            message: error instanceof Error ? error.message : "Unknown error",
+          });
+
+    logger.error("Bulk job action stream failed", {
+      route: "POST /api/jobs/bulk-actions/stream",
+      action,
+      requested,
+      succeeded,
+      failed,
+      status: err.status,
+      code: err.code,
+      requestId,
+    });
+
+    sendEvent({
+      type: "error",
+      code: err.code,
+      message: err.message,
+      requestId,
+    });
+  } finally {
+    res.end();
   }
 });
 

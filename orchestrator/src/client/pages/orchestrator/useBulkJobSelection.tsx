@@ -1,4 +1,8 @@
-import type { BulkJobAction, JobListItem } from "@shared/types.js";
+import type {
+  BulkJobAction,
+  BulkJobActionResponse,
+  JobListItem,
+} from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
@@ -12,23 +16,6 @@ import {
 import type { FilterTab } from "./constants";
 
 const MAX_BULK_ACTION_JOB_IDS = 100;
-const BULK_PROGRESS_START = 6;
-const BULK_PROGRESS_MAX_IN_FLIGHT = 96;
-const BULK_PROGRESS_TICK_MS = 200;
-const BULK_PROGRESS_TARGET_MS = 10_000;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
-
-const getEstimatedBulkProgress = (elapsedMs: number) => {
-  const ratio = 1 - Math.exp(-elapsedMs / BULK_PROGRESS_TARGET_MS);
-  return clamp(
-    BULK_PROGRESS_START +
-      ratio * (BULK_PROGRESS_MAX_IN_FLIGHT - BULK_PROGRESS_START),
-    BULK_PROGRESS_START,
-    BULK_PROGRESS_MAX_IN_FLIGHT,
-  );
-};
 
 interface UseBulkJobSelectionArgs {
   activeJobs: JobListItem[];
@@ -129,18 +116,27 @@ export function useBulkJobSelection({
 
       const selectedAtStartSet = new Set(selectedAtStart);
       let progressToastId: string | number | undefined;
-      let progressIntervalId: ReturnType<typeof setInterval> | null = null;
       let isProgressToastHidden = false;
-      const progressStartedAt = Date.now();
+      let finalResult: BulkJobActionResponse | null = null;
+      let streamError: string | null = null;
+      let latestProgress = {
+        requested: selectedAtStart.length,
+        completed: 0,
+        succeeded: 0,
+        failed: 0,
+      };
 
-      const upsertProgressToast = (progress: number) => {
+      const upsertProgressToast = () => {
         if (isProgressToastHidden) return;
 
         progressToastId = toast.custom(
           () => (
             <BulkActionProgressToast
               action={action}
-              progress={progress}
+              requested={latestProgress.requested}
+              completed={latestProgress.completed}
+              succeeded={latestProgress.succeeded}
+              failed={latestProgress.failed}
               onDismiss={() => {
                 isProgressToastHidden = true;
                 if (progressToastId !== undefined) {
@@ -158,19 +154,68 @@ export function useBulkJobSelection({
 
       try {
         setBulkActionInFlight(action);
-        upsertProgressToast(BULK_PROGRESS_START);
-        progressIntervalId = setInterval(() => {
-          const nextProgress = getEstimatedBulkProgress(
-            Date.now() - progressStartedAt,
-          );
-          upsertProgressToast(nextProgress);
-        }, BULK_PROGRESS_TICK_MS);
+        upsertProgressToast();
+        await api.streamBulkJobAction(
+          {
+            action,
+            jobIds: selectedAtStart,
+          },
+          {
+            onEvent: (event) => {
+              if (event.type === "error") {
+                streamError = event.message || "Failed to run bulk action";
+                return;
+              }
 
-        const result = await api.bulkJobAction({
-          action,
-          jobIds: selectedAtStart,
-        });
+              if (event.type === "started") {
+                latestProgress = {
+                  requested: event.requested,
+                  completed: event.completed,
+                  succeeded: event.succeeded,
+                  failed: event.failed,
+                };
+                upsertProgressToast();
+                return;
+              }
 
+              if (event.type === "progress") {
+                latestProgress = {
+                  requested: event.requested,
+                  completed: event.completed,
+                  succeeded: event.succeeded,
+                  failed: event.failed,
+                };
+                upsertProgressToast();
+                return;
+              }
+
+              latestProgress = {
+                requested: event.requested,
+                completed: event.requested,
+                succeeded: event.succeeded,
+                failed: event.failed,
+              };
+              finalResult = {
+                action: event.action,
+                requested: event.requested,
+                succeeded: event.succeeded,
+                failed: event.failed,
+                results: event.results,
+              };
+              upsertProgressToast();
+            },
+          },
+        );
+
+        if (streamError) {
+          throw new Error(streamError);
+        }
+
+        if (!finalResult) {
+          throw new Error("Bulk action stream ended before completion");
+        }
+
+        const result = finalResult as BulkJobActionResponse;
         const failedIds = getFailedJobIds(result);
         const successLabel =
           action === "skip"
@@ -207,9 +252,6 @@ export function useBulkJobSelection({
           error instanceof Error ? error.message : "Failed to run bulk action";
         toast.error(message);
       } finally {
-        if (progressIntervalId) {
-          clearInterval(progressIntervalId);
-        }
         if (!isProgressToastHidden && progressToastId !== undefined) {
           toast.dismiss(progressToastId);
         }

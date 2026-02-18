@@ -1,5 +1,8 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { BulkJobActionResponse } from "@shared/types.js";
+import type {
+  BulkJobActionResponse,
+  BulkJobActionStreamEvent,
+} from "@shared/types.js";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -7,7 +10,7 @@ import * as api from "../../api";
 import { useBulkJobSelection } from "./useBulkJobSelection";
 
 vi.mock("../../api", () => ({
-  bulkJobAction: vi.fn(),
+  streamBulkJobAction: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -30,6 +33,70 @@ const deferred = <T>(): Deferred<T> => {
     resolve = res;
   });
   return { promise, resolve };
+};
+
+const asStreamEvents = (
+  response: BulkJobActionResponse,
+  requestId = "req-bulk",
+): BulkJobActionStreamEvent[] => {
+  const events: BulkJobActionStreamEvent[] = [
+    {
+      type: "started",
+      action: response.action,
+      requested: response.requested,
+      completed: 0,
+      succeeded: 0,
+      failed: 0,
+      requestId,
+    },
+  ];
+
+  let succeeded = 0;
+  let failed = 0;
+  response.results.forEach((result, index) => {
+    if (result.ok) succeeded += 1;
+    else failed += 1;
+    events.push({
+      type: "progress",
+      action: response.action,
+      requested: response.requested,
+      completed: index + 1,
+      succeeded,
+      failed,
+      result,
+      requestId,
+    });
+  });
+
+  events.push({
+    type: "completed",
+    action: response.action,
+    requested: response.requested,
+    succeeded: response.succeeded,
+    failed: response.failed,
+    results: response.results,
+    requestId,
+  });
+
+  return events;
+};
+
+const mockStreamBulkAction = (
+  response: BulkJobActionResponse,
+  waitForRelease?: Promise<void>,
+) => {
+  vi.mocked(api.streamBulkJobAction).mockImplementation(
+    async (_input, handlers) => {
+      for (const event of asStreamEvents(response)) {
+        if (event.type === "started") handlers.onEvent(event);
+      }
+      if (waitForRelease) await waitForRelease;
+      for (const event of asStreamEvents(response)) {
+        if (event.type !== "started") handlers.onEvent(event);
+      }
+      return;
+    },
+  );
 };
 
 describe("useBulkJobSelection", () => {
@@ -81,7 +148,7 @@ describe("useBulkJobSelection", () => {
       await result.current.runBulkAction("skip");
     });
 
-    expect(api.bulkJobAction).not.toHaveBeenCalled();
+    expect(api.streamBulkJobAction).not.toHaveBeenCalled();
   });
 
   it("reconciles failures with selection changes made during in-flight action", async () => {
@@ -91,8 +158,28 @@ describe("useBulkJobSelection", () => {
       createJob({ id: "job-3", status: "discovered" }),
     ];
     const loadJobs = vi.fn().mockResolvedValue(undefined);
-    const pending = deferred<BulkJobActionResponse>();
-    vi.mocked(api.bulkJobAction).mockImplementation(() => pending.promise);
+    const release = deferred<void>();
+    mockStreamBulkAction(
+      {
+        action: "skip",
+        requested: 2,
+        succeeded: 1,
+        failed: 1,
+        results: [
+          {
+            jobId: "job-1",
+            ok: true,
+            job: createJob({ id: "job-1", status: "skipped" }),
+          },
+          {
+            jobId: "job-2",
+            ok: false,
+            error: { code: "INVALID_REQUEST", message: "bad status" },
+          },
+        ],
+      },
+      release.promise,
+    );
 
     const { result } = renderHook(() =>
       useBulkJobSelection({
@@ -120,24 +207,7 @@ describe("useBulkJobSelection", () => {
     });
 
     await act(async () => {
-      pending.resolve({
-        action: "skip",
-        requested: 2,
-        succeeded: 1,
-        failed: 1,
-        results: [
-          {
-            jobId: "job-1",
-            ok: true,
-            job: createJob({ id: "job-1", status: "skipped" }),
-          },
-          {
-            jobId: "job-2",
-            ok: false,
-            error: { code: "INVALID_REQUEST", message: "bad status" },
-          },
-        ],
-      });
+      release.resolve();
       await runPromise;
     });
 
@@ -153,7 +223,7 @@ describe("useBulkJobSelection", () => {
       createJob({ id: "job-2", status: "ready" }),
     ];
     const loadJobs = vi.fn().mockResolvedValue(undefined);
-    vi.mocked(api.bulkJobAction).mockResolvedValue({
+    mockStreamBulkAction({
       action: "rescore",
       requested: 2,
       succeeded: 2,
@@ -189,10 +259,12 @@ describe("useBulkJobSelection", () => {
       await result.current.runBulkAction("rescore");
     });
 
-    expect(api.bulkJobAction).toHaveBeenCalledWith({
-      action: "rescore",
-      jobIds: ["job-1", "job-2"],
-    });
+    expect(api.streamBulkJobAction).toHaveBeenCalledWith(
+      { action: "rescore", jobIds: ["job-1", "job-2"] },
+      expect.objectContaining({
+        onEvent: expect.any(Function),
+      }),
+    );
     expect(toast.success).toHaveBeenCalledWith("2 matches recalculated");
   });
 });
