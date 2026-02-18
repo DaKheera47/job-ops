@@ -80,6 +80,11 @@ type LegacyApiResponse<T> =
       details?: unknown;
     };
 
+type StreamSseInput =
+  | BulkJobActionRequest
+  | { content: string; stream: true }
+  | { stream: true };
+
 export type BasicAuthCredentials = {
   username: string;
   password: string;
@@ -396,7 +401,7 @@ export async function updateJob(
 
 async function streamSseEvents<TEvent>(
   endpoint: string,
-  input: unknown,
+  input: StreamSseInput,
   handlers: {
     onEvent: (event: TEvent) => void;
     signal?: AbortSignal;
