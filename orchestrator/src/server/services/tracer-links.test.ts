@@ -279,4 +279,26 @@ describe("tracer-links service", () => {
       }),
     );
   });
+
+  it("fails closed when redirect destination is not http(s)", async () => {
+    vi.mocked(tracerLinksRepo.findActiveTracerLinkByToken).mockResolvedValue({
+      id: "link-3",
+      token: "tok-invalid",
+      jobId: "job-1",
+      destinationUrl: "javascript:alert(1)",
+      sourcePath: "basics.url.href",
+      sourceLabel: "Portfolio",
+    });
+
+    const redirect = await resolveTracerRedirect({
+      token: "tok-invalid",
+      requestId: "req-invalid",
+      ip: "203.0.113.25",
+      userAgent: "Mozilla/5.0",
+      referrer: null,
+    });
+
+    expect(redirect).toBeNull();
+    expect(vi.mocked(tracerLinksRepo.insertTracerClickEvent)).not.toHaveBeenCalled();
+  });
 });

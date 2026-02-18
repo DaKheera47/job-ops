@@ -486,6 +486,14 @@ export async function resolveTracerRedirect(args: {
 }): Promise<{ destinationUrl: string; jobId: string } | null> {
   const link = await tracerLinksRepo.findActiveTracerLinkByToken(args.token);
   if (!link) return null;
+  if (!isHttpUrl(link.destinationUrl)) {
+    logger.warn("Tracer link destination rejected: invalid scheme", {
+      route: "resolve-tracer-redirect",
+      token: args.token,
+      jobId: link.jobId,
+    });
+    return null;
+  }
 
   const clickedAt = Math.floor(Date.now() / 1000);
   const dayBucket = dayBucketFromUnixSeconds(clickedAt);
