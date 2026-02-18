@@ -55,6 +55,7 @@ export function useTailoringDraft({
   onDirtyChange,
 }: UseTailoringDraftParams) {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
+  const [isCatalogLoading, setIsCatalogLoading] = useState(true);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
   const [headline, setHeadline] = useState(job.tailoredHeadline || "");
   const [jobDescription, setJobDescription] = useState(
@@ -148,10 +149,12 @@ export function useTailoringDraft({
   }, [onDirtyChange]);
 
   useEffect(() => {
+    setIsCatalogLoading(true);
     api
       .getResumeProjectsCatalog()
       .then(setCatalog)
-      .catch(() => setCatalog([]));
+      .catch(() => setCatalog([]))
+      .finally(() => setIsCatalogLoading(false));
   }, []);
 
   useEffect(() => {
@@ -211,6 +214,7 @@ export function useTailoringDraft({
 
   return {
     catalog,
+    isCatalogLoading,
     summary,
     setSummary,
     headline,

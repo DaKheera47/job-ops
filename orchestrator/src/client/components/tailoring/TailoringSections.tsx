@@ -14,6 +14,7 @@ import type { EditableSkillGroup } from "../tailoring-utils";
 
 interface TailoringSectionsProps {
   catalog: ResumeProjectCatalogItem[];
+  isCatalogLoading: boolean;
   summary: string;
   headline: string;
   jobDescription: string;
@@ -48,6 +49,7 @@ const inputClass =
 
 export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   catalog,
+  isCatalogLoading,
   summary,
   headline,
   jobDescription,
@@ -239,20 +241,22 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         </AccordionContent>
       </AccordionItem>
 
-      <AccordionItem value="projects" className={sectionClass}>
-        <AccordionTrigger className={triggerClass}>
-          Selected Projects
-        </AccordionTrigger>
-        <AccordionContent className="px-3 pb-3 pt-1">
-          <ProjectSelector
-            catalog={catalog}
-            selectedIds={selectedIds}
-            onToggle={onToggleProject}
-            maxProjects={3}
-            disabled={disableInputs}
-          />
-        </AccordionContent>
-      </AccordionItem>
+      {(isCatalogLoading || catalog.length > 0) && (
+        <AccordionItem value="projects" className={sectionClass}>
+          <AccordionTrigger className={triggerClass}>
+            Selected Projects
+          </AccordionTrigger>
+          <AccordionContent className="px-3 pb-3 pt-1">
+            <ProjectSelector
+              catalog={catalog}
+              selectedIds={selectedIds}
+              onToggle={onToggleProject}
+              maxProjects={3}
+              disabled={disableInputs}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      )}
 
       <AccordionItem value="tracer-links" className={sectionClass}>
         <AccordionTrigger className={triggerClass}>

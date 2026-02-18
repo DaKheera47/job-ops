@@ -43,6 +43,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
   const {
     catalog,
+    isCatalogLoading,
     summary,
     setSummary,
     headline,
@@ -281,6 +282,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
           <TailoringSections
             catalog={catalog}
+            isCatalogLoading={isCatalogLoading}
             summary={summary}
             headline={headline}
             jobDescription={jobDescription}
@@ -372,6 +374,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
         <TailoringSections
           catalog={catalog}
+          isCatalogLoading={isCatalogLoading}
           summary={summary}
           headline={headline}
           jobDescription={jobDescription}
