@@ -1,7 +1,7 @@
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
-import { setupSse, writeSseData } from "@infra/sse";
+import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -550,10 +550,12 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
     disableBuffering: true,
     flushHeaders: true,
   });
+  const stopHeartbeat = startSseHeartbeat(res);
 
   let clientDisconnected = false;
   res.on("close", () => {
     clientDisconnected = true;
+    stopHeartbeat();
   });
 
   const isResponseWritable = () =>
@@ -687,6 +689,7 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       });
     }
   } finally {
+    stopHeartbeat();
     if (!res.writableEnded && !res.destroyed) {
       res.end();
     }
