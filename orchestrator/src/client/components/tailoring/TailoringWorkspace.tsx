@@ -47,6 +47,21 @@ type TailoringWorkspaceProps =
   | TailoringWorkspaceTailorProps;
 type TailoringSectionsProps = ComponentProps<typeof TailoringSections>;
 
+interface TailoringBaseline {
+  summary: string;
+  headline: string;
+  skillsJson: string;
+}
+
+const normalizeSkillsJson = (value: string | null | undefined) =>
+  serializeTailoredSkills(parseTailoredSkills(value));
+
+const toBaselineFromJob = (job: Job): TailoringBaseline => ({
+  summary: job.tailoredSummary ?? "",
+  headline: job.tailoredHeadline ?? "",
+  skillsJson: normalizeSkillsJson(job.tailoredSkills),
+});
+
 export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   props,
 ) => {
@@ -90,23 +105,31 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
     useTracerReadiness();
 
-  const originalSummary = useMemo(() => getOriginalSummary(profile), [profile]);
-  const originalHeadline = useMemo(
-    () => getOriginalHeadline(profile),
-    [profile],
+  const originalValues = useMemo(() => {
+    const skillsDraft = toEditableSkillGroups(getOriginalSkills(profile));
+    return {
+      summary: getOriginalSummary(profile),
+      headline: getOriginalHeadline(profile),
+      skillsDraft,
+      skillsJson: serializeTailoredSkills(fromEditableSkillGroups(skillsDraft)),
+    };
+  }, [profile]);
+  const canUseOriginalValues = Boolean(profile) && !profileError;
+  const [aiBaseline, setAiBaseline] = useState<TailoringBaseline>(() =>
+    toBaselineFromJob(props.job),
   );
-  const originalSkillsDraft = useMemo(
-    () => toEditableSkillGroups(getOriginalSkills(profile)),
-    [profile],
-  );
-  const originalSkillsJson = useMemo(
-    () => serializeTailoredSkills(fromEditableSkillGroups(originalSkillsDraft)),
-    [originalSkillsDraft],
-  );
-  const canUseOriginalValues = !profileError;
-  const [aiSummaryDraft, setAiSummaryDraft] = useState(summary);
-  const [aiHeadlineDraft, setAiHeadlineDraft] = useState(headline);
-  const [aiSkillsJsonDraft, setAiSkillsJsonDraft] = useState(skillsJson);
+
+  useEffect(() => {
+    setAiBaseline({
+      summary: props.job.tailoredSummary ?? "",
+      headline: props.job.tailoredHeadline ?? "",
+      skillsJson: normalizeSkillsJson(props.job.tailoredSkills),
+    });
+  }, [
+    props.job.tailoredSummary,
+    props.job.tailoredHeadline,
+    props.job.tailoredSkills,
+  ]);
 
   const tracerEnableBlocked =
     !tracerLinksEnabled && !tracerReadiness?.canEnable;
@@ -181,9 +204,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
-      setAiSummaryDraft(updatedJob.tailoredSummary ?? "");
-      setAiHeadlineDraft(updatedJob.tailoredHeadline ?? "");
-      setAiSkillsJsonDraft(updatedJob.tailoredSkills ?? "");
+      setAiBaseline(toBaselineFromJob(updatedJob));
       toast.success("AI Summary & Projects generated");
       await editorProps.onUpdate();
     } catch (error) {
@@ -207,9 +228,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
-      setAiSummaryDraft(updatedJob.tailoredSummary ?? "");
-      setAiHeadlineDraft(updatedJob.tailoredHeadline ?? "");
-      setAiSkillsJsonDraft(updatedJob.tailoredSkills ?? "");
+      setAiBaseline(toBaselineFromJob(updatedJob));
 
       toast.success("Draft generated with AI", {
         description: "Review and edit before finalizing.",
@@ -272,30 +291,30 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   }, [tailorProps, isDirty, persistCurrent]);
 
   const handleUndoSummary = useCallback(() => {
-    setSummary(originalSummary);
-  }, [originalSummary, setSummary]);
+    setSummary(originalValues.summary);
+  }, [originalValues.summary, setSummary]);
 
   const handleUndoHeadline = useCallback(() => {
-    setHeadline(originalHeadline);
-  }, [originalHeadline, setHeadline]);
+    setHeadline(originalValues.headline);
+  }, [originalValues.headline, setHeadline]);
 
   const handleUndoSkills = useCallback(() => {
-    setSkillsDraft(originalSkillsDraft);
-  }, [originalSkillsDraft, setSkillsDraft]);
+    setSkillsDraft(originalValues.skillsDraft);
+  }, [originalValues.skillsDraft, setSkillsDraft]);
 
   const handleRedoSummary = useCallback(() => {
-    setSummary(aiSummaryDraft);
-  }, [aiSummaryDraft, setSummary]);
+    setSummary(aiBaseline.summary);
+  }, [aiBaseline.summary, setSummary]);
 
   const handleRedoHeadline = useCallback(() => {
-    setHeadline(aiHeadlineDraft);
-  }, [aiHeadlineDraft, setHeadline]);
+    setHeadline(aiBaseline.headline);
+  }, [aiBaseline.headline, setHeadline]);
 
   const handleRedoSkills = useCallback(() => {
     setSkillsDraft(
-      toEditableSkillGroups(parseTailoredSkills(aiSkillsJsonDraft)),
+      toEditableSkillGroups(parseTailoredSkills(aiBaseline.skillsJson)),
     );
-  }, [aiSkillsJsonDraft, setSkillsDraft]);
+  }, [aiBaseline.skillsJson, setSkillsDraft]);
 
   const disableInputs = editorProps
     ? isSummarizing || isGeneratingPdf || isSaving
@@ -325,12 +344,15 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       onRedoSummary: handleRedoSummary,
       onRedoHeadline: handleRedoHeadline,
       onRedoSkills: handleRedoSkills,
-      canUndoSummary: canUseOriginalValues && summary !== originalSummary,
-      canUndoHeadline: canUseOriginalValues && headline !== originalHeadline,
-      canUndoSkills: canUseOriginalValues && skillsJson !== originalSkillsJson,
-      canRedoSummary: summary !== aiSummaryDraft,
-      canRedoHeadline: headline !== aiHeadlineDraft,
-      canRedoSkills: skillsJson !== aiSkillsJsonDraft,
+      canUndoSummary:
+        canUseOriginalValues && summary !== originalValues.summary,
+      canUndoHeadline:
+        canUseOriginalValues && headline !== originalValues.headline,
+      canUndoSkills:
+        canUseOriginalValues && skillsJson !== originalValues.skillsJson,
+      canRedoSummary: summary !== aiBaseline.summary,
+      canRedoHeadline: headline !== aiBaseline.headline,
+      canRedoSkills: skillsJson !== aiBaseline.skillsJson,
       undoDisabledReason: canUseOriginalValues
         ? null
         : "Original base CV unavailable.",
@@ -365,13 +387,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       handleRedoHeadline,
       handleRedoSkills,
       canUseOriginalValues,
-      originalSummary,
-      originalHeadline,
+      originalValues,
       skillsJson,
-      originalSkillsJson,
-      aiSummaryDraft,
-      aiHeadlineDraft,
-      aiSkillsJsonDraft,
+      aiBaseline,
       setJobDescription,
       setOpenSkillGroupId,
       handleAddSkillGroup,

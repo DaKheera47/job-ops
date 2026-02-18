@@ -343,4 +343,58 @@ describe("TailoringEditor", () => {
     ensureAccordionOpen("Core");
     expect(screen.getByDisplayValue("React, TypeScript")).toBeInTheDocument();
   });
+
+  it("resets redo baseline when switching jobs", async () => {
+    const { rerender } = render(
+      <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    ensureAccordionOpen("Summary");
+    fireEvent.click(screen.getAllByLabelText("Undo to template")[0]);
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Original base summary",
+    );
+
+    rerender(
+      <TailoringEditor
+        job={createJob({
+          id: "job-2",
+          tailoredSummary: "Second job summary",
+        })}
+        onUpdate={vi.fn()}
+      />,
+    );
+
+    ensureAccordionOpen("Summary");
+    fireEvent.click(screen.getAllByLabelText("Undo to template")[0]);
+    fireEvent.click(screen.getAllByLabelText("Redo to AI draft")[0]);
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Second job summary",
+    );
+  });
+
+  it("keeps undo disabled until profile template is loaded", async () => {
+    vi.mocked(useProfile).mockReturnValue({
+      profile: null,
+      error: null,
+      isLoading: true,
+      personName: "Resume",
+      refreshProfile: vi.fn(),
+    });
+
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+    ensureAccordionOpen("Summary");
+    ensureAccordionOpen("Headline");
+    ensureAccordionOpen("Tailored Skills");
+
+    for (const button of screen.getAllByLabelText("Undo to template")) {
+      expect(button).toBeDisabled();
+    }
+  });
 });
