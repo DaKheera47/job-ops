@@ -445,29 +445,40 @@ async function streamSseEvents<TEvent>(
   const reader = response.body.getReader();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    let separatorIndex = buffer.indexOf("\n\n");
-    while (separatorIndex !== -1) {
-      const frame = buffer.slice(0, separatorIndex);
-      buffer = buffer.slice(separatorIndex + 2);
-      const dataLines = frame
-        .split("\n")
-        .filter((line) => line.startsWith("data:"))
-        .map((line) => line.slice(5).trim())
-        .filter(Boolean);
+      let separatorIndex = buffer.indexOf("\n\n");
+      while (separatorIndex !== -1) {
+        const frame = buffer.slice(0, separatorIndex);
+        buffer = buffer.slice(separatorIndex + 2);
+        const dataLines = frame
+          .split("\n")
+          .filter((line) => line.startsWith("data:"))
+          .map((line) => line.slice(5).trim())
+          .filter(Boolean);
 
-      for (const line of dataLines) {
-        try {
-          handlers.onEvent(JSON.parse(line) as TEvent);
-        } catch {
-          // Ignore malformed events to keep stream resilient
+        for (const line of dataLines) {
+          let parsedEvent: TEvent;
+          try {
+            parsedEvent = JSON.parse(line) as TEvent;
+          } catch {
+            // Ignore malformed events to keep stream resilient
+            continue;
+          }
+          handlers.onEvent(parsedEvent);
         }
+        separatorIndex = buffer.indexOf("\n\n");
       }
-      separatorIndex = buffer.indexOf("\n\n");
+    }
+  } finally {
+    try {
+      await reader.cancel();
+    } catch {
+      // Ignore cancellation errors when stream is already closed
     }
   }
 }
