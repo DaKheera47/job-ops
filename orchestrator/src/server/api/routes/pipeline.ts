@@ -2,6 +2,7 @@ import { AppError, badRequest, conflict, requestTimeout } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
+import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
 import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -46,28 +47,22 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
  * GET /api/pipeline/progress - Server-Sent Events endpoint for live progress
  */
 pipelineRouter.get("/progress", (req: Request, res: Response) => {
-  // Set headers for SSE
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no"); // Disable Nginx buffering
+  setupSse(res, { disableBuffering: true });
 
   // Send initial progress
   const sendProgress = (data: unknown) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    writeSseData(res, data);
   };
 
   // Subscribe to progress updates
   const unsubscribe = subscribeToProgress(sendProgress);
 
   // Send heartbeat every 30 seconds to keep connection alive
-  const heartbeat = setInterval(() => {
-    res.write(": heartbeat\n\n");
-  }, 30000);
+  const stopHeartbeat = startSseHeartbeat(res);
 
   // Cleanup on close
   req.on("close", () => {
-    clearInterval(heartbeat);
+    stopHeartbeat();
     unsubscribe();
   });
 });
