@@ -60,17 +60,12 @@
     {
       "type": "category",
       "label": "Troubleshooting",
-      "items": [
-        "troubleshooting/common-problems"
-      ]
+      "items": ["troubleshooting/common-problems"]
     },
     {
       "type": "category",
       "label": "Reference / FAQ",
-      "items": [
-        "reference/faq",
-        "reference/documentation-style-guide"
-      ]
+      "items": ["reference/faq", "reference/documentation-style-guide"]
     }
   ]
 }
