@@ -18,6 +18,7 @@ It lets you configure:
 - Display and Ghostwriter defaults
 - Service credentials and basic auth
 - Reactive Resume project selection
+- Tracer Links readiness verification
 - Backup and scoring rules
 - Data-clearing actions in the Danger Zone
 
@@ -80,6 +81,19 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Max projects
   - Must-include projects
   - AI-selectable projects
+
+### Tracer Links
+
+- Verify tracer readiness before enabling per-job tracing
+- Shows current status (`Ready`, `Unavailable`, `Unconfigured`, or stale state)
+- Displays the effective public base URL and last check time
+- Provides **Verify now** for an on-demand health check
+
+Readiness requires:
+
+- a valid public JobOps base URL
+- successful reachability of `<public-base-url>/health`
+- non-localhost/non-private host setup for public redirect usage
 
 ### Environment & Accounts
 
@@ -162,6 +176,12 @@ curl -X POST "http://localhost:3001/api/backups"
 
 - Verify URL reachability from the server host.
 - Confirm auth expectations on the receiver side (including secret/bearer token).
+
+### Tracer links cannot be enabled
+
+- Open **Settings → Tracer Links** and click **Verify now**.
+- Ensure `JOBOPS_PUBLIC_BASE_URL` is set for background/pipeline usage.
+- Ensure the configured host is publicly reachable and `/health` responds.
 
 ## Related pages
 

@@ -87,6 +87,7 @@ Once a job is marked `applied`, it becomes part of:
 - Expect scraper runtime variance by source.
 - Keep resume/project context up to date so scoring/tailoring quality stays high.
 - Use per-job tracer links when you want measurable outbound-link analytics.
+- If you use tracer links, review the risk note in [Tracer Links](../features/tracer-links): some recipients/security tools may treat redirects as suspicious.
 
 ## Related pages
 

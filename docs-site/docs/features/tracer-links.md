@@ -7,34 +7,47 @@ sidebar_position: 8
 
 ## What it is
 
-Tracer Links rewrite outbound resume links to JobOps redirect links for a specific job when you generate a PDF.
+Tracer Links are per-job redirect links that are generated when a PDF is created.
 
-Instead of linking directly to your destination URL, the PDF link points to your JobOps instance:
+When enabled for a job, JobOps rewrites eligible outbound RxResume links to your JobOps host, then redirects to the original destination after recording a click event.
+
+Examples:
 
 - original: `https://github.com/yourname`
-- traced: `https://your-jobops-host/cv/<first>-<company>-xx`
+- traced: `https://jobops.dakheera47.com/cv/amazon-de`
 
-When someone opens the traced link, JobOps records a click event and redirects to the original destination.
+Format details:
+
+- path prefix is always `/cv/`
+- token format is `<company-slug>-<xx>`
+- `<xx>` is two lowercase letters (`a-z`)
+- visible link text in the PDF is also updated to the traced URL
 
 ## Why it exists
 
-Without tracer links, you cannot measure resume-link engagement.
+Without tracer links, resume links are "fire and forget".
 
 Tracer links let you answer:
 
-- whether links in your PDF were opened
-- which links got opened
-- rough human vs bot activity
-- per-job link engagement trends
+- whether links in a specific job PDF were opened
+- which destination links are being opened most
+- rough human vs bot traffic split
+- per-job and global engagement trends over time
 
-The feature is designed with privacy-safe defaults (no raw IP storage).
+The feature is privacy-safe by design:
+
+- no raw IP is stored
+- referrer host is stored (not full referrer URL)
+- bot traffic is flagged and can be filtered in analytics
 
 ## How to use it
 
-1. Open a job in **Jobs**.
-2. In tailoring or job details, enable **Tracer links for this job**.
-3. Generate or regenerate the PDF.
-4. Open **Tracer Links** in navigation to view:
+1. Open **Settings** and go to the **Tracer Links** section.
+2. Click **Verify now** and confirm status is **Ready**.
+3. Open a job in **Jobs**.
+4. Enable **Tracer links for this job** in tailoring or job details.
+5. Generate or regenerate the PDF.
+6. Open **Tracer Links** in navigation to view:
    - global totals
    - top jobs and top links
    - per-job drilldown by Job ID
@@ -42,8 +55,21 @@ The feature is designed with privacy-safe defaults (no raw IP storage).
 Important behavior:
 
 - Tracer links are **off by default** per job.
-- Toggle changes apply on the **next PDF generation**.
+- Toggle changes apply on the **next PDF generation only**.
 - Existing PDFs are not modified retroactively.
+- Existing tracer URLs remain valid, even if a newer PDF generates new links.
+
+### Readiness and enable/disable behavior
+
+You can only turn tracer links **on** when readiness is healthy.
+
+Readiness checks:
+
+- a resolvable public base URL
+- a successful health probe to `<public-base-url>/health`
+- a non-localhost/non-private host for public usage
+
+If readiness is unavailable, enable is blocked until verification passes.
 
 ### Required background-run setting
 
@@ -55,20 +81,49 @@ JOBOPS_PUBLIC_BASE_URL=https://your-jobops-host
 
 JobOps uses this URL when request host inference is not available.
 
+### URL uniqueness rules
+
+Tracer links are unique enough for tracking while still readable.
+
+- same job + same source path + same destination URL => token is reused
+- same job + same source path + changed destination URL => new token
+- old tokens continue to redirect (not retroactively deleted)
+
+### Risk and responsibility disclaimer
+
+Tracer links are redirect links. Some recruiters, companies, universities, or security tools may treat redirects as suspicious behavior and may whitelist, blacklist, filter, or flag these links as phishing-like.
+
+By enabling and using this feature, you accept full responsibility for any consequences that result from its use. Responsibility for policy, trust, and reputation outcomes sits with the user/operator of the instance, not with the app.
+
 ## Common problems
+
+### I cannot enable tracer links
+
+Cause:
+
+- readiness is not **Ready**
+- host is local/private or unreachable from the verifier
+
+Fix:
+
+- configure a real public host
+- set `JOBOPS_PUBLIC_BASE_URL` for background flows
+- make sure `<public-base-url>/health` is reachable
+- retry **Verify now**
 
 ### Tracer links enabled but PDF generation fails
 
 Cause:
 
-- `JOBOPS_PUBLIC_BASE_URL` is missing for a background/pipeline run
+- base URL cannot be resolved at generation time, or instance health is not reachable for that run
 
 Fix:
 
-- set `JOBOPS_PUBLIC_BASE_URL` to your public JobOps URL
+- ensure `JOBOPS_PUBLIC_BASE_URL` is set correctly
+- verify the deployment is publicly reachable
 - regenerate the PDF
 
-### I enabled tracer links, but old PDF links are still direct
+### I enabled tracer links, but old PDF still has direct links
 
 Cause:
 
@@ -82,7 +137,7 @@ Fix:
 
 Cause:
 
-- email/link scanners and preview bots may open links automatically
+- link scanners and preview bots may open links automatically
 
 Fix:
 
@@ -90,6 +145,7 @@ Fix:
 
 ## Related pages
 
+- [Settings](/docs/features/settings)
 - [Reactive Resume](/docs/features/reactive-resume)
 - [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow)
 - [Post-Application Tracking](/docs/features/post-application-tracking)

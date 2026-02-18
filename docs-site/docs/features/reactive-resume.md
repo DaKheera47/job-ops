@@ -133,11 +133,17 @@ High-level flow:
 Before generating a PDF, each job can enable/disable tracer links.
 
 - Disabled: original RxResume links remain unchanged.
-- Enabled: eligible outbound links are rewritten to `https://<your-host>/cv/<first>-<company>-xx`.
+- Enabled: eligible outbound links are rewritten to `https://<your-host>/cv/<company>-xx` (readable slug + 2-letter suffix).
 
 For background pipeline generation, configure:
 
 - `JOBOPS_PUBLIC_BASE_URL=https://your-host`
+
+Important:
+
+- tracer enablement is gated by readiness checks
+- if public host verification fails, enable is blocked until host health is restored
+- toggle changes apply on next PDF generation only
 
 ### What JobOps changes with AI
 
