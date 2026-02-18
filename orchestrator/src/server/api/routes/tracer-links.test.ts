@@ -222,4 +222,25 @@ describe.sequential("Tracer links routes", () => {
       }
     }
   });
+
+  it("requires auth for tracer analytics GET routes when basic auth is enabled", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        BASIC_AUTH_USER: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+      },
+    }));
+
+    const unauthorized = await fetch(`${baseUrl}/api/tracer-links/analytics`);
+    expect(unauthorized.status).toBe(401);
+
+    const credentials = Buffer.from("admin:secret").toString("base64");
+    const authorized = await fetch(`${baseUrl}/api/tracer-links/analytics`, {
+      headers: {
+        Authorization: `Basic ${credentials}`,
+      },
+    });
+    expect(authorized.status).toBe(200);
+  });
 });
