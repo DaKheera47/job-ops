@@ -1,6 +1,6 @@
+import * as api from "@client/api";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import * as api from "@client/api";
 import { invalidateSettingsData } from "./invalidate";
 
 export function useUpdateSettingsMutation() {
