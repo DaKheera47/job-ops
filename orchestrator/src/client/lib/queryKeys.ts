@@ -73,6 +73,16 @@ export const queryKeys = {
         "runs",
         { provider, accountKey, limit },
       ] as const,
+    runMessages: (
+      runId: string,
+      provider: PostApplicationProvider,
+      accountKey: string,
+    ) =>
+      [
+        ...queryKeys.postApplication.all,
+        "run-messages",
+        { runId, provider, accountKey },
+      ] as const,
   },
   backups: {
     all: ["backups"] as const,

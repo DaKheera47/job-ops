@@ -5,7 +5,7 @@ import type {
   PostApplicationSyncRun,
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle,
   Inbox,
@@ -19,6 +19,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import {
   AlertDialog,
@@ -59,6 +60,8 @@ const PROVIDER_OPTIONS: PostApplicationProvider[] = [
 ];
 const GMAIL_OAUTH_RESULT_TYPE = "gmail-oauth-result";
 const GMAIL_OAUTH_TIMEOUT_MS = 3 * 60 * 1000;
+const EMPTY_INBOX_ITEMS: PostApplicationInboxItem[] = [];
+const EMPTY_SYNC_RUNS: PostApplicationSyncRun[] = [];
 
 type GmailOauthResultMessage = {
   type: string;
@@ -73,113 +76,111 @@ function formatEpochMs(value?: number | null): string {
 }
 
 export const TrackingInboxPage: React.FC = () => {
-  const queryClient = useQueryClient();
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
   const [accountKey, setAccountKey] = useState("default");
   const [maxMessages, setMaxMessages] = useState("100");
   const [searchDays, setSearchDays] = useState("90");
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [activeAction, setActiveAction] = useState<
     "connect" | "sync" | "disconnect" | null
   >(null);
 
-  const [status, setStatus] = useState<
-    | Awaited<ReturnType<typeof api.postApplicationProviderStatus>>["status"]
-    | null
-  >(null);
-  const [inbox, setInbox] = useState<PostApplicationInboxItem[]>([]);
-  const [runs, setRuns] = useState<PostApplicationSyncRun[]>([]);
   const [isRunModalOpen, setIsRunModalOpen] = useState(false);
-  const [isRunMessagesLoading, setIsRunMessagesLoading] = useState(false);
   const [selectedRun, setSelectedRun] = useState<PostApplicationSyncRun | null>(
     null,
   );
-  const [selectedRunItems, setSelectedRunItems] = useState<
-    PostApplicationInboxItem[]
-  >([]);
 
   const [appliedJobByMessageId, setAppliedJobByMessageId] = useState<
     Record<string, string>
   >({});
-  const [appliedJobs, setAppliedJobs] = useState<JobListItem[]>([]);
-  const [isAppliedJobsLoading, setIsAppliedJobsLoading] = useState(false);
-  const [hasAttemptedAppliedJobsLoad, setHasAttemptedAppliedJobsLoad] =
-    useState(false);
+  const statusQuery = useQuery({
+    queryKey: queryKeys.postApplication.providerStatus(provider, accountKey),
+    queryFn: () => api.postApplicationProviderStatus({ provider, accountKey }),
+    enabled: Boolean(provider && accountKey),
+  });
+  const inboxQuery = useQuery({
+    queryKey: queryKeys.postApplication.inbox(provider, accountKey, 100),
+    queryFn: () =>
+      api.getPostApplicationInbox({ provider, accountKey, limit: 100 }),
+    enabled: Boolean(provider && accountKey),
+  });
+  const runsQuery = useQuery({
+    queryKey: queryKeys.postApplication.runs(provider, accountKey, 20),
+    queryFn: () =>
+      api.getPostApplicationRuns({ provider, accountKey, limit: 20 }),
+    enabled: Boolean(provider && accountKey),
+  });
+
+  const status = statusQuery.data?.status ?? null;
+  const inbox = inboxQuery.data?.items ?? EMPTY_INBOX_ITEMS;
+  const runs = runsQuery.data?.runs ?? EMPTY_SYNC_RUNS;
+
+  const runMessagesQuery = useQuery({
+    queryKey: queryKeys.postApplication.runMessages(
+      selectedRun?.id ?? "",
+      provider,
+      accountKey,
+    ),
+    queryFn: () =>
+      api.getPostApplicationRunMessages({
+        runId: selectedRun?.id ?? "",
+        provider,
+        accountKey,
+      }),
+    enabled: Boolean(
+      isRunModalOpen && selectedRun?.id && provider && accountKey,
+    ),
+  });
+  const selectedRunItems = runMessagesQuery.data?.items ?? EMPTY_INBOX_ITEMS;
+  const isRunMessagesLoading =
+    runMessagesQuery.isPending || runMessagesQuery.isFetching;
+
+  const hasReviewItems = useMemo(
+    () => inbox.length > 0 || selectedRunItems.length > 0,
+    [inbox.length, selectedRunItems.length],
+  );
+
+  const appliedJobsQuery = useQuery({
+    queryKey: queryKeys.jobs.list({
+      statuses: ["applied", "in_progress"],
+      view: "list",
+    }),
+    queryFn: () =>
+      api.getJobs({
+        statuses: ["applied", "in_progress"],
+        view: "list",
+      }),
+    enabled: hasReviewItems,
+  });
+  const appliedJobs = useMemo<JobListItem[]>(
+    () =>
+      (appliedJobsQuery.data?.jobs ?? []).filter(
+        (job) => job.status === "applied" || job.status === "in_progress",
+      ),
+    [appliedJobsQuery.data?.jobs],
+  );
+  const isAppliedJobsLoading =
+    appliedJobsQuery.isPending || appliedJobsQuery.isFetching;
 
   const [bulkActionDialog, setBulkActionDialog] = useState<{
     isOpen: boolean;
     action: "approve" | "deny" | null;
     itemCount: number;
   }>({ isOpen: false, action: null, itemCount: 0 });
-
-  const loadAppliedJobs = useCallback(async () => {
-    if (hasAttemptedAppliedJobsLoad || isAppliedJobsLoading) return;
-    setHasAttemptedAppliedJobsLoad(true);
-    setIsAppliedJobsLoading(true);
-    try {
-      const response = await queryClient.fetchQuery({
-        queryKey: queryKeys.jobs.list({
-          statuses: ["applied", "in_progress"],
-          view: "list",
-        }),
-        queryFn: () =>
-          api.getJobs({
-            statuses: ["applied", "in_progress"],
-            view: "list",
-          }),
-        staleTime: 0,
-      });
-      setAppliedJobs(
-        response.jobs.filter(
-          (job) => job.status === "applied" || job.status === "in_progress",
-        ),
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load jobs";
-      toast.error(message);
-    } finally {
-      setIsAppliedJobsLoading(false);
-    }
-  }, [hasAttemptedAppliedJobsLoad, isAppliedJobsLoading, queryClient]);
-
-  const loadAll = useCallback(async () => {
-    const [statusRes, inboxRes, runsRes] = await Promise.all([
-      queryClient.fetchQuery({
-        queryKey: queryKeys.postApplication.providerStatus(
-          provider,
-          accountKey,
-        ),
-        queryFn: () =>
-          api.postApplicationProviderStatus({ provider, accountKey }),
-        staleTime: 0,
-      }),
-      queryClient.fetchQuery({
-        queryKey: queryKeys.postApplication.inbox(provider, accountKey, 100),
-        queryFn: () =>
-          api.getPostApplicationInbox({ provider, accountKey, limit: 100 }),
-        staleTime: 0,
-      }),
-      queryClient.fetchQuery({
-        queryKey: queryKeys.postApplication.runs(provider, accountKey, 20),
-        queryFn: () =>
-          api.getPostApplicationRuns({ provider, accountKey, limit: 20 }),
-        staleTime: 0,
-      }),
-    ]);
-
-    setStatus(statusRes.status);
-    setInbox(inboxRes.items);
-    setRuns(runsRes.runs);
-  }, [accountKey, provider, queryClient]);
+  const isLoading =
+    statusQuery.isPending || inboxQuery.isPending || runsQuery.isPending;
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await loadAll();
+      await Promise.all([
+        statusQuery.refetch(),
+        inboxQuery.refetch(),
+        runsQuery.refetch(),
+        hasReviewItems ? appliedJobsQuery.refetch() : Promise.resolve(),
+      ]);
     } catch (error) {
       const message =
         error instanceof Error
@@ -188,36 +189,19 @@ export const TrackingInboxPage: React.FC = () => {
       toast.error(message);
     } finally {
       setIsRefreshing(false);
-      setIsLoading(false);
     }
-  }, [loadAll]);
-
-  useEffect(() => {
-    setIsLoading(true);
-    void refresh();
-  }, [refresh]);
+  }, [appliedJobsQuery, hasReviewItems, inboxQuery, runsQuery, statusQuery]);
 
   useEffect(() => {
     if (!provider || !accountKey) return;
-    setAppliedJobs([]);
     setAppliedJobByMessageId({});
-    setHasAttemptedAppliedJobsLoad(false);
   }, [provider, accountKey]);
-
-  const hasReviewItems = useMemo(
-    () => inbox.length > 0 || selectedRunItems.length > 0,
-    [inbox.length, selectedRunItems.length],
-  );
-
-  useEffect(() => {
-    if (!hasReviewItems) return;
-    void loadAppliedJobs();
-  }, [hasReviewItems, loadAppliedJobs]);
 
   useEffect(() => {
     const defaultAppliedJobId = appliedJobs[0]?.id ?? "";
     setAppliedJobByMessageId((previous) => {
       const next = { ...previous };
+      let didChange = false;
       for (const item of [...inbox, ...selectedRunItems]) {
         const selectedJobId = next[item.message.id];
         const hasValidSelection = appliedJobs.some(
@@ -228,12 +212,16 @@ export const TrackingInboxPage: React.FC = () => {
           const hasValidMatchedJob = appliedJobs.some(
             (appliedJob) => appliedJob.id === matchedJobId,
           );
-          next[item.message.id] = hasValidMatchedJob
+          const nextJobId = hasValidMatchedJob
             ? matchedJobId
             : defaultAppliedJobId;
+          if (next[item.message.id] !== nextJobId) {
+            next[item.message.id] = nextJobId;
+            didChange = true;
+          }
         }
       }
-      return next;
+      return didChange ? next : previous;
     });
   }, [appliedJobs, inbox, selectedRunItems]);
 
@@ -516,32 +504,24 @@ export const TrackingInboxPage: React.FC = () => {
     [inbox],
   );
 
-  const handleOpenRunMessages = useCallback(
-    async (run: PostApplicationSyncRun) => {
-      setSelectedRun(run);
-      setSelectedRunItems([]);
-      setIsRunModalOpen(true);
-      setIsRunMessagesLoading(true);
+  const handleOpenRunMessages = useCallback((run: PostApplicationSyncRun) => {
+    setSelectedRun(run);
+    setIsRunModalOpen(true);
+  }, []);
 
-      try {
-        const response = await api.getPostApplicationRunMessages({
-          runId: run.id,
-          provider,
-          accountKey,
-        });
-        setSelectedRun(response.run);
-        setSelectedRunItems(response.items);
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load messages for selected sync run";
-        toast.error(message);
-      } finally {
-        setIsRunMessagesLoading(false);
-      }
-    },
-    [accountKey, provider],
+  useQueryErrorToast(
+    statusQuery.error,
+    "Failed to load provider connection status",
+  );
+  useQueryErrorToast(inboxQuery.error, "Failed to load inbox");
+  useQueryErrorToast(runsQuery.error, "Failed to load sync runs");
+  useQueryErrorToast(
+    appliedJobsQuery.error,
+    "Failed to load jobs for inbox matching",
+  );
+  useQueryErrorToast(
+    runMessagesQuery.error,
+    "Failed to load messages for selected sync run",
   );
 
   const pendingCount = inbox.length;
@@ -818,7 +798,6 @@ export const TrackingInboxPage: React.FC = () => {
         onOpenChange={(open) => {
           setIsRunModalOpen(open);
           if (!open) {
-            setSelectedRunItems([]);
             setSelectedRun(null);
           }
         }}
