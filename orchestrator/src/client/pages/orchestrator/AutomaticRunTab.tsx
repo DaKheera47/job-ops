@@ -72,6 +72,22 @@ const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
 const GLASSDOOR_LOCATION_REASON =
   "Set a Glassdoor city in Advanced settings to enable Glassdoor.";
+const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
+
+function getSourceDisabledReason(
+  source: JobSource,
+  countryAllowed: boolean,
+): string {
+  if (source === "glassdoor") {
+    return countryAllowed
+      ? GLASSDOOR_LOCATION_REASON
+      : GLASSDOOR_COUNTRY_REASON;
+  }
+  if (UK_ONLY_SOURCES.has(source)) {
+    return `${sourceLabel[source]} is available only when country is United Kingdom.`;
+  }
+  return `${sourceLabel[source]} is not available for the selected country.`;
+}
 
 function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
@@ -529,14 +545,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 );
                 const allowed = isSourceAvailableForRun(source);
                 const selected = compatiblePipelineSources.includes(source);
-                const disabledReason =
-                  source === "glassdoor"
-                    ? countryAllowed
-                      ? GLASSDOOR_LOCATION_REASON
-                      : GLASSDOOR_COUNTRY_REASON
-                    : source === "gradcracker" || source === "ukvisajobs"
-                      ? `${sourceLabel[source]} is available only when country is United Kingdom.`
-                      : `${sourceLabel[source]} is not available for the selected country.`;
+                const disabledReason = getSourceDisabledReason(
+                  source,
+                  countryAllowed,
+                );
 
                 const button = (
                   <Button

@@ -51,6 +51,18 @@ const emptyDraft: ManualJobDraftState = {
   starting: "",
 };
 
+const STEP_INDEX_BY_ID: Record<ManualImportStep, number> = {
+  paste: 0,
+  loading: 1,
+  review: 2,
+};
+
+const STEP_LABEL_BY_ID: Record<ManualImportStep, string> = {
+  paste: "Paste JD",
+  loading: "Infer details",
+  review: "Review & import",
+};
+
 const normalizeDraft = (
   draft?: ManualJobDraft | null,
   jd?: string,
@@ -128,8 +140,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setIsImporting(false);
   }, [active]);
 
-  const stepIndex = step === "paste" ? 0 : step === "loading" ? 1 : 2;
-  const stepLabel = ["Paste JD", "Infer details", "Review & import"][stepIndex];
+  const stepIndex = STEP_INDEX_BY_ID[step];
+  const stepLabel = STEP_LABEL_BY_ID[step];
 
   const canAnalyze = rawDescription.trim().length > 0 && step !== "loading";
   const canFetch =

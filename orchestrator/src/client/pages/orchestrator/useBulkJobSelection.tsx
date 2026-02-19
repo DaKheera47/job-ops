@@ -24,6 +24,12 @@ const bulkActionLabel: Record<BulkJobAction, string> = {
   rescore: "Calculating match scores...",
 };
 
+const bulkActionSuccessLabel: Record<BulkJobAction, string> = {
+  move_to_ready: "jobs moved to Ready",
+  skip: "jobs skipped",
+  rescore: "matches recalculated",
+};
+
 interface UseBulkJobSelectionArgs {
   activeJobs: JobListItem[];
   activeTab: FilterTab;
@@ -222,12 +228,7 @@ export function useBulkJobSelection({
 
         const result = finalResult as BulkJobActionResponse;
         const failedIds = getFailedJobIds(result);
-        const successLabel =
-          action === "skip"
-            ? "jobs skipped"
-            : action === "move_to_ready"
-              ? "jobs moved to Ready"
-              : "matches recalculated";
+        const successLabel = bulkActionSuccessLabel[action];
 
         if (result.failed === 0) {
           toast.success(`${result.succeeded} ${successLabel}`);
