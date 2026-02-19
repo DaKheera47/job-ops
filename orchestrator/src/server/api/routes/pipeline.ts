@@ -101,6 +101,7 @@ const runPipelineSchema = z.object({
         "glassdoor",
         "ukvisajobs",
         "adzuna",
+        "hiringcafe",
       ]),
     )
     .min(1)

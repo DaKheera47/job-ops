@@ -126,6 +126,7 @@ export type JobSource =
   | "glassdoor"
   | "ukvisajobs"
   | "adzuna"
+  | "hiringcafe"
   | "manual";
 
 export interface Job {

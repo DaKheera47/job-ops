@@ -14,6 +14,7 @@ export const orderedSources: JobSource[] = [
   "linkedin",
   "glassdoor",
   "adzuna",
+  "hiringcafe",
   "ukvisajobs",
 ];
 export const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];

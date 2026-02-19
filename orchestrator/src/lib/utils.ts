@@ -144,5 +144,6 @@ export const sourceLabel: Record<Job["source"], string> = {
   glassdoor: "Glassdoor",
   ukvisajobs: "UK Visa Jobs",
   adzuna: "Adzuna",
+  hiringcafe: "Hiring Cafe",
   manual: "Manual",
 };
