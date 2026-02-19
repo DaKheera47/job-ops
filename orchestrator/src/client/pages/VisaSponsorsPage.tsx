@@ -24,8 +24,9 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,18 +78,7 @@ export const VisaSponsorsPage: React.FC = () => {
     queryFn: api.getVisaSponsorStatus,
   });
   const status = statusQuery.data ?? null;
-  const statusErrorToastKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!statusQuery.error) return;
-    const message =
-      statusQuery.error instanceof Error
-        ? statusQuery.error.message
-        : "Failed to fetch status";
-    if (statusErrorToastKeyRef.current === message) return;
-    statusErrorToastKeyRef.current = message;
-    toast.error(message);
-  }, [statusQuery.error]);
+  useQueryErrorToast(statusQuery.error, "Failed to fetch status");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -111,18 +101,7 @@ export const VisaSponsorsPage: React.FC = () => {
       }),
     enabled: Boolean(debouncedSearchQuery.trim()),
   });
-  const searchErrorToastKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!searchQueryResult.error) return;
-    const message =
-      searchQueryResult.error instanceof Error
-        ? searchQueryResult.error.message
-        : "Search failed";
-    if (searchErrorToastKeyRef.current === message) return;
-    searchErrorToastKeyRef.current = message;
-    toast.error(message);
-  }, [searchQueryResult.error]);
+  useQueryErrorToast(searchQueryResult.error, "Search failed");
 
   const orgDetailsQuery = useQuery<VisaSponsor[]>({
     queryKey: ["visaSponsors", "organization", selectedOrg] as const,
@@ -133,18 +112,7 @@ export const VisaSponsorsPage: React.FC = () => {
     enabled: Boolean(selectedOrg),
   });
   const orgDetails = orgDetailsQuery.data ?? [];
-  const orgDetailsErrorToastKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!orgDetailsQuery.error) return;
-    const message =
-      orgDetailsQuery.error instanceof Error
-        ? orgDetailsQuery.error.message
-        : "Failed to fetch details";
-    if (orgDetailsErrorToastKeyRef.current === message) return;
-    orgDetailsErrorToastKeyRef.current = message;
-    toast.error(message);
-  }, [orgDetailsQuery.error]);
+  useQueryErrorToast(orgDetailsQuery.error, "Failed to fetch details");
 
   const results = useMemo<VisaSponsorSearchResult[]>(() => {
     if (!debouncedSearchQuery.trim()) return [];

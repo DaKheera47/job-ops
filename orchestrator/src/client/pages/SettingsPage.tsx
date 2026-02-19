@@ -31,9 +31,10 @@ import type {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
@@ -362,17 +363,7 @@ export const SettingsPage: React.FC = () => {
     reset(mapSettingsToForm(settingsQuery.data));
   }, [settingsQuery.data, reset]);
 
-  const settingsErrorToastKeyRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!settingsQuery.error) return;
-    const message =
-      settingsQuery.error instanceof Error
-        ? settingsQuery.error.message
-        : "Failed to load settings";
-    if (settingsErrorToastKeyRef.current === message) return;
-    settingsErrorToastKeyRef.current = message;
-    toast.error(message);
-  }, [settingsQuery.error]);
+  useQueryErrorToast(settingsQuery.error, "Failed to load settings");
 
   useEffect(() => {
     if (!settings) return;

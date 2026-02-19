@@ -36,6 +36,7 @@ import {
   useSkipJobMutation,
   useUpdateJobMutation,
 } from "@/client/hooks/queries/useJobMutations";
+import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,19 @@ export const JobPage: React.FC = () => {
     queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
     enabled: Boolean(id),
   });
+
+  useQueryErrorToast(
+    jobQuery.error,
+    "Failed to load job details. Please try again.",
+  );
+  useQueryErrorToast(
+    eventsQuery.error,
+    "Failed to load job timeline. Please try again.",
+  );
+  useQueryErrorToast(
+    tasksQuery.error,
+    "Failed to load job tasks. Please try again.",
+  );
 
   const markAsAppliedMutation = useMarkAsAppliedMutation();
   const updateJobMutation = useUpdateJobMutation();
