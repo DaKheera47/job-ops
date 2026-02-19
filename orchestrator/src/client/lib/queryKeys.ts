@@ -20,6 +20,8 @@ export const queryKeys = {
   },
   jobs: {
     all: ["jobs"] as const,
+    inProgressBoard: () =>
+      [...queryKeys.jobs.all, "in-progress-board"] as const,
     list: (options?: { statuses?: JobStatus[]; view?: "list" | "full" }) =>
       [...queryKeys.jobs.all, "list", options ?? {}] as const,
     revision: (options?: { statuses?: JobStatus[] }) =>

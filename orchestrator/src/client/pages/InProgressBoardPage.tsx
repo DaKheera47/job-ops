@@ -6,10 +6,13 @@ import {
   STAGE_LABELS,
   type StageEvent,
 } from "@shared/types.js";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownAZ, Columns3, ExternalLink, Plus } from "lucide-react";
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,9 +79,9 @@ const resolveCurrentStage = (
 };
 
 export const InProgressBoardPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [cards, setCards] = React.useState<BoardCard[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+
   const [dragging, setDragging] = React.useState<{
     jobId: string;
     fromStage: ApplicationStage;
@@ -90,9 +93,9 @@ export const InProgressBoardPage: React.FC = () => {
     "updated" | "title" | "company"
   >("updated");
 
-  const loadBoard = React.useCallback(async () => {
-    try {
-      setIsLoading(true);
+  const boardQuery = useQuery({
+    queryKey: queryKeys.jobs.inProgressBoard(),
+    queryFn: async () => {
       const response = await api.getJobs({
         statuses: ["in_progress"],
         view: "list",
@@ -103,7 +106,7 @@ export const InProgressBoardPage: React.FC = () => {
         jobs.map((job) => api.getJobStageEvents(job.id)),
       );
 
-      const nextCards = jobs.map((job, index) => {
+      return jobs.map((job, index) => {
         const result = eventResults[index];
         const events =
           result?.status === "fulfilled"
@@ -116,22 +119,31 @@ export const InProgressBoardPage: React.FC = () => {
           latestEventAt: resolved.latestEventAt,
         };
       });
+    },
+  });
 
-      setCards(nextCards);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to load in-progress board";
-      toast.error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const transitionMutation = useMutation({
+    mutationFn: ({
+      jobId,
+      toStage,
+    }: {
+      jobId: string;
+      toStage: ApplicationStage;
+    }) =>
+      api.transitionJobStage(jobId, {
+        toStage,
+        metadata: {
+          actor: "user",
+          eventType: "status_update",
+          eventLabel: `Moved to ${STAGE_LABELS[toStage]}`,
+        },
+      }),
+  });
 
-  React.useEffect(() => {
-    void loadBoard();
-  }, [loadBoard]);
+  useQueryErrorToast(boardQuery.error, "Failed to load in-progress board");
+
+  const cards = boardQuery.data ?? [];
+  const isLoading = boardQuery.isPending;
 
   const lanes = React.useMemo(() => {
     const sortFn =
@@ -170,31 +182,34 @@ export const InProgressBoardPage: React.FC = () => {
       }
 
       const { jobId } = dragging;
-      const previousCards = cards;
+      const previousCards =
+        queryClient.getQueryData<BoardCard[]>(
+          queryKeys.jobs.inProgressBoard(),
+        ) ?? [];
       const nowEpoch = Math.floor(Date.now() / 1000);
 
       setMovingJobId(jobId);
-      setCards((current) =>
-        current.map((card) =>
-          card.job.id === jobId
-            ? { ...card, stage: toStage, latestEventAt: nowEpoch }
-            : card,
-        ),
+      queryClient.setQueryData<BoardCard[]>(
+        queryKeys.jobs.inProgressBoard(),
+        (current) =>
+          (current ?? []).map((card) =>
+            card.job.id === jobId
+              ? { ...card, stage: toStage, latestEventAt: nowEpoch }
+              : card,
+          ),
       );
 
       try {
-        await api.transitionJobStage(jobId, {
-          toStage,
-          metadata: {
-            actor: "user",
-            eventType: "status_update",
-            eventLabel: `Moved to ${STAGE_LABELS[toStage]}`,
-          },
-        });
+        await transitionMutation.mutateAsync({ jobId, toStage });
         toast.success(`Moved to ${STAGE_LABELS[toStage]}`);
-        await loadBoard();
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.jobs.inProgressBoard(),
+        });
       } catch (error) {
-        setCards(previousCards);
+        queryClient.setQueryData(
+          queryKeys.jobs.inProgressBoard(),
+          previousCards,
+        );
         const message =
           error instanceof Error ? error.message : "Failed to move stage";
         toast.error(message);
@@ -204,7 +219,7 @@ export const InProgressBoardPage: React.FC = () => {
         setDropTargetStage(null);
       }
     },
-    [cards, dragging, loadBoard],
+    [dragging, queryClient, transitionMutation],
   );
 
   return (
