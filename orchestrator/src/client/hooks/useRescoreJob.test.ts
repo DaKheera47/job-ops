@@ -25,7 +25,9 @@ describe("useRescoreJob", () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.rescoreJob).mockResolvedValue({} as any);
 
-    const { result } = renderHookWithQueryClient(() => useRescoreJob(onJobUpdated));
+    const { result } = renderHookWithQueryClient(() =>
+      useRescoreJob(onJobUpdated),
+    );
 
     await act(async () => {
       await result.current.rescoreJob("job-1");

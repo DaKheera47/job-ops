@@ -1,5 +1,4 @@
 import * as api from "@client/api";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@client/components/layout";
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
@@ -29,14 +28,15 @@ import type {
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
 } from "@shared/types.js";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { queryKeys } from "@/client/lib/queryKeys";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",

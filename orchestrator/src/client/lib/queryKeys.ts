@@ -49,14 +49,26 @@ export const queryKeys = {
         "provider-status",
         { provider, accountKey },
       ] as const,
-    inbox: (provider: PostApplicationProvider, accountKey: string, limit: number) =>
+    inbox: (
+      provider: PostApplicationProvider,
+      accountKey: string,
+      limit: number,
+    ) =>
       [
         ...queryKeys.postApplication.all,
         "inbox",
         { provider, accountKey, limit },
       ] as const,
-    runs: (provider: PostApplicationProvider, accountKey: string, limit: number) =>
-      [...queryKeys.postApplication.all, "runs", { provider, accountKey, limit }] as const,
+    runs: (
+      provider: PostApplicationProvider,
+      accountKey: string,
+      limit: number,
+    ) =>
+      [
+        ...queryKeys.postApplication.all,
+        "runs",
+        { provider, accountKey, limit },
+      ] as const,
   },
   backups: {
     all: ["backups"] as const,

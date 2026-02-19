@@ -1,6 +1,6 @@
-import { useRescoreJobMutation } from "@/client/hooks/queries/useJobMutations";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import { useRescoreJobMutation } from "@/client/hooks/queries/useJobMutations";
 
 export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
   const [isRescoring, setIsRescoring] = useState(false);
@@ -25,7 +25,7 @@ export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
         setIsRescoring(false);
       }
     },
-    [onJobUpdated],
+    [onJobUpdated, rescoreMutation.mutateAsync],
   );
 
   return { isRescoring, rescoreJob };

@@ -6,6 +6,7 @@ import {
   STAGE_LABELS,
   type StageEvent,
 } from "@shared/types.js";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
 import {
   ArrowLeft,
@@ -26,6 +27,16 @@ import {
 import React from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { invalidateJobData } from "@/client/hooks/queries/invalidate";
+import {
+  useCheckSponsorMutation,
+  useGenerateJobPdfMutation,
+  useMarkAsAppliedMutation,
+  useRescoreJobMutation,
+  useSkipJobMutation,
+  useUpdateJobMutation,
+} from "@/client/hooks/queries/useJobMutations";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,17 +48,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import {
   copyTextToClipboard,
   formatJobForWebhook,
   formatTimestamp,
 } from "@/lib/utils";
-import { useCheckSponsorMutation, useGenerateJobPdfMutation, useMarkAsAppliedMutation, useRescoreJobMutation, useSkipJobMutation, useUpdateJobMutation } from "@/client/hooks/queries/useJobMutations";
-import { invalidateJobData } from "@/client/hooks/queries/invalidate";
-import { queryKeys } from "@/client/lib/queryKeys";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { GhostwriterDrawer } from "../components/ghostwriter/GhostwriterDrawer";

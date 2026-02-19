@@ -1,11 +1,10 @@
 import type { AppSettings } from "@shared/types";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryClient as appQueryClient } from "@/client/lib/queryClient";
 import { queryKeys } from "@/client/lib/queryKeys";
 import * as api from "../api";
 
 export function useSettings() {
-  const queryClient = useQueryClient();
   const {
     data: settings = null,
     error,

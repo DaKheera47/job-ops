@@ -1,5 +1,4 @@
 import * as api from "@client/api";
-import { useQuery } from "@tanstack/react-query";
 import {
   ApplicationsPerDayChart,
   ConversionAnalytics,
@@ -8,6 +7,7 @@ import {
 } from "@client/components/charts";
 import { PageHeader, PageMain } from "@client/components/layout";
 import type { StageEvent } from "@shared/types.js";
+import { useQuery } from "@tanstack/react-query";
 import { ChartColumn } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";

@@ -4,8 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
-import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { SettingsPage } from "./SettingsPage";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>

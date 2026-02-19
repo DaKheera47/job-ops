@@ -1,6 +1,6 @@
 import * as api from "@client/api";
-import { useQuery } from "@tanstack/react-query";
 import type { DemoInfoResponse } from "@shared/types";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/client/lib/queryKeys";
 
 export function useDemoInfo() {

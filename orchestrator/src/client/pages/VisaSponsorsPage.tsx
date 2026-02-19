@@ -24,13 +24,13 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
-import { queryKeys } from "@/client/lib/queryKeys";
 import { cn, formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import {
@@ -96,7 +96,11 @@ export const VisaSponsorsPage: React.FC = () => {
   }, [searchQuery]);
 
   const searchQueryResult = useQuery({
-    queryKey: queryKeys.visaSponsors.search(debouncedSearchQuery.trim(), 100, 20),
+    queryKey: queryKeys.visaSponsors.search(
+      debouncedSearchQuery.trim(),
+      100,
+      20,
+    ),
     queryFn: () =>
       api.searchVisaSponsors({
         query: debouncedSearchQuery.trim(),
