@@ -239,21 +239,14 @@ export function updateStageEvent(
 
       const metadata = parseMetadata(lastEvent.metadata);
       const lastStage = lastEvent.toStage as ApplicationStage;
-      const storedOutcome = (lastEvent.outcome as JobOutcome | null) ?? null;
-      const inferredOutcome = inferOutcome(lastStage, metadata);
-      const closingStage = isClosingStage(lastStage);
-      const outcome =
-        storedOutcome ??
-        inferredOutcome ??
-        (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
-      const closedAt =
-        lastStage === "closed"
-          ? lastEvent.occurredAt
-          : outcome
-            ? storedOutcome || inferredOutcome
-              ? lastEvent.occurredAt
-              : (job.closedAt ?? null)
-            : null;
+      const { outcome, closedAt } = resolveOutcomeAndClosedAt({
+        lastStage,
+        lastEventOccurredAt: lastEvent.occurredAt,
+        metadata,
+        lastEventOutcome: (lastEvent.outcome as JobOutcome | null) ?? null,
+        jobOutcome: (job.outcome as JobOutcome | null) ?? null,
+        jobClosedAt: job.closedAt ?? null,
+      });
 
       tx.update(jobs)
         .set({
@@ -298,21 +291,14 @@ export function deleteStageEvent(eventId: string): void {
 
       const metadata = parseMetadata(lastEvent.metadata);
       const lastStage = lastEvent.toStage as ApplicationStage;
-      const storedOutcome = (lastEvent.outcome as JobOutcome | null) ?? null;
-      const inferredOutcome = inferOutcome(lastStage, metadata);
-      const closingStage = isClosingStage(lastStage);
-      const outcome =
-        storedOutcome ??
-        inferredOutcome ??
-        (closingStage ? ((job.outcome as JobOutcome | null) ?? null) : null);
-      const closedAt =
-        lastStage === "closed"
-          ? lastEvent.occurredAt
-          : outcome
-            ? storedOutcome || inferredOutcome
-              ? lastEvent.occurredAt
-              : (job.closedAt ?? null)
-            : null;
+      const { outcome, closedAt } = resolveOutcomeAndClosedAt({
+        lastStage,
+        lastEventOccurredAt: lastEvent.occurredAt,
+        metadata,
+        lastEventOutcome: (lastEvent.outcome as JobOutcome | null) ?? null,
+        jobOutcome: (job.outcome as JobOutcome | null) ?? null,
+        jobClosedAt: job.closedAt ?? null,
+      });
 
       tx.update(jobs)
         .set({
@@ -363,4 +349,31 @@ function inferOutcome(
 
 function isClosingStage(toStage: ApplicationStage): boolean {
   return toStage === "closed" || toStage === "offer";
+}
+
+function resolveOutcomeAndClosedAt(input: {
+  lastStage: ApplicationStage;
+  lastEventOccurredAt: number;
+  metadata: StageEventMetadata | null;
+  lastEventOutcome: JobOutcome | null;
+  jobOutcome: JobOutcome | null;
+  jobClosedAt: number | null;
+}): { outcome: JobOutcome | null; closedAt: number | null } {
+  const inferredOutcome = inferOutcome(input.lastStage, input.metadata);
+  const closingStage = isClosingStage(input.lastStage);
+  const outcome =
+    input.lastEventOutcome ??
+    inferredOutcome ??
+    (closingStage ? input.jobOutcome : null);
+
+  if (input.lastStage === "closed") {
+    return { outcome, closedAt: input.lastEventOccurredAt };
+  }
+  if (!outcome) {
+    return { outcome, closedAt: null };
+  }
+  if (input.lastEventOutcome || inferredOutcome) {
+    return { outcome, closedAt: input.lastEventOccurredAt };
+  }
+  return { outcome, closedAt: input.jobClosedAt };
 }

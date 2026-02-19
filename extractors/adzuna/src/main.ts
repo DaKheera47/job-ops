@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { parseSearchTerms } from "job-ops-shared/utils/search-terms";
 import {
   toNumberOrNull,
   toStringOrNull,
@@ -7,6 +8,7 @@ import {
 
 const API_BASE = "https://api.adzuna.com/v1/api";
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+const DEFAULT_SEARCH_TERM = "web developer";
 
 type AdzunaCompany = { display_name?: unknown };
 type AdzunaLocation = { display_name?: unknown };
@@ -42,36 +44,6 @@ function parsePositiveInt(input: string | undefined, fallback: number): number {
   const parsed = input ? Number.parseInt(input, 10) : Number.NaN;
   if (!Number.isFinite(parsed) || parsed < 1) return fallback;
   return parsed;
-}
-
-function parseSearchTerms(raw: string | undefined): string[] {
-  if (!raw || raw.trim().length === 0) return ["web developer"];
-
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (Array.isArray(parsed)) {
-        const terms = parsed
-          .map((value) => toStringOrNull(value))
-          .filter((value): value is string => value !== null);
-        if (terms.length > 0) return terms;
-      }
-    } catch {
-      // Fall through to delimiter parsing.
-    }
-  }
-
-  const delimiter = trimmed.includes("|")
-    ? "|"
-    : trimmed.includes("\n")
-      ? "\n"
-      : ",";
-  const terms = trimmed
-    .split(delimiter)
-    .map((value) => value.trim())
-    .filter(Boolean);
-  return terms.length > 0 ? terms : ["web developer"];
 }
 
 function requireEnv(name: string): string {
@@ -167,7 +139,10 @@ async function run(): Promise<void> {
     50,
   );
   const resultsPerPage = Math.min(50, configuredResultsPerPage);
-  const searchTerms = parseSearchTerms(process.env.ADZUNA_SEARCH_TERMS);
+  const searchTerms = parseSearchTerms(
+    process.env.ADZUNA_SEARCH_TERMS,
+    DEFAULT_SEARCH_TERM,
+  );
   const outputJson =
     process.env.ADZUNA_OUTPUT_JSON ||
     join(process.cwd(), "storage/datasets/default/jobs.json");

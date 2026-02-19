@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { launchOptions } from "camoufox-js";
+import { parseSearchTerms } from "job-ops-shared/utils/search-terms";
 import {
   toNumberOrNull,
   toStringOrNull,
@@ -56,38 +57,6 @@ function parsePositiveInt(input: string | undefined, fallback: number): number {
   return parsed;
 }
 
-function parseSearchTerms(raw: string | undefined): string[] {
-  if (!raw || raw.trim().length === 0) return [DEFAULT_SEARCH_TERM];
-
-  const trimmed = raw.trim();
-  if (trimmed.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(trimmed) as unknown;
-      if (Array.isArray(parsed)) {
-        const terms = parsed
-          .map((value) => toStringOrNull(value))
-          .filter((value): value is string => Boolean(value));
-        if (terms.length > 0) return terms;
-      }
-    } catch {
-      // Fall through to delimiter parsing.
-    }
-  }
-
-  const delimiter = trimmed.includes("|")
-    ? "|"
-    : trimmed.includes("\n")
-      ? "\n"
-      : ",";
-
-  const terms = trimmed
-    .split(delimiter)
-    .map((value) => value.trim())
-    .filter(Boolean);
-
-  return terms.length > 0 ? terms : [DEFAULT_SEARCH_TERM];
-}
-
 function encodeSearchState(searchState: unknown): string {
   const json = JSON.stringify(searchState);
   const urlEncodedJson = encodeURIComponent(json);
@@ -126,12 +95,7 @@ function formatCompensation(
   const frequency =
     toStringOrNull(processedJobData.listed_compensation_frequency) ?? "Yearly";
 
-  const amount =
-    min !== null && max !== null
-      ? `${Math.round(min)}-${Math.round(max)}`
-      : min !== null
-        ? `${Math.round(min)}+`
-        : `${Math.round(max ?? 0)}`;
+  const amount = formatCompensationAmount(min, max);
 
   const parts = [currency, amount, frequency ? `/ ${frequency}` : ""]
     .filter(Boolean)
@@ -139,6 +103,17 @@ function formatCompensation(
     .trim();
 
   return parts || undefined;
+}
+
+function formatCompensationAmount(
+  min: number | null,
+  max: number | null,
+): string {
+  if (min !== null && max !== null) {
+    return `${Math.round(min)}-${Math.round(max)}`;
+  }
+  if (min !== null) return `${Math.round(min)}+`;
+  return `${Math.round(max ?? 0)}`;
 }
 
 function mapHiringCafeJob(raw: RawHiringCafeJob): ExtractedJob | null {
@@ -277,7 +252,10 @@ async function callHiringCafeApi(
 }
 
 async function run(): Promise<void> {
-  const searchTerms = parseSearchTerms(process.env.HIRING_CAFE_SEARCH_TERMS);
+  const searchTerms = parseSearchTerms(
+    process.env.HIRING_CAFE_SEARCH_TERMS,
+    DEFAULT_SEARCH_TERM,
+  );
   const country = normalizeCountryKey(
     process.env.HIRING_CAFE_COUNTRY ?? "united kingdom",
   );

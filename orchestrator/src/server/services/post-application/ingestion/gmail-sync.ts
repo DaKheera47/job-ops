@@ -127,6 +127,16 @@ type SmartRouterResult = {
   reason: string;
 };
 
+function resolveProcessingStatus(input: {
+  isAutoLinked: boolean;
+  isPendingMatch: boolean;
+  isRelevantOrphan: boolean;
+}): "auto_linked" | "pending_user" | "ignored" {
+  if (input.isAutoLinked) return "auto_linked";
+  if (input.isPendingMatch || input.isRelevantOrphan) return "pending_user";
+  return "ignored";
+}
+
 type IndexedActiveJob = {
   index: number;
   id: string;
@@ -868,11 +878,11 @@ export async function runGmailIngestionSync(args: {
         const isAutoLinked = routerResult.confidence >= 95 && matchedJobId;
         const isPendingMatch = routerResult.confidence >= 50;
         const isRelevantOrphan = routerResult.isRelevant;
-        const processingStatus = isAutoLinked
-          ? "auto_linked"
-          : isPendingMatch || isRelevantOrphan
-            ? "pending_user"
-            : "ignored";
+        const processingStatus = resolveProcessingStatus({
+          isAutoLinked: Boolean(isAutoLinked),
+          isPendingMatch,
+          isRelevantOrphan,
+        });
 
         const { message: savedMessage, autoLinkTransitioned } =
           await upsertPostApplicationMessage({
