@@ -7,6 +7,11 @@ sidebar_position: 3
 
 A walkthrough of the JobSpy extractor for Indeed, LinkedIn, and Glassdoor.
 
+Original websites:
+- [indeed.com](https://www.indeed.com)
+- [linkedin.com/jobs](https://www.linkedin.com/jobs)
+- [glassdoor.com](https://www.glassdoor.com)
+
 ## Big picture
 
 JobSpy runs as a Python script per search term, writes JSON, then orchestrator ingests and normalizes into internal job shape.

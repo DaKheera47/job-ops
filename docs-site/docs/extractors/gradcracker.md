@@ -7,6 +7,8 @@ sidebar_position: 2
 
 A plain-English walkthrough of the Gradcracker extractor in `extractors/gradcracker`.
 
+Original website: [gradcracker.com](https://www.gradcracker.com)
+
 ## Big picture
 
 The crawler builds search URLs, scrapes listing pages, then opens job details for descriptions and apply URLs.

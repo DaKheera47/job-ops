@@ -7,6 +7,8 @@ sidebar_position: 6
 
 ## What it is
 
+Original website: [adzuna.com](https://www.adzuna.com)
+
 Adzuna is an API-backed extractor implemented in two lean pieces:
 
 1. `extractors/adzuna/src/main.ts` fetches paginated Adzuna search results and writes `jobs.json`.
