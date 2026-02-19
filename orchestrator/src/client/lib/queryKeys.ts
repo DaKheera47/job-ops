@@ -20,7 +20,7 @@ export const queryKeys = {
   },
   jobs: {
     all: ["jobs"] as const,
-    list: (options?: { statuses?: string[]; view?: "list" | "full" }) =>
+    list: (options?: { statuses?: JobStatus[]; view?: "list" | "full" }) =>
       [...queryKeys.jobs.all, "list", options ?? {}] as const,
     revision: (options?: { statuses?: JobStatus[] }) =>
       [...queryKeys.jobs.all, "revision", options ?? {}] as const,

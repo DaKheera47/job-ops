@@ -104,7 +104,7 @@ export const VisaSponsorsPage: React.FC = () => {
   useQueryErrorToast(searchQueryResult.error, "Search failed");
 
   const orgDetailsQuery = useQuery<VisaSponsor[]>({
-    queryKey: ["visaSponsors", "organization", selectedOrg] as const,
+    queryKey: queryKeys.visaSponsors.organization(selectedOrg ?? ""),
     queryFn: () =>
       selectedOrg
         ? api.getVisaSponsorOrganization(selectedOrg)
