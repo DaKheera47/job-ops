@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import type { CreateJobInput } from "@shared/types";
-import { toStringOrNull } from "@shared/utils/type-conversion";
+import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HIRING_CAFE_DIR = join(__dirname, "../../../../extractors/hiringcafe");
@@ -86,11 +86,11 @@ function parseProgressLine(line: string): HiringCafeProgressEvent | null {
   }
 
   const event = toStringOrNull(parsed.event);
-  const termIndex = Number(parsed.termIndex);
-  const termTotal = Number(parsed.termTotal);
+  const termIndex = toNumberOrNull(parsed.termIndex);
+  const termTotal = toNumberOrNull(parsed.termTotal);
   const searchTerm = toStringOrNull(parsed.searchTerm) ?? "";
 
-  if (!event || !Number.isFinite(termIndex) || !Number.isFinite(termTotal)) {
+  if (!event || termIndex === null || termTotal === null) {
     return null;
   }
 
@@ -99,8 +99,8 @@ function parseProgressLine(line: string): HiringCafeProgressEvent | null {
   }
 
   if (event === "page_fetched") {
-    const pageNo = Number(parsed.pageNo);
-    if (!Number.isFinite(pageNo)) return null;
+    const pageNo = toNumberOrNull(parsed.pageNo);
+    if (pageNo === null) return null;
 
     return {
       type: "page_fetched",
@@ -108,8 +108,8 @@ function parseProgressLine(line: string): HiringCafeProgressEvent | null {
       termTotal,
       searchTerm,
       pageNo,
-      resultsOnPage: Number(parsed.resultsOnPage) || 0,
-      totalCollected: Number(parsed.totalCollected) || 0,
+      resultsOnPage: toNumberOrNull(parsed.resultsOnPage) ?? 0,
+      totalCollected: toNumberOrNull(parsed.totalCollected) ?? 0,
     };
   }
 
@@ -119,7 +119,7 @@ function parseProgressLine(line: string): HiringCafeProgressEvent | null {
       termIndex,
       termTotal,
       searchTerm,
-      jobsFoundTerm: Number(parsed.jobsFoundTerm) || 0,
+      jobsFoundTerm: toNumberOrNull(parsed.jobsFoundTerm) ?? 0,
     };
   }
 
