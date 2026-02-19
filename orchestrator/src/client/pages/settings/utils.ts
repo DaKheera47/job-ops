@@ -56,8 +56,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
 
 const PROVIDER_KEY_HELPERS: Record<LlmProviderId, string> = {
   openrouter: "Create a key at openrouter.ai",
-  lmstudio: "Create a key at openrouter.ai",
-  ollama: "Create a key at openrouter.ai",
+  lmstudio: "No API key required for LM Studio",
+  ollama: "No API key required for Ollama",
   openai: "Create a key at platform.openai.com",
   gemini: "Create a key at aistudio.google.com/api-keys",
 };
