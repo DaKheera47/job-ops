@@ -46,6 +46,13 @@ jobs:
         run: npm run docs:version -- "${{ steps.vars.outputs.version }}"
         working-directory: .
 
+      - name: Format generated docs files
+        run: |
+          ./orchestrator/node_modules/.bin/biome check --write \
+            docs-site/versions.json \
+            docs-site/versioned_docs \
+            docs-site/versioned_sidebars
+
       - name: Commit and push generated docs version files
         run: |
           git config user.name "github-actions[bot]"
