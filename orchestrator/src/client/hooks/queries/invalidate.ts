@@ -17,6 +17,9 @@ export async function invalidateJobData(
     queryKey: [...queryKeys.jobs.all, "revision"] as const,
   });
   await queryClient.invalidateQueries({
+    queryKey: queryKeys.jobs.inProgressBoard(),
+  });
+  await queryClient.invalidateQueries({
     queryKey: queryKeys.jobs.detail(jobId),
   });
   await queryClient.invalidateQueries({
