@@ -10,6 +10,7 @@ import * as jobsRepo from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
 import { runAdzuna } from "../../services/adzuna";
 import { runCrawler } from "../../services/crawler";
+import { runHiringCafe } from "../../services/hiring-cafe";
 import { runJobSpy } from "../../services/jobspy";
 import { runUkVisaJobs } from "../../services/ukvisajobs";
 import { progressHelpers, updateProgress } from "../progress";
@@ -75,12 +76,14 @@ export async function discoverJobsStep(args: {
 
   const shouldRunJobSpy = jobSpySites.length > 0;
   const shouldRunAdzuna = compatibleSources.includes("adzuna");
+  const shouldRunHiringCafe = compatibleSources.includes("hiringcafe");
   const shouldRunGradcracker = compatibleSources.includes("gradcracker");
   const shouldRunUkVisaJobs = compatibleSources.includes("ukvisajobs");
 
   const totalSources =
     Number(shouldRunJobSpy) +
     Number(shouldRunAdzuna) +
+    Number(shouldRunHiringCafe) +
     Number(shouldRunGradcracker) +
     Number(shouldRunUkVisaJobs);
   let completedSources = 0;
@@ -230,6 +233,89 @@ export async function discoverJobsStep(args: {
 
       markSourceComplete();
     }
+  }
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
+
+  if (shouldRunHiringCafe) {
+    progressHelpers.startSource(
+      "hiringcafe",
+      completedSources,
+      totalSources,
+      {
+        termsTotal: searchTerms.length,
+        detail: "Hiring Cafe: fetching jobs...",
+      },
+    );
+
+    const hiringCafeMaxJobsPerTerm = settings.jobspyResultsWanted
+      ? parseInt(settings.jobspyResultsWanted, 10)
+      : 200;
+
+    const hiringCafeResult = await runHiringCafe({
+      country: selectedCountry,
+      searchTerms,
+      maxJobsPerTerm: hiringCafeMaxJobsPerTerm,
+      onProgress: (event) => {
+        if (event.type === "term_start") {
+          progressHelpers.crawlingUpdate({
+            source: "hiringcafe",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            phase: "list",
+            currentUrl: event.searchTerm,
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+          });
+          return;
+        }
+
+        if (event.type === "page_fetched") {
+          const displayPageNo = event.pageNo + 1;
+          progressHelpers.crawlingUpdate({
+            source: "hiringcafe",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            listPagesProcessed: displayPageNo,
+            jobPagesEnqueued: event.totalCollected,
+            jobPagesProcessed: event.totalCollected,
+            phase: "list",
+            currentUrl: `page ${displayPageNo}`,
+          });
+          updateProgress({
+            step: "crawling",
+            detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal}, page ${displayPageNo} (${event.totalCollected} collected)`,
+          });
+          return;
+        }
+
+        progressHelpers.crawlingUpdate({
+          source: "hiringcafe",
+          termsProcessed: event.termIndex,
+          termsTotal: event.termTotal,
+          phase: "list",
+          currentUrl: event.searchTerm,
+        });
+        updateProgress({
+          step: "crawling",
+          detail: `Hiring Cafe: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+        });
+      },
+    });
+
+    if (!hiringCafeResult.success) {
+      sourceErrors.push(
+        `hiringcafe: ${hiringCafeResult.error ?? "unknown error"}`,
+      );
+    } else {
+      discoveredJobs.push(...hiringCafeResult.jobs);
+    }
+
+    markSourceComplete();
   }
 
   if (args.shouldCancel?.()) {

@@ -23,6 +23,10 @@ vi.mock("../../services/adzuna", () => ({
   runAdzuna: vi.fn(),
 }));
 
+vi.mock("../../services/hiring-cafe", () => ({
+  runHiringCafe: vi.fn(),
+}));
+
 vi.mock("../../services/ukvisajobs", () => ({
   runUkVisaJobs: vi.fn(),
 }));
@@ -218,6 +222,124 @@ describe("discoverJobsStep", () => {
     expect(vi.mocked(adzuna.runAdzuna)).not.toHaveBeenCalled();
   });
 
+  it("runs hiringcafe when selected and passes country/terms/cap", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const hiringCafe = await import("../../services/hiring-cafe");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+      jobspyResultsWanted: "25",
+    } as any);
+
+    vi.mocked(hiringCafe.runHiringCafe).mockResolvedValue({
+      success: true,
+      jobs: [
+        {
+          source: "hiringcafe",
+          sourceJobId: "hc-1",
+          title: "Engineer",
+          employer: "ACME",
+          jobUrl: "https://example.com/hc",
+          applicationLink: "https://example.com/hc",
+        },
+      ],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["hiringcafe"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(vi.mocked(hiringCafe.runHiringCafe)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "united states",
+        searchTerms: ["engineer"],
+        maxJobsPerTerm: 25,
+      }),
+    );
+  });
+
+  it("updates Hiring Cafe terms and pages via progress callbacks", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const hiringCafe = await import("../../services/hiring-cafe");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer", "frontend"]),
+      jobspyCountryIndeed: "united kingdom",
+      jobspyResultsWanted: "50",
+    } as any);
+
+    vi.mocked(hiringCafe.runHiringCafe).mockImplementation(async (options: any) => {
+      options?.onProgress?.({
+        type: "term_start",
+        termIndex: 1,
+        termTotal: 2,
+        searchTerm: "engineer",
+      });
+      options?.onProgress?.({
+        type: "page_fetched",
+        termIndex: 1,
+        termTotal: 2,
+        searchTerm: "engineer",
+        pageNo: 0,
+        resultsOnPage: 10,
+        totalCollected: 10,
+      });
+      options?.onProgress?.({
+        type: "term_complete",
+        termIndex: 1,
+        termTotal: 2,
+        searchTerm: "engineer",
+        jobsFoundTerm: 10,
+      });
+      return { success: true, jobs: [] } as any;
+    });
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["hiringcafe"],
+      },
+    });
+
+    const progress = getProgress();
+    expect(progress.crawlingTermsProcessed).toBe(1);
+    expect(progress.crawlingTermsTotal).toBe(2);
+    expect(progress.crawlingListPagesProcessed).toBe(1);
+    expect(progress.crawlingJobPagesEnqueued).toBe(10);
+    expect(progress.crawlingJobPagesProcessed).toBe(10);
+  });
+
+  it("returns Hiring Cafe source error when extractor fails", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const hiringCafe = await import("../../services/hiring-cafe");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+      jobspyResultsWanted: "50",
+    } as any);
+
+    vi.mocked(hiringCafe.runHiringCafe).mockResolvedValue({
+      success: false,
+      jobs: [],
+      error: "blocked upstream",
+    } as any);
+
+    await expect(
+      discoverJobsStep({
+        mergedConfig: {
+          ...config,
+          sources: ["hiringcafe"],
+        },
+      }),
+    ).rejects.toThrow("All sources failed: hiringcafe: blocked upstream");
+  });
+
   it("maps Gradcracker progress callback into live crawling counters", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const crawler = await import("../../services/crawler");
@@ -402,6 +524,7 @@ describe("discoverJobsStep", () => {
   it("does not throw when no sources are requested", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const adzuna = await import("../../services/adzuna");
+    const hiringCafe = await import("../../services/hiring-cafe");
     const jobSpy = await import("../../services/jobspy");
     const crawler = await import("../../services/crawler");
     const ukVisa = await import("../../services/ukvisajobs");
@@ -422,6 +545,7 @@ describe("discoverJobsStep", () => {
     expect(result.sourceErrors).toEqual([]);
     expect(vi.mocked(jobSpy.runJobSpy)).not.toHaveBeenCalled();
     expect(vi.mocked(adzuna.runAdzuna)).not.toHaveBeenCalled();
+    expect(vi.mocked(hiringCafe.runHiringCafe)).not.toHaveBeenCalled();
     expect(vi.mocked(crawler.runCrawler)).not.toHaveBeenCalled();
     expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
   });
