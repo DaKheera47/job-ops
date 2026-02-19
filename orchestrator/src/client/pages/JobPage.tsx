@@ -17,6 +17,7 @@ import {
   Edit2,
   ExternalLink,
   FileText,
+  MoreHorizontal,
   PlusCircle,
   RefreshCcw,
   Sparkles,
@@ -28,6 +29,13 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   copyTextToClipboard,
   formatJobForWebhook,
@@ -322,72 +330,78 @@ export const JobPage: React.FC = () => {
       )}
 
       {job && (
-        <div className="rounded-lg border border-border/40 bg-card p-3">
-          <div className="flex flex-wrap gap-2">
-            {jobLink && (
-              <Button asChild size="sm" variant="outline">
-                <a href={jobLink} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                  Open Job Listing
-                </a>
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsEditDetailsOpen(true)}
-            >
-              <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-              Edit Details
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCopyJobInfo}>
-              <Copy className="mr-1.5 h-3.5 w-3.5" />
-              Copy Job Info
-            </Button>
-            {pdfHref && (
-              <Button asChild size="sm" variant="outline">
-                <a href={pdfHref} target="_blank" rel="noopener noreferrer">
-                  <FileText className="mr-1.5 h-3.5 w-3.5" />
-                  View PDF
-                </a>
-              </Button>
-            )}
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {jobLink && (
+                <Button
+                  asChild
+                >
+                  <a href={jobLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Open Job Listing
+                  </a>
+                </Button>
+              )}
 
-            {isDiscovered && (
-              <>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/jobs/discovered/${job.id}`)}
-                  disabled={isBusy}
-                >
-                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                  Start Tailoring
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleRescore()}
-                  disabled={isBusy}
-                >
-                  <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                  Recalculate Match
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleSkip()}
-                  disabled={isBusy}
-                >
-                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                  Skip Job
-                </Button>
-              </>
-            )}
+              {isReady && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleMarkApplied()}
+                    disabled={isBusy}
+                  >
+                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                    Mark Applied
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSkip()}
+                    disabled={isBusy}
+                  >
+                    <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                    Skip Job
+                  </Button>
+                </>
+              )}
 
-            {isReady && (
-              <>
+              {isDiscovered && (
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSkip()}
+                    disabled={isBusy}
+                  >
+                    <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                    Skip Job
+                  </Button>
+              )}
+
+              {isApplied && (
                 <Button
                   size="sm"
+                  className="h-9 border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                  onClick={() => void handleMoveToInProgress()}
+                  disabled={isBusy}
+                >
+                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                  Move to In Progress
+                </Button>
+              )}
+
+              {isInProgress && (
+                <Button
+                  onClick={() => setIsLogModalOpen(true)}
+                  disabled={!canLogEvents || isBusy}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Log Event
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {isReady && (
+                <Button
                   variant="outline"
                   onClick={() => navigate(`/jobs/ready/${job.id}`)}
                   disabled={isBusy}
@@ -395,8 +409,22 @@ export const JobPage: React.FC = () => {
                   <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                   Edit Tailoring
                 </Button>
+              )}
+
+              {pdfHref && (
                 <Button
-                  size="sm"
+                  asChild
+                  variant="outline"
+                >
+                  <a href={pdfHref} target="_blank" rel="noopener noreferrer">
+                    <FileText className="mr-1.5 h-3.5 w-3.5" />
+                    View PDF
+                  </a>
+                </Button>
+              )}
+
+              {isReady && (
+                <Button
                   variant="outline"
                   onClick={() => void handleRegeneratePdf()}
                   disabled={isBusy}
@@ -404,59 +432,42 @@ export const JobPage: React.FC = () => {
                   <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
                   Regenerate PDF
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleRescore()}
-                  disabled={isBusy}
-                >
-                  <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                  Recalculate Match
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => void handleMarkApplied()}
-                  disabled={isBusy}
-                >
-                  <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                  Mark Applied
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => void handleSkip()}
-                  disabled={isBusy}
-                >
-                  <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                  Skip Job
-                </Button>
-              </>
-            )}
+              )}
 
-            {isApplied && (
-              <Button
-                size="sm"
-                onClick={() => void handleMoveToInProgress()}
-                disabled={isBusy}
-              >
-                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                Move to In Progress
-              </Button>
-            )}
-
-            {isInProgress && (
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => setIsLogModalOpen(true)}
-                disabled={!canLogEvents || isBusy}
-              >
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Log Event
-              </Button>
-            )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Edit details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleCopyJobInfo()}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy job info
+                  </DropdownMenuItem>
+                  {(isReady || isDiscovered) && (
+                    <DropdownMenuItem onSelect={() => void handleRescore()}>
+                      <RefreshCcw className="mr-2 h-4 w-4" />
+                      Recalculate match
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onSelect={() => void handleCheckSponsor()}>
+                    Check sponsorship status
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
