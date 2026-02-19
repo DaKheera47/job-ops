@@ -183,4 +183,59 @@ describe("scoreJobsStep auto-skip behavior", () => {
       expect.objectContaining({ jobId: "job-applied" }),
     );
   });
+
+  it("scores multiple jobs and reports completion progress", async () => {
+    const jobsRepo = await import("../../repositories/jobs");
+    const scorer = await import("../../services/scorer");
+    const { progressHelpers } = await import("../progress");
+
+    vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
+      createJob({
+        id: "job-1",
+        title: "First Role",
+        employer: "Acme",
+        suitabilityScore: null,
+      }),
+      createJob({
+        id: "job-2",
+        title: "Second Role",
+        employer: "Beta",
+        suitabilityScore: null,
+      }),
+    ]);
+
+    vi.mocked(scorer.scoreJobSuitability)
+      .mockResolvedValueOnce({ score: 61, reason: "First score" })
+      .mockResolvedValueOnce({ score: 72, reason: "Second score" });
+
+    const result = await scoreJobsStep({ profile: {} });
+
+    expect(result.scoredJobs).toHaveLength(2);
+    expect(vi.mocked(jobsRepo.updateJob)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(progressHelpers.scoringJob)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(progressHelpers.scoringComplete)).toHaveBeenCalledWith(2);
+  });
+
+  it("stops before processing when cancellation is requested", async () => {
+    const jobsRepo = await import("../../repositories/jobs");
+    const scorer = await import("../../services/scorer");
+
+    vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
+      createJob({
+        id: "job-1",
+        title: "Cancelled Role",
+        employer: "Acme",
+        suitabilityScore: null,
+      }),
+    ]);
+
+    const result = await scoreJobsStep({
+      profile: {},
+      shouldCancel: () => true,
+    });
+
+    expect(result.scoredJobs).toHaveLength(0);
+    expect(vi.mocked(scorer.scoreJobSuitability)).not.toHaveBeenCalled();
+    expect(vi.mocked(jobsRepo.updateJob)).not.toHaveBeenCalled();
+  });
 });
