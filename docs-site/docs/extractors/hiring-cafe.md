@@ -27,7 +27,7 @@ It also supports term-by-term search and country-aware search state using the sa
 ## How to use it
 
 1. Open **Run jobs** and choose **Automatic**.
-2. Enable **Hiring Cafe** in **Sources**.
+2. **Hiring Cafe** is enabled by default in **Sources** (toggle it off if you do not want it for this run).
 3. Set your existing automatic run knobs:
    - `searchTerms` drive per-term Hiring Cafe `searchQuery`.
    - selected country maps into Hiring Cafe location search state.
@@ -38,7 +38,8 @@ Defaults and constraints:
 
 - No new Hiring Cafe settings fields were added.
 - `worldwide` and `usa/ca` run in broad mode without a strict country location filter.
-- The extractor is opt-in; it is not enabled in default selected sources.
+- Hiring Cafe is enabled by default in source selection.
+- `HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS` controls recency window when running extractor directly (default `7`).
 
 Local run example:
 

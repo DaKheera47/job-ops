@@ -34,6 +34,7 @@ export interface HiringCafeSearchState {
 export function createDefaultSearchState(args: {
   searchQuery: string;
   location: HiringCafeCountryLocation | null;
+  dateFetchedPastNDays: number;
 }): HiringCafeSearchState {
   return {
     locations: args.location ? [args.location] : [],
@@ -71,7 +72,7 @@ export function createDefaultSearchState(args: {
       "Other",
     ],
     searchQuery: args.searchQuery,
-    dateFetchedPastNDays: 4,
+    dateFetchedPastNDays: args.dateFetchedPastNDays,
     hiddenCompanies: [],
     sortBy: "default",
     companyPublicOrPrivate: "all",

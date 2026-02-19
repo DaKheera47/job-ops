@@ -18,6 +18,7 @@ const BASE_URL = "https://hiring.cafe";
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 const DEFAULT_MAX_JOBS_PER_TERM = 200;
 const DEFAULT_SEARCH_TERM = "web developer";
+const DEFAULT_DATE_FETCHED_PAST_N_DAYS = 30;
 const PAGE_LIMIT = 50;
 
 type RawHiringCafeJob = Record<string, unknown>;
@@ -284,6 +285,10 @@ async function run(): Promise<void> {
     process.env.HIRING_CAFE_MAX_JOBS_PER_TERM,
     DEFAULT_MAX_JOBS_PER_TERM,
   );
+  const dateFetchedPastNDays = parsePositiveInt(
+    process.env.HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS,
+    DEFAULT_DATE_FETCHED_PAST_N_DAYS,
+  );
   const outputPath =
     process.env.HIRING_CAFE_OUTPUT_JSON ||
     join(__dirname, "../storage/datasets/default/jobs.json");
@@ -340,6 +345,7 @@ async function run(): Promise<void> {
       const searchState = createDefaultSearchState({
         searchQuery: searchTerm,
         location,
+        dateFetchedPastNDays,
       });
       const encodedSearchState = encodeSearchState(searchState);
 

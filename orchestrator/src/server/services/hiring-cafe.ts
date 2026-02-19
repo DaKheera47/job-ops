@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
@@ -15,6 +15,7 @@ const DATASET_PATH = join(
   HIRING_CAFE_DIR,
   "storage/datasets/default/jobs.json",
 );
+const STORAGE_DATASET_DIR = join(HIRING_CAFE_DIR, "storage/datasets/default");
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 
 const require = createRequire(import.meta.url);
@@ -168,6 +169,11 @@ async function readDataset(): Promise<CreateJobInput[]> {
   return jobs;
 }
 
+async function clearStorageDataset(): Promise<void> {
+  await rm(STORAGE_DATASET_DIR, { recursive: true, force: true });
+  await mkdir(STORAGE_DATASET_DIR, { recursive: true });
+}
+
 export async function runHiringCafe(
   options: RunHiringCafeOptions = {},
 ): Promise<HiringCafeResult> {
@@ -188,6 +194,8 @@ export async function runHiringCafe(
   }
 
   try {
+    await clearStorageDataset();
+
     await new Promise<void>((resolve, reject) => {
       const extractorEnv = {
         ...process.env,
