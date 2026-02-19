@@ -47,6 +47,9 @@ services:
         - path: ./extractors/gradcracker/src
           target: /app/extractors/gradcracker/src
           action: sync+restart
+        - path: ./extractors/hiringcafe/src
+          target: /app/extractors/hiringcafe/src
+          action: sync+restart
         - path: ./extractors/ukvisajobs/src
           target: /app/extractors/ukvisajobs/src
           action: sync+restart

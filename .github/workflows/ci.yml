@@ -52,6 +52,7 @@ jobs:
         project:
           - orchestrator
           - adzuna-extractor
+          - hiringcafe-extractor
           - gradcracker-extractor
           - ukvisajobs-extractor
     steps:
