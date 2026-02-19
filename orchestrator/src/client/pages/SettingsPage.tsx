@@ -31,7 +31,7 @@ import type {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FormProvider, type Resolver, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -345,7 +345,6 @@ export const SettingsPage: React.FC = () => {
   const backupsQuery = useQuery({
     queryKey: queryKeys.backups.list(),
     queryFn: api.getBackups,
-    enabled: Boolean(settings),
   });
   const updateSettingsMutation = useUpdateSettingsMutation();
   const isLoading = settingsQuery.isLoading;
@@ -363,12 +362,15 @@ export const SettingsPage: React.FC = () => {
     reset(mapSettingsToForm(settingsQuery.data));
   }, [settingsQuery.data, reset]);
 
+  const settingsErrorToastKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!settingsQuery.error) return;
     const message =
       settingsQuery.error instanceof Error
         ? settingsQuery.error.message
         : "Failed to load settings";
+    if (settingsErrorToastKeyRef.current === message) return;
+    settingsErrorToastKeyRef.current = message;
     toast.error(message);
   }, [settingsQuery.error]);
 
@@ -643,7 +645,6 @@ export const SettingsPage: React.FC = () => {
 
       const updated = await updateSettingsMutation.mutateAsync(payload);
       setSettings(updated);
-      queryClient.setQueryData(queryKeys.settings.current(), updated);
       reset(mapSettingsToForm(updated));
       toast.success("Settings saved");
     } catch (error) {
@@ -746,7 +747,6 @@ export const SettingsPage: React.FC = () => {
         NULL_SETTINGS_PAYLOAD,
       );
       setSettings(updated);
-      queryClient.setQueryData(queryKeys.settings.current(), updated);
       reset(mapSettingsToForm(updated));
       toast.success("Reset to default");
     } catch (error) {

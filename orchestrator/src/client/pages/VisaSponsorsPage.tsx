@@ -24,7 +24,7 @@ import {
   X,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +62,6 @@ export const VisaSponsorsPage: React.FC = () => {
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [results, setResults] = useState<VisaSponsorSearchResult[]>([]);
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
 
   // Loading states
@@ -78,6 +77,7 @@ export const VisaSponsorsPage: React.FC = () => {
     queryFn: api.getVisaSponsorStatus,
   });
   const status = statusQuery.data ?? null;
+  const statusErrorToastKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!statusQuery.error) return;
@@ -85,6 +85,8 @@ export const VisaSponsorsPage: React.FC = () => {
       statusQuery.error instanceof Error
         ? statusQuery.error.message
         : "Failed to fetch status";
+    if (statusErrorToastKeyRef.current === message) return;
+    statusErrorToastKeyRef.current = message;
     toast.error(message);
   }, [statusQuery.error]);
 
@@ -109,14 +111,7 @@ export const VisaSponsorsPage: React.FC = () => {
       }),
     enabled: Boolean(debouncedSearchQuery.trim()),
   });
-
-  useEffect(() => {
-    if (!debouncedSearchQuery.trim()) {
-      setResults([]);
-      return;
-    }
-    setResults(searchQueryResult.data?.results ?? []);
-  }, [debouncedSearchQuery, searchQueryResult.data]);
+  const searchErrorToastKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!searchQueryResult.error) return;
@@ -124,13 +119,13 @@ export const VisaSponsorsPage: React.FC = () => {
       searchQueryResult.error instanceof Error
         ? searchQueryResult.error.message
         : "Search failed";
+    if (searchErrorToastKeyRef.current === message) return;
+    searchErrorToastKeyRef.current = message;
     toast.error(message);
   }, [searchQueryResult.error]);
 
   const orgDetailsQuery = useQuery<VisaSponsor[]>({
-    queryKey: selectedOrg
-      ? queryKeys.visaSponsors.organization(selectedOrg)
-      : queryKeys.visaSponsors.organization("missing"),
+    queryKey: ["visaSponsors", "organization", selectedOrg] as const,
     queryFn: () =>
       selectedOrg
         ? api.getVisaSponsorOrganization(selectedOrg)
@@ -138,6 +133,7 @@ export const VisaSponsorsPage: React.FC = () => {
     enabled: Boolean(selectedOrg),
   });
   const orgDetails = orgDetailsQuery.data ?? [];
+  const orgDetailsErrorToastKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!orgDetailsQuery.error) return;
@@ -145,8 +141,15 @@ export const VisaSponsorsPage: React.FC = () => {
       orgDetailsQuery.error instanceof Error
         ? orgDetailsQuery.error.message
         : "Failed to fetch details";
+    if (orgDetailsErrorToastKeyRef.current === message) return;
+    orgDetailsErrorToastKeyRef.current = message;
     toast.error(message);
   }, [orgDetailsQuery.error]);
+
+  const results = useMemo<VisaSponsorSearchResult[]>(() => {
+    if (!debouncedSearchQuery.trim()) return [];
+    return searchQueryResult.data?.results ?? [];
+  }, [debouncedSearchQuery, searchQueryResult.data]);
 
   // Auto-select first result
   useEffect(() => {
@@ -193,9 +196,6 @@ export const VisaSponsorsPage: React.FC = () => {
     mutationFn: api.updateVisaSponsorList,
     onSuccess: async (result) => {
       queryClient.setQueryData(queryKeys.visaSponsors.status(), result.status);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.visaSponsors.status(),
-      });
       if (debouncedSearchQuery.trim()) {
         await queryClient.invalidateQueries({
           queryKey: queryKeys.visaSponsors.search(

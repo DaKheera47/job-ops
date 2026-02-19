@@ -7,7 +7,7 @@ import {
 } from "@client/components/charts";
 import { PageHeader, PageMain } from "@client/components/layout";
 import type { StageEvent } from "@shared/types.js";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChartColumn } from "lucide-react";
 import type React from "react";
 import { useCallback, useMemo, useState } from "react";
@@ -26,6 +26,7 @@ const DURATION_OPTIONS = [7, 14, 30, 90] as const;
 const DEFAULT_DURATION = 30;
 
 export const HomePage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read initial duration from URL
@@ -61,7 +62,13 @@ export const HomePage: React.FC = () => {
 
       const appliedJobs = jobSummaries.filter((job) => job.appliedAt);
       const results = await Promise.allSettled(
-        appliedJobs.map((job) => api.getJobStageEvents(job.id)),
+        appliedJobs.map((job) =>
+          queryClient.fetchQuery({
+            queryKey: queryKeys.jobs.stageEvents(job.id),
+            queryFn: () => api.getJobStageEvents(job.id),
+            staleTime: 0,
+          }),
+        ),
       );
       const eventsMap = new Map<string, StageEvent[]>();
 

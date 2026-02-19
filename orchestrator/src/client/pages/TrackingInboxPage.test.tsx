@@ -1,8 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { TrackingInboxPage } from "./TrackingInboxPage";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("../api", () => ({
   postApplicationProviderStatus: vi.fn(),

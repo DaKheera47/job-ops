@@ -78,19 +78,17 @@ export const JobPage: React.FC = () => {
   const pendingEventRef = React.useRef<StageEvent | null>(null);
 
   const jobQuery = useQuery<Job | null>({
-    queryKey: id ? queryKeys.jobs.detail(id) : queryKeys.jobs.detail("missing"),
+    queryKey: ["jobs", "detail", id ?? null] as const,
     queryFn: () => (id ? api.getJob(id) : Promise.resolve(null)),
     enabled: Boolean(id),
   });
   const eventsQuery = useQuery<StageEvent[]>({
-    queryKey: id
-      ? queryKeys.jobs.stageEvents(id)
-      : queryKeys.jobs.stageEvents("missing"),
+    queryKey: ["jobs", "stage-events", id ?? null] as const,
     queryFn: () => (id ? api.getJobStageEvents(id) : Promise.resolve([])),
     enabled: Boolean(id),
   });
   const tasksQuery = useQuery<ApplicationTask[]>({
-    queryKey: id ? queryKeys.jobs.tasks(id) : queryKeys.jobs.tasks("missing"),
+    queryKey: ["jobs", "tasks", id ?? null] as const,
     queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
     enabled: Boolean(id),
   });

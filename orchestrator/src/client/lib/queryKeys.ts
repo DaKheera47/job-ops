@@ -29,6 +29,10 @@ export const queryKeys = {
       [...queryKeys.jobs.all, "stage-events", id] as const,
     tasks: (id: string) => [...queryKeys.jobs.all, "tasks", id] as const,
   },
+  pipeline: {
+    all: ["pipeline"] as const,
+    status: () => [...queryKeys.pipeline.all, "status"] as const,
+  },
   visaSponsors: {
     all: ["visa-sponsors"] as const,
     status: () => [...queryKeys.visaSponsors.all, "status"] as const,

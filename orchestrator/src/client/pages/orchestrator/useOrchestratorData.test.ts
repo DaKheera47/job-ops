@@ -1,7 +1,11 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
+import { renderHookWithQueryClient } from "../../test/renderWithQueryClient";
 import { useOrchestratorData } from "./useOrchestratorData";
+
+const renderHook = (callback: () => ReturnType<typeof useOrchestratorData>) =>
+  renderHookWithQueryClient(callback);
 
 vi.mock("../../api", () => ({
   getJobs: vi.fn(),

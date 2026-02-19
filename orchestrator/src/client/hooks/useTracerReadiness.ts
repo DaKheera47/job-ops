@@ -25,7 +25,9 @@ export function useTracerReadiness() {
     }
 
     const data = await api.getTracerReadiness({ force: true });
-    queryClient.setQueryData(queryKeys.tracer.readiness(false), data);
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.tracer.readiness(false),
+    });
     return data;
   };
 

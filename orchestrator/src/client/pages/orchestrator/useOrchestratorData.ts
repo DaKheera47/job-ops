@@ -1,6 +1,8 @@
 import type { Job, JobListItem, JobStatus } from "@shared/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "@/client/lib/queryKeys";
 import * as api from "../../api";
 import { subscribeToEventSource } from "../../lib/sse";
 
@@ -79,6 +81,7 @@ const buildTerminalSignature = ({
 };
 
 export const useOrchestratorData = (selectedJobId: string | null) => {
+  const queryClient = useQueryClient();
   const [jobListItems, setJobListItems] = useState<JobListItem[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [stats, setStats] = useState<Record<JobStatus, number>>(initialStats);
@@ -166,7 +169,11 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     async (jobId: string) => {
       const seq = ++selectedJobRequestSeqRef.current;
       try {
-        const fullJob = await api.getJob(jobId);
+        const fullJob = await queryClient.fetchQuery({
+          queryKey: queryKeys.jobs.detail(jobId),
+          queryFn: () => api.getJob(jobId),
+          staleTime: 0,
+        });
         selectedJobCacheRef.current.set(jobId, fullJob);
         if (
           selectedJobId === jobId &&
@@ -182,7 +189,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         toast.error(message);
       }
     },
-    [selectedJobId],
+    [queryClient, selectedJobId],
   );
 
   const loadJobs = useCallback(async () => {
@@ -191,6 +198,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     try {
       setIsLoading(true);
       const data = await api.getJobs({ view: "list" });
+      queryClient.setQueryData(queryKeys.jobs.list({ view: "list" }), data);
       if (seq >= latestAppliedSeqRef.current) {
         latestAppliedSeqRef.current = seq;
         setJobListItems(data.jobs);
@@ -210,11 +218,15 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [queryClient]);
 
   const checkPipelineStatus = useCallback(async () => {
     try {
-      const status = await api.getPipelineStatus();
+      const status = await queryClient.fetchQuery({
+        queryKey: queryKeys.pipeline.status(),
+        queryFn: () => api.getPipelineStatus(),
+        staleTime: 0,
+      });
       const terminalStatus = status.lastRun?.status;
 
       if (status.isRunning) {
@@ -247,24 +259,31 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
     } catch {
       // Ignore errors
     }
-  }, [observePipelineState]);
+  }, [observePipelineState, queryClient]);
 
   const checkForJobChanges = useCallback(async () => {
     if (isRefreshPaused || !isDocumentVisible()) return;
     try {
-      const revision = await api.getJobsRevision();
+      const revision = await queryClient.fetchQuery({
+        queryKey: queryKeys.jobs.revision(),
+        queryFn: () => api.getJobsRevision(),
+        staleTime: 0,
+      });
       const previousRevision = lastRevisionRef.current;
       if (previousRevision === null) {
         lastRevisionRef.current = revision.revision;
         return;
       }
       if (revision.revision !== previousRevision) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.jobs.all,
+        });
         await loadJobs();
       }
     } catch {
       // Ignore errors
     }
-  }, [isRefreshPaused, loadJobs]);
+  }, [isRefreshPaused, loadJobs, queryClient]);
 
   useEffect(() => {
     void loadJobs();

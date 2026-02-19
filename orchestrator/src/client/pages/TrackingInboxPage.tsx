@@ -5,6 +5,7 @@ import type {
   PostApplicationSyncRun,
 } from "@shared/types";
 import { POST_APPLICATION_PROVIDERS } from "@shared/types";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle,
   Inbox,
@@ -18,6 +19,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "@/client/lib/queryKeys";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -71,6 +73,7 @@ function formatEpochMs(value?: number | null): string {
 }
 
 export const TrackingInboxPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [provider, setProvider] = useState<PostApplicationProvider>("gmail");
   const [accountKey, setAccountKey] = useState("default");
   const [maxMessages, setMaxMessages] = useState("100");
@@ -117,9 +120,17 @@ export const TrackingInboxPage: React.FC = () => {
     setHasAttemptedAppliedJobsLoad(true);
     setIsAppliedJobsLoading(true);
     try {
-      const response = await api.getJobs({
-        statuses: ["applied", "in_progress"],
-        view: "list",
+      const response = await queryClient.fetchQuery({
+        queryKey: queryKeys.jobs.list({
+          statuses: ["applied", "in_progress"],
+          view: "list",
+        }),
+        queryFn: () =>
+          api.getJobs({
+            statuses: ["applied", "in_progress"],
+            view: "list",
+          }),
+        staleTime: 0,
       });
       setAppliedJobs(
         response.jobs.filter(
@@ -133,19 +144,37 @@ export const TrackingInboxPage: React.FC = () => {
     } finally {
       setIsAppliedJobsLoading(false);
     }
-  }, [hasAttemptedAppliedJobsLoad, isAppliedJobsLoading]);
+  }, [hasAttemptedAppliedJobsLoad, isAppliedJobsLoading, queryClient]);
 
   const loadAll = useCallback(async () => {
     const [statusRes, inboxRes, runsRes] = await Promise.all([
-      api.postApplicationProviderStatus({ provider, accountKey }),
-      api.getPostApplicationInbox({ provider, accountKey, limit: 100 }),
-      api.getPostApplicationRuns({ provider, accountKey, limit: 20 }),
+      queryClient.fetchQuery({
+        queryKey: queryKeys.postApplication.providerStatus(
+          provider,
+          accountKey,
+        ),
+        queryFn: () =>
+          api.postApplicationProviderStatus({ provider, accountKey }),
+        staleTime: 0,
+      }),
+      queryClient.fetchQuery({
+        queryKey: queryKeys.postApplication.inbox(provider, accountKey, 100),
+        queryFn: () =>
+          api.getPostApplicationInbox({ provider, accountKey, limit: 100 }),
+        staleTime: 0,
+      }),
+      queryClient.fetchQuery({
+        queryKey: queryKeys.postApplication.runs(provider, accountKey, 20),
+        queryFn: () =>
+          api.getPostApplicationRuns({ provider, accountKey, limit: 20 }),
+        staleTime: 0,
+      }),
     ]);
 
     setStatus(statusRes.status);
     setInbox(inboxRes.items);
     setRuns(runsRes.runs);
-  }, [provider, accountKey]);
+  }, [accountKey, provider, queryClient]);
 
   const refresh = useCallback(async () => {
     setIsRefreshing(true);
