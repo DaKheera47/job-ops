@@ -134,4 +134,47 @@ describe("provider adapters", () => {
       }),
     ).toBe("gemini");
   });
+
+  it("strips unsupported additionalProperties keys from Gemini responseSchema", () => {
+    const request = geminiStrategy.buildRequest({
+      mode: "json_schema",
+      baseUrl: "https://generativelanguage.googleapis.com",
+      apiKey: "x",
+      model: "gemini-2.5-flash",
+      messages,
+      jsonSchema: {
+        name: "resume_tailoring",
+        schema: {
+          type: "object",
+          properties: {
+            skills: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  keywords: { type: "array", items: { type: "string" } },
+                },
+                required: ["name", "keywords"],
+                additionalProperties: false,
+              },
+            },
+          },
+          required: ["skills"],
+          additionalProperties: false,
+        },
+      },
+    });
+
+    const generationConfig = (request.body as Record<string, unknown>)
+      .generationConfig as Record<string, unknown>;
+    const responseSchema = generationConfig
+      .responseSchema as Record<string, unknown>;
+    const skills = (responseSchema.properties as Record<string, unknown>)
+      .skills as Record<string, unknown>;
+    const itemSchema = skills.items as Record<string, unknown>;
+
+    expect(responseSchema.additionalProperties).toBeUndefined();
+    expect(itemSchema.additionalProperties).toBeUndefined();
+  });
 });

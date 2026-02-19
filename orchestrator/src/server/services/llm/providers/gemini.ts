@@ -22,7 +22,7 @@ export const geminiStrategy = createProviderStrategy({
     if (mode === "json_schema") {
       body.generationConfig = {
         responseMimeType: "application/json",
-        responseSchema: jsonSchema.schema,
+        responseSchema: toGeminiResponseSchema(jsonSchema.schema),
       };
     } else if (mode === "json_object") {
       body.generationConfig = {
@@ -61,6 +61,24 @@ export const geminiStrategy = createProviderStrategy({
     return [addQueryParam(url, "key", apiKey ?? "")];
   },
 });
+
+function toGeminiResponseSchema(schema: unknown): unknown {
+  if (Array.isArray(schema)) {
+    return schema.map((item) => toGeminiResponseSchema(item));
+  }
+  if (!schema || typeof schema !== "object") {
+    return schema;
+  }
+
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(schema)) {
+    // Gemini's responseSchema rejects JSON Schema's additionalProperties.
+    // fix as part of #202
+    if (key === "additionalProperties") continue;
+    out[key] = toGeminiResponseSchema(value);
+  }
+  return out;
+}
 
 function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
   systemInstruction: { parts: Array<{ text: string }> } | null;
