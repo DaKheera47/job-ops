@@ -168,7 +168,7 @@ export const getSourcesWithJobs = (jobs: JobListItem[]): JobSource[] => {
 export const getEnabledSources = (
   settings: AppSettings | null,
 ): JobSource[] => {
-  if (!settings) return [...DEFAULT_PIPELINE_SOURCES, "glassdoor"];
+  if (!settings) return [...DEFAULT_PIPELINE_SOURCES, "glassdoor", "hiringcafe"];
 
   const enabled: JobSource[] = [];
   const hasUkVisaJobsAuth = Boolean(
@@ -189,6 +189,10 @@ export const getEnabledSources = (
     }
     if (source === "adzuna") {
       if (hasAdzunaAuth) enabled.push(source);
+      continue;
+    }
+    if (source === "hiringcafe") {
+      enabled.push(source);
       continue;
     }
     if (
