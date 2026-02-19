@@ -1,9 +1,13 @@
 import * as api from "@client/api";
 import { useSettings } from "@client/hooks/useSettings";
-import { render, screen, waitFor } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OnboardingGate } from "./OnboardingGate";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("@client/api", () => ({
   getDemoInfo: vi.fn(),

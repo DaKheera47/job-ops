@@ -1,11 +1,15 @@
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("@/components/ui/sheet", () => ({
   Sheet: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
@@ -166,7 +170,11 @@ describe("JobDetailsEditDrawer", () => {
     );
 
     await waitFor(() => expect(api.getTracerReadiness).toHaveBeenCalled());
-    fireEvent.click(screen.getByLabelText("Enable tracer links for this job"));
+    const tracerToggle = await screen.findByRole("checkbox", {
+      name: "Enable tracer links for this job",
+    });
+    await waitFor(() => expect(tracerToggle).toBeEnabled());
+    fireEvent.click(tracerToggle);
     fireEvent.click(screen.getByRole("button", { name: /save details/i }));
 
     await waitFor(() =>

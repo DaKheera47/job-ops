@@ -1,11 +1,15 @@
 import { createJob as createBaseJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { useProfile } from "../hooks/useProfile";
 import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { TailoringEditor } from "./TailoringEditor";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("../api", () => ({
   getResumeProjectsCatalog: vi.fn().mockResolvedValue([]),

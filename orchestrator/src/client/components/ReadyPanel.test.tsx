@@ -1,12 +1,16 @@
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { ReadyPanel } from "./ReadyPanel";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("@/components/ui/dropdown-menu", () => {
   return {

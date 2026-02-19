@@ -1,16 +1,14 @@
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
+import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 import { JobDetailPanel } from "./JobDetailPanel";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("@/components/ui/dropdown-menu", () => {
   return {
