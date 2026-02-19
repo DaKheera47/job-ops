@@ -269,6 +269,26 @@ describe("LlmService", () => {
     }
     expect(vi.mocked(global.fetch).mock.calls.length).toBe(2);
   });
+
+  it("does not send Authorization header for Gemini key validation", async () => {
+    process.env.LLM_PROVIDER = "gemini";
+    process.env.LLM_API_KEY = "AIza-valid-gemini-key";
+    delete process.env.OPENROUTER_API_KEY;
+
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ models: [] }),
+    } as Response);
+
+    const llm = new LlmService();
+    const result = await llm.validateCredentials();
+
+    expect(result.valid).toBe(true);
+    const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+    const headers = fetchCall?.[1]?.headers as Record<string, string>;
+    expect(headers.Authorization).toBeUndefined();
+  });
 });
 
 describe("parseJsonContent", () => {

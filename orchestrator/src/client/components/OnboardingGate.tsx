@@ -107,13 +107,13 @@ export const OnboardingGate: React.FC = () => {
       values.llmProvider || settings?.llmProvider || "openrouter",
     );
     const providerConfig = getLlmProviderConfig(selectedProvider);
-    const { requiresApiKey } = providerConfig;
+    const { requiresApiKey, showBaseUrl } = providerConfig;
 
     setIsValidatingLlm(true);
     try {
       const result = await api.validateLlm({
         provider: selectedProvider,
-        baseUrl: values.llmBaseUrl.trim() || undefined,
+        baseUrl: showBaseUrl ? values.llmBaseUrl.trim() || undefined : undefined,
         apiKey: requiresApiKey
           ? values.llmApiKey.trim() || undefined
           : undefined,
@@ -198,7 +198,6 @@ export const OnboardingGate: React.FC = () => {
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
 
-  const llmKeyCurrent = llmKeyHint ? formatSecretHint(llmKeyHint) : undefined;
   const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
     ? settings.rxresumeEmail
     : undefined;
@@ -648,8 +647,11 @@ export const OnboardingGate: React.FC = () => {
                         }}
                         type="password"
                         placeholder="Enter key"
-                        current={llmKeyCurrent}
-                        helper={providerConfig.keyHelper}
+                        helper={
+                          llmKeyHint
+                            ? `${providerConfig.keyHelper}. Leave blank to use the saved key.`
+                            : providerConfig.keyHelper
+                        }
                         disabled={isSavingEnv}
                       />
                     )}

@@ -1,4 +1,5 @@
 import { okWithMeta } from "@infra/http";
+import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
 import { LlmService } from "@server/services/llm-service";
 import { RxResumeClient } from "@server/services/rxresume-client";
@@ -22,10 +23,32 @@ async function validateLlm(options: {
   provider?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
+  const [storedApiKey, storedProvider, storedBaseUrl] = await Promise.all([
+    getSetting("llmApiKey"),
+    getSetting("llmProvider"),
+    getSetting("llmBaseUrl"),
+  ]);
+
+  const normalizedProvider =
+    options.provider?.trim() || storedProvider?.trim() || undefined;
+  const shouldUseBaseUrl =
+    normalizedProvider === "lmstudio" || normalizedProvider === "ollama";
+  const resolvedBaseUrl = shouldUseBaseUrl
+    ? options.baseUrl?.trim() || storedBaseUrl?.trim() || undefined
+    : undefined;
+  const resolvedApiKey = options.apiKey?.trim() || storedApiKey?.trim() || null;
+
+  logger.debug("LLM onboarding validation resolved config", {
+    provider: normalizedProvider ?? null,
+    usesBaseUrl: shouldUseBaseUrl,
+    hasBaseUrl: Boolean(resolvedBaseUrl),
+    hasApiKey: Boolean(resolvedApiKey),
+  });
+
   const llm = new LlmService({
-    apiKey: options.apiKey,
-    provider: options.provider ?? undefined,
-    baseUrl: options.baseUrl ?? undefined,
+    apiKey: resolvedApiKey,
+    provider: normalizedProvider,
+    baseUrl: resolvedBaseUrl,
   });
   return llm.validateCredentials();
 }

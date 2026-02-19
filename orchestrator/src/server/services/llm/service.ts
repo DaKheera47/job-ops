@@ -134,10 +134,12 @@ export class LlmService {
 
     for (const url of urls) {
       try {
+        const validationApiKey =
+          this.provider === "gemini" ? null : this.apiKey;
         const response = await fetch(url, {
           method: "GET",
           headers: buildHeaders({
-            apiKey: this.apiKey,
+            apiKey: validationApiKey,
             provider: this.provider,
           }),
         });
@@ -147,6 +149,11 @@ export class LlmService {
         }
 
         const detail = await getResponseDetail(response);
+        logger.warn("LLM credential validation request failed", {
+          provider: this.provider,
+          status: response.status,
+          detail: detail || null,
+        });
         if (response.status === 401 || response.status === 403) {
           return {
             valid: false,
@@ -156,6 +163,10 @@ export class LlmService {
 
         lastMessage = detail || `LLM provider returned ${response.status}`;
       } catch (error) {
+        logger.warn("LLM credential validation request errored", {
+          provider: this.provider,
+          error: error instanceof Error ? error.message : String(error),
+        });
         lastMessage =
           error instanceof Error ? error.message : "LLM validation failed.";
       }
