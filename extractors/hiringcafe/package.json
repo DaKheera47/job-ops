@@ -1,0 +1,26 @@
+{
+  "name": "hiringcafe-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Hiring Cafe extractor - fetches jobs via browser-backed API requests",
+  "main": "src/main.ts",
+  "dependencies": {
+    "camoufox-js": "^0.8.0",
+    "job-ops-shared": "^1.0.0",
+    "playwright": "^1.57.0",
+    "tsx": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "optionalDependencies": {
+    "impit-linux-x64-gnu": "^0.1.0"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "start:dev": "tsx src/main.ts",
+    "check:types": "tsc --noEmit",
+    "get-binaries": "camoufox-js fetch"
+  }
+}
