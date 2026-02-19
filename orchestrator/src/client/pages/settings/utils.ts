@@ -62,12 +62,12 @@ const PROVIDER_KEY_HELPERS: Record<LlmProviderId, string> = {
   gemini: "Create a key at aistudio.google.com/api-keys",
 };
 
-const PROVIDER_BASE_URLS: Record<LlmProviderId, string> = {
-  openrouter: "http://localhost:1234",
+const BASE_URL_PROVIDERS = ["lmstudio", "ollama"] as const;
+type BaseUrlProviderId = (typeof BASE_URL_PROVIDERS)[number];
+
+const PROVIDER_BASE_URLS: Record<BaseUrlProviderId, string> = {
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
-  openai: "http://localhost:1234",
-  gemini: "http://localhost:1234",
 };
 
 export function normalizeLlmProvider(
@@ -84,8 +84,10 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
   const normalizedProvider = normalizeLlmProvider(provider);
   const showApiKey = PROVIDERS_WITH_API_KEY.has(normalizedProvider);
   const showBaseUrl = PROVIDERS_WITH_BASE_URL.has(normalizedProvider);
-  const baseUrlPlaceholder = PROVIDER_BASE_URLS[normalizedProvider];
-  const baseUrlHelper = `Default: ${baseUrlPlaceholder}`;
+  const baseUrlPlaceholder = showBaseUrl
+    ? PROVIDER_BASE_URLS[normalizedProvider as BaseUrlProviderId]
+    : "";
+  const baseUrlHelper = showBaseUrl ? `Default: ${baseUrlPlaceholder}` : "";
   const providerHint = PROVIDER_HINTS[normalizedProvider];
   const keyHelper = PROVIDER_KEY_HELPERS[normalizedProvider];
 

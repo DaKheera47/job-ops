@@ -121,7 +121,9 @@ describe.sequential("Onboarding API routes", () => {
       global.fetch = vi.fn((input, init) => {
         const url = typeof input === "string" ? input : input.url;
         if (
-          url.startsWith("https://generativelanguage.googleapis.com/v1beta/models?")
+          url.startsWith(
+            "https://generativelanguage.googleapis.com/v1beta/models?",
+          )
         ) {
           return Promise.resolve({
             ok: true,
@@ -169,7 +171,11 @@ describe.sequential("Onboarding API routes", () => {
 
       global.fetch = vi.fn((input, init) => {
         const url = typeof input === "string" ? input : input.url;
-        if (url.startsWith("https://generativelanguage.googleapis.com/v1beta/models?")) {
+        if (
+          url.startsWith(
+            "https://generativelanguage.googleapis.com/v1beta/models?",
+          )
+        ) {
           return Promise.resolve({
             ok: true,
             status: 200,
@@ -190,9 +196,12 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(true);
       expect(body.data.message).toBeNull();
-      const fetchCalls = vi.mocked(global.fetch).mock.calls.map((call) =>
-        typeof call[0] === "string" ? call[0] : call[0].url,
-      );
+      const fetchCalls = vi.mocked(global.fetch).mock.calls.map((call) => {
+        const requestInput = call[0];
+        if (typeof requestInput === "string") return requestInput;
+        if (requestInput instanceof URL) return requestInput.href;
+        return requestInput.url;
+      });
       expect(
         fetchCalls.some((url) =>
           url.includes(

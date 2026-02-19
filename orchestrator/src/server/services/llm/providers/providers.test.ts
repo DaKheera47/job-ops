@@ -168,8 +168,10 @@ describe("provider adapters", () => {
 
     const generationConfig = (request.body as Record<string, unknown>)
       .generationConfig as Record<string, unknown>;
-    const responseSchema = generationConfig
-      .responseSchema as Record<string, unknown>;
+    const responseSchema = generationConfig.responseSchema as Record<
+      string,
+      unknown
+    >;
     const skills = (responseSchema.properties as Record<string, unknown>)
       .skills as Record<string, unknown>;
     const itemSchema = skills.items as Record<string, unknown>;

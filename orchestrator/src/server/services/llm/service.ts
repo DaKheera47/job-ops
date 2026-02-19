@@ -149,17 +149,17 @@ export class LlmService {
         }
 
         const detail = await getResponseDetail(response);
-        logger.warn("LLM credential validation request failed", {
-          provider: this.provider,
-          status: response.status,
-          detail: detail || null,
-        });
         if (response.status === 401 || response.status === 403) {
           return {
             valid: false,
             message: "Invalid LLM API key. Check the key and try again.",
           };
         }
+        logger.warn("LLM credential validation request failed", {
+          provider: this.provider,
+          status: response.status,
+          detail: detail || null,
+        });
 
         lastMessage = detail || `LLM provider returned ${response.status}`;
       } catch (error) {

@@ -64,12 +64,7 @@ export const JobRowContent = ({
 
       {hasScore && (
         <div className="shrink-0 text-right">
-          <span
-            className={cn(
-              "text-xs tabular-nums",
-              suitabilityTone,
-            )}
-          >
+          <span className={cn("text-xs tabular-nums", suitabilityTone)}>
             {job.suitabilityScore}
           </span>
         </div>

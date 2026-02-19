@@ -64,8 +64,7 @@ function getStepPrimaryLabel(input: {
     isValidated ? "Revalidate" : "Validate";
 
   if (input.currentStep === "llm") return toLabel(input.llmValidated);
-  if (input.currentStep === "rxresume")
-    return toLabel(input.rxresumeValidated);
+  if (input.currentStep === "rxresume") return toLabel(input.rxresumeValidated);
   if (input.currentStep === "baseresume")
     return toLabel(input.baseResumeValidated);
   return "Validate";
@@ -130,7 +129,9 @@ export const OnboardingGate: React.FC = () => {
     try {
       const result = await api.validateLlm({
         provider: selectedProvider,
-        baseUrl: showBaseUrl ? values.llmBaseUrl.trim() || undefined : undefined,
+        baseUrl: showBaseUrl
+          ? values.llmBaseUrl.trim() || undefined
+          : undefined,
         apiKey: requiresApiKey
           ? values.llmApiKey.trim() || undefined
           : undefined,

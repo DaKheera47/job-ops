@@ -73,7 +73,7 @@ function toGeminiResponseSchema(schema: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(schema)) {
     // Gemini's responseSchema rejects JSON Schema's additionalProperties.
-    // fix as part of #202
+    // Fix as part of #202.
     if (key === "additionalProperties") continue;
     out[key] = toGeminiResponseSchema(value);
   }
