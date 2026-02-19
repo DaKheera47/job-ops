@@ -277,9 +277,35 @@ function mapErrorForResult(error: unknown): {
   };
 }
 
+type BulkExecutionOptions = {
+  getProfileForRescore?: () => Promise<Record<string, unknown>>;
+};
+
+function createBulkProfileLoader(): () => Promise<Record<string, unknown>> {
+  let profilePromise: Promise<Record<string, unknown>> | null = null;
+
+  return async () => {
+    if (!profilePromise) {
+      profilePromise = (async () => {
+        const rawProfile = await getProfile();
+        if (
+          !rawProfile ||
+          typeof rawProfile !== "object" ||
+          Array.isArray(rawProfile)
+        ) {
+          throw badRequest("Invalid resume profile format");
+        }
+        return rawProfile as Record<string, unknown>;
+      })();
+    }
+    return profilePromise;
+  };
+}
+
 async function executeBulkActionForJob(
   action: BulkJobAction,
   jobId: string,
+  options?: BulkExecutionOptions,
 ): Promise<BulkJobActionResult> {
   try {
     const job = await jobsRepo.getJobById(jobId);
@@ -358,19 +384,21 @@ async function executeBulkActionForJob(
       return { jobId, ok: true, job: simulated };
     }
 
-    const rawProfile = await getProfile();
-    if (
-      !rawProfile ||
-      typeof rawProfile !== "object" ||
-      Array.isArray(rawProfile)
-    ) {
-      throw badRequest("Invalid resume profile format");
-    }
+    const profile = options?.getProfileForRescore
+      ? await options.getProfileForRescore()
+      : await (async () => {
+          const rawProfile = await getProfile();
+          if (
+            !rawProfile ||
+            typeof rawProfile !== "object" ||
+            Array.isArray(rawProfile)
+          ) {
+            throw badRequest("Invalid resume profile format");
+          }
+          return rawProfile as Record<string, unknown>;
+        })();
 
-    const { score, reason } = await scoreJobSuitability(
-      job,
-      rawProfile as Record<string, unknown>,
-    );
+    const { score, reason } = await scoreJobSuitability(job, profile);
 
     const updated = await jobsRepo.updateJob(job.id, {
       suitabilityScore: score,
@@ -510,11 +538,16 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
   try {
     const parsed = bulkActionRequestSchema.parse(req.body);
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
+    const executionOptions: BulkExecutionOptions =
+      parsed.action === "rescore" && !isDemoMode()
+        ? { getProfileForRescore: createBulkProfileLoader() }
+        : {};
 
     const results = await asyncPool({
       items: dedupedJobIds,
       concurrency: BULK_ACTION_CONCURRENCY,
-      task: async (jobId) => executeBulkActionForJob(parsed.action, jobId),
+      task: async (jobId) =>
+        executeBulkActionForJob(parsed.action, jobId, executionOptions),
     });
 
     const succeeded = results.filter((result) => result.ok).length;
@@ -575,6 +608,10 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
   const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
   const requestId = String(res.getHeader("x-request-id") || "unknown");
   const action = parsed.data.action;
+  const executionOptions: BulkExecutionOptions =
+    action === "rescore" && !isDemoMode()
+      ? { getProfileForRescore: createBulkProfileLoader() }
+      : {};
   const requested = dedupedJobIds.length;
   const results: BulkJobActionResult[] = [];
   let succeeded = 0;
@@ -632,7 +669,11 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       task: async (jobId) => {
         if (!isResponseWritable()) return;
 
-        const result = await executeBulkActionForJob(action, jobId);
+        const result = await executeBulkActionForJob(
+          action,
+          jobId,
+          executionOptions,
+        );
         results.push(result);
         if (result.ok) succeeded += 1;
         else failed += 1;

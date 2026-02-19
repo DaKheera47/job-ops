@@ -5,14 +5,18 @@ export async function asyncPool<TItem, TResult>(args: {
   task: (item: TItem, index: number) => Promise<TResult>;
 }): Promise<TResult[]> {
   const { items, task, shouldStop } = args;
-  const safeConcurrency = Math.max(
-    1,
-    Math.min(10, Math.floor(args.concurrency)),
-  );
+  const rawConcurrency = Number.isFinite(args.concurrency)
+    ? args.concurrency
+    : 1;
+  const safeConcurrency = Math.max(1, Math.min(10, Math.floor(rawConcurrency)));
 
   if (items.length === 0) return [];
 
-  const results = new Array<TResult>(items.length);
+  const UNSET = Symbol("unset");
+  const results: Array<TResult | typeof UNSET> = Array.from(
+    { length: items.length },
+    () => UNSET,
+  );
   let nextIndex = 0;
 
   const worker = async (): Promise<void> => {
@@ -30,5 +34,5 @@ export async function asyncPool<TItem, TResult>(args: {
   const workerCount = Math.min(safeConcurrency, items.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
-  return results;
+  return results.filter((value): value is TResult => value !== UNSET);
 }
