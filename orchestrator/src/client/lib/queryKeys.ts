@@ -13,6 +13,16 @@ export const queryKeys = {
     all: ["tracer"] as const,
     readiness: (force = false) =>
       [...queryKeys.tracer.all, "readiness", { force }] as const,
+    analytics: (options?: {
+      from?: number;
+      to?: number;
+      includeBots?: boolean;
+      limit?: number;
+    }) => [...queryKeys.tracer.all, "analytics", options ?? {}] as const,
+    jobLinks: (
+      jobId: string,
+      options?: { from?: number; to?: number; includeBots?: boolean },
+    ) => [...queryKeys.tracer.all, "job-links", jobId, options ?? {}] as const,
   },
   demo: {
     all: ["demo"] as const,

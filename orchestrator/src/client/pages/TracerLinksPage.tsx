@@ -2,15 +2,16 @@ import * as api from "@client/api";
 import { PageHeader, PageMain, SectionCard } from "@client/components/layout";
 import type {
   JobTracerLinkAnalyticsItem,
-  JobTracerLinksResponse,
   TracerAnalyticsResponse,
   TracerAnalyticsTopJob,
 } from "@shared/types.js";
+import { useQuery } from "@tanstack/react-query";
 import { BarChart3, Copy, ExternalLink, Loader2 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
+import { queryKeys } from "@/client/lib/queryKeys";
 import {
   Accordion,
   AccordionContent,
@@ -113,19 +114,14 @@ function formatRelativeTime(value: number | null): string {
 }
 
 export const TracerLinksPage: React.FC = () => {
-  const [analytics, setAnalytics] = useState<TracerAnalyticsResponse | null>(
-    null,
-  );
-  const [jobDrilldown, setJobDrilldown] =
-    useState<JobTracerLinksResponse | null>(null);
+  const [selectedDrilldownJobId, setSelectedDrilldownJobId] = useState<
+    string | null
+  >(null);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [includeBots, setIncludeBots] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isDrilldownLoading, setIsDrilldownLoading] = useState(false);
   const [isDrilldownOpen, setIsDrilldownOpen] = useState(false);
   const [drilldownMode, setDrilldownMode] = useState<"human" | "all">("human");
-  const [error, setError] = useState<string | null>(null);
 
   const query = useMemo(
     () => ({
@@ -137,62 +133,36 @@ export const TracerLinksPage: React.FC = () => {
     [fromDate, toDate, includeBots],
   );
 
-  const loadJobDrilldown = async (targetJobId: string) => {
-    if (!targetJobId) {
-      setError("Enter a Job ID to load link drilldown.");
-      setJobDrilldown(null);
-      return;
-    }
+  const analyticsQuery = useQuery<TracerAnalyticsResponse>({
+    queryKey: queryKeys.tracer.analytics(query),
+    queryFn: () => api.getTracerAnalytics(query),
+  });
+  const analytics = analyticsQuery.data ?? null;
+  const isLoading = analyticsQuery.isPending;
 
-    try {
-      setIsDrilldownLoading(true);
-      setError(null);
-      const response = await api.getJobTracerLinks(targetJobId, {
+  const jobDrilldownQuery = useQuery({
+    queryKey: queryKeys.tracer.jobLinks(selectedDrilldownJobId ?? "", {
+      from: query.from,
+      to: query.to,
+      includeBots,
+    }),
+    queryFn: () =>
+      api.getJobTracerLinks(selectedDrilldownJobId ?? "", {
         from: query.from,
         to: query.to,
         includeBots,
-      });
-      setJobDrilldown(response);
-    } catch (fetchError) {
-      const message =
-        fetchError instanceof Error
-          ? fetchError.message
-          : "Failed to load job tracer links.";
-      setError(message);
-      setJobDrilldown(null);
-    } finally {
-      setIsDrilldownLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    api
-      .getTracerAnalytics(query)
-      .then((response) => {
-        if (!isMounted) return;
-        setAnalytics(response);
-      })
-      .catch((fetchError) => {
-        if (!isMounted) return;
-        const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to load tracer analytics.";
-        setError(message);
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [query]);
+      }),
+    enabled: Boolean(isDrilldownOpen && selectedDrilldownJobId),
+  });
+  const jobDrilldown = jobDrilldownQuery.data ?? null;
+  const isDrilldownLoading =
+    jobDrilldownQuery.isPending || jobDrilldownQuery.isFetching;
+  const error =
+    analyticsQuery.error instanceof Error
+      ? analyticsQuery.error.message
+      : jobDrilldownQuery.error instanceof Error
+        ? jobDrilldownQuery.error.message
+        : null;
 
   const chartData = analytics?.timeSeries ?? [];
   const totalViews = analytics?.totals.clicks ?? 0;
@@ -271,8 +241,8 @@ export const TracerLinksPage: React.FC = () => {
     drilldownMode === "human" ? row.humanClicks : row.clicks;
 
   const handleSelectTopJob = (job: TracerAnalyticsTopJob) => {
+    setSelectedDrilldownJobId(job.jobId);
     setIsDrilldownOpen(true);
-    void loadJobDrilldown(job.jobId);
   };
 
   return (
