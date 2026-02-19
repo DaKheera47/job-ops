@@ -4,8 +4,11 @@ import * as jobsRepo from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
 import { scoreJobSuitability } from "../../services/scorer";
 import * as visaSponsors from "../../services/visa-sponsors/index";
+import { asyncPool } from "../../utils/async-pool";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
+
+const SCORING_CONCURRENCY = 4;
 
 export async function scoreJobsStep(args: {
   profile: Record<string, unknown>;
@@ -32,78 +35,91 @@ export async function scoreJobsStep(args: {
   });
 
   const scoredJobs: ScoredJob[] = [];
+  let completed = 0;
 
-  for (let i = 0; i < unprocessedJobs.length; i++) {
-    if (args.shouldCancel?.()) break;
+  await asyncPool({
+    items: unprocessedJobs,
+    concurrency: SCORING_CONCURRENCY,
+    shouldStop: args.shouldCancel,
+    task: async (job) => {
+      if (args.shouldCancel?.()) return;
 
-    const job = unprocessedJobs[i];
-    const hasCachedScore =
-      typeof job.suitabilityScore === "number" &&
-      !Number.isNaN(job.suitabilityScore);
+      const hasCachedScore =
+        typeof job.suitabilityScore === "number" &&
+        !Number.isNaN(job.suitabilityScore);
 
-    progressHelpers.scoringJob(
-      i + 1,
-      unprocessedJobs.length,
-      hasCachedScore ? `${job.title} (cached)` : job.title,
-    );
+      if (hasCachedScore) {
+        completed += 1;
+        progressHelpers.scoringJob(
+          completed,
+          unprocessedJobs.length,
+          `${job.title} (cached)`,
+        );
+        scoredJobs.push({
+          ...job,
+          suitabilityScore: job.suitabilityScore as number,
+          suitabilityReason: job.suitabilityReason ?? "",
+        });
+        return;
+      }
 
-    if (hasCachedScore) {
+      const { score, reason } = await scoreJobSuitability(job, args.profile);
+      if (args.shouldCancel?.()) return;
+
+      let sponsorMatchScore = 0;
+      let sponsorMatchNames: string | undefined;
+
+      if (job.employer) {
+        const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+          limit: 10,
+          minScore: 50,
+        });
+
+        const summary =
+          visaSponsors.calculateSponsorMatchSummary(sponsorResults);
+        sponsorMatchScore = summary.sponsorMatchScore;
+        sponsorMatchNames = summary.sponsorMatchNames ?? undefined;
+      }
+
+      // Check if job should be auto-skipped based on score threshold
+      const shouldAutoSkip =
+        job.status !== "applied" &&
+        autoSkipThreshold !== null &&
+        !Number.isNaN(autoSkipThreshold) &&
+        score < autoSkipThreshold;
+
+      await jobsRepo.updateJob(job.id, {
+        suitabilityScore: score,
+        suitabilityReason: reason,
+        sponsorMatchScore,
+        sponsorMatchNames,
+        ...(shouldAutoSkip ? { status: "skipped" } : {}),
+      });
+
+      if (shouldAutoSkip) {
+        logger.info("Auto-skipped job due to low score", {
+          jobId: job.id,
+          title: job.title,
+          score,
+          threshold: autoSkipThreshold,
+        });
+      }
+
+      completed += 1;
+      progressHelpers.scoringJob(completed, unprocessedJobs.length, job.title);
       scoredJobs.push({
         ...job,
-        suitabilityScore: job.suitabilityScore as number,
-        suitabilityReason: job.suitabilityReason ?? "",
+        suitabilityScore: score,
+        suitabilityReason: reason,
       });
-      continue;
-    }
-
-    const { score, reason } = await scoreJobSuitability(job, args.profile);
-    scoredJobs.push({
-      ...job,
-      suitabilityScore: score,
-      suitabilityReason: reason,
-    });
-
-    let sponsorMatchScore = 0;
-    let sponsorMatchNames: string | undefined;
-
-    if (job.employer) {
-      const sponsorResults = visaSponsors.searchSponsors(job.employer, {
-        limit: 10,
-        minScore: 50,
-      });
-
-      const summary = visaSponsors.calculateSponsorMatchSummary(sponsorResults);
-      sponsorMatchScore = summary.sponsorMatchScore;
-      sponsorMatchNames = summary.sponsorMatchNames ?? undefined;
-    }
-
-    // Check if job should be auto-skipped based on score threshold
-    const shouldAutoSkip =
-      job.status !== "applied" &&
-      autoSkipThreshold !== null &&
-      !Number.isNaN(autoSkipThreshold) &&
-      score < autoSkipThreshold;
-
-    await jobsRepo.updateJob(job.id, {
-      suitabilityScore: score,
-      suitabilityReason: reason,
-      sponsorMatchScore,
-      sponsorMatchNames,
-      ...(shouldAutoSkip ? { status: "skipped" } : {}),
-    });
-
-    if (shouldAutoSkip) {
-      logger.info("Auto-skipped job due to low score", {
-        jobId: job.id,
-        title: job.title,
-        score,
-        threshold: autoSkipThreshold,
-      });
-    }
-  }
+    },
+  });
 
   progressHelpers.scoringComplete(scoredJobs.length);
-  logger.info("Scoring step completed", { scoredJobs: scoredJobs.length });
+  logger.info("Scoring step completed", {
+    scoredJobs: scoredJobs.length,
+    concurrency: SCORING_CONCURRENCY,
+  });
 
   return { unprocessedJobs, scoredJobs };
 }

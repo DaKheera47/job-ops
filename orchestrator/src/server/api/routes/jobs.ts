@@ -45,8 +45,10 @@ import { getProfile } from "../../services/profile";
 import { scoreJobSuitability } from "../../services/scorer";
 import { getTracerReadiness } from "../../services/tracer-links";
 import * as visaSponsors from "../../services/visa-sponsors/index";
+import { asyncPool } from "../../utils/async-pool";
 
 export const jobsRouter = Router();
+const BULK_ACTION_CONCURRENCY = 4;
 
 const tailoredSkillsPayloadSchema = z.array(
   z.object({
@@ -275,9 +277,35 @@ function mapErrorForResult(error: unknown): {
   };
 }
 
+type BulkExecutionOptions = {
+  getProfileForRescore?: () => Promise<Record<string, unknown>>;
+};
+
+function createBulkProfileLoader(): () => Promise<Record<string, unknown>> {
+  let profilePromise: Promise<Record<string, unknown>> | null = null;
+
+  return async () => {
+    if (!profilePromise) {
+      profilePromise = (async () => {
+        const rawProfile = await getProfile();
+        if (
+          !rawProfile ||
+          typeof rawProfile !== "object" ||
+          Array.isArray(rawProfile)
+        ) {
+          throw badRequest("Invalid resume profile format");
+        }
+        return rawProfile as Record<string, unknown>;
+      })();
+    }
+    return profilePromise;
+  };
+}
+
 async function executeBulkActionForJob(
   action: BulkJobAction,
   jobId: string,
+  options?: BulkExecutionOptions,
 ): Promise<BulkJobActionResult> {
   try {
     const job = await jobsRepo.getJobById(jobId);
@@ -356,19 +384,21 @@ async function executeBulkActionForJob(
       return { jobId, ok: true, job: simulated };
     }
 
-    const rawProfile = await getProfile();
-    if (
-      !rawProfile ||
-      typeof rawProfile !== "object" ||
-      Array.isArray(rawProfile)
-    ) {
-      throw badRequest("Invalid resume profile format");
-    }
+    const profile = options?.getProfileForRescore
+      ? await options.getProfileForRescore()
+      : await (async () => {
+          const rawProfile = await getProfile();
+          if (
+            !rawProfile ||
+            typeof rawProfile !== "object" ||
+            Array.isArray(rawProfile)
+          ) {
+            throw badRequest("Invalid resume profile format");
+          }
+          return rawProfile as Record<string, unknown>;
+        })();
 
-    const { score, reason } = await scoreJobSuitability(
-      job,
-      rawProfile as Record<string, unknown>,
-    );
+    const { score, reason } = await scoreJobSuitability(job, profile);
 
     const updated = await jobsRepo.updateJob(job.id, {
       suitabilityScore: score,
@@ -508,12 +538,17 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
   try {
     const parsed = bulkActionRequestSchema.parse(req.body);
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
+    const executionOptions: BulkExecutionOptions =
+      parsed.action === "rescore" && !isDemoMode()
+        ? { getProfileForRescore: createBulkProfileLoader() }
+        : {};
 
-    const results: BulkJobActionResult[] = [];
-    for (const jobId of dedupedJobIds) {
-      const result = await executeBulkActionForJob(parsed.action, jobId);
-      results.push(result);
-    }
+    const results = await asyncPool({
+      items: dedupedJobIds,
+      concurrency: BULK_ACTION_CONCURRENCY,
+      task: async (jobId) =>
+        executeBulkActionForJob(parsed.action, jobId, executionOptions),
+    });
 
     const succeeded = results.filter((result) => result.ok).length;
     const failed = results.length - succeeded;
@@ -531,6 +566,7 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
       requested: dedupedJobIds.length,
       succeeded,
       failed,
+      concurrency: BULK_ACTION_CONCURRENCY,
     });
 
     ok(res, payload);
@@ -572,6 +608,10 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
   const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
   const requestId = String(res.getHeader("x-request-id") || "unknown");
   const action = parsed.data.action;
+  const executionOptions: BulkExecutionOptions =
+    action === "rescore" && !isDemoMode()
+      ? { getProfileForRescore: createBulkProfileLoader() }
+      : {};
   const requested = dedupedJobIds.length;
   const results: BulkJobActionResult[] = [];
   let succeeded = 0;
@@ -622,47 +662,48 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       return;
     }
 
-    for (const jobId of dedupedJobIds) {
-      if (!isResponseWritable()) {
-        logger.info("Client disconnected; stopping bulk job stream", {
-          route: "POST /api/jobs/bulk-actions/stream",
-          action,
-          requested,
-          succeeded,
-          failed,
-          requestId,
-        });
-        break;
-      }
+    await asyncPool({
+      items: dedupedJobIds,
+      concurrency: BULK_ACTION_CONCURRENCY,
+      shouldStop: () => !isResponseWritable(),
+      task: async (jobId) => {
+        if (!isResponseWritable()) return;
 
-      const result = await executeBulkActionForJob(action, jobId);
-      results.push(result);
-      if (result.ok) succeeded += 1;
-      else failed += 1;
+        const result = await executeBulkActionForJob(
+          action,
+          jobId,
+          executionOptions,
+        );
+        results.push(result);
+        if (result.ok) succeeded += 1;
+        else failed += 1;
 
-      if (
-        !sendEvent({
-          type: "progress",
-          action,
-          requested,
-          completed: results.length,
-          succeeded,
-          failed,
-          result,
-          requestId,
-        })
-      ) {
-        logger.info("Client disconnected while writing bulk stream progress", {
-          route: "POST /api/jobs/bulk-actions/stream",
-          action,
-          requested,
-          succeeded,
-          failed,
-          requestId,
-        });
-        break;
-      }
-    }
+        if (
+          !sendEvent({
+            type: "progress",
+            action,
+            requested,
+            completed: results.length,
+            succeeded,
+            failed,
+            result,
+            requestId,
+          })
+        ) {
+          logger.info(
+            "Client disconnected while writing bulk stream progress",
+            {
+              route: "POST /api/jobs/bulk-actions/stream",
+              action,
+              requested,
+              succeeded,
+              failed,
+              requestId,
+            },
+          );
+        }
+      },
+    });
 
     sendEvent({
       type: "completed",
@@ -681,6 +722,7 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       requested,
       succeeded,
       failed,
+      concurrency: BULK_ACTION_CONCURRENCY,
       requestId,
     });
   } catch (error) {

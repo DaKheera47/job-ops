@@ -563,6 +563,7 @@ describe.sequential("Jobs API routes", () => {
     expect(
       body.data.results.find((r: any) => r.jobId === "missing-id").error.code,
     ).toBe("NOT_FOUND");
+    expect(vi.mocked(getProfile)).toHaveBeenCalledTimes(1);
   });
 
   it("streams bulk action progress with done counters", async () => {
