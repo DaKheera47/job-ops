@@ -330,12 +330,14 @@ export const JobPage: React.FC = () => {
       )}
 
       {job && (
-        <>
+        <div className="rounded-xl border border-border/60 bg-card/80 p-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/65">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-wrap items-center gap-2">
               {jobLink && (
                 <Button
                   asChild
+                  size="sm"
+                  className="h-9 border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
                 >
                   <a href={jobLink} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
@@ -347,7 +349,9 @@ export const JobPage: React.FC = () => {
               {isReady && (
                 <>
                   <Button
+                    size="sm"
                     variant="outline"
+                    className="h-9 border-orange-400/50 bg-orange-500/10 text-orange-100 hover:bg-orange-500/20"
                     onClick={() => void handleMarkApplied()}
                     disabled={isBusy}
                   >
@@ -355,7 +359,9 @@ export const JobPage: React.FC = () => {
                     Mark Applied
                   </Button>
                   <Button
+                    size="sm"
                     variant="outline"
+                    className="h-9 border-border/60 bg-background/30"
                     onClick={() => void handleSkip()}
                     disabled={isBusy}
                   >
@@ -366,14 +372,27 @@ export const JobPage: React.FC = () => {
               )}
 
               {isDiscovered && (
+                <>
                   <Button
+                    size="sm"
+                    className="h-9 border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    onClick={() => navigate(`/jobs/discovered/${job.id}`)}
+                    disabled={isBusy}
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    Start Tailoring
+                  </Button>
+                  <Button
+                    size="sm"
                     variant="outline"
+                    className="h-9 border-border/60 bg-background/30"
                     onClick={() => void handleSkip()}
                     disabled={isBusy}
                   >
                     <XCircle className="mr-1.5 h-3.5 w-3.5" />
                     Skip Job
                   </Button>
+                </>
               )}
 
               {isApplied && (
@@ -390,6 +409,8 @@ export const JobPage: React.FC = () => {
 
               {isInProgress && (
                 <Button
+                  size="sm"
+                  className="h-9 border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
                   onClick={() => setIsLogModalOpen(true)}
                   disabled={!canLogEvents || isBusy}
                 >
@@ -402,7 +423,9 @@ export const JobPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-2">
               {isReady && (
                 <Button
+                  size="sm"
                   variant="outline"
+                  className="h-9 border-border/60 bg-background/30"
                   onClick={() => navigate(`/jobs/ready/${job.id}`)}
                   disabled={isBusy}
                 >
@@ -414,7 +437,9 @@ export const JobPage: React.FC = () => {
               {pdfHref && (
                 <Button
                   asChild
+                  size="sm"
                   variant="outline"
+                  className="h-9 border-border/60 bg-background/30"
                 >
                   <a href={pdfHref} target="_blank" rel="noopener noreferrer">
                     <FileText className="mr-1.5 h-3.5 w-3.5" />
@@ -425,7 +450,9 @@ export const JobPage: React.FC = () => {
 
               {isReady && (
                 <Button
+                  size="sm"
                   variant="outline"
+                  className="h-9 border-border/60 bg-background/30"
                   onClick={() => void handleRegeneratePdf()}
                   disabled={isBusy}
                 >
@@ -439,6 +466,7 @@ export const JobPage: React.FC = () => {
                   <Button
                     size="icon"
                     variant="outline"
+                    className="h-9 w-9 border-border/60 bg-background/30"
                     aria-label="More actions"
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -467,7 +495,7 @@ export const JobPage: React.FC = () => {
               </DropdownMenu>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
