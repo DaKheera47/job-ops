@@ -240,15 +240,10 @@ export async function discoverJobsStep(args: {
   }
 
   if (shouldRunHiringCafe) {
-    progressHelpers.startSource(
-      "hiringcafe",
-      completedSources,
-      totalSources,
-      {
-        termsTotal: searchTerms.length,
-        detail: "Hiring Cafe: fetching jobs...",
-      },
-    );
+    progressHelpers.startSource("hiringcafe", completedSources, totalSources, {
+      termsTotal: searchTerms.length,
+      detail: "Hiring Cafe: fetching jobs...",
+    });
 
     const hiringCafeMaxJobsPerTerm = settings.jobspyResultsWanted
       ? parseInt(settings.jobspyResultsWanted, 10)

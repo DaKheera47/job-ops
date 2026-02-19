@@ -119,7 +119,9 @@ function formatCompensation(
   const max = toNumberOrNull(processedJobData.yearly_max_compensation);
   if (min === null && max === null) return undefined;
 
-  const currency = toStringOrNull(processedJobData.listed_compensation_currency);
+  const currency = toStringOrNull(
+    processedJobData.listed_compensation_currency,
+  );
   const frequency =
     toStringOrNull(processedJobData.listed_compensation_frequency) ?? "Yearly";
 
@@ -353,7 +355,9 @@ async function run(): Promise<void> {
         totalAvailable = parseTotalCount(countPayload);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.warn(`Hiring Cafe count request failed for term '${searchTerm}': ${message}`);
+        console.warn(
+          `Hiring Cafe count request failed for term '${searchTerm}': ${message}`,
+        );
       }
 
       const termTarget =

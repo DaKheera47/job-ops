@@ -11,7 +11,10 @@ import { toStringOrNull } from "@shared/utils/type-conversion";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HIRING_CAFE_DIR = join(__dirname, "../../../../extractors/hiringcafe");
-const DATASET_PATH = join(HIRING_CAFE_DIR, "storage/datasets/default/jobs.json");
+const DATASET_PATH = join(
+  HIRING_CAFE_DIR,
+  "storage/datasets/default/jobs.json",
+);
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 
 const require = createRequire(import.meta.url);
@@ -240,7 +243,8 @@ export async function runHiringCafe(
         stdoutRl?.close();
         stderrRl?.close();
         if (code === 0) resolve();
-        else reject(new Error(`Hiring Cafe extractor exited with code ${code}`));
+        else
+          reject(new Error(`Hiring Cafe extractor exited with code ${code}`));
       });
       child.on("error", reject);
     });

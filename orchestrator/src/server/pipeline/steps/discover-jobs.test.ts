@@ -273,31 +273,33 @@ describe("discoverJobsStep", () => {
       jobspyResultsWanted: "50",
     } as any);
 
-    vi.mocked(hiringCafe.runHiringCafe).mockImplementation(async (options: any) => {
-      options?.onProgress?.({
-        type: "term_start",
-        termIndex: 1,
-        termTotal: 2,
-        searchTerm: "engineer",
-      });
-      options?.onProgress?.({
-        type: "page_fetched",
-        termIndex: 1,
-        termTotal: 2,
-        searchTerm: "engineer",
-        pageNo: 0,
-        resultsOnPage: 10,
-        totalCollected: 10,
-      });
-      options?.onProgress?.({
-        type: "term_complete",
-        termIndex: 1,
-        termTotal: 2,
-        searchTerm: "engineer",
-        jobsFoundTerm: 10,
-      });
-      return { success: true, jobs: [] } as any;
-    });
+    vi.mocked(hiringCafe.runHiringCafe).mockImplementation(
+      async (options: any) => {
+        options?.onProgress?.({
+          type: "term_start",
+          termIndex: 1,
+          termTotal: 2,
+          searchTerm: "engineer",
+        });
+        options?.onProgress?.({
+          type: "page_fetched",
+          termIndex: 1,
+          termTotal: 2,
+          searchTerm: "engineer",
+          pageNo: 0,
+          resultsOnPage: 10,
+          totalCollected: 10,
+        });
+        options?.onProgress?.({
+          type: "term_complete",
+          termIndex: 1,
+          termTotal: 2,
+          searchTerm: "engineer",
+          jobsFoundTerm: 10,
+        });
+        return { success: true, jobs: [] } as any;
+      },
+    );
 
     await discoverJobsStep({
       mergedConfig: {

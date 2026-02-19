@@ -33,8 +33,8 @@ const COUNTRY_NAME_OVERRIDES: Record<string, string> = {
   "costa rica": "Costa Rica",
   "saudi arabia": "Saudi Arabia",
   "hong kong": "Hong Kong",
-  "czechia": "Czechia",
-  "türkiye": "Turkey",
+  czechia: "Czechia",
+  türkiye: "Turkey",
   turkey: "Turkey",
 };
 
