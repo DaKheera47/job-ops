@@ -147,7 +147,7 @@ export class LlmService {
         }
 
         const detail = await getResponseDetail(response);
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
           return {
             valid: false,
             message: "Invalid LLM API key. Check the key and try again.",
