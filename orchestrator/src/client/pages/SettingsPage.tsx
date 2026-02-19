@@ -352,6 +352,7 @@ export const SettingsPage: React.FC = () => {
   const backups = backupsQuery.data?.backups ?? [];
   const nextScheduled = backupsQuery.data?.nextScheduled ?? null;
   const isLoadingBackups = backupsQuery.isLoading;
+  useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
   const hasRxResumeAccess = Boolean(
     settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
