@@ -1,11 +1,15 @@
 import { createJob } from "@shared/testing/factories.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { FilterTab } from "./orchestrator/constants";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {

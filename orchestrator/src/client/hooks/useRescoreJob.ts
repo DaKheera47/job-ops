@@ -1,10 +1,10 @@
+import { useRescoreJobMutation } from "@/client/hooks/queries/useJobMutations";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import * as api from "../api";
-
 export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
   const [isRescoring, setIsRescoring] = useState(false);
+  const rescoreMutation = useRescoreJobMutation();
 
   const rescoreJob = useCallback(
     async (jobId?: string | null) => {
@@ -12,7 +12,7 @@ export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
 
       try {
         setIsRescoring(true);
-        await api.rescoreJob(jobId);
+        await rescoreMutation.mutateAsync(jobId);
         toast.success("Match recalculated");
         await onJobUpdated();
       } catch (error) {

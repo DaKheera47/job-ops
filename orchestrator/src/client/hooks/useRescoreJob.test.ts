@@ -1,7 +1,8 @@
-import { act, renderHook } from "@testing-library/react";
+import { act } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderHookWithQueryClient } from "../test/renderWithQueryClient";
 import { useRescoreJob } from "./useRescoreJob";
 
 vi.mock("../api", () => ({
@@ -24,7 +25,7 @@ describe("useRescoreJob", () => {
     const onJobUpdated = vi.fn().mockResolvedValue(undefined);
     vi.mocked(api.rescoreJob).mockResolvedValue({} as any);
 
-    const { result } = renderHook(() => useRescoreJob(onJobUpdated));
+    const { result } = renderHookWithQueryClient(() => useRescoreJob(onJobUpdated));
 
     await act(async () => {
       await result.current.rescoreJob("job-1");

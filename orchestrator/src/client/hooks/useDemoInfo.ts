@@ -1,30 +1,18 @@
 import * as api from "@client/api";
+import { useQuery } from "@tanstack/react-query";
 import type { DemoInfoResponse } from "@shared/types";
-import { useEffect, useState } from "react";
+import { queryKeys } from "@/client/lib/queryKeys";
 
 export function useDemoInfo() {
-  const [demoInfo, setDemoInfo] = useState<DemoInfoResponse | null>(null);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    void api
-      .getDemoInfo()
-      .then((info) => {
-        if (!isCancelled) {
-          setDemoInfo(info);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) {
-          setDemoInfo(null);
-        }
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, []);
-
-  return demoInfo;
+  const { data } = useQuery<DemoInfoResponse | null>({
+    queryKey: queryKeys.demo.info(),
+    queryFn: async () => {
+      try {
+        return await api.getDemoInfo();
+      } catch {
+        return null;
+      }
+    },
+  });
+  return data ?? null;
 }

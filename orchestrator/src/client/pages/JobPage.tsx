@@ -37,10 +37,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   copyTextToClipboard,
   formatJobForWebhook,
   formatTimestamp,
 } from "@/lib/utils";
+import { useCheckSponsorMutation, useGenerateJobPdfMutation, useMarkAsAppliedMutation, useRescoreJobMutation, useSkipJobMutation, useUpdateJobMutation } from "@/client/hooks/queries/useJobMutations";
+import { invalidateJobData } from "@/client/hooks/queries/invalidate";
+import { queryKeys } from "@/client/lib/queryKeys";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
 import { GhostwriterDrawer } from "../components/ghostwriter/GhostwriterDrawer";
@@ -55,10 +62,7 @@ import { JobTimeline } from "./job/Timeline";
 export const JobPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [job, setJob] = React.useState<Job | null>(null);
-  const [events, setEvents] = React.useState<StageEvent[]>([]);
-  const [tasks, setTasks] = React.useState<ApplicationTask[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const queryClient = useQueryClient();
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = React.useState(false);
@@ -69,30 +73,47 @@ export const JobPage: React.FC = () => {
   );
   const pendingEventRef = React.useRef<StageEvent | null>(null);
 
+  const jobQuery = useQuery<Job | null>({
+    queryKey: id ? queryKeys.jobs.detail(id) : queryKeys.jobs.detail("missing"),
+    queryFn: () => (id ? api.getJob(id) : Promise.resolve(null)),
+    enabled: Boolean(id),
+  });
+  const eventsQuery = useQuery<StageEvent[]>({
+    queryKey: id
+      ? queryKeys.jobs.stageEvents(id)
+      : queryKeys.jobs.stageEvents("missing"),
+    queryFn: () => (id ? api.getJobStageEvents(id) : Promise.resolve([])),
+    enabled: Boolean(id),
+  });
+  const tasksQuery = useQuery<ApplicationTask[]>({
+    queryKey: id ? queryKeys.jobs.tasks(id) : queryKeys.jobs.tasks("missing"),
+    queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
+    enabled: Boolean(id),
+  });
+
+  const markAsAppliedMutation = useMarkAsAppliedMutation();
+  const updateJobMutation = useUpdateJobMutation();
+  const skipJobMutation = useSkipJobMutation();
+  const rescoreJobMutation = useRescoreJobMutation();
+  const generatePdfMutation = useGenerateJobPdfMutation();
+  const checkSponsorMutation = useCheckSponsorMutation();
+
+  const job = jobQuery.data ?? null;
+  const events = mergeEvents(eventsQuery.data ?? [], pendingEventRef.current);
+  const tasks = tasksQuery.data ?? [];
+  const isLoading =
+    jobQuery.isLoading || eventsQuery.isLoading || tasksQuery.isLoading;
+
   const loadData = React.useCallback(async () => {
     if (!id) return;
-    setIsLoading(true);
-    try {
-      const jobData = await api.getJob(id);
-      setJob(jobData);
-
-      api
-        .getJobStageEvents(id)
-        .then((data) => setEvents(mergeEvents(data, pendingEventRef.current)))
-        .catch(() => toast.error("Failed to load stage events"));
-
-      api
-        .getJobTasks(id)
-        .then((data) => setTasks(data))
-        .catch(() => toast.error("Failed to load tasks"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
-  React.useEffect(() => {
-    loadData();
-  }, [loadData]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.detail(id) }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.jobs.stageEvents(id),
+      }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.tasks(id) }),
+    ]);
+  }, [id, queryClient]);
 
   const handleLogEvent = async (
     values: LogEventFormValues,
@@ -153,12 +174,7 @@ export const JobPage: React.FC = () => {
         pendingEventRef.current = newEvent;
       }
 
-      const [jobData, eventData] = await Promise.all([
-        api.getJob(job.id),
-        api.getJobStageEvents(job.id),
-      ]);
-      setJob(jobData);
-      setEvents(eventData);
+      await invalidateJobData(queryClient, job.id);
       pendingEventRef.current = null;
       setEditingEvent(null);
       toast.success(eventId ? "Event updated" : "Event logged");
@@ -172,8 +188,9 @@ export const JobPage: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error("Failed to log event:", error);
-      toast.error("Failed to log event");
+      const message =
+        error instanceof Error ? error.message : "Failed to log event";
+      toast.error(message);
     }
   };
 
@@ -186,16 +203,12 @@ export const JobPage: React.FC = () => {
     if (!job || !eventToDelete) return;
     try {
       await api.deleteJobStageEvent(job.id, eventToDelete);
-      const [jobData, eventData] = await Promise.all([
-        api.getJob(job.id),
-        api.getJobStageEvents(job.id),
-      ]);
-      setJob(jobData);
-      setEvents(eventData);
+      await invalidateJobData(queryClient, job.id);
       toast.success("Event deleted");
     } catch (error) {
-      console.error("Failed to delete event:", error);
-      toast.error("Failed to delete event");
+      const message =
+        error instanceof Error ? error.message : "Failed to delete event";
+      toast.error(message);
     } finally {
       setIsDeleteModalOpen(false);
       setEventToDelete(null);
@@ -228,7 +241,7 @@ export const JobPage: React.FC = () => {
   const handleMarkApplied = async () => {
     await runAction("mark-applied", async () => {
       if (!job) return;
-      await api.markAsApplied(job.id);
+      await markAsAppliedMutation.mutateAsync(job.id);
       toast.success("Marked as applied");
     });
   };
@@ -236,7 +249,10 @@ export const JobPage: React.FC = () => {
   const handleMoveToInProgress = async () => {
     await runAction("move-in-progress", async () => {
       if (!job) return;
-      await api.updateJob(job.id, { status: "in_progress" });
+      await updateJobMutation.mutateAsync({
+        id: job.id,
+        update: { status: "in_progress" },
+      });
       toast.success("Moved to in progress");
     });
   };
@@ -244,7 +260,7 @@ export const JobPage: React.FC = () => {
   const handleSkip = async () => {
     await runAction("skip", async () => {
       if (!job) return;
-      await api.skipJob(job.id);
+      await skipJobMutation.mutateAsync(job.id);
       toast.message("Job skipped");
     });
   };
@@ -252,7 +268,7 @@ export const JobPage: React.FC = () => {
   const handleRescore = async () => {
     await runAction("rescore", async () => {
       if (!job) return;
-      await api.rescoreJob(job.id);
+      await rescoreJobMutation.mutateAsync(job.id);
       toast.success("Match recalculated");
     });
   };
@@ -260,7 +276,7 @@ export const JobPage: React.FC = () => {
   const handleRegeneratePdf = async () => {
     await runAction("regenerate-pdf", async () => {
       if (!job) return;
-      await api.generateJobPdf(job.id);
+      await generatePdfMutation.mutateAsync(job.id);
       toast.success("Resume PDF generated");
     });
   };
@@ -268,7 +284,7 @@ export const JobPage: React.FC = () => {
   const handleCheckSponsor = async () => {
     await runAction("check-sponsor", async () => {
       if (!job) return;
-      await api.checkSponsor(job.id);
+      await checkSponsorMutation.mutateAsync(job.id);
       toast.success("Sponsor check completed");
     });
   };

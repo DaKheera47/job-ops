@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { useQuery } from "@tanstack/react-query";
 import {
   ApplicationsPerDayChart,
   ConversionAnalytics,
@@ -9,8 +10,9 @@ import { PageHeader, PageMain } from "@client/components/layout";
 import type { StageEvent } from "@shared/types.js";
 import { ChartColumn } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { queryKeys } from "@/client/lib/queryKeys";
 
 type JobWithEvents = {
   id: string;
@@ -25,10 +27,6 @@ const DEFAULT_DURATION = 30;
 
 export const HomePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [jobsWithEvents, setJobsWithEvents] = useState<JobWithEvents[]>([]);
-  const [appliedDates, setAppliedDates] = useState<Array<string | null>>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Read initial duration from URL
   const initialDuration: DurationValue = (() => {
@@ -42,70 +40,66 @@ export const HomePage: React.FC = () => {
 
   const [duration, setDuration] = useState<DurationValue>(initialDuration);
 
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-
-    api
-      .getJobs({
+  const overviewQuery = useQuery({
+    queryKey: queryKeys.jobs.list({
+      statuses: ["applied", "in_progress"],
+      view: "list",
+    }),
+    queryFn: async () => {
+      const response = await api.getJobs({
         statuses: ["applied", "in_progress"],
         view: "list",
-      })
-      .then(async (response) => {
-        if (!isMounted) return;
-        const appliedDates = response.jobs.map((job) => job.appliedAt);
-        const jobSummaries = response.jobs.map((job) => ({
-          id: job.id,
-          datePosted: job.datePosted,
-          discoveredAt: job.discoveredAt,
-          appliedAt: job.appliedAt,
-          positiveResponse: false,
-        }));
+      });
+      const appliedDates = response.jobs.map((job) => job.appliedAt);
+      const jobSummaries = response.jobs.map((job) => ({
+        id: job.id,
+        datePosted: job.datePosted,
+        discoveredAt: job.discoveredAt,
+        appliedAt: job.appliedAt,
+        positiveResponse: false,
+      }));
 
-        const appliedJobs = jobSummaries.filter((job) => job.appliedAt);
-        const results = await Promise.allSettled(
-          appliedJobs.map((job) => api.getJobStageEvents(job.id)),
-        );
-        const eventsMap = new Map<string, StageEvent[]>();
+      const appliedJobs = jobSummaries.filter((job) => job.appliedAt);
+      const results = await Promise.allSettled(
+        appliedJobs.map((job) => api.getJobStageEvents(job.id)),
+      );
+      const eventsMap = new Map<string, StageEvent[]>();
 
-        results.forEach((result, index) => {
-          const jobId = appliedJobs[index]?.id;
-          if (!jobId) return;
-          if (result.status !== "fulfilled") {
-            eventsMap.set(jobId, []);
-            return;
-          }
-          eventsMap.set(jobId, result.value);
-        });
-
-        const resolvedJobsWithEvents: JobWithEvents[] = jobSummaries
-          .filter((job) => job.appliedAt)
-          .map((job) => ({
-            ...job,
-            events: eventsMap.get(job.id) ?? [],
-          }));
-
-        setJobsWithEvents(resolvedJobsWithEvents);
-        setAppliedDates(appliedDates);
-        setError(null);
-      })
-      .catch((fetchError) => {
-        if (!isMounted) return;
-        const message =
-          fetchError instanceof Error
-            ? fetchError.message
-            : "Failed to load applications";
-        setError(message);
-      })
-      .finally(() => {
-        if (!isMounted) return;
-        setIsLoading(false);
+      results.forEach((result, index) => {
+        const jobId = appliedJobs[index]?.id;
+        if (!jobId) return;
+        if (result.status !== "fulfilled") {
+          eventsMap.set(jobId, []);
+          return;
+        }
+        eventsMap.set(jobId, result.value);
       });
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+      const jobsWithEvents: JobWithEvents[] = jobSummaries
+        .filter((job) => job.appliedAt)
+        .map((job) => ({
+          ...job,
+          events: eventsMap.get(job.id) ?? [],
+        }));
+
+      return { jobsWithEvents, appliedDates };
+    },
+  });
+
+  const jobsWithEvents = useMemo(
+    () => overviewQuery.data?.jobsWithEvents ?? [],
+    [overviewQuery.data],
+  );
+  const appliedDates = useMemo(
+    () => overviewQuery.data?.appliedDates ?? [],
+    [overviewQuery.data],
+  );
+  const error = overviewQuery.error
+    ? overviewQuery.error instanceof Error
+      ? overviewQuery.error.message
+      : "Failed to load applications"
+    : null;
+  const isLoading = overviewQuery.isLoading;
 
   const handleDurationChange = useCallback(
     (newDuration: DurationValue) => {

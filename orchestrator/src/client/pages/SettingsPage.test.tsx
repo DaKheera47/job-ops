@@ -1,11 +1,15 @@
 import { createAppSettings } from "@shared/testing/factories.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
 import { SettingsPage } from "./SettingsPage";
+
+const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
+  renderWithQueryClient(ui);
 
 vi.mock("../api", () => ({
   getSettings: vi.fn(),

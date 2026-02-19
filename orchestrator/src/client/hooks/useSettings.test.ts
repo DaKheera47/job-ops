@@ -1,6 +1,7 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { renderHookWithQueryClient } from "../test/renderWithQueryClient";
 import { _resetSettingsCache, useSettings } from "./useSettings";
 
 vi.mock("../api", () => ({
@@ -17,7 +18,7 @@ describe("useSettings", () => {
     const mockSettings = { showSponsorInfo: false };
     vi.mocked(api.getSettings).mockResolvedValue(mockSettings as any);
 
-    const { result } = renderHook(() => useSettings());
+    const { result } = renderHookWithQueryClient(() => useSettings());
 
     // Should start in loading state
     expect(result.current.settings).toBeNull();
@@ -33,7 +34,7 @@ describe("useSettings", () => {
   it("uses default values when settings are null", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(null as any);
 
-    const { result } = renderHook(() => useSettings());
+    const { result } = renderHookWithQueryClient(() => useSettings());
 
     await waitFor(() => {
       // settings is null, so showSponsorInfo should default to true
@@ -48,7 +49,7 @@ describe("useSettings", () => {
     vi.mocked(api.getSettings).mockResolvedValueOnce(initialSettings as any);
     vi.mocked(api.getSettings).mockResolvedValueOnce(updatedSettings as any);
 
-    const { result } = renderHook(() => useSettings());
+    const { result } = renderHookWithQueryClient(() => useSettings());
 
     await waitFor(() => {
       expect(result.current.settings).toEqual(initialSettings);
@@ -71,7 +72,7 @@ describe("useSettings", () => {
     const mockError = new Error("Failed to fetch");
     vi.mocked(api.getSettings).mockRejectedValue(mockError);
 
-    const { result } = renderHook(() => useSettings());
+    const { result } = renderHookWithQueryClient(() => useSettings());
 
     await waitFor(() => {
       expect(result.current.error).toEqual(mockError);
