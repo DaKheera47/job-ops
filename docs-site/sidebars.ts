@@ -35,6 +35,7 @@ const sidebars: SidebarsConfig = {
         "features/ghostwriter",
         "features/post-application-tracking",
         "features/visa-sponsors",
+        "features/tracer-links",
       ],
     },
     {

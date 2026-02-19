@@ -32,7 +32,8 @@
         "features/in-progress-board",
         "features/ghostwriter",
         "features/post-application-tracking",
-        "features/visa-sponsors"
+        "features/visa-sponsors",
+        "features/tracer-links"
       ]
     },
     {

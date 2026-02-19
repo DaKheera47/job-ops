@@ -145,7 +145,7 @@ Fix:
 
 ## Related pages
 
-- [Settings](/docs/features/settings)
-- [Reactive Resume](/docs/features/reactive-resume)
-- [Find Jobs and Apply Workflow](/docs/workflows/find-jobs-and-apply-workflow)
-- [Post-Application Tracking](/docs/features/post-application-tracking)
+- [Settings](/docs/next/features/settings)
+- [Reactive Resume](/docs/next/features/reactive-resume)
+- [Find Jobs and Apply Workflow](/docs/next/workflows/find-jobs-and-apply-workflow)
+- [Post-Application Tracking](/docs/next/features/post-application-tracking)
