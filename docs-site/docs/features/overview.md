@@ -1,7 +1,7 @@
 ---
 id: overview
 title: Overview
-description: Dashboard analytics for application volume and conversion over selectable time windows.
+description: Dashboard analytics for application volume, conversion, and response rate by source over selectable time windows.
 sidebar_position: 1
 ---
 
@@ -16,6 +16,7 @@ It visualizes:
 - Applications per day
 - Application-to-response conversion
 - Funnel progression (Applied, Screening, Interview, Offer, Rejected)
+- Response rate by source
 
 ### Graph-level views
 
@@ -32,6 +33,7 @@ Use it to quickly answer:
 - Are application volumes increasing or dropping?
 - Is response conversion improving?
 - Where are applications stalling in the funnel?
+- Which job boards are actually generating responses?
 
 ## How to use it
 
@@ -40,6 +42,7 @@ Use it to quickly answer:
 3. Review:
    - **Applications per day** for volume trend
    - **Application → Response Conversion** for quality/outcome trend
+   - **Response Rate by Source** to compare job board effectiveness
 4. Compare periods and adjust your sourcing terms, filters, or tailoring strategy.
 
 ### Data and calculation defaults
@@ -48,6 +51,17 @@ Use it to quickly answer:
 - Only jobs in statuses `applied` and `in_progress` are used as input.
 - Conversion counts any positive response-stage event (for example recruiter screen, assessment, interview stages, or offer).
 - Conversion trend chart uses a rolling window up to 7 days.
+- Response rate by source is calculated across all time (not scoped to the duration selector), since response events may arrive well after the application window.
+
+### Response Rate by Source
+
+The **Response Rate by Source** chart shows, for each job board (LinkedIn, Indeed, Gradcracker, etc.), what percentage of your applications received any non-rejection response.
+
+- A response is counted when a job reaches at least one positive stage event: recruiter screen, assessment, hiring manager screen, technical interview, onsite, or offer.
+- Sources are sorted by total application volume (highest first).
+- The header KPI shows the overall non-rejection response rate across all sources.
+
+Use this chart to identify which sources produce genuine engagement versus silence, and concentrate future sourcing effort accordingly.
 
 ## Common problems
 
@@ -65,6 +79,11 @@ Use it to quickly answer:
 
 - Volume trend compares first-half vs second-half averages in the selected window.
 - Changing the time window can materially change trend direction.
+
+### Response Rate by Source shows only one source
+
+- Only sources with at least one applied job appear in the chart.
+- If all your applications come from a single board, only that board will be shown.
 
 ## Related pages
 
