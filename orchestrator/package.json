@@ -103,6 +103,7 @@
     "vitest": "^4.0.16"
   },
   "optionalDependencies": {
+    "@biomejs/cli-linux-x64": "^2.3.12",
     "@rollup/rollup-linux-arm64-gnu": "^4.30.0",
     "@rollup/rollup-linux-x64-gnu": "^4.30.0",
     "@tailwindcss/oxide-linux-arm64-gnu": "4.1.18",
