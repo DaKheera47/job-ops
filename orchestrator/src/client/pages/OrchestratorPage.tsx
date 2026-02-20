@@ -1,4 +1,7 @@
-import { useMarkAsAppliedMutation } from "@client/hooks/queries/useJobMutations";
+import {
+  useMarkAsAppliedMutation,
+  useSkipJobMutation,
+} from "@client/hooks/queries/useJobMutations";
 import { useHotkeys } from "@client/hooks/useHotkeys";
 import { useProfile } from "@client/hooks/useProfile";
 import { useSettings } from "@client/hooks/useSettings";
@@ -148,6 +151,7 @@ export const OrchestratorPage: React.FC = () => {
 
   const { settings, refreshSettings } = useSettings();
   const markAsAppliedMutation = useMarkAsAppliedMutation();
+  const skipJobMutation = useSkipJobMutation();
   const {
     jobs,
     selectedJob,
@@ -417,8 +421,8 @@ export const OrchestratorPage: React.FC = () => {
         if (!selectedJob) return;
         shortcutActionInFlight.current = true;
         const jobId = selectedJob.id;
-        api
-          .skipJob(jobId)
+        skipJobMutation
+          .mutateAsync(jobId)
           .then(async () => {
             toast.message("Job skipped");
             selectNextAfterAction(jobId);

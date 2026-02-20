@@ -42,7 +42,10 @@ import {
 import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
 import { ReadyPanel } from "../../components/ReadyPanel";
 import { TailoringEditor } from "../../components/TailoringEditor";
-import { useMarkAsAppliedMutation } from "../../hooks/queries/useJobMutations";
+import {
+  useMarkAsAppliedMutation,
+  useSkipJobMutation,
+} from "../../hooks/queries/useJobMutations";
 import { useProfile } from "../../hooks/useProfile";
 import type { FilterTab } from "./constants";
 
@@ -75,6 +78,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const saveTailoringRef = useRef<null | (() => Promise<void>)>(null);
   const previousSelectedJobIdRef = useRef<string | null>(null);
   const markAsAppliedMutation = useMarkAsAppliedMutation();
+  const skipJobMutation = useSkipJobMutation();
 
   const { personName } = useProfile();
 
@@ -242,7 +246,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const handleSkip = async () => {
     if (!selectedJob) return;
     try {
-      await api.skipJob(selectedJob.id);
+      await skipJobMutation.mutateAsync(selectedJob.id);
       toast.message("Job skipped");
       await onJobUpdated();
     } catch (error) {

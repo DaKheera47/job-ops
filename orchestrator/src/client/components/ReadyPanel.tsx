@@ -46,7 +46,10 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import * as api from "../api";
-import { useMarkAsAppliedMutation } from "../hooks/queries/useJobMutations";
+import {
+  useMarkAsAppliedMutation,
+  useSkipJobMutation,
+} from "../hooks/queries/useJobMutations";
 import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
@@ -84,6 +87,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   } | null>(null);
   const previousJobIdRef = useRef<string | null>(null);
   const markAsAppliedMutation = useMarkAsAppliedMutation();
+  const skipJobMutation = useSkipJobMutation();
 
   const { personName } = useProfile();
 
@@ -211,7 +215,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     if (!job) return;
 
     try {
-      await api.skipJob(job.id);
+      await skipJobMutation.mutateAsync(job.id);
       toast.message("Job skipped");
       onJobMoved(job.id);
       await onJobUpdated();
@@ -219,7 +223,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       const message = error instanceof Error ? error.message : "Failed to skip";
       toast.error(message);
     }
-  }, [job, onJobMoved, onJobUpdated]);
+  }, [job, onJobMoved, onJobUpdated, skipJobMutation]);
 
   const handleCopyInfo = useCallback(async () => {
     if (!job) return;
