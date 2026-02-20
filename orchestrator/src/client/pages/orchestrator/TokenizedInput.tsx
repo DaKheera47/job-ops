@@ -1,9 +1,10 @@
 import { X } from "lucide-react";
 import type React from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimateOut } from "@/components/AnimateOut";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 interface TokenizedInputProps {
   id: string;
@@ -30,8 +31,6 @@ function mergeUnique(values: string[], nextValues: string[]): string[] {
   return out;
 }
 
-const REMOVE_ANIMATION_MS = 150;
-
 export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   id,
   values,
@@ -47,7 +46,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const tokensRef = useRef<HTMLDivElement | null>(null);
   const [tokensHeight, setTokensHeight] = useState(20);
-  const [exitingValues, setExitingValues] = useState<string[]>([]);
+  const [exitingValues, setExitingValues] = useState<Set<string>>(new Set());
   const valuesRef = useRef(values);
 
   const collapsedSummary = useMemo(() => {
@@ -69,24 +68,22 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
 
   const removeValueWithAnimation = (value: string) => {
     setExitingValues((current) => {
-      if (current.includes(value)) return current;
-      return [...current, value];
+      if (current.has(value)) return current;
+      const next = new Set(current);
+      next.add(value);
+      return next;
     });
-
-    window.setTimeout(() => {
-      const latestValues = valuesRef.current;
-      onValuesChange(latestValues.filter((existing) => existing !== value));
-      setExitingValues((current) =>
-        current.filter((existing) => existing !== value),
-      );
-    }, REMOVE_ANIMATION_MS);
   };
 
   useEffect(() => {
     valuesRef.current = values;
-    setExitingValues((current) =>
-      current.filter((value) => values.includes(value)),
-    );
+    setExitingValues((current) => {
+      const next = new Set<string>();
+      for (const value of current) {
+        if (values.includes(value)) next.add(value);
+      }
+      return next;
+    });
   }, [values]);
 
   useLayoutEffect(() => {
@@ -103,7 +100,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     const observer = new ResizeObserver(updateHeight);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [values]);
+  }, [values, isFocused]);
 
   return (
     <div className="space-y-3">
@@ -143,47 +140,62 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
           )}
           style={{ height: `${isFocused ? tokensHeight : 20}px` }}
         >
-          <div
-            aria-hidden={!isFocused}
-            className={cn(
-              "absolute inset-x-0 top-0 flex flex-wrap gap-2 overflow-hidden transition-all ease-out",
-              isFocused
-                ? "translate-y-0 opacity-100 animate-in fade-in slide-in-from-top-1"
-                : "pointer-events-none -translate-y-1 opacity-0",
-            )}
-            ref={tokensRef}
+          <AnimateOut
+            show={isFocused}
+            enterClassName="translate-y-0 opacity-100 animate-in fade-in slide-in-from-top-1"
+            exitClassName="pointer-events-none -translate-y-1 opacity-0 animate-out fade-out slide-out-to-top-1"
           >
-            {values.map((value) => (
-              <Button
-                type="button"
-                key={value}
-                variant="outline"
-                className={cn(
-                  "rounded-full text-xs px-2 text-muted-foreground py-1 h-auto",
-                  exitingValues.includes(value)
-                    ? "pointer-events-none animate-out fade-out zoom-out-95 slide-out-to-top-1"
-                    : "animate-in fade-in zoom-in-95 slide-in-from-top-1",
-                )}
-                aria-label={`${removeLabelPrefix} ${value}`}
-                onPointerDown={(event) => event.preventDefault()}
-                onClick={() => removeValueWithAnimation(value)}
-              >
-                {value}
-                <X className="h-3 w-3" />
-              </Button>
-            ))}
-          </div>
-          <p
-            aria-hidden={isFocused}
-            className={cn(
-              "absolute inset-x-0 top-0 text-xs text-muted-foreground transition-all ease-out",
-              isFocused
-                ? "pointer-events-none translate-y-1 opacity-0"
-                : "translate-y-0 opacity-100 animate-in fade-in slide-in-from-bottom-1",
-            )}
+            <div
+              aria-hidden={!isFocused}
+              className="absolute inset-x-0 top-0 flex flex-wrap gap-2 overflow-hidden transition-all ease-out"
+              ref={tokensRef}
+            >
+              {values.map((value) => (
+                <AnimateOut
+                  key={value}
+                  show={!exitingValues.has(value)}
+                  enterClassName="animate-in fade-in zoom-in-95 slide-in-from-top-1"
+                  exitClassName="pointer-events-none animate-out fade-out zoom-out-95 slide-out-to-top-1"
+                  onExitComplete={() => {
+                    const latestValues = valuesRef.current;
+                    onValuesChange(
+                      latestValues.filter((existing) => existing !== value),
+                    );
+                    setExitingValues((current) => {
+                      if (!current.has(value)) return current;
+                      const next = new Set(current);
+                      next.delete(value);
+                      return next;
+                    });
+                  }}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto"
+                    aria-label={`${removeLabelPrefix} ${value}`}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() => removeValueWithAnimation(value)}
+                  >
+                    {value}
+                    <X className="h-3 w-3" />
+                  </Button>
+                </AnimateOut>
+              ))}
+            </div>
+          </AnimateOut>
+          <AnimateOut
+            show={!isFocused}
+            enterClassName="translate-y-0 opacity-100 animate-in fade-in slide-in-from-bottom-1"
+            exitClassName="pointer-events-none translate-y-1 opacity-0 animate-out fade-out slide-out-to-bottom-1"
           >
-            Currently selected: {collapsedSummary}
-          </p>
+            <p
+              aria-hidden={isFocused}
+              className="absolute inset-x-0 top-0 text-xs text-muted-foreground transition-all ease-out"
+            >
+              Currently selected: {collapsedSummary}
+            </p>
+          </AnimateOut>
         </div>
       ) : null}
     </div>
