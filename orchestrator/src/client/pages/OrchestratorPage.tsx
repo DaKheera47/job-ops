@@ -403,9 +403,16 @@ export const OrchestratorPage: React.FC = () => {
 
       // ── Context actions ─────────────────────────────────────────────────
       [SHORTCUTS.skip.key]: () => {
-        if (!selectedJob) return;
         if (!["discovered", "ready"].includes(activeTab)) return;
         if (shortcutActionInFlight.current) return;
+
+        // Selection action takes precedence if selection exists
+        if (selectedJobIds.size > 0) {
+          void runJobAction("skip");
+          return;
+        }
+
+        if (!selectedJob) return;
         shortcutActionInFlight.current = true;
         const jobId = selectedJob.id;
         api
