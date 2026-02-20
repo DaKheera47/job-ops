@@ -1,37 +1,35 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { BulkJobActionResponse } from "@shared/types.js";
+import type { JobActionResponse } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
-  canBulkMoveToReady,
-  canBulkRescore,
-  canBulkSkip,
+  canMoveToReady,
+  canRescore,
+  canSkip,
   getFailedJobIds,
-} from "./bulkActions";
+} from "./jobActions";
 
-describe("bulkActions", () => {
+describe("jobActions", () => {
   it("computes eligibility for skip, move-to-ready, and rescore", () => {
     expect(
-      canBulkSkip([
+      canSkip([
         createJob({ id: "1", status: "discovered" }),
         createJob({ id: "2", status: "ready" }),
       ]),
     ).toBe(true);
-    expect(canBulkSkip([createJob({ id: "1", status: "applied" })])).toBe(
-      false,
-    );
+    expect(canSkip([createJob({ id: "1", status: "applied" })])).toBe(false);
 
     expect(
-      canBulkMoveToReady([
+      canMoveToReady([
         createJob({ id: "1", status: "discovered" }),
         createJob({ id: "2", status: "discovered" }),
       ]),
     ).toBe(true);
-    expect(canBulkMoveToReady([createJob({ id: "1", status: "ready" })])).toBe(
+    expect(canMoveToReady([createJob({ id: "1", status: "ready" })])).toBe(
       false,
     );
 
     expect(
-      canBulkRescore([
+      canRescore([
         createJob({ id: "1", status: "discovered" }),
         createJob({ id: "2", status: "ready" }),
         createJob({ id: "3", status: "applied" }),
@@ -40,15 +38,15 @@ describe("bulkActions", () => {
       ]),
     ).toBe(true);
     expect(
-      canBulkRescore([
+      canRescore([
         createJob({ id: "1", status: "ready" }),
         createJob({ id: "2", status: "processing" }),
       ]),
     ).toBe(false);
   });
 
-  it("extracts failed job ids from a bulk response", () => {
-    const response: BulkJobActionResponse = {
+  it("extracts failed job ids from an action response", () => {
+    const response: JobActionResponse = {
       action: "skip",
       requested: 3,
       succeeded: 1,

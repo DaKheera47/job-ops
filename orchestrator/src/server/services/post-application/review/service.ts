@@ -22,9 +22,9 @@ import {
 } from "@server/services/post-application/stage-target";
 import type {
   ApplicationStage,
-  BulkPostApplicationActionRequest,
-  BulkPostApplicationActionResponse,
-  BulkPostApplicationActionResult,
+  PostApplicationActionRequest,
+  PostApplicationActionResponse,
+  PostApplicationActionResult,
   PostApplicationInboxItem,
   PostApplicationMessage,
   PostApplicationProvider,
@@ -253,9 +253,9 @@ export async function denyPostApplicationInboxItem(args: {
   return { message: updatedMessage };
 }
 
-export async function bulkPostApplicationInboxAction(
-  args: BulkPostApplicationActionRequest & { decidedBy?: string | null },
-): Promise<BulkPostApplicationActionResponse> {
+export async function runPostApplicationInboxAction(
+  args: PostApplicationActionRequest & { decidedBy?: string | null },
+): Promise<PostApplicationActionResponse> {
   const { provider, accountKey, action, decidedBy } = args;
 
   const pendingItems = await listPostApplicationInbox({
@@ -264,7 +264,7 @@ export async function bulkPostApplicationInboxAction(
     limit: 1000,
   });
 
-  const results: BulkPostApplicationActionResult[] = [];
+  const results: PostApplicationActionResult[] = [];
   let skipped = 0;
   let failed = 0;
 

@@ -1,19 +1,19 @@
 import { Progress } from "@/components/ui/progress";
 import { clampNumber } from "./utils";
 
-interface BulkActionProgressToastProps {
+interface JobActionProgressToastProps {
   completed: number;
   requested: number;
   succeeded: number;
   failed: number;
 }
 
-export function BulkActionProgressToast({
+export function JobActionProgressToast({
   completed,
   requested,
   succeeded,
   failed,
-}: BulkActionProgressToastProps) {
+}: JobActionProgressToastProps) {
   const safeRequested = Math.max(requested, 1);
   const safeCompleted = clampNumber(completed, 0, safeRequested);
   const progressValue = Math.round((safeCompleted / safeRequested) * 100);

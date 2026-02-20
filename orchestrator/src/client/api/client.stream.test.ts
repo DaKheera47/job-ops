@@ -28,7 +28,7 @@ describe("API client SSE streaming", () => {
     } as Response);
 
     await expect(
-      api.streamBulkJobAction(
+      api.streamJobAction(
         { action: "skip", jobIds: ["job-1"] },
         {
           onEvent: () => {

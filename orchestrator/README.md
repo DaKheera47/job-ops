@@ -65,9 +65,9 @@ orchestrator/
 | GET | `/api/jobs` | List all jobs (filter with `?status=ready,discovered`) |
 | GET | `/api/jobs/:id` | Get single job |
 | PATCH | `/api/jobs/:id` | Update job |
-| POST | `/api/jobs/:id/process` | Generate resume for job |
+| POST | `/api/jobs/actions` | Run job actions (`move_to_ready`, `rescore`, `skip`) for one or many jobs |
+| POST | `/api/jobs/actions/stream` | Stream job action progress/events for one or many jobs |
 | POST | `/api/jobs/:id/apply` | Mark as applied |
-| POST | `/api/jobs/:id/skip` | Mark as skipped |
 
 ### Pipeline
 

@@ -72,7 +72,18 @@ PDF generation uses:
 
 Common paths:
 
-- Discovered to finalization: `POST /api/jobs/:id/process`
+- Discovered to finalization: `POST /api/jobs/actions` with payload:
+
+  ```bash
+  curl -X POST "http://localhost:3001/api/jobs/actions" \
+    -H "content-type: application/json" \
+    -d '{
+      "action": "move_to_ready",
+      "jobIds": ["<jobId>"]
+    }'
+  ```
+
+- Streaming progress: `POST /api/jobs/actions/stream` (same JSON payload)
 - Ready regeneration: `POST /api/jobs/:id/generate-pdf`
 
 ### Regenerating PDFs after edits (copy-pasteable examples)

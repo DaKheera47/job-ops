@@ -25,7 +25,7 @@ vi.mock("../repositories/jobs", () => ({
   updateJob: vi.fn(),
   getUnscoredDiscoveredJobs: vi.fn(),
   getJobById: vi.fn(),
-  bulkCreateJobs: vi.fn(),
+  createJobs: vi.fn(),
   getAllJobUrls: vi.fn(),
 }));
 
@@ -77,7 +77,7 @@ describe("Sponsor Match Calculation", () => {
   let scoreJobSuitability: ReturnType<typeof vi.fn>;
   let updateJob: ReturnType<typeof vi.fn>;
   let getUnscoredDiscoveredJobs: ReturnType<typeof vi.fn>;
-  let bulkCreateJobs: ReturnType<typeof vi.fn>;
+  let createJobs: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -96,11 +96,11 @@ describe("Sponsor Match Calculation", () => {
     updateJob = jobsRepo.updateJob as ReturnType<typeof vi.fn>;
     getUnscoredDiscoveredJobs =
       jobsRepo.getUnscoredDiscoveredJobs as ReturnType<typeof vi.fn>;
-    bulkCreateJobs = jobsRepo.bulkCreateJobs as ReturnType<typeof vi.fn>;
+    createJobs = jobsRepo.createJobs as ReturnType<typeof vi.fn>;
 
     // Default mock implementations
     scoreJobSuitability.mockResolvedValue({ score: 75, reason: "Good match" });
-    bulkCreateJobs.mockResolvedValue({ created: 0, skipped: 0 });
+    createJobs.mockResolvedValue({ created: 0, skipped: 0 });
     updateJob.mockResolvedValue(undefined);
 
     calculateSponsorMatchSummary.mockImplementation((results: any[]) => {

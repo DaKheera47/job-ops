@@ -5,11 +5,11 @@ import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
-  type BulkJobAction,
-  type BulkJobActionResponse,
-  type BulkJobActionResult,
-  type BulkJobActionStreamEvent,
   type Job,
+  type JobAction,
+  type JobActionResponse,
+  type JobActionResult,
+  type JobActionStreamEvent,
   type JobListItem,
   type JobStatus,
   type JobsListResponse,
@@ -18,7 +18,12 @@ import {
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import { AppError, badRequest, conflict } from "../../infra/errors";
+import {
+  AppError,
+  type AppErrorCode,
+  badRequest,
+  conflict,
+} from "../../infra/errors";
 import {
   generateFinalPdf,
   processJob,
@@ -48,7 +53,7 @@ import * as visaSponsors from "../../services/visa-sponsors/index";
 import { asyncPool } from "../../utils/async-pool";
 
 export const jobsRouter = Router();
-const BULK_ACTION_CONCURRENCY = 4;
+const JOB_ACTION_CONCURRENCY = 4;
 
 const tailoredSkillsPayloadSchema = z.array(
   z.object({
@@ -195,10 +200,25 @@ const updateOutcomeSchema = z.object({
   closedAt: z.number().int().nullable().optional(),
 });
 
-const bulkActionRequestSchema = z.object({
-  action: z.enum(["skip", "move_to_ready", "rescore"]),
-  jobIds: z.array(z.string().min(1)).min(1).max(100),
-});
+const jobActionRequestSchema = z.discriminatedUnion("action", [
+  z.object({
+    action: z.literal("skip"),
+    jobIds: z.array(z.string().min(1)).min(1).max(100),
+  }),
+  z.object({
+    action: z.literal("rescore"),
+    jobIds: z.array(z.string().min(1)).min(1).max(100),
+  }),
+  z.object({
+    action: z.literal("move_to_ready"),
+    jobIds: z.array(z.string().min(1)).min(1).max(100),
+    options: z
+      .object({
+        force: z.boolean().optional(),
+      })
+      .optional(),
+  }),
+]);
 
 const listJobsQuerySchema = z.object({
   status: z.string().optional(),
@@ -277,11 +297,15 @@ function mapErrorForResult(error: unknown): {
   };
 }
 
-type BulkExecutionOptions = {
+type JobActionExecutionOptions = {
   getProfileForRescore?: () => Promise<Record<string, unknown>>;
+  forceMoveToReady?: boolean;
+  requestOrigin?: string | null;
 };
 
-function createBulkProfileLoader(): () => Promise<Record<string, unknown>> {
+function createSharedRescoreProfileLoader(): () => Promise<
+  Record<string, unknown>
+> {
   let profilePromise: Promise<Record<string, unknown>> | null = null;
 
   return async () => {
@@ -302,11 +326,11 @@ function createBulkProfileLoader(): () => Promise<Record<string, unknown>> {
   };
 }
 
-async function executeBulkActionForJob(
-  action: BulkJobAction,
+async function executeJobActionForJob(
+  action: JobAction,
   jobId: string,
-  options?: BulkExecutionOptions,
-): Promise<BulkJobActionResult> {
+  options?: JobActionExecutionOptions,
+): Promise<JobActionResult> {
   try {
     const job = await jobsRepo.getJobById(jobId);
     if (!job) {
@@ -350,13 +374,29 @@ async function executeBulkActionForJob(
         );
       }
 
-      const processed = await processJob(jobId);
-      if (!processed.success) {
-        throw new AppError({
-          status: 500,
-          code: "INTERNAL_ERROR",
-          message: processed.error || "Failed to process job",
+      if (isDemoMode()) {
+        const simulated = await simulateProcessJob(jobId, {
+          force: options?.forceMoveToReady ?? false,
         });
+        if (!simulated.success) {
+          throw new AppError({
+            status: 500,
+            code: "INTERNAL_ERROR",
+            message: simulated.error || "Failed to process job",
+          });
+        }
+      } else {
+        const processed = await processJob(jobId, {
+          force: options?.forceMoveToReady ?? false,
+          requestOrigin: options?.requestOrigin ?? null,
+        });
+        if (!processed.success) {
+          throw new AppError({
+            status: 500,
+            code: "INTERNAL_ERROR",
+            message: processed.error || "Failed to process job",
+          });
+        }
       }
 
       const updated = await jobsRepo.getJobById(jobId);
@@ -424,6 +464,32 @@ async function executeBulkActionForJob(
       },
     };
   }
+}
+
+function mapJobActionFailure(
+  failure: Extract<JobActionResult, { ok: false }>,
+): AppError {
+  const statusByCode: Record<AppErrorCode, number> = {
+    INVALID_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    REQUEST_TIMEOUT: 408,
+    CONFLICT: 409,
+    UNPROCESSABLE_ENTITY: 422,
+    SERVICE_UNAVAILABLE: 503,
+    UPSTREAM_ERROR: 502,
+    INTERNAL_ERROR: 500,
+  };
+  const code = (
+    failure.error.code in statusByCode ? failure.error.code : "INTERNAL_ERROR"
+  ) as AppErrorCode;
+
+  return new AppError({
+    status: statusByCode[code],
+    code,
+    message: failure.error.message,
+  });
 }
 
 /**
@@ -532,27 +598,34 @@ jobsRouter.get("/revision", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/bulk-actions - Run a bulk action across selected jobs
+ * POST /api/jobs/actions - Run a job action across selected jobs
  */
-jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
+jobsRouter.post("/actions", async (req: Request, res: Response) => {
   try {
-    const parsed = bulkActionRequestSchema.parse(req.body);
+    const parsed = jobActionRequestSchema.parse(req.body);
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
-    const executionOptions: BulkExecutionOptions =
-      parsed.action === "rescore" && !isDemoMode()
-        ? { getProfileForRescore: createBulkProfileLoader() }
-        : {};
+    const requestOrigin = resolveRequestOrigin(req);
+    const executionOptions: JobActionExecutionOptions = {
+      ...(parsed.action === "rescore" && !isDemoMode()
+        ? { getProfileForRescore: createSharedRescoreProfileLoader() }
+        : {}),
+      ...(parsed.action === "move_to_ready" &&
+      parsed.options?.force !== undefined
+        ? { forceMoveToReady: parsed.options.force }
+        : {}),
+      ...(parsed.action === "move_to_ready" ? { requestOrigin } : {}),
+    };
 
     const results = await asyncPool({
       items: dedupedJobIds,
-      concurrency: BULK_ACTION_CONCURRENCY,
+      concurrency: JOB_ACTION_CONCURRENCY,
       task: async (jobId) =>
-        executeBulkActionForJob(parsed.action, jobId, executionOptions),
+        executeJobActionForJob(parsed.action, jobId, executionOptions),
     });
 
     const succeeded = results.filter((result) => result.ok).length;
     const failed = results.length - succeeded;
-    const payload: BulkJobActionResponse = {
+    const payload: JobActionResponse = {
       action: parsed.action,
       requested: dedupedJobIds.length,
       succeeded,
@@ -560,20 +633,20 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
       results,
     };
 
-    logger.info("Bulk job action completed", {
-      route: "POST /api/jobs/bulk-actions",
+    logger.info("Job action completed", {
+      route: "POST /api/jobs/actions",
       action: parsed.action,
       requested: dedupedJobIds.length,
       succeeded,
       failed,
-      concurrency: BULK_ACTION_CONCURRENCY,
+      concurrency: JOB_ACTION_CONCURRENCY,
     });
 
     ok(res, payload);
   } catch (error) {
     const err =
       error instanceof z.ZodError
-        ? badRequest("Invalid bulk action request", error.flatten())
+        ? badRequest("Invalid job action request", error.flatten())
         : error instanceof AppError
           ? error
           : new AppError({
@@ -582,8 +655,8 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
               message: error instanceof Error ? error.message : "Unknown error",
             });
 
-    logger.error("Bulk job action failed", {
-      route: "POST /api/jobs/bulk-actions",
+    logger.error("Job action failed", {
+      route: "POST /api/jobs/actions",
       status: err.status,
       code: err.code,
       details: err.details,
@@ -594,26 +667,32 @@ jobsRouter.post("/bulk-actions", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/bulk-actions/stream - Run a bulk action and stream per-job progress via SSE
+ * POST /api/jobs/actions/stream - Run a job action and stream per-job progress via SSE
  */
-jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
-  const parsed = bulkActionRequestSchema.safeParse(req.body);
+jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
+  const parsed = jobActionRequestSchema.safeParse(req.body);
   if (!parsed.success) {
     return fail(
       res,
-      badRequest("Invalid bulk action request", parsed.error.flatten()),
+      badRequest("Invalid job action request", parsed.error.flatten()),
     );
   }
 
   const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
+  const requestOrigin = resolveRequestOrigin(req);
   const requestId = String(res.getHeader("x-request-id") || "unknown");
   const action = parsed.data.action;
-  const executionOptions: BulkExecutionOptions =
-    action === "rescore" && !isDemoMode()
-      ? { getProfileForRescore: createBulkProfileLoader() }
-      : {};
+  const executionOptions: JobActionExecutionOptions = {
+    ...(action === "rescore" && !isDemoMode()
+      ? { getProfileForRescore: createSharedRescoreProfileLoader() }
+      : {}),
+    ...(action === "move_to_ready" && parsed.data.options?.force !== undefined
+      ? { forceMoveToReady: parsed.data.options.force }
+      : {}),
+    ...(action === "move_to_ready" ? { requestOrigin } : {}),
+  };
   const requested = dedupedJobIds.length;
-  const results: BulkJobActionResult[] = [];
+  const results: JobActionResult[] = [];
   let succeeded = 0;
   let failed = 0;
 
@@ -633,7 +712,7 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
   const isResponseWritable = () =>
     !clientDisconnected && !res.writableEnded && !res.destroyed;
 
-  const sendEvent = (event: BulkJobActionStreamEvent) => {
+  const sendEvent = (event: JobActionStreamEvent) => {
     if (!isResponseWritable()) return false;
     writeSseData(res, event);
     return true;
@@ -651,8 +730,8 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
         requestId,
       })
     ) {
-      logger.info("Client disconnected before bulk stream started", {
-        route: "POST /api/jobs/bulk-actions/stream",
+      logger.info("Client disconnected before action stream started", {
+        route: "POST /api/jobs/actions/stream",
         action,
         requested,
         succeeded,
@@ -664,12 +743,12 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
 
     await asyncPool({
       items: dedupedJobIds,
-      concurrency: BULK_ACTION_CONCURRENCY,
+      concurrency: JOB_ACTION_CONCURRENCY,
       shouldStop: () => !isResponseWritable(),
       task: async (jobId) => {
         if (!isResponseWritable()) return;
 
-        const result = await executeBulkActionForJob(
+        const result = await executeJobActionForJob(
           action,
           jobId,
           executionOptions,
@@ -691,9 +770,9 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
           })
         ) {
           logger.info(
-            "Client disconnected while writing bulk stream progress",
+            "Client disconnected while writing action stream progress",
             {
-              route: "POST /api/jobs/bulk-actions/stream",
+              route: "POST /api/jobs/actions/stream",
               action,
               requested,
               succeeded,
@@ -716,13 +795,13 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       requestId,
     });
 
-    logger.info("Bulk job action stream completed", {
-      route: "POST /api/jobs/bulk-actions/stream",
+    logger.info("Job action stream completed", {
+      route: "POST /api/jobs/actions/stream",
       action,
       requested,
       succeeded,
       failed,
-      concurrency: BULK_ACTION_CONCURRENCY,
+      concurrency: JOB_ACTION_CONCURRENCY,
       requestId,
     });
   } catch (error) {
@@ -735,8 +814,8 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
             message: error instanceof Error ? error.message : "Unknown error",
           });
 
-    logger.error("Bulk job action stream failed", {
-      route: "POST /api/jobs/bulk-actions/stream",
+    logger.error("Job action stream failed", {
+      route: "POST /api/jobs/actions/stream",
       action,
       requested,
       succeeded,
@@ -755,7 +834,7 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       })
     ) {
       logger.info("Skipping stream error event because client disconnected", {
-        route: "POST /api/jobs/bulk-actions/stream",
+        route: "POST /api/jobs/actions/stream",
         action,
         requested,
         succeeded,
@@ -769,6 +848,33 @@ jobsRouter.post("/bulk-actions/stream", async (req: Request, res: Response) => {
       res.end();
     }
   }
+});
+
+jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
+  const forceRaw = req.query.force as string | undefined;
+  const force = forceRaw === "1" || forceRaw === "true";
+  const result = await executeJobActionForJob("move_to_ready", req.params.id, {
+    forceMoveToReady: force,
+    requestOrigin: resolveRequestOrigin(req),
+  });
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
+});
+
+jobsRouter.post("/:id/skip", async (req: Request, res: Response) => {
+  const result = await executeJobActionForJob("skip", req.params.id);
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
+});
+
+jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
+  const result = await executeJobActionForJob("rescore", req.params.id, {
+    ...(isDemoMode()
+      ? {}
+      : { getProfileForRescore: createSharedRescoreProfileLoader() }),
+  });
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
 });
 
 /**
@@ -1040,54 +1146,6 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/:id/rescore - Regenerate suitability score + reason
- */
-jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
-  try {
-    if (isDemoMode()) {
-      const simulatedJob = await simulateRescoreJob(req.params.id);
-      return okWithMeta(res, simulatedJob, { simulated: true });
-    }
-
-    const job = await jobsRepo.getJobById(req.params.id);
-
-    if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
-    }
-
-    const rawProfile = await getProfile();
-    if (
-      !rawProfile ||
-      typeof rawProfile !== "object" ||
-      Array.isArray(rawProfile)
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Invalid resume profile format" });
-    }
-
-    const { score, reason } = await scoreJobSuitability(
-      job,
-      rawProfile as Record<string, unknown>,
-    );
-
-    const updatedJob = await jobsRepo.updateJob(job.id, {
-      suitabilityScore: score,
-      suitabilityReason: reason,
-    });
-
-    if (!updatedJob) {
-      return res.status(404).json({ success: false, error: "Job not found" });
-    }
-
-    res.json({ success: true, data: updatedJob });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
-  }
-});
-
-/**
  * POST /api/jobs/:id/check-sponsor - Check if employer is a visa sponsor
  */
 jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
@@ -1167,43 +1225,6 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/:id/process - Process a single job (generate summary + PDF)
- */
-jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
-  try {
-    const forceRaw = req.query.force as string | undefined;
-    const force = forceRaw === "1" || forceRaw === "true";
-
-    if (isDemoMode()) {
-      const result = await simulateProcessJob(req.params.id, { force });
-      if (!result.success) {
-        return res.status(400).json({ success: false, error: result.error });
-      }
-      const job = await jobsRepo.getJobById(req.params.id);
-      if (!job) {
-        return res.status(404).json({ success: false, error: "Job not found" });
-      }
-      return okWithMeta(res, job, { simulated: true });
-    }
-
-    const result = await processJob(req.params.id, {
-      force,
-      requestOrigin: resolveRequestOrigin(req),
-    });
-
-    if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error });
-    }
-
-    const job = await jobsRepo.getJobById(req.params.id);
-    res.json({ success: true, data: job });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
-  }
-});
-
-/**
  * POST /api/jobs/:id/apply - Mark a job as applied
  */
 jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
@@ -1249,24 +1270,6 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     }
 
     res.json({ success: true, data: updatedJob });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
-  }
-});
-
-/**
- * POST /api/jobs/:id/skip - Mark a job as skipped
- */
-jobsRouter.post("/:id/skip", async (req: Request, res: Response) => {
-  try {
-    const job = await jobsRepo.updateJob(req.params.id, { status: "skipped" });
-
-    if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
-    }
-
-    res.json({ success: true, data: job });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });

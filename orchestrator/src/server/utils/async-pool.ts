@@ -1,10 +1,20 @@
+type AsyncPoolTaskStatus<TResult> =
+  | { status: "fulfilled"; result: TResult }
+  | { status: "rejected"; error: unknown };
+
 export async function asyncPool<TItem, TResult>(args: {
   items: readonly TItem[];
   concurrency: number;
   shouldStop?: () => boolean;
   task: (item: TItem, index: number) => Promise<TResult>;
+  onTaskStarted?: (item: TItem, index: number) => void;
+  onTaskSettled?: (
+    item: TItem,
+    index: number,
+    outcome: AsyncPoolTaskStatus<TResult>,
+  ) => void;
 }): Promise<TResult[]> {
-  const { items, task, shouldStop } = args;
+  const { items, task, shouldStop, onTaskStarted, onTaskSettled } = args;
   const rawConcurrency = Number.isFinite(args.concurrency)
     ? args.concurrency
     : 1;
@@ -18,21 +28,60 @@ export async function asyncPool<TItem, TResult>(args: {
     () => UNSET,
   );
   let nextIndex = 0;
+  let firstError: unknown = null;
+
+  const callTaskStarted = (item: TItem, index: number) => {
+    if (!onTaskStarted) return;
+    try {
+      onTaskStarted(item, index);
+    } catch {
+      // Hook failures should not change pool semantics.
+    }
+  };
+
+  const callTaskSettled = (
+    item: TItem,
+    index: number,
+    outcome: AsyncPoolTaskStatus<TResult>,
+  ) => {
+    if (!onTaskSettled) return;
+    try {
+      onTaskSettled(item, index, outcome);
+    } catch {
+      // Hook failures should not change pool semantics.
+    }
+  };
 
   const worker = async (): Promise<void> => {
     while (true) {
-      if (shouldStop?.()) return;
+      if (shouldStop?.() || firstError !== null) return;
 
       const currentIndex = nextIndex;
       nextIndex += 1;
       if (currentIndex >= items.length) return;
-
-      results[currentIndex] = await task(items[currentIndex], currentIndex);
+      const item = items[currentIndex];
+      callTaskStarted(item, currentIndex);
+      try {
+        const result = await task(item, currentIndex);
+        results[currentIndex] = result;
+        callTaskSettled(item, currentIndex, {
+          status: "fulfilled",
+          result,
+        });
+      } catch (error) {
+        callTaskSettled(item, currentIndex, {
+          status: "rejected",
+          error,
+        });
+        if (firstError === null) firstError = error;
+        return;
+      }
     }
   };
 
   const workerCount = Math.min(safeConcurrency, items.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  if (firstError !== null) throw firstError;
 
   return results.filter((value): value is TResult => value !== UNSET);
 }

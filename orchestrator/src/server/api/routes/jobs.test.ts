@@ -396,11 +396,15 @@ describe.sequential("Jobs API routes", () => {
     expect(patchBody.data.suitabilityScore).toBe(77);
     expect(typeof patchBody.meta.requestId).toBe("string");
 
-    const skipRes = await fetch(`${baseUrl}/api/jobs/${job.id}/skip`, {
+    const skipRes = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "skip", jobIds: [job.id] }),
     });
     const skipBody = await skipRes.json();
-    expect(skipBody.data.status).toBe("skipped");
+    expect(skipBody.data.results).toHaveLength(1);
+    expect(skipBody.data.results[0].ok).toBe(true);
+    expect(skipBody.data.results[0].job.status).toBe("skipped");
 
     const deleteRes = await fetch(`${baseUrl}/api/jobs/status/skipped`, {
       method: "DELETE",
@@ -409,34 +413,34 @@ describe.sequential("Jobs API routes", () => {
     expect(deleteBody.data.count).toBe(1);
   });
 
-  it("runs bulk skip with partial failures", async () => {
+  it("runs skip action with partial failures", async () => {
     const { createJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-discovered",
+      jobUrl: "https://example.com/job/action-discovered",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-ready",
+      jobUrl: "https://example.com/job/action-ready",
       jobDescription: "Test description",
     });
     const applied = await createJob({
       source: "manual",
       title: "Applied Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-applied",
+      jobUrl: "https://example.com/job/action-applied",
       jobDescription: "Test description",
     });
     const { updateJob } = await import("../../repositories/jobs");
     await updateJob(ready.id, { status: "ready" });
     await updateJob(applied.id, { status: "applied" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -460,45 +464,92 @@ describe.sequential("Jobs API routes", () => {
     ]);
   });
 
-  it("runs bulk move_to_ready and rejects ineligible statuses", async () => {
+  it("runs move_to_ready action and rejects ineligible statuses", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "New Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-ready-1",
+      jobUrl: "https://example.com/job/action-ready-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Already Ready",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-ready-2",
+      jobUrl: "https://example.com/job/action-ready-2",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
     const { processJob } = await import("../../pipeline/index");
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://canonical.jobops.example";
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "move_to_ready",
-        jobIds: [discovered.id, ready.id],
-      }),
-    });
-    const body = await res.json();
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move_to_ready",
+          jobIds: [discovered.id, ready.id],
+        }),
+      });
+      const body = await res.json();
 
-    expect(body.ok).toBe(true);
-    expect(body.data.succeeded).toBe(1);
-    expect(body.data.failed).toBe(1);
-    expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id);
-    expect(
-      body.data.results.find((r: any) => r.jobId === ready.id).error.code,
-    ).toBe("INVALID_REQUEST");
+      expect(body.ok).toBe(true);
+      expect(body.data.succeeded).toBe(1);
+      expect(body.data.failed).toBe(1);
+      expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id, {
+        force: false,
+        requestOrigin: "https://canonical.jobops.example",
+      });
+      expect(
+        body.data.results.find((r: any) => r.jobId === ready.id).error.code,
+      ).toBe("INVALID_REQUEST");
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
   });
 
-  it("runs bulk rescore with partial failures", async () => {
+  it("supports legacy move_to_ready endpoint", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const { processJob } = await import("../../pipeline/index");
+    const job = await createJob({
+      source: "manual",
+      title: "Legacy Ready Route",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/legacy-process-1",
+      jobDescription: "Test description",
+    });
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://canonical.jobops.example";
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}/process`, {
+        method: "POST",
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(vi.mocked(processJob)).toHaveBeenCalledWith(job.id, {
+        force: false,
+        requestOrigin: "https://canonical.jobops.example",
+      });
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
+  });
+
+  it("runs rescore action with partial failures", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const { scoreJobSuitability } = await import("../../services/scorer");
     const { getProfile } = await import("../../services/profile");
@@ -506,34 +557,34 @@ describe.sequential("Jobs API routes", () => {
     vi.mocked(getProfile).mockResolvedValue({});
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 81,
-      reason: "Updated fit from bulk rescore",
+      reason: "Updated fit from action rescore",
     });
 
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-rescore-1",
+      jobUrl: "https://example.com/job/action-rescore-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-rescore-2",
+      jobUrl: "https://example.com/job/action-rescore-2",
       jobDescription: "Test description",
     });
     const processing = await createJob({
       source: "manual",
       title: "Processing Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-rescore-3",
+      jobUrl: "https://example.com/job/action-rescore-3",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
     await updateJob(processing.id, { status: "processing" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -566,33 +617,33 @@ describe.sequential("Jobs API routes", () => {
     expect(vi.mocked(getProfile)).toHaveBeenCalledTimes(1);
   });
 
-  it("streams bulk action progress with done counters", async () => {
+  it("streams job action progress with done counters", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-stream-1",
+      jobUrl: "https://example.com/job/action-stream-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-stream-2",
+      jobUrl: "https://example.com/job/action-stream-2",
       jobDescription: "Test description",
     });
     const applied = await createJob({
       source: "manual",
       title: "Applied Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-stream-3",
+      jobUrl: "https://example.com/job/action-stream-3",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
     await updateJob(applied.id, { status: "applied" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions/stream`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -655,12 +706,12 @@ describe.sequential("Jobs API routes", () => {
     expect(events.at(-1)?.failed).toBe(1);
   });
 
-  it("validates bulk action payloads", async () => {
+  it("validates job action payloads", async () => {
     const tooManyIds = Array.from(
       { length: 101 },
       (_, index) => `job-${index}`,
     );
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -719,14 +770,18 @@ describe.sequential("Jobs API routes", () => {
       suitabilityReason: "Old fit",
     });
 
-    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/rescore`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rescore", jobIds: [job.id] }),
     });
     const body = await res.json();
 
     expect(body.ok).toBe(true);
-    expect(body.data.suitabilityScore).toBe(77);
-    expect(body.data.suitabilityReason).toBe("Updated fit");
+    expect(body.data.results).toHaveLength(1);
+    expect(body.data.results[0].ok).toBe(true);
+    expect(body.data.results[0].job.suitabilityScore).toBe(77);
+    expect(body.data.results[0].job.suitabilityReason).toBe("Updated fit");
   });
 
   it("deletes jobs below a score threshold (excluding applied)", async () => {

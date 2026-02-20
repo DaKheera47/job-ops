@@ -13,7 +13,22 @@ import { runCrawler } from "../../services/crawler";
 import { runHiringCafe } from "../../services/hiring-cafe";
 import { runJobSpy } from "../../services/jobspy";
 import { runUkVisaJobs } from "../../services/ukvisajobs";
-import { progressHelpers, updateProgress } from "../progress";
+import { asyncPool } from "../../utils/async-pool";
+import { type CrawlSource, progressHelpers, updateProgress } from "../progress";
+
+const DISCOVERY_CONCURRENCY = 3;
+
+type DiscoveryTaskResult = {
+  discoveredJobs: CreateJobInput[];
+  sourceErrors: string[];
+};
+
+type DiscoverySourceTask = {
+  source: CrawlSource;
+  termsTotal?: number;
+  detail: string;
+  run: () => Promise<DiscoveryTaskResult>;
+};
 
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
@@ -74,385 +89,431 @@ export async function discoverJobsStep(args: {
       source === "indeed" || source === "linkedin" || source === "glassdoor",
   );
 
-  const shouldRunJobSpy = jobSpySites.length > 0;
-  const shouldRunAdzuna = compatibleSources.includes("adzuna");
-  const shouldRunHiringCafe = compatibleSources.includes("hiringcafe");
-  const shouldRunGradcracker = compatibleSources.includes("gradcracker");
-  const shouldRunUkVisaJobs = compatibleSources.includes("ukvisajobs");
+  const sourceTasks: DiscoverySourceTask[] = [];
 
-  const totalSources =
-    Number(shouldRunJobSpy) +
-    Number(shouldRunAdzuna) +
-    Number(shouldRunHiringCafe) +
-    Number(shouldRunGradcracker) +
-    Number(shouldRunUkVisaJobs);
-  let completedSources = 0;
-
-  progressHelpers.startCrawling(totalSources);
-
-  const markSourceComplete = () => {
-    completedSources += 1;
-    progressHelpers.completeSource(completedSources, totalSources);
-  };
-
-  if (args.shouldCancel?.()) {
-    return { discoveredJobs, sourceErrors };
-  }
-
-  if (shouldRunJobSpy) {
-    progressHelpers.startSource("jobspy", completedSources, totalSources, {
+  if (jobSpySites.length > 0) {
+    sourceTasks.push({
+      source: "jobspy",
       termsTotal: searchTerms.length,
       detail: `JobSpy: scraping ${jobSpySites.join(", ")}...`,
-    });
+      run: async () => {
+        const jobSpyResult = await runJobSpy({
+          sites: jobSpySites,
+          searchTerms,
+          location: settings.jobspyLocation ?? undefined,
+          resultsWanted: settings.jobspyResultsWanted
+            ? parseInt(settings.jobspyResultsWanted, 10)
+            : undefined,
+          countryIndeed: settings.jobspyCountryIndeed ?? undefined,
+          onProgress: (event) => {
+            if (event.type === "term_start") {
+              progressHelpers.crawlingUpdate({
+                source: "jobspy",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                phase: "list",
+                currentUrl: event.searchTerm,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `JobSpy: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+              });
+              return;
+            }
 
-    const jobSpyResult = await runJobSpy({
-      sites: jobSpySites,
-      searchTerms,
-      location: settings.jobspyLocation ?? undefined,
-      resultsWanted: settings.jobspyResultsWanted
-        ? parseInt(settings.jobspyResultsWanted, 10)
-        : undefined,
-      countryIndeed: settings.jobspyCountryIndeed ?? undefined,
-      onProgress: (event) => {
-        if (event.type === "term_start") {
-          progressHelpers.crawlingUpdate({
-            source: "jobspy",
-            termsProcessed: Math.max(event.termIndex - 1, 0),
-            termsTotal: event.termTotal,
-            phase: "list",
-            currentUrl: event.searchTerm,
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `JobSpy: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
-          });
-          return;
-        }
-
-        progressHelpers.crawlingUpdate({
-          source: "jobspy",
-          termsProcessed: event.termIndex,
-          termsTotal: event.termTotal,
-          phase: "list",
-          currentUrl: event.searchTerm,
-        });
-        updateProgress({
-          step: "crawling",
-          detail: `JobSpy: completed ${event.termIndex}/${event.termTotal} (${event.searchTerm}) with ${event.jobsFoundTerm} jobs`,
-        });
-      },
-    });
-
-    if (!jobSpyResult.success) {
-      sourceErrors.push(`jobspy: ${jobSpyResult.error ?? "unknown error"}`);
-    } else {
-      discoveredJobs.push(...jobSpyResult.jobs);
-    }
-
-    markSourceComplete();
-  }
-
-  if (args.shouldCancel?.()) {
-    return { discoveredJobs, sourceErrors };
-  }
-
-  if (shouldRunAdzuna) {
-    progressHelpers.startSource("adzuna", completedSources, totalSources, {
-      termsTotal: searchTerms.length,
-      detail: "Adzuna: fetching jobs...",
-    });
-
-    const adzunaCountryCode = getAdzunaCountryCode(selectedCountry);
-    if (!adzunaCountryCode) {
-      sourceErrors.push(
-        `adzuna: unsupported country ${formatCountryLabel(selectedCountry)}`,
-      );
-      markSourceComplete();
-    } else {
-      const adzunaMaxJobsPerTerm = settings.adzunaMaxJobsPerTerm
-        ? parseInt(settings.adzunaMaxJobsPerTerm, 10)
-        : 50;
-
-      const adzunaResult = await runAdzuna({
-        country: adzunaCountryCode,
-        searchTerms,
-        maxJobsPerTerm: adzunaMaxJobsPerTerm,
-        onProgress: (event) => {
-          if (event.type === "term_start") {
             progressHelpers.crawlingUpdate({
-              source: "adzuna",
-              termsProcessed: Math.max(event.termIndex - 1, 0),
+              source: "jobspy",
+              termsProcessed: event.termIndex,
               termsTotal: event.termTotal,
               phase: "list",
               currentUrl: event.searchTerm,
             });
             updateProgress({
               step: "crawling",
-              detail: `Adzuna: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+              detail: `JobSpy: completed ${event.termIndex}/${event.termTotal} (${event.searchTerm}) with ${event.jobsFoundTerm} jobs`,
             });
-            return;
-          }
+          },
+        });
 
-          if (event.type === "page_fetched") {
+        if (!jobSpyResult.success) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [`jobspy: ${jobSpyResult.error ?? "unknown error"}`],
+          };
+        }
+
+        return {
+          discoveredJobs: jobSpyResult.jobs,
+          sourceErrors: [],
+        };
+      },
+    });
+  }
+
+  if (compatibleSources.includes("adzuna")) {
+    sourceTasks.push({
+      source: "adzuna",
+      termsTotal: searchTerms.length,
+      detail: "Adzuna: fetching jobs...",
+      run: async () => {
+        const adzunaCountryCode = getAdzunaCountryCode(selectedCountry);
+        if (!adzunaCountryCode) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [
+              `adzuna: unsupported country ${formatCountryLabel(selectedCountry)}`,
+            ],
+          };
+        }
+
+        const adzunaMaxJobsPerTerm = settings.adzunaMaxJobsPerTerm
+          ? parseInt(settings.adzunaMaxJobsPerTerm, 10)
+          : 50;
+
+        const adzunaResult = await runAdzuna({
+          country: adzunaCountryCode,
+          searchTerms,
+          maxJobsPerTerm: adzunaMaxJobsPerTerm,
+          onProgress: (event) => {
+            if (event.type === "term_start") {
+              progressHelpers.crawlingUpdate({
+                source: "adzuna",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                phase: "list",
+                currentUrl: event.searchTerm,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `Adzuna: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+              });
+              return;
+            }
+
+            if (event.type === "page_fetched") {
+              progressHelpers.crawlingUpdate({
+                source: "adzuna",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                listPagesProcessed: event.pageNo,
+                jobPagesEnqueued: event.totalCollected,
+                jobPagesProcessed: event.totalCollected,
+                phase: "list",
+                currentUrl: `page ${event.pageNo}`,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `Adzuna: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo} (${event.totalCollected} collected)`,
+              });
+              return;
+            }
+
             progressHelpers.crawlingUpdate({
               source: "adzuna",
-              termsProcessed: Math.max(event.termIndex - 1, 0),
+              termsProcessed: event.termIndex,
               termsTotal: event.termTotal,
-              listPagesProcessed: event.pageNo,
-              jobPagesEnqueued: event.totalCollected,
-              jobPagesProcessed: event.totalCollected,
               phase: "list",
-              currentUrl: `page ${event.pageNo}`,
+              currentUrl: event.searchTerm,
             });
             updateProgress({
               step: "crawling",
-              detail: `Adzuna: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo} (${event.totalCollected} collected)`,
+              detail: `Adzuna: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
             });
-            return;
-          }
+          },
+        });
 
-          progressHelpers.crawlingUpdate({
-            source: "adzuna",
-            termsProcessed: event.termIndex,
-            termsTotal: event.termTotal,
-            phase: "list",
-            currentUrl: event.searchTerm,
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `Adzuna: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
-          });
-        },
-      });
+        if (!adzunaResult.success) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [`adzuna: ${adzunaResult.error ?? "unknown error"}`],
+          };
+        }
 
-      if (!adzunaResult.success) {
-        sourceErrors.push(`adzuna: ${adzunaResult.error ?? "unknown error"}`);
-      } else {
-        discoveredJobs.push(...adzunaResult.jobs);
-      }
-
-      markSourceComplete();
-    }
+        return {
+          discoveredJobs: adzunaResult.jobs,
+          sourceErrors: [],
+        };
+      },
+    });
   }
 
-  if (args.shouldCancel?.()) {
-    return { discoveredJobs, sourceErrors };
-  }
-
-  if (shouldRunHiringCafe) {
-    progressHelpers.startSource("hiringcafe", completedSources, totalSources, {
+  if (compatibleSources.includes("hiringcafe")) {
+    sourceTasks.push({
+      source: "hiringcafe",
       termsTotal: searchTerms.length,
       detail: "Hiring Cafe: fetching jobs...",
-    });
+      run: async () => {
+        const hiringCafeMaxJobsPerTerm = settings.jobspyResultsWanted
+          ? parseInt(settings.jobspyResultsWanted, 10)
+          : 200;
 
-    const hiringCafeMaxJobsPerTerm = settings.jobspyResultsWanted
-      ? parseInt(settings.jobspyResultsWanted, 10)
-      : 200;
+        const hiringCafeResult = await runHiringCafe({
+          country: selectedCountry,
+          searchTerms,
+          maxJobsPerTerm: hiringCafeMaxJobsPerTerm,
+          onProgress: (event) => {
+            if (event.type === "term_start") {
+              progressHelpers.crawlingUpdate({
+                source: "hiringcafe",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                phase: "list",
+                currentUrl: event.searchTerm,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+              });
+              return;
+            }
 
-    const hiringCafeResult = await runHiringCafe({
-      country: selectedCountry,
-      searchTerms,
-      maxJobsPerTerm: hiringCafeMaxJobsPerTerm,
-      onProgress: (event) => {
-        if (event.type === "term_start") {
-          progressHelpers.crawlingUpdate({
-            source: "hiringcafe",
-            termsProcessed: Math.max(event.termIndex - 1, 0),
-            termsTotal: event.termTotal,
-            phase: "list",
-            currentUrl: event.searchTerm,
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
-          });
-          return;
+            if (event.type === "page_fetched") {
+              const displayPageNo = event.pageNo + 1;
+              progressHelpers.crawlingUpdate({
+                source: "hiringcafe",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                listPagesProcessed: displayPageNo,
+                jobPagesEnqueued: event.totalCollected,
+                jobPagesProcessed: event.totalCollected,
+                phase: "list",
+                currentUrl: `page ${displayPageNo}`,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal}, page ${displayPageNo} (${event.totalCollected} collected)`,
+              });
+              return;
+            }
+
+            progressHelpers.crawlingUpdate({
+              source: "hiringcafe",
+              termsProcessed: event.termIndex,
+              termsTotal: event.termTotal,
+              phase: "list",
+              currentUrl: event.searchTerm,
+            });
+            updateProgress({
+              step: "crawling",
+              detail: `Hiring Cafe: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+            });
+          },
+        });
+
+        if (!hiringCafeResult.success) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [
+              `hiringcafe: ${hiringCafeResult.error ?? "unknown error"}`,
+            ],
+          };
         }
 
-        if (event.type === "page_fetched") {
-          const displayPageNo = event.pageNo + 1;
-          progressHelpers.crawlingUpdate({
-            source: "hiringcafe",
-            termsProcessed: Math.max(event.termIndex - 1, 0),
-            termsTotal: event.termTotal,
-            listPagesProcessed: displayPageNo,
-            jobPagesEnqueued: event.totalCollected,
-            jobPagesProcessed: event.totalCollected,
-            phase: "list",
-            currentUrl: `page ${displayPageNo}`,
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `Hiring Cafe: term ${event.termIndex}/${event.termTotal}, page ${displayPageNo} (${event.totalCollected} collected)`,
-          });
-          return;
-        }
-
-        progressHelpers.crawlingUpdate({
-          source: "hiringcafe",
-          termsProcessed: event.termIndex,
-          termsTotal: event.termTotal,
-          phase: "list",
-          currentUrl: event.searchTerm,
-        });
-        updateProgress({
-          step: "crawling",
-          detail: `Hiring Cafe: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
-        });
+        return {
+          discoveredJobs: hiringCafeResult.jobs,
+          sourceErrors: [],
+        };
       },
     });
-
-    if (!hiringCafeResult.success) {
-      sourceErrors.push(
-        `hiringcafe: ${hiringCafeResult.error ?? "unknown error"}`,
-      );
-    } else {
-      discoveredJobs.push(...hiringCafeResult.jobs);
-    }
-
-    markSourceComplete();
   }
 
-  if (args.shouldCancel?.()) {
-    return { discoveredJobs, sourceErrors };
-  }
-
-  if (shouldRunGradcracker) {
-    progressHelpers.startSource("gradcracker", completedSources, totalSources, {
+  if (compatibleSources.includes("gradcracker")) {
+    sourceTasks.push({
+      source: "gradcracker",
       detail: "Gradcracker: scraping...",
-    });
+      run: async () => {
+        const existingJobUrls = await jobsRepo.getAllJobUrls();
+        const gradcrackerMaxJobs = settings.gradcrackerMaxJobsPerTerm
+          ? parseInt(settings.gradcrackerMaxJobsPerTerm, 10)
+          : 50;
 
-    const existingJobUrls = await jobsRepo.getAllJobUrls();
-    const gradcrackerMaxJobs = settings.gradcrackerMaxJobsPerTerm
-      ? parseInt(settings.gradcrackerMaxJobsPerTerm, 10)
-      : 50;
-
-    const crawlerResult = await runCrawler({
-      existingJobUrls,
-      searchTerms,
-      maxJobsPerTerm: gradcrackerMaxJobs,
-      onProgress: (progress) => {
-        progressHelpers.crawlingUpdate({
-          source: "gradcracker",
-          listPagesProcessed: progress.listPagesProcessed,
-          listPagesTotal: progress.listPagesTotal,
-          jobCardsFound: progress.jobCardsFound,
-          jobPagesEnqueued: progress.jobPagesEnqueued,
-          jobPagesSkipped: progress.jobPagesSkipped,
-          jobPagesProcessed: progress.jobPagesProcessed,
-          phase: progress.phase,
-          currentUrl: progress.currentUrl,
+        const crawlerResult = await runCrawler({
+          existingJobUrls,
+          searchTerms,
+          maxJobsPerTerm: gradcrackerMaxJobs,
+          onProgress: (progress) => {
+            progressHelpers.crawlingUpdate({
+              source: "gradcracker",
+              listPagesProcessed: progress.listPagesProcessed,
+              listPagesTotal: progress.listPagesTotal,
+              jobCardsFound: progress.jobCardsFound,
+              jobPagesEnqueued: progress.jobPagesEnqueued,
+              jobPagesSkipped: progress.jobPagesSkipped,
+              jobPagesProcessed: progress.jobPagesProcessed,
+              phase: progress.phase,
+              currentUrl: progress.currentUrl,
+            });
+          },
         });
+
+        if (!crawlerResult.success) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [
+              `gradcracker: ${crawlerResult.error ?? "unknown error"}`,
+            ],
+          };
+        }
+
+        return {
+          discoveredJobs: crawlerResult.jobs,
+          sourceErrors: [],
+        };
       },
     });
-
-    if (!crawlerResult.success) {
-      sourceErrors.push(
-        `gradcracker: ${crawlerResult.error ?? "unknown error"}`,
-      );
-    } else {
-      discoveredJobs.push(...crawlerResult.jobs);
-    }
-
-    markSourceComplete();
   }
 
-  if (args.shouldCancel?.()) {
-    return { discoveredJobs, sourceErrors };
-  }
-
-  if (shouldRunUkVisaJobs) {
-    progressHelpers.startSource("ukvisajobs", completedSources, totalSources, {
+  if (compatibleSources.includes("ukvisajobs")) {
+    sourceTasks.push({
+      source: "ukvisajobs",
       termsTotal: searchTerms.length,
       detail: "UKVisaJobs: scraping visa-sponsoring jobs...",
-    });
+      run: async () => {
+        const ukvisajobsMaxJobs = settings.ukvisajobsMaxJobs
+          ? parseInt(settings.ukvisajobsMaxJobs, 10)
+          : 50;
 
-    const ukvisajobsMaxJobs = settings.ukvisajobsMaxJobs
-      ? parseInt(settings.ukvisajobsMaxJobs, 10)
-      : 50;
+        const ukVisaResult = await runUkVisaJobs({
+          maxJobs: ukvisajobsMaxJobs,
+          searchTerms,
+          onProgress: (event) => {
+            if (event.type === "init") {
+              progressHelpers.crawlingUpdate({
+                source: "ukvisajobs",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                listPagesProcessed: 0,
+                listPagesTotal: event.maxPages,
+                jobPagesEnqueued: 0,
+                jobPagesProcessed: 0,
+                jobPagesSkipped: 0,
+                phase: "list",
+                currentUrl: event.searchTerm || "all jobs",
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
+              });
+              return;
+            }
 
-    const ukVisaResult = await runUkVisaJobs({
-      maxJobs: ukvisajobsMaxJobs,
-      searchTerms,
-      onProgress: (event) => {
-        if (event.type === "init") {
-          progressHelpers.crawlingUpdate({
-            source: "ukvisajobs",
-            termsProcessed: Math.max(event.termIndex - 1, 0),
-            termsTotal: event.termTotal,
-            listPagesProcessed: 0,
-            listPagesTotal: event.maxPages,
-            jobPagesEnqueued: 0,
-            jobPagesProcessed: 0,
-            jobPagesSkipped: 0,
-            phase: "list",
-            currentUrl: event.searchTerm || "all jobs",
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
-          });
-          return;
+            if (event.type === "page_fetched") {
+              progressHelpers.crawlingUpdate({
+                source: "ukvisajobs",
+                termsProcessed: Math.max(event.termIndex - 1, 0),
+                termsTotal: event.termTotal,
+                listPagesProcessed: event.pageNo,
+                listPagesTotal: event.maxPages,
+                jobPagesEnqueued: event.totalCollected,
+                jobPagesProcessed: event.totalCollected,
+                phase: "list",
+                currentUrl: `page ${event.pageNo}/${event.maxPages}`,
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo}/${event.maxPages} (${event.totalCollected} collected)`,
+              });
+              return;
+            }
+
+            if (event.type === "term_complete") {
+              progressHelpers.crawlingUpdate({
+                source: "ukvisajobs",
+                termsProcessed: event.termIndex,
+                termsTotal: event.termTotal,
+                phase: "list",
+                currentUrl: event.searchTerm || "all jobs",
+              });
+              updateProgress({
+                step: "crawling",
+                detail: `UKVisaJobs: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
+              });
+              return;
+            }
+
+            if (event.type === "empty_page") {
+              updateProgress({
+                step: "crawling",
+                detail: `UKVisaJobs: page ${event.pageNo} returned no jobs`,
+              });
+              return;
+            }
+
+            if (event.type === "error") {
+              updateProgress({
+                step: "crawling",
+                detail: `UKVisaJobs: ${event.message}`,
+              });
+            }
+          },
+        });
+
+        if (!ukVisaResult.success) {
+          return {
+            discoveredJobs: [],
+            sourceErrors: [
+              `ukvisajobs: ${ukVisaResult.error ?? "unknown error"}`,
+            ],
+          };
         }
 
-        if (event.type === "page_fetched") {
-          progressHelpers.crawlingUpdate({
-            source: "ukvisajobs",
-            termsProcessed: Math.max(event.termIndex - 1, 0),
-            termsTotal: event.termTotal,
-            listPagesProcessed: event.pageNo,
-            listPagesTotal: event.maxPages,
-            jobPagesEnqueued: event.totalCollected,
-            jobPagesProcessed: event.totalCollected,
-            phase: "list",
-            currentUrl: `page ${event.pageNo}/${event.maxPages}`,
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `UKVisaJobs: term ${event.termIndex}/${event.termTotal}, page ${event.pageNo}/${event.maxPages} (${event.totalCollected} collected)`,
-          });
-          return;
-        }
-
-        if (event.type === "term_complete") {
-          progressHelpers.crawlingUpdate({
-            source: "ukvisajobs",
-            termsProcessed: event.termIndex,
-            termsTotal: event.termTotal,
-            phase: "list",
-            currentUrl: event.searchTerm || "all jobs",
-          });
-          updateProgress({
-            step: "crawling",
-            detail: `UKVisaJobs: completed term ${event.termIndex}/${event.termTotal} (${event.searchTerm || "all jobs"})`,
-          });
-          return;
-        }
-
-        if (event.type === "empty_page") {
-          updateProgress({
-            step: "crawling",
-            detail: `UKVisaJobs: page ${event.pageNo} returned no jobs`,
-          });
-          return;
-        }
-
-        if (event.type === "error") {
-          updateProgress({
-            step: "crawling",
-            detail: `UKVisaJobs: ${event.message}`,
-          });
-        }
+        return {
+          discoveredJobs: ukVisaResult.jobs,
+          sourceErrors: [],
+        };
       },
     });
+  }
 
-    if (!ukVisaResult.success) {
-      sourceErrors.push(`ukvisajobs: ${ukVisaResult.error ?? "unknown error"}`);
-    } else {
-      discoveredJobs.push(...ukVisaResult.jobs);
-    }
+  const totalSources = sourceTasks.length;
+  let completedSources = 0;
 
-    markSourceComplete();
+  progressHelpers.startCrawling(totalSources);
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
+
+  const sourceResults = await asyncPool({
+    items: sourceTasks,
+    concurrency: DISCOVERY_CONCURRENCY,
+    shouldStop: args.shouldCancel,
+    onTaskStarted: (sourceTask) => {
+      progressHelpers.startSource(
+        sourceTask.source,
+        completedSources,
+        totalSources,
+        {
+          termsTotal: sourceTask.termsTotal,
+          detail: sourceTask.detail,
+        },
+      );
+    },
+    onTaskSettled: () => {
+      completedSources += 1;
+      progressHelpers.completeSource(completedSources, totalSources);
+    },
+    task: async (sourceTask) => {
+      try {
+        return await sourceTask.run();
+      } catch (error) {
+        return {
+          discoveredJobs: [],
+          sourceErrors: [
+            `${sourceTask.source}: ${error instanceof Error ? error.message : "unknown error"}`,
+          ],
+        };
+      }
+    },
+  });
+
+  for (const sourceResult of sourceResults) {
+    discoveredJobs.push(...sourceResult.discoveredJobs);
+    sourceErrors.push(...sourceResult.sourceErrors);
+  }
+
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
   }
 
   if (discoveredJobs.length === 0 && sourceErrors.length > 0) {

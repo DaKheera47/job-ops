@@ -164,16 +164,7 @@ export async function getAllJobUrls(): Promise<string[]> {
   return rows.map((r) => r.jobUrl);
 }
 
-/**
- * Create a new job (or return existing if URL matches).
- */
-export async function createJob(input: CreateJobInput): Promise<Job> {
-  // Check for existing job with same URL
-  const existing = await getJobByUrl(input.jobUrl);
-  if (existing) {
-    return existing;
-  }
-
+async function insertJob(input: CreateJobInput): Promise<Job> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -232,6 +223,95 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
   return job;
 }
 
+function isJobUrlUniqueViolation(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /UNIQUE constraint failed: jobs\.job_url/i.test(error.message);
+}
+
+async function tryInsertJob(input: CreateJobInput): Promise<Job | null> {
+  try {
+    return await insertJob(input);
+  } catch (error) {
+    if (isJobUrlUniqueViolation(error)) return null;
+    throw error;
+  }
+}
+
+/**
+ * Create jobs (or return existing jobs for duplicate URLs).
+ */
+export async function createJobs(input: CreateJobInput): Promise<Job>;
+export async function createJobs(
+  inputs: CreateJobInput[],
+): Promise<{ created: number; skipped: number }>;
+export async function createJobs(
+  inputOrInputs: CreateJobInput | CreateJobInput[],
+): Promise<Job | { created: number; skipped: number }> {
+  if (!Array.isArray(inputOrInputs)) {
+    const inserted = await tryInsertJob(inputOrInputs);
+    if (inserted) return inserted;
+    const existing = await getJobByUrl(inputOrInputs.jobUrl);
+    if (existing) return existing;
+    throw new Error("Failed to create or resolve existing job by URL");
+  }
+
+  const byUrl = new Map<
+    string,
+    {
+      input: CreateJobInput;
+      count: number;
+    }
+  >();
+
+  for (const input of inputOrInputs) {
+    const existing = byUrl.get(input.jobUrl);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      byUrl.set(input.jobUrl, { input, count: 1 });
+    }
+  }
+
+  let created = 0;
+  let skipped = 0;
+
+  const uniqueUrls = Array.from(byUrl.keys());
+  if (uniqueUrls.length === 0) {
+    return { created, skipped };
+  }
+
+  const existingRows = await db
+    .select({ jobUrl: jobs.jobUrl })
+    .from(jobs)
+    .where(inArray(jobs.jobUrl, uniqueUrls));
+  const existingUrlSet = new Set(existingRows.map((row) => row.jobUrl));
+
+  for (const { input, count } of byUrl.values()) {
+    if (existingUrlSet.has(input.jobUrl)) {
+      skipped += count;
+      continue;
+    }
+
+    const inserted = await tryInsertJob(input);
+    if (!inserted) {
+      skipped += count;
+      continue;
+    }
+
+    created += 1;
+    skipped += count - 1;
+  }
+
+  return { created, skipped };
+}
+
+/**
+ * Create a single job (or return existing if URL matches).
+ */
+export async function createJob(input: CreateJobInput): Promise<Job> {
+  return createJobs(input);
+}
+
 /**
  * Update a job.
  */
@@ -254,29 +334,6 @@ export async function updateJob(
     .where(eq(jobs.id, id));
 
   return getJobById(id);
-}
-
-/**
- * Bulk create jobs from crawler results.
- */
-export async function bulkCreateJobs(
-  inputs: CreateJobInput[],
-): Promise<{ created: number; skipped: number }> {
-  let created = 0;
-  let skipped = 0;
-
-  for (const input of inputs) {
-    const existing = await getJobByUrl(input.jobUrl);
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
-    await createJob(input);
-    created++;
-  }
-
-  return { created, skipped };
 }
 
 /**

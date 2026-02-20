@@ -646,15 +646,15 @@ export interface PostApplicationInboxItem {
   } | null;
 }
 
-export type BulkPostApplicationAction = "approve" | "deny";
+export type PostApplicationAction = "approve" | "deny";
 
-export interface BulkPostApplicationActionRequest {
-  action: BulkPostApplicationAction;
+export interface PostApplicationActionRequest {
+  action: PostApplicationAction;
   provider: PostApplicationProvider;
   accountKey: string;
 }
 
-export type BulkPostApplicationActionResult =
+export type PostApplicationActionResult =
   | {
       messageId: string;
       ok: true;
@@ -670,13 +670,13 @@ export type BulkPostApplicationActionResult =
       };
     };
 
-export interface BulkPostApplicationActionResponse {
-  action: BulkPostApplicationAction;
+export interface PostApplicationActionResponse {
+  action: PostApplicationAction;
   requested: number;
   succeeded: number;
   failed: number;
   skipped: number;
-  results: BulkPostApplicationActionResult[];
+  results: PostApplicationActionResult[];
 }
 
 export interface JobsListResponse<TJob = Job> {
@@ -693,14 +693,22 @@ export interface JobsRevisionResponse {
   statusFilter: string | null;
 }
 
-export type BulkJobAction = "skip" | "move_to_ready" | "rescore";
+export type JobAction = "skip" | "move_to_ready" | "rescore";
 
-export interface BulkJobActionRequest {
-  action: BulkJobAction;
-  jobIds: string[];
-}
+export type JobActionRequest =
+  | {
+      action: "skip" | "rescore";
+      jobIds: string[];
+    }
+  | {
+      action: "move_to_ready";
+      jobIds: string[];
+      options?: {
+        force?: boolean;
+      };
+    };
 
-export type BulkJobActionResult =
+export type JobActionResult =
   | {
       jobId: string;
       ok: true;
@@ -715,18 +723,18 @@ export type BulkJobActionResult =
       };
     };
 
-export interface BulkJobActionResponse {
-  action: BulkJobAction;
+export interface JobActionResponse {
+  action: JobAction;
   requested: number;
   succeeded: number;
   failed: number;
-  results: BulkJobActionResult[];
+  results: JobActionResult[];
 }
 
-export type BulkJobActionStreamEvent =
+export type JobActionStreamEvent =
   | {
       type: "started";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
@@ -735,22 +743,22 @@ export type BulkJobActionStreamEvent =
     }
   | {
       type: "progress";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
       failed: number;
-      result: BulkJobActionResult;
+      result: JobActionResult;
       requestId: string;
     }
   | {
       type: "completed";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
       failed: number;
-      results: BulkJobActionResult[];
+      results: JobActionResult[];
       requestId: string;
     }
   | {

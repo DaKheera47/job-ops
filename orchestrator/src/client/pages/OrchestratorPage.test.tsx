@@ -816,7 +816,7 @@ describe("OrchestratorPage", () => {
     });
   });
 
-  it("shows and hides bulk Recalculate match based on selected statuses", async () => {
+  it("shows and hides Recalculate match based on selected statuses", async () => {
     window.matchMedia = createMatchMedia(
       true,
     ) as unknown as typeof window.matchMedia;
