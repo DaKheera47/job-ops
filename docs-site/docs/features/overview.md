@@ -52,14 +52,17 @@ Use it to quickly answer:
 - Conversion counts any positive response-stage event (for example recruiter screen, assessment, interview stages, or offer).
 - Conversion trend chart uses a rolling window up to 7 days.
 - Response rate by source is calculated across all time (not scoped to the duration selector), since response events may arrive well after the application window.
+- Sources with fewer than 5 applications are hidden by default in the Response Rate by Source chart. Check **Include small samples** to show them.
 
 ### Response Rate by Source
 
-The **Response Rate by Source** chart shows, for each job board (LinkedIn, Indeed, Gradcracker, etc.), what percentage of your applications received any non-rejection response.
+The **Response Rate by Source** chart shows, for each job board (LinkedIn, Indeed, Gradcracker, etc.), what percentage of your applications received a non-rejection response.
 
-- A response is counted when a job reaches at least one positive stage event: recruiter screen, assessment, hiring manager screen, technical interview, onsite, or offer.
-- Sources are sorted by total application volume (highest first).
-- The header KPI shows the overall non-rejection response rate across all sources.
+**What counts as a response:** the application reached at least one of these stages — recruiter screen, assessment, hiring manager screen, technical interview, onsite, or offer. Ghosted applications (no stage events) and rejected outcomes are both excluded from the numerator.
+
+Each bar is labelled `X% (n=Y)` where `n` is the number of applications from that source, so you can immediately tell whether a high rate comes from a meaningful sample or a single lucky application. The full breakdown (response rate, responded, applied) is also shown in the tooltip.
+
+Sources are sorted by response rate descending. Sources with fewer than 5 applications are hidden by default to avoid misleading percentages from tiny samples. Check **Include small samples** to show them.
 
 Use this chart to identify which sources produce genuine engagement versus silence, and concentrate future sourcing effort accordingly.
 
@@ -84,6 +87,11 @@ Use this chart to identify which sources produce genuine engagement versus silen
 
 - Only sources with at least one applied job appear in the chart.
 - If all your applications come from a single board, only that board will be shown.
+
+### Response rate for a source looks too high or too low
+
+- Check the `n=` value in the bar label or tooltip. A small sample (e.g. n=2) will produce an unreliable rate.
+- Sources with fewer than 5 applications are hidden by default. If you see a suspiciously high rate, you may be looking at a small-sample source — check the n.
 
 ## Related pages
 
