@@ -40,8 +40,10 @@ vi.mock("@server/repositories/jobs", () => ({
   ]),
 }));
 
+const getPostApplicationMessageByExternalId = vi.fn();
 const upsertPostApplicationMessage = vi.fn();
 vi.mock("@server/repositories/post-application-messages", () => ({
+  getPostApplicationMessageByExternalId,
   upsertPostApplicationMessage,
 }));
 
@@ -54,20 +56,22 @@ vi.mock("@server/repositories/settings", () => ({
   getSetting: vi.fn().mockResolvedValue(null),
 }));
 
+const llmCallJson = vi.fn().mockResolvedValue({
+  success: true,
+  data: {
+    bestMatchIndex: 1,
+    confidence: 99,
+    stageTarget: "assessment",
+    isRelevant: true,
+    stageEventPayload: null,
+    reason: "matches",
+  },
+});
+
 vi.mock("@server/services/llm-service", () => ({
   LlmService: class {
     callJson() {
-      return Promise.resolve({
-        success: true,
-        data: {
-          bestMatchIndex: 1,
-          confidence: 99,
-          stageTarget: "assessment",
-          isRelevant: true,
-          stageEventPayload: null,
-          reason: "matches",
-        },
-      });
+      return llmCallJson();
     }
   },
 }));
@@ -83,6 +87,7 @@ function makeJsonResponse(body: unknown): Response {
 describe("gmail sync auto-log idempotency", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    llmCallJson.mockClear();
 
     vi.stubGlobal(
       "fetch",
@@ -129,6 +134,41 @@ describe("gmail sync auto-log idempotency", () => {
   it("creates auto stage event only on first auto_linked transition", async () => {
     const { runGmailIngestionSync } = await import("./gmail-sync");
 
+    getPostApplicationMessageByExternalId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: "post-msg-1",
+        provider: "gmail",
+        accountKey: "default",
+        integrationId: "integration-1",
+        syncRunId: "sync-run-1",
+        externalMessageId: "message-1",
+        externalThreadId: "thread-1",
+        fromAddress: "jobs@example.com",
+        fromDomain: "example.com",
+        senderName: "Recruiter",
+        subject: "Interview update",
+        receivedAt: Date.now(),
+        snippet: "snippet",
+        classificationLabel: "assessment",
+        classificationConfidence: 0.99,
+        classificationPayload: { method: "smart_router", reason: "matches" },
+        relevanceLlmScore: 99,
+        relevanceDecision: "relevant",
+        matchedJobId: "job-1",
+        matchConfidence: 99,
+        stageTarget: "assessment",
+        messageType: "interview",
+        stageEventPayload: null,
+        processingStatus: "auto_linked",
+        decidedAt: null,
+        decidedBy: null,
+        errorCode: null,
+        errorMessage: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
     upsertPostApplicationMessage
       .mockResolvedValueOnce({
         message: {
@@ -160,5 +200,6 @@ describe("gmail sync auto-log idempotency", () => {
 
     expect(upsertPostApplicationMessage).toHaveBeenCalledTimes(2);
     expect(transitionStage).toHaveBeenCalledTimes(1);
+    expect(llmCallJson).toHaveBeenCalledTimes(1);
   });
 });
