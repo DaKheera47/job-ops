@@ -1,8 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
-import type {
-  BulkJobActionResponse,
-  BulkJobActionStreamEvent,
-} from "@shared/types.js";
+import type { JobActionResponse, JobActionStreamEvent } from "@shared/types.js";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +7,7 @@ import * as api from "../../api";
 import { useBulkJobSelection } from "./useBulkJobSelection";
 
 vi.mock("../../api", () => ({
-  streamBulkJobAction: vi.fn(),
+  streamJobAction: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({
@@ -36,10 +33,10 @@ const deferred = <T>(): Deferred<T> => {
 };
 
 const asStreamEvents = (
-  response: BulkJobActionResponse,
+  response: JobActionResponse,
   requestId = "req-bulk",
-): BulkJobActionStreamEvent[] => {
-  const events: BulkJobActionStreamEvent[] = [
+): JobActionStreamEvent[] => {
+  const events: JobActionStreamEvent[] = [
     {
       type: "started",
       action: response.action,
@@ -83,10 +80,10 @@ const asStreamEvents = (
 };
 
 const mockStreamBulkAction = (
-  response: BulkJobActionResponse,
+  response: JobActionResponse,
   waitForRelease?: Promise<void>,
 ) => {
-  vi.mocked(api.streamBulkJobAction).mockImplementation(
+  vi.mocked(api.streamJobAction).mockImplementation(
     async (_input, handlers) => {
       for (const event of asStreamEvents(response)) {
         if (event.type === "started") handlers.onEvent(event);
@@ -149,7 +146,7 @@ describe("useBulkJobSelection", () => {
       await result.current.runBulkAction("skip");
     });
 
-    expect(api.streamBulkJobAction).not.toHaveBeenCalled();
+    expect(api.streamJobAction).not.toHaveBeenCalled();
   });
 
   it("reconciles failures with selection changes made during in-flight action", async () => {
@@ -262,7 +259,7 @@ describe("useBulkJobSelection", () => {
       await result.current.runBulkAction("rescore");
     });
 
-    expect(api.streamBulkJobAction).toHaveBeenCalledWith(
+    expect(api.streamJobAction).toHaveBeenCalledWith(
       { action: "rescore", jobIds: ["job-1", "job-2"] },
       expect.objectContaining({
         onEvent: expect.any(Function),

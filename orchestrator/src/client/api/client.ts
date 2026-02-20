@@ -9,13 +9,13 @@ import type {
   ApplicationTask,
   AppSettings,
   BackupInfo,
-  BulkJobActionRequest,
-  BulkJobActionResponse,
-  BulkJobActionStreamEvent,
   BulkPostApplicationAction,
   BulkPostApplicationActionResponse,
   DemoInfoResponse,
   Job,
+  JobActionRequest,
+  JobActionResponse,
+  JobActionStreamEvent,
   JobChatMessage,
   JobChatStreamEvent,
   JobChatThread,
@@ -84,7 +84,7 @@ type LegacyApiResponse<T> =
     };
 
 type StreamSseInput =
-  | BulkJobActionRequest
+  | JobActionRequest
   | { content: string; stream: true }
   | { stream: true };
 
@@ -734,20 +734,45 @@ export async function streamRegenerateJobGhostwriterMessage(
   );
 }
 
+function toJobIdList(idOrIds: string | string[]): string[] {
+  return Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+}
+
+export async function processJob(
+  ids: string[],
+  options?: { force?: boolean },
+): Promise<JobActionResponse>;
 export async function processJob(
   id: string,
   options?: { force?: boolean },
-): Promise<Job> {
-  const query = options?.force ? "?force=1" : "";
-  return fetchApi<Job>(`/jobs/${id}/process${query}`, {
-    method: "POST",
+): Promise<Job>;
+export async function processJob(
+  idOrIds: string | string[],
+  options?: { force?: boolean },
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "move_to_ready",
+    jobIds,
+    ...(options?.force ? { options: { force: true } } : {}),
   });
+
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
 }
 
-export async function rescoreJob(id: string): Promise<Job> {
-  return fetchApi<Job>(`/jobs/${id}/rescore`, {
-    method: "POST",
+export async function rescoreJob(ids: string[]): Promise<JobActionResponse>;
+export async function rescoreJob(id: string): Promise<Job>;
+export async function rescoreJob(
+  idOrIds: string | string[],
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "rescore",
+    jobIds,
   });
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
 }
 
 export async function summarizeJob(
@@ -778,30 +803,54 @@ export async function markAsApplied(id: string): Promise<Job> {
   });
 }
 
-export async function skipJob(id: string): Promise<Job> {
-  return fetchApi<Job>(`/jobs/${id}/skip`, {
-    method: "POST",
+export async function skipJob(ids: string[]): Promise<JobActionResponse>;
+export async function skipJob(id: string): Promise<Job>;
+export async function skipJob(
+  idOrIds: string | string[],
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "skip",
+    jobIds,
   });
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
 }
 
-export async function bulkJobAction(
-  input: BulkJobActionRequest,
-): Promise<BulkJobActionResponse> {
-  return fetchApi<BulkJobActionResponse>("/jobs/bulk-actions", {
+export async function runJobAction(
+  input: JobActionRequest,
+): Promise<JobActionResponse> {
+  return fetchApi<JobActionResponse>("/jobs/actions", {
     method: "POST",
     body: JSON.stringify(input),
   });
 }
 
-export async function streamBulkJobAction(
-  input: BulkJobActionRequest,
+function getSingleJobFromActionResult(
+  response: JobActionResponse,
+  jobId: string,
+): Job {
+  const result = response.results.find((entry) => entry.jobId === jobId);
+  if (!result) {
+    throw new ApiClientError("Bulk action did not return a result for the job");
+  }
+  if (!result.ok) {
+    throw new ApiClientError(result.error.message, {
+      code: result.error.code,
+    });
+  }
+  return result.job;
+}
+
+export async function streamJobAction(
+  input: JobActionRequest,
   handlers: {
-    onEvent: (event: BulkJobActionStreamEvent) => void;
+    onEvent: (event: JobActionStreamEvent) => void;
     signal?: AbortSignal;
   },
 ): Promise<void> {
-  return streamSseEvents<BulkJobActionStreamEvent>(
-    "/jobs/bulk-actions/stream",
+  return streamSseEvents<JobActionStreamEvent>(
+    "/jobs/actions/stream",
     input,
     handlers,
   );

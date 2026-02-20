@@ -1,4 +1,4 @@
-import type { BulkJobActionResponse, JobListItem } from "@shared/types";
+import type { JobActionResponse, JobListItem } from "@shared/types";
 
 const SKIPPABLE_STATUSES = new Set(["discovered", "ready"]);
 
@@ -16,7 +16,7 @@ export function canBulkRescore(jobs: JobListItem[]): boolean {
   return jobs.length > 0 && jobs.every((job) => job.status !== "processing");
 }
 
-export function getFailedJobIds(response: BulkJobActionResponse): Set<string> {
+export function getFailedJobIds(response: JobActionResponse): Set<string> {
   const failedIds = response.results
     .filter((result) => !result.ok)
     .map((result) => result.jobId);

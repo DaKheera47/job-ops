@@ -1,5 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
-import type { BulkJobActionResponse } from "@shared/types.js";
+import type { JobActionResponse } from "@shared/types.js";
 import { describe, expect, it } from "vitest";
 import {
   canBulkMoveToReady,
@@ -48,7 +48,7 @@ describe("bulkActions", () => {
   });
 
   it("extracts failed job ids from a bulk response", () => {
-    const response: BulkJobActionResponse = {
+    const response: JobActionResponse = {
       action: "skip",
       requested: 3,
       succeeded: 1,

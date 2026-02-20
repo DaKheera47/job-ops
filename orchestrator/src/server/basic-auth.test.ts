@@ -67,8 +67,10 @@ describe.sequential("Basic Auth read-only enforcement", () => {
 
     ({ server, baseUrl } = await startServer());
 
-    const postRes = await fetch(`${baseUrl}/api/jobs/123/skip`, {
+    const postRes = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
     });
     expect(postRes.status).toBe(401);
     expect(postRes.headers.get("www-authenticate")).toBeNull();
@@ -93,9 +95,13 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     ({ server, baseUrl } = await startServer());
 
     const authHeader = buildAuthHeader("user", "pass");
-    const res = await fetch(`${baseUrl}/api/jobs/123/skip`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { Authorization: authHeader },
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
     });
 
     expect(res.status).not.toBe(401);
@@ -107,7 +113,11 @@ describe.sequential("Basic Auth read-only enforcement", () => {
 
     ({ server, baseUrl } = await startServer());
 
-    const res = await fetch(`${baseUrl}/api/jobs/123/skip`, { method: "POST" });
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
+    });
     expect(res.status).not.toBe(401);
   });
 });

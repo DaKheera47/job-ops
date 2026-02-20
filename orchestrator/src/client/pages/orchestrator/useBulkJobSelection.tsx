@@ -1,6 +1,6 @@
 import type {
-  BulkJobAction,
-  BulkJobActionResponse,
+  JobAction,
+  JobActionResponse,
   JobListItem,
 } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,13 +18,13 @@ import { clampNumber } from "./utils";
 
 const MAX_BULK_ACTION_JOB_IDS = 100;
 
-const bulkActionLabel: Record<BulkJobAction, string> = {
+const bulkActionLabel: Record<JobAction, string> = {
   move_to_ready: "Moving jobs to Ready...",
   skip: "Skipping selected jobs...",
   rescore: "Calculating match scores...",
 };
 
-const bulkActionSuccessLabel: Record<BulkJobAction, string> = {
+const bulkActionSuccessLabel: Record<JobAction, string> = {
   move_to_ready: "jobs moved to Ready",
   skip: "jobs skipped",
   rescore: "matches recalculated",
@@ -45,7 +45,7 @@ export function useBulkJobSelection({
     () => new Set(),
   );
   const [bulkActionInFlight, setBulkActionInFlight] =
-    useState<null | BulkJobAction>(null);
+    useState<null | JobAction>(null);
   const previousActiveTabRef = useRef<FilterTab>(activeTab);
 
   const selectedJobs = useMemo(
@@ -117,7 +117,7 @@ export function useBulkJobSelection({
   }, []);
 
   const runBulkAction = useCallback(
-    async (action: BulkJobAction) => {
+    async (action: JobAction) => {
       const selectedAtStart = Array.from(selectedJobIds);
       if (selectedAtStart.length === 0) return;
       if (selectedAtStart.length > MAX_BULK_ACTION_JOB_IDS) {
@@ -129,7 +129,7 @@ export function useBulkJobSelection({
 
       const selectedAtStartSet = new Set(selectedAtStart);
       let progressToastId: string | number | undefined;
-      let finalResult: BulkJobActionResponse | null = null;
+      let finalResult: JobActionResponse | null = null;
       let streamError: string | null = null;
       let latestProgress = {
         requested: selectedAtStart.length,
@@ -166,7 +166,7 @@ export function useBulkJobSelection({
       try {
         setBulkActionInFlight(action);
         upsertProgressToast();
-        await api.streamBulkJobAction(
+        await api.streamJobAction(
           {
             action,
             jobIds: selectedAtStart,
@@ -226,7 +226,7 @@ export function useBulkJobSelection({
           throw new Error("Bulk action stream ended before completion");
         }
 
-        const result = finalResult as BulkJobActionResponse;
+        const result = finalResult as JobActionResponse;
         const failedIds = getFailedJobIds(result);
         const successLabel = bulkActionSuccessLabel[action];
 

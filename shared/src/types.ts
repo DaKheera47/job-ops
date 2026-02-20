@@ -693,14 +693,22 @@ export interface JobsRevisionResponse {
   statusFilter: string | null;
 }
 
-export type BulkJobAction = "skip" | "move_to_ready" | "rescore";
+export type JobAction = "skip" | "move_to_ready" | "rescore";
 
-export interface BulkJobActionRequest {
-  action: BulkJobAction;
-  jobIds: string[];
-}
+export type JobActionRequest =
+  | {
+      action: "skip" | "rescore";
+      jobIds: string[];
+    }
+  | {
+      action: "move_to_ready";
+      jobIds: string[];
+      options?: {
+        force?: boolean;
+      };
+    };
 
-export type BulkJobActionResult =
+export type JobActionResult =
   | {
       jobId: string;
       ok: true;
@@ -715,18 +723,18 @@ export type BulkJobActionResult =
       };
     };
 
-export interface BulkJobActionResponse {
-  action: BulkJobAction;
+export interface JobActionResponse {
+  action: JobAction;
   requested: number;
   succeeded: number;
   failed: number;
-  results: BulkJobActionResult[];
+  results: JobActionResult[];
 }
 
-export type BulkJobActionStreamEvent =
+export type JobActionStreamEvent =
   | {
       type: "started";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
@@ -735,22 +743,22 @@ export type BulkJobActionStreamEvent =
     }
   | {
       type: "progress";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
       failed: number;
-      result: BulkJobActionResult;
+      result: JobActionResult;
       requestId: string;
     }
   | {
       type: "completed";
-      action: BulkJobAction;
+      action: JobAction;
       requested: number;
       completed: number;
       succeeded: number;
       failed: number;
-      results: BulkJobActionResult[];
+      results: JobActionResult[];
       requestId: string;
     }
   | {
@@ -759,6 +767,13 @@ export type BulkJobActionStreamEvent =
       message: string;
       requestId: string;
     };
+
+// Backward-compatible aliases for existing callsites.
+export type BulkJobAction = JobAction;
+export type BulkJobActionRequest = JobActionRequest;
+export type BulkJobActionResult = JobActionResult;
+export type BulkJobActionResponse = JobActionResponse;
+export type BulkJobActionStreamEvent = JobActionStreamEvent;
 
 export const JOB_CHAT_MESSAGE_ROLES = [
   "system",

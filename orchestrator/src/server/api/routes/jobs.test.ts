@@ -396,11 +396,15 @@ describe.sequential("Jobs API routes", () => {
     expect(patchBody.data.suitabilityScore).toBe(77);
     expect(typeof patchBody.meta.requestId).toBe("string");
 
-    const skipRes = await fetch(`${baseUrl}/api/jobs/${job.id}/skip`, {
+    const skipRes = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "skip", jobIds: [job.id] }),
     });
     const skipBody = await skipRes.json();
-    expect(skipBody.data.status).toBe("skipped");
+    expect(skipBody.data.results).toHaveLength(1);
+    expect(skipBody.data.results[0].ok).toBe(true);
+    expect(skipBody.data.results[0].job.status).toBe("skipped");
 
     const deleteRes = await fetch(`${baseUrl}/api/jobs/status/skipped`, {
       method: "DELETE",
@@ -436,7 +440,7 @@ describe.sequential("Jobs API routes", () => {
     await updateJob(ready.id, { status: "ready" });
     await updateJob(applied.id, { status: "applied" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -479,7 +483,7 @@ describe.sequential("Jobs API routes", () => {
     await updateJob(ready.id, { status: "ready" });
     const { processJob } = await import("../../pipeline/index");
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -492,7 +496,9 @@ describe.sequential("Jobs API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.succeeded).toBe(1);
     expect(body.data.failed).toBe(1);
-    expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id);
+    expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id, {
+      force: false,
+    });
     expect(
       body.data.results.find((r: any) => r.jobId === ready.id).error.code,
     ).toBe("INVALID_REQUEST");
@@ -533,7 +539,7 @@ describe.sequential("Jobs API routes", () => {
     await updateJob(ready.id, { status: "ready" });
     await updateJob(processing.id, { status: "processing" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -592,7 +598,7 @@ describe.sequential("Jobs API routes", () => {
     await updateJob(ready.id, { status: "ready" });
     await updateJob(applied.id, { status: "applied" });
 
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions/stream`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions/stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -660,7 +666,7 @@ describe.sequential("Jobs API routes", () => {
       { length: 101 },
       (_, index) => `job-${index}`,
     );
-    const res = await fetch(`${baseUrl}/api/jobs/bulk-actions`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -719,14 +725,18 @@ describe.sequential("Jobs API routes", () => {
       suitabilityReason: "Old fit",
     });
 
-    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/rescore`, {
+    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rescore", jobIds: [job.id] }),
     });
     const body = await res.json();
 
     expect(body.ok).toBe(true);
-    expect(body.data.suitabilityScore).toBe(77);
-    expect(body.data.suitabilityReason).toBe("Updated fit");
+    expect(body.data.results).toHaveLength(1);
+    expect(body.data.results[0].ok).toBe(true);
+    expect(body.data.results[0].job.suitabilityScore).toBe(77);
+    expect(body.data.results[0].job.suitabilityReason).toBe("Updated fit");
   });
 
   it("deletes jobs below a score threshold (excluding applied)", async () => {
