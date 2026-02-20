@@ -28,6 +28,7 @@ import {
 import { ChartContainer } from "@/components/ui/chart";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { ChartKpiPanel } from "./ChartKpiPanel";
 
 type JobForSourceChart = {
   id: string;
@@ -162,19 +163,11 @@ export function ResponseRateBySourceChart({
             % of applications that got a response (not rejected or ghosted).
           </CardDescription>
         </div>
-        <div className="flex flex-row items-center justify-between gap-4 border-t px-6 py-3 sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
-          <span className="text-xs text-muted-foreground">
-            Overall Response Rate
-          </span>
-          <div className="flex flex-col items-end gap-0.5 sm:items-start">
-            <span className="text-xl font-bold leading-none sm:text-3xl">
-              {overallRate.toFixed(1)}%
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {totalResponded} of {totalApplied}
-            </span>
-          </div>
-        </div>
+        <ChartKpiPanel
+          label="Response Rate"
+          rate={overallRate}
+          subtext={`${totalResponded} of ${totalApplied} applications`}
+        />
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         {error ? (

@@ -4,7 +4,6 @@
  */
 
 import type { StageEvent } from "@shared/types.js";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import {
   Bar,
@@ -27,6 +26,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { ChartKpiPanel } from "./ChartKpiPanel";
 
 type FunnelStage = {
   name: string;
@@ -293,27 +293,11 @@ export function ConversionAnalytics({
             How many applications received a positive response from the company.
           </CardDescription>
         </div>
-        <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
-              Conversion Rate
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold leading-none sm:text-3xl">
-                {overallConversion.rate.toFixed(1)}%
-              </span>
-              {overallConversion.rate < 10 ? (
-                <TrendingDown className="h-4 w-4 text-destructive" />
-              ) : overallConversion.rate > 25 ? (
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-              ) : null}
-            </div>
-            <span className="text-xs text-muted-foreground">
-              {overallConversion.converted} of {overallConversion.total}{" "}
-              applications
-            </span>
-          </div>
-        </div>
+        <ChartKpiPanel
+          label="Conversion Rate"
+          rate={overallConversion.rate}
+          subtext={`${overallConversion.converted} of ${overallConversion.total} applications`}
+        />
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         {error ? (
