@@ -297,7 +297,9 @@ type JobActionExecutionOptions = {
   forceMoveToReady?: boolean;
 };
 
-function createBulkProfileLoader(): () => Promise<Record<string, unknown>> {
+function createSharedRescoreProfileLoader(): () => Promise<
+  Record<string, unknown>
+> {
   let profilePromise: Promise<Record<string, unknown>> | null = null;
 
   return async () => {
@@ -571,7 +573,7 @@ jobsRouter.post("/actions", async (req: Request, res: Response) => {
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
     const executionOptions: JobActionExecutionOptions = {
       ...(parsed.action === "rescore" && !isDemoMode()
-        ? { getProfileForRescore: createBulkProfileLoader() }
+        ? { getProfileForRescore: createSharedRescoreProfileLoader() }
         : {}),
       ...(parsed.action === "move_to_ready" &&
       parsed.options?.force !== undefined
@@ -646,7 +648,7 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
   const action = parsed.data.action;
   const executionOptions: JobActionExecutionOptions = {
     ...(action === "rescore" && !isDemoMode()
-      ? { getProfileForRescore: createBulkProfileLoader() }
+      ? { getProfileForRescore: createSharedRescoreProfileLoader() }
       : {}),
     ...(action === "move_to_ready" && parsed.data.options?.force !== undefined
       ? { forceMoveToReady: parsed.data.options.force }

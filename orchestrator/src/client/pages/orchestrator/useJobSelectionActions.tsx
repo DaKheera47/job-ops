@@ -6,46 +6,47 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import * as api from "../../api";
-import { BulkActionProgressToast } from "./BulkActionProgressToast";
-import {
-  canBulkMoveToReady,
-  canBulkRescore,
-  canBulkSkip,
-  getFailedJobIds,
-} from "./bulkActions";
 import type { FilterTab } from "./constants";
+import { JobActionProgressToast } from "./JobActionProgressToast";
+import {
+  canMoveToReady,
+  canRescore,
+  canSkip,
+  getFailedJobIds,
+} from "./jobActions";
 import { clampNumber } from "./utils";
 
-const MAX_BULK_ACTION_JOB_IDS = 100;
+const MAX_JOB_ACTION_JOB_IDS = 100;
 
-const bulkActionLabel: Record<JobAction, string> = {
+const jobActionLabel: Record<JobAction, string> = {
   move_to_ready: "Moving jobs to Ready...",
   skip: "Skipping selected jobs...",
   rescore: "Calculating match scores...",
 };
 
-const bulkActionSuccessLabel: Record<JobAction, string> = {
+const jobActionSuccessLabel: Record<JobAction, string> = {
   move_to_ready: "jobs moved to Ready",
   skip: "jobs skipped",
   rescore: "matches recalculated",
 };
 
-interface UseBulkJobSelectionArgs {
+interface UseJobSelectionActionsArgs {
   activeJobs: JobListItem[];
   activeTab: FilterTab;
   loadJobs: () => Promise<void>;
 }
 
-export function useBulkJobSelection({
+export function useJobSelectionActions({
   activeJobs,
   activeTab,
   loadJobs,
-}: UseBulkJobSelectionArgs) {
+}: UseJobSelectionActionsArgs) {
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [bulkActionInFlight, setBulkActionInFlight] =
-    useState<null | JobAction>(null);
+  const [jobActionInFlight, setJobActionInFlight] = useState<null | JobAction>(
+    null,
+  );
   const previousActiveTabRef = useRef<FilterTab>(activeTab);
 
   const selectedJobs = useMemo(
@@ -53,16 +54,13 @@ export function useBulkJobSelection({
     [activeJobs, selectedJobIds],
   );
 
-  const canSkipSelected = useMemo(
-    () => canBulkSkip(selectedJobs),
-    [selectedJobs],
-  );
+  const canSkipSelected = useMemo(() => canSkip(selectedJobs), [selectedJobs]);
   const canMoveSelected = useMemo(
-    () => canBulkMoveToReady(selectedJobs),
+    () => canMoveToReady(selectedJobs),
     [selectedJobs],
   );
   const canRescoreSelected = useMemo(
-    () => canBulkRescore(selectedJobs),
+    () => canRescore(selectedJobs),
     [selectedJobs],
   );
 
@@ -100,13 +98,13 @@ export function useBulkJobSelection({
       setSelectedJobIds(() => {
         if (!checked) return new Set();
         const allIds = activeJobs.map((job) => job.id);
-        if (allIds.length <= MAX_BULK_ACTION_JOB_IDS) {
+        if (allIds.length <= MAX_JOB_ACTION_JOB_IDS) {
           return new Set(allIds);
         }
         toast.error(
-          `Select all is limited to ${MAX_BULK_ACTION_JOB_IDS} jobs per action.`,
+          `Select all is limited to ${MAX_JOB_ACTION_JOB_IDS} jobs per action.`,
         );
-        return new Set(allIds.slice(0, MAX_BULK_ACTION_JOB_IDS));
+        return new Set(allIds.slice(0, MAX_JOB_ACTION_JOB_IDS));
       });
     },
     [activeJobs],
@@ -116,13 +114,13 @@ export function useBulkJobSelection({
     setSelectedJobIds(new Set());
   }, []);
 
-  const runBulkAction = useCallback(
+  const runJobAction = useCallback(
     async (action: JobAction) => {
       const selectedAtStart = Array.from(selectedJobIds);
       if (selectedAtStart.length === 0) return;
-      if (selectedAtStart.length > MAX_BULK_ACTION_JOB_IDS) {
+      if (selectedAtStart.length > MAX_JOB_ACTION_JOB_IDS) {
         toast.error(
-          `You can run bulk actions on up to ${MAX_BULK_ACTION_JOB_IDS} jobs at a time.`,
+          `You can run job actions on up to ${MAX_JOB_ACTION_JOB_IDS} jobs at a time.`,
         );
         return;
       }
@@ -145,13 +143,13 @@ export function useBulkJobSelection({
           0,
           safeRequested,
         );
-        return `${safeCompleted}/${safeRequested} ${bulkActionLabel[action]}`;
+        return `${safeCompleted}/${safeRequested} ${jobActionLabel[action]}`;
       };
 
       const upsertProgressToast = () => {
         progressToastId = toast.loading(getProgressTitle(), {
           description: (
-            <BulkActionProgressToast
+            <JobActionProgressToast
               requested={latestProgress.requested}
               completed={latestProgress.completed}
               succeeded={latestProgress.succeeded}
@@ -164,7 +162,7 @@ export function useBulkJobSelection({
       };
 
       try {
-        setBulkActionInFlight(action);
+        setJobActionInFlight(action);
         upsertProgressToast();
         await api.streamJobAction(
           {
@@ -174,7 +172,7 @@ export function useBulkJobSelection({
           {
             onEvent: (event) => {
               if (event.type === "error") {
-                streamError = event.message || "Failed to run bulk action";
+                streamError = event.message || "Failed to run job action";
                 return;
               }
 
@@ -223,12 +221,12 @@ export function useBulkJobSelection({
         }
 
         if (!finalResult) {
-          throw new Error("Bulk action stream ended before completion");
+          throw new Error("Job action stream ended before completion");
         }
 
         const result = finalResult as JobActionResponse;
         const failedIds = getFailedJobIds(result);
-        const successLabel = bulkActionSuccessLabel[action];
+        const successLabel = jobActionSuccessLabel[action];
 
         if (result.failed === 0) {
           toast.success(`${result.succeeded} ${successLabel}`);
@@ -255,13 +253,13 @@ export function useBulkJobSelection({
         });
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Failed to run bulk action";
+          error instanceof Error ? error.message : "Failed to run job action";
         toast.error(message);
       } finally {
         if (progressToastId !== undefined) {
           toast.dismiss(progressToastId);
         }
-        setBulkActionInFlight(null);
+        setJobActionInFlight(null);
       }
     },
     [selectedJobIds, loadJobs],
@@ -272,10 +270,10 @@ export function useBulkJobSelection({
     canSkipSelected,
     canMoveSelected,
     canRescoreSelected,
-    bulkActionInFlight,
+    jobActionInFlight,
     toggleSelectJob,
     toggleSelectAll,
     clearSelection,
-    runBulkAction,
+    runJobAction,
   };
 }

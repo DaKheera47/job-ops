@@ -164,16 +164,7 @@ export async function getAllJobUrls(): Promise<string[]> {
   return rows.map((r) => r.jobUrl);
 }
 
-/**
- * Create a new job (or return existing if URL matches).
- */
-export async function createJob(input: CreateJobInput): Promise<Job> {
-  // Check for existing job with same URL
-  const existing = await getJobByUrl(input.jobUrl);
-  if (existing) {
-    return existing;
-  }
-
+async function insertJob(input: CreateJobInput): Promise<Job> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -233,6 +224,44 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
 }
 
 /**
+ * Create jobs (or return existing jobs for duplicate URLs).
+ */
+export async function createJobs(input: CreateJobInput): Promise<Job>;
+export async function createJobs(
+  inputs: CreateJobInput[],
+): Promise<{ created: number; skipped: number }>;
+export async function createJobs(
+  inputOrInputs: CreateJobInput | CreateJobInput[],
+): Promise<Job | { created: number; skipped: number }> {
+  if (!Array.isArray(inputOrInputs)) {
+    const existing = await getJobByUrl(inputOrInputs.jobUrl);
+    if (existing) return existing;
+    return insertJob(inputOrInputs);
+  }
+
+  let created = 0;
+  let skipped = 0;
+  for (const input of inputOrInputs) {
+    const existing = await getJobByUrl(input.jobUrl);
+    if (existing) {
+      skipped++;
+      continue;
+    }
+    await insertJob(input);
+    created++;
+  }
+
+  return { created, skipped };
+}
+
+/**
+ * Create a single job (or return existing if URL matches).
+ */
+export async function createJob(input: CreateJobInput): Promise<Job> {
+  return createJobs(input);
+}
+
+/**
  * Update a job.
  */
 export async function updateJob(
@@ -254,29 +283,6 @@ export async function updateJob(
     .where(eq(jobs.id, id));
 
   return getJobById(id);
-}
-
-/**
- * Bulk create jobs from crawler results.
- */
-export async function bulkCreateJobs(
-  inputs: CreateJobInput[],
-): Promise<{ created: number; skipped: number }> {
-  let created = 0;
-  let skipped = 0;
-
-  for (const input of inputs) {
-    const existing = await getJobByUrl(input.jobUrl);
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
-    await createJob(input);
-    created++;
-  }
-
-  return { created, skipped };
 }
 
 /**

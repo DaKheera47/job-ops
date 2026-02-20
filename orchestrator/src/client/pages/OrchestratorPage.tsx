@@ -21,7 +21,7 @@ import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import { deriveExtractorLimits } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
 import { tabs } from "./orchestrator/constants";
-import { FloatingBulkActionsBar } from "./orchestrator/FloatingBulkActionsBar";
+import { FloatingJobActionsBar } from "./orchestrator/FloatingJobActionsBar";
 import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
@@ -30,8 +30,8 @@ import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
 import { RunModeModal } from "./orchestrator/RunModeModal";
 import type { RunMode } from "./orchestrator/run-mode";
-import { useBulkJobSelection } from "./orchestrator/useBulkJobSelection";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
+import { useJobSelectionActions } from "./orchestrator/useJobSelectionActions";
 import { useOrchestratorData } from "./orchestrator/useOrchestratorData";
 import { useOrchestratorFilters } from "./orchestrator/useOrchestratorFilters";
 import { usePipelineSources } from "./orchestrator/usePipelineSources";
@@ -179,12 +179,12 @@ export const OrchestratorPage: React.FC = () => {
     canSkipSelected,
     canMoveSelected,
     canRescoreSelected,
-    bulkActionInFlight,
+    jobActionInFlight,
     toggleSelectJob,
     toggleSelectAll,
     clearSelection,
-    runBulkAction,
-  } = useBulkJobSelection({
+    runJobAction,
+  } = useJobSelectionActions({
     activeJobs,
     activeTab,
     loadJobs,
@@ -456,7 +456,7 @@ export const OrchestratorPage: React.FC = () => {
 
         // Bulk action takes precedence if selection exists
         if (selectedJobIds.size > 0) {
-          void runBulkAction("move_to_ready");
+          void runJobAction("move_to_ready");
           return;
         }
 
@@ -713,15 +713,15 @@ export const OrchestratorPage: React.FC = () => {
         </section>
       </main>
 
-      <FloatingBulkActionsBar
+      <FloatingJobActionsBar
         selectedCount={selectedJobIds.size}
         canMoveSelected={canMoveSelected}
         canSkipSelected={canSkipSelected}
         canRescoreSelected={canRescoreSelected}
-        bulkActionInFlight={bulkActionInFlight !== null}
-        onMoveToReady={() => void runBulkAction("move_to_ready")}
-        onSkipSelected={() => void runBulkAction("skip")}
-        onRescoreSelected={() => void runBulkAction("rescore")}
+        jobActionInFlight={jobActionInFlight !== null}
+        onMoveToReady={() => void runJobAction("move_to_ready")}
+        onSkipSelected={() => void runJobAction("skip")}
+        onRescoreSelected={() => void runJobAction("rescore")}
         onClear={clearSelection}
       />
 

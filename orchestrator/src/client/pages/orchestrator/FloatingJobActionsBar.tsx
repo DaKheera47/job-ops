@@ -3,24 +3,24 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface FloatingBulkActionsBarProps {
+interface FloatingJobActionsBarProps {
   selectedCount: number;
   canMoveSelected: boolean;
   canSkipSelected: boolean;
   canRescoreSelected: boolean;
-  bulkActionInFlight: boolean;
+  jobActionInFlight: boolean;
   onMoveToReady: () => void;
   onSkipSelected: () => void;
   onRescoreSelected: () => void;
   onClear: () => void;
 }
 
-export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
+export const FloatingJobActionsBar: React.FC<FloatingJobActionsBarProps> = ({
   selectedCount,
   canMoveSelected,
   canSkipSelected,
   canRescoreSelected,
-  bulkActionInFlight,
+  jobActionInFlight,
   onMoveToReady,
   onSkipSelected,
   onRescoreSelected,
@@ -62,7 +62,7 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
               size="sm"
               variant="outline"
               className="w-full sm:w-auto"
-              disabled={bulkActionInFlight}
+              disabled={jobActionInFlight}
               onClick={onMoveToReady}
             >
               Move to Ready
@@ -74,7 +74,7 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
               size="sm"
               variant="outline"
               className="w-full sm:w-auto"
-              disabled={bulkActionInFlight}
+              disabled={jobActionInFlight}
               onClick={onSkipSelected}
             >
               Skip selected
@@ -86,7 +86,7 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
               size="sm"
               variant="outline"
               className="w-full sm:w-auto"
-              disabled={bulkActionInFlight}
+              disabled={jobActionInFlight}
               onClick={onRescoreSelected}
             >
               Recalculate match
@@ -98,7 +98,7 @@ export const FloatingBulkActionsBar: React.FC<FloatingBulkActionsBarProps> = ({
             variant="ghost"
             className="w-full sm:w-auto"
             onClick={onClear}
-            disabled={bulkActionInFlight}
+            disabled={jobActionInFlight}
           >
             Clear
           </Button>

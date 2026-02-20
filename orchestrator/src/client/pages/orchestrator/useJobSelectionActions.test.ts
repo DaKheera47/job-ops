@@ -4,7 +4,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../../api";
-import { useBulkJobSelection } from "./useBulkJobSelection";
+import { useJobSelectionActions } from "./useJobSelectionActions";
 
 vi.mock("../../api", () => ({
   streamJobAction: vi.fn(),
@@ -79,7 +79,7 @@ const asStreamEvents = (
   return events;
 };
 
-const mockStreamBulkAction = (
+const mockStreamJobAction = (
   response: JobActionResponse,
   waitForRelease?: Promise<void>,
 ) => {
@@ -97,10 +97,10 @@ const mockStreamBulkAction = (
   );
 };
 
-describe("useBulkJobSelection", () => {
+describe("useJobSelectionActions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(toast.loading).mockReturnValue("bulk-progress-toast");
+    vi.mocked(toast.loading).mockReturnValue("job-progress-toast");
   });
 
   it("caps select-all to the API max", () => {
@@ -109,7 +109,7 @@ describe("useBulkJobSelection", () => {
     );
     const loadJobs = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useBulkJobSelection({
+      useJobSelectionActions({
         activeJobs,
         activeTab: "discovered",
         loadJobs,
@@ -129,7 +129,7 @@ describe("useBulkJobSelection", () => {
     );
     const loadJobs = vi.fn().mockResolvedValue(undefined);
     const { result } = renderHook(() =>
-      useBulkJobSelection({
+      useJobSelectionActions({
         activeJobs,
         activeTab: "discovered",
         loadJobs,
@@ -143,7 +143,7 @@ describe("useBulkJobSelection", () => {
     });
 
     await act(async () => {
-      await result.current.runBulkAction("skip");
+      await result.current.runJobAction("skip");
     });
 
     expect(api.streamJobAction).not.toHaveBeenCalled();
@@ -157,7 +157,7 @@ describe("useBulkJobSelection", () => {
     ];
     const loadJobs = vi.fn().mockResolvedValue(undefined);
     const release = deferred<void>();
-    mockStreamBulkAction(
+    mockStreamJobAction(
       {
         action: "skip",
         requested: 2,
@@ -180,7 +180,7 @@ describe("useBulkJobSelection", () => {
     );
 
     const { result } = renderHook(() =>
-      useBulkJobSelection({
+      useJobSelectionActions({
         activeJobs,
         activeTab: "discovered",
         loadJobs,
@@ -194,7 +194,7 @@ describe("useBulkJobSelection", () => {
 
     let runPromise: Promise<void>;
     await act(async () => {
-      runPromise = result.current.runBulkAction("skip");
+      runPromise = result.current.runJobAction("skip");
     });
 
     expect(toast.loading).toHaveBeenCalled();
@@ -217,13 +217,13 @@ describe("useBulkJobSelection", () => {
     expect(toast.dismiss).toHaveBeenCalled();
   });
 
-  it("runs bulk rescore and reports success copy", async () => {
+  it("runs rescore and reports success copy", async () => {
     const activeJobs = [
       createJob({ id: "job-1", status: "ready" }),
       createJob({ id: "job-2", status: "ready" }),
     ];
     const loadJobs = vi.fn().mockResolvedValue(undefined);
-    mockStreamBulkAction({
+    mockStreamJobAction({
       action: "rescore",
       requested: 2,
       succeeded: 2,
@@ -243,7 +243,7 @@ describe("useBulkJobSelection", () => {
     });
 
     const { result } = renderHook(() =>
-      useBulkJobSelection({
+      useJobSelectionActions({
         activeJobs,
         activeTab: "ready",
         loadJobs,
@@ -256,7 +256,7 @@ describe("useBulkJobSelection", () => {
     });
 
     await act(async () => {
-      await result.current.runBulkAction("rescore");
+      await result.current.runJobAction("rescore");
     });
 
     expect(api.streamJobAction).toHaveBeenCalledWith(
