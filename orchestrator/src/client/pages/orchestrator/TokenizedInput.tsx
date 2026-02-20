@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type React from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ function mergeUnique(values: string[], nextValues: string[]): string[] {
   return out;
 }
 
+const REMOVE_ANIMATION_MS = 150;
+
 export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   id,
   values,
@@ -45,6 +47,8 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const tokensRef = useRef<HTMLDivElement | null>(null);
   const [tokensHeight, setTokensHeight] = useState(20);
+  const [exitingValues, setExitingValues] = useState<string[]>([]);
+  const valuesRef = useRef(values);
 
   const collapsedSummary = useMemo(() => {
     if (values.length === 0) return "";
@@ -62,6 +66,28 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (parsed.length === 0) return;
     onValuesChange(mergeUnique(values, parsed));
   };
+
+  const removeValueWithAnimation = (value: string) => {
+    setExitingValues((current) => {
+      if (current.includes(value)) return current;
+      return [...current, value];
+    });
+
+    window.setTimeout(() => {
+      const latestValues = valuesRef.current;
+      onValuesChange(latestValues.filter((existing) => existing !== value));
+      setExitingValues((current) =>
+        current.filter((existing) => existing !== value),
+      );
+    }, REMOVE_ANIMATION_MS);
+  };
+
+  useEffect(() => {
+    valuesRef.current = values;
+    setExitingValues((current) =>
+      current.filter((value) => values.includes(value)),
+    );
+  }, [values]);
 
   useLayoutEffect(() => {
     const node = tokensRef.current;
@@ -132,12 +158,15 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                 type="button"
                 key={value}
                 variant="outline"
-                className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto animate-in fade-in zoom-in-95 slide-in-from-top-1"
+                className={cn(
+                  "rounded-full text-xs px-2 text-muted-foreground py-1 h-auto",
+                  exitingValues.includes(value)
+                    ? "pointer-events-none animate-out fade-out zoom-out-95 slide-out-to-top-1"
+                    : "animate-in fade-in zoom-in-95 slide-in-from-top-1",
+                )}
                 aria-label={`${removeLabelPrefix} ${value}`}
                 onPointerDown={(event) => event.preventDefault()}
-                onClick={() =>
-                  onValuesChange(values.filter((existing) => existing !== value))
-                }
+                onClick={() => removeValueWithAnimation(value)}
               >
                 {value}
                 <X className="h-3 w-3" />
