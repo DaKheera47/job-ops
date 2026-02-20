@@ -132,7 +132,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                 type="button"
                 key={value}
                 variant="outline"
-                className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto"
+                className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto animate-in fade-in zoom-in-95 slide-in-from-top-1"
                 aria-label={`${removeLabelPrefix} ${value}`}
                 onPointerDown={(event) => event.preventDefault()}
                 onClick={() =>
