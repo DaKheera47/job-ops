@@ -422,7 +422,6 @@ export const progressHelpers = {
       step: "processing",
       message: `Processing job ${index}/${total}...`,
       detail: `${job.title} @ ${job.employer}`,
-      jobsProcessed: index - 1,
       totalToProcess: total,
       currentJob: job,
     }),
