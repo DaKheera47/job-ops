@@ -893,6 +893,7 @@ export async function runGmailIngestionSync(args: {
               messageType: existingMessage.messageType,
               stageEventPayload: existingMessage.stageEventPayload,
               processingStatus: existingMessage.processingStatus,
+              existingMessage,
             });
 
           if (savedMessage.processingStatus !== "ignored") {

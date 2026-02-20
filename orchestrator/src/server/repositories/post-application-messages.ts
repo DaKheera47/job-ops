@@ -44,6 +44,7 @@ type UpsertPostApplicationMessageInput = {
   decidedBy?: string | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  existingMessage?: PostApplicationMessage | null;
 };
 
 type UpdatePostApplicationMessageSuggestionInput = {
@@ -163,11 +164,13 @@ export async function upsertPostApplicationMessage(
     suggestedStageTarget: stageTarget,
   };
   const nowIso = new Date().toISOString();
-  const existing = await getPostApplicationMessageByExternalId(
-    input.provider,
-    input.accountKey,
-    input.externalMessageId,
-  );
+  const existing =
+    input.existingMessage ??
+    (await getPostApplicationMessageByExternalId(
+      input.provider,
+      input.accountKey,
+      input.externalMessageId,
+    ));
 
   if (existing) {
     const nextProcessingStatus = isTerminalProcessingStatus(
