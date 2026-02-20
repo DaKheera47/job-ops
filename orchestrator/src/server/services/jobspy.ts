@@ -159,6 +159,38 @@ export interface JobSpyResult {
   error?: string;
 }
 
+const LOCATION_ALIASES: Record<string, string> = {
+  uk: "united kingdom",
+  us: "united states",
+  usa: "united states",
+};
+
+function normalizeLocationToken(value: string | null | undefined): string {
+  const normalized = value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+  if (!normalized) return "";
+  return LOCATION_ALIASES[normalized] ?? normalized;
+}
+
+export function shouldApplyStrictLocationFilter(
+  location: string,
+  countryIndeed: string,
+): boolean {
+  const normalizedLocation = normalizeLocationToken(location);
+  const normalizedCountry = normalizeLocationToken(countryIndeed);
+  if (!normalizedLocation || !normalizedCountry) return false;
+  return normalizedLocation !== normalizedCountry;
+}
+
+export function matchesRequestedLocation(
+  jobLocation: string | undefined,
+  requestedLocation: string,
+): boolean {
+  const normalizedJobLocation = normalizeLocationToken(jobLocation);
+  const normalizedRequestedLocation = normalizeLocationToken(requestedLocation);
+  if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
+  return normalizedJobLocation.includes(normalizedRequestedLocation);
+}
+
 export async function runJobSpy(
   options: RunJobSpyOptions = {},
 ): Promise<JobSpyResult> {
@@ -172,6 +204,8 @@ export async function runJobSpy(
 
   const searchTerms = resolveSearchTerms(options);
   const locations = resolveLocations(options);
+  const countryIndeed =
+    options.countryIndeed ?? process.env.JOBSPY_COUNTRY_INDEED ?? "UK";
   if (searchTerms.length === 0) {
     return { success: true, jobs: [] };
   }
@@ -211,10 +245,7 @@ export async function runJobSpy(
               JOBSPY_HOURS_OLD: String(
                 options.hoursOld ?? process.env.JOBSPY_HOURS_OLD ?? 72,
               ),
-              JOBSPY_COUNTRY_INDEED:
-                options.countryIndeed ??
-                process.env.JOBSPY_COUNTRY_INDEED ??
-                "UK",
+              JOBSPY_COUNTRY_INDEED: countryIndeed,
               JOBSPY_LINKEDIN_FETCH_DESCRIPTION: String(
                 options.linkedinFetchDescription ??
                   process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION ??
@@ -259,8 +290,17 @@ export async function runJobSpy(
         const raw = await readFile(outputJson, "utf-8");
         const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
         const mapped = mapJobSpyRows(parsed);
+        const strictLocationFilter = shouldApplyStrictLocationFilter(
+          location,
+          countryIndeed,
+        );
+        const filtered = strictLocationFilter
+          ? mapped.filter((job) =>
+              matchesRequestedLocation(job.location, location),
+            )
+          : mapped;
 
-        for (const job of mapped) {
+        for (const job of filtered) {
           const url = job.jobUrl;
           if (seenJobUrls.has(url)) continue;
           seenJobUrls.add(url);
