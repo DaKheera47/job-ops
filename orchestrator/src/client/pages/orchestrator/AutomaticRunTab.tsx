@@ -479,15 +479,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   setValue("searchTermDraft", "");
                   return;
                 }
-                if (
-                  event.key === "Backspace" &&
-                  searchTermDraft.length === 0 &&
-                  searchTerms.length > 0
-                ) {
-                  setValue("searchTerms", searchTerms.slice(0, -1), {
-                    shouldDirty: true,
-                  });
-                }
               }}
               onBlur={() => {
                 addSearchTerms(searchTermDraft);

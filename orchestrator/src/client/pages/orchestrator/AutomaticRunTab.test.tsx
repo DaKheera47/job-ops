@@ -1,5 +1,5 @@
 import { createAppSettings } from "@shared/testing/factories.js";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
@@ -154,5 +154,34 @@ describe("AutomaticRunTab", () => {
     expect(glassdoorButton.getAttribute("title")).toContain(
       "Set a Glassdoor city in Advanced settings to enable Glassdoor.",
     );
+  });
+
+  it("does not remove existing search terms when Backspace is pressed on an empty input", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          searchTerms: ["backend engineer", "frontend engineer"],
+          jobspyCountryIndeed: "united kingdom",
+          jobspyLocation: "",
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const input = screen.getByPlaceholderText("Type and press Enter");
+    fireEvent.keyDown(input, { key: "Backspace" });
+
+    expect(
+      screen.getByRole("button", { name: "Remove backend engineer" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove frontend engineer" }),
+    ).toBeInTheDocument();
   });
 });
