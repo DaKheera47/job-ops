@@ -78,6 +78,13 @@ const GLASSDOOR_COUNTRY_REASON =
 const GLASSDOOR_LOCATION_REASON =
   "Add at least one city in Advanced settings to enable Glassdoor.";
 const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
+const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
+
+function normalizeUiCountryKey(value: string): string {
+  const normalized = normalizeCountryKey(value);
+  if (normalized === "usa/ca") return "united states";
+  return normalized;
+}
 
 function getSourceDisabledReason(
   source: JobSource,
@@ -178,7 +185,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       settings?.gradcrackerMaxJobsPerTerm ??
       settings?.ukvisajobsMaxJobs ??
       DEFAULT_VALUES.runBudget;
-    const rememberedCountry = normalizeCountryKey(
+    const rememberedCountry = normalizeUiCountryKey(
       settings?.jobspyCountryIndeed ??
         settings?.jobspyLocation ??
         DEFAULT_VALUES.country,
@@ -206,7 +213,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   }, [open, settings, reset]);
 
   const values = useMemo<AutomaticRunValues>(() => {
-    const normalizedCountry = normalizeCountryKey(countryInput);
+    const normalizedCountry = normalizeUiCountryKey(countryInput);
     return {
       topN: toNumber(topNInput, 1, 50, DEFAULT_VALUES.topN),
       minSuitabilityScore: toNumber(
@@ -312,7 +319,9 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
   const countryOptions = useMemo(
     () =>
-      SUPPORTED_COUNTRY_KEYS.map((country) => ({
+      SUPPORTED_COUNTRY_KEYS.filter(
+        (country) => !HIDDEN_COUNTRY_KEYS.has(country),
+      ).map((country) => ({
         value: country,
         label: formatCountryLabel(country),
       })),

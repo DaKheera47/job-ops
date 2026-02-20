@@ -41,6 +41,29 @@ describe("AutomaticRunTab", () => {
     ).toBeInTheDocument();
   });
 
+  it("maps legacy usa/ca country to United States in the picker", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          searchTerms: ["backend engineer"],
+          jobspyCountryIndeed: "usa/ca",
+          jobspyLocation: "",
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "United States" }),
+    ).toBeInTheDocument();
+  });
+
   it("disables and prunes UK-only sources for non-UK country", async () => {
     const onSetPipelineSources = vi.fn();
 
