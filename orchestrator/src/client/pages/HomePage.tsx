@@ -4,9 +4,10 @@ import {
   ConversionAnalytics,
   DurationSelector,
   type DurationValue,
+  ResponseRateBySourceChart,
 } from "@client/components/charts";
 import { PageHeader, PageMain } from "@client/components/layout";
-import type { StageEvent } from "@shared/types.js";
+import type { JobSource, StageEvent } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChartColumn } from "lucide-react";
 import type React from "react";
@@ -16,6 +17,7 @@ import { queryKeys } from "@/client/lib/queryKeys";
 
 type JobWithEvents = {
   id: string;
+  source: JobSource;
   datePosted: string | null;
   discoveredAt: string;
   appliedAt: string | null;
@@ -54,10 +56,10 @@ export const HomePage: React.FC = () => {
       const appliedDates = response.jobs.map((job) => job.appliedAt);
       const jobSummaries = response.jobs.map((job) => ({
         id: job.id,
+        source: job.source,
         datePosted: job.datePosted,
         discoveredAt: job.discoveredAt,
         appliedAt: job.appliedAt,
-        positiveResponse: false,
       }));
 
       const appliedJobs = jobSummaries.filter((job) => job.appliedAt);
@@ -151,6 +153,8 @@ export const HomePage: React.FC = () => {
           error={error}
           daysToShow={duration}
         />
+
+        <ResponseRateBySourceChart jobs={jobsWithEvents} error={error} />
       </PageMain>
     </>
   );
