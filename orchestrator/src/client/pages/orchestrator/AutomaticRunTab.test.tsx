@@ -198,6 +198,7 @@ describe("AutomaticRunTab", () => {
     );
 
     const input = screen.getByPlaceholderText("Type and press Enter");
+    fireEvent.focus(input);
     fireEvent.keyDown(input, { key: "Backspace" });
 
     expect(
@@ -227,6 +228,7 @@ describe("AutomaticRunTab", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
+    fireEvent.focus(screen.getByLabelText("Cities"));
 
     expect(
       screen.getByRole("button", { name: "Remove city London" }),

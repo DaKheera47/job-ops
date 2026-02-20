@@ -300,11 +300,12 @@ export const OrchestratorPage: React.FC = () => {
           source === "linkedin" ||
           source === "glassdoor",
       );
+      const hasAdzuna = compatibleSources.includes("adzuna");
       const serializedCities = serializeCityLocationsSetting(
         values.cityLocations,
       );
       const jobspyLocation =
-        hasJobSpySite && serializedCities
+        (hasJobSpySite || hasAdzuna) && serializedCities
           ? serializedCities
           : formatCountryLabel(values.country);
       await api.updateSettings({

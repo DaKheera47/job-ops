@@ -83,7 +83,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (summaryRef.current) observer.observe(summaryRef.current);
 
     return () => observer.disconnect();
-  }, [values, collapsedSummary, isFocused]);
+  }, []);
 
   return (
     <div className="space-y-3">

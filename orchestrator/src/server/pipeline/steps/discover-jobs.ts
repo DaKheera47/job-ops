@@ -30,6 +30,29 @@ type DiscoverySourceTask = {
   run: () => Promise<DiscoveryTaskResult>;
 };
 
+function parseLocationSettingValues(
+  location: string | null | undefined,
+): string[] {
+  const trimmed = location?.trim();
+  if (!trimmed) return [];
+  const split = trimmed.includes("|")
+    ? trimmed.split("|")
+    : trimmed.includes("\n")
+      ? trimmed.split("\n")
+      : [trimmed];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of split) {
+    const normalized = value.trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
+}
+
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
   shouldCancel?: () => boolean;
@@ -172,6 +195,8 @@ export async function discoverJobsStep(args: {
 
         const adzunaResult = await runAdzuna({
           country: adzunaCountryCode,
+          countryKey: selectedCountry,
+          locations: parseLocationSettingValues(settings.jobspyLocation),
           searchTerms,
           maxJobsPerTerm: adzunaMaxJobsPerTerm,
           onProgress: (event) => {

@@ -230,6 +230,37 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("passes configured city locations to adzuna", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const adzuna = await import("../../services/adzuna");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+      jobspyLocation: "Leeds|Manchester",
+    } as any);
+
+    vi.mocked(adzuna.runAdzuna).mockResolvedValue({
+      success: true,
+      jobs: [],
+    } as any);
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["adzuna"],
+      },
+    });
+
+    expect(vi.mocked(adzuna.runAdzuna)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "gb",
+        countryKey: "united kingdom",
+        locations: ["Leeds", "Manchester"],
+      }),
+    );
+  });
+
   it("skips adzuna for unsupported countries", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const adzuna = await import("../../services/adzuna");

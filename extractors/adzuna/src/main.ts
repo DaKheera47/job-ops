@@ -104,6 +104,7 @@ async function fetchJobsPage(args: {
   appId: string;
   appKey: string;
   what: string;
+  where?: string;
   resultsPerPage: number;
 }): Promise<AdzunaJob[]> {
   const url = new URL(`${API_BASE}/jobs/${args.country}/search/${args.page}`);
@@ -111,6 +112,9 @@ async function fetchJobsPage(args: {
   url.searchParams.set("app_key", args.appKey);
   if (args.what) {
     url.searchParams.set("what", args.what);
+  }
+  if (args.where) {
+    url.searchParams.set("where", args.where);
   }
   url.searchParams.set("results_per_page", String(args.resultsPerPage));
 
@@ -146,6 +150,7 @@ async function run(): Promise<void> {
   const outputJson =
     process.env.ADZUNA_OUTPUT_JSON ||
     join(process.cwd(), "storage/datasets/default/jobs.json");
+  const locationQuery = process.env.ADZUNA_LOCATION_QUERY?.trim() || "";
 
   const jobs: ExtractedJob[] = [];
 
@@ -171,6 +176,7 @@ async function run(): Promise<void> {
         appId,
         appKey,
         what: searchTerm,
+        where: locationQuery || undefined,
         resultsPerPage: take,
       });
 

@@ -52,7 +52,7 @@ let mockPipelineTerminalEvent: {
   token: number;
 } | null = null;
 let mockPipelineSources = ["linkedin"] as Array<
-  "gradcracker" | "indeed" | "linkedin" | "ukvisajobs"
+  "gradcracker" | "indeed" | "linkedin" | "ukvisajobs" | "adzuna" | "hiringcafe"
 >;
 let mockAutomaticRunValues: AutomaticRunValues = {
   topN: 12,
@@ -740,6 +740,40 @@ describe("OrchestratorPage", () => {
       expect(api.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           jobspyLocation: "London|Manchester",
+        }),
+      );
+    });
+  });
+
+  it("stores multiple cities when only adzuna is selected", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    mockPipelineSources = ["adzuna"];
+    mockAutomaticRunValues = {
+      topN: 12,
+      minSuitabilityScore: 55,
+      searchTerms: ["backend"],
+      runBudget: 150,
+      country: "united kingdom",
+      cityLocations: ["Leeds", "Manchester"],
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobspyLocation: "Leeds|Manchester",
         }),
       );
     });
