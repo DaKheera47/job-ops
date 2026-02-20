@@ -75,4 +75,32 @@ describe("asyncPool", () => {
     expect(result.length).toBeGreaterThanOrEqual(2);
     expect(result.slice(0, 2)).toEqual([1, 2]);
   });
+
+  it("emits task lifecycle callbacks", async () => {
+    const started: number[] = [];
+    const settled: Array<string> = [];
+
+    await asyncPool({
+      items: [1, 2, 3],
+      concurrency: 2,
+      onTaskStarted: (item) => {
+        started.push(item);
+      },
+      onTaskSettled: (item, _index, outcome) => {
+        settled.push(
+          outcome.status === "fulfilled"
+            ? `${item}:ok`
+            : `${item}:fail:${String(outcome.error)}`,
+        );
+      },
+      task: async (item) => {
+        if (item === 2) throw new Error("boom");
+        return item * 2;
+      },
+    }).catch(() => undefined);
+
+    expect(started).toEqual(expect.arrayContaining([1, 2]));
+    expect(settled).toContain("1:ok");
+    expect(settled.some((entry) => entry.startsWith("2:fail:"))).toBe(true);
+  });
 });
