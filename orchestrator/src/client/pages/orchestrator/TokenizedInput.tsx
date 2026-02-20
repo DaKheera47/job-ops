@@ -134,6 +134,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                 variant="outline"
                 className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto"
                 aria-label={`${removeLabelPrefix} ${value}`}
+                onPointerDown={(event) => event.preventDefault()}
                 onClick={() =>
                   onValuesChange(values.filter((existing) => existing !== value))
                 }
