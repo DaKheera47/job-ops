@@ -5,7 +5,7 @@ import {
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -33,9 +33,12 @@ import {
   type AutomaticRunValues,
   calculateAutomaticEstimate,
   loadAutomaticRunMemory,
+  parseCityLocationsInput,
+  parseCityLocationsSetting,
   parseSearchTermsInput,
   saveAutomaticRunMemory,
 } from "./automatic-run";
+import { TokenizedInput } from "./TokenizedInput";
 
 interface AutomaticRunTabProps {
   open: boolean;
@@ -54,6 +57,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   searchTerms: ["web developer"],
   runBudget: 200,
   country: "united kingdom",
+  cityLocations: [],
 };
 
 interface AutomaticRunFormValues {
@@ -61,7 +65,8 @@ interface AutomaticRunFormValues {
   minSuitabilityScore: string;
   runBudget: string;
   country: string;
-  glassdoorLocation: string;
+  cityLocations: string[];
+  cityLocationDraft: string;
   searchTerms: string[];
   searchTermDraft: string;
 }
@@ -71,7 +76,7 @@ type AutomaticPresetSelection = AutomaticPresetId | "custom";
 const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
 const GLASSDOOR_LOCATION_REASON =
-  "Set a Glassdoor city in Advanced settings to enable Glassdoor.";
+  "Add at least one city in Advanced settings to enable Glassdoor.";
 const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
 
 function getSourceDisabledReason(
@@ -138,25 +143,25 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
-    {
-      defaultValues: {
-        topN: String(DEFAULT_VALUES.topN),
-        minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
-        runBudget: String(DEFAULT_VALUES.runBudget),
-        country: DEFAULT_VALUES.country,
-        glassdoorLocation: "",
-        searchTerms: DEFAULT_VALUES.searchTerms,
-        searchTermDraft: "",
-      },
+  const { watch, reset, setValue } = useForm<AutomaticRunFormValues>({
+    defaultValues: {
+      topN: String(DEFAULT_VALUES.topN),
+      minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
+      runBudget: String(DEFAULT_VALUES.runBudget),
+      country: DEFAULT_VALUES.country,
+      cityLocations: [],
+      cityLocationDraft: "",
+      searchTerms: DEFAULT_VALUES.searchTerms,
+      searchTermDraft: "",
     },
-  );
+  });
 
   const topNInput = watch("topN");
   const minScoreInput = watch("minSuitabilityScore");
   const runBudgetInput = watch("runBudget");
   const countryInput = watch("country");
-  const glassdoorLocationInput = watch("glassdoorLocation");
+  const cityLocations = watch("cityLocations");
+  const cityLocationDraft = watch("cityLocationDraft");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
 
@@ -179,39 +184,26 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         DEFAULT_VALUES.country,
     );
     const rememberedCountryKey = rememberedCountry || DEFAULT_VALUES.country;
-    const rememberedLocationRaw = settings?.jobspyLocation?.trim() ?? "";
-    const rememberedLocationNormalized = normalizeCountryKey(
-      rememberedLocationRaw,
+    const rememberedLocations = parseCityLocationsSetting(
+      settings?.jobspyLocation,
+    ).filter(
+      (location) =>
+        normalizeCountryKey(location) !==
+        normalizeCountryKey(rememberedCountryKey),
     );
-    const rememberedGlassdoorLocation =
-      rememberedLocationRaw &&
-      rememberedLocationNormalized &&
-      rememberedLocationNormalized !== normalizeCountryKey(rememberedCountryKey)
-        ? rememberedLocationRaw
-        : "";
 
     reset({
       topN: String(topN),
       minSuitabilityScore: String(minSuitabilityScore),
       runBudget: String(rememberedRunBudget),
       country: rememberedCountry || DEFAULT_VALUES.country,
-      glassdoorLocation: rememberedGlassdoorLocation,
+      cityLocations: rememberedLocations,
+      cityLocationDraft: "",
       searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
     setAdvancedOpen(false);
   }, [open, settings, reset]);
-
-  const addSearchTerms = (input: string) => {
-    const parsed = parseSearchTermsInput(input);
-    if (parsed.length === 0) return;
-    const current = getValues("searchTerms");
-    const next = [...current];
-    for (const term of parsed) {
-      if (!next.includes(term)) next.push(term);
-    }
-    setValue("searchTerms", next, { shouldDirty: true });
-  };
 
   const values = useMemo<AutomaticRunValues>(() => {
     const normalizedCountry = normalizeCountryKey(countryInput);
@@ -225,7 +217,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       ),
       runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
       country: normalizedCountry || DEFAULT_VALUES.country,
-      glassdoorLocation: glassdoorLocationInput.trim() || undefined,
+      cityLocations,
       searchTerms,
     };
   }, [
@@ -233,17 +225,18 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     minScoreInput,
     runBudgetInput,
     countryInput,
-    glassdoorLocationInput,
+    cityLocations,
     searchTerms,
   ]);
 
   const isSourceAvailableForRun = useCallback(
     (source: JobSource) => {
       if (!isSourceAllowedForCountry(source, values.country)) return false;
-      if (source === "glassdoor" && !values.glassdoorLocation) return false;
+      if (source === "glassdoor" && values.cityLocations.length === 0)
+        return false;
       return true;
     },
-    [values.country, values.glassdoorLocation],
+    [values.country, values.cityLocations.length],
   );
 
   const compatibleEnabledSources = useMemo(
@@ -389,7 +382,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             <Accordion
               type="single"
               collapsible
-              value={advancedOpen ? "advanced" : undefined}
+              value={advancedOpen ? "advanced" : ""}
               onValueChange={(value) => setAdvancedOpen(value === "advanced")}
             >
               <AccordionItem value="advanced" className="border-b-0">
@@ -438,21 +431,24 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       />
                     </div>
                     <div className="space-y-2 md:col-span-3">
-                      <Label htmlFor="glassdoor-location">Glassdoor city</Label>
-                      <Input
-                        id="glassdoor-location"
-                        value={glassdoorLocationInput}
-                        onChange={(event) =>
-                          setValue("glassdoorLocation", event.target.value, {
+                      <Label htmlFor="city-locations-input">Cities</Label>
+                      <TokenizedInput
+                        id="city-locations-input"
+                        values={cityLocations}
+                        draft={cityLocationDraft}
+                        parseInput={parseCityLocationsInput}
+                        onDraftChange={(value) =>
+                          setValue("cityLocationDraft", value)
+                        }
+                        onValuesChange={(value) =>
+                          setValue("cityLocations", value, {
                             shouldDirty: true,
                           })
                         }
                         placeholder='e.g. "London"'
+                        helperText="Optional for all sources, required when Glassdoor is selected."
+                        removeLabelPrefix="Remove city"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Required only for Glassdoor. Use a city (not country) to
-                        keep results localized.
-                      </p>
                     </div>
                   </div>
                 </AccordionContent>
@@ -465,58 +461,20 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
           <CardHeader className="pb-3">
             <CardTitle>Search terms</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
+          <CardContent>
+            <TokenizedInput
               id="search-terms-input"
-              value={searchTermDraft}
-              onChange={(event) =>
-                setValue("searchTermDraft", event.target.value)
+              values={searchTerms}
+              draft={searchTermDraft}
+              parseInput={parseSearchTermsInput}
+              onDraftChange={(value) => setValue("searchTermDraft", value)}
+              onValuesChange={(value) =>
+                setValue("searchTerms", value, { shouldDirty: true })
               }
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === ",") {
-                  event.preventDefault();
-                  addSearchTerms(searchTermDraft);
-                  setValue("searchTermDraft", "");
-                  return;
-                }
-              }}
-              onBlur={() => {
-                addSearchTerms(searchTermDraft);
-                setValue("searchTermDraft", "");
-              }}
-              onPaste={(event) => {
-                const pasted = event.clipboardData.getData("text");
-                const parsed = parseSearchTermsInput(pasted);
-                if (parsed.length > 1) {
-                  event.preventDefault();
-                  addSearchTerms(pasted);
-                }
-              }}
               placeholder="Type and press Enter"
+              helperText="Add multiple terms by separating with commas or pressing Enter."
+              removeLabelPrefix="Remove"
             />
-            <p className="text-xs text-muted-foreground">
-              Add multiple terms by separating with commas or pressing Enter.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {searchTerms.map((term) => (
-                <button
-                  type="button"
-                  key={term}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/20 px-3 py-1 text-sm transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
-                  aria-label={`Remove ${term}`}
-                  onClick={() =>
-                    setValue(
-                      "searchTerms",
-                      searchTerms.filter((value) => value !== term),
-                      { shouldDirty: true },
-                    )
-                  }
-                >
-                  {term}
-                  <X className="h-3 w-3" />
-                </button>
-              ))}
-            </div>
           </CardContent>
         </Card>
 

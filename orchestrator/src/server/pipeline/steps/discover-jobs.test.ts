@@ -116,6 +116,35 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("passes serialized multi-city locations to JobSpy", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+      jobspyLocation: "London|Manchester",
+    } as any);
+
+    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
+      success: true,
+      jobs: [],
+    } as any);
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["linkedin"],
+      },
+    });
+
+    expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        location: "London|Manchester",
+      }),
+    );
+  });
+
   it("filters out glassdoor for unsupported countries", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobSpy = await import("../../services/jobspy");

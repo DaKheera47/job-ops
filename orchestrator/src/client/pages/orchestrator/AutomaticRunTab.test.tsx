@@ -152,7 +152,7 @@ describe("AutomaticRunTab", () => {
     const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
     expect(glassdoorButton).toBeDisabled();
     expect(glassdoorButton.getAttribute("title")).toContain(
-      "Set a Glassdoor city in Advanced settings to enable Glassdoor.",
+      "Add at least one city in Advanced settings to enable Glassdoor.",
     );
   });
 
@@ -183,5 +183,34 @@ describe("AutomaticRunTab", () => {
     expect(
       screen.getByRole("button", { name: "Remove frontend engineer" }),
     ).toBeInTheDocument();
+  });
+
+  it("loads multiple saved cities and keeps glassdoor enabled", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          searchTerms: ["backend engineer"],
+          jobspyCountryIndeed: "united kingdom",
+          jobspyLocation: "London|Manchester",
+        })}
+        enabledSources={["linkedin", "glassdoor"]}
+        pipelineSources={["linkedin", "glassdoor"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
+
+    expect(
+      screen.getByRole("button", { name: "Remove city London" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove city Manchester" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Glassdoor" })).toBeEnabled();
   });
 });

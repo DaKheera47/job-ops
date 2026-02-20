@@ -6,6 +6,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
+import type { AutomaticRunValues } from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
@@ -53,12 +54,13 @@ let mockPipelineTerminalEvent: {
 let mockPipelineSources = ["linkedin"] as Array<
   "gradcracker" | "indeed" | "linkedin" | "ukvisajobs"
 >;
-let mockAutomaticRunValues = {
+let mockAutomaticRunValues: AutomaticRunValues = {
   topN: 12,
   minSuitabilityScore: 55,
   searchTerms: ["backend"],
   runBudget: 150,
   country: "united kingdom",
+  cityLocations: [],
 };
 
 const jobFixture = createJob({
@@ -325,13 +327,7 @@ vi.mock("./orchestrator/RunModeModal", () => ({
   RunModeModal: ({
     onSaveAndRunAutomatic,
   }: {
-    onSaveAndRunAutomatic: (values: {
-      topN: number;
-      minSuitabilityScore: number;
-      searchTerms: string[];
-      runBudget: number;
-      country: string;
-    }) => Promise<void>;
+    onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   }) => (
     <button
       type="button"
@@ -386,6 +382,7 @@ describe("OrchestratorPage", () => {
       searchTerms: ["backend"],
       runBudget: 150,
       country: "united kingdom",
+      cityLocations: [],
     };
   });
 
@@ -714,6 +711,40 @@ describe("OrchestratorPage", () => {
     setIntervalSpy.mockRestore();
   });
 
+  it("stores multiple cities for JobSpy sources in automatic mode", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    mockPipelineSources = ["linkedin"];
+    mockAutomaticRunValues = {
+      topN: 12,
+      minSuitabilityScore: 55,
+      searchTerms: ["backend"],
+      runBudget: 150,
+      country: "united kingdom",
+      cityLocations: ["London", "Manchester"],
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobspyLocation: "London|Manchester",
+        }),
+      );
+    });
+  });
+
   it("shows completion toast from hook terminal state", async () => {
     mockPipelineTerminalEvent = {
       status: "completed",
@@ -797,6 +828,7 @@ describe("OrchestratorPage", () => {
       searchTerms: ["backend"],
       runBudget: 150,
       country: "united states",
+      cityLocations: [],
     };
 
     render(

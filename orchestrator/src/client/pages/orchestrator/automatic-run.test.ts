@@ -27,6 +27,7 @@ describe("automatic-run utilities", () => {
         searchTerms: ["backend", "platform"],
         runBudget: 100,
         country: "united kingdom",
+        cityLocations: [],
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -59,6 +60,7 @@ describe("automatic-run utilities", () => {
         searchTerms: [],
         runBudget: 750,
         country: "united kingdom",
+        cityLocations: [],
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -85,6 +87,7 @@ describe("automatic-run utilities", () => {
         searchTerms: ["backend", "platform"],
         runBudget: 120,
         country: "united kingdom",
+        cityLocations: [],
       },
       sources: ["adzuna"],
     });
@@ -101,6 +104,7 @@ describe("automatic-run utilities", () => {
         searchTerms: ["backend", "platform"],
         runBudget: 120,
         country: "united kingdom",
+        cityLocations: [],
       },
       sources: ["hiringcafe"],
     });

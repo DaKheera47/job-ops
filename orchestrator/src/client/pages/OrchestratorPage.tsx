@@ -22,7 +22,10 @@ import * as api from "../api";
 import { KeyboardShortcutBar } from "../components/KeyboardShortcutBar";
 import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
-import { deriveExtractorLimits } from "./orchestrator/automatic-run";
+import {
+  deriveExtractorLimits,
+  serializeCityLocationsSetting,
+} from "./orchestrator/automatic-run";
 import type { FilterTab } from "./orchestrator/constants";
 import { tabs } from "./orchestrator/constants";
 import { FloatingJobActionsBar } from "./orchestrator/FloatingJobActionsBar";
@@ -291,10 +294,19 @@ export const OrchestratorPage: React.FC = () => {
         searchTerms: values.searchTerms,
         sources: compatibleSources,
       });
-      const jobspyLocation = compatibleSources.includes("glassdoor")
-        ? (values.glassdoorLocation ?? "").trim() ||
-          formatCountryLabel(values.country)
-        : formatCountryLabel(values.country);
+      const hasJobSpySite = compatibleSources.some(
+        (source) =>
+          source === "indeed" ||
+          source === "linkedin" ||
+          source === "glassdoor",
+      );
+      const serializedCities = serializeCityLocationsSetting(
+        values.cityLocations,
+      );
+      const jobspyLocation =
+        hasJobSpySite && serializedCities
+          ? serializedCities
+          : formatCountryLabel(values.country);
       await api.updateSettings({
         searchTerms: values.searchTerms,
         jobspyResultsWanted: limits.jobspyResultsWanted,

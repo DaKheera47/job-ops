@@ -8,7 +8,7 @@ export interface AutomaticRunValues {
   searchTerms: string[];
   runBudget: number;
   country: string;
-  glassdoorLocation?: string;
+  cityLocations: string[];
 }
 
 export interface AutomaticPresetValues {
@@ -113,6 +113,49 @@ export function parseSearchTermsInput(input: string): string[] {
     .split(/[\n,]/g)
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+export function parseCityLocationsInput(input: string): string[] {
+  const parsed = parseSearchTermsInput(input);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const city of parsed) {
+    const key = city.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(city);
+  }
+  return out;
+}
+
+export function parseCityLocationsSetting(
+  location: string | null | undefined,
+): string[] {
+  const trimmed = location?.trim();
+  if (!trimmed) return [];
+
+  const split = trimmed.includes("|")
+    ? trimmed.split("|")
+    : trimmed.includes("\n")
+      ? trimmed.split("\n")
+      : [trimmed];
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of split) {
+    const normalized = value.trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
+}
+
+export function serializeCityLocationsSetting(cities: string[]): string | null {
+  if (cities.length === 0) return null;
+  return cities.join("|");
 }
 
 export function stringifySearchTerms(terms: string[]): string {
