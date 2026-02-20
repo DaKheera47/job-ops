@@ -9,11 +9,11 @@ import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import {
   approvePostApplicationInboxItem,
-  bulkPostApplicationInboxAction,
   denyPostApplicationInboxItem,
   listPostApplicationInbox,
   listPostApplicationReviewRuns,
   listPostApplicationRunMessages,
+  runPostApplicationInboxAction,
 } from "../../services/post-application/review";
 
 const listQuerySchema = z.object({
@@ -46,7 +46,7 @@ const denyBodySchema = z.object({
   decidedBy: z.string().max(255).optional(),
 });
 
-const bulkActionBodySchema = z.object({
+const actionBodySchema = z.object({
   action: z.enum(["approve", "deny"]),
   provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),
   accountKey: z.string().min(1).max(255).default("default"),
@@ -179,12 +179,12 @@ postApplicationReviewRouter.post(
 );
 
 postApplicationReviewRouter.post(
-  "/inbox/bulk",
+  "/inbox/actions",
   asyncRoute(async (req: Request, res: Response) => {
     try {
-      const input = bulkActionBodySchema.parse(req.body ?? {});
+      const input = actionBodySchema.parse(req.body ?? {});
 
-      const result = await bulkPostApplicationInboxAction({
+      const result = await runPostApplicationInboxAction({
         action: input.action,
         provider: input.provider,
         accountKey: input.accountKey,

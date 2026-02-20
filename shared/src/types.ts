@@ -646,15 +646,15 @@ export interface PostApplicationInboxItem {
   } | null;
 }
 
-export type BulkPostApplicationAction = "approve" | "deny";
+export type PostApplicationAction = "approve" | "deny";
 
-export interface BulkPostApplicationActionRequest {
-  action: BulkPostApplicationAction;
+export interface PostApplicationActionRequest {
+  action: PostApplicationAction;
   provider: PostApplicationProvider;
   accountKey: string;
 }
 
-export type BulkPostApplicationActionResult =
+export type PostApplicationActionResult =
   | {
       messageId: string;
       ok: true;
@@ -670,13 +670,13 @@ export type BulkPostApplicationActionResult =
       };
     };
 
-export interface BulkPostApplicationActionResponse {
-  action: BulkPostApplicationAction;
+export interface PostApplicationActionResponse {
+  action: PostApplicationAction;
   requested: number;
   succeeded: number;
   failed: number;
   skipped: number;
-  results: BulkPostApplicationActionResult[];
+  results: PostApplicationActionResult[];
 }
 
 export interface JobsListResponse<TJob = Job> {
@@ -767,13 +767,6 @@ export type JobActionStreamEvent =
       message: string;
       requestId: string;
     };
-
-// Backward-compatible aliases for existing callsites.
-export type BulkJobAction = JobAction;
-export type BulkJobActionRequest = JobActionRequest;
-export type BulkJobActionResult = JobActionResult;
-export type BulkJobActionResponse = JobActionResponse;
-export type BulkJobActionStreamEvent = JobActionStreamEvent;
 
 export const JOB_CHAT_MESSAGE_ROLES = [
   "system",

@@ -9,8 +9,6 @@ import type {
   ApplicationTask,
   AppSettings,
   BackupInfo,
-  BulkPostApplicationAction,
-  BulkPostApplicationActionResponse,
   DemoInfoResponse,
   Job,
   JobActionRequest,
@@ -29,6 +27,8 @@ import type {
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
   PipelineStatusResponse,
+  PostApplicationAction,
+  PostApplicationActionResponse,
   PostApplicationInboxItem,
   PostApplicationProvider,
   PostApplicationProviderActionResponse,
@@ -1132,14 +1132,14 @@ export async function denyPostApplicationInboxItem(input: {
   );
 }
 
-export async function bulkPostApplicationInboxAction(input: {
-  action: BulkPostApplicationAction;
+export async function runPostApplicationInboxAction(input: {
+  action: PostApplicationAction;
   provider?: PostApplicationProvider;
   accountKey?: string;
   decidedBy?: string;
-}): Promise<BulkPostApplicationActionResponse> {
-  return fetchApi<BulkPostApplicationActionResponse>(
-    "/post-application/inbox/bulk",
+}): Promise<PostApplicationActionResponse> {
+  return fetchApi<PostApplicationActionResponse>(
+    "/post-application/inbox/actions",
     {
       method: "POST",
       body: JSON.stringify({

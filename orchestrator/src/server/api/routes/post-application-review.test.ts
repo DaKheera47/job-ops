@@ -194,7 +194,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
   it("counts no-suggested-match approve items as skipped, not failed", async () => {
     await seedPendingMessage({ matchedJobId: null });
 
-    const res = await fetch(`${baseUrl}/api/post-application/inbox/bulk`, {
+    const res = await fetch(`${baseUrl}/api/post-application/inbox/actions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

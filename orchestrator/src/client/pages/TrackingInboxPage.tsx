@@ -164,7 +164,7 @@ export const TrackingInboxPage: React.FC = () => {
   const isAppliedJobsLoading =
     appliedJobsQuery.isPending || appliedJobsQuery.isFetching;
 
-  const [bulkActionDialog, setBulkActionDialog] = useState<{
+  const [inboxActionDialog, setInboxActionDialog] = useState<{
     isOpen: boolean;
     action: "approve" | "deny" | null;
     itemCount: number;
@@ -436,15 +436,15 @@ export const TrackingInboxPage: React.FC = () => {
     [accountKey, appliedJobByMessageId, provider, refresh],
   );
 
-  const handleBulkAction = useCallback(
+  const handleInboxAction = useCallback(
     async (action: "approve" | "deny") => {
       if (inbox.length === 0) return;
 
       setIsActionLoading(true);
-      setBulkActionDialog({ isOpen: false, action: null, itemCount: 0 });
+      setInboxActionDialog({ isOpen: false, action: null, itemCount: 0 });
 
       try {
-        const result = await api.bulkPostApplicationInboxAction({
+        const result = await api.runPostApplicationInboxAction({
           action,
           provider,
           accountKey,
@@ -479,7 +479,7 @@ export const TrackingInboxPage: React.FC = () => {
     [accountKey, inbox.length, provider, refresh],
   );
 
-  const openBulkActionDialog = useCallback(
+  const openInboxActionDialog = useCallback(
     (action: "approve" | "deny") => {
       const eligibleCount =
         action === "approve"
@@ -495,7 +495,7 @@ export const TrackingInboxPage: React.FC = () => {
         return;
       }
 
-      setBulkActionDialog({
+      setInboxActionDialog({
         isOpen: true,
         action,
         itemCount: eligibleCount,
@@ -706,7 +706,7 @@ export const TrackingInboxPage: React.FC = () => {
                   size="sm"
                   className="gap-1"
                   disabled={isActionLoading}
-                  onClick={() => openBulkActionDialog("approve")}
+                  onClick={() => openInboxActionDialog("approve")}
                 >
                   <CheckCircle className="h-4 w-4" />
                   Approve All
@@ -716,7 +716,7 @@ export const TrackingInboxPage: React.FC = () => {
                   size="sm"
                   className="gap-1"
                   disabled={isActionLoading}
-                  onClick={() => openBulkActionDialog("deny")}
+                  onClick={() => openInboxActionDialog("deny")}
                 >
                   <XCircle className="h-4 w-4" />
                   Ignore All
@@ -840,34 +840,34 @@ export const TrackingInboxPage: React.FC = () => {
       </Dialog>
 
       <AlertDialog
-        open={bulkActionDialog.isOpen}
+        open={inboxActionDialog.isOpen}
         onOpenChange={(open) =>
-          setBulkActionDialog((previous) => ({ ...previous, isOpen: open }))
+          setInboxActionDialog((previous) => ({ ...previous, isOpen: open }))
         }
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {bulkActionDialog.action === "approve"
+              {inboxActionDialog.action === "approve"
                 ? "Approve All Messages?"
                 : "Ignore All Messages?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {bulkActionDialog.action === "approve"
-                ? `This will approve ${bulkActionDialog.itemCount} message${bulkActionDialog.itemCount === 1 ? "" : "s"} with suggested job matches. Messages without matches will be skipped.`
-                : `This will ignore all ${bulkActionDialog.itemCount} pending message${bulkActionDialog.itemCount === 1 ? "" : "s"}.`}
+              {inboxActionDialog.action === "approve"
+                ? `This will approve ${inboxActionDialog.itemCount} message${inboxActionDialog.itemCount === 1 ? "" : "s"} with suggested job matches. Messages without matches will be skipped.`
+                : `This will ignore all ${inboxActionDialog.itemCount} pending message${inboxActionDialog.itemCount === 1 ? "" : "s"}.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (bulkActionDialog.action) {
-                  void handleBulkAction(bulkActionDialog.action);
+                if (inboxActionDialog.action) {
+                  void handleInboxAction(inboxActionDialog.action);
                 }
               }}
             >
-              {bulkActionDialog.action === "approve"
+              {inboxActionDialog.action === "approve"
                 ? "Approve All"
                 : "Ignore All"}
             </AlertDialogAction>
