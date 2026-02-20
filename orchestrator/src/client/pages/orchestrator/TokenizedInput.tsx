@@ -1,8 +1,9 @@
 import { X } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface TokenizedInputProps {
   id: string;
@@ -42,6 +43,8 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   collapsedTextLimit = 3,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const tokensRef = useRef<HTMLDivElement | null>(null);
+  const [tokensHeight, setTokensHeight] = useState(20);
 
   const collapsedSummary = useMemo(() => {
     if (values.length === 0) return "";
@@ -59,6 +62,22 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (parsed.length === 0) return;
     onValuesChange(mergeUnique(values, parsed));
   };
+
+  useLayoutEffect(() => {
+    const node = tokensRef.current;
+    if (!node) return;
+
+    const updateHeight = () => {
+      setTokensHeight(Math.max(20, node.scrollHeight));
+    };
+
+    updateHeight();
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [values]);
 
   return (
     <div className="space-y-3">
@@ -92,21 +111,28 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
       />
       <p className="text-xs text-muted-foreground">{helperText}</p>
       {values.length > 0 ? (
-        <div className="relative min-h-5">
+        <div
+          className={cn(
+            "relative overflow-hidden transition-[height] ease-out",
+          )}
+          style={{ height: `${isFocused ? tokensHeight : 20}px` }}
+        >
           <div
             aria-hidden={!isFocused}
             className={cn(
-              "flex flex-wrap gap-2 overflow-hidden transition-all duration-200 ease-out",
+              "absolute inset-x-0 top-0 flex flex-wrap gap-2 overflow-hidden transition-all ease-out",
               isFocused
-                ? "max-h-40 translate-y-0 opacity-100 animate-in fade-in slide-in-from-top-1"
-                : "pointer-events-none absolute inset-0 max-h-0 -translate-y-1 opacity-0",
+                ? "translate-y-0 opacity-100 animate-in fade-in slide-in-from-top-1"
+                : "pointer-events-none -translate-y-1 opacity-0",
             )}
+            ref={tokensRef}
           >
             {values.map((value) => (
-              <button
+              <Button
                 type="button"
                 key={value}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/20 px-3 py-1 text-sm transition-all duration-150 hover:border-primary/50 hover:bg-primary/40 hover:text-primary-foreground hover:shadow-sm"
+                variant="outline"
+                className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto"
                 aria-label={`${removeLabelPrefix} ${value}`}
                 onClick={() =>
                   onValuesChange(values.filter((existing) => existing !== value))
@@ -114,15 +140,15 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
               >
                 {value}
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             ))}
           </div>
           <p
             aria-hidden={isFocused}
             className={cn(
-              "text-xs text-muted-foreground transition-all duration-200 ease-out",
+              "absolute inset-x-0 top-0 text-xs text-muted-foreground transition-all ease-out",
               isFocused
-                ? "pointer-events-none absolute inset-0 translate-y-1 opacity-0"
+                ? "pointer-events-none translate-y-1 opacity-0"
                 : "translate-y-0 opacity-100 animate-in fade-in slide-in-from-bottom-1",
             )}
           >
