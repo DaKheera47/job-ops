@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type React from "react";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -43,6 +43,10 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   collapsedTextLimit = 3,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const tokensRef = useRef<HTMLDivElement | null>(null);
+  const summaryRef = useRef<HTMLParagraphElement | null>(null);
+  const [tokensHeight, setTokensHeight] = useState(20);
+  const [summaryHeight, setSummaryHeight] = useState(20);
 
   const collapsedSummary = useMemo(() => {
     if (values.length === 0) return "";
@@ -60,6 +64,26 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (parsed.length === 0) return;
     onValuesChange(mergeUnique(values, parsed));
   };
+
+  useLayoutEffect(() => {
+    const updateHeights = () => {
+      if (tokensRef.current) {
+        setTokensHeight(Math.max(20, tokensRef.current.scrollHeight));
+      }
+      if (summaryRef.current) {
+        setSummaryHeight(Math.max(20, summaryRef.current.scrollHeight));
+      }
+    };
+
+    updateHeights();
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(updateHeights);
+    if (tokensRef.current) observer.observe(tokensRef.current);
+    if (summaryRef.current) observer.observe(summaryRef.current);
+
+    return () => observer.disconnect();
+  }, [values, collapsedSummary, isFocused]);
 
   return (
     <div className="space-y-3">
@@ -93,61 +117,64 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
       />
       <p className="text-xs text-muted-foreground">{helperText}</p>
       {values.length > 0 ? (
-        <motion.div layout className="overflow-hidden">
-          <AnimatePresence initial={false} mode="wait">
-            {isFocused ? (
-              <motion.div
-                key="tokens"
-                aria-hidden={!isFocused}
-                className="flex flex-wrap gap-2"
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.16, ease: "easeOut" }}
-              >
-                <AnimatePresence initial={false} mode="popLayout">
-                  {values.map((value) => (
-                    <motion.div
-                      key={value}
-                      layout
-                      initial={{ opacity: 0, scale: 0.96, y: -4 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.96, y: -4 }}
-                      transition={{ duration: 0.16, ease: "easeOut" }}
-                    >
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-auto rounded-full px-2 py-1 text-xs text-muted-foreground"
-                        aria-label={`${removeLabelPrefix} ${value}`}
-                        onPointerDown={(event) => event.preventDefault()}
-                        onClick={() =>
-                          onValuesChange(
-                            values.filter((existing) => existing !== value),
-                          )
-                        }
-                      >
-                        {value}
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </motion.div>
-            ) : (
-              <motion.p
-                key="summary"
-                aria-hidden={isFocused}
-                className="text-xs text-muted-foreground"
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.16, ease: "easeOut" }}
-              >
-                Currently selected: {collapsedSummary}
-              </motion.p>
-            )}
-          </AnimatePresence>
+        <motion.div
+          className="relative overflow-hidden"
+          animate={{ height: isFocused ? tokensHeight : summaryHeight }}
+          transition={{ duration: 0.16, ease: "easeOut" }}
+        >
+          <motion.div
+            aria-hidden={!isFocused}
+            ref={tokensRef}
+            className="absolute inset-x-0 top-0 flex flex-wrap gap-2"
+            animate={{
+              opacity: isFocused ? 1 : 0,
+              y: isFocused ? 0 : -4,
+            }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            style={{ pointerEvents: isFocused ? "auto" : "none" }}
+          >
+            <AnimatePresence initial={false} mode="popLayout">
+              {values.map((value) => (
+                <motion.div
+                  key={value}
+                  layout
+                  initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                  transition={{ duration: 0.16, ease: "easeOut" }}
+                >
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-auto rounded-full px-2 py-1 text-xs text-muted-foreground"
+                    aria-label={`${removeLabelPrefix} ${value}`}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() =>
+                      onValuesChange(
+                        values.filter((existing) => existing !== value),
+                      )
+                    }
+                  >
+                    {value}
+                    <X className="h-3 w-3" />
+                  </Button>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+          <motion.p
+            aria-hidden={isFocused}
+            ref={summaryRef}
+            className="absolute inset-x-0 top-0 text-xs text-muted-foreground"
+            animate={{
+              opacity: isFocused ? 0 : 1,
+              y: isFocused ? 4 : 0,
+            }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            style={{ pointerEvents: isFocused ? "none" : "auto" }}
+          >
+            Currently selected: {collapsedSummary}
+          </motion.p>
         </motion.div>
       ) : null}
     </div>
