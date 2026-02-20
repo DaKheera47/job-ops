@@ -26,8 +26,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartContainer } from "@/components/ui/chart";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 
 type JobForSourceChart = {
   id: string;
@@ -109,12 +109,13 @@ const buildResponseRateBySource = (
 
   return Array.from(bySource.entries())
     .map(([source, { applied, responded }]) => ({
-      source: SOURCE_LABELS[source] ?? source,
+      // Y-axis tick: "Manual (12)" — n is always visible without relying on bar labels
+      source: `${SOURCE_LABELS[source] ?? source} (${applied})`,
       applied,
       responded,
       rate: applied > 0 ? (responded / applied) * 100 : 0,
     }))
-    .sort((a, b) => b.rate - a.rate || b.applied - a.applied); // primary: rate desc; tie-break: volume desc
+    .sort((a, b) => b.rate - a.rate || b.applied - a.applied);
 };
 
 interface ResponseRateBySourceChartProps {
@@ -163,18 +164,16 @@ export function ResponseRateBySourceChart({
             Ghosted and rejected are not counted.
           </CardDescription>
         </div>
-        <div className="flex flex-col items-start justify-center gap-3 border-t px-6 py-4 text-left sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">
-              Overall Response Rate
+        <div className="flex flex-row items-center justify-between gap-4 border-t px-6 py-3 sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
+          <span className="text-xs text-muted-foreground">
+            Overall Response Rate
+          </span>
+          <div className="flex flex-col items-end gap-0.5 sm:items-start">
+            <span className="text-xl font-bold leading-none sm:text-3xl">
+              {overallRate.toFixed(1)}%
             </span>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold leading-none sm:text-3xl">
-                {overallRate.toFixed(1)}%
-              </span>
-            </div>
             <span className="text-xs text-muted-foreground">
-              {totalResponded} of {totalApplied} applications
+              {totalResponded} of {totalApplied}
             </span>
           </div>
         </div>
@@ -190,31 +189,35 @@ export function ResponseRateBySourceChart({
           <div className="space-y-4">
             {/* Minimum sample toggle */}
             <div className="flex items-center justify-end gap-2">
-              <Checkbox
-                id="include-small-toggle"
-                checked={includeSmall}
-                onCheckedChange={(checked) => setIncludeSmall(checked === true)}
-                aria-label="Include small samples"
-              />
               <Label
                 htmlFor="include-small-toggle"
                 className="text-xs text-muted-foreground cursor-pointer"
               >
-                {includeSmall
-                  ? "Showing all sources"
-                  : `Hiding sources with fewer than ${MIN_SAMPLE_DEFAULT} applications`}
-                {!includeSmall && hiddenCount > 0 && (
-                  <span className="ml-1 text-muted-foreground/60">
-                    ({hiddenCount} hidden)
-                  </span>
+                {includeSmall ? (
+                  "All sources"
+                ) : (
+                  <>
+                    n &lt; {MIN_SAMPLE_DEFAULT} hidden
+                    {hiddenCount > 0 && (
+                      <span className="ml-1 text-muted-foreground/60">
+                        ({hiddenCount})
+                      </span>
+                    )}
+                  </>
                 )}
               </Label>
+              <Switch
+                id="include-small-toggle"
+                checked={includeSmall}
+                onCheckedChange={setIncludeSmall}
+                aria-label="Include small samples"
+              />
             </div>
 
             {data.length === 0 ? (
               <div className="px-4 py-4 text-sm text-muted-foreground">
                 All sources have fewer than {MIN_SAMPLE_DEFAULT} applications.
-                Check "Include small samples" above to show them.
+                Enable the toggle above to show them.
               </div>
             ) : (
               <ChartContainer
@@ -226,7 +229,7 @@ export function ResponseRateBySourceChart({
                   <BarChart
                     data={data}
                     layout="vertical"
-                    margin={{ left: 80, right: 110, top: 4, bottom: 4 }}
+                    margin={{ left: 4, right: 36, top: 4, bottom: 4 }}
                   >
                     <CartesianGrid vertical={false} />
                     <XAxis
@@ -242,8 +245,8 @@ export function ResponseRateBySourceChart({
                       type="category"
                       tickLine={false}
                       axisLine={false}
-                      width={76}
-                      tick={{ fontSize: 12 }}
+                      width={108}
+                      tick={{ fontSize: 11 }}
                     />
                     <Tooltip
                       cursor={{ fill: "var(--chart-2)", opacity: 0.15 }}
@@ -290,30 +293,8 @@ export function ResponseRateBySourceChart({
                       <LabelList
                         dataKey="rate"
                         position="right"
-                        content={({ x, y, width, height, value, index }) => {
-                          if (
-                            value === undefined ||
-                            index === undefined ||
-                            x === undefined ||
-                            y === undefined ||
-                            width === undefined ||
-                            height === undefined
-                          )
-                            return null;
-                          const d = data[index];
-                          if (!d) return null;
-                          return (
-                            <text
-                              x={(x as number) + (width as number) + 6}
-                              y={(y as number) + (height as number) / 2}
-                              dominantBaseline="middle"
-                              fontSize={11}
-                              className="fill-foreground"
-                            >
-                              {`${(value as number).toFixed(1)}% (n=${d.applied})`}
-                            </text>
-                          );
-                        }}
+                        formatter={(v: number) => `${v.toFixed(0)}%`}
+                        className="text-xs fill-foreground"
                       />
                     </Bar>
                   </BarChart>
