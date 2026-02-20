@@ -123,7 +123,7 @@ function mapRowToPostApplicationMessage(
   };
 }
 
-async function getPostApplicationMessageByExternalId(
+export async function getPostApplicationMessageByExternalId(
   provider: PostApplicationProvider,
   accountKey: string,
   externalMessageId: string,

@@ -6,7 +6,10 @@ import {
   updatePostApplicationIntegrationSyncState,
   upsertConnectedPostApplicationIntegration,
 } from "@server/repositories/post-application-integrations";
-import { upsertPostApplicationMessage } from "@server/repositories/post-application-messages";
+import {
+  getPostApplicationMessageByExternalId,
+  upsertPostApplicationMessage,
+} from "@server/repositories/post-application-messages";
 import {
   completePostApplicationSyncRun,
   startPostApplicationSyncRun,
@@ -857,6 +860,59 @@ export async function runGmailIngestionSync(args: {
         const date = headerValue(metadata.headers, "Date");
         const { fromAddress, fromDomain, senderName } = parseFromHeader(from);
         const receivedAt = parseReceivedAt(date);
+        const existingMessage = await getPostApplicationMessageByExternalId(
+          "gmail",
+          args.accountKey,
+          metadata.id,
+        );
+
+        if (existingMessage) {
+          const { message: savedMessage, autoLinkTransitioned } =
+            await upsertPostApplicationMessage({
+              provider: "gmail",
+              accountKey: args.accountKey,
+              integrationId: integration.id,
+              syncRunId: syncRun.id,
+              externalMessageId: metadata.id,
+              externalThreadId: metadata.threadId,
+              fromAddress,
+              fromDomain,
+              senderName,
+              subject,
+              receivedAt,
+              snippet: metadata.snippet,
+              classificationLabel: existingMessage.classificationLabel,
+              classificationConfidence:
+                existingMessage.classificationConfidence,
+              classificationPayload: existingMessage.classificationPayload,
+              relevanceLlmScore: existingMessage.relevanceLlmScore,
+              relevanceDecision: existingMessage.relevanceDecision,
+              matchedJobId: existingMessage.matchedJobId,
+              matchConfidence: existingMessage.matchConfidence,
+              stageTarget: existingMessage.stageTarget,
+              messageType: existingMessage.messageType,
+              stageEventPayload: existingMessage.stageEventPayload,
+              processingStatus: existingMessage.processingStatus,
+            });
+
+          if (savedMessage.processingStatus !== "ignored") {
+            relevant += 1;
+          }
+          classified += 1;
+          if (savedMessage.matchedJobId) {
+            matched += 1;
+          }
+
+          if (autoLinkTransitioned && savedMessage.matchedJobId) {
+            await createAutoStageEvent({
+              jobId: savedMessage.matchedJobId,
+              stageTarget: savedMessage.stageTarget ?? "no_change",
+              receivedAt: savedMessage.receivedAt,
+              note: "Auto-created from Smart Router.",
+            });
+          }
+          return;
+        }
 
         const fullMessage = await getMessageFull(accessToken, message.id);
         const body = extractBodyText(fullMessage.payload);
