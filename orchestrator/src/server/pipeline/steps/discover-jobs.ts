@@ -512,6 +512,10 @@ export async function discoverJobsStep(args: {
     sourceErrors.push(...sourceResult.sourceErrors);
   }
 
+  if (args.shouldCancel?.()) {
+    return { discoveredJobs, sourceErrors };
+  }
+
   if (discoveredJobs.length === 0 && sourceErrors.length > 0) {
     throw new Error(`All sources failed: ${sourceErrors.join("; ")}`);
   }

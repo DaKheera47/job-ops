@@ -223,6 +223,20 @@ async function insertJob(input: CreateJobInput): Promise<Job> {
   return job;
 }
 
+function isJobUrlUniqueViolation(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /UNIQUE constraint failed: jobs\.job_url/i.test(error.message);
+}
+
+async function tryInsertJob(input: CreateJobInput): Promise<Job | null> {
+  try {
+    return await insertJob(input);
+  } catch (error) {
+    if (isJobUrlUniqueViolation(error)) return null;
+    throw error;
+  }
+}
+
 /**
  * Create jobs (or return existing jobs for duplicate URLs).
  */
@@ -234,21 +248,58 @@ export async function createJobs(
   inputOrInputs: CreateJobInput | CreateJobInput[],
 ): Promise<Job | { created: number; skipped: number }> {
   if (!Array.isArray(inputOrInputs)) {
+    const inserted = await tryInsertJob(inputOrInputs);
+    if (inserted) return inserted;
     const existing = await getJobByUrl(inputOrInputs.jobUrl);
     if (existing) return existing;
-    return insertJob(inputOrInputs);
+    throw new Error("Failed to create or resolve existing job by URL");
+  }
+
+  const byUrl = new Map<
+    string,
+    {
+      input: CreateJobInput;
+      count: number;
+    }
+  >();
+
+  for (const input of inputOrInputs) {
+    const existing = byUrl.get(input.jobUrl);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      byUrl.set(input.jobUrl, { input, count: 1 });
+    }
   }
 
   let created = 0;
   let skipped = 0;
-  for (const input of inputOrInputs) {
-    const existing = await getJobByUrl(input.jobUrl);
-    if (existing) {
-      skipped++;
+
+  const uniqueUrls = Array.from(byUrl.keys());
+  if (uniqueUrls.length === 0) {
+    return { created, skipped };
+  }
+
+  const existingRows = await db
+    .select({ jobUrl: jobs.jobUrl })
+    .from(jobs)
+    .where(inArray(jobs.jobUrl, uniqueUrls));
+  const existingUrlSet = new Set(existingRows.map((row) => row.jobUrl));
+
+  for (const { input, count } of byUrl.values()) {
+    if (existingUrlSet.has(input.jobUrl)) {
+      skipped += count;
       continue;
     }
-    await insertJob(input);
-    created++;
+
+    const inserted = await tryInsertJob(input);
+    if (!inserted) {
+      skipped += count;
+      continue;
+    }
+
+    created += 1;
+    skipped += count - 1;
   }
 
   return { created, skipped };

@@ -18,7 +18,6 @@ export async function processJobsStep(args: {
 
   if (args.jobsToProcess.length > 0) {
     const total = args.jobsToProcess.length;
-    let startedCount = 0;
     let completedCount = 0;
 
     updateProgress({
@@ -32,8 +31,8 @@ export async function processJobsStep(args: {
       concurrency: PROCESSING_CONCURRENCY,
       shouldStop: args.shouldCancel,
       onTaskStarted: (job) => {
-        startedCount += 1;
-        progressHelpers.processingJob(startedCount, total, job);
+        // Drive processing progress from completed count to keep jobsProcessed monotonic.
+        progressHelpers.processingJob(completedCount + 1, total, job);
       },
       onTaskSettled: (_job, _index) => {
         completedCount += 1;

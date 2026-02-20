@@ -65,7 +65,7 @@ PDF generation uses:
 
 Common paths:
 
-- Discovered to finalization: `POST /api/jobs/:id/process`
+- Discovered to finalization: `POST /api/jobs/actions`
 - Ready regeneration: `POST /api/jobs/:id/generate-pdf`
 
 ### Regenerating PDFs after edits (copy-pasteable examples)

@@ -18,7 +18,12 @@ import {
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import { AppError, badRequest, conflict } from "../../infra/errors";
+import {
+  AppError,
+  type AppErrorCode,
+  badRequest,
+  conflict,
+} from "../../infra/errors";
 import {
   generateFinalPdf,
   processJob,
@@ -295,6 +300,7 @@ function mapErrorForResult(error: unknown): {
 type JobActionExecutionOptions = {
   getProfileForRescore?: () => Promise<Record<string, unknown>>;
   forceMoveToReady?: boolean;
+  requestOrigin?: string | null;
 };
 
 function createSharedRescoreProfileLoader(): () => Promise<
@@ -382,6 +388,7 @@ async function executeJobActionForJob(
       } else {
         const processed = await processJob(jobId, {
           force: options?.forceMoveToReady ?? false,
+          requestOrigin: options?.requestOrigin ?? null,
         });
         if (!processed.success) {
           throw new AppError({
@@ -457,6 +464,32 @@ async function executeJobActionForJob(
       },
     };
   }
+}
+
+function mapJobActionFailure(
+  failure: Extract<JobActionResult, { ok: false }>,
+): AppError {
+  const statusByCode: Record<AppErrorCode, number> = {
+    INVALID_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    NOT_FOUND: 404,
+    REQUEST_TIMEOUT: 408,
+    CONFLICT: 409,
+    UNPROCESSABLE_ENTITY: 422,
+    SERVICE_UNAVAILABLE: 503,
+    UPSTREAM_ERROR: 502,
+    INTERNAL_ERROR: 500,
+  };
+  const code = (
+    failure.error.code in statusByCode ? failure.error.code : "INTERNAL_ERROR"
+  ) as AppErrorCode;
+
+  return new AppError({
+    status: statusByCode[code],
+    code,
+    message: failure.error.message,
+  });
 }
 
 /**
@@ -571,6 +604,7 @@ jobsRouter.post("/actions", async (req: Request, res: Response) => {
   try {
     const parsed = jobActionRequestSchema.parse(req.body);
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
+    const requestOrigin = resolveRequestOrigin(req);
     const executionOptions: JobActionExecutionOptions = {
       ...(parsed.action === "rescore" && !isDemoMode()
         ? { getProfileForRescore: createSharedRescoreProfileLoader() }
@@ -579,6 +613,7 @@ jobsRouter.post("/actions", async (req: Request, res: Response) => {
       parsed.options?.force !== undefined
         ? { forceMoveToReady: parsed.options.force }
         : {}),
+      ...(parsed.action === "move_to_ready" ? { requestOrigin } : {}),
     };
 
     const results = await asyncPool({
@@ -644,6 +679,7 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
   }
 
   const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
+  const requestOrigin = resolveRequestOrigin(req);
   const requestId = String(res.getHeader("x-request-id") || "unknown");
   const action = parsed.data.action;
   const executionOptions: JobActionExecutionOptions = {
@@ -653,6 +689,7 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
     ...(action === "move_to_ready" && parsed.data.options?.force !== undefined
       ? { forceMoveToReady: parsed.data.options.force }
       : {}),
+    ...(action === "move_to_ready" ? { requestOrigin } : {}),
   };
   const requested = dedupedJobIds.length;
   const results: JobActionResult[] = [];
@@ -811,6 +848,33 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
       res.end();
     }
   }
+});
+
+jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
+  const forceRaw = req.query.force as string | undefined;
+  const force = forceRaw === "1" || forceRaw === "true";
+  const result = await executeJobActionForJob("move_to_ready", req.params.id, {
+    forceMoveToReady: force,
+    requestOrigin: resolveRequestOrigin(req),
+  });
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
+});
+
+jobsRouter.post("/:id/skip", async (req: Request, res: Response) => {
+  const result = await executeJobActionForJob("skip", req.params.id);
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
+});
+
+jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
+  const result = await executeJobActionForJob("rescore", req.params.id, {
+    ...(isDemoMode()
+      ? {}
+      : { getProfileForRescore: createSharedRescoreProfileLoader() }),
+  });
+  if (!result.ok) return fail(res, mapJobActionFailure(result));
+  ok(res, result.job);
 });
 
 /**

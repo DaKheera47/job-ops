@@ -178,8 +178,8 @@ export const progressHelpers = {
       crawlingSource: source,
       crawlingSourcesCompleted: sourcesCompleted,
       crawlingSourcesTotal: sourcesTotal,
-      ...emptyCrawlingStats,
-      crawlingTermsTotal: options?.termsTotal ?? 0,
+      crawlingTermsTotal:
+        options?.termsTotal ?? getProgress().crawlingTermsTotal,
     }),
 
   completeSource: (sourcesCompleted: number, sourcesTotal: number) =>

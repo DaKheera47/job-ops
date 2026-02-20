@@ -482,26 +482,71 @@ describe.sequential("Jobs API routes", () => {
     });
     await updateJob(ready.id, { status: "ready" });
     const { processJob } = await import("../../pipeline/index");
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://canonical.jobops.example";
 
-    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "move_to_ready",
-        jobIds: [discovered.id, ready.id],
-      }),
-    });
-    const body = await res.json();
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "move_to_ready",
+          jobIds: [discovered.id, ready.id],
+        }),
+      });
+      const body = await res.json();
 
-    expect(body.ok).toBe(true);
-    expect(body.data.succeeded).toBe(1);
-    expect(body.data.failed).toBe(1);
-    expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id, {
-      force: false,
+      expect(body.ok).toBe(true);
+      expect(body.data.succeeded).toBe(1);
+      expect(body.data.failed).toBe(1);
+      expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id, {
+        force: false,
+        requestOrigin: "https://canonical.jobops.example",
+      });
+      expect(
+        body.data.results.find((r: any) => r.jobId === ready.id).error.code,
+      ).toBe("INVALID_REQUEST");
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
+  });
+
+  it("supports legacy move_to_ready endpoint", async () => {
+    const { createJob } = await import("../../repositories/jobs");
+    const { processJob } = await import("../../pipeline/index");
+    const job = await createJob({
+      source: "manual",
+      title: "Legacy Ready Route",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/legacy-process-1",
+      jobDescription: "Test description",
     });
-    expect(
-      body.data.results.find((r: any) => r.jobId === ready.id).error.code,
-    ).toBe("INVALID_REQUEST");
+
+    const previousBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://canonical.jobops.example";
+    try {
+      const res = await fetch(`${baseUrl}/api/jobs/${job.id}/process`, {
+        method: "POST",
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(vi.mocked(processJob)).toHaveBeenCalledWith(job.id, {
+        force: false,
+        requestOrigin: "https://canonical.jobops.example",
+      });
+    } finally {
+      if (previousBaseUrl === undefined) {
+        delete process.env.JOBOPS_PUBLIC_BASE_URL;
+      } else {
+        process.env.JOBOPS_PUBLIC_BASE_URL = previousBaseUrl;
+      }
+    }
   });
 
   it("runs rescore action with partial failures", async () => {
