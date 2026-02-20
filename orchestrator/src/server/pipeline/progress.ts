@@ -89,6 +89,63 @@ const emptyCrawlingStats = {
   crawlingCurrentUrl: undefined,
 };
 
+type SourceCrawlingStats = {
+  termsProcessed: number;
+  termsTotal: number;
+  listPagesProcessed: number;
+  listPagesTotal: number;
+  jobCardsFound: number;
+  jobPagesEnqueued: number;
+  jobPagesSkipped: number;
+  jobPagesProcessed: number;
+};
+
+const emptySourceCrawlingStats = (): SourceCrawlingStats => ({
+  termsProcessed: 0,
+  termsTotal: 0,
+  listPagesProcessed: 0,
+  listPagesTotal: 0,
+  jobCardsFound: 0,
+  jobPagesEnqueued: 0,
+  jobPagesSkipped: 0,
+  jobPagesProcessed: 0,
+});
+
+const crawlingStatsBySource = new Map<CrawlSource, SourceCrawlingStats>();
+
+function aggregateCrawlingStats() {
+  let termsProcessed = 0;
+  let termsTotal = 0;
+  let listPagesProcessed = 0;
+  let listPagesTotal = 0;
+  let jobCardsFound = 0;
+  let jobPagesEnqueued = 0;
+  let jobPagesSkipped = 0;
+  let jobPagesProcessed = 0;
+
+  for (const stats of crawlingStatsBySource.values()) {
+    termsProcessed += stats.termsProcessed;
+    termsTotal += stats.termsTotal;
+    listPagesProcessed += stats.listPagesProcessed;
+    listPagesTotal += stats.listPagesTotal;
+    jobCardsFound += stats.jobCardsFound;
+    jobPagesEnqueued += stats.jobPagesEnqueued;
+    jobPagesSkipped += stats.jobPagesSkipped;
+    jobPagesProcessed += stats.jobPagesProcessed;
+  }
+
+  return {
+    termsProcessed,
+    termsTotal,
+    listPagesProcessed,
+    listPagesTotal,
+    jobCardsFound,
+    jobPagesEnqueued,
+    jobPagesSkipped,
+    jobPagesProcessed,
+  };
+}
+
 /**
  * Update the current progress and notify all listeners.
  */
@@ -131,6 +188,7 @@ export function subscribeToProgress(listener: ProgressListener): () => void {
  * Reset progress to idle state.
  */
 export function resetProgress(): void {
+  crawlingStatsBySource.clear();
   currentProgress = {
     step: "idle",
     message: "Ready",
@@ -150,27 +208,38 @@ export function resetProgress(): void {
  */
 export const progressHelpers = {
   startCrawling: (sourcesTotal = 0) =>
-    updateProgress({
-      step: "crawling",
-      message: "Fetching jobs from sources...",
-      detail: "Starting crawler",
-      startedAt: new Date().toISOString(),
-      crawlingSource: null,
-      crawlingSourcesCompleted: 0,
-      crawlingSourcesTotal: sourcesTotal,
-      ...emptyCrawlingStats,
-      jobsDiscovered: 0,
-      jobsScored: 0,
-      jobsProcessed: 0,
-      totalToProcess: 0,
-    }),
+    (() => {
+      crawlingStatsBySource.clear();
+      updateProgress({
+        step: "crawling",
+        message: "Fetching jobs from sources...",
+        detail: "Starting crawler",
+        startedAt: new Date().toISOString(),
+        crawlingSource: null,
+        crawlingSourcesCompleted: 0,
+        crawlingSourcesTotal: sourcesTotal,
+        ...emptyCrawlingStats,
+        jobsDiscovered: 0,
+        jobsScored: 0,
+        jobsProcessed: 0,
+        totalToProcess: 0,
+      });
+    })(),
 
   startSource: (
     source: CrawlSource,
     sourcesCompleted: number,
     sourcesTotal: number,
     options?: { termsTotal?: number; detail?: string },
-  ) =>
+  ) => {
+    const existing =
+      crawlingStatsBySource.get(source) ?? emptySourceCrawlingStats();
+    crawlingStatsBySource.set(source, {
+      ...emptySourceCrawlingStats(),
+      termsTotal: options?.termsTotal ?? existing.termsTotal,
+    });
+    const aggregated = aggregateCrawlingStats();
+
     updateProgress({
       step: "crawling",
       message: `Fetching jobs from ${source}...`,
@@ -178,9 +247,18 @@ export const progressHelpers = {
       crawlingSource: source,
       crawlingSourcesCompleted: sourcesCompleted,
       crawlingSourcesTotal: sourcesTotal,
-      crawlingTermsTotal:
-        options?.termsTotal ?? getProgress().crawlingTermsTotal,
-    }),
+      crawlingTermsProcessed: aggregated.termsProcessed,
+      crawlingTermsTotal: aggregated.termsTotal,
+      crawlingListPagesProcessed: aggregated.listPagesProcessed,
+      crawlingListPagesTotal: aggregated.listPagesTotal,
+      crawlingJobCardsFound: aggregated.jobCardsFound,
+      crawlingJobPagesEnqueued: aggregated.jobPagesEnqueued,
+      crawlingJobPagesSkipped: aggregated.jobPagesSkipped,
+      crawlingJobPagesProcessed: aggregated.jobPagesProcessed,
+      crawlingPhase: undefined,
+      crawlingCurrentUrl: undefined,
+    });
+  },
 
   completeSource: (sourcesCompleted: number, sourcesTotal: number) =>
     updateProgress({
@@ -204,24 +282,52 @@ export const progressHelpers = {
     currentUrl?: string;
   }) => {
     const current = getProgress();
+    if (update.source) {
+      const existing =
+        crawlingStatsBySource.get(update.source) ?? emptySourceCrawlingStats();
+      const nextForSource: SourceCrawlingStats = {
+        termsProcessed: update.termsProcessed ?? existing.termsProcessed,
+        termsTotal: update.termsTotal ?? existing.termsTotal,
+        listPagesProcessed:
+          update.listPagesProcessed ?? existing.listPagesProcessed,
+        listPagesTotal: update.listPagesTotal ?? existing.listPagesTotal,
+        jobCardsFound: update.jobCardsFound ?? existing.jobCardsFound,
+        jobPagesEnqueued: update.jobPagesEnqueued ?? existing.jobPagesEnqueued,
+        jobPagesSkipped: update.jobPagesSkipped ?? existing.jobPagesSkipped,
+        jobPagesProcessed:
+          update.jobPagesProcessed ?? existing.jobPagesProcessed,
+      };
+      crawlingStatsBySource.set(update.source, nextForSource);
+    }
+
+    const aggregated = aggregateCrawlingStats();
     const next = {
       ...current,
       crawlingSource: update.source ?? current.crawlingSource,
-      crawlingTermsProcessed:
-        update.termsProcessed ?? current.crawlingTermsProcessed,
-      crawlingTermsTotal: update.termsTotal ?? current.crawlingTermsTotal,
-      crawlingListPagesProcessed:
-        update.listPagesProcessed ?? current.crawlingListPagesProcessed,
-      crawlingListPagesTotal:
-        update.listPagesTotal ?? current.crawlingListPagesTotal,
-      crawlingJobCardsFound:
-        update.jobCardsFound ?? current.crawlingJobCardsFound,
-      crawlingJobPagesEnqueued:
-        update.jobPagesEnqueued ?? current.crawlingJobPagesEnqueued,
-      crawlingJobPagesSkipped:
-        update.jobPagesSkipped ?? current.crawlingJobPagesSkipped,
-      crawlingJobPagesProcessed:
-        update.jobPagesProcessed ?? current.crawlingJobPagesProcessed,
+      crawlingTermsProcessed: update.source
+        ? aggregated.termsProcessed
+        : (update.termsProcessed ?? current.crawlingTermsProcessed),
+      crawlingTermsTotal: update.source
+        ? aggregated.termsTotal
+        : (update.termsTotal ?? current.crawlingTermsTotal),
+      crawlingListPagesProcessed: update.source
+        ? aggregated.listPagesProcessed
+        : (update.listPagesProcessed ?? current.crawlingListPagesProcessed),
+      crawlingListPagesTotal: update.source
+        ? aggregated.listPagesTotal
+        : (update.listPagesTotal ?? current.crawlingListPagesTotal),
+      crawlingJobCardsFound: update.source
+        ? aggregated.jobCardsFound
+        : (update.jobCardsFound ?? current.crawlingJobCardsFound),
+      crawlingJobPagesEnqueued: update.source
+        ? aggregated.jobPagesEnqueued
+        : (update.jobPagesEnqueued ?? current.crawlingJobPagesEnqueued),
+      crawlingJobPagesSkipped: update.source
+        ? aggregated.jobPagesSkipped
+        : (update.jobPagesSkipped ?? current.crawlingJobPagesSkipped),
+      crawlingJobPagesProcessed: update.source
+        ? aggregated.jobPagesProcessed
+        : (update.jobPagesProcessed ?? current.crawlingJobPagesProcessed),
       crawlingPhase: update.phase ?? current.crawlingPhase,
       crawlingCurrentUrl: update.currentUrl ?? current.crawlingCurrentUrl,
     };

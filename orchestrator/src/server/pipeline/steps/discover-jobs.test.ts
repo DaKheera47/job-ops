@@ -459,8 +459,8 @@ describe("discoverJobsStep", () => {
     });
 
     const progress = getProgress();
-    expect(progress.crawlingTermsProcessed).toBe(1);
-    expect(progress.crawlingTermsTotal).toBe(2);
+    expect(progress.crawlingTermsProcessed).toBe(3);
+    expect(progress.crawlingTermsTotal).toBe(4);
     expect(progress.crawlingListPagesProcessed).toBe(2);
     expect(progress.crawlingListPagesTotal).toBe(4);
     expect(progress.crawlingJobPagesEnqueued).toBe(18);
