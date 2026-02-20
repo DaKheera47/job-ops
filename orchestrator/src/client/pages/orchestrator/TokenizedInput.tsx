@@ -1,10 +1,9 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type React from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { AnimateOut } from "@/components/AnimateOut";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 interface TokenizedInputProps {
   id: string;
@@ -44,10 +43,6 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   collapsedTextLimit = 3,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const tokensRef = useRef<HTMLDivElement | null>(null);
-  const [tokensHeight, setTokensHeight] = useState(20);
-  const [exitingValues, setExitingValues] = useState<Set<string>>(new Set());
-  const valuesRef = useRef(values);
 
   const collapsedSummary = useMemo(() => {
     if (values.length === 0) return "";
@@ -65,42 +60,6 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (parsed.length === 0) return;
     onValuesChange(mergeUnique(values, parsed));
   };
-
-  const removeValueWithAnimation = (value: string) => {
-    setExitingValues((current) => {
-      if (current.has(value)) return current;
-      const next = new Set(current);
-      next.add(value);
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    valuesRef.current = values;
-    setExitingValues((current) => {
-      const next = new Set<string>();
-      for (const value of current) {
-        if (values.includes(value)) next.add(value);
-      }
-      return next;
-    });
-  }, [values]);
-
-  useLayoutEffect(() => {
-    const node = tokensRef.current;
-    if (!node) return;
-
-    const updateHeight = () => {
-      setTokensHeight(Math.max(20, node.scrollHeight));
-    };
-
-    updateHeight();
-    if (typeof ResizeObserver === "undefined") return;
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [values, isFocused]);
 
   return (
     <div className="space-y-3">
@@ -134,69 +93,62 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
       />
       <p className="text-xs text-muted-foreground">{helperText}</p>
       {values.length > 0 ? (
-        <div
-          className={cn(
-            "relative overflow-hidden transition-[height] ease-out",
-          )}
-          style={{ height: `${isFocused ? tokensHeight : 20}px` }}
-        >
-          <AnimateOut
-            show={isFocused}
-            enterClassName="translate-y-0 opacity-100 animate-in fade-in slide-in-from-top-1"
-            exitClassName="pointer-events-none -translate-y-1 opacity-0 animate-out fade-out slide-out-to-top-1"
-          >
-            <div
-              aria-hidden={!isFocused}
-              className="absolute inset-x-0 top-0 flex flex-wrap gap-2 overflow-hidden transition-all ease-out"
-              ref={tokensRef}
-            >
-              {values.map((value) => (
-                <AnimateOut
-                  key={value}
-                  show={!exitingValues.has(value)}
-                  enterClassName="animate-in fade-in zoom-in-95 slide-in-from-top-1"
-                  exitClassName="pointer-events-none animate-out fade-out zoom-out-95 slide-out-to-top-1"
-                  onExitComplete={() => {
-                    const latestValues = valuesRef.current;
-                    onValuesChange(
-                      latestValues.filter((existing) => existing !== value),
-                    );
-                    setExitingValues((current) => {
-                      if (!current.has(value)) return current;
-                      const next = new Set(current);
-                      next.delete(value);
-                      return next;
-                    });
-                  }}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-full text-xs px-2 text-muted-foreground py-1 h-auto"
-                    aria-label={`${removeLabelPrefix} ${value}`}
-                    onPointerDown={(event) => event.preventDefault()}
-                    onClick={() => removeValueWithAnimation(value)}
-                  >
-                    {value}
-                    <X className="h-3 w-3" />
-                  </Button>
-                </AnimateOut>
-              ))}
-            </div>
-          </AnimateOut>
-          <AnimateOut
-            show={!isFocused}
-            enterClassName="translate-y-0 opacity-100 animate-in fade-in slide-in-from-bottom-1"
-            exitClassName="pointer-events-none translate-y-1 opacity-0 animate-out fade-out slide-out-to-bottom-1"
-          >
-            <p
-              aria-hidden={isFocused}
-              className="absolute inset-x-0 top-0 text-xs text-muted-foreground transition-all ease-out"
-            >
-              Currently selected: {collapsedSummary}
-            </p>
-          </AnimateOut>
-        </div>
+        <motion.div layout className="overflow-hidden">
+          <AnimatePresence initial={false} mode="wait">
+            {isFocused ? (
+              <motion.div
+                key="tokens"
+                aria-hidden={!isFocused}
+                className="flex flex-wrap gap-2"
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                <AnimatePresence initial={false} mode="popLayout">
+                  {values.map((value) => (
+                    <motion.div
+                      key={value}
+                      layout
+                      initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                      transition={{ duration: 0.16, ease: "easeOut" }}
+                    >
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-auto rounded-full px-2 py-1 text-xs text-muted-foreground"
+                        aria-label={`${removeLabelPrefix} ${value}`}
+                        onPointerDown={(event) => event.preventDefault()}
+                        onClick={() =>
+                          onValuesChange(
+                            values.filter((existing) => existing !== value),
+                          )
+                        }
+                      >
+                        {value}
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </motion.div>
+            ) : (
+              <motion.p
+                key="summary"
+                aria-hidden={isFocused}
+                className="text-xs text-muted-foreground"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
+              >
+                Currently selected: {collapsedSummary}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </motion.div>
       ) : null}
     </div>
   );
