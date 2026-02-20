@@ -109,7 +109,6 @@ const buildResponseRateBySource = (
 
   return Array.from(bySource.entries())
     .map(([source, { applied, responded }]) => ({
-      // Y-axis tick: "Manual (12)" — n is always visible without relying on bar labels
       source: `${SOURCE_LABELS[source] ?? source} (${applied})`,
       applied,
       responded,
@@ -160,8 +159,7 @@ export function ResponseRateBySourceChart({
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
           <CardTitle>Response Rate by Source</CardTitle>
           <CardDescription>
-            % of applications that reached screening, interview, or offer.
-            Ghosted and rejected are not counted.
+            % of applications that got a response (not rejected or ghosted).
           </CardDescription>
         </div>
         <div className="flex flex-row items-center justify-between gap-4 border-t px-6 py-3 sm:flex-col sm:items-start sm:justify-center sm:gap-1 sm:border-t-0 sm:border-l sm:px-8 sm:py-6">
@@ -267,12 +265,6 @@ export function ResponseRateBySourceChart({
                                 <span>Responded</span>
                                 <span className="font-semibold text-foreground">
                                   {d.responded}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-4">
-                                <span>Applied (n)</span>
-                                <span className="font-semibold text-foreground">
-                                  {d.applied}
                                 </span>
                               </div>
                             </div>
