@@ -454,7 +454,7 @@ export const OrchestratorPage: React.FC = () => {
         if (activeTab !== "discovered") return;
         if (shortcutActionInFlight.current) return;
 
-        // Bulk action takes precedence if selection exists
+        // Selection action takes precedence if selection exists
         if (selectedJobIds.size > 0) {
           void runJobAction("move_to_ready");
           return;

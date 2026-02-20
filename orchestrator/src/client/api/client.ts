@@ -832,7 +832,7 @@ function getSingleJobFromActionResult(
 ): Job {
   const result = response.results.find((entry) => entry.jobId === jobId);
   if (!result) {
-    throw new ApiClientError("Bulk action did not return a result for the job");
+    throw new ApiClientError("Job action did not return a result for the job");
   }
   if (!result.ok) {
     throw new ApiClientError(result.error.message, {
@@ -1412,7 +1412,7 @@ export async function updateVisaSponsorList(): Promise<{
   });
 }
 
-// Bulk operations (intentionally none - processing is manual)
+// Multi-job operations (intentionally none - processing is manual)
 
 // Backup API
 export interface BackupListResponse {

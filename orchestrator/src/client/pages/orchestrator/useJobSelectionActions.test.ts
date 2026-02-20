@@ -34,7 +34,7 @@ const deferred = <T>(): Deferred<T> => {
 
 const asStreamEvents = (
   response: JobActionResponse,
-  requestId = "req-bulk",
+  requestId = "req-action",
 ): JobActionStreamEvent[] => {
   const events: JobActionStreamEvent[] = [
     {
@@ -123,7 +123,7 @@ describe("useJobSelectionActions", () => {
     expect(result.current.selectedJobIds.size).toBe(100);
   });
 
-  it("does not send bulk requests above the max selection size", async () => {
+  it("does not send action requests above the max selection size", async () => {
     const activeJobs = Array.from({ length: 101 }, (_, index) =>
       createJob({ id: `job-${index + 1}`, status: "discovered" }),
     );

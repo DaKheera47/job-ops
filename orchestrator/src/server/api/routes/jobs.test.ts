@@ -413,27 +413,27 @@ describe.sequential("Jobs API routes", () => {
     expect(deleteBody.data.count).toBe(1);
   });
 
-  it("runs bulk skip with partial failures", async () => {
+  it("runs skip action with partial failures", async () => {
     const { createJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-discovered",
+      jobUrl: "https://example.com/job/action-discovered",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-ready",
+      jobUrl: "https://example.com/job/action-ready",
       jobDescription: "Test description",
     });
     const applied = await createJob({
       source: "manual",
       title: "Applied Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-applied",
+      jobUrl: "https://example.com/job/action-applied",
       jobDescription: "Test description",
     });
     const { updateJob } = await import("../../repositories/jobs");
@@ -464,20 +464,20 @@ describe.sequential("Jobs API routes", () => {
     ]);
   });
 
-  it("runs bulk move_to_ready and rejects ineligible statuses", async () => {
+  it("runs move_to_ready action and rejects ineligible statuses", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "New Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-ready-1",
+      jobUrl: "https://example.com/job/action-ready-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Already Ready",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-ready-2",
+      jobUrl: "https://example.com/job/action-ready-2",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
@@ -504,7 +504,7 @@ describe.sequential("Jobs API routes", () => {
     ).toBe("INVALID_REQUEST");
   });
 
-  it("runs bulk rescore with partial failures", async () => {
+  it("runs rescore action with partial failures", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const { scoreJobSuitability } = await import("../../services/scorer");
     const { getProfile } = await import("../../services/profile");
@@ -512,28 +512,28 @@ describe.sequential("Jobs API routes", () => {
     vi.mocked(getProfile).mockResolvedValue({});
     vi.mocked(scoreJobSuitability).mockResolvedValue({
       score: 81,
-      reason: "Updated fit from bulk rescore",
+      reason: "Updated fit from action rescore",
     });
 
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-rescore-1",
+      jobUrl: "https://example.com/job/action-rescore-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-rescore-2",
+      jobUrl: "https://example.com/job/action-rescore-2",
       jobDescription: "Test description",
     });
     const processing = await createJob({
       source: "manual",
       title: "Processing Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-rescore-3",
+      jobUrl: "https://example.com/job/action-rescore-3",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
@@ -572,27 +572,27 @@ describe.sequential("Jobs API routes", () => {
     expect(vi.mocked(getProfile)).toHaveBeenCalledTimes(1);
   });
 
-  it("streams bulk action progress with done counters", async () => {
+  it("streams job action progress with done counters", async () => {
     const { createJob, updateJob } = await import("../../repositories/jobs");
     const discovered = await createJob({
       source: "manual",
       title: "Discovered Role",
       employer: "Acme",
-      jobUrl: "https://example.com/job/bulk-stream-1",
+      jobUrl: "https://example.com/job/action-stream-1",
       jobDescription: "Test description",
     });
     const ready = await createJob({
       source: "manual",
       title: "Ready Role",
       employer: "Beta",
-      jobUrl: "https://example.com/job/bulk-stream-2",
+      jobUrl: "https://example.com/job/action-stream-2",
       jobDescription: "Test description",
     });
     const applied = await createJob({
       source: "manual",
       title: "Applied Role",
       employer: "Gamma",
-      jobUrl: "https://example.com/job/bulk-stream-3",
+      jobUrl: "https://example.com/job/action-stream-3",
       jobDescription: "Test description",
     });
     await updateJob(ready.id, { status: "ready" });
@@ -661,7 +661,7 @@ describe.sequential("Jobs API routes", () => {
     expect(events.at(-1)?.failed).toBe(1);
   });
 
-  it("validates bulk action payloads", async () => {
+  it("validates job action payloads", async () => {
     const tooManyIds = Array.from(
       { length: 101 },
       (_, index) => `job-${index}`,

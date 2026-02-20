@@ -45,7 +45,7 @@ describe("jobActions", () => {
     ).toBe(false);
   });
 
-  it("extracts failed job ids from a bulk response", () => {
+  it("extracts failed job ids from an action response", () => {
     const response: JobActionResponse = {
       action: "skip",
       requested: 3,
