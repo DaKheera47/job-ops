@@ -32,6 +32,11 @@ async function startServer() {
       );
       process.exit(1);
     }
+
+    logger.error(
+      "Extractor registry initialization failed outside production. Server startup aborted.",
+    );
+    return;
   }
 
   const app = createApp();

@@ -148,10 +148,17 @@ export async function discoverJobsStep(args: {
           ? `${manifest.displayName}: ${grouped.sources.join(", ")}...`
           : grouped.detail,
       run: async () => {
+        const filteredSettings = Object.fromEntries(
+          Object.entries(settings).filter(
+            ([, value]) =>
+              typeof value === "string" || typeof value === "undefined",
+          ),
+        ) as Record<string, string | undefined>;
+
         const result = await manifest.run({
           source: grouped.sources[0],
           selectedSources: grouped.sources,
-          settings: { ...settings },
+          settings: filteredSettings,
           searchTerms,
           selectedCountry,
           shouldCancel: args.shouldCancel,

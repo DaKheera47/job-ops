@@ -71,21 +71,36 @@ export const manifest: ExtractorManifest = {
       ? parseInt(context.settings.adzunaMaxJobsPerTerm, 10)
       : 50;
 
-    const result = await runAdzuna({
-      country: countryCode,
-      countryKey: context.selectedCountry,
-      searchTerms: context.searchTerms,
-      locations: resolveSearchCities({
-        single:
-          context.settings.searchCities ?? context.settings.jobspyLocation,
-      }),
-      maxJobsPerTerm,
-      onProgress: (event) => {
-        if (context.shouldCancel?.()) return;
+    let result: Awaited<ReturnType<typeof runAdzuna>>;
+    try {
+      result = await runAdzuna({
+        country: countryCode,
+        countryKey: context.selectedCountry,
+        searchTerms: context.searchTerms,
+        locations: resolveSearchCities({
+          single:
+            context.settings.searchCities ?? context.settings.jobspyLocation,
+        }),
+        maxJobsPerTerm,
+        onProgress: (event) => {
+          if (context.shouldCancel?.()) return;
 
-        context.onProgress?.(toProgress(event));
-      },
-    });
+          context.onProgress?.(toProgress(event));
+        },
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : "Unexpected error while running Adzuna extractor.";
+      return {
+        success: false,
+        jobs: [],
+        error: message,
+      };
+    }
 
     if (!result.success) {
       return {
