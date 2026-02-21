@@ -66,4 +66,30 @@ describe("extractor registry", () => {
     expect(registry.manifestBySource.get("linkedin")?.id).toBe("jobspy");
     expect(registry.manifestBySource.get("ukvisajobs")?.id).toBe("ukvisajobs");
   });
+
+  it("throws on duplicate manifest ids in strict mode", async () => {
+    const discovery = await import("./discovery");
+    const registryModule = await import("./registry");
+    registryModule.__resetExtractorRegistryForTests();
+    process.env.EXTRACTOR_REGISTRY_STRICT = "true";
+
+    vi.mocked(discovery.discoverManifestPaths).mockResolvedValue([
+      "/tmp/one.ts",
+      "/tmp/two.ts",
+    ]);
+
+    vi.mocked(discovery.loadManifestFromFile).mockImplementation(
+      async (path) =>
+        ({
+          id: "duplicate",
+          displayName: `Manifest ${path}`,
+          providesSources: path === "/tmp/one.ts" ? ["indeed"] : ["linkedin"],
+          run: vi.fn(),
+        }) as ExtractorManifest,
+    );
+
+    await expect(registryModule.initializeExtractorRegistry()).rejects.toThrow(
+      "Duplicate extractor manifest id: duplicate",
+    );
+  });
 });

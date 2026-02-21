@@ -18,6 +18,16 @@ export interface ExtractorRegistry {
 let registry: ExtractorRegistry | null = null;
 let initPromise: Promise<ExtractorRegistry> | null = null;
 
+class DuplicateManifestIdError extends Error {
+  readonly manifestId: string;
+
+  constructor(manifestId: string) {
+    super(`Duplicate extractor manifest id: ${manifestId}`);
+    this.manifestId = manifestId;
+    this.name = "DuplicateManifestIdError";
+  }
+}
+
 export function __resetExtractorRegistryForTests(): void {
   registry = null;
   initPromise = null;
@@ -86,7 +96,7 @@ async function createRegistry(): Promise<ExtractorRegistry> {
     try {
       const manifest = await loadManifestFromFile(path);
       if (manifests.has(manifest.id)) {
-        throw new Error(`Duplicate extractor manifest id: ${manifest.id}`);
+        throw new DuplicateManifestIdError(manifest.id);
       }
 
       const invalidSources = manifest.providesSources.filter(
@@ -127,6 +137,10 @@ async function createRegistry(): Promise<ExtractorRegistry> {
         manifestBySource.set(source, manifest);
       }
     } catch (error) {
+      if (error instanceof DuplicateManifestIdError && strictModeEnabled()) {
+        throw error;
+      }
+
       logger.warn("Skipping invalid extractor manifest", {
         path,
         error: sanitizeUnknown(error),
