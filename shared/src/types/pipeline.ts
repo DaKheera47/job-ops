@@ -1,9 +1,10 @@
-import type { Job, JobSource, JobStatus } from "./jobs";
+import type { ExtractorSourceId } from "../extractors";
+import type { Job, JobStatus } from "./jobs";
 
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
   minSuitabilityScore: number; // Minimum score to auto-process
-  sources: JobSource[]; // Job sources to crawl
+  sources: ExtractorSourceId[]; // Job sources to crawl
   outputDir: string; // Directory for generated PDFs
   enableCrawling?: boolean;
   enableScoring?: boolean;

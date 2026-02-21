@@ -1,3 +1,4 @@
+import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
 import {
   formatCountryLabel,
   isSourceAllowedForCountry,
@@ -77,7 +78,6 @@ const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
 const GLASSDOOR_LOCATION_REASON =
   "Add at least one city in Advanced settings to enable Glassdoor.";
-const UK_ONLY_SOURCES = new Set<JobSource>(["gradcracker", "ukvisajobs"]);
 const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
 
 function normalizeUiCountryKey(value: string): string {
@@ -95,7 +95,7 @@ function getSourceDisabledReason(
       ? GLASSDOOR_LOCATION_REASON
       : GLASSDOOR_COUNTRY_REASON;
   }
-  if (UK_ONLY_SOURCES.has(source)) {
+  if (EXTRACTOR_SOURCE_METADATA[source]?.ukOnly) {
     return `${sourceLabel[source]} is available only when country is United Kingdom.`;
   }
   return `${sourceLabel[source]} is not available for the selected country.`;

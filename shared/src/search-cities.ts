@@ -37,6 +37,25 @@ export function parseSearchCitiesSetting(
   return out;
 }
 
+interface ResolveSearchCitiesOptions {
+  list?: string[] | null;
+  single?: string | null;
+  env?: string | null;
+  fallback?: string | null;
+}
+
+export function resolveSearchCities(
+  options: ResolveSearchCitiesOptions,
+): string[] {
+  if (options.list && options.list.length > 0) {
+    return parseSearchCitiesSetting(options.list.join("|"));
+  }
+
+  return parseSearchCitiesSetting(
+    options.single ?? options.env ?? options.fallback ?? "",
+  );
+}
+
 export function serializeSearchCitiesSetting(cities: string[]): string | null {
   if (cities.length === 0) return null;
   return cities.join("|");

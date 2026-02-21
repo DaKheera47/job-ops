@@ -5,6 +5,7 @@
  * Ghosted/no-reply and rejected outcomes are both excluded from the numerator.
  */
 
+import { isExtractorSourceId, sourceLabel } from "@shared/extractors";
 import type { JobSource, StageEvent } from "@shared/types.js";
 import { useMemo, useState } from "react";
 import {
@@ -64,17 +65,6 @@ const RESPONSE_STAGES = new Set([
   "offer",
 ]);
 
-const SOURCE_LABELS: Record<JobSource, string> = {
-  gradcracker: "Gradcracker",
-  indeed: "Indeed",
-  linkedin: "LinkedIn",
-  glassdoor: "Glassdoor",
-  ukvisajobs: "UKVisaJobs",
-  adzuna: "Adzuna",
-  hiringcafe: "HiringCafe",
-  manual: "Manual",
-};
-
 const BAR_COLORS = [
   "#3b82f6",
   "#8b5cf6",
@@ -110,7 +100,7 @@ const buildResponseRateBySource = (
 
   return Array.from(bySource.entries())
     .map(([source, { applied, responded }]) => ({
-      source: `${SOURCE_LABELS[source] ?? source} (${applied})`,
+      source: `${isExtractorSourceId(source) ? sourceLabel(source) : source} (${applied})`,
       applied,
       responded,
       rate: applied > 0 ? (responded / applied) * 100 : 0,

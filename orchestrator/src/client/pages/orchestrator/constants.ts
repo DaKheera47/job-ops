@@ -1,3 +1,8 @@
+import {
+  EXTRACTOR_SOURCE_IDS,
+  EXTRACTOR_SOURCE_METADATA,
+  PIPELINE_EXTRACTOR_SOURCE_IDS,
+} from "@shared/extractors";
 import type { JobSource, JobStatus } from "@shared/types";
 
 export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
@@ -8,16 +13,18 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
 ];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 
-export const orderedSources: JobSource[] = [
-  "gradcracker",
-  "indeed",
-  "linkedin",
-  "glassdoor",
-  "adzuna",
-  "hiringcafe",
-  "ukvisajobs",
-];
-export const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];
+export const orderedSources: JobSource[] = [...PIPELINE_EXTRACTOR_SOURCE_IDS]
+  .sort(
+    (left, right) =>
+      EXTRACTOR_SOURCE_METADATA[left].order -
+      EXTRACTOR_SOURCE_METADATA[right].order,
+  )
+  .filter((source) => source !== "manual");
+export const orderedFilterSources: JobSource[] = [...EXTRACTOR_SOURCE_IDS].sort(
+  (left, right) =>
+    EXTRACTOR_SOURCE_METADATA[left].order -
+    EXTRACTOR_SOURCE_METADATA[right].order,
+);
 
 export const statusTokens: Record<
   JobStatus,

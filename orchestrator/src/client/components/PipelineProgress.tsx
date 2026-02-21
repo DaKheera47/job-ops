@@ -2,6 +2,10 @@
  * Live pipeline progress display component.
  */
 
+import {
+  sourceLabel as getSourceLabel,
+  isExtractorSourceId,
+} from "@shared/extractors";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -24,13 +28,7 @@ interface PipelineProgress {
     | "failed";
   message: string;
   detail?: string;
-  crawlingSource:
-    | "gradcracker"
-    | "jobspy"
-    | "ukvisajobs"
-    | "adzuna"
-    | "hiringcafe"
-    | null;
+  crawlingSource: string | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
   crawlingTermsProcessed: number;
@@ -83,19 +81,14 @@ const stepBadgeClasses: Record<PipelineProgress["step"], string> = {
   failed: "bg-destructive/10 text-destructive border-destructive/20",
 };
 
-const sourceLabel: Record<
-  Exclude<PipelineProgress["crawlingSource"], null>,
-  string
-> = {
-  gradcracker: "Gradcracker",
-  jobspy: "JobSpy",
-  ukvisajobs: "UKVisaJobs",
-  adzuna: "Adzuna",
-  hiringcafe: "Hiring Cafe",
-};
-
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
+
+function resolveSourceLabel(source: string): string {
+  if (source === "jobspy") return "JobSpy";
+  if (isExtractorSourceId(source)) return getSourceLabel(source);
+  return source;
+}
 
 export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   isRunning,
@@ -257,7 +250,7 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
               <p className="text-xs text-muted-foreground">
                 Source:{" "}
                 {progress.crawlingSource
-                  ? sourceLabel[progress.crawlingSource]
+                  ? resolveSourceLabel(progress.crawlingSource)
                   : "starting"}
                 {"  "}({progress.crawlingSourcesCompleted}/
                 {Math.max(progress.crawlingSourcesTotal, 0)})

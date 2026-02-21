@@ -7,6 +7,7 @@
 
 export * from "./types/api";
 export * from "./types/chat";
+export * from "./types/extractors";
 export * from "./types/jobs";
 export * from "./types/pipeline";
 export * from "./types/post-application";

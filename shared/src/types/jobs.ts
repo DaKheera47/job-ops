@@ -1,3 +1,5 @@
+import type { ExtractorSourceId } from "../extractors";
+
 export type JobStatus =
   | "discovered" // Crawled but not processed
   | "processing" // Currently generating resume
@@ -115,15 +117,7 @@ export interface Interview {
   outcome: InterviewOutcome | null;
 }
 
-export type JobSource =
-  | "gradcracker"
-  | "indeed"
-  | "linkedin"
-  | "glassdoor"
-  | "ukvisajobs"
-  | "adzuna"
-  | "hiringcafe"
-  | "manual";
+export type JobSource = ExtractorSourceId;
 
 export interface Job {
   id: string;

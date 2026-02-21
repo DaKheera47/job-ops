@@ -9,7 +9,7 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
   matchesRequestedCity,
-  parseSearchCitiesSetting,
+  resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput } from "@shared/types";
@@ -81,13 +81,6 @@ export function matchesRequestedLocation(
   requestedLocation: string,
 ): boolean {
   return matchesRequestedCity(jobLocation, requestedLocation);
-}
-
-function resolveLocations(options: RunHiringCafeOptions): string[] {
-  const raw = options.locations?.length
-    ? options.locations
-    : parseSearchCitiesSetting(process.env.HIRING_CAFE_LOCATION_QUERY ?? "");
-  return raw.map((value) => value.trim()).filter(Boolean);
 }
 
 function resolveTsxCliPath(): string | null {
@@ -218,7 +211,10 @@ export async function runHiringCafe(
     1,
     Math.floor(options.locationRadiusMiles ?? 1),
   );
-  const locations = resolveLocations(options);
+  const locations = resolveSearchCities({
+    list: options.locations,
+    env: process.env.HIRING_CAFE_LOCATION_QUERY,
+  });
   const runLocations = locations.length > 0 ? locations : [null];
   const termTotal = searchTerms.length * runLocations.length;
 

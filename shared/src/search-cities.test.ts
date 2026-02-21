@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   matchesRequestedCity,
   parseSearchCitiesSetting,
+  resolveSearchCities,
   serializeSearchCitiesSetting,
   shouldApplyStrictCityFilter,
 } from "./search-cities";
@@ -24,6 +25,24 @@ describe("search-cities", () => {
       "Leeds|London",
     );
     expect(serializeSearchCitiesSetting([])).toBeNull();
+  });
+
+  it("resolves search cities from list/single/env/fallback", () => {
+    expect(
+      resolveSearchCities({
+        list: [" Leeds ", "London", "leeds"],
+      }),
+    ).toEqual(["Leeds", "London"]);
+
+    expect(resolveSearchCities({ single: "Leeds|London" })).toEqual([
+      "Leeds",
+      "London",
+    ]);
+    expect(resolveSearchCities({ env: "Leeds\nLondon" })).toEqual([
+      "Leeds",
+      "London",
+    ]);
+    expect(resolveSearchCities({ fallback: "UK" })).toEqual(["UK"]);
   });
 
   it("applies strict filter only when city differs from country", () => {

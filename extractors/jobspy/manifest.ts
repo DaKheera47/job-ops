@@ -1,0 +1,64 @@
+import { runJobSpy } from "../../orchestrator/src/server/services/jobspy.ts";
+import type {
+  ExtractorManifest,
+  ExtractorRuntimeContext,
+} from "../../shared/src/types/extractors.ts";
+
+const JOBSPY_SOURCES = new Set(["indeed", "linkedin", "glassdoor"]);
+
+export const manifest: ExtractorManifest = {
+  id: "jobspy",
+  displayName: "JobSpy",
+  providesSources: ["indeed", "linkedin", "glassdoor"],
+  async run(context: ExtractorRuntimeContext) {
+    const sites = context.selectedSources.filter((source) =>
+      JOBSPY_SOURCES.has(source),
+    );
+
+    const result = await runJobSpy({
+      sites,
+      searchTerms: context.searchTerms,
+      location:
+        context.settings.searchCities ?? context.settings.jobspyLocation,
+      resultsWanted: context.settings.jobspyResultsWanted
+        ? parseInt(context.settings.jobspyResultsWanted, 10)
+        : undefined,
+      countryIndeed: context.settings.jobspyCountryIndeed,
+      onProgress: (event) => {
+        if (event.type === "term_start") {
+          context.onProgress?.({
+            phase: "list",
+            termsProcessed: Math.max(event.termIndex - 1, 0),
+            termsTotal: event.termTotal,
+            currentUrl: event.searchTerm,
+            detail: `JobSpy: term ${event.termIndex}/${event.termTotal} (${event.searchTerm})`,
+          });
+          return;
+        }
+
+        context.onProgress?.({
+          phase: "list",
+          termsProcessed: event.termIndex,
+          termsTotal: event.termTotal,
+          currentUrl: event.searchTerm,
+          detail: `JobSpy: completed ${event.termIndex}/${event.termTotal} (${event.searchTerm}) with ${event.jobsFoundTerm} jobs`,
+        });
+      },
+    });
+
+    if (!result.success) {
+      return {
+        success: false,
+        jobs: [],
+        error: result.error,
+      };
+    }
+
+    return {
+      success: true,
+      jobs: result.jobs,
+    };
+  },
+};
+
+export default manifest;

@@ -11,7 +11,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import {
   matchesRequestedCity,
-  parseSearchCitiesSetting,
+  resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput, JobSource } from "@shared/types";
@@ -190,7 +190,12 @@ export async function runJobSpy(
     .join(",");
 
   const searchTerms = resolveSearchTerms(options);
-  const locations = resolveLocations(options);
+  const locations = resolveSearchCities({
+    list: options.locations,
+    single: options.location,
+    env: process.env.JOBSPY_LOCATION,
+    fallback: "UK",
+  });
   const countryIndeed =
     options.countryIndeed ?? process.env.JOBSPY_COUNTRY_INDEED ?? "UK";
   if (searchTerms.length === 0) {
@@ -308,16 +313,6 @@ export async function runJobSpy(
     const message = error instanceof Error ? error.message : "Unknown error";
     return { success: false, jobs: [], error: message };
   }
-}
-
-function resolveLocations(options: RunJobSpyOptions): string[] {
-  const fromOptions = options.locations?.length ? options.locations : null;
-  const fromSingle = options.location?.trim();
-  const fromEnv = process.env.JOBSPY_LOCATION?.trim();
-  const raw =
-    fromOptions ?? parseSearchCitiesSetting(fromSingle ?? fromEnv ?? "UK");
-  const out = raw.map((value) => value.trim()).filter(Boolean);
-  return out.length > 0 ? out : ["UK"];
 }
 
 function resolveSearchTerms(options: RunJobSpyOptions): string[] {

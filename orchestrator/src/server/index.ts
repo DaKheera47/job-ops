@@ -3,7 +3,9 @@
  */
 
 import "./config/env";
+import { logger } from "@infra/logger";
 import { createApp } from "./app";
+import { initializeExtractorRegistry } from "./extractors/registry";
 import * as settingsRepo from "./repositories/settings";
 import {
   getBackupSettings,
@@ -16,6 +18,7 @@ import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/i
 
 async function startServer() {
   await applyStoredEnvOverrides();
+  await initializeExtractorRegistry();
 
   const app = createApp();
   const PORT = process.env.PORT || 3001;
@@ -46,7 +49,7 @@ async function startServer() {
         await initializeVisaSponsors();
       }
     } catch (error) {
-      console.warn("⚠️ Failed to initialize visa sponsors service:", error);
+      logger.warn("Failed to initialize visa sponsors service", { error });
     }
 
     // Initialize backup service (load settings and start scheduler if enabled)
@@ -85,13 +88,13 @@ async function startServer() {
         );
       }
     } catch (error) {
-      console.warn("⚠️ Failed to initialize backup service:", error);
+      logger.warn("Failed to initialize backup service", { error });
     }
 
     try {
       await initializeDemoModeServices();
     } catch (error) {
-      console.warn("⚠️ Failed to initialize demo mode services:", error);
+      logger.warn("Failed to initialize demo mode services", { error });
     }
   });
 }

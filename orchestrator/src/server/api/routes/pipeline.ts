@@ -3,10 +3,12 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
+import { extractorSourceEnum } from "@shared/extractors";
 import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode } from "../../config/demo";
+import { getExtractorRegistry } from "../../extractors/registry";
 import {
   getPipelineStatus,
   requestPipelineCancel,
@@ -92,25 +94,27 @@ pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
 const runPipelineSchema = z.object({
   topN: z.number().min(1).max(50).optional(),
   minSuitabilityScore: z.number().min(0).max(100).optional(),
-  sources: z
-    .array(
-      z.enum([
-        "gradcracker",
-        "indeed",
-        "linkedin",
-        "glassdoor",
-        "ukvisajobs",
-        "adzuna",
-        "hiringcafe",
-      ]),
-    )
-    .min(1)
-    .optional(),
+  sources: z.array(extractorSourceEnum).min(1).optional(),
 });
 
 pipelineRouter.post("/run", async (req: Request, res: Response) => {
   try {
     const config = runPipelineSchema.parse(req.body);
+    if (config.sources && config.sources.length > 0) {
+      const registry = await getExtractorRegistry();
+      const unavailableSources = config.sources.filter(
+        (source) => !registry.manifestBySource.has(source),
+      );
+      if (unavailableSources.length > 0) {
+        return fail(
+          res,
+          badRequest(
+            `Requested sources are not available at runtime: ${unavailableSources.join(", ")}`,
+            { unavailableSources },
+          ),
+        );
+      }
+    }
 
     if (isDemoMode()) {
       const simulated = await simulatePipelineRun(config);

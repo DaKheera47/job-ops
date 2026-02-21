@@ -1,3 +1,7 @@
+import {
+  EXTRACTOR_SOURCE_IDS,
+  sourceLabel as getExtractorSourceLabel,
+} from "@shared/extractors";
 import type { Job } from "@shared/types";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -137,13 +141,11 @@ export const formatJobForWebhook = (job: Job) => {
   );
 };
 
-export const sourceLabel: Record<Job["source"], string> = {
-  gradcracker: "Gradcracker",
-  indeed: "Indeed",
-  linkedin: "LinkedIn",
-  glassdoor: "Glassdoor",
-  ukvisajobs: "UK Visa Jobs",
-  adzuna: "Adzuna",
-  hiringcafe: "Hiring Cafe",
-  manual: "Manual",
-};
+export const sourceLabel: Record<Job["source"], string> =
+  EXTRACTOR_SOURCE_IDS.reduce(
+    (acc, source) => {
+      acc[source] = getExtractorSourceLabel(source);
+      return acc;
+    },
+    {} as Record<Job["source"], string>,
+  );
