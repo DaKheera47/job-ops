@@ -48,12 +48,18 @@ export function resolveSearchCities(
   options: ResolveSearchCitiesOptions,
 ): string[] {
   if (options.list && options.list.length > 0) {
-    return parseSearchCitiesSetting(options.list.join("|"));
+    const parsedList = parseSearchCitiesSetting(options.list.join("|"));
+    if (parsedList.length > 0) return parsedList;
   }
 
-  return parseSearchCitiesSetting(
-    options.single ?? options.env ?? options.fallback ?? "",
-  );
+  const fallbackCandidates = [options.single, options.env, options.fallback];
+  for (const candidate of fallbackCandidates) {
+    if (candidate === null || candidate === undefined) continue;
+    const parsed = parseSearchCitiesSetting(candidate);
+    if (parsed.length > 0) return parsed;
+  }
+
+  return [];
 }
 
 export function serializeSearchCitiesSetting(cities: string[]): string | null {

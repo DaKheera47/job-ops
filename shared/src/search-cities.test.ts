@@ -45,6 +45,14 @@ describe("search-cities", () => {
     expect(resolveSearchCities({ fallback: "UK" })).toEqual(["UK"]);
   });
 
+  it("falls back when single/env values parse to empty", () => {
+    expect(resolveSearchCities({ single: "", fallback: "UK" })).toEqual(["UK"]);
+    expect(resolveSearchCities({ single: "||", fallback: "UK" })).toEqual([
+      "UK",
+    ]);
+    expect(resolveSearchCities({ env: "   ", fallback: "UK" })).toEqual(["UK"]);
+  });
+
   it("returns empty array when all resolve options are empty", () => {
     expect(
       resolveSearchCities({
