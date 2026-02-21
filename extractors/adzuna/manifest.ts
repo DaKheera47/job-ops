@@ -1,10 +1,10 @@
-import { runAdzuna } from "../../orchestrator/src/server/services/adzuna.ts";
-import { getAdzunaCountryCode } from "../../shared/src/location-support.ts";
-import { resolveSearchCities } from "../../shared/src/search-cities.ts";
+import { runAdzuna } from "../../orchestrator/src/server/services/adzuna";
+import { getAdzunaCountryCode } from "../../shared/src/location-support";
+import { resolveSearchCities } from "../../shared/src/search-cities";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
-} from "../../shared/src/types/extractors.ts";
+} from "../../shared/src/types/extractors";
 
 function toProgress(event: {
   type: string;

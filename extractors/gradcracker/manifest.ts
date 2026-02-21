@@ -1,9 +1,9 @@
-import { getAllJobUrls } from "../../orchestrator/src/server/repositories/jobs.ts";
-import { runCrawler } from "../../orchestrator/src/server/services/crawler.ts";
+import { getAllJobUrls } from "../../orchestrator/src/server/repositories/jobs";
+import { runCrawler } from "../../orchestrator/src/server/services/crawler";
 import type {
   ExtractorManifest,
   ExtractorRuntimeContext,
-} from "../../shared/src/types/extractors.ts";
+} from "../../shared/src/types/extractors";
 
 export const manifest: ExtractorManifest = {
   id: "gradcracker",

@@ -22,9 +22,16 @@ async function startServer() {
   try {
     await initializeExtractorRegistry();
   } catch (error) {
-    logger.warn("Failed to initialize extractor registry", {
-      error: sanitizeUnknown(error),
+    const sanitizedError = sanitizeUnknown(error);
+    logger.error("Failed to initialize extractor registry", {
+      error: sanitizedError,
     });
+    if (process.env.NODE_ENV === "production") {
+      logger.error(
+        "Extractor registry initialization failed in production. Shutting down server.",
+      );
+      process.exit(1);
+    }
   }
 
   const app = createApp();

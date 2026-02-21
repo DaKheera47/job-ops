@@ -1,9 +1,9 @@
-import { runHiringCafe } from "../../orchestrator/src/server/services/hiring-cafe.ts";
-import { resolveSearchCities } from "../../shared/src/search-cities.ts";
+import { runHiringCafe } from "../../orchestrator/src/server/services/hiring-cafe";
+import { resolveSearchCities } from "../../shared/src/search-cities";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
-} from "../../shared/src/types/extractors.ts";
+} from "../../shared/src/types/extractors";
 
 function toProgress(event: {
   type: string;
