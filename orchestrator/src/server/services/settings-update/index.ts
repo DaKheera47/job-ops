@@ -7,9 +7,4 @@ export type {
   SettingsUpdateResult,
   SettingUpdateHandler,
 } from "./registry";
-export {
-  settingsUpdateRegistry,
-  toJsonOrNull,
-  toNormalizedStringOrNull,
-  toNumberStringOrNull,
-} from "./registry";
+export { settingsUpdateRegistry } from "./registry";
