@@ -1,5 +1,5 @@
 ---
-id: workflows/add-an-extractor
+id: add-an-extractor
 title: Add an Extractor
 description: How to add a new extractor using the manifest contract and shared extractor catalog.
 sidebar_position: 2
