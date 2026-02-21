@@ -1,13 +1,18 @@
 # JobOps: Your Ironman Suit for Job Hunting
 
-**Automate the hunt.** Scrapes major job boards (LinkedIn, Indeed, Glassdoor), **AI-scores suitability**, **tailors resumes** (RxResume), and **tracks application emails** automatically.
-
-Self-hosted. Docker-based. **Stop applying manually.**
 
 [![Stars](https://img.shields.io/github/stars/DaKheera47/job-ops?style=social)](https://github.com/DaKheera47/job-ops)
 [![GHCR](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://github.com/DaKheera47/job-ops/pkgs/container/job-ops)
 [![Release](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml/badge.svg)](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml)
 [![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](Contributors)
+
+
+**Automate the hunt.** Scrapes major job boards (LinkedIn, Indeed, Glassdoor), **AI-scores suitability**, **tailors resumes** (RxResume), and **tracks application emails** automatically.
+
+<img width="1200" height="600" alt="image" src="https://github.com/user-attachments/assets/7328102a-530d-4bd0-af0b-ce8a1b864f41" />
+
+
+Self-hosted. Docker-based. **Stop applying manually.**
 
 ## 40s Demo: Crawl → Score → PDF → Track
 
