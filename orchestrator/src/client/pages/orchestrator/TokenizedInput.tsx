@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import type React from "react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -47,6 +47,14 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   const summaryRef = useRef<HTMLParagraphElement | null>(null);
   const [tokensHeight, setTokensHeight] = useState(20);
   const [summaryHeight, setSummaryHeight] = useState(20);
+  const updateHeights = useCallback(() => {
+    if (tokensRef.current) {
+      setTokensHeight(Math.max(20, tokensRef.current.scrollHeight));
+    }
+    if (summaryRef.current) {
+      setSummaryHeight(Math.max(20, summaryRef.current.scrollHeight));
+    }
+  }, []);
 
   const collapsedSummary = useMemo(() => {
     if (values.length === 0) return "";
@@ -66,15 +74,6 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   };
 
   useLayoutEffect(() => {
-    const updateHeights = () => {
-      if (tokensRef.current) {
-        setTokensHeight(Math.max(20, tokensRef.current.scrollHeight));
-      }
-      if (summaryRef.current) {
-        setSummaryHeight(Math.max(20, summaryRef.current.scrollHeight));
-      }
-    };
-
     updateHeights();
     if (typeof ResizeObserver === "undefined") return;
 
@@ -83,7 +82,11 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
     if (summaryRef.current) observer.observe(summaryRef.current);
 
     return () => observer.disconnect();
-  }, []);
+  }, [updateHeights]);
+
+  useLayoutEffect(() => {
+    updateHeights();
+  });
 
   return (
     <div className="space-y-3">
@@ -108,9 +111,10 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
         onPaste={(event) => {
           const pasted = event.clipboardData.getData("text");
           const parsed = parseInput(pasted);
-          if (parsed.length > 1) {
+          if (parsed.length > 0) {
             event.preventDefault();
             addValues(pasted);
+            onDraftChange("");
           }
         }}
         placeholder={placeholder}

@@ -26,8 +26,5 @@
     "knip": "^5.83.1",
     "tsx": "^4.19.2",
     "typescript": "^5.9.3"
-  },
-  "dependencies": {
-    "framer-motion": "^12.34.3"
   }
 }
