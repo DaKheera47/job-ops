@@ -1,6 +1,7 @@
 import type { AppError } from "@infra/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { __test__, gmailApi, resolveGmailAccessToken } from "./gmail-sync";
+import { gmailApi, resolveGmailAccessToken } from "./gmail-api";
+import { __test__ } from "./gmail-sync";
 
 describe("gmail sync http behavior", () => {
   const originalClientId = process.env.GMAIL_OAUTH_CLIENT_ID;
