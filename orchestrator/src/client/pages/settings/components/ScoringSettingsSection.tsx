@@ -169,6 +169,12 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
           <Separator />
 
           <div className="space-y-3">
+            <label
+              htmlFor="blocked-company-keywords"
+              className="text-sm font-medium leading-none"
+            >
+              Blocked Company Keywords
+            </label>
             <TokenizedInput
               id="blocked-company-keywords"
               values={blockedCompanyKeywordValues}
@@ -181,6 +187,7 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
               placeholder='e.g. "recruitment", "staffing"'
               helperText="Jobs whose company name contains one of these keywords will be dropped during discovery."
               removeLabelPrefix="Remove blocked keyword"
+              disabled={isLoading || isSaving}
             />
             <div className="break-words font-mono text-xs text-muted-foreground">
               Effective:{" "}

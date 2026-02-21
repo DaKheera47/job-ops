@@ -16,6 +16,7 @@ interface TokenizedInputProps {
   helperText: string;
   removeLabelPrefix: string;
   collapsedTextLimit?: number;
+  disabled?: boolean;
 }
 
 function mergeUnique(values: string[], nextValues: string[]): string[] {
@@ -41,6 +42,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   helperText,
   removeLabelPrefix,
   collapsedTextLimit = 3,
+  disabled = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const tokensRef = useRef<HTMLDivElement | null>(null);
@@ -118,6 +120,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
           }
         }}
         placeholder={placeholder}
+        disabled={disabled}
       />
       <p className="text-xs text-muted-foreground">{helperText}</p>
       {values.length > 0 ? (
@@ -152,6 +155,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                     variant="outline"
                     className="h-auto rounded-full px-2 py-1 text-xs text-muted-foreground"
                     aria-label={`${removeLabelPrefix} ${value}`}
+                    disabled={disabled}
                     onPointerDown={(event) => event.preventDefault()}
                     onClick={() =>
                       onValuesChange(
