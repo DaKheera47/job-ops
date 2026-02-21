@@ -1,74 +1,14 @@
 import type { SettingKey } from "@server/repositories/settings";
 import * as settingsRepo from "@server/repositories/settings";
+import { settingsRegistry } from "@shared/settings-registry";
 
 const envDefaults: Record<string, string | undefined> = { ...process.env };
-
-const readableStringConfig: { settingKey: SettingKey; envKey: string }[] = [
-  { settingKey: "llmProvider", envKey: "LLM_PROVIDER" },
-  { settingKey: "llmBaseUrl", envKey: "LLM_BASE_URL" },
-  { settingKey: "rxresumeEmail", envKey: "RXRESUME_EMAIL" },
-  { settingKey: "ukvisajobsEmail", envKey: "UKVISAJOBS_EMAIL" },
-  { settingKey: "adzunaAppId", envKey: "ADZUNA_APP_ID" },
-  { settingKey: "basicAuthUser", envKey: "BASIC_AUTH_USER" },
-];
-
-const readableBooleanConfig: {
-  settingKey: SettingKey;
-  envKey: string;
-  defaultValue: boolean;
-}[] = [];
-
-const privateStringConfig: {
-  settingKey: SettingKey;
-  envKey: string;
-  hintKey: string;
-}[] = [
-  {
-    settingKey: "llmApiKey",
-    envKey: "LLM_API_KEY",
-    hintKey: "llmApiKeyHint",
-  },
-  {
-    settingKey: "rxresumePassword",
-    envKey: "RXRESUME_PASSWORD",
-    hintKey: "rxresumePasswordHint",
-  },
-  {
-    settingKey: "ukvisajobsPassword",
-    envKey: "UKVISAJOBS_PASSWORD",
-    hintKey: "ukvisajobsPasswordHint",
-  },
-  {
-    settingKey: "adzunaAppKey",
-    envKey: "ADZUNA_APP_KEY",
-    hintKey: "adzunaAppKeyHint",
-  },
-  {
-    settingKey: "basicAuthPassword",
-    envKey: "BASIC_AUTH_PASSWORD",
-    hintKey: "basicAuthPasswordHint",
-  },
-  {
-    settingKey: "webhookSecret",
-    envKey: "WEBHOOK_SECRET",
-    hintKey: "webhookSecretHint",
-  },
-];
 
 export function normalizeEnvInput(
   value: string | null | undefined,
 ): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
-}
-
-function parseEnvBoolean(
-  raw: string | null | undefined,
-  defaultValue: boolean,
-): boolean {
-  if (raw === undefined || raw === null || raw === "") return defaultValue;
-  if (raw === "false" || raw === "0") return false;
-  return true;
 }
 
 export function applyEnvValue(envKey: string, value: string | null): void {
@@ -85,45 +25,27 @@ export function applyEnvValue(envKey: string, value: string | null): void {
   process.env[envKey] = value;
 }
 
-export function serializeEnvBoolean(value: boolean | null): string | null {
-  if (value === null) return null;
-  return value ? "true" : "false";
-}
-
 export async function applyStoredEnvOverrides(): Promise<void> {
   const safeGetSetting = async (key: SettingKey): Promise<string | null> => {
     try {
       return await settingsRepo.getSetting(key);
     } catch (error) {
-      // In some test harnesses or first-boot scenarios, the DB may exist but not yet
-      // have the settings table. Treat this as "no overrides".
       const msg = String((error as Error)?.message ?? error);
-      if (msg.includes("no such table") && msg.includes("settings"))
+      if (msg.includes("no such table") && msg.includes("settings")) {
         return null;
+      }
       throw error;
     }
   };
 
-  await Promise.all([
-    ...readableStringConfig.map(async ({ settingKey, envKey }) => {
-      const override = await safeGetSetting(settingKey);
-      if (override === null) return;
-      applyEnvValue(envKey, normalizeEnvInput(override));
-    }),
-    ...readableBooleanConfig.map(
-      async ({ settingKey, envKey, defaultValue }) => {
-        const override = await safeGetSetting(settingKey);
-        if (override === null) return;
-        const parsed = parseEnvBoolean(override, defaultValue);
-        applyEnvValue(envKey, serializeEnvBoolean(parsed));
-      },
-    ),
-    ...privateStringConfig.map(async ({ settingKey, envKey }) => {
-      const override = await safeGetSetting(settingKey);
-      if (override === null) return;
-      applyEnvValue(envKey, normalizeEnvInput(override));
-    }),
-  ]);
+  const tasks = Object.entries(settingsRegistry).map(async ([key, def]) => {
+    if (!("envKey" in def) || !def.envKey) return;
+    const override = await safeGetSetting(key as SettingKey);
+    if (override === null) return;
+    applyEnvValue(def.envKey, normalizeEnvInput(override));
+  });
+
+  await Promise.all(tasks);
 }
 
 export async function getEnvSettingsData(
@@ -133,29 +55,24 @@ export async function getEnvSettingsData(
   const readableValues: Record<string, string | boolean | null> = {};
   const privateValues: Record<string, string | null> = {};
 
-  for (const { settingKey, envKey } of readableStringConfig) {
-    const override = activeOverrides[settingKey] ?? null;
-    const rawValue = override ?? process.env[envKey];
-    readableValues[settingKey] = normalizeEnvInput(rawValue);
-  }
+  for (const [key, def] of Object.entries(settingsRegistry)) {
+    if (!("envKey" in def) || !def.envKey) continue;
 
-  for (const { settingKey, envKey, defaultValue } of readableBooleanConfig) {
-    const override = activeOverrides[settingKey] ?? null;
-    const rawValue = override ?? process.env[envKey];
-    readableValues[settingKey] = parseEnvBoolean(rawValue, defaultValue);
-  }
+    const override = activeOverrides[key as SettingKey] ?? null;
+    const rawValue = override ?? process.env[def.envKey];
 
-  for (const { settingKey, envKey, hintKey } of privateStringConfig) {
-    const override = activeOverrides[settingKey] ?? null;
-    const rawValue = override ?? process.env[envKey];
-    if (!rawValue) {
-      privateValues[hintKey] = null;
-      continue;
+    if (def.kind === "secret") {
+      const hintKey = `${key}Hint`;
+      if (!rawValue) {
+        privateValues[hintKey] = null;
+        continue;
+      }
+      const hintLength =
+        rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
+      privateValues[hintKey] = rawValue.slice(0, hintLength);
+    } else {
+      readableValues[key] = normalizeEnvInput(rawValue);
     }
-
-    const hintLength =
-      rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
-    privateValues[hintKey] = rawValue.slice(0, hintLength);
   }
 
   const basicAuthUser =
@@ -169,9 +86,3 @@ export async function getEnvSettingsData(
     basicAuthActive: Boolean(basicAuthUser && basicAuthPassword),
   };
 }
-
-export const envSettingConfig = {
-  readableStringConfig,
-  readableBooleanConfig,
-  privateStringConfig,
-};
