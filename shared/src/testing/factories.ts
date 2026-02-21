@@ -156,6 +156,11 @@ export const createAppSettings = (
     default: ["Software Engineer"],
     override: null,
   },
+  blockedCompanyKeywords: {
+    value: [],
+    default: [],
+    override: null,
+  },
   searchCities: {
     value: "United Kingdom",
     default: "United Kingdom",

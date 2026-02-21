@@ -261,4 +261,38 @@ describe("SettingsPage", () => {
       }),
     );
   });
+
+  it("saves blocked company keywords from scoring settings", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...baseSettings,
+      blockedCompanyKeywords: {
+        value: ["staffing"],
+        default: [],
+        override: ["staffing"],
+      },
+    });
+
+    renderPage();
+
+    const scoringTrigger = await screen.findByRole("button", {
+      name: /scoring settings/i,
+    });
+    fireEvent.click(scoringTrigger);
+
+    const input = screen.getByPlaceholderText('e.g. "recruitment", "staffing"');
+    fireEvent.change(input, { target: { value: "staffing" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        blockedCompanyKeywords: ["staffing"],
+      }),
+    );
+  });
 });

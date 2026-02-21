@@ -646,6 +646,44 @@ describe("discoverJobsStep", () => {
     expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
   });
 
+  it("drops discovered jobs when employer matches blocked company keywords", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      blockedCompanyKeywords: JSON.stringify(["recruit", "staffing"]),
+    } as any);
+
+    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
+      success: true,
+      jobs: [
+        {
+          source: "linkedin",
+          title: "Engineer",
+          employer: "Acme Staffing",
+          jobUrl: "https://example.com/job-1",
+        },
+        {
+          source: "linkedin",
+          title: "Engineer II",
+          employer: "Contoso",
+          jobUrl: "https://example.com/job-2",
+        },
+      ],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["linkedin"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.discoveredJobs[0]?.employer).toBe("Contoso");
+  });
+
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobSpy = await import("../../services/jobspy");

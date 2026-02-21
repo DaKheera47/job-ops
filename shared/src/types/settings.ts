@@ -123,6 +123,7 @@ export interface AppSettings {
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
+  blockedCompanyKeywords: Resolved<string[]>;
   searchCities: Resolved<string>;
   jobspyResultsWanted: Resolved<number>;
   jobspyCountryIndeed: Resolved<string>;

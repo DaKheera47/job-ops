@@ -177,6 +177,13 @@ export const settingsRegistry = {
     parse: parseJsonArrayOrNull,
     serialize: serializeNullableJsonArray,
   },
+  blockedCompanyKeywords: {
+    kind: "typed" as const,
+    schema: z.array(z.string().trim().min(1).max(200)).max(200),
+    default: (): string[] => [],
+    parse: parseJsonArrayOrNull,
+    serialize: serializeNullableJsonArray,
+  },
   searchCities: {
     kind: "typed" as const,
     schema: z.string().trim().max(100),

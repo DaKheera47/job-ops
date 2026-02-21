@@ -1,7 +1,9 @@
+import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { ScoringValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
+import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
   AccordionContent,
@@ -17,6 +19,13 @@ type ScoringSettingsSectionProps = {
   isSaving: boolean;
 };
 
+function parseTokenizedKeywordInput(input: string): string[] {
+  return input
+    .split(/[\n,]/g)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
 export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   values,
   isLoading,
@@ -26,8 +35,11 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
     penalizeMissingSalary,
     missingSalaryPenalty,
     autoSkipScoreThreshold,
+    blockedCompanyKeywords,
   } = values;
-  const { control, watch } = useFormContext<UpdateSettingsInput>();
+  const { control, watch, setValue } = useFormContext<UpdateSettingsInput>();
+  const [blockedCompanyKeywordDraft, setBlockedCompanyKeywordDraft] =
+    useState("");
 
   // Watch the current form value to conditionally show/hide penalty input
   const currentPenalizeEnabled =
@@ -35,6 +47,8 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
 
   // Watch auto-skip threshold to show current value
   const currentAutoSkipThreshold = watch("autoSkipScoreThreshold");
+  const blockedCompanyKeywordValues =
+    watch("blockedCompanyKeywords") ?? blockedCompanyKeywords.default;
 
   return (
     <AccordionItem value="scoring" className="border rounded-lg px-4">
@@ -150,6 +164,34 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                 />
               )}
             />
+          </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <TokenizedInput
+              id="blocked-company-keywords"
+              values={blockedCompanyKeywordValues}
+              draft={blockedCompanyKeywordDraft}
+              parseInput={parseTokenizedKeywordInput}
+              onDraftChange={setBlockedCompanyKeywordDraft}
+              onValuesChange={(value) =>
+                setValue("blockedCompanyKeywords", value, { shouldDirty: true })
+              }
+              placeholder='e.g. "recruitment", "staffing"'
+              helperText="Jobs whose company name contains one of these keywords will be dropped during discovery."
+              removeLabelPrefix="Remove blocked keyword"
+            />
+            <div className="break-words font-mono text-xs text-muted-foreground">
+              Effective:{" "}
+              {blockedCompanyKeywordValues.length > 0
+                ? blockedCompanyKeywordValues.join(", ")
+                : "None"}{" "}
+              | Default:{" "}
+              {blockedCompanyKeywords.default.length > 0
+                ? blockedCompanyKeywords.default.join(", ")
+                : "None"}
+            </div>
           </div>
 
           <Separator />
