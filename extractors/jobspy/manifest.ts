@@ -4,7 +4,13 @@ import type {
   ExtractorRuntimeContext,
 } from "../../shared/src/types/extractors.ts";
 
-const JOBSPY_SOURCES = new Set(["indeed", "linkedin", "glassdoor"]);
+type JobSpySite = NonNullable<Parameters<typeof runJobSpy>[0]["sites"]>[number];
+
+const JOBSPY_SOURCES = new Set<JobSpySite>(["indeed", "linkedin", "glassdoor"]);
+
+function isJobSpySite(source: string): source is JobSpySite {
+  return JOBSPY_SOURCES.has(source as JobSpySite);
+}
 
 export const manifest: ExtractorManifest = {
   id: "jobspy",
@@ -15,9 +21,7 @@ export const manifest: ExtractorManifest = {
       return { success: true, jobs: [] };
     }
 
-    const sites = context.selectedSources.filter((source) =>
-      JOBSPY_SOURCES.has(source),
-    );
+    const sites = context.selectedSources.filter(isJobSpySite);
 
     const result = await runJobSpy({
       sites,

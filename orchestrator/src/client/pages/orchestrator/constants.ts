@@ -13,13 +13,13 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
 ];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 
-export const orderedSources: JobSource[] = [...PIPELINE_EXTRACTOR_SOURCE_IDS]
-  .sort(
-    (left, right) =>
-      EXTRACTOR_SOURCE_METADATA[left].order -
-      EXTRACTOR_SOURCE_METADATA[right].order,
-  )
-  .filter((source) => source !== "manual");
+export const orderedSources: JobSource[] = [
+  ...PIPELINE_EXTRACTOR_SOURCE_IDS,
+].sort(
+  (left, right) =>
+    EXTRACTOR_SOURCE_METADATA[left].order -
+    EXTRACTOR_SOURCE_METADATA[right].order,
+);
 export const orderedFilterSources: JobSource[] = [...EXTRACTOR_SOURCE_IDS].sort(
   (left, right) =>
     EXTRACTOR_SOURCE_METADATA[left].order -

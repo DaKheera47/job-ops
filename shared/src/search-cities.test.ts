@@ -45,6 +45,17 @@ describe("search-cities", () => {
     expect(resolveSearchCities({ fallback: "UK" })).toEqual(["UK"]);
   });
 
+  it("returns empty array when all resolve options are empty", () => {
+    expect(
+      resolveSearchCities({
+        list: [],
+        single: "",
+        env: "",
+        fallback: "",
+      }),
+    ).toEqual([]);
+  });
+
   it("applies strict filter only when city differs from country", () => {
     expect(shouldApplyStrictCityFilter("Leeds", "united kingdom")).toBe(true);
     expect(shouldApplyStrictCityFilter("UK", "united kingdom")).toBe(false);

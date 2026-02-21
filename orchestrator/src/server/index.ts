@@ -56,7 +56,9 @@ async function startServer() {
         await initializeVisaSponsors();
       }
     } catch (error) {
-      logger.warn("Failed to initialize visa sponsors service", { error });
+      logger.warn("Failed to initialize visa sponsors service", {
+        error: sanitizeUnknown(error),
+      });
     }
 
     // Initialize backup service (load settings and start scheduler if enabled)
@@ -95,13 +97,17 @@ async function startServer() {
         );
       }
     } catch (error) {
-      logger.warn("Failed to initialize backup service", { error });
+      logger.warn("Failed to initialize backup service", {
+        error: sanitizeUnknown(error),
+      });
     }
 
     try {
       await initializeDemoModeServices();
     } catch (error) {
-      logger.warn("Failed to initialize demo mode services", { error });
+      logger.warn("Failed to initialize demo mode services", {
+        error: sanitizeUnknown(error),
+      });
     }
   });
 }
