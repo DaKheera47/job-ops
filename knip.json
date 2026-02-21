@@ -2,6 +2,45 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "tags": ["-lintignore"],
   "workspaces": {
-    ".": {}
+    ".": {
+      "entry": [],
+      "project": []
+    },
+    "orchestrator": {
+      "entry": [
+        "src/server/index.ts",
+        "src/server/db/migrate.ts",
+        "src/server/db/clear.ts",
+        "src/server/pipeline/run.ts",
+        "src/client/main.tsx",
+        "vite.config.ts",
+        "src/setupTests.ts",
+        "src/**/*.test.ts",
+        "src/**/*.test.tsx"
+      ],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignore": ["dist/**", "src/components/ui/**"]
+    },
+    "shared": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts"]
+    },
+    "extractors/adzuna": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "extractors/gradcracker": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "extractors/hiringcafe": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "extractors/ukvisajobs": {
+      "entry": ["src/main.ts"],
+      "project": ["src/**/*.ts"]
+    }
   }
 }
