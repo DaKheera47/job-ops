@@ -9,6 +9,11 @@ import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
+import {
+  matchesRequestedCity,
+  parseSearchCitiesSetting,
+  shouldApplyStrictCityFilter,
+} from "@shared/search-cities.js";
 import type { CreateJobInput, JobSource } from "@shared/types";
 import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
 import { getDataDir } from "../config/dataDir";
@@ -159,36 +164,18 @@ export interface JobSpyResult {
   error?: string;
 }
 
-const LOCATION_ALIASES: Record<string, string> = {
-  uk: "united kingdom",
-  us: "united states",
-  usa: "united states",
-};
-
-function normalizeLocationToken(value: string | null | undefined): string {
-  const normalized = value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
-  if (!normalized) return "";
-  return LOCATION_ALIASES[normalized] ?? normalized;
-}
-
 export function shouldApplyStrictLocationFilter(
   location: string,
   countryIndeed: string,
 ): boolean {
-  const normalizedLocation = normalizeLocationToken(location);
-  const normalizedCountry = normalizeLocationToken(countryIndeed);
-  if (!normalizedLocation || !normalizedCountry) return false;
-  return normalizedLocation !== normalizedCountry;
+  return shouldApplyStrictCityFilter(location, countryIndeed);
 }
 
 export function matchesRequestedLocation(
   jobLocation: string | undefined,
   requestedLocation: string,
 ): boolean {
-  const normalizedJobLocation = normalizeLocationToken(jobLocation);
-  const normalizedRequestedLocation = normalizeLocationToken(requestedLocation);
-  if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
-  return normalizedJobLocation.includes(normalizedRequestedLocation);
+  return matchesRequestedCity(jobLocation, requestedLocation);
 }
 
 export async function runJobSpy(
@@ -327,38 +314,10 @@ function resolveLocations(options: RunJobSpyOptions): string[] {
   const fromOptions = options.locations?.length ? options.locations : null;
   const fromSingle = options.location?.trim();
   const fromEnv = process.env.JOBSPY_LOCATION?.trim();
-  const raw = fromOptions ?? parseLocationValue(fromSingle ?? fromEnv ?? "UK");
-  const out: string[] = [];
-  const seen = new Set<string>();
-
-  for (const value of raw) {
-    const normalized = value.trim();
-    if (!normalized) continue;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(normalized);
-  }
-
+  const raw =
+    fromOptions ?? parseSearchCitiesSetting(fromSingle ?? fromEnv ?? "UK");
+  const out = raw.map((value) => value.trim()).filter(Boolean);
   return out.length > 0 ? out : ["UK"];
-}
-
-function parseLocationValue(value: string): string[] {
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-  if (trimmed.includes("|")) {
-    return trimmed
-      .split("|")
-      .map((part) => part.trim())
-      .filter(Boolean);
-  }
-  if (trimmed.includes("\n")) {
-    return trimmed
-      .split("\n")
-      .map((part) => part.trim())
-      .filter(Boolean);
-  }
-  return [trimmed];
 }
 
 function resolveSearchTerms(options: RunJobSpyOptions): string[] {

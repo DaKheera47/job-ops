@@ -6,6 +6,11 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { normalizeCountryKey } from "@shared/location-support.js";
+import {
+  matchesRequestedCity,
+  parseSearchCitiesSetting,
+  shouldApplyStrictCityFilter,
+} from "@shared/search-cities.js";
 import type { CreateJobInput } from "@shared/types";
 import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
 
@@ -57,71 +62,25 @@ export interface AdzunaResult {
   error?: string;
 }
 
-const LOCATION_ALIASES: Record<string, string> = {
-  uk: "united kingdom",
-  us: "united states",
-  usa: "united states",
-};
-
-function normalizeLocationToken(value: string | null | undefined): string {
-  const normalized = value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
-  if (!normalized) return "";
-  return LOCATION_ALIASES[normalized] ?? normalized;
-}
-
 export function shouldApplyStrictLocationFilter(
   location: string,
   countryKey: string,
 ): boolean {
-  const normalizedLocation = normalizeLocationToken(location);
-  const normalizedCountry = normalizeCountryKey(countryKey);
-  if (!normalizedLocation || !normalizedCountry) return false;
-  return normalizedLocation !== normalizedCountry;
+  return shouldApplyStrictCityFilter(location, countryKey);
 }
 
 export function matchesRequestedLocation(
   jobLocation: string | undefined,
   requestedLocation: string,
 ): boolean {
-  const normalizedJobLocation = normalizeLocationToken(jobLocation);
-  const normalizedRequestedLocation = normalizeLocationToken(requestedLocation);
-  if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
-  return normalizedJobLocation.includes(normalizedRequestedLocation);
-}
-
-function parseLocationValue(value: string): string[] {
-  const trimmed = value.trim();
-  if (!trimmed) return [];
-  if (trimmed.includes("|")) {
-    return trimmed
-      .split("|")
-      .map((part) => part.trim())
-      .filter(Boolean);
-  }
-  if (trimmed.includes("\n")) {
-    return trimmed
-      .split("\n")
-      .map((part) => part.trim())
-      .filter(Boolean);
-  }
-  return [trimmed];
+  return matchesRequestedCity(jobLocation, requestedLocation);
 }
 
 function resolveLocations(options: RunAdzunaOptions): string[] {
   const raw = options.locations?.length
     ? options.locations
-    : parseLocationValue(process.env.ADZUNA_LOCATION_QUERY ?? "");
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const value of raw) {
-    const normalized = value.trim();
-    if (!normalized) continue;
-    const key = normalized.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(normalized);
-  }
-  return out;
+    : parseSearchCitiesSetting(process.env.ADZUNA_LOCATION_QUERY ?? "");
+  return raw.map((value) => value.trim()).filter(Boolean);
 }
 
 function resolveTsxCliPath(): string | null {
