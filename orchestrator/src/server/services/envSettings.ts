@@ -1,6 +1,7 @@
 import type { SettingKey } from "@server/repositories/settings";
 import * as settingsRepo from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
+import type { AppSettings } from "@shared/types";
 
 const envDefaults: Record<string, string | undefined> = { ...process.env };
 
@@ -50,28 +51,31 @@ export async function applyStoredEnvOverrides(): Promise<void> {
 
 export async function getEnvSettingsData(
   overrides?: Partial<Record<SettingKey, string>>,
-): Promise<Record<string, string | boolean | number | null>> {
+): Promise<Partial<AppSettings>> {
   const activeOverrides = overrides || (await settingsRepo.getAllSettings());
-  const readableValues: Record<string, string | boolean | null> = {};
-  const privateValues: Record<string, string | null> = {};
+  const values: Partial<AppSettings> = {};
 
   for (const [key, def] of Object.entries(settingsRegistry)) {
+    if (def.kind === "typed") continue;
     if (!("envKey" in def) || !def.envKey) continue;
 
     const override = activeOverrides[key as SettingKey] ?? null;
     const rawValue = override ?? process.env[def.envKey];
 
     if (def.kind === "secret") {
-      const hintKey = `${key}Hint`;
+      const hintKey = `${key}Hint` as keyof AppSettings;
       if (!rawValue) {
-        privateValues[hintKey] = null;
+        // biome-ignore lint/suspicious/noExplicitAny: explicit partial assignment
+        (values as any)[hintKey] = null;
         continue;
       }
       const hintLength =
         rawValue.length > 4 ? 4 : Math.max(rawValue.length - 1, 1);
-      privateValues[hintKey] = rawValue.slice(0, hintLength);
+      // biome-ignore lint/suspicious/noExplicitAny: explicit partial assignment
+      (values as any)[hintKey] = rawValue.slice(0, hintLength);
     } else {
-      readableValues[key] = normalizeEnvInput(rawValue);
+      // biome-ignore lint/suspicious/noExplicitAny: explicit partial assignment
+      (values as any)[key] = normalizeEnvInput(rawValue);
     }
   }
 
@@ -80,9 +84,7 @@ export async function getEnvSettingsData(
   const basicAuthPassword =
     activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD;
 
-  return {
-    ...readableValues,
-    ...privateValues,
-    basicAuthActive: Boolean(basicAuthUser && basicAuthPassword),
-  };
+  values.basicAuthActive = Boolean(basicAuthUser && basicAuthPassword);
+
+  return values;
 }

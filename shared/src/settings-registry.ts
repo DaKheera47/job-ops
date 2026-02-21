@@ -1,6 +1,10 @@
 import { z } from "zod";
 import type { ResumeProjectsSettings } from "./types/settings";
 
+function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
+  return raw === undefined || raw === "" ? null : raw;
+}
+
 function parseIntOrNull(raw: string | undefined): number | null {
   if (!raw) return null;
   const parsed = parseInt(raw, 10);
@@ -54,7 +58,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.MODEL || "google/gemini-3-flash-preview"
         : "google/gemini-3-flash-preview",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -71,7 +75,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.LLM_PROVIDER || "openrouter"
         : "openrouter",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -84,7 +88,7 @@ export const settingsRegistry = {
     ),
     default: (): string =>
       typeof process !== "undefined" ? process.env.LLM_BASE_URL || "" : "",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -95,7 +99,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || ""
         : "",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -106,7 +110,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.JOB_COMPLETE_WEBHOOK_URL || ""
         : "",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -180,7 +184,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.SEARCH_CITIES || process.env.JOBSPY_LOCATION || "UK"
         : "UK",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -204,7 +208,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.JOBSPY_COUNTRY_INDEED || "UK"
         : "UK",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -222,7 +226,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.CHAT_STYLE_TONE || "professional"
         : "professional",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -233,7 +237,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.CHAT_STYLE_FORMALITY || "medium"
         : "medium",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -244,7 +248,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.CHAT_STYLE_CONSTRAINTS || ""
         : "",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
@@ -255,7 +259,7 @@ export const settingsRegistry = {
       typeof process !== "undefined"
         ? process.env.CHAT_STYLE_DO_NOT_USE || ""
         : "",
-    parse: (raw: string | undefined): string | null => raw ?? null,
+    parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
