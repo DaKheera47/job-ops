@@ -3,7 +3,7 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
-import { extractorSourceEnum } from "@shared/extractors";
+import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -94,7 +94,17 @@ pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
 const runPipelineSchema = z.object({
   topN: z.number().min(1).max(50).optional(),
   minSuitabilityScore: z.number().min(0).max(100).optional(),
-  sources: z.array(extractorSourceEnum).min(1).optional(),
+  sources: z
+    .array(
+      z.enum(
+        PIPELINE_EXTRACTOR_SOURCE_IDS as [
+          (typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number],
+          ...(typeof PIPELINE_EXTRACTOR_SOURCE_IDS)[number][],
+        ],
+      ),
+    )
+    .min(1)
+    .optional(),
 });
 
 pipelineRouter.post("/run", async (req: Request, res: Response) => {

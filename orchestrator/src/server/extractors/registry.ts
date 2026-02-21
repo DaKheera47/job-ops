@@ -160,10 +160,19 @@ async function createRegistry(): Promise<ExtractorRegistry> {
 export async function initializeExtractorRegistry(): Promise<ExtractorRegistry> {
   if (registry) return registry;
   if (!initPromise) {
-    initPromise = createRegistry().then((created) => {
-      registry = created;
-      return created;
-    });
+    initPromise = createRegistry()
+      .then((created) => {
+        registry = created;
+        return created;
+      })
+      .catch((error) => {
+        logger.error("Failed to initialize extractor registry", {
+          error: sanitizeUnknown(error),
+        });
+        registry = null;
+        initPromise = null;
+        throw error;
+      });
   }
   return initPromise;
 }

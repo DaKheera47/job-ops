@@ -183,7 +183,7 @@ export async function discoverJobsStep(args: {
           return {
             discoveredJobs: [],
             sourceErrors: [
-              `${grouped.sources.join(",")}: ${result.error ?? "unknown error"}`,
+              `${manifest.displayName || manifest.id}: ${result.error ?? "unknown error"} (sources: ${grouped.sources.join(",")})`,
             ],
           };
         }
