@@ -65,6 +65,24 @@ describe("extractor discovery", () => {
     expect(manifest.requiredEnvVars).toEqual(["A"]);
   });
 
+  it("prefers named manifest export when default is a wrapper object", async () => {
+    const root = await makeTempRoot();
+    const wrappedPath = join(root, "wrapped-manifest.mjs");
+    await writeFile(
+      wrappedPath,
+      [
+        "const valid = { id: 'wrapped', displayName: 'Wrapped', providesSources: ['indeed'], async run() { return { success: true, jobs: [] }; } };",
+        "export const manifest = valid;",
+        "export default { default: valid, manifest: valid };",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const manifest = await loadManifestFromFile(wrappedPath);
+    expect(manifest.id).toBe("wrapped");
+    expect(manifest.providesSources).toEqual(["indeed"]);
+  });
+
   it("throws for invalid manifest exports", async () => {
     const root = await makeTempRoot();
     const invalidPath = join(root, "invalid-manifest.mjs");

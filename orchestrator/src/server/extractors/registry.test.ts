@@ -1,5 +1,5 @@
 import type { ExtractorManifest } from "@shared/types";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./discovery", () => ({
   discoverManifestPaths: vi.fn(),
@@ -7,11 +7,22 @@ vi.mock("./discovery", () => ({
 }));
 
 describe("extractor registry", () => {
+  let previousStrict: string | undefined;
+
   beforeEach(async () => {
     vi.clearAllMocks();
+    previousStrict = process.env.EXTRACTOR_REGISTRY_STRICT;
     process.env.EXTRACTOR_REGISTRY_STRICT = "false";
     const module = await import("./registry");
     module.__resetExtractorRegistryForTests();
+  });
+
+  afterEach(() => {
+    if (previousStrict === undefined) {
+      delete process.env.EXTRACTOR_REGISTRY_STRICT;
+      return;
+    }
+    process.env.EXTRACTOR_REGISTRY_STRICT = previousStrict;
   });
 
   it("loads manifests and maps sources", async () => {

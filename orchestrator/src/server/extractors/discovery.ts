@@ -87,7 +87,12 @@ export async function loadManifestFromFile(
   path: string,
 ): Promise<ExtractorManifest> {
   const loaded = await import(pathToFileURL(path).href);
-  const manifest = (loaded.default ?? loaded.manifest) as unknown;
+  const candidateManifest = (loaded as { manifest?: unknown }).manifest;
+  const candidateDefault = (loaded as { default?: unknown }).default;
+  const manifest = isManifest(candidateManifest)
+    ? candidateManifest
+    : candidateDefault;
+
   if (!isManifest(manifest)) {
     throw new Error(`Invalid manifest export in ${path}`);
   }
