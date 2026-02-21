@@ -6,7 +6,6 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
-  matchesRequestedCity,
   resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
@@ -71,13 +70,6 @@ export function shouldApplyStrictLocationFilter(
   countryKey: string,
 ): boolean {
   return shouldApplyStrictCityFilter(location, countryKey);
-}
-
-export function matchesRequestedLocation(
-  jobLocation: string | undefined,
-  requestedLocation: string,
-): boolean {
-  return matchesRequestedCity(jobLocation, requestedLocation);
 }
 
 function resolveTsxCliPath(): string | null {
@@ -297,11 +289,7 @@ export async function runHiringCafe(
       });
 
       const runJobs = await readDataset();
-      const filtered = strictLocationFilter
-        ? runJobs.filter((job) =>
-            matchesRequestedLocation(job.location, location),
-          )
-        : runJobs;
+      const filtered = runJobs;
 
       for (const job of filtered) {
         const key = job.sourceJobId || job.jobUrl;

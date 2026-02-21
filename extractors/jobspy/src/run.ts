@@ -3,11 +3,7 @@ import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import {
-  matchesRequestedCity,
-  resolveSearchCities,
-  shouldApplyStrictCityFilter,
-} from "@shared/search-cities.js";
+import { resolveSearchCities } from "@shared/search-cities.js";
 import type { CreateJobInput, JobSource } from "@shared/types/jobs";
 import {
   toNumberOrNull,
@@ -145,20 +141,6 @@ export interface JobSpyResult {
   error?: string;
 }
 
-export function shouldApplyStrictLocationFilter(
-  location: string,
-  countryIndeed: string,
-): boolean {
-  return shouldApplyStrictCityFilter(location, countryIndeed);
-}
-
-export function matchesRequestedLocation(
-  jobLocation: string | undefined,
-  requestedLocation: string,
-): boolean {
-  return matchesRequestedCity(jobLocation, requestedLocation);
-}
-
 export async function runJobSpy(
   options: RunJobSpyOptions = {},
 ): Promise<JobSpyResult> {
@@ -267,16 +249,7 @@ export async function runJobSpy(
 
         const raw = await readFile(outputJson, "utf-8");
         const parsed = JSON.parse(raw) as Array<Record<string, unknown>>;
-        const mapped = mapJobSpyRows(parsed);
-        const strictLocationFilter = shouldApplyStrictLocationFilter(
-          location,
-          countryIndeed,
-        );
-        const filtered = strictLocationFilter
-          ? mapped.filter((job) =>
-              matchesRequestedLocation(job.location, location),
-            )
-          : mapped;
+        const filtered = mapJobSpyRows(parsed);
 
         for (const job of filtered) {
           if (seenJobUrls.has(job.jobUrl)) continue;

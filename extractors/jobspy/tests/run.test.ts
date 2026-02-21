@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  matchesRequestedLocation,
-  parseJobSpyProgressLine,
-  shouldApplyStrictLocationFilter,
-} from "../src/run";
+import { parseJobSpyProgressLine } from "../src/run";
 
 describe("parseJobSpyProgressLine", () => {
   it("parses term_start progress lines", () => {
@@ -40,26 +36,5 @@ describe("parseJobSpyProgressLine", () => {
 
   it("returns null for non-progress lines", () => {
     expect(parseJobSpyProgressLine("Found 20 jobs")).toBeNull();
-  });
-});
-
-describe("strict location filtering", () => {
-  it("enables strict filtering when location differs from country", () => {
-    expect(shouldApplyStrictLocationFilter("Leeds", "united kingdom")).toBe(
-      true,
-    );
-  });
-
-  it("disables strict filtering when location is country-level", () => {
-    expect(shouldApplyStrictLocationFilter("UK", "united kingdom")).toBe(false);
-    expect(shouldApplyStrictLocationFilter("United States", "us")).toBe(false);
-  });
-
-  it("matches location using case-insensitive contains checks", () => {
-    expect(matchesRequestedLocation("Leeds, England, UK", "leeds")).toBe(true);
-    expect(matchesRequestedLocation("Halifax, England, UK", "leeds")).toBe(
-      false,
-    );
-    expect(matchesRequestedLocation(undefined, "leeds")).toBe(false);
   });
 });
