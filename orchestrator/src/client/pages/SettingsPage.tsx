@@ -18,6 +18,7 @@ import {
   resumeProjectsEqual,
 } from "@client/pages/settings/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import {
   type UpdateSettingsInput,
   updateSettingsSchema,
@@ -163,23 +164,6 @@ const normalizePrivateInput = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   if (trimmed === "") return null;
   return trimmed || undefined;
-};
-
-const normalizeStringArray = (
-  values: string[] | null | undefined,
-): string[] => {
-  if (!values || values.length === 0) return [];
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-  for (const value of values) {
-    const trimmed = value.trim();
-    if (!trimmed) continue;
-    const key = trimmed.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    normalized.push(trimmed);
-  }
-  return normalized;
 };
 
 const stringArraysEqual = (left: string[], right: string[]): boolean => {

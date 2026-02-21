@@ -5,6 +5,7 @@ import {
   isSourceAllowedForCountry,
   normalizeCountryKey,
 } from "@shared/location-support.js";
+import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import { parseSearchCitiesSetting } from "@shared/search-cities.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import * as jobsRepo from "../../repositories/jobs";
@@ -36,18 +37,9 @@ function parseBlockedCompanyKeywords(raw: string | undefined): string[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const seen = new Set<string>();
-    const normalized: string[] = [];
-    for (const value of parsed) {
-      if (typeof value !== "string") continue;
-      const trimmed = value.trim();
-      if (!trimmed) continue;
-      const key = trimmed.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      normalized.push(trimmed);
-    }
-    return normalized;
+    return normalizeStringArray(
+      parsed.filter((value): value is string => typeof value === "string"),
+    );
   } catch {
     return [];
   }
