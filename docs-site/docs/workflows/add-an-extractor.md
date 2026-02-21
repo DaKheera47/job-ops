@@ -46,7 +46,7 @@ That keeps runtime wiring dynamic while preserving compile-time safety in API an
 Example manifest:
 
 ```ts
-import type { ExtractorManifest } from "../../shared/src/types/extractors.ts";
+import type { ExtractorManifest } from "@shared/types/extractors";
 
 export const manifest: ExtractorManifest = {
   id: "myextractor",

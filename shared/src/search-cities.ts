@@ -47,6 +47,11 @@ interface ResolveSearchCitiesOptions {
 export function resolveSearchCities(
   options: ResolveSearchCitiesOptions,
 ): string[] {
+  // Priority order:
+  // 1) explicit list (searchCities array in config)
+  // 2) explicit single value
+  // 3) environment fallback
+  // 4) final hardcoded/default fallback
   if (options.list && options.list.length > 0) {
     const parsedList = parseSearchCitiesSetting(options.list.join("|"));
     if (parsedList.length > 0) return parsedList;

@@ -28,6 +28,26 @@ class DuplicateManifestIdError extends Error {
   }
 }
 
+class DuplicateSourceProviderError extends Error {
+  readonly source: ExtractorSourceId;
+  readonly existingManifestId: string;
+  readonly duplicateManifestId: string;
+
+  constructor(args: {
+    source: ExtractorSourceId;
+    existingManifestId: string;
+    duplicateManifestId: string;
+  }) {
+    super(
+      `Source ${args.source} is provided by multiple manifests (${args.existingManifestId}, ${args.duplicateManifestId})`,
+    );
+    this.source = args.source;
+    this.existingManifestId = args.existingManifestId;
+    this.duplicateManifestId = args.duplicateManifestId;
+    this.name = "DuplicateSourceProviderError";
+  }
+}
+
 export function __resetExtractorRegistryForTests(): void {
   registry = null;
   initPromise = null;
@@ -126,9 +146,11 @@ async function createRegistry(): Promise<ExtractorRegistry> {
       for (const typedSource of validSources) {
         if (manifestBySource.has(typedSource)) {
           const existing = manifestBySource.get(typedSource);
-          throw new Error(
-            `Source ${typedSource} is provided by multiple manifests (${existing?.id}, ${manifest.id})`,
-          );
+          throw new DuplicateSourceProviderError({
+            source: typedSource,
+            existingManifestId: existing?.id ?? "unknown",
+            duplicateManifestId: manifest.id,
+          });
         }
       }
 
@@ -137,6 +159,10 @@ async function createRegistry(): Promise<ExtractorRegistry> {
         manifestBySource.set(source, manifest);
       }
     } catch (error) {
+      if (error instanceof DuplicateSourceProviderError) {
+        throw error;
+      }
+
       if (error instanceof DuplicateManifestIdError && strictModeEnabled()) {
         throw error;
       }

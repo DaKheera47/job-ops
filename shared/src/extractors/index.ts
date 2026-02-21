@@ -53,7 +53,7 @@ export const EXTRACTOR_SOURCE_METADATA: Record<
 
 export const PIPELINE_EXTRACTOR_SOURCE_IDS = EXTRACTOR_SOURCE_IDS.filter(
   (source) => EXTRACTOR_SOURCE_METADATA[source].category === "pipeline",
-) as ExtractorSourceId[];
+);
 
 const extractorSourceTuple = EXTRACTOR_SOURCE_IDS as unknown as [
   ExtractorSourceId,

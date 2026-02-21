@@ -1,4 +1,10 @@
-import { AppError, badRequest, conflict, requestTimeout } from "@infra/errors";
+import {
+  AppError,
+  badRequest,
+  conflict,
+  requestTimeout,
+  serviceUnavailable,
+} from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
@@ -8,7 +14,10 @@ import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 import { isDemoMode } from "../../config/demo";
-import { getExtractorRegistry } from "../../extractors/registry";
+import {
+  type ExtractorRegistry,
+  getExtractorRegistry,
+} from "../../extractors/registry";
 import {
   getPipelineStatus,
   requestPipelineCancel,
@@ -111,7 +120,24 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
   try {
     const config = runPipelineSchema.parse(req.body);
     if (config.sources && config.sources.length > 0) {
-      const registry = await getExtractorRegistry();
+      let registry: ExtractorRegistry;
+      try {
+        registry = await getExtractorRegistry();
+      } catch (error) {
+        logger.error(
+          "Extractor registry unavailable during source validation",
+          {
+            route: "/api/pipeline/run",
+            error,
+          },
+        );
+        return fail(
+          res,
+          serviceUnavailable(
+            "Extractor registry is unavailable. Try again after fixing startup errors.",
+          ),
+        );
+      }
       const unavailableSources = config.sources.filter(
         (source) => !registry.manifestBySource.has(source),
       );
