@@ -56,8 +56,28 @@ export function matchesRequestedCity(
   jobLocation: string | undefined,
   requestedCity: string,
 ): boolean {
-  const normalizedJobLocation = normalizeLocationToken(jobLocation);
-  const normalizedRequestedLocation = normalizeLocationToken(requestedCity);
+  const normalizedJobLocation = normalizeLocationToken(jobLocation)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  const normalizedRequestedLocation = normalizeLocationToken(requestedCity)
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
   if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
-  return normalizedJobLocation.includes(normalizedRequestedLocation);
+
+  const jobTokens = normalizedJobLocation.split(" ");
+  const requestedTokens = normalizedRequestedLocation.split(" ");
+  if (requestedTokens.length > jobTokens.length) return false;
+
+  for (let i = 0; i <= jobTokens.length - requestedTokens.length; i += 1) {
+    let matches = true;
+    for (let j = 0; j < requestedTokens.length; j += 1) {
+      if (jobTokens[i + j] !== requestedTokens[j]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return true;
+  }
+
+  return false;
 }
