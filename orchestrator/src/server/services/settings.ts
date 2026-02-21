@@ -47,9 +47,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   const envSettings = await getEnvSettingsData(overrides);
 
-  const defaultModel = process.env.MODEL || "google/gemini-3-flash-preview";
-  const overrideModel = overrides.model ?? null;
-  const model = overrideModel || defaultModel;
+  const modelSetting = resolveSettingValue("model", overrides.model);
+  const defaultModel = modelSetting.defaultValue;
+  const overrideModel = modelSetting.overrideValue;
+  const model = modelSetting.value;
 
   const overrideModelScorer = overrides.modelScorer ?? null;
   const modelScorer = overrideModelScorer || model;
@@ -60,26 +61,36 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideModelProjectSelection = overrides.modelProjectSelection ?? null;
   const modelProjectSelection = overrideModelProjectSelection || model;
 
-  const defaultLlmProvider = process.env.LLM_PROVIDER || "openrouter";
-  const overrideLlmProvider = overrides.llmProvider ?? null;
-  const llmProvider = overrideLlmProvider || defaultLlmProvider;
+  const llmProviderSetting = resolveSettingValue(
+    "llmProvider",
+    overrides.llmProvider,
+  );
+  const defaultLlmProvider = llmProviderSetting.defaultValue;
+  const overrideLlmProvider = llmProviderSetting.overrideValue;
+  const llmProvider = llmProviderSetting.value;
 
   const defaultLlmBaseUrl =
     process.env.LLM_BASE_URL || resolveDefaultLlmBaseUrl(llmProvider);
   const overrideLlmBaseUrl = overrides.llmBaseUrl ?? null;
   const llmBaseUrl = overrideLlmBaseUrl || defaultLlmBaseUrl;
 
-  const defaultPipelineWebhookUrl =
-    process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || "";
-  const overridePipelineWebhookUrl = overrides.pipelineWebhookUrl ?? null;
-  const pipelineWebhookUrl =
-    overridePipelineWebhookUrl || defaultPipelineWebhookUrl;
+  const pipelineWebhookUrlSetting = resolveSettingValue(
+    "pipelineWebhookUrl",
+    overrides.pipelineWebhookUrl,
+  );
+  const defaultPipelineWebhookUrl = pipelineWebhookUrlSetting.defaultValue;
+  const overridePipelineWebhookUrl = pipelineWebhookUrlSetting.overrideValue;
+  const pipelineWebhookUrl = pipelineWebhookUrlSetting.value;
 
+  const jobCompleteWebhookUrlSetting = resolveSettingValue(
+    "jobCompleteWebhookUrl",
+    overrides.jobCompleteWebhookUrl,
+  );
   const defaultJobCompleteWebhookUrl =
-    process.env.JOB_COMPLETE_WEBHOOK_URL || "";
-  const overrideJobCompleteWebhookUrl = overrides.jobCompleteWebhookUrl ?? null;
-  const jobCompleteWebhookUrl =
-    overrideJobCompleteWebhookUrl || defaultJobCompleteWebhookUrl;
+    jobCompleteWebhookUrlSetting.defaultValue;
+  const overrideJobCompleteWebhookUrl =
+    jobCompleteWebhookUrlSetting.overrideValue;
+  const jobCompleteWebhookUrl = jobCompleteWebhookUrlSetting.value;
 
   const { catalog } = extractProjectsFromProfile(profile);
   const overrideResumeProjectsRaw = overrides.resumeProjects ?? null;

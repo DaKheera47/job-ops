@@ -6,6 +6,10 @@ type SettingMetadata<T, Input = T | null | undefined> = {
 };
 
 type SettingsConversionValueMap = {
+  model: string;
+  llmProvider: string;
+  pipelineWebhookUrl: string;
+  jobCompleteWebhookUrl: string;
   ukvisajobsMaxJobs: number;
   adzunaMaxJobsPerTerm: number;
   gradcrackerMaxJobsPerTerm: number;
@@ -95,6 +99,31 @@ function resolveWithEmptyStringFallback(args: {
 }
 
 export const settingsConversionMetadata: SettingsConversionMetadata = {
+  model: {
+    defaultValue: () => process.env.MODEL || "google/gemini-3-flash-preview",
+    parseOverride: (raw) => raw ?? null,
+    serialize: (value) => value ?? null,
+    resolve: resolveWithEmptyStringFallback,
+  },
+  llmProvider: {
+    defaultValue: () => process.env.LLM_PROVIDER || "openrouter",
+    parseOverride: (raw) => raw ?? null,
+    serialize: (value) => value ?? null,
+    resolve: resolveWithEmptyStringFallback,
+  },
+  pipelineWebhookUrl: {
+    defaultValue: () =>
+      process.env.PIPELINE_WEBHOOK_URL || process.env.WEBHOOK_URL || "",
+    parseOverride: (raw) => raw ?? null,
+    serialize: (value) => value ?? null,
+    resolve: resolveWithEmptyStringFallback,
+  },
+  jobCompleteWebhookUrl: {
+    defaultValue: () => process.env.JOB_COMPLETE_WEBHOOK_URL || "",
+    parseOverride: (raw) => raw ?? null,
+    serialize: (value) => value ?? null,
+    resolve: resolveWithEmptyStringFallback,
+  },
   ukvisajobsMaxJobs: {
     defaultValue: () => 50,
     parseOverride: parseIntOrNull,
