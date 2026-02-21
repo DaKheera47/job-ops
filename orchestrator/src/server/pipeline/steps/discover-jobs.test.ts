@@ -235,6 +235,83 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs[0]?.employer).toBe("Contoso");
   });
 
+  it("applies shared city filtering for sources without native city filtering", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const registryModule = await import("../../extractors/registry");
+
+    const gradcrackerManifest = {
+      id: "gradcracker",
+      displayName: "Gradcracker",
+      providesSources: ["gradcracker"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "gradcracker",
+            title: "Engineer - Leeds",
+            employer: "ACME",
+            location: "Leeds, England, UK",
+            jobUrl: "https://example.com/grad-1",
+          },
+          {
+            source: "gradcracker",
+            title: "Engineer - London",
+            employer: "ACME",
+            location: "London, England, UK",
+            jobUrl: "https://example.com/grad-2",
+          },
+        ],
+      }),
+    };
+    const ukvisaManifest = {
+      id: "ukvisajobs",
+      displayName: "UK Visa Jobs",
+      providesSources: ["ukvisajobs"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "ukvisajobs",
+            title: "Developer - Leeds",
+            employer: "Contoso",
+            location: "Leeds, England, UK",
+            jobUrl: "https://example.com/ukv-1",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      searchCities: "Leeds",
+      jobspyCountryIndeed: "united kingdom",
+    } as any);
+
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([
+        ["gradcracker", gradcrackerManifest as any],
+        ["ukvisajobs", ukvisaManifest as any],
+      ]),
+      manifestBySource: new Map([
+        ["gradcracker", gradcrackerManifest as any],
+        ["ukvisajobs", ukvisaManifest as any],
+      ]),
+      availableSources: ["gradcracker", "ukvisajobs"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: ["gradcracker", "ukvisajobs"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(2);
+    expect(
+      result.discoveredJobs.every((job) => job.location?.includes("Leeds")),
+    ).toBe(true);
+  });
+
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobsRepo = await import("../../repositories/jobs");

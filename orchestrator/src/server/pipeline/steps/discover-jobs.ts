@@ -6,6 +6,11 @@ import {
   normalizeCountryKey,
 } from "@shared/location-support.js";
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
+import {
+  matchesRequestedCity,
+  resolveSearchCities,
+  shouldApplyStrictCityFilter,
+} from "@shared/search-cities.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import { getExtractorRegistry } from "../../extractors/registry";
 import { getAllJobUrls } from "../../repositories/jobs";
@@ -49,6 +54,26 @@ function isBlockedEmployer(
   const normalizedEmployer = employer.toLowerCase();
   return blockedKeywordsLowerCase.some((keyword) =>
     normalizedEmployer.includes(keyword),
+  );
+}
+
+function filterJobsByRequestedCities(args: {
+  jobs: CreateJobInput[];
+  selectedCountry: string;
+  requestedCities: string[];
+}): CreateJobInput[] {
+  const { jobs, selectedCountry, requestedCities } = args;
+  if (requestedCities.length === 0) return jobs;
+
+  return jobs.filter((job) =>
+    requestedCities.some((requestedCity) => {
+      const strict = shouldApplyStrictCityFilter(
+        requestedCity,
+        selectedCountry,
+      );
+      if (!strict) return true;
+      return matchesRequestedCity(job.location, requestedCity);
+    }),
   );
 }
 
@@ -264,16 +289,35 @@ export async function discoverJobsStep(args: {
     sourceErrors.push(...sourceResult.sourceErrors);
   }
 
+  const requestedCities = resolveSearchCities({
+    single: settings.searchCities ?? settings.jobspyLocation,
+  });
+  const cityFilteredJobs = filterJobsByRequestedCities({
+    jobs: discoveredJobs,
+    selectedCountry,
+    requestedCities,
+  });
+  const cityFilteredOutCount = discoveredJobs.length - cityFilteredJobs.length;
+
+  if (cityFilteredOutCount > 0) {
+    logger.info("Dropped discovered jobs that did not match requested cities", {
+      step: "discover-jobs",
+      droppedCount: cityFilteredOutCount,
+      requestedCities,
+      selectedCountry,
+    });
+  }
+
   const blockedCompanyKeywords = parseBlockedCompanyKeywords(
     settings.blockedCompanyKeywords,
   );
   const blockedKeywordsLowerCase = blockedCompanyKeywords.map((value) =>
     value.toLowerCase(),
   );
-  const filteredDiscoveredJobs = discoveredJobs.filter(
+  const filteredDiscoveredJobs = cityFilteredJobs.filter(
     (job) => !isBlockedEmployer(job.employer, blockedKeywordsLowerCase),
   );
-  const droppedCount = discoveredJobs.length - filteredDiscoveredJobs.length;
+  const droppedCount = cityFilteredJobs.length - filteredDiscoveredJobs.length;
 
   if (droppedCount > 0) {
     const blockedCompanyKeywordsPreview = blockedCompanyKeywords.slice(0, 10);
