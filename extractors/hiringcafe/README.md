@@ -20,3 +20,4 @@ Special thanks: initial implementation inspiration came from [umur957/hiring-caf
 
 - The extractor uses `s = base64(url-encoded JSON search state)`.
 - `worldwide` and `usa/ca` are treated as broad search modes without hard country location filters.
+- City geocoding uses [Nominatim](https://nominatim.openstreetmap.org/) (OpenStreetMap data).

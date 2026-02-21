@@ -39,6 +39,7 @@ Default controls:
 - `ADZUNA_APP_ID`
 - `ADZUNA_APP_KEY`
 - `ADZUNA_MAX_JOBS_PER_TERM` (default `50`)
+- `ADZUNA_LOCATION_QUERY` (optional city/location text)
 
 Supported countries in this integration:
 
