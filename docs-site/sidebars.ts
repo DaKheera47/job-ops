@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "workflows/find-jobs-and-apply-workflow",
         "workflows/post-application-workflow",
+        "workflows/add-an-extractor",
       ],
     },
     {
