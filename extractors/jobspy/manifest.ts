@@ -11,6 +11,10 @@ export const manifest: ExtractorManifest = {
   displayName: "JobSpy",
   providesSources: ["indeed", "linkedin", "glassdoor"],
   async run(context: ExtractorRuntimeContext) {
+    if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
     const sites = context.selectedSources.filter((source) =>
       JOBSPY_SOURCES.has(source),
     );
@@ -25,6 +29,8 @@ export const manifest: ExtractorManifest = {
         : undefined,
       countryIndeed: context.settings.jobspyCountryIndeed,
       onProgress: (event) => {
+        if (context.shouldCancel?.()) return;
+
         if (event.type === "term_start") {
           context.onProgress?.({
             phase: "list",

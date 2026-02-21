@@ -89,12 +89,31 @@ async function createRegistry(): Promise<ExtractorRegistry> {
         throw new Error(`Duplicate extractor manifest id: ${manifest.id}`);
       }
 
-      for (const source of manifest.providesSources) {
-        if (!EXTRACTOR_SOURCE_IDS.includes(source as ExtractorSourceId)) {
-          continue;
-        }
+      const invalidSources = manifest.providesSources.filter(
+        (source) => !EXTRACTOR_SOURCE_IDS.includes(source as ExtractorSourceId),
+      );
+      const validSources = manifest.providesSources.filter((source) =>
+        EXTRACTOR_SOURCE_IDS.includes(source as ExtractorSourceId),
+      ) as ExtractorSourceId[];
 
-        const typedSource = source as ExtractorSourceId;
+      if (invalidSources.length > 0) {
+        logger.warn("Extractor manifest contains unknown sources", {
+          manifestId: manifest.id,
+          path,
+          invalidSources,
+        });
+      }
+
+      if (validSources.length === 0) {
+        logger.warn("Skipping extractor manifest with no known sources", {
+          manifestId: manifest.id,
+          path,
+          declaredSources: manifest.providesSources,
+        });
+        continue;
+      }
+
+      for (const typedSource of validSources) {
         if (manifestBySource.has(typedSource)) {
           const existing = manifestBySource.get(typedSource);
           throw new Error(
@@ -104,11 +123,8 @@ async function createRegistry(): Promise<ExtractorRegistry> {
       }
 
       manifests.set(manifest.id, manifest);
-      for (const source of manifest.providesSources) {
-        if (!EXTRACTOR_SOURCE_IDS.includes(source as ExtractorSourceId)) {
-          continue;
-        }
-        manifestBySource.set(source as ExtractorSourceId, manifest);
+      for (const source of validSources) {
+        manifestBySource.set(source, manifest);
       }
     } catch (error) {
       logger.warn("Skipping invalid extractor manifest", {

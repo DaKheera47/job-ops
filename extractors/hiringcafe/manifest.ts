@@ -52,6 +52,10 @@ export const manifest: ExtractorManifest = {
   displayName: "Hiring Cafe",
   providesSources: ["hiringcafe"],
   async run(context) {
+    if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
     const maxJobsPerTerm = context.settings.jobspyResultsWanted
       ? parseInt(context.settings.jobspyResultsWanted, 10)
       : 200;
@@ -66,6 +70,8 @@ export const manifest: ExtractorManifest = {
       }),
       maxJobsPerTerm,
       onProgress: (event) => {
+        if (context.shouldCancel?.()) return;
+
         context.onProgress?.(toProgress(event));
       },
     });

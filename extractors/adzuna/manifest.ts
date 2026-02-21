@@ -54,6 +54,10 @@ export const manifest: ExtractorManifest = {
   providesSources: ["adzuna"],
   requiredEnvVars: ["ADZUNA_APP_ID", "ADZUNA_APP_KEY"],
   async run(context) {
+    if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
     const countryCode = getAdzunaCountryCode(context.selectedCountry);
     if (!countryCode) {
       return {
@@ -77,6 +81,8 @@ export const manifest: ExtractorManifest = {
       }),
       maxJobsPerTerm,
       onProgress: (event) => {
+        if (context.shouldCancel?.()) return;
+
         context.onProgress?.(toProgress(event));
       },
     });

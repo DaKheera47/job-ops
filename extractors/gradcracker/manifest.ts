@@ -10,6 +10,10 @@ export const manifest: ExtractorManifest = {
   displayName: "Gradcracker",
   providesSources: ["gradcracker"],
   async run(context: ExtractorRuntimeContext) {
+    if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
     const existingJobUrls = await getAllJobUrls();
     const maxJobsPerTerm = context.settings.gradcrackerMaxJobsPerTerm
       ? parseInt(context.settings.gradcrackerMaxJobsPerTerm, 10)
@@ -20,6 +24,8 @@ export const manifest: ExtractorManifest = {
       searchTerms: context.searchTerms,
       maxJobsPerTerm,
       onProgress: (progress) => {
+        if (context.shouldCancel?.()) return;
+
         context.onProgress?.({
           phase: progress.phase,
           currentUrl: progress.currentUrl,

@@ -4,6 +4,7 @@
 
 import "./config/env";
 import { logger } from "@infra/logger";
+import { sanitizeUnknown } from "@infra/sanitize";
 import { createApp } from "./app";
 import { initializeExtractorRegistry } from "./extractors/registry";
 import * as settingsRepo from "./repositories/settings";
@@ -18,7 +19,13 @@ import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/i
 
 async function startServer() {
   await applyStoredEnvOverrides();
-  await initializeExtractorRegistry();
+  try {
+    await initializeExtractorRegistry();
+  } catch (error) {
+    logger.warn("Failed to initialize extractor registry", {
+      error: sanitizeUnknown(error),
+    });
+  }
 
   const app = createApp();
   const PORT = process.env.PORT || 3001;

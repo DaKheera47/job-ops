@@ -68,6 +68,10 @@ export const manifest: ExtractorManifest = {
   providesSources: ["ukvisajobs"],
   requiredEnvVars: ["UKVISAJOBS_EMAIL", "UKVISAJOBS_PASSWORD"],
   async run(context: ExtractorRuntimeContext) {
+    if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
     const maxJobs = context.settings.ukvisajobsMaxJobs
       ? parseInt(context.settings.ukvisajobsMaxJobs, 10)
       : 50;
@@ -76,6 +80,8 @@ export const manifest: ExtractorManifest = {
       maxJobs,
       searchTerms: context.searchTerms,
       onProgress: (event) => {
+        if (context.shouldCancel?.()) return;
+
         context.onProgress?.(toProgress(event));
       },
     });

@@ -1,9 +1,15 @@
-import { access, readdir } from "node:fs/promises";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
+import type { Dirent } from "node:fs";
+import { access, readdir, stat } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ExtractorManifest } from "@shared/types";
 
-const extractorsRoot = join(process.cwd(), "../extractors");
+const moduleDir = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_EXTRACTORS_ROOT = resolve(process.cwd(), "../extractors");
+const MODULE_RELATIVE_EXTRACTORS_ROOT = resolve(
+  moduleDir,
+  "../../../../extractors",
+);
 
 const MANIFEST_CANDIDATES = ["manifest.ts", "src/manifest.ts"] as const;
 
@@ -16,14 +22,45 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-export async function discoverManifestPaths(): Promise<string[]> {
-  const entries = await readdir(extractorsRoot, { withFileTypes: true });
+async function directoryExists(path: string): Promise<boolean> {
+  try {
+    const info = await stat(path);
+    return info.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function resolveExtractorsRoot(): Promise<string> {
+  if (await directoryExists(DEFAULT_EXTRACTORS_ROOT)) {
+    return DEFAULT_EXTRACTORS_ROOT;
+  }
+
+  if (await directoryExists(MODULE_RELATIVE_EXTRACTORS_ROOT)) {
+    return MODULE_RELATIVE_EXTRACTORS_ROOT;
+  }
+
+  return DEFAULT_EXTRACTORS_ROOT;
+}
+
+export async function discoverManifestPaths(
+  extractorsRoot?: string,
+): Promise<string[]> {
+  const root = extractorsRoot ?? (await resolveExtractorsRoot());
+  let entries: Dirent[] = [];
+  try {
+    entries = await readdir(root, { withFileTypes: true });
+  } catch (error) {
+    const known = error as NodeJS.ErrnoException;
+    if (known.code === "ENOENT") return [];
+    throw error;
+  }
   const paths: string[] = [];
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     for (const candidate of MANIFEST_CANDIDATES) {
-      const fullPath = join(extractorsRoot, entry.name, candidate);
+      const fullPath = join(root, entry.name, candidate);
       if (await fileExists(fullPath)) {
         paths.push(fullPath);
         break;
