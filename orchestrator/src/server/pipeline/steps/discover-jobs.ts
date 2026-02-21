@@ -274,6 +274,8 @@ export async function discoverJobsStep(args: {
 
         const hiringCafeResult = await runHiringCafe({
           country: selectedCountry,
+          countryKey: selectedCountry,
+          locations: parseLocationSettingValues(settings.jobspyLocation),
           searchTerms,
           maxJobsPerTerm: hiringCafeMaxJobsPerTerm,
           onProgress: (event) => {

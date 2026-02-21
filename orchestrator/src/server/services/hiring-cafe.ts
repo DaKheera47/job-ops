@@ -6,6 +6,7 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { normalizeCountryKey } from "@shared/location-support.js";
 import type { CreateJobInput } from "@shared/types";
 import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
 
@@ -50,6 +51,9 @@ export type HiringCafeProgressEvent =
 export interface RunHiringCafeOptions {
   searchTerms?: string[];
   country?: string;
+  countryKey?: string;
+  locations?: string[];
+  locationRadiusMiles?: number;
   maxJobsPerTerm?: number;
   onProgress?: (event: HiringCafeProgressEvent) => void;
 }
@@ -58,6 +62,73 @@ export interface HiringCafeResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+}
+
+const LOCATION_ALIASES: Record<string, string> = {
+  uk: "united kingdom",
+  us: "united states",
+  usa: "united states",
+};
+
+function normalizeLocationToken(value: string | null | undefined): string {
+  const normalized = value?.trim().toLowerCase().replace(/\s+/g, " ") ?? "";
+  if (!normalized) return "";
+  return LOCATION_ALIASES[normalized] ?? normalized;
+}
+
+export function shouldApplyStrictLocationFilter(
+  location: string,
+  countryKey: string,
+): boolean {
+  const normalizedLocation = normalizeLocationToken(location);
+  const normalizedCountry = normalizeCountryKey(countryKey);
+  if (!normalizedLocation || !normalizedCountry) return false;
+  return normalizedLocation !== normalizedCountry;
+}
+
+export function matchesRequestedLocation(
+  jobLocation: string | undefined,
+  requestedLocation: string,
+): boolean {
+  const normalizedJobLocation = normalizeLocationToken(jobLocation);
+  const normalizedRequestedLocation = normalizeLocationToken(requestedLocation);
+  if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
+  return normalizedJobLocation.includes(normalizedRequestedLocation);
+}
+
+function parseLocationValue(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) return [];
+  if (trimmed.includes("|")) {
+    return trimmed
+      .split("|")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  if (trimmed.includes("\n")) {
+    return trimmed
+      .split("\n")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+  return [trimmed];
+}
+
+function resolveLocations(options: RunHiringCafeOptions): string[] {
+  const raw = options.locations?.length
+    ? options.locations
+    : parseLocationValue(process.env.HIRING_CAFE_LOCATION_QUERY ?? "");
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of raw) {
+    const normalized = value.trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+  return out;
 }
 
 function resolveTsxCliPath(): string | null {
@@ -182,7 +253,15 @@ export async function runHiringCafe(
       ? options.searchTerms
       : ["web developer"];
   const country = (options.country || "united kingdom").trim().toLowerCase();
+  const countryKey = normalizeCountryKey(options.countryKey ?? "");
   const maxJobsPerTerm = options.maxJobsPerTerm ?? 200;
+  const locationRadiusMiles = Math.max(
+    1,
+    Math.floor(options.locationRadiusMiles ?? 1),
+  );
+  const locations = resolveLocations(options);
+  const runLocations = locations.length > 0 ? locations : [null];
+  const termTotal = searchTerms.length * runLocations.length;
 
   const useNpmCommand = canRunNpmCommand();
   if (!useNpmCommand && !TSX_CLI_PATH) {
@@ -194,70 +273,102 @@ export async function runHiringCafe(
   }
 
   try {
-    await clearStorageDataset();
+    const jobs: CreateJobInput[] = [];
+    const seen = new Set<string>();
 
-    await new Promise<void>((resolve, reject) => {
-      const extractorEnv = {
-        ...process.env,
-        JOBOPS_EMIT_PROGRESS: "1",
-        HIRING_CAFE_SEARCH_TERMS: JSON.stringify(searchTerms),
-        HIRING_CAFE_COUNTRY: country,
-        HIRING_CAFE_MAX_JOBS_PER_TERM: String(maxJobsPerTerm),
-        HIRING_CAFE_OUTPUT_JSON: DATASET_PATH,
-      };
+    for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
+      const location = runLocations[runIndex];
+      const strictLocationFilter =
+        location !== null &&
+        shouldApplyStrictLocationFilter(location, countryKey);
 
-      const child = useNpmCommand
-        ? spawn("npm", ["run", "start"], {
-            cwd: HIRING_CAFE_DIR,
-            stdio: ["ignore", "pipe", "pipe"],
-            env: extractorEnv,
-          })
-        : (() => {
-            const tsxCliPath = TSX_CLI_PATH;
-            if (!tsxCliPath) {
-              throw new Error(
-                "Unable to execute Hiring Cafe extractor (npm/tsx unavailable)",
-              );
-            }
+      await clearStorageDataset();
 
-            return spawn(process.execPath, [tsxCliPath, "src/main.ts"], {
+      await new Promise<void>((resolve, reject) => {
+        const extractorEnv = {
+          ...process.env,
+          JOBOPS_EMIT_PROGRESS: "1",
+          HIRING_CAFE_SEARCH_TERMS: JSON.stringify(searchTerms),
+          HIRING_CAFE_COUNTRY: country,
+          HIRING_CAFE_MAX_JOBS_PER_TERM: String(maxJobsPerTerm),
+          HIRING_CAFE_OUTPUT_JSON: DATASET_PATH,
+          HIRING_CAFE_LOCATION_QUERY: strictLocationFilter ? location : "",
+          HIRING_CAFE_LOCATION_RADIUS_MILES: strictLocationFilter
+            ? String(locationRadiusMiles)
+            : "",
+        };
+
+        const child = useNpmCommand
+          ? spawn("npm", ["run", "start"], {
               cwd: HIRING_CAFE_DIR,
               stdio: ["ignore", "pipe", "pipe"],
               env: extractorEnv,
+            })
+          : (() => {
+              const tsxCliPath = TSX_CLI_PATH;
+              if (!tsxCliPath) {
+                throw new Error(
+                  "Unable to execute Hiring Cafe extractor (npm/tsx unavailable)",
+                );
+              }
+
+              return spawn(process.execPath, [tsxCliPath, "src/main.ts"], {
+                cwd: HIRING_CAFE_DIR,
+                stdio: ["ignore", "pipe", "pipe"],
+                env: extractorEnv,
+              });
+            })();
+
+        const handleLine = (line: string, stream: NodeJS.WriteStream) => {
+          const progressEvent = parseProgressLine(line);
+          if (progressEvent) {
+            const termOffset = runIndex * searchTerms.length;
+            options.onProgress?.({
+              ...progressEvent,
+              termIndex: termOffset + progressEvent.termIndex,
+              termTotal,
             });
-          })();
+            return;
+          }
 
-      const handleLine = (line: string, stream: NodeJS.WriteStream) => {
-        const progressEvent = parseProgressLine(line);
-        if (progressEvent) {
-          options.onProgress?.(progressEvent);
-          return;
-        }
+          stream.write(`${line}\n`);
+        };
 
-        stream.write(`${line}\n`);
-      };
+        const stdoutRl = child.stdout
+          ? createInterface({ input: child.stdout })
+          : null;
+        const stderrRl = child.stderr
+          ? createInterface({ input: child.stderr })
+          : null;
 
-      const stdoutRl = child.stdout
-        ? createInterface({ input: child.stdout })
-        : null;
-      const stderrRl = child.stderr
-        ? createInterface({ input: child.stderr })
-        : null;
+        stdoutRl?.on("line", (line) => handleLine(line, process.stdout));
+        stderrRl?.on("line", (line) => handleLine(line, process.stderr));
 
-      stdoutRl?.on("line", (line) => handleLine(line, process.stdout));
-      stderrRl?.on("line", (line) => handleLine(line, process.stderr));
-
-      child.on("close", (code) => {
-        stdoutRl?.close();
-        stderrRl?.close();
-        if (code === 0) resolve();
-        else
-          reject(new Error(`Hiring Cafe extractor exited with code ${code}`));
+        child.on("close", (code) => {
+          stdoutRl?.close();
+          stderrRl?.close();
+          if (code === 0) resolve();
+          else
+            reject(new Error(`Hiring Cafe extractor exited with code ${code}`));
+        });
+        child.on("error", reject);
       });
-      child.on("error", reject);
-    });
 
-    const jobs = await readDataset();
+      const runJobs = await readDataset();
+      const filtered = strictLocationFilter
+        ? runJobs.filter((job) =>
+            matchesRequestedLocation(job.location, location),
+          )
+        : runJobs;
+
+      for (const job of filtered) {
+        const key = job.sourceJobId || job.jobUrl;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        jobs.push(job);
+      }
+    }
+
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

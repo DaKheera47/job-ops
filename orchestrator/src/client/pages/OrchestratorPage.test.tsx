@@ -779,6 +779,40 @@ describe("OrchestratorPage", () => {
     });
   });
 
+  it("stores multiple cities when only hiringcafe is selected", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+    mockPipelineSources = ["hiringcafe"];
+    mockAutomaticRunValues = {
+      topN: 12,
+      minSuitabilityScore: 55,
+      searchTerms: ["backend"],
+      runBudget: 150,
+      country: "united kingdom",
+      cityLocations: ["Leeds", "Manchester"],
+    };
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByTestId("run-automatic"));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobspyLocation: "Leeds|Manchester",
+        }),
+      );
+    });
+  });
+
   it("shows completion toast from hook terminal state", async () => {
     mockPipelineTerminalEvent = {
       status: "completed",

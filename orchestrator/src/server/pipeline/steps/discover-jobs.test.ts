@@ -317,8 +317,42 @@ describe("discoverJobsStep", () => {
     expect(vi.mocked(hiringCafe.runHiringCafe)).toHaveBeenCalledWith(
       expect.objectContaining({
         country: "united states",
+        countryKey: "united states",
+        locations: [],
         searchTerms: ["engineer"],
         maxJobsPerTerm: 25,
+      }),
+    );
+  });
+
+  it("passes configured city locations to hiringcafe", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const hiringCafe = await import("../../services/hiring-cafe");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
+      jobspyResultsWanted: "25",
+      jobspyLocation: "Leeds|Manchester",
+    } as any);
+
+    vi.mocked(hiringCafe.runHiringCafe).mockResolvedValue({
+      success: true,
+      jobs: [],
+    } as any);
+
+    await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["hiringcafe"],
+      },
+    });
+
+    expect(vi.mocked(hiringCafe.runHiringCafe)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "united kingdom",
+        countryKey: "united kingdom",
+        locations: ["Leeds", "Manchester"],
       }),
     );
   });

@@ -301,11 +301,12 @@ export const OrchestratorPage: React.FC = () => {
           source === "glassdoor",
       );
       const hasAdzuna = compatibleSources.includes("adzuna");
+      const hasHiringCafe = compatibleSources.includes("hiringcafe");
       const serializedCities = serializeCityLocationsSetting(
         values.cityLocations,
       );
       const jobspyLocation =
-        (hasJobSpySite || hasAdzuna) && serializedCities
+        (hasJobSpySite || hasAdzuna || hasHiringCafe) && serializedCities
           ? serializedCities
           : formatCountryLabel(values.country);
       await api.updateSettings({

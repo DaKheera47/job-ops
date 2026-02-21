@@ -20,6 +20,7 @@ const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 const DEFAULT_MAX_JOBS_PER_TERM = 200;
 const DEFAULT_SEARCH_TERM = "web developer";
 const DEFAULT_DATE_FETCHED_PAST_N_DAYS = 30;
+const DEFAULT_LOCATION_RADIUS_MILES = 1;
 const PAGE_LIMIT = 50;
 
 type RawHiringCafeJob = Record<string, unknown>;
@@ -44,6 +45,27 @@ interface BrowserApiResponse {
   statusText: string;
   data: unknown;
   responseText: string;
+}
+
+interface CityLocationContext {
+  id: string;
+  city: string;
+  regionLong: string;
+  regionShort: string;
+  countryLong: string;
+  countryShort: string;
+  lat: number;
+  lon: number;
+  formattedAddress: string;
+  population: number | null;
+  radiusMiles: number;
+}
+
+interface NominatimResult {
+  lat?: string;
+  lon?: string;
+  display_name?: string;
+  address?: Record<string, unknown>;
 }
 
 function emitProgress(payload: Record<string, unknown>): void {
@@ -191,6 +213,261 @@ function parseTotalCount(payload: unknown): number | null {
   return toNumberOrNull(payloadRecord.total);
 }
 
+function buildCityLocationId(input: string): string {
+  const normalized = input.trim().toLowerCase().replace(/\s+/g, "_");
+  return `city_${normalized}`.slice(0, 32);
+}
+
+function toRegionShortName(value: string): string {
+  const compact = value
+    .replace(/[^a-zA-Z\s]/g, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (compact.length === 0) return "REG";
+  if (compact.length === 1) {
+    return compact[0].slice(0, 3).toUpperCase();
+  }
+  return compact
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+async function resolveCityLocationContext(args: {
+  city: string;
+  countryLong: string;
+  countryShort: string;
+  radiusMiles: number;
+}): Promise<CityLocationContext | null> {
+  const query = `${args.city}, ${args.countryLong}`;
+  const url = new URL("https://nominatim.openstreetmap.org/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("limit", "1");
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "job-ops-hiringcafe-extractor/1.0",
+      },
+      signal: AbortSignal.timeout(8_000),
+    });
+    if (!response.ok) {
+      throw new Error(`geocode failed (${response.status})`);
+    }
+    const payload = (await response.json()) as unknown;
+    if (!Array.isArray(payload) || payload.length === 0) {
+      throw new Error("geocode returned no results");
+    }
+    const first = payload[0] as NominatimResult;
+    const lat = Number(first.lat ?? "");
+    const lon = Number(first.lon ?? "");
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      throw new Error("invalid geocode coordinates");
+    }
+    const address = asRecord(first.address);
+    const regionLong =
+      toStringOrNull(address?.state) ??
+      toStringOrNull(address?.county) ??
+      toStringOrNull(address?.region) ??
+      args.countryLong;
+    const displayName =
+      toStringOrNull(first.display_name) ??
+      `${args.city}, ${regionLong}, ${args.countryShort}`;
+    return {
+      id: buildCityLocationId(args.city),
+      city: args.city,
+      regionLong,
+      regionShort: toRegionShortName(regionLong),
+      countryLong: args.countryLong,
+      countryShort: args.countryShort,
+      lat,
+      lon,
+      formattedAddress: displayName,
+      population: null,
+      radiusMiles: args.radiusMiles,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`City geocode failed for '${query}': ${message}`);
+    return null;
+  }
+}
+
+function createCitySearchState(args: {
+  searchQuery: string;
+  dateFetchedPastNDays: number;
+  context: CityLocationContext;
+}): Record<string, unknown> {
+  return {
+    locations: [
+      {
+        id: args.context.id,
+        types: ["locality"],
+        address_components: [
+          {
+            long_name: args.context.city,
+            short_name: args.context.city,
+            types: ["locality"],
+          },
+          {
+            long_name: args.context.regionLong,
+            short_name: args.context.regionShort,
+            types: ["administrative_area_level_1"],
+          },
+          {
+            long_name: args.context.countryLong,
+            short_name: args.context.countryShort,
+            types: ["country"],
+          },
+        ],
+        geometry: {
+          location: {
+            lat: args.context.lat,
+            lon: args.context.lon,
+          },
+        },
+        formatted_address: args.context.formattedAddress,
+        population: args.context.population,
+        workplace_types: [],
+        options: {
+          radius: args.context.radiusMiles,
+          radius_unit: "miles",
+          ignore_radius: false,
+        },
+      },
+    ],
+    workplaceTypes: ["Remote", "Hybrid", "Onsite"],
+    defaultToUserLocation: true,
+    userLocation: null,
+    physicalEnvironments: [
+      "Office",
+      "Outdoor",
+      "Vehicle",
+      "Industrial",
+      "Customer-Facing",
+    ],
+    physicalLaborIntensity: ["Low", "Medium", "High"],
+    physicalPositions: ["Sitting", "Standing"],
+    oralCommunicationLevels: ["Low", "Medium", "High"],
+    computerUsageLevels: ["Low", "Medium", "High"],
+    cognitiveDemandLevels: ["Low", "Medium", "High"],
+    currency: { label: "Any", value: null },
+    frequency: { label: "Any", value: null },
+    minCompensationLowEnd: null,
+    minCompensationHighEnd: null,
+    maxCompensationLowEnd: null,
+    maxCompensationHighEnd: null,
+    restrictJobsToTransparentSalaries: false,
+    calcFrequency: "Yearly",
+    commitmentTypes: [
+      "Full Time",
+      "Part Time",
+      "Contract",
+      "Internship",
+      "Temporary",
+      "Seasonal",
+      "Volunteer",
+    ],
+    jobTitleQuery: "",
+    jobDescriptionQuery: "",
+    associatesDegreeFieldsOfStudy: [],
+    excludedAssociatesDegreeFieldsOfStudy: [],
+    bachelorsDegreeFieldsOfStudy: [],
+    excludedBachelorsDegreeFieldsOfStudy: [],
+    mastersDegreeFieldsOfStudy: [],
+    excludedMastersDegreeFieldsOfStudy: [],
+    doctorateDegreeFieldsOfStudy: [],
+    excludedDoctorateDegreeFieldsOfStudy: [],
+    associatesDegreeRequirements: [],
+    bachelorsDegreeRequirements: [],
+    mastersDegreeRequirements: [],
+    doctorateDegreeRequirements: [],
+    licensesAndCertifications: [],
+    excludedLicensesAndCertifications: [],
+    excludeAllLicensesAndCertifications: false,
+    seniorityLevel: [
+      "No Prior Experience Required",
+      "Entry Level",
+      "Mid Level",
+      "Senior Level",
+    ],
+    roleTypes: ["Individual Contributor", "People Manager"],
+    roleYoeRange: [0, 20],
+    excludeIfRoleYoeIsNotSpecified: false,
+    managementYoeRange: [0, 20],
+    excludeIfManagementYoeIsNotSpecified: false,
+    securityClearances: [
+      "None",
+      "Confidential",
+      "Secret",
+      "Top Secret",
+      "Top Secret/SCI",
+      "Public Trust",
+      "Interim Clearances",
+      "Other",
+    ],
+    languageRequirements: [],
+    excludedLanguageRequirements: [],
+    languageRequirementsOperator: "OR",
+    excludeJobsWithAdditionalLanguageRequirements: false,
+    airTravelRequirement: ["None", "Minimal", "Moderate", "Extensive"],
+    landTravelRequirement: ["None", "Minimal", "Moderate", "Extensive"],
+    morningShiftWork: [],
+    eveningShiftWork: [],
+    overnightShiftWork: [],
+    weekendAvailabilityRequired: "Doesn't Matter",
+    holidayAvailabilityRequired: "Doesn't Matter",
+    overtimeRequired: "Doesn't Matter",
+    onCallRequirements: [
+      "None",
+      "Occasional (once a month or less)",
+      "Regular (once a week or more)",
+    ],
+    benefitsAndPerks: [],
+    applicationFormEase: [],
+    companyNames: [],
+    excludedCompanyNames: [],
+    companyHqCountries: [],
+    excludedCompanyHqCountries: [],
+    usaGovPref: null,
+    industries: [],
+    excludedIndustries: [],
+    companyKeywords: [],
+    companyKeywordsBooleanOperator: "OR",
+    excludedCompanyKeywords: [],
+    hideJobTypes: [],
+    encouragedToApply: [],
+    searchQuery: args.searchQuery,
+    dateFetchedPastNDays: args.dateFetchedPastNDays,
+    hiddenCompanies: [],
+    user: null,
+    searchModeSelectedCompany: null,
+    departments: [],
+    restrictedSearchAttributes: [],
+    sortBy: "default",
+    technologyKeywordsQuery: "",
+    requirementsKeywordsQuery: "",
+    companyPublicOrPrivate: "all",
+    latestInvestmentYearRange: [null, null],
+    latestInvestmentSeries: [],
+    latestInvestmentAmount: null,
+    latestInvestmentCurrency: [],
+    investors: [],
+    excludedInvestors: [],
+    isNonProfit: "all",
+    organizationTypes: [],
+    excludedOrganizationTypes: [],
+    companySizeRanges: [],
+    minYearFounded: null,
+    maxYearFounded: null,
+    excludedLatestInvestmentSeries: [],
+  };
+}
+
 async function callHiringCafeApi(
   page: Page,
   endpoint: string,
@@ -267,6 +544,11 @@ async function run(): Promise<void> {
     process.env.HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS,
     DEFAULT_DATE_FETCHED_PAST_N_DAYS,
   );
+  const locationQuery = process.env.HIRING_CAFE_LOCATION_QUERY?.trim() ?? "";
+  const locationRadiusMiles = parsePositiveInt(
+    process.env.HIRING_CAFE_LOCATION_RADIUS_MILES,
+    DEFAULT_LOCATION_RADIUS_MILES,
+  );
   const outputPath =
     process.env.HIRING_CAFE_OUTPUT_JSON ||
     join(__dirname, "../storage/datasets/default/jobs.json");
@@ -308,6 +590,20 @@ async function run(): Promise<void> {
       await initializePage();
     }
 
+    const countryLocation = resolveHiringCafeCountryLocation(country);
+    const countryLong =
+      countryLocation?.address_components[0]?.long_name ?? "United Kingdom";
+    const countryShort =
+      countryLocation?.address_components[0]?.short_name ?? "GB";
+    const cityLocationContext = locationQuery
+      ? await resolveCityLocationContext({
+          city: locationQuery,
+          countryLong,
+          countryShort,
+          radiusMiles: locationRadiusMiles,
+        })
+      : null;
+
     for (let i = 0; i < searchTerms.length; i += 1) {
       const searchTerm = searchTerms[i];
       const termIndex = i + 1;
@@ -319,12 +615,17 @@ async function run(): Promise<void> {
         searchTerm,
       });
 
-      const location = resolveHiringCafeCountryLocation(country);
-      const searchState = createDefaultSearchState({
-        searchQuery: searchTerm,
-        location,
-        dateFetchedPastNDays,
-      });
+      const searchState = cityLocationContext
+        ? createCitySearchState({
+            searchQuery: searchTerm,
+            dateFetchedPastNDays,
+            context: cityLocationContext,
+          })
+        : createDefaultSearchState({
+            searchQuery: searchTerm,
+            location: countryLocation,
+            dateFetchedPastNDays,
+          });
       const encodedSearchState = encodeSearchState(searchState);
 
       let totalAvailable: number | null = null;
