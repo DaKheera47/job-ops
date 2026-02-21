@@ -1,7 +1,7 @@
 import { okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
-import { LlmService } from "@server/services/llm-service";
+import { LlmService } from "@server/services/llm/service";
 import { RxResumeClient } from "@server/services/rxresume-client";
 import {
   getResume,

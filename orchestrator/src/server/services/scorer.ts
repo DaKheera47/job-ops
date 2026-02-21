@@ -5,7 +5,8 @@
 import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
 import { getSetting } from "../repositories/settings";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service";
+import { LlmService } from "./llm/service";
+import type { JsonSchemaDefinition } from "./llm/types";
 import { getEffectiveSettings } from "./settings";
 
 interface SuitabilityResult {

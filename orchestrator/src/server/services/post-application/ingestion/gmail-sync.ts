@@ -16,10 +16,8 @@ import {
 } from "@server/repositories/post-application-sync-runs";
 import { getSetting } from "@server/repositories/settings";
 import { transitionStage } from "@server/services/applicationTracking";
-import {
-  type JsonSchemaDefinition,
-  LlmService,
-} from "@server/services/llm-service";
+import { LlmService } from "@server/services/llm/service";
+import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import {
   messageTypeFromStageTarget,
   normalizeStageTarget,

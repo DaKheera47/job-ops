@@ -3,7 +3,8 @@
  */
 
 import { getSetting } from "../repositories/settings";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service";
+import { LlmService } from "./llm/service";
+import type { JsonSchemaDefinition } from "./llm/types";
 import type { ResumeProjectSelectionItem } from "./resumeProjects";
 
 /** JSON schema for project selection response */

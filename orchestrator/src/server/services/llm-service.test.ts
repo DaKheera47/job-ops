@@ -3,11 +3,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  type JsonSchemaDefinition,
-  LlmService,
-  parseJsonContent,
-} from "./llm-service";
+import { LlmService } from "./llm/service";
+import type { JsonSchemaDefinition } from "./llm/types";
+import { parseJsonContent } from "./llm/utils/json";
 
 const originalFetch = global.fetch;
 

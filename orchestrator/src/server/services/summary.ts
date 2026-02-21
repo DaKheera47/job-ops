@@ -5,7 +5,8 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
 import { getSetting } from "../repositories/settings";
-import { type JsonSchemaDefinition, LlmService } from "./llm-service";
+import { LlmService } from "./llm/service";
+import type { JsonSchemaDefinition } from "./llm/types";
 
 export interface TailoredData {
   summary: string;

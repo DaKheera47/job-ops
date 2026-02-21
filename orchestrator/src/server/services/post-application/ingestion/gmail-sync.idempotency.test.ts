@@ -68,7 +68,7 @@ const llmCallJson = vi.fn().mockResolvedValue({
   },
 });
 
-vi.mock("@server/services/llm-service", () => ({
+vi.mock("@server/services/llm/service", () => ({
   LlmService: class {
     callJson() {
       return llmCallJson();
