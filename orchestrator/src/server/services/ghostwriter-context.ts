@@ -3,9 +3,8 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import type { Job, ResumeProfile } from "@shared/types";
 import { badRequest, notFound } from "../infra/errors";
 import * as jobsRepo from "../repositories/jobs";
-import * as settingsRepo from "../repositories/settings";
 import { getProfile } from "./profile";
-import { resolveSettingValue } from "./settings-conversion";
+import { getEffectiveSettings } from "./settings";
 
 type JobChatStyle = {
   tone: string;
@@ -119,29 +118,13 @@ function buildSystemPrompt(style: JobChatStyle): string {
 }
 
 async function resolveStyle(): Promise<JobChatStyle> {
-  const overrides = await settingsRepo.getAllSettings();
-  const tone = resolveSettingValue(
-    "chatStyleTone",
-    overrides.chatStyleTone,
-  ).value;
-  const formality = resolveSettingValue(
-    "chatStyleFormality",
-    overrides.chatStyleFormality,
-  ).value;
-  const constraints = resolveSettingValue(
-    "chatStyleConstraints",
-    overrides.chatStyleConstraints,
-  ).value;
-  const doNotUse = resolveSettingValue(
-    "chatStyleDoNotUse",
-    overrides.chatStyleDoNotUse,
-  ).value;
+  const settings = await getEffectiveSettings();
 
   return {
-    tone,
-    formality,
-    constraints,
-    doNotUse,
+    tone: settings.chatStyleTone.value,
+    formality: settings.chatStyleFormality.value,
+    constraints: settings.chatStyleConstraints.value,
+    doNotUse: settings.chatStyleDoNotUse.value,
   };
 }
 

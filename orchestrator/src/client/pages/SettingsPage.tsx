@@ -117,22 +117,22 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
-  model: data.overrideModel ?? "",
-  modelScorer: data.overrideModelScorer ?? "",
-  modelTailoring: data.overrideModelTailoring ?? "",
-  modelProjectSelection: data.overrideModelProjectSelection ?? "",
-  llmProvider: normalizeLlmProviderValue(data.overrideLlmProvider),
-  llmBaseUrl: data.overrideLlmBaseUrl ?? "",
+  model: data.model.override ?? "",
+  modelScorer: data.modelScorer.override ?? "",
+  modelTailoring: data.modelTailoring.override ?? "",
+  modelProjectSelection: data.modelProjectSelection.override ?? "",
+  llmProvider: normalizeLlmProviderValue(data.llmProvider.override),
+  llmBaseUrl: data.llmBaseUrl.override ?? "",
   llmApiKey: "",
-  pipelineWebhookUrl: data.overridePipelineWebhookUrl ?? "",
-  jobCompleteWebhookUrl: data.overrideJobCompleteWebhookUrl ?? "",
-  resumeProjects: data.resumeProjects,
-  rxresumeBaseResumeId: data.rxresumeBaseResumeId ?? null,
-  showSponsorInfo: data.overrideShowSponsorInfo,
-  chatStyleTone: data.overrideChatStyleTone ?? "",
-  chatStyleFormality: data.overrideChatStyleFormality ?? "",
-  chatStyleConstraints: data.overrideChatStyleConstraints ?? "",
-  chatStyleDoNotUse: data.overrideChatStyleDoNotUse ?? "",
+  pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
+  jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
+  resumeProjects: data.resumeProjects.override,
+  rxresumeBaseResumeId: data.rxresumeBaseResumeId,
+  showSponsorInfo: data.showSponsorInfo.override,
+  chatStyleTone: data.chatStyleTone.override ?? "",
+  chatStyleFormality: data.chatStyleFormality.override ?? "",
+  chatStyleConstraints: data.chatStyleConstraints.override ?? "",
+  chatStyleDoNotUse: data.chatStyleDoNotUse.override ?? "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
   basicAuthUser: data.basicAuthUser ?? "",
@@ -143,12 +143,12 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   adzunaAppKey: "",
   webhookSecret: "",
   enableBasicAuth: data.basicAuthActive,
-  backupEnabled: data.overrideBackupEnabled,
-  backupHour: data.overrideBackupHour,
-  backupMaxCount: data.overrideBackupMaxCount,
-  penalizeMissingSalary: data.overridePenalizeMissingSalary,
-  missingSalaryPenalty: data.overrideMissingSalaryPenalty,
-  autoSkipScoreThreshold: data.overrideAutoSkipScoreThreshold,
+  backupEnabled: data.backupEnabled.override,
+  backupHour: data.backupHour.override,
+  backupMaxCount: data.backupMaxCount.override,
+  penalizeMissingSalary: data.penalizeMissingSalary.override,
+  missingSalaryPenalty: data.missingSalaryPenalty.override,
+  autoSkipScoreThreshold: data.autoSkipScoreThreshold.override,
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -204,43 +204,43 @@ const getDerivedSettings = (settings: AppSettings | null) => {
 
   return {
     model: {
-      effective: settings?.model ?? "",
-      default: settings?.defaultModel ?? "",
-      scorer: settings?.modelScorer ?? "",
-      tailoring: settings?.modelTailoring ?? "",
-      projectSelection: settings?.modelProjectSelection ?? "",
-      llmProvider: settings?.llmProvider ?? "",
-      llmBaseUrl: settings?.llmBaseUrl ?? "",
+      effective: settings?.model?.value ?? "",
+      default: settings?.model?.default ?? "",
+      scorer: settings?.modelScorer?.value ?? "",
+      tailoring: settings?.modelTailoring?.value ?? "",
+      projectSelection: settings?.modelProjectSelection?.value ?? "",
+      llmProvider: settings?.llmProvider?.value ?? "",
+      llmBaseUrl: settings?.llmBaseUrl?.value ?? "",
       llmApiKeyHint: settings?.llmApiKeyHint ?? null,
     },
     pipelineWebhook: {
-      effective: settings?.pipelineWebhookUrl ?? "",
-      default: settings?.defaultPipelineWebhookUrl ?? "",
+      effective: settings?.pipelineWebhookUrl?.value ?? "",
+      default: settings?.pipelineWebhookUrl?.default ?? "",
     },
     jobCompleteWebhook: {
-      effective: settings?.jobCompleteWebhookUrl ?? "",
-      default: settings?.defaultJobCompleteWebhookUrl ?? "",
+      effective: settings?.jobCompleteWebhookUrl?.value ?? "",
+      default: settings?.jobCompleteWebhookUrl?.default ?? "",
     },
     display: {
-      effective: settings?.showSponsorInfo ?? true,
-      default: settings?.defaultShowSponsorInfo ?? true,
+      effective: settings?.showSponsorInfo?.value ?? true,
+      default: settings?.showSponsorInfo?.default ?? true,
     },
     chat: {
       tone: {
-        effective: settings?.chatStyleTone ?? "professional",
-        default: settings?.defaultChatStyleTone ?? "professional",
+        effective: settings?.chatStyleTone?.value ?? "professional",
+        default: settings?.chatStyleTone?.default ?? "professional",
       },
       formality: {
-        effective: settings?.chatStyleFormality ?? "medium",
-        default: settings?.defaultChatStyleFormality ?? "medium",
+        effective: settings?.chatStyleFormality?.value ?? "medium",
+        default: settings?.chatStyleFormality?.default ?? "medium",
       },
       constraints: {
-        effective: settings?.chatStyleConstraints ?? "",
-        default: settings?.defaultChatStyleConstraints ?? "",
+        effective: settings?.chatStyleConstraints?.value ?? "",
+        default: settings?.chatStyleConstraints?.default ?? "",
       },
       doNotUse: {
-        effective: settings?.chatStyleDoNotUse ?? "",
-        default: settings?.defaultChatStyleDoNotUse ?? "",
+        effective: settings?.chatStyleDoNotUse?.value ?? "",
+        default: settings?.chatStyleDoNotUse?.default ?? "",
       },
     },
     envSettings: {
@@ -259,37 +259,37 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       },
       basicAuthActive: settings?.basicAuthActive ?? false,
     },
-    defaultResumeProjects: settings?.defaultResumeProjects ?? null,
+    defaultResumeProjects: settings?.resumeProjects?.default ?? null,
 
     profileProjects,
     maxProjectsTotal: profileProjects.length,
 
     backup: {
       backupEnabled: {
-        effective: settings?.backupEnabled ?? false,
-        default: settings?.defaultBackupEnabled ?? false,
+        effective: settings?.backupEnabled?.value ?? false,
+        default: settings?.backupEnabled?.default ?? false,
       },
       backupHour: {
-        effective: settings?.backupHour ?? 2,
-        default: settings?.defaultBackupHour ?? 2,
+        effective: settings?.backupHour?.value ?? 2,
+        default: settings?.backupHour?.default ?? 2,
       },
       backupMaxCount: {
-        effective: settings?.backupMaxCount ?? 5,
-        default: settings?.defaultBackupMaxCount ?? 5,
+        effective: settings?.backupMaxCount?.value ?? 5,
+        default: settings?.backupMaxCount?.default ?? 5,
       },
     },
     scoring: {
       penalizeMissingSalary: {
-        effective: settings?.penalizeMissingSalary ?? false,
-        default: settings?.defaultPenalizeMissingSalary ?? false,
+        effective: settings?.penalizeMissingSalary?.value ?? false,
+        default: settings?.penalizeMissingSalary?.default ?? false,
       },
       missingSalaryPenalty: {
-        effective: settings?.missingSalaryPenalty ?? 10,
-        default: settings?.defaultMissingSalaryPenalty ?? 10,
+        effective: settings?.missingSalaryPenalty?.value ?? 10,
+        default: settings?.missingSalaryPenalty?.default ?? 10,
       },
       autoSkipScoreThreshold: {
-        effective: settings?.autoSkipScoreThreshold ?? null,
-        default: settings?.defaultAutoSkipScoreThreshold ?? null,
+        effective: settings?.autoSkipScoreThreshold?.value ?? null,
+        default: settings?.autoSkipScoreThreshold?.default ?? null,
       },
     },
   };
@@ -759,7 +759,11 @@ export const SettingsPage: React.FC = () => {
       />
 
       <main className="container mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12">
-        <Accordion type="multiple" className="w-full space-y-4">
+        <Accordion
+          type="multiple"
+          className="w-full space-y-4"
+          defaultValue={["model", "feature", "webhooks", "chat"]}
+        >
           <ModelSettingsSection
             values={model}
             isLoading={isLoading}

@@ -31,15 +31,6 @@ vi.mock("sonner", () => ({
 }));
 
 const baseSettings = createAppSettings({
-  model: "google/gemini-3-flash-preview",
-  defaultModel: "google/gemini-3-flash-preview",
-  modelScorer: "google/gemini-3-flash-preview",
-  modelTailoring: "google/gemini-3-flash-preview",
-  modelProjectSelection: "google/gemini-3-flash-preview",
-  llmProvider: "openrouter",
-  defaultLlmProvider: "openrouter",
-  llmBaseUrl: "https://openrouter.ai",
-  defaultLlmBaseUrl: "https://openrouter.ai",
   profileProjects: [
     {
       id: "proj-1",
@@ -56,24 +47,6 @@ const baseSettings = createAppSettings({
       isVisibleInBase: false,
     },
   ],
-  resumeProjects: {
-    maxProjects: 2,
-    lockedProjectIds: [],
-    aiSelectableProjectIds: ["proj-1", "proj-2"],
-  },
-  defaultResumeProjects: {
-    maxProjects: 2,
-    lockedProjectIds: [],
-    aiSelectableProjectIds: ["proj-1", "proj-2"],
-  },
-  jobspyResultsWanted: 200,
-  defaultJobspyResultsWanted: 200,
-  jobspyCountryIndeed: "UK",
-  defaultJobspyCountryIndeed: "UK",
-  searchCities: "London",
-  defaultSearchCities: "London",
-  searchTerms: ["engineer"],
-  defaultSearchTerms: ["engineer"],
 });
 
 const renderPage = () => {
@@ -103,16 +76,17 @@ describe("SettingsPage", () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue({
       ...baseSettings,
-      overrideModel: "gpt-4",
-      model: "gpt-4",
+      model: {
+        value: "gpt-4",
+        default: baseSettings.model.default,
+        override: "gpt-4",
+      },
     });
 
     renderPage();
 
-    const modelTrigger = await screen.findByRole("button", { name: /model/i });
-    fireEvent.click(modelTrigger);
-
     const modelInput = screen.getByLabelText(/default model/i);
+    await waitFor(() => expect(modelInput).toBeEnabled());
     fireEvent.change(modelInput, { target: { value: "  gpt-4  " } });
 
     const saveButton = screen.getByRole("button", { name: /^save$/i });
@@ -134,10 +108,8 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const modelTrigger = await screen.findByRole("button", { name: /model/i });
-    fireEvent.click(modelTrigger);
-
     const modelInput = screen.getByLabelText(/default model/i);
+    await waitFor(() => expect(modelInput).toBeEnabled());
 
     // Change to > 200 chars
     fireEvent.change(modelInput, { target: { value: "a".repeat(201) } });
@@ -195,11 +167,12 @@ describe("SettingsPage", () => {
     const saveButton = screen.getByRole("button", { name: /^save$/i });
     expect(saveButton).toBeDisabled();
 
-    const modelTrigger = await screen.findByRole("button", { name: /model/i });
-    fireEvent.click(modelTrigger);
     const modelInput = screen.getByLabelText(/default model/i);
+    // Wait for the query to resolve and input to be enabled
+    await waitFor(() => expect(modelInput).toBeEnabled());
+
     fireEvent.change(modelInput, { target: { value: "new-model" } });
-    expect(saveButton).toBeEnabled();
+    await waitFor(() => expect(saveButton).toBeEnabled());
   });
 
   it("hides pipeline tuning sections that moved to run modal", async () => {

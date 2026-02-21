@@ -120,7 +120,7 @@ export const OnboardingGate: React.FC = () => {
   const validateLlm = useCallback(async () => {
     const values = getValues();
     const selectedProvider = normalizeLlmProvider(
-      values.llmProvider || settings?.llmProvider || "openrouter",
+      values.llmProvider || settings?.llmProvider?.value || "openrouter",
     );
     const providerConfig = getLlmProviderConfig(selectedProvider);
     const { requiresApiKey, showBaseUrl } = providerConfig;
@@ -191,7 +191,7 @@ export const OnboardingGate: React.FC = () => {
   }, []);
 
   const selectedProvider = normalizeLlmProvider(
-    llmProvider || settings?.llmProvider || "openrouter",
+    llmProvider || settings?.llmProvider?.value || "openrouter",
   );
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const {
@@ -227,8 +227,8 @@ export const OnboardingGate: React.FC = () => {
   useEffect(() => {
     if (settings) {
       reset({
-        llmProvider: settings.llmProvider || "",
-        llmBaseUrl: settings.llmBaseUrl || "",
+        llmProvider: settings.llmProvider?.value || "",
+        llmBaseUrl: settings.llmBaseUrl?.value || "",
         llmApiKey: "",
         rxresumeEmail: "",
         rxresumePassword: "",
@@ -637,7 +637,7 @@ export const OnboardingGate: React.FC = () => {
                         }}
                         placeholder={providerConfig.baseUrlPlaceholder}
                         helper={providerConfig.baseUrlHelper}
-                        current={settings?.llmBaseUrl || "—"}
+                        current={settings?.llmBaseUrl?.value || "—"}
                         disabled={isSavingEnv}
                       />
                     )}

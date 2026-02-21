@@ -180,19 +180,19 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
 
     const rememberedRunBudget =
-      settings?.jobspyResultsWanted ??
-      settings?.adzunaMaxJobsPerTerm ??
-      settings?.gradcrackerMaxJobsPerTerm ??
-      settings?.ukvisajobsMaxJobs ??
+      settings?.jobspyResultsWanted?.value ??
+      settings?.adzunaMaxJobsPerTerm?.value ??
+      settings?.gradcrackerMaxJobsPerTerm?.value ??
+      settings?.ukvisajobsMaxJobs?.value ??
       DEFAULT_VALUES.runBudget;
     const rememberedCountry = normalizeUiCountryKey(
-      settings?.jobspyCountryIndeed ??
-        settings?.searchCities ??
+      settings?.jobspyCountryIndeed?.value ??
+        settings?.searchCities?.value ??
         DEFAULT_VALUES.country,
     );
     const rememberedCountryKey = rememberedCountry || DEFAULT_VALUES.country;
     const rememberedLocations = parseCityLocationsSetting(
-      settings?.searchCities,
+      settings?.searchCities?.value,
     ).filter(
       (location) =>
         normalizeCountryKey(location) !==
@@ -206,7 +206,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       country: rememberedCountry || DEFAULT_VALUES.country,
       cityLocations: rememberedLocations,
       cityLocationDraft: "",
-      searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
+      searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
     setAdvancedOpen(false);

@@ -290,9 +290,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -317,9 +318,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -342,9 +344,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -367,9 +370,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -392,9 +396,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -419,9 +424,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: false,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -444,9 +450,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 100,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 100, default: 100, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -469,9 +476,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -494,9 +502,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 0,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 0, default: 0, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -519,9 +528,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 25,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 25, default: 25, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: true,
@@ -548,9 +558,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: true,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: true, default: true, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       // Simulate API key error to trigger mock scoring
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
@@ -576,9 +587,10 @@ describe("salary penalty", () => {
       const { LlmService } = await import("./llm/service");
 
       getEffectiveSettingsMock.mockResolvedValue({
-        penalizeMissingSalary: false,
-        missingSalaryPenalty: 10,
-      });
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
 
       vi.spyOn(LlmService.prototype, "callJson").mockResolvedValue({
         success: false,

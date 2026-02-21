@@ -7,36 +7,35 @@ vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
 }));
 
-vi.mock("../repositories/settings", () => ({
-  getAllSettings: vi.fn(),
+vi.mock("./settings", () => ({
+  getEffectiveSettings: vi.fn(),
 }));
 
 vi.mock("./profile", () => ({
   getProfile: vi.fn(),
 }));
 
-vi.mock("./settings-conversion", () => ({
-  resolveSettingValue: vi.fn(),
-}));
-
 import { getJobById } from "../repositories/jobs";
-import { getAllSettings } from "../repositories/settings";
 import { getProfile } from "./profile";
-import { resolveSettingValue } from "./settings-conversion";
+import { getEffectiveSettings } from "./settings";
 
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(getAllSettings).mockResolvedValue({});
-    vi.mocked(resolveSettingValue).mockImplementation((key, override) => {
-      const fallback: Record<string, string> = {
-        chatStyleTone: "professional",
-        chatStyleFormality: "medium",
-        chatStyleConstraints: "",
-        chatStyleDoNotUse: "",
-      };
-      return { value: override ?? fallback[key as string] ?? "" } as any;
-    });
+    vi.mocked(getEffectiveSettings).mockResolvedValue({
+      chatStyleTone: {
+        value: "professional",
+        default: "professional",
+        override: null,
+      },
+      chatStyleFormality: {
+        value: "medium",
+        default: "medium",
+        override: null,
+      },
+      chatStyleConstraints: { value: "", default: "", override: null },
+      chatStyleDoNotUse: { value: "", default: "", override: null },
+    } as any);
   });
 
   it("builds context with style directives and snapshots", async () => {
@@ -48,12 +47,28 @@ describe("buildJobChatPromptContext", () => {
     });
 
     vi.mocked(getJobById).mockResolvedValue(job);
-    vi.mocked(getAllSettings).mockResolvedValue({
-      chatStyleTone: "direct",
-      chatStyleFormality: "high",
-      chatStyleConstraints: "Keep responses under 120 words",
-      chatStyleDoNotUse: "synergy, leverage",
-    });
+    vi.mocked(getEffectiveSettings).mockResolvedValue({
+      chatStyleTone: {
+        value: "direct",
+        default: "professional",
+        override: "direct",
+      },
+      chatStyleFormality: {
+        value: "high",
+        default: "medium",
+        override: "high",
+      },
+      chatStyleConstraints: {
+        value: "Keep responses under 120 words",
+        default: "",
+        override: "Keep responses under 120 words",
+      },
+      chatStyleDoNotUse: {
+        value: "synergy, leverage",
+        default: "",
+        override: "synergy, leverage",
+      },
+    } as any);
     vi.mocked(getProfile).mockResolvedValue({
       basics: {
         name: "Test User",

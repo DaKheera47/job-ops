@@ -63,7 +63,9 @@ export const settingsRegistry = {
     envKey: "LLM_PROVIDER",
     schema: z.preprocess(
       (v) => (v === "" ? null : v),
-      z.enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"]),
+      z
+        .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"])
+        .nullable(),
     ),
     default: (): string =>
       typeof process !== "undefined"
@@ -78,7 +80,7 @@ export const settingsRegistry = {
     envKey: "LLM_BASE_URL",
     schema: z.preprocess(
       (v) => (v === "" ? null : v),
-      z.string().trim().url().max(2000),
+      z.string().trim().url().max(2000).nullable(),
     ),
     default: (): string =>
       typeof process !== "undefined" ? process.env.LLM_BASE_URL || "" : "",

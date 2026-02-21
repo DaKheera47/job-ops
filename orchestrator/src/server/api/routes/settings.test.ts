@@ -25,8 +25,8 @@ describe.sequential("Settings API routes", () => {
     const res = await fetch(`${baseUrl}/api/settings`);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.data.defaultModel).toBe("test-model");
-    expect(Array.isArray(body.data.searchTerms)).toBe(true);
+    expect(body.data.model.default).toBe("test-model");
+    expect(Array.isArray(body.data.searchTerms.value)).toBe(true);
     expect(body.data.rxresumeEmail).toBe("resume@example.com");
     expect(body.data.llmApiKeyHint).toBe("secr");
     expect(body.data.basicAuthActive).toBe(false);
@@ -51,8 +51,8 @@ describe.sequential("Settings API routes", () => {
     });
     const patchBody = await patchRes.json();
     expect(patchBody.ok).toBe(true);
-    expect(patchBody.data.searchTerms).toEqual(["engineer"]);
-    expect(patchBody.data.overrideSearchTerms).toEqual(["engineer"]);
+    expect(patchBody.data.searchTerms.value).toEqual(["engineer"]);
+    expect(patchBody.data.searchTerms.override).toEqual(["engineer"]);
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
   });
@@ -77,8 +77,8 @@ describe.sequential("Settings API routes", () => {
     const initialRes = await fetch(`${baseUrl}/api/settings`);
     const initialBody = await initialRes.json();
     expect(initialBody.ok).toBe(true);
-    expect(initialBody.data.penalizeMissingSalary).toBe(false);
-    expect(initialBody.data.missingSalaryPenalty).toBe(10);
+    expect(initialBody.data.penalizeMissingSalary.value).toBe(false);
+    expect(initialBody.data.missingSalaryPenalty.value).toBe(10);
 
     // Test invalid penalty values
     const invalidRes = await fetch(`${baseUrl}/api/settings`, {
@@ -106,16 +106,16 @@ describe.sequential("Settings API routes", () => {
     });
     const validBody = await validRes.json();
     expect(validBody.ok).toBe(true);
-    expect(validBody.data.penalizeMissingSalary).toBe(true);
-    expect(validBody.data.overridePenalizeMissingSalary).toBe(true);
-    expect(validBody.data.missingSalaryPenalty).toBe(20);
-    expect(validBody.data.overrideMissingSalaryPenalty).toBe(20);
+    expect(validBody.data.penalizeMissingSalary.value).toBe(true);
+    expect(validBody.data.penalizeMissingSalary.override).toBe(true);
+    expect(validBody.data.missingSalaryPenalty.value).toBe(20);
+    expect(validBody.data.missingSalaryPenalty.override).toBe(20);
 
     // Verify persistence
     const getRes = await fetch(`${baseUrl}/api/settings`);
     const getBody = await getRes.json();
     expect(getBody.ok).toBe(true);
-    expect(getBody.data.penalizeMissingSalary).toBe(true);
-    expect(getBody.data.missingSalaryPenalty).toBe(20);
+    expect(getBody.data.penalizeMissingSalary.value).toBe(true);
+    expect(getBody.data.missingSalaryPenalty.value).toBe(20);
   });
 });

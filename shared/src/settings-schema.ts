@@ -18,6 +18,7 @@ type UpdateSchemaShape = {
 const shape = Object.fromEntries(
   Object.entries(settingsRegistry).map(([key, def]) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // biome-ignore lint/suspicious/noExplicitAny: def is dynamic
     const fieldSchema = (def as any).schema as z.ZodTypeAny;
     if (key === "enableBasicAuth") {
       return [key, fieldSchema.optional()];

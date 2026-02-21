@@ -109,6 +109,7 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
     const sideEffect = hasEnvKey
       ? () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // biome-ignore lint/suspicious/noExplicitAny: def is constrained by kind
           applyEnvValue((def as any).envKey, serialized);
         }
       : undefined;

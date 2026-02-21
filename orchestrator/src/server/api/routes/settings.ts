@@ -47,9 +47,9 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
 
     if (plan.shouldRefreshBackupScheduler) {
       setBackupSettings({
-        enabled: data.backupEnabled,
-        hour: data.backupHour,
-        maxCount: data.backupMaxCount,
+        enabled: data.backupEnabled.value,
+        hour: data.backupHour.value,
+        maxCount: data.backupMaxCount.value,
       });
     }
     res.json({ success: true, data });

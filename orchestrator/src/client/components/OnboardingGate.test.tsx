@@ -92,7 +92,7 @@ vi.mock("sonner", () => ({
 
 const settingsResponse = {
   settings: {
-    llmProvider: "openrouter",
+    llmProvider: { value: "openrouter", default: "openrouter", override: null },
     llmApiKeyHint: null,
     rxresumeEmail: "",
     rxresumePasswordHint: null,
@@ -163,7 +163,7 @@ describe("OnboardingGate", () => {
       ...settingsResponse,
       settings: {
         ...settingsResponse.settings,
-        llmProvider: "ollama",
+        llmProvider: { value: "ollama", default: "ollama", override: null },
       },
     } as any);
     vi.mocked(api.validateRxresume).mockResolvedValue({

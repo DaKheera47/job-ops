@@ -97,6 +97,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         });
         result.profileProjects = resolved.profileProjects;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
         (result as any).resumeProjects = {
           value: resolved.resumeProjects,
           default: resolved.defaultResumeProjects,
@@ -106,6 +107,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
       (result as any)[key] = {
         value: override ?? defaultValue,
         default: defaultValue,
@@ -114,10 +116,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     } else if (def.kind === "model") {
       const override = overrides[key as settingsRepo.SettingKey] ?? null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
       (result as any)[key] = { value: override || modelValue, override };
     } else if (def.kind === "string") {
       if (!("envKey" in def) || !def.envKey) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
         (result as any)[key] =
           overrides[key as settingsRepo.SettingKey] ?? null;
       }
