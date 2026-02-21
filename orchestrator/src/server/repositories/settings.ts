@@ -2,51 +2,20 @@
  * Settings repository - key/value storage for runtime configuration.
  */
 
+import type { settingsRegistry } from "@shared/settings-registry";
 import { eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
 const { settings } = schema;
 
-export type SettingKey =
-  | "model"
-  | "modelScorer"
-  | "modelTailoring"
-  | "modelProjectSelection"
-  | "llmProvider"
-  | "llmBaseUrl"
-  | "llmApiKey"
-  | "pipelineWebhookUrl"
-  | "jobCompleteWebhookUrl"
-  | "resumeProjects"
-  | "rxresumeBaseResumeId"
-  | "ukvisajobsMaxJobs"
-  | "adzunaMaxJobsPerTerm"
-  | "gradcrackerMaxJobsPerTerm"
-  | "searchTerms"
-  | "searchCities"
-  | "jobspyLocation"
-  | "jobspyResultsWanted"
-  | "jobspyCountryIndeed"
-  | "showSponsorInfo"
-  | "chatStyleTone"
-  | "chatStyleFormality"
-  | "chatStyleConstraints"
-  | "chatStyleDoNotUse"
-  | "rxresumeEmail"
-  | "rxresumePassword"
-  | "basicAuthUser"
-  | "basicAuthPassword"
-  | "ukvisajobsEmail"
-  | "ukvisajobsPassword"
-  | "adzunaAppId"
-  | "adzunaAppKey"
-  | "webhookSecret"
-  | "backupEnabled"
-  | "backupHour"
-  | "backupMaxCount"
-  | "penalizeMissingSalary"
-  | "missingSalaryPenalty"
-  | "autoSkipScoreThreshold";
+export type SettingKey = Exclude<
+  {
+    [K in keyof typeof settingsRegistry]: (typeof settingsRegistry)[K]["kind"] extends "virtual"
+      ? never
+      : K;
+  }[keyof typeof settingsRegistry],
+  undefined
+>;
 
 export async function getSetting(key: SettingKey): Promise<string | null> {
   const [row] = await db.select().from(settings).where(eq(settings.key, key));

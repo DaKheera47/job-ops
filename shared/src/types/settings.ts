@@ -108,102 +108,57 @@ export interface DemoInfoResponse {
   baselineName: string | null;
 }
 
+export type Resolved<T> = { value: T; default: T; override: T | null };
+export type ModelResolved = { value: string; override: string | null };
+
 export interface AppSettings {
-  model: string;
-  defaultModel: string;
-  overrideModel: string | null;
-  // Specific model overrides
-  modelScorer: string; // resolved
-  overrideModelScorer: string | null;
-  modelTailoring: string; // resolved
-  overrideModelTailoring: string | null;
-  modelProjectSelection: string; // resolved
-  overrideModelProjectSelection: string | null;
+  // Typed settings (Resolved):
+  model: Resolved<string>;
+  llmProvider: Resolved<string>;
+  llmBaseUrl: Resolved<string>;
+  pipelineWebhookUrl: Resolved<string>;
+  jobCompleteWebhookUrl: Resolved<string>;
+  resumeProjects: Resolved<ResumeProjectsSettings>;
+  ukvisajobsMaxJobs: Resolved<number>;
+  adzunaMaxJobsPerTerm: Resolved<number>;
+  gradcrackerMaxJobsPerTerm: Resolved<number>;
+  searchTerms: Resolved<string[]>;
+  searchCities: Resolved<string>;
+  jobspyResultsWanted: Resolved<number>;
+  jobspyCountryIndeed: Resolved<string>;
+  showSponsorInfo: Resolved<boolean>;
+  chatStyleTone: Resolved<string>;
+  chatStyleFormality: Resolved<string>;
+  chatStyleConstraints: Resolved<string>;
+  chatStyleDoNotUse: Resolved<string>;
+  backupEnabled: Resolved<boolean>;
+  backupHour: Resolved<number>;
+  backupMaxCount: Resolved<number>;
+  penalizeMissingSalary: Resolved<boolean>;
+  missingSalaryPenalty: Resolved<number>;
+  autoSkipScoreThreshold: Resolved<number | null>;
 
-  llmProvider: string;
-  defaultLlmProvider: string;
-  overrideLlmProvider: string | null;
-  llmBaseUrl: string;
-  defaultLlmBaseUrl: string;
-  overrideLlmBaseUrl: string | null;
+  // Model variants (no own default, fallback to model.value):
+  modelScorer: ModelResolved;
+  modelTailoring: ModelResolved;
+  modelProjectSelection: ModelResolved;
 
-  pipelineWebhookUrl: string;
-  defaultPipelineWebhookUrl: string;
-  overridePipelineWebhookUrl: string | null;
-  jobCompleteWebhookUrl: string;
-  defaultJobCompleteWebhookUrl: string;
-  overrideJobCompleteWebhookUrl: string | null;
-  profileProjects: ResumeProjectCatalogItem[];
-  resumeProjects: ResumeProjectsSettings;
-  defaultResumeProjects: ResumeProjectsSettings;
-  overrideResumeProjects: ResumeProjectsSettings | null;
+  // Simple strings:
   rxresumeBaseResumeId: string | null;
-  ukvisajobsMaxJobs: number;
-  defaultUkvisajobsMaxJobs: number;
-  overrideUkvisajobsMaxJobs: number | null;
-  adzunaMaxJobsPerTerm: number;
-  defaultAdzunaMaxJobsPerTerm: number;
-  overrideAdzunaMaxJobsPerTerm: number | null;
-  gradcrackerMaxJobsPerTerm: number;
-  defaultGradcrackerMaxJobsPerTerm: number;
-  overrideGradcrackerMaxJobsPerTerm: number | null;
-  searchTerms: string[];
-  defaultSearchTerms: string[];
-  overrideSearchTerms: string[] | null;
-  searchCities: string;
-  defaultSearchCities: string;
-  overrideSearchCities: string | null;
-  jobspyResultsWanted: number;
-  defaultJobspyResultsWanted: number;
-  overrideJobspyResultsWanted: number | null;
-  jobspyCountryIndeed: string;
-  defaultJobspyCountryIndeed: string;
-  overrideJobspyCountryIndeed: string | null;
-  showSponsorInfo: boolean;
-  defaultShowSponsorInfo: boolean;
-  overrideShowSponsorInfo: boolean | null;
-  chatStyleTone: string;
-  defaultChatStyleTone: string;
-  overrideChatStyleTone: string | null;
-  chatStyleFormality: string;
-  defaultChatStyleFormality: string;
-  overrideChatStyleFormality: string | null;
-  chatStyleConstraints: string;
-  defaultChatStyleConstraints: string;
-  overrideChatStyleConstraints: string | null;
-  chatStyleDoNotUse: string;
-  defaultChatStyleDoNotUse: string;
-  overrideChatStyleDoNotUse: string | null;
-  llmApiKeyHint: string | null;
   rxresumeEmail: string | null;
-  rxresumePasswordHint: string | null;
-  basicAuthUser: string | null;
-  basicAuthPasswordHint: string | null;
   ukvisajobsEmail: string | null;
-  ukvisajobsPasswordHint: string | null;
   adzunaAppId: string | null;
+  basicAuthUser: string | null;
+
+  // Secret hints:
+  llmApiKeyHint: string | null;
+  rxresumePasswordHint: string | null;
+  ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;
+  basicAuthPasswordHint: string | null;
   webhookSecretHint: string | null;
+
+  // Computed:
   basicAuthActive: boolean;
-  // Backup settings
-  backupEnabled: boolean;
-  defaultBackupEnabled: boolean;
-  overrideBackupEnabled: boolean | null;
-  backupHour: number;
-  defaultBackupHour: number;
-  overrideBackupHour: number | null;
-  backupMaxCount: number;
-  defaultBackupMaxCount: number;
-  overrideBackupMaxCount: number | null;
-  // Scoring settings
-  penalizeMissingSalary: boolean;
-  defaultPenalizeMissingSalary: boolean;
-  overridePenalizeMissingSalary: boolean | null;
-  missingSalaryPenalty: number;
-  defaultMissingSalaryPenalty: number;
-  overrideMissingSalaryPenalty: number | null;
-  // Auto-skip settings
-  autoSkipScoreThreshold: number | null;
-  defaultAutoSkipScoreThreshold: number | null;
-  overrideAutoSkipScoreThreshold: number | null;
+  profileProjects: ResumeProjectCatalogItem[];
 }
