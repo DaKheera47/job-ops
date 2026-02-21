@@ -305,7 +305,7 @@ export const OrchestratorPage: React.FC = () => {
       const serializedCities = serializeCityLocationsSetting(
         values.cityLocations,
       );
-      const jobspyLocation =
+      const searchCities =
         (hasJobSpySite || hasAdzuna || hasHiringCafe) && serializedCities
           ? serializedCities
           : formatCountryLabel(values.country);
@@ -316,7 +316,7 @@ export const OrchestratorPage: React.FC = () => {
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
         adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
-        jobspyLocation,
+        searchCities,
       });
       await refreshSettings();
       await startPipelineRun({

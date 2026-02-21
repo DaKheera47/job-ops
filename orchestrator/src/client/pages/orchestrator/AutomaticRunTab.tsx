@@ -187,12 +187,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       DEFAULT_VALUES.runBudget;
     const rememberedCountry = normalizeUiCountryKey(
       settings?.jobspyCountryIndeed ??
-        settings?.jobspyLocation ??
+        settings?.searchCities ??
         DEFAULT_VALUES.country,
     );
     const rememberedCountryKey = rememberedCountry || DEFAULT_VALUES.country;
     const rememberedLocations = parseCityLocationsSetting(
-      settings?.jobspyLocation,
+      settings?.searchCities,
     ).filter(
       (location) =>
         normalizeCountryKey(location) !==

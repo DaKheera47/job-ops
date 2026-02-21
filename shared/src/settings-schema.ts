@@ -51,6 +51,8 @@ export const updateSettingsSchema = z
       .max(100)
       .nullable()
       .optional(),
+    searchCities: z.string().trim().max(100).nullable().optional(),
+    // Deprecated legacy key; accepted for backward compatibility.
     jobspyLocation: z.string().trim().max(100).nullable().optional(),
     jobspyResultsWanted: z
       .number()

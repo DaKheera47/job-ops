@@ -23,6 +23,7 @@ export type SettingKey =
   | "adzunaMaxJobsPerTerm"
   | "gradcrackerMaxJobsPerTerm"
   | "searchTerms"
+  | "searchCities"
   | "jobspyLocation"
   | "jobspyResultsWanted"
   | "jobspyCountryIndeed"

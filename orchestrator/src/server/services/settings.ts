@@ -123,13 +123,13 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrideSearchTerms = searchTermsSetting.overrideValue;
   const searchTerms = searchTermsSetting.value;
 
-  const jobspyLocationSetting = resolveSettingValue(
-    "jobspyLocation",
-    overrides.jobspyLocation,
+  const searchCitiesSetting = resolveSettingValue(
+    "searchCities",
+    overrides.searchCities ?? overrides.jobspyLocation,
   );
-  const defaultJobspyLocation = jobspyLocationSetting.defaultValue;
-  const overrideJobspyLocation = jobspyLocationSetting.overrideValue;
-  const jobspyLocation = jobspyLocationSetting.value;
+  const defaultSearchCities = searchCitiesSetting.defaultValue;
+  const overrideSearchCities = searchCitiesSetting.overrideValue;
+  const searchCities = searchCitiesSetting.value;
 
   const jobspyResultsWantedSetting = resolveSettingValue(
     "jobspyResultsWanted",
@@ -278,9 +278,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     searchTerms,
     defaultSearchTerms,
     overrideSearchTerms,
-    jobspyLocation,
-    defaultJobspyLocation,
-    overrideJobspyLocation,
+    searchCities,
+    defaultSearchCities,
+    overrideSearchCities,
     jobspyResultsWanted,
     defaultJobspyResultsWanted,
     overrideJobspyResultsWanted,

@@ -25,7 +25,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "us",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
         pipelineSources={["linkedin"]}
@@ -48,7 +48,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "usa/ca",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -73,7 +73,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "united states",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
         pipelineSources={["linkedin", "gradcracker", "ukvisajobs"]}
@@ -99,7 +99,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "united states",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
         pipelineSources={["linkedin"]}
@@ -126,7 +126,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "japan",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin", "glassdoor"]}
         pipelineSources={["linkedin", "glassdoor"]}
@@ -157,7 +157,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "united kingdom",
-          jobspyLocation: "United Kingdom",
+          searchCities: "United Kingdom",
         })}
         enabledSources={["linkedin", "glassdoor"]}
         pipelineSources={["linkedin", "glassdoor"]}
@@ -186,7 +186,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer", "frontend engineer"],
           jobspyCountryIndeed: "united kingdom",
-          jobspyLocation: "",
+          searchCities: "",
         })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
@@ -216,7 +216,7 @@ describe("AutomaticRunTab", () => {
         settings={createAppSettings({
           searchTerms: ["backend engineer"],
           jobspyCountryIndeed: "united kingdom",
-          jobspyLocation: "London|Manchester",
+          searchCities: "London|Manchester",
         })}
         enabledSources={["linkedin", "glassdoor"]}
         pipelineSources={["linkedin", "glassdoor"]}

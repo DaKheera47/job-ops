@@ -70,8 +70,8 @@ const baseSettings = createAppSettings({
   defaultJobspyResultsWanted: 200,
   jobspyCountryIndeed: "UK",
   defaultJobspyCountryIndeed: "UK",
-  jobspyLocation: "UK",
-  defaultJobspyLocation: "UK",
+  searchCities: "London",
+  defaultSearchCities: "London",
   searchTerms: ["engineer"],
   defaultSearchTerms: ["engineer"],
 });

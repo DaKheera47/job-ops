@@ -177,8 +177,12 @@ export const settingsUpdateRegistry: Partial<{
   searchTerms: singleAction(({ value }) =>
     result({ actions: [metadataPersistAction("searchTerms", value)] }),
   ),
+  searchCities: singleAction(({ value }) =>
+    result({ actions: [metadataPersistAction("searchCities", value)] }),
+  ),
+  // Deprecated legacy key; persist into canonical searchCities setting.
   jobspyLocation: singleAction(({ value }) =>
-    result({ actions: [metadataPersistAction("jobspyLocation", value)] }),
+    result({ actions: [metadataPersistAction("searchCities", value)] }),
   ),
   jobspyResultsWanted: singleAction(({ value }) =>
     result({

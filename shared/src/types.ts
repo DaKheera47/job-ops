@@ -1052,9 +1052,9 @@ export interface AppSettings {
   searchTerms: string[];
   defaultSearchTerms: string[];
   overrideSearchTerms: string[] | null;
-  jobspyLocation: string;
-  defaultJobspyLocation: string;
-  overrideJobspyLocation: string | null;
+  searchCities: string;
+  defaultSearchCities: string;
+  overrideSearchCities: string | null;
   jobspyResultsWanted: number;
   defaultJobspyResultsWanted: number;
   overrideJobspyResultsWanted: number | null;

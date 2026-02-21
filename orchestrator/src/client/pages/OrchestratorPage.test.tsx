@@ -698,7 +698,7 @@ describe("OrchestratorPage", () => {
         ukvisajobsMaxJobs: 150,
         adzunaMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
-        jobspyLocation: "United Kingdom",
+        searchCities: "United Kingdom",
       });
     });
     expect(api.runPipeline).toHaveBeenCalledWith({
@@ -739,7 +739,7 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(api.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobspyLocation: "London|Manchester",
+          searchCities: "London|Manchester",
         }),
       );
     });
@@ -773,7 +773,7 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(api.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobspyLocation: "Leeds|Manchester",
+          searchCities: "Leeds|Manchester",
         }),
       );
     });
@@ -807,7 +807,7 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(api.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          jobspyLocation: "Leeds|Manchester",
+          searchCities: "Leeds|Manchester",
         }),
       );
     });

@@ -123,7 +123,7 @@ describe("discoverJobsStep", () => {
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
       jobspyCountryIndeed: "united kingdom",
-      jobspyLocation: "London|Manchester",
+      searchCities: "London|Manchester",
     } as any);
 
     vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
@@ -237,7 +237,7 @@ describe("discoverJobsStep", () => {
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
       jobspyCountryIndeed: "united kingdom",
-      jobspyLocation: "Leeds|Manchester",
+      searchCities: "Leeds|Manchester",
     } as any);
 
     vi.mocked(adzuna.runAdzuna).mockResolvedValue({
@@ -333,7 +333,7 @@ describe("discoverJobsStep", () => {
       searchTerms: JSON.stringify(["engineer"]),
       jobspyCountryIndeed: "united kingdom",
       jobspyResultsWanted: "25",
-      jobspyLocation: "Leeds|Manchester",
+      searchCities: "Leeds|Manchester",
     } as any);
 
     vi.mocked(hiringCafe.runHiringCafe).mockResolvedValue({

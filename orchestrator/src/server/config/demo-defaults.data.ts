@@ -24,7 +24,7 @@ export const DEMO_DEFAULT_SETTINGS: DemoDefaultSettings = {
   backupEnabled: "0",
   backupHour: "2",
   backupMaxCount: "5",
-  jobspyLocation: "United States",
+  searchCities: "United States",
   jobspyResultsWanted: "25",
   jobspyCountryIndeed: "US",
   resumeProjects: JSON.stringify({

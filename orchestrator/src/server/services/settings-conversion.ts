@@ -10,7 +10,7 @@ type SettingsConversionValueMap = {
   adzunaMaxJobsPerTerm: number;
   gradcrackerMaxJobsPerTerm: number;
   searchTerms: string[];
-  jobspyLocation: string;
+  searchCities: string;
   jobspyResultsWanted: number;
   jobspyCountryIndeed: string;
   showSponsorInfo: boolean;
@@ -124,8 +124,9 @@ export const settingsConversionMetadata: SettingsConversionMetadata = {
     serialize: serializeNullableJsonArray,
     resolve: resolveWithNullishFallback,
   },
-  jobspyLocation: {
-    defaultValue: () => process.env.JOBSPY_LOCATION || "UK",
+  searchCities: {
+    defaultValue: () =>
+      process.env.SEARCH_CITIES || process.env.JOBSPY_LOCATION || "UK",
     parseOverride: (raw) => raw ?? null,
     serialize: (value) => value ?? null,
     resolve: resolveWithEmptyStringFallback,

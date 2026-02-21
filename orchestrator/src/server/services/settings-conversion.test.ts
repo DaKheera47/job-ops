@@ -66,7 +66,7 @@ describe("settings-conversion", () => {
 
   it("uses string defaults when override is empty", () => {
     process.env.JOBSPY_LOCATION = "Remote";
-    const resolved = resolveSettingValue("jobspyLocation", "");
+    const resolved = resolveSettingValue("searchCities", "");
     expect(resolved.defaultValue).toBe("Remote");
     expect(resolved.overrideValue).toBe("");
     expect(resolved.value).toBe("Remote");
