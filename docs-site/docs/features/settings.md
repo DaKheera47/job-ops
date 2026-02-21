@@ -119,6 +119,7 @@ Readiness requires:
 - Penalize missing salary data
 - Set penalty amount
 - Optional auto-skip threshold for low-score jobs
+- Block jobs from companies that match configured keyword tokens
 
 ### Danger Zone
 
