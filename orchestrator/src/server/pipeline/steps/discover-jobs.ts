@@ -571,10 +571,20 @@ export async function discoverJobsStep(args: {
   const droppedCount = discoveredJobs.length - filteredDiscoveredJobs.length;
 
   if (droppedCount > 0) {
+    const blockedCompanyKeywordsPreview = blockedCompanyKeywords.slice(0, 10);
+    const blockedCompanyKeywordsTruncated =
+      blockedCompanyKeywordsPreview.length < blockedCompanyKeywords.length;
+
     logger.info("Dropped discovered jobs matching blocked company keywords", {
       step: "discover-jobs",
       droppedCount,
       blockedKeywordCount: blockedCompanyKeywords.length,
+      blockedCompanyKeywordsPreview,
+      blockedCompanyKeywordsTruncated,
+    });
+
+    logger.debug("Full blocked company keywords used for filtering", {
+      step: "discover-jobs",
       blockedCompanyKeywords,
     });
   }
