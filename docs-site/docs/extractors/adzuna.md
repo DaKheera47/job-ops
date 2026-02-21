@@ -29,6 +29,11 @@ Adzuna provides stable API discovery for countries that are not covered by UK-on
 5. In **Pipeline Run** (Automatic tab), select a compatible country and enable **Adzuna** in Sources.
 6. Start the run; Adzuna progress appears in the existing crawl progress stream.
 
+City behavior:
+
+- If **Search cities** are set in Automatic advanced settings, Adzuna runs once per city.
+- City runs use strict post-filtering (`job.location` contains requested city) to avoid broad country-level spillover.
+
 Default controls:
 
 - `ADZUNA_APP_ID`

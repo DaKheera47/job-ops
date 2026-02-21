@@ -32,6 +32,7 @@ It also supports term-by-term search and country-aware search state using the sa
    - `searchTerms` drive per-term Hiring Cafe `searchQuery`.
    - selected country maps into Hiring Cafe location search state.
    - run budget path (`jobspyResultsWanted`) is reused as the max jobs-per-term cap.
+   - optional **Search cities** narrow results by city.
 4. Start the run and watch progress in the pipeline progress card.
 
 Defaults and constraints:
@@ -40,6 +41,7 @@ Defaults and constraints:
 - `worldwide` and `usa/ca` run in broad mode without a strict country location filter.
 - Hiring Cafe is enabled by default in source selection.
 - `HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS` controls recency window when running extractor directly (default `7`).
+- When a city is provided via `searchCities`, Hiring Cafe uses city radius search (default `1` mile) and strict city post-filtering.
 
 Local run example:
 

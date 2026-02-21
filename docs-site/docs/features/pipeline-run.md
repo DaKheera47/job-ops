@@ -50,7 +50,7 @@ If values are edited manually, the UI shows **Custom**.
 - Adzuna is available only for its supported countries and when App ID/App Key are configured in Settings.
 - Glassdoor can be enabled only when:
   - selected country supports Glassdoor
-  - a **Glassdoor city** is set in Advanced settings
+  - at least one **Search city** is set in Advanced settings
 
 Incompatible sources are disabled with explanatory tooltips.
 
@@ -59,7 +59,7 @@ Incompatible sources are disabled with explanatory tooltips.
 - **Resumes tailored** (`topN`)
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
-- **Glassdoor city** (required only for Glassdoor)
+- **Search cities** (optional multi-city input; required for Glassdoor)
 
 #### Search terms
 
@@ -97,7 +97,7 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 ### Glassdoor cannot be enabled
 
 - Verify selected country supports Glassdoor.
-- Set a Glassdoor city in Advanced settings.
+- Set at least one Search city in Advanced settings.
 
 ### Adzuna is not selectable
 
