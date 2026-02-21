@@ -8,6 +8,7 @@ import {
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import { getExtractorRegistry } from "../../extractors/registry";
+import { getAllJobUrls } from "../../repositories/jobs";
 import * as settingsRepo from "../../repositories/settings";
 import { asyncPool } from "../../utils/async-pool";
 import { type CrawlSource, progressHelpers, updateProgress } from "../progress";
@@ -89,6 +90,13 @@ export async function discoverJobsStep(args: {
   const compatibleSources = args.mergedConfig.sources.filter((source) =>
     isSourceAllowedForCountry(source, selectedCountry),
   );
+  let existingJobUrlsPromise: Promise<string[]> | null = null;
+  const getExistingJobUrls = (): Promise<string[]> => {
+    if (!existingJobUrlsPromise) {
+      existingJobUrlsPromise = getAllJobUrls();
+    }
+    return existingJobUrlsPromise;
+  };
   const skippedSources = args.mergedConfig.sources.filter(
     (source) => !compatibleSources.includes(source),
   );
@@ -161,6 +169,7 @@ export async function discoverJobsStep(args: {
           settings: filteredSettings,
           searchTerms,
           selectedCountry,
+          getExistingJobUrls,
           shouldCancel: args.shouldCancel,
           onProgress: (event) => {
             progressHelpers.crawlingUpdate({

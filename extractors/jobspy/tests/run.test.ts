@@ -3,7 +3,7 @@ import {
   matchesRequestedLocation,
   parseJobSpyProgressLine,
   shouldApplyStrictLocationFilter,
-} from "./jobspy";
+} from "../src/run";
 
 describe("parseJobSpyProgressLine", () => {
   it("parses term_start progress lines", () => {

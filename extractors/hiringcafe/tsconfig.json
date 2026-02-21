@@ -1,13 +1,17 @@
 {
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "target": "ES2022",
     "outDir": "dist",
     "strict": true,
     "noUnusedLocals": false,
     "lib": ["ES2022", "DOM"],
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"]
+    }
   },
   "include": ["./src/**/*"]
 }

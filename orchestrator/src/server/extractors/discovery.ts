@@ -1,6 +1,6 @@
 import type { Dirent } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import type { ExtractorManifest } from "@shared/types";
 
@@ -47,6 +47,10 @@ export async function discoverManifestPaths(
   extractorsRoot?: string,
 ): Promise<string[]> {
   const root = extractorsRoot ?? (await resolveExtractorsRoot());
+  if (basename(root) !== "extractors") {
+    return [];
+  }
+
   let entries: Dirent[] = [];
   try {
     entries = await readdir(root, { withFileTypes: true });

@@ -40,18 +40,6 @@ vi.mock("../repositories/settings", () => ({
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("../services/crawler", () => ({
-  runCrawler: vi.fn(() => ({ success: true, jobs: [] })),
-}));
-
-vi.mock("../services/jobspy", () => ({
-  runJobSpy: vi.fn(() => ({ success: true, jobs: [] })),
-}));
-
-vi.mock("../services/ukvisajobs", () => ({
-  runUkVisaJobs: vi.fn(() => ({ success: true, jobs: [] })),
-}));
-
 const now = new Date().toISOString();
 
 const createJob = (overrides: Partial<Job> = {}): Job =>

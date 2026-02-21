@@ -1,19 +1,30 @@
-/**
- * Service for running the Gradcracker crawler (extractors/gradcracker).
- * Wraps the existing Crawlee-based crawler.
- */
-
 import { spawn } from "node:child_process";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
-import type { CreateJobInput } from "@shared/types";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const CRAWLER_DIR = join(__dirname, "../../../../extractors/gradcracker");
-const STORAGE_DIR = join(CRAWLER_DIR, "storage/datasets/default");
-const JOBOPS_STORAGE_DIR = join(CRAWLER_DIR, "storage/jobops");
+type CreateJobInput = {
+  source: "gradcracker";
+  title: string;
+  employer: string;
+  jobUrl: string;
+  employerUrl?: string;
+  applicationLink?: string;
+  disciplines?: string;
+  deadline?: string;
+  salary?: string;
+  location?: string;
+  degreeRequired?: string;
+  starting?: string;
+  jobDescription?: string;
+};
+
+const srcDir = dirname(fileURLToPath(import.meta.url));
+const EXTRACTOR_DIR = join(srcDir, "..");
+const STORAGE_DIR = join(EXTRACTOR_DIR, "storage/datasets/default");
+const JOBOPS_STORAGE_DIR = join(EXTRACTOR_DIR, "storage/jobops");
+const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 
 export interface CrawlerResult {
   success: boolean;
@@ -22,25 +33,9 @@ export interface CrawlerResult {
 }
 
 export interface RunCrawlerOptions {
-  /**
-   * List of job page URLs already present in the orchestrator DB.
-   * Used by the crawler to avoid expensive/undesired interactions (e.g. apply button click).
-   */
   existingJobUrls?: string[];
-
-  /**
-   * Optional callback for live crawl progress emitted by the Gradcracker extractor.
-   */
   onProgress?: (update: JobExtractorProgress) => void;
-
-  /**
-   * List of search terms to be used as roles for URL generation.
-   */
   searchTerms?: string[];
-
-  /**
-   * Max jobs to fetch per search term.
-   */
   maxJobsPerTerm?: number;
 }
 
@@ -56,8 +51,6 @@ interface JobExtractorProgress {
   ts?: string;
 }
 
-const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
-
 async function writeExistingJobUrlsFile(
   existingJobUrls: string[] | undefined,
 ): Promise<string | null> {
@@ -68,26 +61,18 @@ async function writeExistingJobUrlsFile(
   return filePath;
 }
 
-/**
- * Run the Gradcracker crawler and return discovered jobs.
- */
 export async function runCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
-  console.log("🕷️ Starting job crawler...");
-
   try {
-    // Clear previous results
     await clearStorageDataset();
-
     const existingJobUrlsFile = await writeExistingJobUrlsFile(
       options.existingJobUrls,
     );
 
-    // Run the crawler
     await new Promise<void>((resolve, reject) => {
       const child = spawn("npm", ["run", "start"], {
-        cwd: CRAWLER_DIR,
+        cwd: EXTRACTOR_DIR,
         shell: true,
         stdio: ["ignore", "pipe", "pipe"],
         env: {
@@ -113,7 +98,7 @@ export async function runCrawler(
             const parsed = JSON.parse(raw) as JobExtractorProgress;
             options.onProgress?.(parsed);
           } catch {
-            // Ignore malformed progress lines
+            // ignore malformed progress lines
           }
           return;
         }
@@ -143,66 +128,58 @@ export async function runCrawler(
       child.on("error", reject);
     });
 
-    // Read crawled jobs from storage
     const jobs = await readCrawledJobs();
-
-    console.log(`✅ Crawler completed. Found ${jobs.length} jobs.`);
-
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("❌ Crawler failed:", message);
     return { success: false, jobs: [], error: message };
   }
 }
 
-/**
- * Read crawled jobs from the Crawlee storage dataset.
- */
 async function readCrawledJobs(): Promise<CreateJobInput[]> {
   try {
     const files = await readdir(STORAGE_DIR);
-    const jsonFiles = files.filter((f) => f.endsWith(".json"));
-
+    const jsonFiles = files.filter((file) => file.endsWith(".json"));
     const jobs: CreateJobInput[] = [];
 
     for (const file of jsonFiles) {
       const content = await readFile(join(STORAGE_DIR, file), "utf-8");
-      const data = JSON.parse(content);
+      const data = JSON.parse(content) as Record<string, unknown>;
 
-      // Map crawler output to our job input format
       jobs.push({
         source: "gradcracker",
-        title: data.title || "Unknown Title",
-        employer: data.employer || "Unknown Employer",
-        employerUrl: data.employerUrl,
-        jobUrl: data.url || data.jobUrl,
-        applicationLink: data.applicationLink,
-        disciplines: data.disciplines,
-        deadline: data.deadline,
-        salary: data.salary,
-        location: data.location,
-        degreeRequired: data.degreeRequired,
-        starting: data.starting,
-        jobDescription: data.jobDescription,
+        title: (data.title as string) || "Unknown Title",
+        employer: (data.employer as string) || "Unknown Employer",
+        employerUrl: data.employerUrl as string | undefined,
+        jobUrl: (data.url as string) || (data.jobUrl as string),
+        applicationLink: data.applicationLink as string | undefined,
+        disciplines:
+          typeof data.disciplines === "string"
+            ? data.disciplines
+            : Array.isArray(data.disciplines)
+              ? data.disciplines
+                  .filter((value): value is string => typeof value === "string")
+                  .join(", ")
+              : undefined,
+        deadline: data.deadline as string | undefined,
+        salary: data.salary as string | undefined,
+        location: data.location as string | undefined,
+        degreeRequired: data.degreeRequired as string | undefined,
+        starting: data.starting as string | undefined,
+        jobDescription: data.jobDescription as string | undefined,
       });
     }
 
     return jobs;
-  } catch (error) {
-    console.error("Failed to read crawled jobs:", error);
+  } catch {
     return [];
   }
 }
 
-/**
- * Clear previous crawl results.
- */
 async function clearStorageDataset(): Promise<void> {
-  const { rm } = await import("node:fs/promises");
   try {
     await rm(STORAGE_DIR, { recursive: true, force: true });
   } catch {
-    // Ignore if directory doesn't exist
+    // ignore
   }
 }

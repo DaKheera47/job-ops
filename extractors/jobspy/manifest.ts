@@ -1,8 +1,8 @@
-import { runJobSpy } from "../../orchestrator/src/server/services/jobspy.ts";
 import type {
   ExtractorManifest,
   ExtractorRuntimeContext,
-} from "../../shared/src/types/extractors.ts";
+} from "@shared/types/extractors";
+import { runJobSpy } from "./src/run";
 
 type JobSpySite = NonNullable<Parameters<typeof runJobSpy>[0]["sites"]>[number];
 

@@ -32,6 +32,7 @@ export default defineConfig({
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
       "../shared/src/**/*.test.ts",
+      "../extractors/**/tests/**/*.test.ts",
     ],
     exclude: ["node_modules/**", "dist/**"],
   },

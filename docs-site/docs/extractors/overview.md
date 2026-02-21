@@ -7,7 +7,7 @@ sidebar_position: 1
 
 This page helps you choose the right extractor for your run, understand key constraints, and navigate to detailed technical guides.
 
-Extractor integrations are now registered through manifests and loaded automatically at orchestrator startup. To add a new source, follow [Add an Extractor](/docs/next/workflows/add-an-extractor).
+Extractor integrations are now registered through manifests and loaded automatically at orchestrator startup. Runtime discovery only scans `extractors/*/(manifest.ts|src/manifest.ts)` and does not read manifests from `orchestrator/**`. Extractor-specific run logic should also remain in `extractors/<name>/` so orchestrator stays source-agnostic. To add a new source, follow [Add an Extractor](/docs/next/workflows/add-an-extractor).
 
 ## Extractor chooser
 

@@ -1,9 +1,3 @@
-/**
- * Service for scraping jobs via JobSpy (Indeed/LinkedIn/etc) and mapping them into our DB shape.
- *
- * Uses a small Python wrapper script that writes both CSV + JSON to disk; we ingest the JSON.
- */
-
 import { spawn } from "node:child_process";
 import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -14,13 +8,16 @@ import {
   resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
-import type { CreateJobInput, JobSource } from "@shared/types";
-import { toNumberOrNull, toStringOrNull } from "@shared/utils/type-conversion";
-import { getDataDir } from "../config/dataDir";
+import type { CreateJobInput, JobSource } from "@shared/types/jobs";
+import {
+  toNumberOrNull,
+  toStringOrNull,
+} from "@shared/utils/type-conversion.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const JOBSPY_DIR = join(__dirname, "../../../../extractors/jobspy");
-const JOBSPY_SCRIPT = join(JOBSPY_DIR, "scrape_jobs.py");
+const srcDir = dirname(fileURLToPath(import.meta.url));
+const EXTRACTOR_DIR = join(srcDir, "..");
+const JOBSPY_SCRIPT = join(EXTRACTOR_DIR, "scrape_jobs.py");
+const OUTPUT_DIR = join(EXTRACTOR_DIR, "storage/imports");
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
 
 export type JobSpyProgressEvent =
@@ -57,12 +54,7 @@ export function parseJobSpyProgressLine(
 
   if (!eventName || termIndex === null || termTotal === null) return null;
   if (eventName === "term_start") {
-    return {
-      type: "term_start",
-      termIndex,
-      termTotal,
-      searchTerm,
-    };
+    return { type: "term_start", termIndex, termTotal, searchTerm };
   }
   if (eventName === "term_complete") {
     return {
@@ -73,13 +65,7 @@ export function parseJobSpyProgressLine(
       jobsFoundTerm: toNumberOrNull(parsed.jobsFoundTerm) ?? 0,
     };
   }
-
   return null;
-}
-
-function getPythonPath(): string {
-  if (process.env.PYTHON_PATH) return process.env.PYTHON_PATH;
-  return process.platform === "win32" ? "python" : "python3";
 }
 
 function toBooleanOrNull(value: unknown): boolean | null {
@@ -123,19 +109,14 @@ function formatSalary(params: {
   const { minAmount, maxAmount, currency, interval } = params;
   if (minAmount === null && maxAmount === null) return null;
 
-  const fmt = (n: number) => {
-    // Avoid locale ambiguity; keep it simple.
-    const rounded = Math.round(n);
-    return `${rounded}`;
-  };
-
+  const fmt = (n: number) => `${Math.round(n)}`;
   let range: string;
   if (minAmount !== null && maxAmount !== null) {
     range = `${fmt(minAmount)}-${fmt(maxAmount)}`;
   } else if (minAmount !== null) {
     range = `${fmt(minAmount)}+`;
   } else if (maxAmount !== null) {
-    range = `${fmt(maxAmount)}`;
+    range = fmt(maxAmount);
   } else {
     return null;
   }
@@ -181,12 +162,13 @@ export function matchesRequestedLocation(
 export async function runJobSpy(
   options: RunJobSpyOptions = {},
 ): Promise<JobSpyResult> {
-  const dataDir = getDataDir();
-  const outputDir = join(dataDir, "imports");
-  await mkdir(outputDir, { recursive: true });
+  await mkdir(OUTPUT_DIR, { recursive: true });
 
   const sites = (options.sites ?? ["indeed", "linkedin", "glassdoor"])
-    .filter((s) => s === "indeed" || s === "linkedin" || s === "glassdoor")
+    .filter(
+      (site) =>
+        site === "indeed" || site === "linkedin" || site === "glassdoor",
+    )
     .join(",");
 
   const searchTerms = resolveSearchTerms(options);
@@ -205,7 +187,6 @@ export async function runJobSpy(
   try {
     const jobs: CreateJobInput[] = [];
     const seenJobUrls = new Set<string>();
-
     const totalRuns = searchTerms.length * locations.length;
     let runIndex = 0;
 
@@ -213,13 +194,18 @@ export async function runJobSpy(
       for (const location of locations) {
         runIndex += 1;
         const suffix = `${runIndex}_${slugForFilename(searchTerm)}_${slugForFilename(location)}`;
-        const outputCsv = join(outputDir, `jobspy_jobs_${suffix}.csv`);
-        const outputJson = join(outputDir, `jobspy_jobs_${suffix}.json`);
+        const outputCsv = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.csv`);
+        const outputJson = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.json`);
 
         await new Promise<void>((resolve, reject) => {
-          const pythonPath = getPythonPath();
+          const pythonPath = process.env.PYTHON_PATH
+            ? process.env.PYTHON_PATH
+            : process.platform === "win32"
+              ? "python"
+              : "python3";
+
           const child = spawn(pythonPath, [JOBSPY_SCRIPT], {
-            cwd: JOBSPY_DIR,
+            cwd: EXTRACTOR_DIR,
             shell: false,
             stdio: ["ignore", "pipe", "pipe"],
             env: {
@@ -293,9 +279,8 @@ export async function runJobSpy(
           : mapped;
 
         for (const job of filtered) {
-          const url = job.jobUrl;
-          if (seenJobUrls.has(url)) continue;
-          seenJobUrls.add(url);
+          if (seenJobUrls.has(job.jobUrl)) continue;
+          seenJobUrls.add(job.jobUrl);
           jobs.push(job);
         }
 
@@ -303,7 +288,7 @@ export async function runJobSpy(
           await unlink(outputJson);
           await unlink(outputCsv);
         } catch {
-          // Ignore cleanup errors
+          // ignore cleanup errors
         }
       }
     }
@@ -330,7 +315,6 @@ function resolveSearchTerms(options: RunJobSpyOptions): string[] {
     seen.add(key);
     out.push(normalized);
   }
-
   return out;
 }
 
@@ -342,7 +326,10 @@ function parseSearchTermsEnv(raw: string | undefined): string[] | null {
   if (trimmed.startsWith("[")) {
     try {
       const parsed = JSON.parse(trimmed) as unknown;
-      if (Array.isArray(parsed) && parsed.every((v) => typeof v === "string")) {
+      if (
+        Array.isArray(parsed) &&
+        parsed.every((value) => typeof value === "string")
+      ) {
         return parsed;
       }
     } catch {
@@ -357,7 +344,7 @@ function parseSearchTermsEnv(raw: string | undefined): string[] | null {
       : ",";
   const split = trimmed
     .split(delimiter)
-    .map((t) => t.trim())
+    .map((term) => term.trim())
     .filter(Boolean);
   return split.length > 0 ? split : null;
 }
@@ -383,34 +370,27 @@ function mapJobSpyRows(
     const jobUrl = toStringOrNull(row.job_url);
     if (!jobUrl) continue;
 
-    const title = toStringOrNull(row.title) ?? "Unknown Title";
-    const employer = toStringOrNull(row.company) ?? "Unknown Employer";
-
-    const jobUrlDirect = toStringOrNull(row.job_url_direct);
-    const applicationLink = jobUrlDirect ?? jobUrl;
-
     const minAmount = toNumberOrNull(row.min_amount);
     const maxAmount = toNumberOrNull(row.max_amount);
     const currency = toStringOrNull(row.currency);
     const interval = toStringOrNull(row.interval);
-
     const salary = formatSalary({ minAmount, maxAmount, currency, interval });
+
+    const jobUrlDirect = toStringOrNull(row.job_url_direct);
 
     jobs.push({
       source,
       sourceJobId: toStringOrNull(row.id) ?? undefined,
       jobUrlDirect: jobUrlDirect ?? undefined,
       datePosted: toStringOrNull(row.date_posted) ?? undefined,
-
-      title,
-      employer,
+      title: toStringOrNull(row.title) ?? "Unknown Title",
+      employer: toStringOrNull(row.company) ?? "Unknown Employer",
       employerUrl: toStringOrNull(row.company_url) ?? undefined,
       jobUrl,
-      applicationLink,
+      applicationLink: jobUrlDirect ?? jobUrl,
       location: toStringOrNull(row.location) ?? undefined,
       jobDescription: toStringOrNull(row.description) ?? undefined,
       salary: salary ?? undefined,
-
       jobType: toStringOrNull(row.job_type) ?? undefined,
       salarySource: toStringOrNull(row.salary_source) ?? undefined,
       salaryInterval: interval ?? undefined,

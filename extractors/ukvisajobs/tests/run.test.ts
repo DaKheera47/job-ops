@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseUkVisaJobsProgressLine } from "./ukvisajobs";
+import { parseUkVisaJobsProgressLine } from "../src/run";
 
 describe("parseUkVisaJobsProgressLine", () => {
   it("parses init events", () => {

@@ -7,6 +7,10 @@ vi.mock("../../repositories/settings", () => ({
   getAllSettings: vi.fn(),
 }));
 
+vi.mock("../../repositories/jobs", () => ({
+  getAllJobUrls: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("../../extractors/registry", () => ({
   getExtractorRegistry: vi.fn(),
 }));
@@ -233,6 +237,7 @@ describe("discoverJobsStep", () => {
 
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("../../repositories/settings");
+    const jobsRepo = await import("../../repositories/jobs");
     const registryModule = await import("../../extractors/registry");
 
     const jobspyManifest = {
@@ -257,6 +262,9 @@ describe("discoverJobsStep", () => {
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
     } as any);
+    vi.mocked(jobsRepo.getAllJobUrls).mockResolvedValue([
+      "https://example.com/existing",
+    ]);
 
     vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
       manifests: new Map([
@@ -290,5 +298,17 @@ describe("discoverJobsStep", () => {
     const progress = getProgress();
     expect(progress.crawlingSourcesTotal).toBe(3);
     expect(progress.crawlingSourcesCompleted).toBe(3);
+    expect(gradcrackerManifest.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        getExistingJobUrls: expect.any(Function),
+      }),
+    );
+
+    const [{ getExistingJobUrls }] = gradcrackerManifest.run.mock.calls[0] as [
+      { getExistingJobUrls: () => Promise<string[]> },
+    ];
+    await expect(getExistingJobUrls()).resolves.toEqual([
+      "https://example.com/existing",
+    ]);
   });
 });

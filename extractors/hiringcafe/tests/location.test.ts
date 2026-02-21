@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   matchesRequestedLocation,
   shouldApplyStrictLocationFilter,
-} from "./adzuna";
+} from "../src/run";
 
-describe("adzuna strict location filtering", () => {
+describe("hiringcafe strict location filtering", () => {
   it("enables strict filtering when city differs from country", () => {
     expect(shouldApplyStrictLocationFilter("Leeds", "united kingdom")).toBe(
       true,

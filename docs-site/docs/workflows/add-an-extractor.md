@@ -11,6 +11,9 @@ This guide explains how to add a new extractor that is auto-registered at orches
 
 The extractor runtime is discovered from a local `manifest.ts` file, and the source is type-safe across API/client through the shared catalog in `shared/src/extractors/index.ts`.
 
+Extractor manifests must live in extractor packages under `extractors/<name>/` only. Do not add manifest files inside `orchestrator/`.
+Extractor run logic should also live in the extractor package so orchestrator stays extractor-agnostic.
+
 ## Why it exists
 
 Without a manifest contract, adding extractors required touching multiple orchestrator files.
@@ -26,6 +29,8 @@ That keeps runtime wiring dynamic while preserving compile-time safety in API an
 
 1. Create your extractor package under `extractors/<name>/`.
 2. Add a `manifest.ts` in the extractor package root (or `src/manifest.ts`).
+   - Valid locations are only `extractors/<name>/manifest.ts` or `extractors/<name>/src/manifest.ts`.
+   - `orchestrator/**/manifest.ts` is not used for extractor discovery.
 3. Export a manifest with:
    - `id`
    - `displayName`

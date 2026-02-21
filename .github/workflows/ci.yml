@@ -23,8 +23,8 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
-  test-orchestrator:
-    name: Orchestrator Tests
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,8 +40,8 @@ jobs:
       - name: Build better-sqlite3
         run: npm --workspace orchestrator rebuild better-sqlite3
         working-directory: .
-      - name: Run Vitest
-        run: npm --workspace orchestrator run test:run
+      - name: Run Tests
+        run: npm run test:all
         working-directory: .
 
   typecheck:

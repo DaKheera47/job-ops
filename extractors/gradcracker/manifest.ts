@@ -1,9 +1,8 @@
-import { getAllJobUrls } from "../../orchestrator/src/server/repositories/jobs";
-import { runCrawler } from "../../orchestrator/src/server/services/crawler";
 import type {
   ExtractorManifest,
   ExtractorRuntimeContext,
-} from "../../shared/src/types/extractors";
+} from "@shared/types/extractors";
+import { runCrawler } from "./src/run";
 
 export const manifest: ExtractorManifest = {
   id: "gradcracker",
@@ -14,7 +13,7 @@ export const manifest: ExtractorManifest = {
       return { success: true, jobs: [] };
     }
 
-    const existingJobUrls = await getAllJobUrls();
+    const existingJobUrls = await context.getExistingJobUrls?.();
     const maxJobsPerTerm = context.settings.gradcrackerMaxJobsPerTerm
       ? parseInt(context.settings.gradcrackerMaxJobsPerTerm, 10)
       : 50;

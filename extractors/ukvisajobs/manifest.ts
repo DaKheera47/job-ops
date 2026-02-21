@@ -1,9 +1,9 @@
-import { runUkVisaJobs } from "../../orchestrator/src/server/services/ukvisajobs.ts";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
   ExtractorRuntimeContext,
-} from "../../shared/src/types/extractors.ts";
+} from "@shared/types/extractors";
+import { runUkVisaJobs } from "./src/run";
 
 function toProgress(event: {
   type: string;

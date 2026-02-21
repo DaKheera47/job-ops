@@ -1,10 +1,10 @@
-import { runAdzuna } from "../../orchestrator/src/server/services/adzuna";
-import { getAdzunaCountryCode } from "../../shared/src/location-support";
-import { resolveSearchCities } from "../../shared/src/search-cities";
+import { getAdzunaCountryCode } from "@shared/location-support.js";
+import { resolveSearchCities } from "@shared/search-cities.js";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
-} from "../../shared/src/types/extractors";
+} from "@shared/types/extractors";
+import { runAdzuna } from "./src/run";
 
 function toProgress(event: {
   type: string;

@@ -9,8 +9,10 @@ const tempRoots: string[] = [];
 async function makeTempRoot(): Promise<string> {
   const testTmpBase = join(process.cwd(), "orchestrator", ".tmp");
   await mkdir(testTmpBase, { recursive: true });
-  const root = await mkdtemp(join(testTmpBase, "extractor-discovery-"));
-  tempRoots.push(root);
+  const tempDir = await mkdtemp(join(testTmpBase, "extractor-discovery-"));
+  const root = join(tempDir, "extractors");
+  await mkdir(root, { recursive: true });
+  tempRoots.push(tempDir);
   return root;
 }
 
@@ -48,6 +50,12 @@ describe("extractor discovery", () => {
   it("returns empty list when extractor root does not exist", async () => {
     const root = join(tmpdir(), `missing-extractors-${Date.now()}`);
     await expect(discoverManifestPaths(root)).resolves.toEqual([]);
+  });
+
+  it("returns empty list when root is not named extractors", async () => {
+    const root = await makeTempRoot();
+    const invalidRoot = join(root, "..");
+    await expect(discoverManifestPaths(invalidRoot)).resolves.toEqual([]);
   });
 
   it("loads and validates manifest modules", async () => {

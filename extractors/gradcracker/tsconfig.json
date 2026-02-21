@@ -6,7 +6,11 @@
     "target": "ES2022",
     "outDir": "dist",
     "noUnusedLocals": false,
-    "lib": ["DOM"]
+    "lib": ["DOM"],
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../../shared/src/*"]
+    }
   },
   "include": ["./src/**/*"]
 }
