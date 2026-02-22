@@ -78,24 +78,33 @@ At generation time:
 
 Before connecting Reactive Resume to JobOps:
 
-1. Create your account on **RxResume v4** at [v4.rxresu.me/auth/register](https://v4.rxresu.me/auth/register).
-2. Use a **native email + password** account (not Google/GitHub/other OAuth login).
-3. Generate/store that password so JobOps can use it for API login.
+1. Choose a mode in **Settings → Reactive Resume**:
+   - `auto` (default, prefers v5 then falls back to v4)
+   - `v5` (API key)
+   - `v4` (email/password)
+2. For **v5** (recommended for self-hosted/latest), generate an API key and configure `rxresumeApiKey` or `RXRESUME_API_KEY`.
+3. For **v4**, create a native email/password account at [v4.rxresu.me/auth/register](https://v4.rxresu.me/auth/register) and configure `rxresumeEmail` + `rxresumePassword`.
 
-JobOps cannot use OAuth-based RxResume logins for this integration.
+Important:
 
-### 1) Configure RxResume credentials
+- Explicit `v4` and `v5` modes do not silently fall back.
+- OAuth-only logins are not supported for the v4 email/password integration.
 
-Configure in Settings:
+### 1) Configure Reactive Resume access
 
-- `rxresumeEmail`
-- `rxresumePassword`
+Configure in **Settings → Reactive Resume**:
+
+- `rxresumeMode` (`auto`, `v5`, or `v4`)
+- `rxresumeApiKey` (for v5)
+- `rxresumeEmail` + `rxresumePassword` (for v4)
 
 Or via environment variables:
 
+- `RXRESUME_MODE` (`auto`, `v5`, or `v4`)
+- `RXRESUME_API_KEY` (for v5)
 - `RXRESUME_EMAIL`
 - `RXRESUME_PASSWORD`
-- optional `RXRESUME_URL` (defaults to `https://v4.rxresu.me`)
+- optional `RXRESUME_URL` (works for both modes; v5 OpenAPI path is added automatically)
 
 ### 2) Select base resume
 
@@ -176,7 +185,7 @@ curl -X PATCH "http://localhost:3001/api/settings" \
 ```
 
 ```bash
-# List available RxResume resumes
+# List available Reactive Resume resumes
 curl "http://localhost:3001/api/settings/rx-resumes"
 ```
 
@@ -194,14 +203,18 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 ### RxResume controls are disabled
 
-- Ensure RxResume credentials are configured.
+- Ensure the selected mode has credentials configured.
+- `v5`: set a valid API key.
+- `v4`: set email + password.
+- `auto`: set either a v5 API key or v4 credentials.
 - Save settings, then refresh resumes in the Reactive Resume section.
 
 ### No resumes appear in dropdown
 
-- Confirm credentials are valid for [v4.rxresu.me](https://v4.rxresu.me)/your configured RxResume URL.
-- Confirm the RxResume account is a native email/password account (not OAuth-only).
-- Confirm the selected RxResume account actually has resumes.
+- Confirm the selected mode matches your Reactive Resume deployment.
+- For `v5`, confirm `RXRESUME_API_KEY` / `rxresumeApiKey` is valid for your self-hosted instance.
+- For `v4`, confirm credentials are valid for [v4.rxresu.me](https://v4.rxresu.me) (or your configured v4 URL) and are not OAuth-only.
+- Confirm the selected Reactive Resume account actually has resumes.
 
 ### Project list is empty in settings
 

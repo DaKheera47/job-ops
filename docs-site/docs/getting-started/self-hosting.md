@@ -124,3 +124,7 @@ docker compose up -d
 If you self-host Reactive Resume, set:
 
 - `RXRESUME_URL=http://rxresume.local.net`
+- `RXRESUME_MODE=v5` (recommended) or leave `auto`
+- `RXRESUME_API_KEY=...` (or configure `rxresumeApiKey` in JobOps Settings)
+
+`auto` mode is the default and prefers v5 when an API key is configured, then falls back to v4 credentials.
