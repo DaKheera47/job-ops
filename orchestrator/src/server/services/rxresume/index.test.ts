@@ -1,0 +1,126 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@server/repositories/settings", () => ({
+  getSetting: vi.fn(),
+}));
+
+vi.mock("../rxresume-v4", () => ({
+  listResumes: vi.fn(),
+  getResume: vi.fn(),
+  importResume: vi.fn(),
+  deleteResume: vi.fn(),
+  exportResumePdf: vi.fn(),
+  RxResumeCredentialsError: class RxResumeCredentialsError extends Error {},
+}));
+
+vi.mock("../rxresume-v5", () => ({
+  listResumes: vi.fn(),
+  getResume: vi.fn(),
+  importResume: vi.fn(),
+  deleteResume: vi.fn(),
+  exportResumePdf: vi.fn(),
+  verifyApiKey: vi.fn(),
+}));
+
+vi.mock("../rxresume-client", () => ({
+  RxResumeClient: {
+    verifyCredentials: vi.fn(),
+  },
+}));
+
+import { getSetting } from "@server/repositories/settings";
+import { RxResumeClient } from "../rxresume-client";
+import * as v4 from "../rxresume-v4";
+import * as v5 from "../rxresume-v5";
+import {
+  listResumes,
+  resolveRxResumeMode,
+  RxResumeAuthConfigError,
+  validateCredentials,
+} from "./index";
+
+type SettingMap = Partial<Record<string, string | null>>;
+
+function mockSettings(map: SettingMap): void {
+  vi.mocked(getSetting).mockImplementation(async (key: string) => map[key] ?? null);
+}
+
+describe("rxresume adapter", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    delete process.env.RXRESUME_API_KEY;
+    delete process.env.RXRESUME_EMAIL;
+    delete process.env.RXRESUME_PASSWORD;
+    delete process.env.RXRESUME_MODE;
+    mockSettings({});
+  });
+
+  it("prefers v5 in auto mode when both v5 and v4 credentials exist", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeApiKey: "v5-key",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+
+    await expect(resolveRxResumeMode()).resolves.toBe("v5");
+  });
+
+  it("falls back to v4 in auto mode when v5 key is missing", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+
+    await expect(resolveRxResumeMode()).resolves.toBe("v4");
+  });
+
+  it("throws targeted error when explicit v5 is selected without api key", async () => {
+    mockSettings({ rxresumeMode: "v5" });
+
+    await expect(resolveRxResumeMode()).rejects.toBeInstanceOf(
+      RxResumeAuthConfigError,
+    );
+    await expect(resolveRxResumeMode()).rejects.toThrow(/v5 API key/i);
+  });
+
+  it("routes listResumes through v5 and normalizes title when v5 is selected", async () => {
+    mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
+    vi.mocked(v5.listResumes).mockResolvedValue([
+      { id: "r1", name: "Resume One" },
+      { id: "r2", name: "Resume Two" },
+    ]);
+
+    const result = await listResumes();
+
+    expect(v5.listResumes).toHaveBeenCalledWith({
+      apiKey: "v5-key",
+      baseUrl: "https://rxresu.me",
+    });
+    expect(v4.listResumes).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      { id: "r1", name: "Resume One", title: "Resume One" },
+      { id: "r2", name: "Resume Two", title: "Resume Two" },
+    ]);
+  });
+
+  it("validates v4 credentials when auto mode resolves to v4", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(RxResumeClient.verifyCredentials).mockResolvedValue({ ok: true });
+
+    const result = await validateCredentials();
+
+    expect(RxResumeClient.verifyCredentials).toHaveBeenCalledWith(
+      "user@example.com",
+      "pw",
+      "https://v4.rxresu.me",
+    );
+    expect(result).toEqual({ ok: true, mode: "v4" });
+  });
+});
+

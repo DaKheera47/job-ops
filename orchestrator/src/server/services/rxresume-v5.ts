@@ -1,10 +1,5 @@
 // rxresume-v5.ts
-// Future-facing v5/OpenAPI implementation that uses API keys.
-// - Kept alongside v4 files so we can swap imports when v5 is ready.
-// - Uses RXRESUME_API_KEY and /api/openapi endpoints.
-//
-// NOTE: Not currently wired in; keep for migration.
-
+// Reactive Resume v5/OpenAPI implementation (API key auth).
 import { resumeDataSchema } from "@shared/rxresume-schema";
 
 export interface RxResumeResponse {
@@ -15,33 +10,56 @@ export interface RxResumeResponse {
   [key: string]: unknown;
 }
 
-/**
- * Temporary helper to execute a fetch request with multiple API keys if in development.
- * THIS FUNCTION IS TEMPORARY AND WILL BE REMOVED.
- */
+export type VerifyApiKeyResult =
+  | { ok: true }
+  | { ok: false; status: number; message?: string; details?: unknown };
 
-// Cache for last working key index (temporary, part of dev-only logic)
-let lastWorkingKeyIndex = 0;
+const MAX_ERROR_SNIPPET = 300;
+
+function cleanBaseUrl(baseUrl: string): string {
+  let normalized = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+  if (normalized.endsWith("/api/openapi")) {
+    normalized = normalized.slice(0, -12);
+  } else if (normalized.endsWith("/api")) {
+    normalized = normalized.slice(0, -4);
+  }
+  return normalized;
+}
+
+function extractErrorMessage(data: unknown, fallback: string): string {
+  if (typeof data === "string") return data.slice(0, MAX_ERROR_SNIPPET);
+  if (data && typeof data === "object") {
+    const maybe = data as Record<string, unknown>;
+    for (const key of ["message", "error", "statusMessage"]) {
+      const value = maybe[key];
+      if (typeof value === "string" && value.trim()) {
+        return value.trim().slice(0, MAX_ERROR_SNIPPET);
+      }
+    }
+  }
+  return fallback.slice(0, MAX_ERROR_SNIPPET);
+}
 
 async function executeWithKeyRetries(
   url: string,
   options: RequestInit,
+  apiKeyOverride?: string,
 ): Promise<unknown> {
-  const rawApiKey = process.env.RXRESUME_API_KEY;
+  const rawApiKey = apiKeyOverride ?? process.env.RXRESUME_API_KEY;
   if (!rawApiKey) {
     throw new Error("RXRESUME_API_KEY not configured in environment");
   }
 
-  const isDev = process.env.NODE_ENV !== "production";
-  const apiKeys =
-    isDev && rawApiKey.includes(",")
-      ? rawApiKey.split(",").map((k) => k.trim())
-      : [rawApiKey];
+  const apiKeys = rawApiKey
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  if (apiKeys.length === 0) {
+    throw new Error("RXRESUME_API_KEY not configured in environment");
+  }
 
-  // Start from the last working key index
   for (let attempt = 0; attempt < apiKeys.length; attempt++) {
-    const i = (lastWorkingKeyIndex + attempt) % apiKeys.length;
-    const apiKey = apiKeys[i];
+    const apiKey = apiKeys[attempt];
     const headers = {
       "x-api-key": apiKey,
       ...(options.body ? { "Content-Type": "application/json" } : {}),
@@ -54,48 +72,27 @@ async function executeWithKeyRetries(
     });
 
     if (!response.ok) {
-      const errorData = (await response
+      const errorBody = await response
         .json()
-        .catch(() => ({ message: response.statusText }))) as {
-        message?: string;
-      };
-      const errorMsg = `Reactive Resume API error (${response.status}): ${errorData.message || response.statusText}`;
+        .catch(async () => await response.text().catch(() => null));
+      const errorMsg = extractErrorMessage(errorBody, response.statusText);
 
-      // ONLY retry/rotation on 401 Unauthorized
       if (
         response.status === 401 &&
         apiKeys.length > 1 &&
         attempt < apiKeys.length - 1
       ) {
-        console.warn(
-          `[RxResume SDK] Key index ${i} was Unauthorized, trying next key...`,
-        );
         continue;
       }
 
-      throw new Error(errorMsg);
+      throw new Error(`Reactive Resume API error (${response.status}): ${errorMsg}`);
     }
-
-    // Success! Cache this key index for future requests
-    lastWorkingKeyIndex = i;
 
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
       return response.json();
     }
     return response.text();
-  }
-
-  // Unmissable error block if all keys fail
-  if (apiKeys.length > 1) {
-    console.error(`
-################################################################################
-#                                                                              #
-#   ❌ ALL REACTIVE RESUME API KEYS FAILED (${apiKeys.length} keys attempted)               #
-#   Please check your .env configuration.                                      #
-#                                                                              #
-################################################################################
-`);
   }
 
   throw new Error("All Reactive Resume API keys failed.");
@@ -107,26 +104,41 @@ async function executeWithKeyRetries(
 export async function fetchRxResume(
   path: string,
   options: RequestInit = {},
+  config?: { baseUrl?: string; apiKey?: string },
 ): Promise<unknown> {
-  const baseUrl = process.env.RXRESUME_URL || "https://rxresu.me";
-  let cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-
-  // Handle cases where the base URL already includes /api or /api/openapi
-  if (cleanBaseUrl.endsWith("/api/openapi")) {
-    cleanBaseUrl = cleanBaseUrl.slice(0, -12);
-  } else if (cleanBaseUrl.endsWith("/api")) {
-    cleanBaseUrl = cleanBaseUrl.slice(0, -4);
-  }
-
-  const url = `${cleanBaseUrl}/api/openapi${path}`;
-  return executeWithKeyRetries(url, options);
+  const baseUrl =
+    config?.baseUrl ?? process.env.RXRESUME_URL ?? "https://rxresu.me";
+  const url = `${cleanBaseUrl(baseUrl)}/api/openapi${path}`;
+  return executeWithKeyRetries(url, options, config?.apiKey);
 }
 
 /**
  * Fetch a resume by its ID.
  */
-export async function getResume(id: string): Promise<RxResumeResponse> {
-  return (await fetchRxResume(`/resume/${id}`)) as RxResumeResponse;
+export async function getResume(
+  id: string,
+  config?: { baseUrl?: string; apiKey?: string },
+): Promise<RxResumeResponse> {
+  return (await fetchRxResume(`/resume/${id}`, {}, config)) as RxResumeResponse;
+}
+
+export async function verifyApiKey(
+  apiKey?: string,
+  baseUrl?: string,
+): Promise<VerifyApiKeyResult> {
+  try {
+    await fetchRxResume("/resume/list", {}, { apiKey, baseUrl });
+    return { ok: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Network error";
+    const match = /error\s*\((\d+)\)/i.exec(message);
+    return {
+      ok: false,
+      status: match ? Number(match[1]) : 0,
+      message,
+      details: error,
+    };
+  }
 }
 
 /**
@@ -136,33 +148,13 @@ export async function importResume(payload: {
   name: string;
   slug: string;
   data: unknown;
-}): Promise<string> {
-  // Validate data against schema before sending
-  try {
-    payload.data = resumeDataSchema.parse(payload.data);
-  } catch (error) {
-    console.error("❌ Resume data validation failed:", error);
-    throw error;
-  }
-
-  // DEBUG: Save payload to file for debugging (temporary)
-  try {
-    const fs = await import("node:fs/promises");
-    const path = await import("node:path");
-    const debugDir = path.join(process.cwd(), "debug");
-    await fs.mkdir(debugDir, { recursive: true });
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = path.join(debugDir, `rxresume-import-${timestamp}.json`);
-    await fs.writeFile(filename, JSON.stringify(payload, null, 2), "utf-8");
-    console.log(`📝 DEBUG: Saved import payload to ${filename}`);
-  } catch (debugErr) {
-    console.warn("⚠️ Could not save debug file:", debugErr);
-  }
+}, config?: { baseUrl?: string; apiKey?: string }): Promise<string> {
+  payload.data = resumeDataSchema.parse(payload.data);
 
   const result = (await fetchRxResume("/resume/import", {
     method: "POST",
     body: JSON.stringify(payload),
-  })) as { id: string } | string;
+  }, config)) as { id: string } | string;
 
   // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
   return typeof result === "string" ? result : result.id;
@@ -171,15 +163,25 @@ export async function importResume(payload: {
 /**
  * Delete a resume.
  */
-export async function deleteResume(id: string): Promise<void> {
-  await fetchRxResume(`/resume/${id}`, { method: "DELETE" });
+export async function deleteResume(
+  id: string,
+  config?: { baseUrl?: string; apiKey?: string },
+): Promise<void> {
+  await fetchRxResume(`/resume/${id}`, { method: "DELETE" }, config);
 }
 
 /**
  * Export a resume as PDF. Returns the URL.
  */
-export async function exportResumePdf(id: string): Promise<string> {
-  const result = (await fetchRxResume(`/printer/resume/${id}/pdf`)) as {
+export async function exportResumePdf(
+  id: string,
+  config?: { baseUrl?: string; apiKey?: string },
+): Promise<string> {
+  const result = (await fetchRxResume(
+    `/printer/resume/${id}/pdf`,
+    {},
+    config,
+  )) as {
     url: string;
   };
   return result.url;
@@ -189,8 +191,10 @@ export async function exportResumePdf(id: string): Promise<string> {
  * List all resumes.
  * According to official OpenAPI spec, the endpoint is /resume/list
  */
-export async function listResumes(): Promise<{ id: string; name: string }[]> {
-  return (await fetchRxResume("/resume/list")) as {
+export async function listResumes(
+  config?: { baseUrl?: string; apiKey?: string },
+): Promise<{ id: string; name: string }[]> {
+  return (await fetchRxResume("/resume/list", {}, config)) as {
     id: string;
     name: string;
   }[];
