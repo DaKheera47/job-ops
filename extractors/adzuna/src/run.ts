@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
   resolveSearchCities,
-  shouldApplyStrictLocationFilter,
+  shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput } from "@shared/types/jobs";
 import {
@@ -62,8 +62,6 @@ export interface AdzunaResult {
   jobs: CreateJobInput[];
   error?: string;
 }
-
-export { shouldApplyStrictLocationFilter } from "@shared/search-cities.js";
 
 function resolveTsxCliPath(): string | null {
   try {
@@ -209,8 +207,7 @@ export async function runAdzuna(
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
       const location = runLocations[runIndex];
       const strictLocationFilter =
-        location !== null &&
-        shouldApplyStrictLocationFilter(location, countryKey);
+        location !== null && shouldApplyStrictCityFilter(location, countryKey);
 
       await new Promise<void>((resolve, reject) => {
         const extractorEnv = {

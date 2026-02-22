@@ -82,13 +82,6 @@ export function shouldApplyStrictCityFilter(
   return normalizedCity !== normalizedCountry;
 }
 
-export function shouldApplyStrictLocationFilter(
-  location: string,
-  countryKey: string,
-): boolean {
-  return shouldApplyStrictCityFilter(location, countryKey);
-}
-
 export function matchesRequestedCity(
   jobLocation: string | undefined,
   requestedCity: string,

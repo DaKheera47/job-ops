@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
   resolveSearchCities,
-  shouldApplyStrictLocationFilter,
+  shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput } from "@shared/types/jobs";
 import {
@@ -64,8 +64,6 @@ export interface HiringCafeResult {
   jobs: CreateJobInput[];
   error?: string;
 }
-
-export { shouldApplyStrictLocationFilter } from "@shared/search-cities.js";
 
 function resolveTsxCliPath(): string | null {
   try {
@@ -208,8 +206,7 @@ export async function runHiringCafe(
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
       const location = runLocations[runIndex];
       const strictLocationFilter =
-        location !== null &&
-        shouldApplyStrictLocationFilter(location, countryKey);
+        location !== null && shouldApplyStrictCityFilter(location, countryKey);
 
       await clearStorageDataset();
 
