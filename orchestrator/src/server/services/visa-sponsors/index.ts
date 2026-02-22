@@ -6,6 +6,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { normalizeWhitespace } from "@shared/utils/string";
 import { getDataDir } from "../../config/dataDir";
 import { createScheduler } from "../../utils/scheduler";
 
@@ -86,7 +87,7 @@ export function normalizeCompanyName(name: string): string {
   }
 
   // Collapse whitespace
-  normalized = normalized.replace(/\s+/g, " ").trim();
+  normalized = normalizeWhitespace(normalized);
 
   return normalized;
 }

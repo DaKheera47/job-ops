@@ -23,6 +23,7 @@ import {
   type AppErrorCode,
   badRequest,
   conflict,
+  notFound,
 } from "../../infra/errors";
 import {
   generateFinalPdf,
@@ -884,7 +885,7 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
   try {
     const job = await jobsRepo.getJobById(req.params.id);
     if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
     res.json({ success: true, data: job });
   } catch (error) {
@@ -996,7 +997,7 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
     });
 
     if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     res.json({ success: true, data: job });
@@ -1126,7 +1127,7 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
       }
       const job = await jobsRepo.getJobById(req.params.id);
       if (!job) {
-        return res.status(404).json({ success: false, error: "Job not found" });
+        return fail(res, notFound("Job not found"));
       }
       return okWithMeta(res, job, { simulated: true });
     }
@@ -1153,7 +1154,7 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
     const job = await jobsRepo.getJobById(req.params.id);
 
     if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     if (!job.employer) {
@@ -1203,7 +1204,7 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
       }
       const job = await jobsRepo.getJobById(req.params.id);
       if (!job) {
-        return res.status(404).json({ success: false, error: "Job not found" });
+        return fail(res, notFound("Job not found"));
       }
       return okWithMeta(res, job, { simulated: true });
     }
@@ -1237,7 +1238,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     const job = await jobsRepo.getJobById(req.params.id);
 
     if (!job) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     const appliedAtDate = new Date();
@@ -1266,7 +1267,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     }
 
     if (!updatedJob) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     res.json({ success: true, data: updatedJob });

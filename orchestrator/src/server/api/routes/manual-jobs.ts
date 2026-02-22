@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
 import type {
   ApiResponse,
@@ -8,6 +9,7 @@ import type {
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
+import { notFound } from "../../infra/errors";
 import { processJob } from "../../pipeline/index";
 import * as jobsRepo from "../../repositories/jobs";
 import { inferManualJobDetails } from "../../services/manualJob";
@@ -252,7 +254,7 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
 
     const processedJob = await jobsRepo.getJobById(createdJob.id);
     if (!processedJob) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     // Score asynchronously so the import returns immediately.

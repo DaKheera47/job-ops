@@ -3,6 +3,7 @@ import type {
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
 } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
 
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & {
   summaryText: string;
@@ -156,8 +157,7 @@ export function resolveResumeProjectsSettings(args: {
 }
 
 export function stripHtml(input: string): string {
-  const withoutTags = input.replace(/<[^>]*>/g, " ");
-  return withoutTags.replace(/\s+/g, " ").trim();
+  return stripHtmlTags(input);
 }
 
 function uniqueStrings(values: string[]): string[] {
