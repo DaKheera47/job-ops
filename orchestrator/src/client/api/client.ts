@@ -1287,13 +1287,16 @@ export async function validateLlm(input: {
   });
 }
 
-export async function validateRxresume(
-  email?: string,
-  password?: string,
-): Promise<ValidationResult> {
+export async function validateRxresume(input?: {
+  mode?: "auto" | "v4" | "v5";
+  email?: string;
+  password?: string;
+  apiKey?: string;
+  baseUrl?: string;
+}): Promise<ValidationResult> {
   return fetchApi<ValidationResult>("/onboarding/validate/rxresume", {
     method: "POST",
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(input ?? {}),
   });
 }
 

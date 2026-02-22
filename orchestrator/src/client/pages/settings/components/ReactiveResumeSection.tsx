@@ -11,6 +11,13 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -25,6 +32,7 @@ import {
   toggleAiSelectable,
   toggleMustInclude,
 } from "../resume-projects-state";
+import { formatSecretHint } from "../utils";
 import { BaseResumeSelection } from "./BaseResumeSelection";
 
 type ReactiveResumeSectionProps = {
@@ -32,6 +40,8 @@ type ReactiveResumeSectionProps = {
   setRxResumeBaseResumeIdDraft: (value: string | null) => void;
   // True when v4 credentials or v5 API key are configured.
   hasRxResumeAccess: boolean;
+  rxresumeMode: "auto" | "v4" | "v5";
+  rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
   maxProjectsTotal: number;
@@ -44,6 +54,8 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   rxResumeBaseResumeIdDraft,
   setRxResumeBaseResumeIdDraft,
   hasRxResumeAccess,
+  rxresumeMode,
+  rxresumeApiKeyHint,
   profileProjects,
   lockedCount,
   maxProjectsTotal,
@@ -52,9 +64,12 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   isSaving,
 }) => {
   const {
+    register,
     control,
+    watch,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
+  const selectedMode = watch("rxresumeMode") ?? rxresumeMode ?? "auto";
 
   return (
     <AccordionItem value="reactive-resume" className="border rounded-lg px-4">
@@ -68,8 +83,11 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>RxResume Access Missing</AlertTitle>
               <AlertDescription>
-                Configure RxResume credentials in settings (email + password) or
-                set <code>RXRESUME_API_KEY</code> to enable access.
+                {selectedMode === "v5"
+                  ? "Configure a Reactive Resume v5 API key to enable access."
+                  : selectedMode === "v4"
+                    ? "Configure Reactive Resume v4 email/password credentials to enable access."
+                    : "Configure a Reactive Resume v5 API key or v4 email/password credentials to enable access."}
               </AlertDescription>
             </Alert>
           ) : (
@@ -90,6 +108,67 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                 hasRxResumeAccess={hasRxResumeAccess}
                 disabled={isLoading || isSaving}
               />
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Version / Mode</div>
+                  <Controller
+                    name="rxresumeMode"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        value={field.value ?? "auto"}
+                        onValueChange={(value) => field.onChange(value)}
+                        disabled={isLoading || isSaving}
+                      >
+                        <SelectTrigger id="rxresumeMode">
+                          <SelectValue placeholder="Select mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">
+                            Auto (prefer v5, fallback to v4)
+                          </SelectItem>
+                          <SelectItem value="v5">Reactive Resume v5</SelectItem>
+                          <SelectItem value="v4">Reactive Resume v4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.rxresumeMode && (
+                    <p className="text-xs text-destructive">
+                      {errors.rxresumeMode.message as string}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">v5 API Key</div>
+                  <Input
+                    type="password"
+                    placeholder="Enter v5 API key"
+                    disabled={isLoading || isSaving}
+                    {...register("rxresumeApiKey")}
+                  />
+                  {errors.rxresumeApiKey && (
+                    <p className="text-xs text-destructive">
+                      {errors.rxresumeApiKey.message as string}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Used for Reactive Resume v5 (self-hosted/latest). In{" "}
+                    <code>auto</code> mode, JobOps prefers this over v4
+                    credentials.
+                  </p>
+                  {rxresumeApiKeyHint && (
+                    <p className="text-xs text-muted-foreground">
+                      Current:{" "}
+                      <span className="font-mono">
+                        {formatSecretHint(rxresumeApiKeyHint)}
+                      </span>
+                    </p>
+                  )}
+                </div>
+              </div>
 
               <Separator />
 

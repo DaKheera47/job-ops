@@ -27,6 +27,7 @@ import type {
   AppSettings,
   JobStatus,
   ResumeProjectCatalogItem,
+  RxResumeMode,
   ResumeProjectsSettings,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -51,6 +52,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
+  rxresumeMode: "auto",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   chatStyleTone: "",
@@ -59,6 +61,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleDoNotUse: "",
   rxresumeEmail: "",
   rxresumePassword: "",
+  rxresumeApiKey: "",
   basicAuthUser: "",
   basicAuthPassword: "",
   ukvisajobsEmail: "",
@@ -93,6 +96,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
+  rxresumeMode: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   chatStyleTone: null,
@@ -101,6 +105,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleDoNotUse: null,
   rxresumeEmail: null,
   rxresumePassword: null,
+  rxresumeApiKey: null,
   basicAuthUser: null,
   basicAuthPassword: null,
   ukvisajobsEmail: null,
@@ -130,6 +135,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
+  rxresumeMode: data.rxresumeMode.override ?? data.rxresumeMode.value,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
   chatStyleTone: data.chatStyleTone.override ?? "",
@@ -138,6 +144,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleDoNotUse: data.chatStyleDoNotUse.override ?? "",
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
+  rxresumeApiKey: "",
   basicAuthUser: data.basicAuthUser ?? "",
   basicAuthPassword: "",
   ukvisajobsEmail: data.ukvisajobsEmail ?? "",
@@ -367,9 +374,17 @@ export const SettingsPage: React.FC = () => {
   const isLoadingBackups = backupsQuery.isLoading;
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
-  const hasRxResumeAccess = Boolean(
+  const rxresumeMode = (settings?.rxresumeMode?.value ?? "auto") as RxResumeMode;
+  const hasV4RxResumeAccess = Boolean(
     settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
   );
+  const hasV5RxResumeAccess = Boolean(settings?.rxresumeApiKeyHint);
+  const hasRxResumeAccess =
+    rxresumeMode === "v5"
+      ? hasV5RxResumeAccess
+      : rxresumeMode === "v4"
+        ? hasV4RxResumeAccess
+        : hasV5RxResumeAccess || hasV4RxResumeAccess;
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -594,6 +609,11 @@ export const SettingsPage: React.FC = () => {
         if (value !== undefined) envPayload.rxresumePassword = value;
       }
 
+      if (dirtyFields.rxresumeApiKey) {
+        const value = normalizePrivateInput(data.rxresumeApiKey);
+        if (value !== undefined) envPayload.rxresumeApiKey = value;
+      }
+
       if (dirtyFields.ukvisajobsPassword) {
         const value = normalizePrivateInput(data.ukvisajobsPassword);
         if (value !== undefined) envPayload.ukvisajobsPassword = value;
@@ -617,6 +637,7 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
+        rxresumeMode: data.rxresumeMode ?? "auto",
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
         chatStyleTone: normalizeString(data.chatStyleTone),
@@ -805,6 +826,8 @@ export const SettingsPage: React.FC = () => {
               setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
             }}
             hasRxResumeAccess={hasRxResumeAccess}
+            rxresumeMode={rxresumeMode}
+            rxresumeApiKeyHint={settings?.rxresumeApiKeyHint ?? null}
             profileProjects={effectiveProfileProjects}
             lockedCount={lockedCount}
             maxProjectsTotal={effectiveMaxProjectsTotal}
