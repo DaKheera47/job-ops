@@ -104,6 +104,7 @@ function isRetryableV5AutoFallbackError(error: Error): boolean {
   if (error instanceof RxResumeRequestError) {
     return (
       error.status === 0 ||
+      error.status === 404 ||
       error.status === 401 ||
       error.status === 403 ||
       (typeof error.status === "number" && error.status >= 500)

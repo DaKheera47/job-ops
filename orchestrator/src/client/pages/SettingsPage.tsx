@@ -548,6 +548,27 @@ export const SettingsPage: React.FC = () => {
         return;
       }
     }
+    const nextRxresumeEmailPresent =
+      dirtyFields.rxresumeEmail || dirtyFields.rxresumePassword
+        ? Boolean(normalizeString(data.rxresumeEmail))
+        : Boolean(settings.rxresumeEmail?.trim());
+    const nextRxresumePasswordPresent = dirtyFields.rxresumePassword
+      ? normalizePrivateInput(data.rxresumePassword) !== null
+      : Boolean(settings.rxresumePasswordHint);
+    const nextRxresumeApiKeyPresent = dirtyFields.rxresumeApiKey
+      ? normalizePrivateInput(data.rxresumeApiKey) !== null
+      : Boolean(settings.rxresumeApiKeyHint);
+    if (
+      nextRxresumeApiKeyPresent &&
+      nextRxresumeEmailPresent &&
+      nextRxresumePasswordPresent
+    ) {
+      toast.error("Choose one Reactive Resume auth method", {
+        description:
+          "Save either a v5 API key or v4 email/password, not both. Clear the other credentials first.",
+      });
+      return;
+    }
     try {
       setIsSaving(true);
 

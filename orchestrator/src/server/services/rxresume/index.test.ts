@@ -31,6 +31,7 @@ vi.mock("./client", () => ({
 import { getSetting } from "@server/repositories/settings";
 import { RxResumeClient } from "./client";
 import {
+  getResume as getResumeFromAdapter,
   listResumes,
   RxResumeAuthConfigError,
   resolveRxResumeMode,
@@ -191,6 +192,33 @@ describe("rxresume adapter", () => {
     expect(result).toEqual([
       { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
     ]);
+  });
+
+  it("falls back to v4 getResume in auto mode when v5 returns not found", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeApiKey: "v5-key",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(v5.getResume).mockRejectedValue(
+      new Error("Reactive Resume API error (404): Resume not found"),
+    );
+    vi.mocked(v4.getResume).mockResolvedValue({
+      id: "legacy-1",
+      name: "Legacy Resume",
+      title: "Legacy Resume",
+      data: { basics: { name: "Test User" } },
+    });
+
+    const result = await getResumeFromAdapter("legacy-1");
+
+    expect(v5.getResume).toHaveBeenCalledTimes(1);
+    expect(v4.getResume).toHaveBeenCalledTimes(1);
+    expect(result).toMatchObject({
+      id: "legacy-1",
+      title: "Legacy Resume",
+    });
   });
 
   it("validates v4 credentials when auto mode resolves to v4", async () => {

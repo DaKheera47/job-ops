@@ -438,6 +438,18 @@ export const OnboardingGate: React.FC = () => {
       return false;
     }
 
+    const resultingHasV4 =
+      (hasRxresumeEmail || Boolean(emailValue)) &&
+      (hasRxresumePassword || Boolean(passwordValue));
+    const resultingHasV5 = hasRxresumeApiKey || Boolean(apiKeyValue);
+    if (resultingHasV4 && resultingHasV5) {
+      toast.error("Choose one Reactive Resume auth method", {
+        description:
+          "Save either a v5 API key or v4 email/password, not both. Clear the other credentials first.",
+      });
+      return false;
+    }
+
     try {
       const validation = await validateRxresume();
       if (!validation.valid) {
