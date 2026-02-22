@@ -284,7 +284,7 @@ describe.sequential("Onboarding API routes", () => {
             status: 200,
             headers: { get: () => "application/json" },
             json: async () => [],
-          } as Response);
+          } as unknown as Response);
         }
         return originalFetch(input, init);
       });

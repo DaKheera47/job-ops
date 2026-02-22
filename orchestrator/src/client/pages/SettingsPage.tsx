@@ -27,8 +27,8 @@ import type {
   AppSettings,
   JobStatus,
   ResumeProjectCatalogItem,
-  RxResumeMode,
   ResumeProjectsSettings,
+  RxResumeMode,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
@@ -374,7 +374,8 @@ export const SettingsPage: React.FC = () => {
   const isLoadingBackups = backupsQuery.isLoading;
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
-  const rxresumeMode = (settings?.rxresumeMode?.value ?? "auto") as RxResumeMode;
+  const rxresumeMode = (settings?.rxresumeMode?.value ??
+    "auto") as RxResumeMode;
   const hasV4RxResumeAccess = Boolean(
     settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
   );

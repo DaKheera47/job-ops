@@ -34,15 +34,17 @@ import * as v4 from "../rxresume-v4";
 import * as v5 from "../rxresume-v5";
 import {
   listResumes,
-  resolveRxResumeMode,
   RxResumeAuthConfigError,
+  resolveRxResumeMode,
   validateCredentials,
 } from "./index";
 
 type SettingMap = Partial<Record<string, string | null>>;
 
 function mockSettings(map: SettingMap): void {
-  vi.mocked(getSetting).mockImplementation(async (key: string) => map[key] ?? null);
+  vi.mocked(getSetting).mockImplementation(
+    async (key: string) => map[key] ?? null,
+  );
 }
 
 describe("rxresume adapter", () => {
@@ -123,4 +125,3 @@ describe("rxresume adapter", () => {
     expect(result).toEqual({ ok: true, mode: "v4" });
   });
 });
-

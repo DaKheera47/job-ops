@@ -4,10 +4,7 @@ import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { getSetting } from "@server/repositories/settings";
 import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
-import {
-  getResume,
-  RxResumeAuthConfigError,
-} from "@server/services/rxresume";
+import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
 import { type Request, type Response, Router } from "express";
 
 export const profileRouter = Router();
@@ -63,7 +60,10 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
     try {
       const resume = await getResume(rxresumeBaseResumeId);
       if (!resume.data || typeof resume.data !== "object") {
-        ok(res, { exists: false, error: "Selected resume is empty or invalid." });
+        ok(res, {
+          exists: false,
+          error: "Selected resume is empty or invalid.",
+        });
         return;
       }
 

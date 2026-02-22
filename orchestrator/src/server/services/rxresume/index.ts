@@ -1,7 +1,7 @@
-import { settingsRegistry } from "@shared/settings-registry";
-import type { ResumeData } from "@shared/rxresume-schema";
-import type { RxResumeMode } from "@shared/types";
 import { getSetting } from "@server/repositories/settings";
+import type { ResumeData } from "@shared/rxresume-schema";
+import { settingsRegistry } from "@shared/settings-registry";
+import type { RxResumeMode } from "@shared/types";
 import { RxResumeClient } from "../rxresume-client";
 import * as v4 from "../rxresume-v4";
 import * as v5 from "../rxresume-v5";
@@ -53,13 +53,27 @@ type ResolveModeOptions = {
   v5?: { apiKey?: string | null; baseUrl?: string | null };
 };
 
+function toV4Override(
+  input?: ResolveModeOptions["v4"],
+): Partial<v4.RxResumeCredentials> | undefined {
+  if (!input) return undefined;
+  return {
+    ...(typeof input.email === "string" ? { email: input.email } : {}),
+    ...(typeof input.password === "string" ? { password: input.password } : {}),
+    ...(typeof input.baseUrl === "string" ? { baseUrl: input.baseUrl } : {}),
+  };
+}
+
 function normalizeMode(raw: string | null | undefined): RxResumeMode {
   const parsed = settingsRegistry.rxresumeMode.parse(raw ?? undefined);
   return parsed ?? "auto";
 }
 
 function normalizeError(error: unknown): Error {
-  if (error instanceof RxResumeAuthConfigError || error instanceof RxResumeRequestError) {
+  if (
+    error instanceof RxResumeAuthConfigError ||
+    error instanceof RxResumeRequestError
+  ) {
     return error;
   }
   if (error instanceof v4.RxResumeCredentialsError) {
@@ -70,7 +84,10 @@ function normalizeError(error: unknown): Error {
   }
   if (error instanceof Error) {
     const match = /Reactive Resume API error \((\d+)\)/i.exec(error.message);
-    return new RxResumeRequestError(error.message, match ? Number(match[1]) : null);
+    return new RxResumeRequestError(
+      error.message,
+      match ? Number(match[1]) : null,
+    );
   }
   return new RxResumeRequestError("Reactive Resume request failed.");
 }
@@ -96,7 +113,9 @@ async function readV4Credentials(overrides?: ResolveModeOptions["v4"]) {
     storedPassword?.trim() ||
     "";
   const baseUrl =
-    overrides?.baseUrl?.trim() || process.env.RXRESUME_URL?.trim() || "https://v4.rxresu.me";
+    overrides?.baseUrl?.trim() ||
+    process.env.RXRESUME_URL?.trim() ||
+    "https://v4.rxresu.me";
   return { email, password, baseUrl, available: Boolean(email && password) };
 }
 
@@ -108,7 +127,9 @@ async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
     storedApiKey?.trim() ||
     "";
   const baseUrl =
-    overrides?.baseUrl?.trim() || process.env.RXRESUME_URL?.trim() || "https://rxresu.me";
+    overrides?.baseUrl?.trim() ||
+    process.env.RXRESUME_URL?.trim() ||
+    "https://rxresu.me";
   return { apiKey, baseUrl, available: Boolean(apiKey) };
 }
 
@@ -161,7 +182,7 @@ export async function listResumes(
         await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl })
       ).map((resume) => ({ ...resume, title: resume.name }));
     }
-    return (await v4.listResumes(options.v4)) as RxResumeResume[];
+    return (await v4.listResumes(toV4Override(options.v4))) as RxResumeResume[];
   } catch (error) {
     throw normalizeError(error);
   }
@@ -191,7 +212,10 @@ export async function getResume(
             : undefined,
       };
     }
-    return (await v4.getResume(resumeId, options.v4)) as RxResumeResume;
+    return (await v4.getResume(
+      resumeId,
+      toV4Override(options.v4),
+    )) as RxResumeResume;
   } catch (error) {
     throw normalizeError(error);
   }
@@ -205,16 +229,19 @@ export async function importResume(
   try {
     if (mode === "v5") {
       const creds = await readV5Credentials(options.v5);
-      return await v5.importResume({
-        name: payload.name?.trim() || "JobOps Tailored Resume",
-        slug: payload.slug?.trim() || "",
-        data: payload.data,
-      }, {
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
-      });
+      return await v5.importResume(
+        {
+          name: payload.name?.trim() || "JobOps Tailored Resume",
+          slug: payload.slug?.trim() || "",
+          data: payload.data,
+        },
+        {
+          apiKey: creds.apiKey,
+          baseUrl: creds.baseUrl,
+        },
+      );
     }
-    return await v4.importResume(payload, options.v4);
+    return await v4.importResume(payload, toV4Override(options.v4));
   } catch (error) {
     throw normalizeError(error);
   }
@@ -234,7 +261,7 @@ export async function deleteResume(
       });
       return;
     }
-    await v4.deleteResume(resumeId, options.v4);
+    await v4.deleteResume(resumeId, toV4Override(options.v4));
   } catch (error) {
     throw normalizeError(error);
   }
@@ -253,7 +280,7 @@ export async function exportResumePdf(
         baseUrl: creds.baseUrl,
       });
     }
-    return await v4.exportResumePdf(resumeId, options.v4);
+    return await v4.exportResumePdf(resumeId, toV4Override(options.v4));
   } catch (error) {
     throw normalizeError(error);
   }

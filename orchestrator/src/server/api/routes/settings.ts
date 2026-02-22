@@ -1,5 +1,5 @@
-import { asyncRoute, fail, ok } from "@infra/http";
 import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
+import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { setBackupSettings } from "@server/services/backup/index";
@@ -102,18 +102,18 @@ function failRxResume(res: Response, error: unknown): void {
 settingsRouter.get(
   "/rx-resumes",
   asyncRoute(async (_req: Request, res: Response) => {
-  try {
-    const resumes = await listResumes();
+    try {
+      const resumes = await listResumes();
 
-    ok(res, {
-      resumes: resumes.map((resume) => ({
-        id: resume.id,
-        name: resume.name,
-      })),
-    });
-  } catch (error) {
-    failRxResume(res, error);
-  }
+      ok(res, {
+        resumes: resumes.map((resume) => ({
+          id: resume.id,
+          name: resume.name,
+        })),
+      });
+    } catch (error) {
+      failRxResume(res, error);
+    }
   }),
 );
 

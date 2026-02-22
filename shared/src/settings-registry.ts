@@ -153,8 +153,9 @@ export const settingsRegistry = {
       if (!raw) return null;
       return raw === "auto" || raw === "v4" || raw === "v5" ? raw : null;
     },
-    serialize: (value: "auto" | "v4" | "v5" | null | undefined): string | null =>
-      value ?? null,
+    serialize: (
+      value: "auto" | "v4" | "v5" | null | undefined,
+    ): string | null => value ?? null,
   },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,

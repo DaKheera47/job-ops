@@ -158,14 +158,12 @@ export const OnboardingGate: React.FC = () => {
 
     setIsValidatingRxresume(true);
     try {
-      const result = await api.validateRxresume(
-        {
-          mode: values.rxresumeMode,
-          email: values.rxresumeEmail.trim() || undefined,
-          password: values.rxresumePassword.trim() || undefined,
-          apiKey: values.rxresumeApiKey.trim() || undefined,
-        },
-      );
+      const result = await api.validateRxresume({
+        mode: values.rxresumeMode,
+        email: values.rxresumeEmail.trim() || undefined,
+        password: values.rxresumePassword.trim() || undefined,
+        apiKey: values.rxresumeApiKey.trim() || undefined,
+      });
       setRxresumeValidation({ ...result, checked: true });
       return result;
     } catch (error) {
@@ -417,12 +415,16 @@ export const OnboardingGate: React.FC = () => {
     const missing: string[] = [];
 
     if (modeValue === "v5") {
-      if (!hasRxresumeApiKey && !apiKeyValue) missing.push("RxResume v5 API key");
+      if (!hasRxresumeApiKey && !apiKeyValue)
+        missing.push("RxResume v5 API key");
     } else if (modeValue === "v4") {
       if (!hasRxresumeEmail && !emailValue) missing.push("RxResume email");
-      if (!hasRxresumePassword && !passwordValue) missing.push("RxResume password");
+      if (!hasRxresumePassword && !passwordValue)
+        missing.push("RxResume password");
     } else {
-      const hasAnyV4 = (hasRxresumeEmail && hasRxresumePassword) || (emailValue && passwordValue);
+      const hasAnyV4 =
+        (hasRxresumeEmail && hasRxresumePassword) ||
+        (emailValue && passwordValue);
       const hasAnyV5 = hasRxresumeApiKey || Boolean(apiKeyValue);
       if (!hasAnyV4 && !hasAnyV5) {
         missing.push("RxResume v5 API key or v4 email/password");
@@ -729,9 +731,13 @@ export const OnboardingGate: React.FC = () => {
                           <SelectValue placeholder="Select mode" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="auto">Auto (v5 then v4)</SelectItem>
+                          <SelectItem value="auto">
+                            Auto (v5 then v4)
+                          </SelectItem>
                           <SelectItem value="v5">v5 (API key)</SelectItem>
-                          <SelectItem value="v4">v4 (email/password)</SelectItem>
+                          <SelectItem value="v4">
+                            v4 (email/password)
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FieldDescription>

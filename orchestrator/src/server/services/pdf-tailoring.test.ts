@@ -28,7 +28,9 @@ const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
       lastCreateData = JSON.parse(JSON.stringify(data)); // Deep clone
       return Promise.resolve("mock-resume-id");
     }),
-    exportResumePdf: vi.fn().mockResolvedValue("https://example.com/pdf/mock.pdf"),
+    exportResumePdf: vi
+      .fn()
+      .mockResolvedValue("https://example.com/pdf/mock.pdf"),
     deleteResume: vi.fn().mockResolvedValue(undefined),
     getLastCreateData: () => lastCreateData,
     clearLastCreateData: () => {

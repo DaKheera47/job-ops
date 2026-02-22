@@ -112,15 +112,13 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
   }
 }
 
-async function validateRxresume(
-  options?: {
-    mode?: string | null;
-    email?: string | null;
-    password?: string | null;
-    apiKey?: string | null;
-    baseUrl?: string | null;
-  },
-): Promise<ValidationResponse> {
+async function validateRxresume(options?: {
+  mode?: string | null;
+  email?: string | null;
+  password?: string | null;
+  apiKey?: string | null;
+  baseUrl?: string | null;
+}): Promise<ValidationResponse> {
   const rawMode = options?.mode?.trim();
   const mode =
     rawMode === "auto" || rawMode === "v4" || rawMode === "v5"
@@ -143,7 +141,10 @@ async function validateRxresume(
   if (result.ok) return { valid: true, message: null };
 
   const normalizedMessage = result.message.toLowerCase();
-  if (result.status === 401 || normalizedMessage.includes("invalidcredentials")) {
+  if (
+    result.status === 401 ||
+    normalizedMessage.includes("invalidcredentials")
+  ) {
     return {
       valid: false,
       message:

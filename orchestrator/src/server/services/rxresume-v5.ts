@@ -85,7 +85,9 @@ async function executeWithKeyRetries(
         continue;
       }
 
-      throw new Error(`Reactive Resume API error (${response.status}): ${errorMsg}`);
+      throw new Error(
+        `Reactive Resume API error (${response.status}): ${errorMsg}`,
+      );
     }
 
     const contentType = response.headers.get("content-type");
@@ -144,17 +146,24 @@ export async function verifyApiKey(
 /**
  * Import a resume.
  */
-export async function importResume(payload: {
-  name: string;
-  slug: string;
-  data: unknown;
-}, config?: { baseUrl?: string; apiKey?: string }): Promise<string> {
+export async function importResume(
+  payload: {
+    name: string;
+    slug: string;
+    data: unknown;
+  },
+  config?: { baseUrl?: string; apiKey?: string },
+): Promise<string> {
   payload.data = resumeDataSchema.parse(payload.data);
 
-  const result = (await fetchRxResume("/resume/import", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }, config)) as { id: string } | string;
+  const result = (await fetchRxResume(
+    "/resume/import",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+    config,
+  )) as { id: string } | string;
 
   // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
   return typeof result === "string" ? result : result.id;
@@ -191,9 +200,10 @@ export async function exportResumePdf(
  * List all resumes.
  * According to official OpenAPI spec, the endpoint is /resume/list
  */
-export async function listResumes(
-  config?: { baseUrl?: string; apiKey?: string },
-): Promise<{ id: string; name: string }[]> {
+export async function listResumes(config?: {
+  baseUrl?: string;
+  apiKey?: string;
+}): Promise<{ id: string; name: string }[]> {
   return (await fetchRxResume("/resume/list", {}, config)) as {
     id: string;
     name: string;

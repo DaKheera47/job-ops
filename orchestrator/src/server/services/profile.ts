@@ -1,5 +1,5 @@
-import type { ResumeProfile } from "@shared/types";
 import { logger } from "@infra/logger";
+import type { ResumeProfile } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
 
@@ -51,9 +51,7 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
     return cachedProfile;
   } catch (error) {
     if (error instanceof RxResumeAuthConfigError) {
-      throw new Error(
-        error.message,
-      );
+      throw new Error(error.message);
     }
     logger.error("Failed to load profile from Reactive Resume", {
       resumeId: rxresumeBaseResumeId,

@@ -40,10 +40,13 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       }
     } catch (error) {
       if (error instanceof RxResumeAuthConfigError) {
-        logger.warn("Reactive Resume credentials missing during settings load", {
-          resumeId: rxresumeBaseResumeId,
-          error,
-        });
+        logger.warn(
+          "Reactive Resume credentials missing during settings load",
+          {
+            resumeId: rxresumeBaseResumeId,
+            error,
+          },
+        );
       } else {
         logger.warn("Failed to load Reactive Resume base resume for settings", {
           resumeId: rxresumeBaseResumeId,
