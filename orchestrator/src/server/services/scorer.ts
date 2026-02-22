@@ -7,6 +7,7 @@ import type { Job } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import { stripMarkdownCodeFences } from "./llm/utils/json";
 import { getEffectiveSettings } from "./settings";
 
 interface SuitabilityResult {
@@ -162,10 +163,7 @@ export function parseJsonFromContent(
   let candidate = content.trim();
 
   // Step 1: Remove markdown code fences (with or without language specifier)
-  candidate = candidate
-    .replace(/```(?:json|JSON)?\s*/g, "")
-    .replace(/```/g, "")
-    .trim();
+  candidate = stripMarkdownCodeFences(candidate);
 
   // Step 2: Try to extract JSON object if there's surrounding text
   const jsonMatch = candidate.match(/\{[\s\S]*\}/);

@@ -1,12 +1,14 @@
 import { logger } from "@infra/logger";
 
-export function parseJsonContent<T>(content: string, jobId?: string): T {
-  let candidate = content.trim();
-
-  candidate = candidate
+export function stripMarkdownCodeFences(content: string): string {
+  return content
     .replace(/```(?:json|JSON)?\s*/g, "")
     .replace(/```/g, "")
     .trim();
+}
+
+export function parseJsonContent<T>(content: string, jobId?: string): T {
+  let candidate = stripMarkdownCodeFences(content);
 
   const firstBrace = candidate.indexOf("{");
   const lastBrace = candidate.lastIndexOf("}");

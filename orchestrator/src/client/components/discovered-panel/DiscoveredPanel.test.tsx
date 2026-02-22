@@ -1,3 +1,5 @@
+import * as api from "@client/api";
+import { renderWithQueryClient } from "@client/test/renderWithQueryClient";
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
@@ -5,8 +7,6 @@ import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as api from "../../api";
-import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 import { DiscoveredPanel } from "./DiscoveredPanel";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
@@ -44,11 +44,11 @@ vi.mock("@/components/ui/dropdown-menu", () => {
   };
 });
 
-vi.mock("../../hooks/useSettings", () => ({
+vi.mock("@client/hooks/useSettings", () => ({
   useSettings: () => ({ showSponsorInfo: false }),
 }));
 
-vi.mock("../../api", () => ({
+vi.mock("@client/api", () => ({
   rescoreJob: vi.fn(),
   skipJob: vi.fn(),
   processJob: vi.fn(),

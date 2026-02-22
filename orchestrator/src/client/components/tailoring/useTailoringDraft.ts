@@ -1,6 +1,6 @@
+import * as api from "@client/api";
 import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import * as api from "../../api";
 import {
   createTailoredSkillDraftId,
   type EditableSkillGroup,

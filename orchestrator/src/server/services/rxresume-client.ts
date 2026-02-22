@@ -5,6 +5,7 @@
 // - The v5 client should be a drop-in replacement in the future.
 
 import type { ResumeData } from "@shared/rxresume-schema";
+import { normalizeWhitespace } from "@shared/utils/string";
 
 type AnyObj = Record<string, unknown>;
 const MAX_ERROR_SNIPPET = 300;
@@ -457,6 +458,6 @@ export class RxResumeClient {
 
 function sanitizeResponseSnippet(text: string): string {
   if (!text) return "";
-  const compact = text.replace(/\s+/g, " ").trim();
+  const compact = normalizeWhitespace(text);
   return compact.slice(0, MAX_ERROR_SNIPPET);
 }

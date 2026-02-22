@@ -3,6 +3,7 @@ import {
   sourceLabel as getExtractorSourceLabel,
 } from "@shared/extractors";
 import type { Job } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -101,11 +102,7 @@ export async function copyTextToClipboard(text: string) {
 }
 
 // --- Text Processing ---
-export const stripHtml = (value: string) =>
-  value
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+export const stripHtml = (value: string) => stripHtmlTags(value);
 
 export const safeFilenamePart = (value: string) => {
   const cleaned = value.replace(/[^a-z0-9]/gi, "_");

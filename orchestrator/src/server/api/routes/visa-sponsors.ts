@@ -1,3 +1,6 @@
+import { notFound } from "@infra/errors";
+import { fail } from "@infra/http";
+import * as visaSponsors from "@server/services/visa-sponsors/index";
 import type {
   ApiResponse,
   VisaSponsorSearchResponse,
@@ -5,8 +8,6 @@ import type {
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-
-import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const visaSponsorsRouter = Router();
 
@@ -74,9 +75,7 @@ visaSponsorsRouter.get(
       const entries = visaSponsors.getOrganizationDetails(name);
 
       if (entries.length === 0) {
-        return res
-          .status(404)
-          .json({ success: false, error: "Organization not found" });
+        return fail(res, notFound("Organization not found"));
       }
 
       res.json({

@@ -1,3 +1,4 @@
+import * as api from "@client/api";
 import type {
   JobAction,
   JobActionResponse,
@@ -5,7 +6,6 @@ import type {
 } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import * as api from "../../api";
 import type { FilterTab } from "./constants";
 import { JobActionProgressToast } from "./JobActionProgressToast";
 import {

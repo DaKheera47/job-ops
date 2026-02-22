@@ -10,20 +10,20 @@ vi.mock("@infra/logger", () => ({
   },
 }));
 
-vi.mock("../../repositories/jobs", () => ({
+vi.mock("@server/repositories/jobs", () => ({
   getUnscoredDiscoveredJobs: vi.fn(),
   updateJob: vi.fn(),
 }));
 
-vi.mock("../../repositories/settings", () => ({
+vi.mock("@server/repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 
-vi.mock("../../services/scorer", () => ({
+vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("../../services/visa-sponsors/index", () => ({
+vi.mock("@server/services/visa-sponsors/index", () => ({
   searchSponsors: vi.fn(),
   calculateSponsorMatchSummary: vi.fn(),
 }));
@@ -40,10 +40,10 @@ describe("scoreJobsStep auto-skip behavior", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const jobsRepo = await import("../../repositories/jobs");
-    const settingsRepo = await import("../../repositories/settings");
-    const scorer = await import("../../services/scorer");
-    const visaSponsors = await import("../../services/visa-sponsors/index");
+    const jobsRepo = await import("@server/repositories/jobs");
+    const settingsRepo = await import("@server/repositories/settings");
+    const scorer = await import("@server/services/scorer");
+    const visaSponsors = await import("@server/services/visa-sponsors/index");
 
     vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
       createJob({
@@ -68,8 +68,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("auto-skips jobs when score is below threshold", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
     const { logger } = await import("@infra/logger");
 
     vi.mocked(settingsRepo.getSetting).mockResolvedValue("50");
@@ -94,9 +94,9 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("does not auto-skip jobs when score equals threshold", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
-    const scorer = await import("../../services/scorer");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
     const { logger } = await import("@infra/logger");
 
     vi.mocked(settingsRepo.getSetting).mockResolvedValue("50");
@@ -124,8 +124,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("does not auto-skip when threshold setting is null", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
 
     vi.mocked(settingsRepo.getSetting).mockResolvedValue(null);
 
@@ -138,8 +138,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("does not auto-skip when threshold setting is NaN", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
 
     vi.mocked(settingsRepo.getSetting).mockResolvedValue("not-a-number");
 
@@ -152,8 +152,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("never auto-skips applied jobs even when score is below threshold", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
     const { logger } = await import("@infra/logger");
 
     vi.mocked(settingsRepo.getSetting).mockResolvedValue("50");
@@ -185,8 +185,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("scores multiple jobs and reports completion progress", async () => {
-    const jobsRepo = await import("../../repositories/jobs");
-    const scorer = await import("../../services/scorer");
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
     const { progressHelpers } = await import("../progress");
 
     vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
@@ -217,8 +217,8 @@ describe("scoreJobsStep auto-skip behavior", () => {
   });
 
   it("stops before processing when cancellation is requested", async () => {
-    const jobsRepo = await import("../../repositories/jobs");
-    const scorer = await import("../../services/scorer");
+    const jobsRepo = await import("@server/repositories/jobs");
+    const scorer = await import("@server/services/scorer");
 
     vi.mocked(jobsRepo.getUnscoredDiscoveredJobs).mockResolvedValue([
       createJob({

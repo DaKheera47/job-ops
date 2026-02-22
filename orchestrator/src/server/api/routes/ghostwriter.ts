@@ -2,9 +2,9 @@ import { asyncRoute, fail, ok } from "@infra/http";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, writeSseData } from "@infra/sse";
 import { badRequest, toAppError } from "@server/infra/errors";
+import * as ghostwriterService from "@server/services/ghostwriter";
 import { type Request, Router } from "express";
 import { z } from "zod";
-import * as ghostwriterService from "../../services/ghostwriter";
 
 export const ghostwriterRouter = Router({ mergeParams: true });
 

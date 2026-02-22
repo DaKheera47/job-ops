@@ -32,7 +32,7 @@ describe.sequential("Pipeline API routes", () => {
     });
     expect(badRun.status).toBe(400);
 
-    const { runPipeline } = await import("../../pipeline/index");
+    const { runPipeline } = await import("@server/pipeline/index");
     const runRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -81,7 +81,7 @@ describe.sequential("Pipeline API routes", () => {
   });
 
   it("accepts cancellation when pipeline is running", async () => {
-    const { requestPipelineCancel } = await import("../../pipeline/index");
+    const { requestPipelineCancel } = await import("@server/pipeline/index");
     vi.mocked(requestPipelineCancel).mockReturnValue({
       accepted: true,
       pipelineRunId: "run-1",

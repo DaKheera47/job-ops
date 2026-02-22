@@ -1,3 +1,6 @@
+import * as api from "@client/api";
+import { useProfile } from "@client/hooks/useProfile";
+import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import type { Job } from "@shared/types.js";
 import { ArrowLeft, Check, FileText, Loader2, Sparkles } from "lucide-react";
 import type React from "react";
@@ -6,9 +9,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import * as api from "../../api";
-import { useProfile } from "../../hooks/useProfile";
-import { useTracerReadiness } from "../../hooks/useTracerReadiness";
 import {
   fromEditableSkillGroups,
   getOriginalHeadline,

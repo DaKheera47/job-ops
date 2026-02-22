@@ -1,4 +1,5 @@
 import { requestTimeout } from "@infra/errors";
+import { normalizeWhitespace } from "@shared/utils/string";
 import { convert } from "html-to-text";
 
 export const GMAIL_HTTP_TIMEOUT_MS = 15_000;
@@ -313,7 +314,7 @@ function cleanEmailHtmlForLlm(htmlContent: string): string {
 }
 
 function normalizeChunkForDedup(value: string): string {
-  return value.replace(/\s+/g, " ").trim().toLowerCase();
+  return normalizeWhitespace(value).toLowerCase();
 }
 
 function decodeBase64Url(value: string): string {

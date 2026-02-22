@@ -6,8 +6,14 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { getDataDir } from "../../config/dataDir";
-import { createScheduler } from "../../utils/scheduler";
+import { getDataDir } from "@server/config/dataDir";
+import { createScheduler } from "@server/utils/scheduler";
+import type {
+  VisaSponsor,
+  VisaSponsorSearchResult,
+  VisaSponsorStatusResponse,
+} from "@shared/types";
+import { normalizeWhitespace } from "@shared/utils/string";
 
 const DATA_DIR = path.join(getDataDir(), "visa-sponsors");
 
@@ -16,28 +22,8 @@ if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
-export interface VisaSponsor {
-  organisationName: string;
-  townCity: string;
-  county: string;
-  typeRating: string;
-  route: string;
-}
-
-export interface VisaSponsorSearchResult {
-  sponsor: VisaSponsor;
-  score: number;
-  matchedName: string;
-}
-
-export interface VisaSponsorStatus {
-  lastUpdated: string | null;
-  csvPath: string | null;
-  totalSponsors: number;
-  isUpdating: boolean;
-  nextScheduledUpdate: string | null;
-  error: string | null;
-}
+export type { VisaSponsor, VisaSponsorSearchResult };
+export type VisaSponsorStatus = VisaSponsorStatusResponse;
 
 // Common company suffixes to strip during comparison
 const COMPANY_SUFFIXES = [
@@ -86,7 +72,7 @@ export function normalizeCompanyName(name: string): string {
   }
 
   // Collapse whitespace
-  normalized = normalized.replace(/\s+/g, " ").trim();
+  normalized = normalizeWhitespace(normalized);
 
   return normalized;
 }

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { vi } from "vitest";
 
-vi.mock("../../pipeline/index", () => {
+vi.mock("@server/pipeline/index", () => {
   const progress = {
     step: "idle",
     message: "Ready",
@@ -51,19 +51,19 @@ vi.mock("../../pipeline/index", () => {
   };
 });
 
-vi.mock("../../services/manualJob", () => ({
+vi.mock("@server/services/manualJob", () => ({
   inferManualJobDetails: vi.fn(),
 }));
 
-vi.mock("../../services/scorer", () => ({
+vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
-vi.mock("../../services/profile", () => ({
+vi.mock("@server/services/profile", () => ({
   getProfile: vi.fn().mockResolvedValue({}),
 }));
 
-vi.mock("../../services/visa-sponsors/index", () => ({
+vi.mock("@server/services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),
   getOrganizationDetails: vi.fn(),
@@ -102,13 +102,13 @@ export async function startServer(options?: {
     ...envOverrides,
   };
 
-  await import("../../db/migrate");
+  await import("@server/db/migrate");
   const { applyStoredEnvOverrides } = await import(
-    "../../services/envSettings"
+    "@server/services/envSettings"
   );
   const { createApp } = await import("../../app");
-  const { closeDb } = await import("../../db/index");
-  const { getPipelineStatus } = await import("../../pipeline/index");
+  const { closeDb } = await import("@server/db/index");
+  const { getPipelineStatus } = await import("@server/pipeline/index");
   vi.mocked(getPipelineStatus).mockReturnValue({ isRunning: false });
 
   await applyStoredEnvOverrides();

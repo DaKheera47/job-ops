@@ -1,6 +1,6 @@
+import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
+import { clearDatabase } from "@server/db/clear";
 import { type Request, type Response, Router } from "express";
-import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import { clearDatabase } from "../../db/clear";
 
 export const databaseRouter = Router();
 

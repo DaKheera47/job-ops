@@ -17,6 +17,66 @@
       "tailwindDirectives": true
     }
   },
+  "linter": {
+    "rules": {
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": [
+                  "../infra/**",
+                  "../../infra/**",
+                  "../../../infra/**",
+                  "../../../../infra/**",
+                  "../shared/**",
+                  "../../shared/**",
+                  "../../../shared/**",
+                  "../../../../shared/**"
+                ],
+                "message": "Use path aliases (for example @infra/* or @shared/*) instead of parent-relative imports for shared modules."
+              },
+              {
+                "group": [
+                  "../../api",
+                  "../../api/**",
+                  "../../hooks",
+                  "../../hooks/**",
+                  "../../components",
+                  "../../components/**",
+                  "../../lib",
+                  "../../lib/**",
+                  "../../test",
+                  "../../test/**"
+                ],
+                "message": "Use @client/* aliases instead of ../../ imports for client modules."
+              },
+              {
+                "group": [
+                  "../../services",
+                  "../../services/**",
+                  "../../repositories",
+                  "../../repositories/**",
+                  "../../config",
+                  "../../config/**",
+                  "../../utils",
+                  "../../utils/**",
+                  "../../pipeline",
+                  "../../pipeline/**",
+                  "../../db",
+                  "../../db/**",
+                  "../../extractors",
+                  "../../extractors/**"
+                ],
+                "message": "Use @server/* aliases instead of ../../ imports for server modules."
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
   "overrides": [
     {
       "includes": ["**/*.test.ts", "**/*.test.tsx", "**/test-utils.ts"],

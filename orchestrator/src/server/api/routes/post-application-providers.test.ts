@@ -2,7 +2,7 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-vi.mock("../../services/post-application/providers", () => ({
+vi.mock("@server/services/post-application/providers", () => ({
   executePostApplicationProviderAction: vi.fn(),
 }));
 
@@ -36,7 +36,7 @@ describe.sequential("Post-Application Provider actions API", () => {
 
   it("dispatches provider status action and returns unified success contract", async () => {
     const { executePostApplicationProviderAction } = await import(
-      "../../services/post-application/providers"
+      "@server/services/post-application/providers"
     );
     vi.mocked(executePostApplicationProviderAction).mockResolvedValueOnce({
       provider: "gmail",
@@ -92,7 +92,7 @@ describe.sequential("Post-Application Provider actions API", () => {
 
   it("defaults to account key 'default' when omitted", async () => {
     const { executePostApplicationProviderAction } = await import(
-      "../../services/post-application/providers"
+      "@server/services/post-application/providers"
     );
     vi.mocked(executePostApplicationProviderAction).mockResolvedValueOnce({
       provider: "gmail",
@@ -155,7 +155,7 @@ describe.sequential("Post-Application Provider actions API", () => {
 
   it("maps provider service errors to standardized error responses", async () => {
     const { executePostApplicationProviderAction } = await import(
-      "../../services/post-application/providers"
+      "@server/services/post-application/providers"
     );
     const { AppError } = await import("@infra/errors");
     vi.mocked(executePostApplicationProviderAction).mockRejectedValueOnce(

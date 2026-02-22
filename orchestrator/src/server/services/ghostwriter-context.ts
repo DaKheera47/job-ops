@@ -1,7 +1,7 @@
+import { badRequest, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import type { Job, ResumeProfile } from "@shared/types";
-import { badRequest, notFound } from "../infra/errors";
 import * as jobsRepo from "../repositories/jobs";
 import { getProfile } from "./profile";
 import { getEffectiveSettings } from "./settings";

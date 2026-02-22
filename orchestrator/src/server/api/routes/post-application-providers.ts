@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { executePostApplicationProviderAction } from "@server/services/post-application/providers";
 import {
   POST_APPLICATION_PROVIDER_ACTIONS,
   POST_APPLICATION_PROVIDERS,
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import { executePostApplicationProviderAction } from "../../services/post-application/providers";
 
 const providerActionParamsSchema = z.object({
   provider: z.enum(POST_APPLICATION_PROVIDERS),

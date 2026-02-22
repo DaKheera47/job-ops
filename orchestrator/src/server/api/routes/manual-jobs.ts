@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
+import { notFound } from "@infra/errors";
+import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
+import { processJob } from "@server/pipeline/index";
+import * as jobsRepo from "@server/repositories/jobs";
+import { inferManualJobDetails } from "@server/services/manualJob";
+import { getProfile } from "@server/services/profile";
+import { scoreJobSuitability } from "@server/services/scorer";
 import type {
   ApiResponse,
   ManualJobFetchResponse,
@@ -8,11 +15,6 @@ import type {
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
-import { processJob } from "../../pipeline/index";
-import * as jobsRepo from "../../repositories/jobs";
-import { inferManualJobDetails } from "../../services/manualJob";
-import { getProfile } from "../../services/profile";
-import { scoreJobSuitability } from "../../services/scorer";
 
 export const manualJobsRouter = Router();
 
@@ -252,7 +254,7 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
 
     const processedJob = await jobsRepo.getJobById(createdJob.id);
     if (!processedJob) {
-      return res.status(404).json({ success: false, error: "Job not found" });
+      return fail(res, notFound("Job not found"));
     }
 
     // Score asynchronously so the import returns immediately.

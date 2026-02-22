@@ -1,5 +1,9 @@
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { getExtractorRegistry } from "@server/extractors/registry";
+import { getAllJobUrls } from "@server/repositories/jobs";
+import * as settingsRepo from "@server/repositories/settings";
+import { asyncPool } from "@server/utils/async-pool";
 import {
   formatCountryLabel,
   isSourceAllowedForCountry,
@@ -12,10 +16,6 @@ import {
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
-import { getExtractorRegistry } from "../../extractors/registry";
-import { getAllJobUrls } from "../../repositories/jobs";
-import * as settingsRepo from "../../repositories/settings";
-import { asyncPool } from "../../utils/async-pool";
 import { type CrawlSource, progressHelpers, updateProgress } from "../progress";
 
 const DISCOVERY_CONCURRENCY = 3;

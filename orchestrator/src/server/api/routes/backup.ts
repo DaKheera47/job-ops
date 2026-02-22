@@ -1,4 +1,7 @@
+import { notFound } from "@infra/errors";
+import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
+import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import {
   createBackup,
   deleteBackup,
@@ -6,7 +9,6 @@ import {
   listBackups,
 } from "@server/services/backup/index";
 import { type Request, type Response, Router } from "express";
-import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 
 export const backupRouter = Router();
 
@@ -104,7 +106,7 @@ backupRouter.delete("/:filename", async (req: Request, res: Response) => {
     });
 
     if (message.includes("not found")) {
-      res.status(404).json({ success: false, error: message });
+      return fail(res, notFound(message));
     } else if (message.includes("Invalid")) {
       res.status(400).json({ success: false, error: message });
     } else {

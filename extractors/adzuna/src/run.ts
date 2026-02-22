@@ -63,13 +63,6 @@ export interface AdzunaResult {
   error?: string;
 }
 
-export function shouldApplyStrictLocationFilter(
-  location: string,
-  countryKey: string,
-): boolean {
-  return shouldApplyStrictCityFilter(location, countryKey);
-}
-
 function resolveTsxCliPath(): string | null {
   try {
     return require.resolve("tsx/dist/cli.mjs");
@@ -214,8 +207,7 @@ export async function runAdzuna(
     for (let runIndex = 0; runIndex < runLocations.length; runIndex += 1) {
       const location = runLocations[runIndex];
       const strictLocationFilter =
-        location !== null &&
-        shouldApplyStrictLocationFilter(location, countryKey);
+        location !== null && shouldApplyStrictCityFilter(location, countryKey);
 
       await new Promise<void>((resolve, reject) => {
         const extractorEnv = {

@@ -1,4 +1,5 @@
 import { logger } from "@infra/logger";
+import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { setBackupSettings } from "@server/services/backup/index";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
@@ -10,7 +11,6 @@ import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
 import { updateSettingsSchema } from "@shared/settings-schema";
 import { type Request, type Response, Router } from "express";
-import { isDemoMode, sendDemoBlocked } from "../../config/demo";
 
 export const settingsRouter = Router();
 

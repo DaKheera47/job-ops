@@ -1,6 +1,6 @@
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
-import * as settingsRepo from "../../repositories/settings";
+import * as settingsRepo from "@server/repositories/settings";
 
 export async function notifyPipelineWebhookStep(
   event: "pipeline.completed" | "pipeline.failed",

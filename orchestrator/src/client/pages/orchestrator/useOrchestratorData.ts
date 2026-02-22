@@ -1,10 +1,10 @@
+import * as api from "@client/api";
+import { subscribeToEventSource } from "@client/lib/sse";
 import type { Job, JobListItem, JobStatus } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { queryKeys } from "@/client/lib/queryKeys";
-import * as api from "../../api";
-import { subscribeToEventSource } from "../../lib/sse";
 
 const initialStats: Record<JobStatus, number> = {
   discovered: 0,

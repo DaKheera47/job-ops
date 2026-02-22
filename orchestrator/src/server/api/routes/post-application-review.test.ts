@@ -29,9 +29,9 @@ describe.sequential("Post-Application Review Workflow API", () => {
     message: PostApplicationMessage;
     jobId: string;
   }> {
-    const { createJob } = await import("../../repositories/jobs");
+    const { createJob } = await import("@server/repositories/jobs");
     const { upsertPostApplicationMessage } = await import(
-      "../../repositories/post-application-messages"
+      "@server/repositories/post-application-messages"
     );
 
     const job = await createJob({
@@ -93,7 +93,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
   it("approves an inbox item and writes stage event", async () => {
     const { message, jobId } = await seedPendingMessage();
-    const { db, schema } = await import("../../db");
+    const { db, schema } = await import("@server/db");
 
     const res = await fetch(
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
@@ -121,7 +121,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
   it("returns conflict on second approve and increments sync-run approval once", async () => {
     const { startPostApplicationSyncRun, getPostApplicationSyncRunById } =
-      await import("../../repositories/post-application-sync-runs");
+      await import("@server/repositories/post-application-sync-runs");
     const run = await startPostApplicationSyncRun({
       provider: "gmail",
       accountKey: "default",
@@ -218,7 +218,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
   it("lists messages for a sync run", async () => {
     const { startPostApplicationSyncRun } = await import(
-      "../../repositories/post-application-sync-runs"
+      "@server/repositories/post-application-sync-runs"
     );
     const run = await startPostApplicationSyncRun({
       provider: "gmail",
@@ -243,7 +243,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
     const { message, jobId } = await seedPendingMessage({
       stageTarget: "rejected",
     });
-    const { db, schema } = await import("../../db");
+    const { db, schema } = await import("@server/db");
 
     const res = await fetch(
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
@@ -274,7 +274,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
     const { message, jobId } = await seedPendingMessage({
       stageTarget: "withdrawn",
     });
-    const { db, schema } = await import("../../db");
+    const { db, schema } = await import("@server/db");
 
     const res = await fetch(
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,

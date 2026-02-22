@@ -1,8 +1,8 @@
+import * as api from "@client/api";
 import type { Job, JobChatMessage, JobChatStreamEvent } from "@shared/types";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import * as api from "../../api";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 

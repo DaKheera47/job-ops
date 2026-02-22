@@ -1,13 +1,13 @@
-import { type Request, type Response, Router } from "express";
-import { isDemoMode } from "../../config/demo";
-import { DEMO_PROJECT_CATALOG } from "../../config/demo-defaults";
-import { getSetting } from "../../repositories/settings";
-import { clearProfileCache, getProfile } from "../../services/profile";
-import { extractProjectsFromProfile } from "../../services/resumeProjects";
+import { isDemoMode } from "@server/config/demo";
+import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
+import { getSetting } from "@server/repositories/settings";
+import { clearProfileCache, getProfile } from "@server/services/profile";
+import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
   getResume,
   RxResumeCredentialsError,
-} from "../../services/rxresume-v4";
+} from "@server/services/rxresume-v4";
+import { type Request, type Response, Router } from "express";
 
 export const profileRouter = Router();
 

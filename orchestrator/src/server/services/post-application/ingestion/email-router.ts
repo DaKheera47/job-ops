@@ -11,6 +11,7 @@ import type {
   PostApplicationRouterStageTarget,
 } from "@shared/types";
 import { POST_APPLICATION_ROUTER_STAGE_TARGETS } from "@shared/types";
+import { normalizeWhitespace } from "@shared/utils/string";
 
 export const ROUTER_EMAIL_CHAR_LIMIT = 12_000;
 
@@ -91,7 +92,7 @@ export function minifyActiveJobs(jobs: Job[]): Array<{
 }
 
 function sanitizeJobPromptValue(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
+  return normalizeWhitespace(value);
 }
 
 export function buildIndexedActiveJobs(

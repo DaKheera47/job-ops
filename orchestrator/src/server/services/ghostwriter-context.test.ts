@@ -1,6 +1,6 @@
+import type { AppError } from "@infra/errors";
 import { createJob } from "@shared/testing/factories";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppError } from "../infra/errors";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
 
 vi.mock("../repositories/jobs", () => ({
