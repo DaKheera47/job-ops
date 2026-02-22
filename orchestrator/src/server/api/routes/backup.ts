@@ -1,3 +1,4 @@
+import { notFound } from "@infra/errors";
 import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
 import {
@@ -8,7 +9,6 @@ import {
 } from "@server/services/backup/index";
 import { type Request, type Response, Router } from "express";
 import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import { notFound } from "../../infra/errors";
 
 export const backupRouter = Router();
 

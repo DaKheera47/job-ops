@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { notFound } from "@infra/errors";
 import { fail } from "@infra/http";
 import { logger } from "@infra/logger";
 import type {
@@ -9,7 +10,6 @@ import type {
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
-import { notFound } from "../../infra/errors";
 import { processJob } from "../../pipeline/index";
 import * as jobsRepo from "../../repositories/jobs";
 import { inferManualJobDetails } from "../../services/manualJob";
