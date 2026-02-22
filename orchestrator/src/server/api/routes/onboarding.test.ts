@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import { RxResumeClient } from "@server/services/rxresume-client";
+import { RxResumeClient } from "@server/services/rxresume/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 

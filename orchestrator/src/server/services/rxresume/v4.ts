@@ -1,4 +1,4 @@
-// rxresume-v4.ts
+// rxresume/v4.ts
 // Service wrapper around the v4 client that mirrors the v5 helper API.
 // - Pulls credentials from env/settings.
 // - Validates resume payloads.
@@ -6,8 +6,8 @@
 
 import type { ResumeData } from "@shared/rxresume-schema";
 import { resumeDataSchema } from "@shared/rxresume-schema";
-import { getSetting } from "../repositories/settings";
-import { RxResumeClient, type RxResumeResume } from "./rxresume-client";
+import { getSetting } from "../../repositories/settings";
+import { RxResumeClient, type RxResumeResume } from "./client";
 
 export type RxResumeCredentials = {
   email: string;

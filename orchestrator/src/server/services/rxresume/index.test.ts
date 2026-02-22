@@ -4,7 +4,7 @@ vi.mock("@server/repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 
-vi.mock("../rxresume-v4", () => ({
+vi.mock("./v4", () => ({
   listResumes: vi.fn(),
   getResume: vi.fn(),
   importResume: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock("../rxresume-v4", () => ({
   RxResumeCredentialsError: class RxResumeCredentialsError extends Error {},
 }));
 
-vi.mock("../rxresume-v5", () => ({
+vi.mock("./v5", () => ({
   listResumes: vi.fn(),
   getResume: vi.fn(),
   importResume: vi.fn(),
@@ -22,16 +22,16 @@ vi.mock("../rxresume-v5", () => ({
   verifyApiKey: vi.fn(),
 }));
 
-vi.mock("../rxresume-client", () => ({
+vi.mock("./client", () => ({
   RxResumeClient: {
     verifyCredentials: vi.fn(),
   },
 }));
 
 import { getSetting } from "@server/repositories/settings";
-import { RxResumeClient } from "../rxresume-client";
-import * as v4 from "../rxresume-v4";
-import * as v5 from "../rxresume-v5";
+import { RxResumeClient } from "./client";
+import * as v4 from "./v4";
+import * as v5 from "./v5";
 import {
   listResumes,
   RxResumeAuthConfigError,
@@ -105,6 +105,17 @@ describe("rxresume adapter", () => {
       { id: "r1", name: "Resume One", title: "Resume One" },
       { id: "r2", name: "Resume Two", title: "Resume Two" },
     ]);
+  });
+
+  it("accepts wrapped v5 list response payloads", async () => {
+    mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
+    vi.mocked(v5.listResumes).mockResolvedValue({
+      items: [{ id: "r1", name: "Resume One" }],
+    } as unknown as Awaited<ReturnType<typeof v5.listResumes>>);
+
+    const result = await listResumes();
+
+    expect(result).toEqual([{ id: "r1", name: "Resume One", title: "Resume One" }]);
   });
 
   it("falls back to v4 at runtime in auto mode when v5 returns unauthorized", async () => {

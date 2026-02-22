@@ -1,4 +1,4 @@
-// rxresume-v5.ts
+// rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
 import { resumeDataSchema } from "@shared/rxresume-schema";
 

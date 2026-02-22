@@ -2,9 +2,9 @@ import { getSetting } from "@server/repositories/settings";
 import type { ResumeData } from "@shared/rxresume-schema";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { RxResumeMode } from "@shared/types";
-import { RxResumeClient } from "../rxresume-client";
-import * as v4 from "../rxresume-v4";
-import * as v5 from "../rxresume-v5";
+import { RxResumeClient } from "./client";
+import * as v4 from "./v4";
+import * as v5 from "./v5";
 
 export type RxResumeResolvedMode = "v4" | "v5";
 
@@ -106,6 +106,49 @@ function isRetryableV5AutoFallbackError(error: Error): boolean {
     );
   }
   return false;
+}
+
+function normalizeV5ResumeListResponse(payload: unknown): RxResumeResume[] {
+  let candidates: unknown[] | null = null;
+  if (Array.isArray(payload)) {
+    candidates = payload;
+  } else if (payload && typeof payload === "object") {
+    const record = payload as { items?: unknown; data?: unknown };
+    if (Array.isArray(record.items)) {
+      candidates = record.items;
+    } else if (Array.isArray(record.data)) {
+      candidates = record.data;
+    }
+  }
+
+  if (!candidates) {
+    throw new RxResumeRequestError(
+      "Reactive Resume v5 returned an unexpected resume list response shape.",
+    );
+  }
+
+  return candidates.map((resume) => {
+    if (!resume || typeof resume !== "object") {
+      throw new RxResumeRequestError(
+        "Reactive Resume v5 returned an invalid resume list item.",
+      );
+    }
+    const item = resume as Record<string, unknown>;
+    const id = typeof item.id === "string" ? item.id : String(item.id ?? "");
+    const name =
+      typeof item.name === "string" && item.name.trim()
+        ? item.name
+        : typeof item.title === "string" && item.title.trim()
+          ? item.title
+          : id;
+
+    return {
+      ...item,
+      id,
+      name,
+      title: name,
+    } as RxResumeResume;
+  });
 }
 
 async function readConfiguredMode(): Promise<RxResumeMode> {
@@ -263,9 +306,9 @@ export async function listResumes(
 ): Promise<RxResumeResume[]> {
   return runRxResumeOperationWithAutoFallback(options, {
     v5: async (creds) =>
-      (
-        await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl })
-      ).map((resume) => ({ ...resume, title: resume.name })),
+      normalizeV5ResumeListResponse(
+        await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl }),
+      ),
     v4: async (creds) =>
       (await v4.listResumes(toV4Override(creds))) as RxResumeResume[],
   });

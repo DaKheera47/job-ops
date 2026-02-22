@@ -1,7 +1,7 @@
-// rxresume-client.ts
+// rxresume/client.ts
 // Low-level HTTP client for the RxResume v4 API.
 // - Handles login, token caching, and cookie-based auth.
-// - Used by rxresume-v4.ts to provide a higher-level service surface.
+// - Used by rxresume/v4.ts to provide a higher-level service surface.
 // - The v5 client should be a drop-in replacement in the future.
 
 import type { ResumeData } from "@shared/rxresume-schema";
