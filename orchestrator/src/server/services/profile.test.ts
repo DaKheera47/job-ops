@@ -6,18 +6,18 @@ vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn(),
 }));
 
-vi.mock("./rxresume-v4", () => ({
+vi.mock("./rxresume", () => ({
   getResume: vi.fn(),
-  RxResumeCredentialsError: class RxResumeCredentialsError extends Error {
+  RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor() {
-      super("RxResume credentials not configured.");
-      this.name = "RxResumeCredentialsError";
+      super("Reactive Resume credentials not configured.");
+      this.name = "RxResumeAuthConfigError";
     }
   },
 }));
 
 import { getSetting } from "../repositories/settings";
-import { getResume, RxResumeCredentialsError } from "./rxresume-v4";
+import { getResume, RxResumeAuthConfigError } from "./rxresume";
 
 describe("getProfile", () => {
   beforeEach(() => {
@@ -33,7 +33,7 @@ describe("getProfile", () => {
     );
   });
 
-  it("should fetch profile from RxResume v4 API when configured", async () => {
+  it("should fetch profile from Reactive Resume when configured", async () => {
     const mockResumeData = { basics: { name: "Test User" } };
     vi.mocked(getSetting).mockResolvedValue("test-resume-id");
     vi.mocked(getResume).mockResolvedValue({
@@ -81,10 +81,12 @@ describe("getProfile", () => {
 
   it("should throw user-friendly error on credential issues", async () => {
     vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockRejectedValue(new RxResumeCredentialsError());
+    vi.mocked(getResume).mockRejectedValue(
+      new (RxResumeAuthConfigError as unknown as new () => Error)(),
+    );
 
     await expect(getProfile()).rejects.toThrow(
-      "RxResume credentials not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD in settings.",
+      "Reactive Resume credentials not configured.",
     );
   });
 

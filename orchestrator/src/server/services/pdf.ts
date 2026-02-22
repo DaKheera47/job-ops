@@ -1,5 +1,5 @@
 /**
- * Service for generating PDF resumes using RxResume v4 API.
+ * Service for generating PDF resumes using Reactive Resume.
  */
 
 import { createWriteStream, existsSync } from "node:fs";
@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { createId } from "@paralleldrive/cuid2";
+import { logger } from "@infra/logger";
 import { getDataDir } from "../config/dataDir";
 import { getSetting } from "../repositories/settings";
 import { getProfile } from "./profile";
@@ -16,7 +17,11 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "./resumeProjects";
-import { RxResumeClient } from "./rxresume-client";
+import {
+  deleteResume as deleteRemoteResume,
+  exportResumePdf,
+  importResume as importRemoteResume,
+} from "./rxresume";
 import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
@@ -43,36 +48,6 @@ export interface GeneratePdfOptions {
 }
 
 /**
- * Get RxResume credentials from environment variables or database settings.
- */
-async function getCredentials(): Promise<{
-  email: string;
-  password: string;
-  baseUrl: string;
-}> {
-  // First check environment variables
-  let email = process.env.RXRESUME_EMAIL || "";
-  let password = process.env.RXRESUME_PASSWORD || "";
-  const baseUrl = process.env.RXRESUME_URL || "https://v4.rxresu.me";
-
-  // Fall back to database settings if env vars are not set
-  if (!email) {
-    email = (await getSetting("rxresumeEmail")) || "";
-  }
-  if (!password) {
-    password = (await getSetting("rxresumePassword")) || "";
-  }
-
-  if (!email || !password) {
-    throw new Error(
-      "RxResume credentials not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD environment variables or configure them in settings.",
-    );
-  }
-
-  return { email, password, baseUrl };
-}
-
-/**
  * Download a file from a URL and save it to a local path.
  */
 async function downloadFile(url: string, outputPath: string): Promise<void> {
@@ -96,17 +71,14 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
 }
 
 /**
- * Generate a tailored PDF resume for a job using the RxResume v4 API.
+ * Generate a tailored PDF resume for a job using Reactive Resume.
  *
  * Flow:
  * 1. Prepare resume data with tailored content and project selection
- * 2. Get auth token (uses cached token or logs in)
- * 3. Import/create resume on RxResume
- * 4. Request print to get PDF URL
- * 5. Download PDF locally
- * 6. Delete temporary resume from RxResume
- *
- * Token refresh is handled automatically on 401 errors.
+ * 2. Import/create resume on Reactive Resume
+ * 3. Request print to get PDF URL
+ * 4. Download PDF locally
+ * 5. Delete temporary resume from Reactive Resume
  */
 export async function generatePdf(
   jobId: string,
@@ -116,7 +88,7 @@ export async function generatePdf(
   selectedProjectIds?: string | null,
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
-  console.log(`📄 Generating PDF for job ${jobId} using RxResume v4 API...`);
+  logger.info("Generating PDF resume", { jobId });
 
   try {
     // Ensure output directory exists
@@ -124,11 +96,7 @@ export async function generatePdf(
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    // Get credentials and initialize client
-    const { email, password, baseUrl } = await getCredentials();
-    const client = new RxResumeClient(baseUrl);
-
-    // Read base resume from profile (fetches from v4 API if configured, force fetch)
+    // Read base resume from profile (fetches from configured Reactive Resume mode)
     const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
 
     // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
@@ -269,10 +237,10 @@ export async function generatePdf(
         projectsSection.visible = true;
       }
     } catch (err) {
-      console.warn(
-        `   ⚠️ Project visibility step failed for job ${jobId}:`,
-        err,
-      );
+      logger.warn("Project visibility step failed during PDF generation", {
+        jobId,
+        error: err,
+      });
     }
 
     if (options?.tracerLinksEnabled) {
@@ -293,51 +261,45 @@ export async function generatePdf(
       });
     }
 
-    // Use withAutoRefresh to handle token caching and 401 retry automatically
     const outputPath = join(OUTPUT_DIR, `resume_${jobId}.pdf`);
+    let resumeId: string | null = null;
+    try {
+      logger.debug("Uploading temporary resume for PDF generation", { jobId });
+      resumeId = await importRemoteResume({
+        data: baseResume,
+        name: `JobOps Tailored Resume ${jobId}`,
+        slug: "",
+      });
 
-    await client.withAutoRefresh(email, password, async (token) => {
-      let resumeId: string | null = null;
+      logger.debug("Requesting PDF export for temporary resume", {
+        jobId,
+        resumeId,
+      });
+      const pdfUrl = await exportResumePdf(resumeId);
 
-      try {
-        // Create resume on RxResume
-        console.log(`   📤 Uploading resume to RxResume...`);
-        resumeId = await client.create(baseResume, token);
-        console.log(`   ✅ Resume created with ID: ${resumeId}`);
-
-        // Get PDF URL
-        console.log(`   🖨️ Requesting PDF generation...`);
-        const pdfUrl = await client.print(resumeId, token);
-        console.log(`   ✅ PDF URL received: ${pdfUrl}`);
-
-        // Download PDF
-        console.log(`   📥 Downloading PDF...`);
-        await downloadFile(pdfUrl, outputPath);
-        console.log(`   ✅ PDF saved to: ${outputPath}`);
-
-        // Cleanup: delete temporary resume from RxResume
-        console.log(`   🧹 Cleaning up temporary resume...`);
-        await client.delete(resumeId, token);
-        console.log(`   ✅ Temporary resume deleted from RxResume`);
-        resumeId = null;
-      } finally {
-        // Attempt cleanup if resume was created but not deleted
-        if (resumeId) {
-          try {
-            console.log(`   🧹 Attempting cleanup of orphaned resume...`);
-            await client.delete(resumeId, token);
-          } catch {
-            console.warn(`   ⚠️ Failed to cleanup orphaned resume ${resumeId}`);
-          }
+      logger.debug("Downloading generated PDF", { jobId, resumeId });
+      await downloadFile(pdfUrl, outputPath);
+      await deleteRemoteResume(resumeId);
+      resumeId = null;
+    } finally {
+      if (resumeId) {
+        try {
+          await deleteRemoteResume(resumeId);
+        } catch (cleanupError) {
+          logger.warn("Failed to cleanup temporary Reactive Resume record", {
+            jobId,
+            resumeId,
+            error: cleanupError,
+          });
         }
       }
-    });
+    }
 
-    console.log(`✅ PDF generated successfully: ${outputPath}`);
+    logger.info("PDF generated successfully", { jobId, outputPath });
     return { success: true, pdfPath: outputPath };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error(`❌ PDF generation failed: ${message}`);
+    logger.error("PDF generation failed", { jobId, error });
     return { success: false, error: message };
   }
 }
