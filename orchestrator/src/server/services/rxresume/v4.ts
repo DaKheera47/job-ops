@@ -4,9 +4,9 @@
 // - Validates resume payloads.
 // - Keeps the rest of the app v5-ready (swap imports later).
 
+import { getSetting } from "@server/repositories/settings";
 import type { ResumeData } from "@shared/rxresume-schema";
 import { resumeDataSchema } from "@shared/rxresume-schema";
-import { getSetting } from "../../repositories/settings";
 import { RxResumeClient, type RxResumeResume } from "./client";
 
 export type RxResumeCredentials = {

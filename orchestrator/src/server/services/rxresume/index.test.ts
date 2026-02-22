@@ -30,14 +30,14 @@ vi.mock("./client", () => ({
 
 import { getSetting } from "@server/repositories/settings";
 import { RxResumeClient } from "./client";
-import * as v4 from "./v4";
-import * as v5 from "./v5";
 import {
   listResumes,
   RxResumeAuthConfigError,
   resolveRxResumeMode,
   validateCredentials,
 } from "./index";
+import * as v4 from "./v4";
+import * as v5 from "./v5";
 
 type SettingMap = Partial<Record<string, string | null>>;
 
@@ -90,8 +90,26 @@ describe("rxresume adapter", () => {
   it("routes listResumes through v5 and normalizes title when v5 is selected", async () => {
     mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
     vi.mocked(v5.listResumes).mockResolvedValue([
-      { id: "r1", name: "Resume One" },
-      { id: "r2", name: "Resume Two" },
+      {
+        id: "r1",
+        name: "Resume One",
+        slug: "resume-one",
+        tags: [],
+        isPublic: false,
+        isLocked: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "r2",
+        name: "Resume Two",
+        slug: "resume-two",
+        tags: [],
+        isPublic: false,
+        isLocked: false,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
     ]);
 
     const result = await listResumes();
@@ -110,12 +128,25 @@ describe("rxresume adapter", () => {
   it("accepts wrapped v5 list response payloads", async () => {
     mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
     vi.mocked(v5.listResumes).mockResolvedValue({
-      items: [{ id: "r1", name: "Resume One" }],
+      items: [
+        {
+          id: "r1",
+          name: "Resume One",
+          slug: "resume-one",
+          tags: [],
+          isPublic: false,
+          isLocked: false,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
     } as unknown as Awaited<ReturnType<typeof v5.listResumes>>);
 
     const result = await listResumes();
 
-    expect(result).toEqual([{ id: "r1", name: "Resume One", title: "Resume One" }]);
+    expect(result).toEqual([
+      { id: "r1", name: "Resume One", title: "Resume One" },
+    ]);
   });
 
   it("falls back to v4 at runtime in auto mode when v5 returns unauthorized", async () => {

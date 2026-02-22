@@ -23,8 +23,8 @@ vi.mock("@server/services/rxresume", () => ({
   },
 }));
 
-import { startServer, stopServer } from "./test-utils";
 import { getResume } from "@server/services/rxresume";
+import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Settings API routes", () => {
   let server: Server;

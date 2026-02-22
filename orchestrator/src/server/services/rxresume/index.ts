@@ -387,7 +387,8 @@ export async function exportResumePdf(
         apiKey: creds.apiKey,
         baseUrl: creds.baseUrl,
       }),
-    v4: async (creds) => await v4.exportResumePdf(resumeId, toV4Override(creds)),
+    v4: async (creds) =>
+      await v4.exportResumePdf(resumeId, toV4Override(creds)),
   });
 }
 
