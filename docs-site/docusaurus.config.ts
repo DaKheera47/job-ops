@@ -2,7 +2,12 @@ import type * as Preset from "@docusaurus/preset-classic";
 import type { Config } from "@docusaurus/types";
 import { themes as prismThemes } from "prism-react-renderer";
 
-const siteUrl = process.env.DOCS_SITE_URL ?? "http://localhost:3006";
+const productionSiteUrl = "https://jobops.dakheera47.com";
+const siteUrl =
+  process.env.DOCS_SITE_URL ??
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:3006"
+    : productionSiteUrl);
 const configuredBaseUrl = process.env.DOCS_BASE_URL ?? "/docs/";
 const normalizedBaseUrl = configuredBaseUrl.startsWith("/")
   ? configuredBaseUrl
@@ -40,6 +45,20 @@ const config: Config = {
           editUrl: "https://github.com/DaKheera47/job-ops/tree/main/docs-site/",
           showLastUpdateAuthor: false,
           showLastUpdateTime: true,
+        },
+        sitemap: {
+          // Keep search engines focused on the current stable docs URLs.
+          async createSitemapItems(params: any) {
+            const items = await params.defaultCreateSitemapItems(params);
+            return items.filter((item: { url: string }) => {
+              const pathname = new URL(item.url).pathname;
+              const isNextDocsRoute = pathname.startsWith("/docs/next/");
+              const isVersionedDocsRoute =
+                /^\/docs\/\d+\.\d+\.\d+(?:\/|$)/.test(pathname);
+
+              return !isNextDocsRoute && !isVersionedDocsRoute;
+            });
+          },
         },
         blog: false,
         pages: false,

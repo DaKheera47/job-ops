@@ -31,9 +31,10 @@ Set these environment variables for deploys:
 - `DOCS_BASE_URL`: Route prefix where docs are hosted.
   Example: `/docs/`
 
-Defaults (local development):
+Defaults:
 
-- `DOCS_SITE_URL=http://localhost:3006`
+- `DOCS_SITE_URL=http://localhost:3006` for local development (`npm run docs:dev`)
+- `DOCS_SITE_URL=https://jobops.dakheera47.com` for production builds when unset
 - `DOCS_BASE_URL=/docs/`
 
 ## Versioning
