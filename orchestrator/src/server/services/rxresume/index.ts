@@ -87,9 +87,13 @@ function normalizeError(error: unknown): Error {
   }
   if (error instanceof Error) {
     const match = /Reactive Resume API error \((\d+)\)/i.exec(error.message);
+    const isNetworkLikeFailure =
+      error.name === "AbortError" ||
+      (error instanceof TypeError &&
+        /fetch failed|network/i.test(error.message || ""));
     return new RxResumeRequestError(
       error.message,
-      match ? Number(match[1]) : null,
+      match ? Number(match[1]) : isNetworkLikeFailure ? 0 : null,
     );
   }
   return new RxResumeRequestError("Reactive Resume request failed.");

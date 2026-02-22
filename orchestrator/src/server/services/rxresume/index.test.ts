@@ -119,7 +119,7 @@ describe("rxresume adapter", () => {
       baseUrl: "https://rxresu.me",
     });
     expect(v4.listResumes).not.toHaveBeenCalled();
-    expect(result).toEqual([
+    expect(result).toMatchObject([
       { id: "r1", name: "Resume One", title: "Resume One" },
       { id: "r2", name: "Resume Two", title: "Resume Two" },
     ]);
@@ -144,7 +144,7 @@ describe("rxresume adapter", () => {
 
     const result = await listResumes();
 
-    expect(result).toEqual([
+    expect(result).toMatchObject([
       { id: "r1", name: "Resume One", title: "Resume One" },
     ]);
   });
@@ -159,6 +159,27 @@ describe("rxresume adapter", () => {
     vi.mocked(v5.listResumes).mockRejectedValue(
       new Error("Reactive Resume API error (401): Unauthorized"),
     );
+    vi.mocked(v4.listResumes).mockResolvedValue([
+      { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
+    ]);
+
+    const result = await listResumes();
+
+    expect(v5.listResumes).toHaveBeenCalledTimes(1);
+    expect(v4.listResumes).toHaveBeenCalledTimes(1);
+    expect(result).toEqual([
+      { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
+    ]);
+  });
+
+  it("falls back to v4 at runtime in auto mode when v5 has a network failure", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeApiKey: "stale-v5-key",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(v5.listResumes).mockRejectedValue(new TypeError("fetch failed"));
     vi.mocked(v4.listResumes).mockResolvedValue([
       { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
     ]);

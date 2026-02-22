@@ -1,4 +1,5 @@
-import { ok } from "@infra/http";
+import { toAppError } from "@infra/errors";
+import { fail, ok } from "@infra/http";
 import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { getSetting } from "@server/repositories/settings";
@@ -22,8 +23,7 @@ profileRouter.get("/projects", async (_req: Request, res: Response) => {
     const { catalog } = extractProjectsFromProfile(profile);
     ok(res, catalog);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -35,8 +35,7 @@ profileRouter.get("/", async (_req: Request, res: Response) => {
     const profile = await getProfile();
     ok(res, profile);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -51,7 +50,7 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
       ok(res, {
         exists: false,
         error:
-          "No base resume selected. Please select a resume from your RxResume account in Settings.",
+          "No base resume selected. Please select a resume from your Reactive Resume account in Settings.",
       });
       return;
     }
@@ -82,7 +81,7 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
 });
 
 /**
- * POST /api/profile/refresh - Clear profile cache and refetch from RxResume v4 API
+ * POST /api/profile/refresh - Clear profile cache and refetch from Reactive Resume
  */
 profileRouter.post("/refresh", async (_req: Request, res: Response) => {
   try {
@@ -90,7 +89,6 @@ profileRouter.post("/refresh", async (_req: Request, res: Response) => {
     const profile = await getProfile(true);
     ok(res, profile);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });

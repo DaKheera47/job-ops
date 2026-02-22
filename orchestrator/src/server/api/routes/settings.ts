@@ -69,7 +69,7 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume v4 API
+ * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume (v4/v5 adapter)
  */
 function failRxResume(res: Response, error: unknown): void {
   if (error instanceof RxResumeAuthConfigError) {
@@ -135,7 +135,7 @@ settingsRouter.get(
 );
 
 /**
- * GET /api/settings/rx-resumes/:id/projects - Fetch project catalog from RxResume v4
+ * GET /api/settings/rx-resumes/:id/projects - Fetch project catalog from Reactive Resume (v4/v5 adapter)
  */
 settingsRouter.get(
   "/rx-resumes/:id/projects",
