@@ -107,6 +107,29 @@ describe("rxresume adapter", () => {
     ]);
   });
 
+  it("falls back to v4 at runtime in auto mode when v5 returns unauthorized", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeApiKey: "stale-v5-key",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(v5.listResumes).mockRejectedValue(
+      new Error("Reactive Resume API error (401): Unauthorized"),
+    );
+    vi.mocked(v4.listResumes).mockResolvedValue([
+      { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
+    ]);
+
+    const result = await listResumes();
+
+    expect(v5.listResumes).toHaveBeenCalledTimes(1);
+    expect(v4.listResumes).toHaveBeenCalledTimes(1);
+    expect(result).toEqual([
+      { id: "legacy-1", name: "Legacy Resume", title: "Legacy Resume" },
+    ]);
+  });
+
   it("validates v4 credentials when auto mode resolves to v4", async () => {
     mockSettings({
       rxresumeMode: "auto",
@@ -122,6 +145,27 @@ describe("rxresume adapter", () => {
       "pw",
       "https://v4.rxresu.me",
     );
+    expect(result).toEqual({ ok: true, mode: "v4" });
+  });
+
+  it("falls back to v4 validation in auto mode when v5 key is unauthorized", async () => {
+    mockSettings({
+      rxresumeMode: "auto",
+      rxresumeApiKey: "stale-v5-key",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(v5.verifyApiKey).mockResolvedValue({
+      ok: false,
+      status: 401,
+      message: "Reactive Resume API error (401): Unauthorized",
+    });
+    vi.mocked(RxResumeClient.verifyCredentials).mockResolvedValue({ ok: true });
+
+    const result = await validateCredentials();
+
+    expect(v5.verifyApiKey).toHaveBeenCalledTimes(1);
+    expect(RxResumeClient.verifyCredentials).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ ok: true, mode: "v4" });
   });
 });

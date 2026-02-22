@@ -1,4 +1,10 @@
-import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
+import {
+  AppError,
+  badRequest,
+  serviceUnavailable,
+  statusToCode,
+  upstreamError,
+} from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
@@ -82,6 +88,17 @@ function failRxResume(res: Response, error: unknown): void {
     }
     if (error.status && error.status >= 500) {
       fail(res, upstreamError(error.message));
+      return;
+    }
+    if (error.status && error.status >= 400 && error.status < 500) {
+      fail(
+        res,
+        new AppError({
+          status: error.status,
+          code: statusToCode(error.status),
+          message: error.message,
+        }),
+      );
       return;
     }
     if (error.status === 0) {

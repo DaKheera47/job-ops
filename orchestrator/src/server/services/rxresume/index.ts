@@ -53,6 +53,9 @@ type ResolveModeOptions = {
   v5?: { apiKey?: string | null; baseUrl?: string | null };
 };
 
+type V4Credentials = Awaited<ReturnType<typeof readV4Credentials>>;
+type V5Credentials = Awaited<ReturnType<typeof readV5Credentials>>;
+
 function toV4Override(
   input?: ResolveModeOptions["v4"],
 ): Partial<v4.RxResumeCredentials> | undefined {
@@ -90,6 +93,19 @@ function normalizeError(error: unknown): Error {
     );
   }
   return new RxResumeRequestError("Reactive Resume request failed.");
+}
+
+function isRetryableV5AutoFallbackError(error: Error): boolean {
+  if (error instanceof RxResumeAuthConfigError) return error.mode === "v5";
+  if (error instanceof RxResumeRequestError) {
+    return (
+      error.status === 0 ||
+      error.status === 401 ||
+      error.status === 403 ||
+      (typeof error.status === "number" && error.status >= 500)
+    );
+  }
+  return false;
 }
 
 async function readConfiguredMode(): Promise<RxResumeMode> {
@@ -171,31 +187,96 @@ export async function resolveRxResumeMode(
   );
 }
 
+async function runRxResumeOperationWithAutoFallback<T>(
+  options: ResolveModeOptions,
+  handlers: {
+    v4: (creds: V4Credentials) => Promise<T>;
+    v5: (creds: V5Credentials) => Promise<T>;
+  },
+): Promise<T> {
+  const requestedMode = options.mode ?? (await readConfiguredMode());
+  const [v5Creds, v4Creds] = await Promise.all([
+    readV5Credentials(options.v5),
+    readV4Credentials(options.v4),
+  ]);
+
+  if (requestedMode === "v5") {
+    if (!v5Creds.available) {
+      throw new RxResumeAuthConfigError(
+        "v5",
+        "Reactive Resume v5 API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
+      );
+    }
+    try {
+      return await handlers.v5(v5Creds);
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  }
+
+  if (requestedMode === "v4") {
+    if (!v4Creds.available) {
+      throw new RxResumeAuthConfigError(
+        "v4",
+        "Reactive Resume v4 credentials are not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD or configure them in Settings.",
+      );
+    }
+    try {
+      return await handlers.v4(v4Creds);
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  }
+
+  if (v5Creds.available) {
+    try {
+      return await handlers.v5(v5Creds);
+    } catch (error) {
+      const normalized = normalizeError(error);
+      if (v4Creds.available && isRetryableV5AutoFallbackError(normalized)) {
+        try {
+          return await handlers.v4(v4Creds);
+        } catch (fallbackError) {
+          throw normalizeError(fallbackError);
+        }
+      }
+      throw normalized;
+    }
+  }
+
+  if (v4Creds.available) {
+    try {
+      return await handlers.v4(v4Creds);
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  }
+
+  throw new RxResumeAuthConfigError(
+    "auto",
+    "Reactive Resume is not configured. Add a v5 API key or v4 email/password credentials.",
+  );
+}
+
 export async function listResumes(
   options: ResolveModeOptions = {},
 ): Promise<RxResumeResume[]> {
-  const mode = await resolveRxResumeMode(options);
-  try {
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
-      return (
+  return runRxResumeOperationWithAutoFallback(options, {
+    v5: async (creds) =>
+      (
         await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl })
-      ).map((resume) => ({ ...resume, title: resume.name }));
-    }
-    return (await v4.listResumes(toV4Override(options.v4))) as RxResumeResume[];
-  } catch (error) {
-    throw normalizeError(error);
-  }
+      ).map((resume) => ({ ...resume, title: resume.name })),
+    v4: async (creds) =>
+      (await v4.listResumes(toV4Override(creds))) as RxResumeResume[],
+  });
 }
 
 export async function getResume(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<RxResumeResume> {
-  const mode = await resolveRxResumeMode(options);
-  try {
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
+  return runRxResumeOperationWithAutoFallback(options, {
+    v5: async (creds) => {
       const resume = await v5.getResume(resumeId, {
         apiKey: creds.apiKey,
         baseUrl: creds.baseUrl,
@@ -211,25 +292,19 @@ export async function getResume(
             ? (resume.data as ResumeData)
             : undefined,
       };
-    }
-    return (await v4.getResume(
-      resumeId,
-      toV4Override(options.v4),
-    )) as RxResumeResume;
-  } catch (error) {
-    throw normalizeError(error);
-  }
+    },
+    v4: async (creds) =>
+      (await v4.getResume(resumeId, toV4Override(creds))) as RxResumeResume,
+  });
 }
 
 export async function importResume(
   payload: RxResumeImportPayload,
   options: ResolveModeOptions = {},
 ): Promise<string> {
-  const mode = await resolveRxResumeMode(options);
-  try {
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
-      return await v5.importResume(
+  return runRxResumeOperationWithAutoFallback(options, {
+    v5: async (creds) =>
+      await v5.importResume(
         {
           name: payload.name?.trim() || "JobOps Tailored Resume",
           slug: payload.slug?.trim() || "",
@@ -239,51 +314,38 @@ export async function importResume(
           apiKey: creds.apiKey,
           baseUrl: creds.baseUrl,
         },
-      );
-    }
-    return await v4.importResume(payload, toV4Override(options.v4));
-  } catch (error) {
-    throw normalizeError(error);
-  }
+      ),
+    v4: async (creds) => await v4.importResume(payload, toV4Override(creds)),
+  });
 }
 
 export async function deleteResume(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<void> {
-  const mode = await resolveRxResumeMode(options);
-  try {
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
+  await runRxResumeOperationWithAutoFallback(options, {
+    v5: async (creds) => {
       await v5.deleteResume(resumeId, {
         apiKey: creds.apiKey,
         baseUrl: creds.baseUrl,
       });
-      return;
-    }
-    await v4.deleteResume(resumeId, toV4Override(options.v4));
-  } catch (error) {
-    throw normalizeError(error);
-  }
+    },
+    v4: async (creds) => await v4.deleteResume(resumeId, toV4Override(creds)),
+  });
 }
 
 export async function exportResumePdf(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<string> {
-  const mode = await resolveRxResumeMode(options);
-  try {
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
-      return await v5.exportResumePdf(resumeId, {
+  return runRxResumeOperationWithAutoFallback(options, {
+    v5: async (creds) =>
+      await v5.exportResumePdf(resumeId, {
         apiKey: creds.apiKey,
         baseUrl: creds.baseUrl,
-      });
-    }
-    return await v4.exportResumePdf(resumeId, toV4Override(options.v4));
-  } catch (error) {
-    throw normalizeError(error);
-  }
+      }),
+    v4: async (creds) => await v4.exportResumePdf(resumeId, toV4Override(creds)),
+  });
 }
 
 export async function validateCredentials(
@@ -293,33 +355,66 @@ export async function validateCredentials(
   | { ok: false; mode?: RxResumeMode; status: number; message: string }
 > {
   const requestedMode = options.mode ?? (await readConfiguredMode());
-  try {
-    const mode = await resolveRxResumeMode(options);
-    if (mode === "v5") {
-      const creds = await readV5Credentials(options.v5);
-      const result = await v5.verifyApiKey(creds.apiKey, creds.baseUrl);
-      if (result.ok) return { ok: true, mode };
-      return {
-        ok: false,
-        mode: requestedMode,
-        status: result.status,
-        message: result.message || "Reactive Resume v5 validation failed.",
-      };
-    }
+  const [v5Creds, v4Creds] = await Promise.all([
+    readV5Credentials(options.v5),
+    readV4Credentials(options.v4),
+  ]);
 
-    const creds = await readV4Credentials(options.v4);
+  const validateV4 = async () => {
     const result = await RxResumeClient.verifyCredentials(
-      creds.email,
-      creds.password,
-      creds.baseUrl,
+      v4Creds.email,
+      v4Creds.password,
+      v4Creds.baseUrl,
     );
-    if (result.ok) return { ok: true, mode };
+    if (result.ok) return { ok: true as const, mode: "v4" as const };
     return {
-      ok: false,
+      ok: false as const,
       mode: requestedMode,
       status: result.status,
       message: result.message || "Reactive Resume v4 validation failed.",
     };
+  };
+
+  const validateV5 = async () => {
+    const result = await v5.verifyApiKey(v5Creds.apiKey, v5Creds.baseUrl);
+    if (result.ok) return { ok: true as const, mode: "v5" as const };
+    return {
+      ok: false as const,
+      mode: requestedMode,
+      status: result.status,
+      message: result.message || "Reactive Resume v5 validation failed.",
+    };
+  };
+
+  try {
+    if (requestedMode === "auto") {
+      if (v5Creds.available) {
+        const v5Result = await validateV5();
+        if (v5Result.ok) return v5Result;
+
+        const normalized = new RxResumeRequestError(
+          v5Result.message,
+          v5Result.status,
+        );
+        if (v4Creds.available && isRetryableV5AutoFallbackError(normalized)) {
+          return await validateV4();
+        }
+        return v5Result;
+      }
+      if (v4Creds.available) {
+        return await validateV4();
+      }
+      throw new RxResumeAuthConfigError(
+        "auto",
+        "Reactive Resume is not configured. Add a v5 API key or v4 email/password credentials.",
+      );
+    }
+
+    const mode = await resolveRxResumeMode(options);
+    if (mode === "v5") {
+      return await validateV5();
+    }
+    return await validateV4();
   } catch (error) {
     const normalized = normalizeError(error);
     if (normalized instanceof RxResumeAuthConfigError) {

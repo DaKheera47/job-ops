@@ -1,6 +1,30 @@
 import type { Server } from "node:http";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@server/services/rxresume", () => ({
+  listResumes: vi.fn(),
+  getResume: vi.fn(),
+  RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
+    constructor(message = "Reactive Resume auth config missing") {
+      super(message);
+      this.name = "RxResumeAuthConfigError";
+    }
+  },
+  RxResumeRequestError: class RxResumeRequestError extends Error {
+    status: number | null;
+    constructor(
+      message = "Reactive Resume request failed",
+      status: number | null = null,
+    ) {
+      super(message);
+      this.name = "RxResumeRequestError";
+      this.status = status;
+    }
+  },
+}));
+
 import { startServer, stopServer } from "./test-utils";
+import { getResume } from "@server/services/rxresume";
 
 describe.sequential("Settings API routes", () => {
   let server: Server;
@@ -117,5 +141,25 @@ describe.sequential("Settings API routes", () => {
     expect(getBody.ok).toBe(true);
     expect(getBody.data.penalizeMissingSalary.value).toBe(true);
     expect(getBody.data.missingSalaryPenalty.value).toBe(20);
+  });
+
+  it("preserves upstream 404 from Reactive Resume project lookup", async () => {
+    const { RxResumeRequestError } = await import("@server/services/rxresume");
+    vi.mocked(getResume).mockRejectedValue(
+      new RxResumeRequestError(
+        "Reactive Resume API error (404): Resume not found",
+        404,
+      ),
+    );
+
+    const res = await fetch(
+      `${baseUrl}/api/settings/rx-resumes/missing/projects`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toContain("404");
   });
 });
