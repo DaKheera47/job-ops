@@ -126,29 +126,6 @@ describe("rxresume adapter", () => {
     ]);
   });
 
-  it("accepts wrapped v5 list response payloads", async () => {
-    mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
-    vi.mocked(v5.listResumes).mockResolvedValue({
-      items: [
-        {
-          id: "r1",
-          name: "Resume One",
-          slug: "resume-one",
-          tags: [],
-          isPublic: false,
-          isLocked: false,
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updatedAt: "2026-01-01T00:00:00.000Z",
-        },
-      ],
-    } as unknown as Awaited<ReturnType<typeof v5.listResumes>>);
-
-    const result = await listResumes();
-
-    expect(result).toMatchObject([
-      { id: "r1", name: "Resume One", title: "Resume One" },
-    ]);
-  });
 
   it("falls back to v4 at runtime in auto mode when v5 returns unauthorized", async () => {
     mockSettings({
@@ -220,6 +197,7 @@ describe("rxresume adapter", () => {
       title: "Legacy Resume",
     });
   });
+
 
   it("validates v4 credentials when auto mode resolves to v4", async () => {
     mockSettings({

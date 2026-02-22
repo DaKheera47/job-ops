@@ -114,25 +114,13 @@ function isRetryableV5AutoFallbackError(error: Error): boolean {
 }
 
 function normalizeV5ResumeListResponse(payload: unknown): RxResumeResume[] {
-  let candidates: unknown[] | null = null;
-  if (Array.isArray(payload)) {
-    candidates = payload;
-  } else if (payload && typeof payload === "object") {
-    const record = payload as { items?: unknown; data?: unknown };
-    if (Array.isArray(record.items)) {
-      candidates = record.items;
-    } else if (Array.isArray(record.data)) {
-      candidates = record.data;
-    }
-  }
-
-  if (!candidates) {
+  if (!Array.isArray(payload)) {
     throw new RxResumeRequestError(
       "Reactive Resume v5 returned an unexpected resume list response shape.",
     );
   }
 
-  return candidates.map((resume) => {
+  return payload.map((resume) => {
     if (!resume || typeof resume !== "object") {
       throw new RxResumeRequestError(
         "Reactive Resume v5 returned an invalid resume list item.",
@@ -154,6 +142,22 @@ function normalizeV5ResumeListResponse(payload: unknown): RxResumeResume[] {
       title: name,
     } as RxResumeResume;
   });
+}
+
+function normalizeV5ResumeResponse(
+  payload: unknown,
+): Record<string, unknown> {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    Array.isArray(payload)
+  ) {
+    throw new RxResumeRequestError(
+      "Reactive Resume v5 returned an unexpected resume response shape.",
+    );
+  }
+
+  return payload as Record<string, unknown>;
 }
 
 async function readConfiguredMode(): Promise<RxResumeMode> {
@@ -325,10 +329,12 @@ export async function getResume(
 ): Promise<RxResumeResume> {
   return runRxResumeOperationWithAutoFallback(options, {
     v5: async (creds) => {
-      const resume = await v5.getResume(resumeId, {
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
-      });
+      const resume = normalizeV5ResumeResponse(
+        await v5.getResume(resumeId, {
+          apiKey: creds.apiKey,
+          baseUrl: creds.baseUrl,
+        }),
+      ) as RxResumeResume;
       return {
         ...resume,
         title:
