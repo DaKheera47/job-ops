@@ -9,6 +9,34 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeWebhookPayload } from "@infra/sanitize";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
+import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
+import {
+  generateFinalPdf,
+  processJob,
+  summarizeJob,
+} from "@server/pipeline/index";
+import * as jobsRepo from "@server/repositories/jobs";
+import * as settingsRepo from "@server/repositories/settings";
+import {
+  deleteStageEvent,
+  getStageEvents,
+  getTasks,
+  stageEventMetadataSchema,
+  transitionStage,
+  updateStageEvent,
+} from "@server/services/applicationTracking";
+import {
+  simulateApplyJob,
+  simulateGeneratePdf,
+  simulateProcessJob,
+  simulateRescoreJob,
+  simulateSummarizeJob,
+} from "@server/services/demo-simulator";
+import { getProfile } from "@server/services/profile";
+import { scoreJobSuitability } from "@server/services/scorer";
+import { getTracerReadiness } from "@server/services/tracer-links";
+import * as visaSponsors from "@server/services/visa-sponsors/index";
+import { asyncPool } from "@server/utils/async-pool";
 import {
   APPLICATION_OUTCOMES,
   APPLICATION_STAGES,
@@ -24,34 +52,6 @@ import {
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import { isDemoMode, sendDemoBlocked } from "../../config/demo";
-import {
-  generateFinalPdf,
-  processJob,
-  summarizeJob,
-} from "../../pipeline/index";
-import * as jobsRepo from "../../repositories/jobs";
-import * as settingsRepo from "../../repositories/settings";
-import {
-  deleteStageEvent,
-  getStageEvents,
-  getTasks,
-  stageEventMetadataSchema,
-  transitionStage,
-  updateStageEvent,
-} from "../../services/applicationTracking";
-import {
-  simulateApplyJob,
-  simulateGeneratePdf,
-  simulateProcessJob,
-  simulateRescoreJob,
-  simulateSummarizeJob,
-} from "../../services/demo-simulator";
-import { getProfile } from "../../services/profile";
-import { scoreJobSuitability } from "../../services/scorer";
-import { getTracerReadiness } from "../../services/tracer-links";
-import * as visaSponsors from "../../services/visa-sponsors/index";
-import { asyncPool } from "../../utils/async-pool";
 
 export const jobsRouter = Router();
 const JOB_ACTION_CONCURRENCY = 4;

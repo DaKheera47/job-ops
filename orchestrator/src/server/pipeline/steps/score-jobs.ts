@@ -1,10 +1,10 @@
 import { logger } from "@infra/logger";
+import * as jobsRepo from "@server/repositories/jobs";
+import * as settingsRepo from "@server/repositories/settings";
+import { scoreJobSuitability } from "@server/services/scorer";
+import * as visaSponsors from "@server/services/visa-sponsors/index";
+import { asyncPool } from "@server/utils/async-pool";
 import type { Job } from "@shared/types";
-import * as jobsRepo from "../../repositories/jobs";
-import * as settingsRepo from "../../repositories/settings";
-import { scoreJobSuitability } from "../../services/scorer";
-import * as visaSponsors from "../../services/visa-sponsors/index";
-import { asyncPool } from "../../utils/async-pool";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 

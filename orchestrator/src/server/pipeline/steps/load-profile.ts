@@ -1,5 +1,5 @@
 import { logger } from "@infra/logger";
-import { getProfile } from "../../services/profile";
+import { getProfile } from "@server/services/profile";
 
 export async function loadProfileStep(): Promise<Record<string, unknown>> {
   logger.info("Loading profile");

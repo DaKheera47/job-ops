@@ -1,10 +1,10 @@
+import * as api from "@client/api";
+import { renderWithQueryClient } from "@client/test/renderWithQueryClient";
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as api from "../../api";
-import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 import { JobDetailPanel } from "./JobDetailPanel";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
@@ -42,7 +42,7 @@ vi.mock("@/components/ui/dropdown-menu", () => {
   };
 });
 
-vi.mock("../../components", () => ({
+vi.mock("@client/components", () => ({
   DiscoveredPanel: ({ job }: { job: Job | null }) => (
     <div data-testid="discovered-panel">{job?.id ?? "no-job"}</div>
   ),
@@ -51,7 +51,7 @@ vi.mock("../../components", () => ({
   TailoredSummary: () => <div data-testid="tailored-summary" />,
 }));
 
-vi.mock("../../components/ReadyPanel", () => ({
+vi.mock("@client/components/ReadyPanel", () => ({
   ReadyPanel: ({ onEditDescription }: { onEditDescription?: () => void }) => (
     <div>
       <div data-testid="ready-panel" />
@@ -62,7 +62,7 @@ vi.mock("../../components/ReadyPanel", () => ({
   ),
 }));
 
-vi.mock("../../components/TailoringEditor", () => ({
+vi.mock("@client/components/TailoringEditor", () => ({
   TailoringEditor: ({
     onDirtyChange,
   }: {
@@ -79,7 +79,7 @@ vi.mock("../../components/TailoringEditor", () => ({
   ),
 }));
 
-vi.mock("../../components/JobDetailsEditDrawer", () => ({
+vi.mock("@client/components/JobDetailsEditDrawer", () => ({
   JobDetailsEditDrawer: ({
     open,
     onOpenChange,
@@ -116,7 +116,7 @@ vi.mock("@/lib/utils", async (importOriginal) => {
   };
 });
 
-vi.mock("../../api", () => ({
+vi.mock("@client/api", () => ({
   updateJob: vi.fn(),
   processJob: vi.fn(),
   generateJobPdf: vi.fn(),

@@ -2,10 +2,10 @@ import { unauthorized } from "@infra/errors";
 import { fail, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
+import { isDemoMode } from "@server/config/demo";
+import { runPipeline } from "@server/pipeline/index";
+import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { type Request, type Response, Router } from "express";
-import { isDemoMode } from "../../config/demo";
-import { runPipeline } from "../../pipeline/index";
-import { simulatePipelineRun } from "../../services/demo-simulator";
 
 export const webhookRouter = Router();
 

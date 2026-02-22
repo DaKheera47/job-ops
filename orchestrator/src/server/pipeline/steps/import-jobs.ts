@@ -1,6 +1,6 @@
 import { logger } from "@infra/logger";
+import * as jobsRepo from "@server/repositories/jobs";
 import type { CreateJobInput } from "@shared/types";
-import * as jobsRepo from "../../repositories/jobs";
 import { progressHelpers } from "../progress";
 
 export async function importJobsStep(args: {

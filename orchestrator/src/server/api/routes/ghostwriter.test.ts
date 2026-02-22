@@ -2,7 +2,7 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-vi.mock("../../services/ghostwriter", () => ({
+vi.mock("@server/services/ghostwriter", () => ({
   listThreads: vi.fn(async () => [
     {
       id: "thread-1",

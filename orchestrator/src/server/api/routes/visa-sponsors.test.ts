@@ -18,7 +18,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
   it("returns status and surfaces update errors", async () => {
     const { getStatus, downloadLatestCsv } = await import(
-      "../../services/visa-sponsors/index"
+      "@server/services/visa-sponsors/index"
     );
     vi.mocked(getStatus).mockReturnValue({
       lastUpdated: null,
@@ -46,7 +46,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
   it("validates search payloads and handles missing organizations", async () => {
     const { searchSponsors, getOrganizationDetails } = await import(
-      "../../services/visa-sponsors/index"
+      "@server/services/visa-sponsors/index"
     );
     vi.mocked(searchSponsors).mockReturnValue([
       {

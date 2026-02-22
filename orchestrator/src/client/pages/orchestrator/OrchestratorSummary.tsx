@@ -1,6 +1,6 @@
+import { PipelineProgress } from "@client/components";
 import type { JobStatus } from "@shared/types.js";
 import type React from "react";
-import { PipelineProgress } from "../../components";
 
 interface OrchestratorSummaryProps {
   stats: Record<JobStatus, number>;

@@ -1,6 +1,6 @@
 import { ok } from "@infra/http";
+import { getDemoInfo } from "@server/config/demo";
 import { type Request, type Response, Router } from "express";
-import { getDemoInfo } from "../../config/demo";
 
 export const demoRouter = Router();
 

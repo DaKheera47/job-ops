@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getProgress, resetProgress } from "../progress";
 import { discoverJobsStep } from "./discover-jobs";
 
-vi.mock("../../repositories/settings", () => ({
+vi.mock("@server/repositories/settings", () => ({
   getAllSettings: vi.fn(),
 }));
 
-vi.mock("../../repositories/jobs", () => ({
+vi.mock("@server/repositories/jobs", () => ({
   getAllJobUrls: vi.fn().mockResolvedValue([]),
 }));
 
-vi.mock("../../extractors/registry", () => ({
+vi.mock("@server/extractors/registry", () => ({
   getExtractorRegistry: vi.fn(),
 }));
 
@@ -33,8 +33,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("aggregates source errors for enabled sources", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     const jobspyManifest = {
       id: "jobspy",
@@ -93,8 +93,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("throws when all enabled sources fail", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     const ukvisaManifest = {
       id: "ukvisajobs",
@@ -130,8 +130,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("throws when all requested sources are incompatible for country", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
@@ -157,8 +157,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("does not throw when no sources are requested", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
@@ -183,8 +183,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("drops discovered jobs when employer matches blocked company keywords", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     const jobspyManifest = {
       id: "jobspy",
@@ -236,8 +236,8 @@ describe("discoverJobsStep", () => {
   });
 
   it("applies shared city filtering for sources without native city filtering", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
 
     const gradcrackerManifest = {
       id: "gradcracker",
@@ -313,9 +313,9 @@ describe("discoverJobsStep", () => {
   });
 
   it("tracks source completion counters across source transitions", async () => {
-    const settingsRepo = await import("../../repositories/settings");
-    const jobsRepo = await import("../../repositories/jobs");
-    const registryModule = await import("../../extractors/registry");
+    const settingsRepo = await import("@server/repositories/settings");
+    const jobsRepo = await import("@server/repositories/jobs");
+    const registryModule = await import("@server/extractors/registry");
 
     const jobspyManifest = {
       id: "jobspy",

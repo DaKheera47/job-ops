@@ -19,7 +19,7 @@ describe.sequential("Tracer links routes", () => {
   });
 
   async function seedTracerFixtures() {
-    const { db, schema } = await import("../../db");
+    const { db, schema } = await import("@server/db");
     const now = new Date().toISOString();
 
     const jobId = "job-tracer-fixture";

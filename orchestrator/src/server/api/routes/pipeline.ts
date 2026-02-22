@@ -9,23 +9,23 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
-import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
-import type { PipelineStatusResponse } from "@shared/types";
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
-import { isDemoMode } from "../../config/demo";
+import { isDemoMode } from "@server/config/demo";
 import {
   type ExtractorRegistry,
   getExtractorRegistry,
-} from "../../extractors/registry";
+} from "@server/extractors/registry";
 import {
   getPipelineStatus,
   requestPipelineCancel,
   runPipeline,
   subscribeToProgress,
-} from "../../pipeline/index";
-import * as pipelineRepo from "../../repositories/pipeline";
-import { simulatePipelineRun } from "../../services/demo-simulator";
+} from "@server/pipeline/index";
+import * as pipelineRepo from "@server/repositories/pipeline";
+import { simulatePipelineRun } from "@server/services/demo-simulator";
+import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
+import type { PipelineStatusResponse } from "@shared/types";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 
 export const pipelineRouter = Router();
 

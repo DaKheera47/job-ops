@@ -1,5 +1,5 @@
 import { logger } from "@infra/logger";
-import { asyncPool } from "../../utils/async-pool";
+import { asyncPool } from "@server/utils/async-pool";
 import { progressHelpers, updateProgress } from "../progress";
 import type { ScoredJob } from "./types";
 

@@ -1,20 +1,20 @@
 import { badRequest } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import {
-  APPLICATION_STAGES,
-  POST_APPLICATION_PROVIDERS,
-  POST_APPLICATION_ROUTER_STAGE_TARGETS,
-} from "@shared/types";
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
-import {
   approvePostApplicationInboxItem,
   denyPostApplicationInboxItem,
   listPostApplicationInbox,
   listPostApplicationReviewRuns,
   listPostApplicationRunMessages,
   runPostApplicationInboxAction,
-} from "../../services/post-application/review";
+} from "@server/services/post-application/review";
+import {
+  APPLICATION_STAGES,
+  POST_APPLICATION_PROVIDERS,
+  POST_APPLICATION_ROUTER_STAGE_TARGETS,
+} from "@shared/types";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 
 const listQuerySchema = z.object({
   provider: z.enum(POST_APPLICATION_PROVIDERS).default("gmail"),

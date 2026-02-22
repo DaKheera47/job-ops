@@ -1,13 +1,13 @@
 import { badRequest, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
-import { type Request, type Response, Router } from "express";
-import { z } from "zod";
-import * as jobsRepo from "../../repositories/jobs";
+import * as jobsRepo from "@server/repositories/jobs";
 import {
   getJobTracerLinksAnalytics,
   getTracerAnalytics,
   getTracerReadiness,
-} from "../../services/tracer-links";
+} from "@server/services/tracer-links";
+import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 
 export const tracerLinksRouter = Router();
 

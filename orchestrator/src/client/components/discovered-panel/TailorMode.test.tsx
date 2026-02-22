@@ -1,24 +1,24 @@
+import * as api from "@client/api";
+import { useProfile } from "@client/hooks/useProfile";
+import { _resetTracerReadinessCache } from "@client/hooks/useTracerReadiness";
+import { renderWithQueryClient } from "@client/test/renderWithQueryClient";
 import { createJob as createBaseJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as api from "../../api";
-import { useProfile } from "../../hooks/useProfile";
-import { _resetTracerReadinessCache } from "../../hooks/useTracerReadiness";
-import { renderWithQueryClient } from "../../test/renderWithQueryClient";
 import { TailorMode } from "./TailorMode";
 
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
 
-vi.mock("../../api", () => ({
+vi.mock("@client/api", () => ({
   getResumeProjectsCatalog: vi.fn().mockResolvedValue([]),
   updateJob: vi.fn(),
   summarizeJob: vi.fn(),
   getTracerReadiness: vi.fn(),
 }));
 
-vi.mock("../../hooks/useProfile", () => ({
+vi.mock("@client/hooks/useProfile", () => ({
   useProfile: vi.fn(),
 }));
 

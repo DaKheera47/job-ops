@@ -1,3 +1,18 @@
+import * as api from "@client/api";
+import {
+  DiscoveredPanel,
+  FitAssessment,
+  JobHeader,
+  TailoredSummary,
+} from "@client/components";
+import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
+import { ReadyPanel } from "@client/components/ReadyPanel";
+import { TailoringEditor } from "@client/components/TailoringEditor";
+import {
+  useMarkAsAppliedMutation,
+  useSkipJobMutation,
+} from "@client/hooks/queries/useJobMutations";
+import { useProfile } from "@client/hooks/useProfile";
 import type { Job, JobListItem } from "@shared/types.js";
 import {
   CheckCircle2,
@@ -32,21 +47,6 @@ import {
   safeFilenamePart,
   stripHtml,
 } from "@/lib/utils";
-import * as api from "../../api";
-import {
-  DiscoveredPanel,
-  FitAssessment,
-  JobHeader,
-  TailoredSummary,
-} from "../../components";
-import { JobDetailsEditDrawer } from "../../components/JobDetailsEditDrawer";
-import { ReadyPanel } from "../../components/ReadyPanel";
-import { TailoringEditor } from "../../components/TailoringEditor";
-import {
-  useMarkAsAppliedMutation,
-  useSkipJobMutation,
-} from "../../hooks/queries/useJobMutations";
-import { useProfile } from "../../hooks/useProfile";
 import type { FilterTab } from "./constants";
 
 interface JobDetailPanelProps {

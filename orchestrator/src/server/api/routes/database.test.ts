@@ -17,7 +17,7 @@ describe.sequential("Database API routes", () => {
   });
 
   it("clears jobs and pipeline runs", async () => {
-    const { createJob } = await import("../../repositories/jobs");
+    const { createJob } = await import("@server/repositories/jobs");
     await createJob({
       source: "manual",
       title: "Cleanup Role",

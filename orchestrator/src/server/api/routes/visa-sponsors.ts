@@ -1,5 +1,6 @@
 import { notFound } from "@infra/errors";
 import { fail } from "@infra/http";
+import * as visaSponsors from "@server/services/visa-sponsors/index";
 import type {
   ApiResponse,
   VisaSponsorSearchResponse,
@@ -7,7 +8,6 @@ import type {
 } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
-import * as visaSponsors from "../../services/visa-sponsors/index";
 
 export const visaSponsorsRouter = Router();
 

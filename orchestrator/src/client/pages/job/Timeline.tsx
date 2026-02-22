@@ -1,3 +1,4 @@
+import { CollapsibleSection } from "@client/components/discovered-panel/CollapsibleSection";
 import {
   type ApplicationStage,
   STAGE_LABELS,
@@ -18,7 +19,6 @@ import {
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatTimestamp, formatTimestampWithTime } from "@/lib/utils";
-import { CollapsibleSection } from "../../components/discovered-panel/CollapsibleSection";
 
 const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   applied: <CheckCircle2 className="h-4 w-4" />,

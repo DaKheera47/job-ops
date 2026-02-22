@@ -6,9 +6,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { getDataDir } from "@server/config/dataDir";
+import { createScheduler } from "@server/utils/scheduler";
 import { normalizeWhitespace } from "@shared/utils/string";
-import { getDataDir } from "../../config/dataDir";
-import { createScheduler } from "../../utils/scheduler";
 
 const DATA_DIR = path.join(getDataDir(), "visa-sponsors");
 
