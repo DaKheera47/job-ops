@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import {
   resolveSearchCities,
-  shouldApplyStrictCityFilter,
+  shouldApplyStrictLocationFilter,
 } from "@shared/search-cities.js";
 import type { CreateJobInput } from "@shared/types/jobs";
 import {
@@ -65,12 +65,7 @@ export interface HiringCafeResult {
   error?: string;
 }
 
-export function shouldApplyStrictLocationFilter(
-  location: string,
-  countryKey: string,
-): boolean {
-  return shouldApplyStrictCityFilter(location, countryKey);
-}
+export { shouldApplyStrictLocationFilter } from "@shared/search-cities.js";
 
 function resolveTsxCliPath(): string | null {
   try {
