@@ -4,8 +4,8 @@ import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 
-const { getCachedOrDetectedUserCountryKeyMock } = vi.hoisted(() => ({
-  getCachedOrDetectedUserCountryKeyMock: vi.fn((): string | null => null),
+const { getDetectedCountryKeyMock } = vi.hoisted(() => ({
+  getDetectedCountryKeyMock: vi.fn((): string | null => null),
 }));
 
 vi.mock("@/components/ui/tooltip", () => ({
@@ -22,17 +22,17 @@ vi.mock("@/components/ui/tooltip", () => ({
 }));
 
 vi.mock("@/lib/user-location", () => ({
-  getCachedOrDetectedUserCountryKey: getCachedOrDetectedUserCountryKeyMock,
+  getDetectedCountryKey: getDetectedCountryKeyMock,
 }));
 
 describe("AutomaticRunTab", () => {
   beforeEach(() => {
-    getCachedOrDetectedUserCountryKeyMock.mockReset();
-    getCachedOrDetectedUserCountryKeyMock.mockReturnValue(null);
+    getDetectedCountryKeyMock.mockReset();
+    getDetectedCountryKeyMock.mockReturnValue(null);
   });
 
   it("uses detected country when location settings are still defaults", () => {
-    getCachedOrDetectedUserCountryKeyMock.mockReturnValueOnce("united states");
+    getDetectedCountryKeyMock.mockReturnValueOnce("united states");
 
     render(
       <AutomaticRunTab

@@ -184,7 +184,7 @@ function writeCachedUserCountry(country: string, now: number): void {
   }
 }
 
-export function getCachedOrDetectedUserCountryKey(): string | null {
+export function getDetectedCountryKey(): string | null {
   const now = Date.now();
   const cached = readCachedUserCountry(now);
   if (cached) return cached;

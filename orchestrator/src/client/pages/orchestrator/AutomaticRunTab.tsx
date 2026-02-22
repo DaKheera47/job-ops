@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getCachedOrDetectedUserCountryKey } from "@/lib/user-location";
+import { getDetectedCountryKey } from "@/lib/user-location";
 import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
@@ -191,7 +191,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         settings?.searchCities?.override,
     );
     const defaultLocationCountry = !hasExplicitLocationOverride
-      ? getCachedOrDetectedUserCountryKey()
+      ? getDetectedCountryKey()
       : null;
     const rememberedCountry = normalizeUiCountryKey(
       hasExplicitLocationOverride

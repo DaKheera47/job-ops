@@ -1,8 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  detectUserCountryKey,
-  getCachedOrDetectedUserCountryKey,
-} from "./user-location";
+import { detectUserCountryKey, getDetectedCountryKey } from "./user-location";
 
 describe("user-location", () => {
   beforeEach(() => {
@@ -39,7 +36,7 @@ describe("user-location", () => {
       }),
     );
 
-    const result = getCachedOrDetectedUserCountryKey();
+    const result = getDetectedCountryKey();
 
     expect(result).toBe("united kingdom");
   });
@@ -53,7 +50,7 @@ describe("user-location", () => {
       configurable: true,
       value: "en-US",
     });
-    const result = getCachedOrDetectedUserCountryKey();
+    const result = getDetectedCountryKey();
     const cached = localStorage.getItem("jobops.user-country-cache.v1");
 
     expect(result).toBe("united states");
