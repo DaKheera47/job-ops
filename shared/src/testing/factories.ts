@@ -182,6 +182,7 @@ export const createAppSettings = (
   chatStyleConstraints: { value: "", default: "", override: null },
   chatStyleDoNotUse: { value: "", default: "", override: null },
   llmApiKeyHint: null,
+  rxresumeApiKeyHint: null,
   rxresumeEmail: null,
   rxresumePasswordHint: null,
   basicAuthUser: null,
@@ -198,5 +199,6 @@ export const createAppSettings = (
   penalizeMissingSalary: { value: false, default: false, override: null },
   missingSalaryPenalty: { value: 10, default: 10, override: null },
   autoSkipScoreThreshold: { value: null, default: null, override: null },
+  rxresumeMode: { value: "auto", default: "auto", override: null },
   ...overrides,
 });

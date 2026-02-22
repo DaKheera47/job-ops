@@ -12,6 +12,8 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
+export type RxResumeMode = "auto" | "v4" | "v5";
+
 export interface ResumeProfile {
   basics?: {
     name?: string;
@@ -138,6 +140,7 @@ export interface AppSettings {
   penalizeMissingSalary: Resolved<boolean>;
   missingSalaryPenalty: Resolved<number>;
   autoSkipScoreThreshold: Resolved<number | null>;
+  rxresumeMode: Resolved<RxResumeMode>;
 
   // Model variants (no own default, fallback to model.value):
   modelScorer: ModelResolved;
@@ -153,6 +156,7 @@ export interface AppSettings {
 
   // Secret hints:
   llmApiKeyHint: string | null;
+  rxresumeApiKeyHint: string | null;
   rxresumePasswordHint: string | null;
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;

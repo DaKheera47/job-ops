@@ -136,6 +136,26 @@ export const settingsRegistry = {
       return value ? JSON.stringify(value) : null;
     },
   },
+  rxresumeMode: {
+    kind: "typed" as const,
+    schema: z.enum(["auto", "v4", "v5"]),
+    default: (): "auto" | "v4" | "v5" =>
+      (typeof process !== "undefined"
+        ? process.env.RXRESUME_MODE
+        : undefined) === "v4"
+        ? "v4"
+        : (typeof process !== "undefined"
+              ? process.env.RXRESUME_MODE
+              : undefined) === "v5"
+          ? "v5"
+          : "auto",
+    parse: (raw: string | undefined): "auto" | "v4" | "v5" | null => {
+      if (!raw) return null;
+      return raw === "auto" || raw === "v4" || raw === "v5" ? raw : null;
+    },
+    serialize: (value: "auto" | "v4" | "v5" | null | undefined): string | null =>
+      value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
@@ -389,6 +409,11 @@ export const settingsRegistry = {
   rxresumePassword: {
     kind: "secret" as const,
     envKey: "RXRESUME_PASSWORD",
+    schema: z.string().trim().max(2000),
+  },
+  rxresumeApiKey: {
+    kind: "secret" as const,
+    envKey: "RXRESUME_API_KEY",
     schema: z.string().trim().max(2000),
   },
   ukvisajobsPassword: {
