@@ -1,14 +1,44 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
+import type { ResumeData } from "@shared/rxresume-schema";
 import { resumeDataSchema } from "@shared/rxresume-schema";
 
-export interface RxResumeResponse {
+type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
+
+export type RxResumeListItem = {
   id: string;
   name: string;
   slug: string;
-  data: unknown;
+  tags: string[];
+  isPublic: boolean;
+  isLocked: boolean;
+  createdAt: string;
+  updatedAt: string;
   [key: string]: unknown;
-}
+};
+
+export type RxResumeGetByIdResponse = {
+  id: string;
+  name: string;
+  slug: string;
+  tags: string[];
+  data: ResumeData | Record<string, unknown>;
+  isPublic: boolean;
+  isLocked: boolean;
+  hasPassword: boolean;
+  [key: string]: unknown;
+};
+
+export type RxResumeImportRequest = {
+  data: ResumeData | unknown;
+  // Not part of the documented v5 import schema, but accepted by some installs.
+  name?: string;
+  slug?: string;
+};
+
+export type RxResumeExportPdfResponse = {
+  url: string;
+};
 
 export type VerifyApiKeyResult =
   | { ok: true }
@@ -106,7 +136,7 @@ async function executeWithKeyRetries(
 export async function fetchRxResume(
   path: string,
   options: RequestInit = {},
-  config?: { baseUrl?: string; apiKey?: string },
+  config?: RxResumeApiConfig,
 ): Promise<unknown> {
   const baseUrl =
     config?.baseUrl ?? process.env.RXRESUME_URL ?? "https://rxresu.me";
@@ -119,9 +149,13 @@ export async function fetchRxResume(
  */
 export async function getResume(
   id: string,
-  config?: { baseUrl?: string; apiKey?: string },
-): Promise<RxResumeResponse> {
-  return (await fetchRxResume(`/resume/${id}`, {}, config)) as RxResumeResponse;
+  config?: RxResumeApiConfig,
+): Promise<RxResumeGetByIdResponse> {
+  return (await fetchRxResume(
+    `/resume/${id}`,
+    {},
+    config,
+  )) as RxResumeGetByIdResponse;
 }
 
 export async function verifyApiKey(
@@ -147,12 +181,8 @@ export async function verifyApiKey(
  * Import a resume.
  */
 export async function importResume(
-  payload: {
-    name: string;
-    slug: string;
-    data: unknown;
-  },
-  config?: { baseUrl?: string; apiKey?: string },
+  payload: RxResumeImportRequest,
+  config?: RxResumeApiConfig,
 ): Promise<string> {
   payload.data = resumeDataSchema.parse(payload.data);
 
@@ -174,7 +204,7 @@ export async function importResume(
  */
 export async function deleteResume(
   id: string,
-  config?: { baseUrl?: string; apiKey?: string },
+  config?: RxResumeApiConfig,
 ): Promise<void> {
   await fetchRxResume(`/resume/${id}`, { method: "DELETE" }, config);
 }
@@ -184,15 +214,13 @@ export async function deleteResume(
  */
 export async function exportResumePdf(
   id: string,
-  config?: { baseUrl?: string; apiKey?: string },
+  config?: RxResumeApiConfig,
 ): Promise<string> {
   const result = (await fetchRxResume(
     `/printer/resume/${id}/pdf`,
     {},
     config,
-  )) as {
-    url: string;
-  };
+  )) as RxResumeExportPdfResponse;
   return result.url;
 }
 
@@ -203,9 +231,6 @@ export async function exportResumePdf(
 export async function listResumes(config?: {
   baseUrl?: string;
   apiKey?: string;
-}): Promise<{ id: string; name: string }[]> {
-  return (await fetchRxResume("/resume/list", {}, config)) as {
-    id: string;
-    name: string;
-  }[];
+}): Promise<RxResumeListItem[]> {
+  return (await fetchRxResume("/resume/list", {}, config)) as RxResumeListItem[];
 }
