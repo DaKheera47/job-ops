@@ -1,13 +1,13 @@
-import { okWithMeta } from "@infra/http";
+import { ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { LlmService } from "@server/services/llm/service";
-import { RxResumeClient } from "@server/services/rxresume-client";
 import {
   getResume,
-  RxResumeCredentialsError,
-} from "@server/services/rxresume-v4";
+  RxResumeAuthConfigError,
+  validateCredentials as validateRxResumeCredentials,
+} from "@server/services/rxresume";
 import { resumeDataSchema } from "@shared/rxresume-schema";
 import { type Request, type Response, Router } from "express";
 
@@ -54,7 +54,7 @@ async function validateLlm(options: {
 }
 
 /**
- * Validate that a base resume is configured and accessible via RxResume v4 API.
+ * Validate that a base resume is configured and accessible via Reactive Resume.
  */
 async function validateResumeConfig(): Promise<ValidationResponse> {
   try {
@@ -93,10 +93,10 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
 
       return { valid: true, message: null };
     } catch (error) {
-      if (error instanceof RxResumeCredentialsError) {
+      if (error instanceof RxResumeAuthConfigError) {
         return {
           valid: false,
-          message: "RxResume credentials not configured.",
+          message: error.message,
         };
       }
       const message =
@@ -113,42 +113,45 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
 }
 
 async function validateRxresume(
-  email?: string | null,
-  password?: string | null,
+  options?: {
+    mode?: string | null;
+    email?: string | null;
+    password?: string | null;
+    apiKey?: string | null;
+    baseUrl?: string | null;
+  },
 ): Promise<ValidationResponse> {
-  const rxEmail = email?.trim() || process.env.RXRESUME_EMAIL || "";
-  const rxPassword = password?.trim() || process.env.RXRESUME_PASSWORD || "";
-  const rxUrl = process.env.RXRESUME_URL || "https://v4.rxresu.me";
+  const rawMode = options?.mode?.trim();
+  const mode =
+    rawMode === "auto" || rawMode === "v4" || rawMode === "v5"
+      ? rawMode
+      : undefined;
 
-  if (!rxEmail || !rxPassword) {
-    return { valid: false, message: "RxResume credentials are missing." };
-  }
+  const result = await validateRxResumeCredentials({
+    mode,
+    v4: {
+      email: options?.email ?? undefined,
+      password: options?.password ?? undefined,
+      baseUrl: options?.baseUrl ?? undefined,
+    },
+    v5: {
+      apiKey: options?.apiKey ?? undefined,
+      baseUrl: options?.baseUrl ?? undefined,
+    },
+  });
 
-  const result = await RxResumeClient.verifyCredentials(
-    rxEmail,
-    rxPassword,
-    rxUrl,
-  );
+  if (result.ok) return { valid: true, message: null };
 
-  if (result.ok) {
-    return { valid: true, message: null };
-  }
-
-  const normalizedMessage = result.message?.toLowerCase() ?? "";
-  if (
-    result.status === 401 ||
-    normalizedMessage.includes("invalidcredentials")
-  ) {
+  const normalizedMessage = result.message.toLowerCase();
+  if (result.status === 401 || normalizedMessage.includes("invalidcredentials")) {
     return {
       valid: false,
       message:
-        "Invalid RxResume credentials. Check your email and password and try again.",
+        "Invalid RxResume credentials. Check your configured Reactive Resume mode credentials and try again.",
     };
   }
 
-  const message =
-    result.message || `RxResume validation failed (HTTP ${result.status})`;
-  return { valid: false, message };
+  return { valid: false, message: result.message };
 }
 
 onboardingRouter.post(
@@ -213,8 +216,19 @@ onboardingRouter.post(
       typeof req.body?.email === "string" ? req.body.email : undefined;
     const password =
       typeof req.body?.password === "string" ? req.body.password : undefined;
-    const result = await validateRxresume(email, password);
-    res.json({ success: true, data: result });
+    const mode = typeof req.body?.mode === "string" ? req.body.mode : undefined;
+    const apiKey =
+      typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
+    const baseUrl =
+      typeof req.body?.baseUrl === "string" ? req.body.baseUrl : undefined;
+    const result = await validateRxresume({
+      mode,
+      email,
+      password,
+      apiKey,
+      baseUrl,
+    });
+    ok(res, result);
   },
 );
 
@@ -233,6 +247,6 @@ onboardingRouter.get(
     }
 
     const result = await validateResumeConfig();
-    res.json({ success: true, data: result });
+    ok(res, result);
   },
 );

@@ -2,14 +2,13 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
-// Mock the rxresume-v4 service
-vi.mock("@server/services/rxresume-v4", () => ({
+// Mock the RxResume adapter service
+vi.mock("@server/services/rxresume", () => ({
   getResume: vi.fn(),
-  listResumes: vi.fn(),
-  RxResumeCredentialsError: class RxResumeCredentialsError extends Error {
+  RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor() {
-      super("RxResume credentials not configured.");
-      this.name = "RxResumeCredentialsError";
+      super("Reactive Resume credentials not configured.");
+      this.name = "RxResumeAuthConfigError";
     }
   },
 }));
@@ -33,8 +32,8 @@ import { getSetting } from "@server/repositories/settings";
 import { getProfile } from "@server/services/profile";
 import {
   getResume,
-  RxResumeCredentialsError,
-} from "@server/services/rxresume-v4";
+  RxResumeAuthConfigError,
+} from "@server/services/rxresume";
 
 describe.sequential("Profile API routes", () => {
   let server: Server;
@@ -192,7 +191,9 @@ describe.sequential("Profile API routes", () => {
 
     it("returns exists: false when RxResume credentials are missing", async () => {
       vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-      vi.mocked(getResume).mockRejectedValue(new RxResumeCredentialsError());
+      vi.mocked(getResume).mockRejectedValue(
+        new (RxResumeAuthConfigError as unknown as new () => Error)(),
+      );
 
       const res = await fetch(`${baseUrl}/api/profile/status`);
       const body = await res.json();

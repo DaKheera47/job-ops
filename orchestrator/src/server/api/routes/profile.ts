@@ -1,3 +1,4 @@
+import { ok } from "@infra/http";
 import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { getSetting } from "@server/repositories/settings";
@@ -5,8 +6,8 @@ import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
   getResume,
-  RxResumeCredentialsError,
-} from "@server/services/rxresume-v4";
+  RxResumeAuthConfigError,
+} from "@server/services/rxresume";
 import { type Request, type Response, Router } from "express";
 
 export const profileRouter = Router();
@@ -22,7 +23,7 @@ profileRouter.get("/projects", async (_req: Request, res: Response) => {
     }
     const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
-    res.json({ success: true, data: catalog });
+    ok(res, catalog);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
@@ -35,7 +36,7 @@ profileRouter.get("/projects", async (_req: Request, res: Response) => {
 profileRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const profile = await getProfile();
-    res.json({ success: true, data: profile });
+    ok(res, profile);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });
@@ -50,13 +51,10 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
     const rxresumeBaseResumeId = await getSetting("rxresumeBaseResumeId");
 
     if (!rxresumeBaseResumeId) {
-      res.json({
-        success: true,
-        data: {
-          exists: false,
-          error:
-            "No base resume selected. Please select a resume from your RxResume account in Settings.",
-        },
+      ok(res, {
+        exists: false,
+        error:
+          "No base resume selected. Please select a resume from your RxResume account in Settings.",
       });
       return;
     }
@@ -65,33 +63,21 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
     try {
       const resume = await getResume(rxresumeBaseResumeId);
       if (!resume.data || typeof resume.data !== "object") {
-        res.json({
-          success: true,
-          data: {
-            exists: false,
-            error: "Selected resume is empty or invalid.",
-          },
-        });
+        ok(res, { exists: false, error: "Selected resume is empty or invalid." });
         return;
       }
 
-      res.json({ success: true, data: { exists: true, error: null } });
+      ok(res, { exists: true, error: null });
     } catch (error) {
-      if (error instanceof RxResumeCredentialsError) {
-        res.json({
-          success: true,
-          data: {
-            exists: false,
-            error: "RxResume credentials not configured.",
-          },
-        });
+      if (error instanceof RxResumeAuthConfigError) {
+        ok(res, { exists: false, error: error.message });
         return;
       }
       throw error;
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    res.json({ success: true, data: { exists: false, error: message } });
+    ok(res, { exists: false, error: message });
   }
 });
 
@@ -102,7 +88,7 @@ profileRouter.post("/refresh", async (_req: Request, res: Response) => {
   try {
     clearProfileCache();
     const profile = await getProfile(true);
-    res.json({ success: true, data: profile });
+    ok(res, profile);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({ success: false, error: message });

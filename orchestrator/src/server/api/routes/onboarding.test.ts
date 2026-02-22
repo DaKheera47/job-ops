@@ -224,7 +224,7 @@ describe.sequential("Onboarding API routes", () => {
       expect(res.ok).toBe(true);
       expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(false);
-      expect(body.data.message).toContain("missing");
+      expect(body.data.message).toContain("not configured");
     });
 
     it("returns invalid when only email is provided", async () => {
@@ -237,7 +237,7 @@ describe.sequential("Onboarding API routes", () => {
 
       expect(res.ok).toBe(true);
       expect(body.data.valid).toBe(false);
-      expect(body.data.message).toContain("missing");
+      expect(body.data.message).toContain("not configured");
     });
 
     it("returns invalid when only password is provided", async () => {
@@ -250,7 +250,7 @@ describe.sequential("Onboarding API routes", () => {
 
       expect(res.ok).toBe(true);
       expect(body.data.valid).toBe(false);
-      expect(body.data.message).toContain("missing");
+      expect(body.data.message).toContain("not configured");
     });
 
     it("validates invalid credentials against RxResume", async () => {
@@ -275,6 +275,37 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.data.valid).toBe(false);
     });
 
+    it("validates v5 API key mode against Reactive Resume OpenAPI", async () => {
+      global.fetch = vi.fn((input, init) => {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.includes("/api/openapi/resume/list")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            headers: { get: () => "application/json" },
+            json: async () => [],
+          } as Response);
+        }
+        return originalFetch(input, init);
+      });
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "v5",
+          apiKey: "rr-v5-test-key",
+          baseUrl: "http://localhost:3000",
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(true);
+      expect(body.data.message).toBeNull();
+    });
+
     it("handles whitespace-only credentials", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
@@ -285,7 +316,7 @@ describe.sequential("Onboarding API routes", () => {
 
       expect(res.ok).toBe(true);
       expect(body.data.valid).toBe(false);
-      expect(body.data.message).toContain("missing");
+      expect(body.data.message).toContain("not configured");
     });
   });
 
