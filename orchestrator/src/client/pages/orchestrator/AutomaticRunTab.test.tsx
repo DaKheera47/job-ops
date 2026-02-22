@@ -1,8 +1,12 @@
 import { createAppSettings } from "@shared/testing/factories.js";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
+
+const { getCachedOrDetectedUserCountryKeyMock } = vi.hoisted(() => ({
+  getCachedOrDetectedUserCountryKeyMock: vi.fn((): string | null => null),
+}));
 
 vi.mock("@/components/ui/tooltip", () => ({
   TooltipProvider: ({ children }: { children: React.ReactNode }) => (
@@ -17,7 +21,37 @@ vi.mock("@/components/ui/tooltip", () => ({
   ),
 }));
 
+vi.mock("@/lib/user-location", () => ({
+  getCachedOrDetectedUserCountryKey: getCachedOrDetectedUserCountryKeyMock,
+}));
+
 describe("AutomaticRunTab", () => {
+  beforeEach(() => {
+    getCachedOrDetectedUserCountryKeyMock.mockReset();
+    getCachedOrDetectedUserCountryKeyMock.mockReturnValue(null);
+  });
+
+  it("uses detected country when location settings are still defaults", () => {
+    getCachedOrDetectedUserCountryKeyMock.mockReturnValueOnce("united states");
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "United States" }),
+    ).toBeInTheDocument();
+  });
+
   it("loads persisted country from settings", () => {
     render(
       <AutomaticRunTab
@@ -28,7 +62,11 @@ describe("AutomaticRunTab", () => {
             default: ["backend engineer"],
             override: null,
           },
-          jobspyCountryIndeed: { value: "us", default: "us", override: null },
+          jobspyCountryIndeed: {
+            value: "us",
+            default: "united kingdom",
+            override: "us",
+          },
           searchCities: { value: "", default: "", override: null },
         })}
         enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
@@ -57,8 +95,8 @@ describe("AutomaticRunTab", () => {
           },
           jobspyCountryIndeed: {
             value: "usa/ca",
-            default: "usa/ca",
-            override: null,
+            default: "united kingdom",
+            override: "usa/ca",
           },
           searchCities: { value: "", default: "", override: null },
         })}
@@ -90,8 +128,8 @@ describe("AutomaticRunTab", () => {
           },
           jobspyCountryIndeed: {
             value: "united states",
-            default: "united states",
-            override: null,
+            default: "united kingdom",
+            override: "united states",
           },
           searchCities: { value: "", default: "", override: null },
         })}
@@ -124,8 +162,8 @@ describe("AutomaticRunTab", () => {
           },
           jobspyCountryIndeed: {
             value: "united states",
-            default: "united states",
-            override: null,
+            default: "united kingdom",
+            override: "united states",
           },
           searchCities: { value: "", default: "", override: null },
         })}
@@ -159,8 +197,8 @@ describe("AutomaticRunTab", () => {
           },
           jobspyCountryIndeed: {
             value: "japan",
-            default: "japan",
-            override: null,
+            default: "united kingdom",
+            override: "japan",
           },
           searchCities: { value: "", default: "", override: null },
         })}
@@ -199,12 +237,12 @@ describe("AutomaticRunTab", () => {
           jobspyCountryIndeed: {
             value: "united kingdom",
             default: "united kingdom",
-            override: null,
+            override: "united kingdom",
           },
           searchCities: {
             value: "United Kingdom",
             default: "United Kingdom",
-            override: null,
+            override: "United Kingdom",
           },
         })}
         enabledSources={["linkedin", "glassdoor"]}
@@ -240,7 +278,7 @@ describe("AutomaticRunTab", () => {
           jobspyCountryIndeed: {
             value: "united kingdom",
             default: "united kingdom",
-            override: null,
+            override: "united kingdom",
           },
           searchCities: { value: "", default: "", override: null },
         })}
@@ -278,12 +316,12 @@ describe("AutomaticRunTab", () => {
           jobspyCountryIndeed: {
             value: "united kingdom",
             default: "united kingdom",
-            override: null,
+            override: "united kingdom",
           },
           searchCities: {
             value: "London|Manchester",
             default: "London|Manchester",
-            override: null,
+            override: "London|Manchester",
           },
         })}
         enabledSources={["linkedin", "glassdoor"]}

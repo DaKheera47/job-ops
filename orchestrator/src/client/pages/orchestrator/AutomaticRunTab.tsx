@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getCachedOrDetectedUserCountryKey } from "@/lib/user-location";
 import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
@@ -185,10 +186,22 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       settings?.gradcrackerMaxJobsPerTerm?.value ??
       settings?.ukvisajobsMaxJobs?.value ??
       DEFAULT_VALUES.runBudget;
+    const hasExplicitLocationOverride = Boolean(
+      settings?.jobspyCountryIndeed?.override ||
+        settings?.searchCities?.override,
+    );
+    const defaultLocationCountry = !hasExplicitLocationOverride
+      ? getCachedOrDetectedUserCountryKey()
+      : null;
     const rememberedCountry = normalizeUiCountryKey(
-      settings?.jobspyCountryIndeed?.value ??
-        settings?.searchCities?.value ??
-        DEFAULT_VALUES.country,
+      hasExplicitLocationOverride
+        ? (settings?.jobspyCountryIndeed?.value ??
+            settings?.searchCities?.value ??
+            DEFAULT_VALUES.country)
+        : (defaultLocationCountry ??
+            settings?.jobspyCountryIndeed?.value ??
+            settings?.searchCities?.value ??
+            DEFAULT_VALUES.country),
     );
     const rememberedCountryKey = rememberedCountry || DEFAULT_VALUES.country;
     const rememberedLocations = parseCityLocationsSetting(
