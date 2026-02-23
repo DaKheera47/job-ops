@@ -76,16 +76,12 @@ function getRxresumeRuleText(mode: RxResumeMode): string {
   if (mode === "v5") {
     return "No fallback. Pipeline fails if v5 validation fails.";
   }
-  if (mode === "v4") {
-    return "No fallback. Pipeline fails if v4 validation fails.";
-  }
-  return "We use v5 if v5 validation passes; otherwise we use v4 if v4 validation passes.";
+  return "No fallback. Pipeline fails if v4 validation fails.";
 }
 
 function getRxresumeTestLabel(mode: RxResumeMode): string {
   if (mode === "v5") return "Test v5";
-  if (mode === "v4") return "Test v4";
-  return "Test Auto";
+  return "Test v4";
 }
 
 function getInitialOnboardingRxresumeMode(input: {
@@ -302,39 +298,16 @@ export const OnboardingGate: React.FC = () => {
 
     setIsValidatingRxresume(true);
     try {
-      if (selectedMode === "v4" || selectedMode === "v5") {
-        const versionResult = await validateRxresumeVersion(selectedMode);
-        setRxresumeVersionValidations((current) => ({
-          ...current,
-          [selectedMode]: versionResult,
-        }));
-        const result = {
-          valid: versionResult.valid,
-          message: versionResult.message,
-        };
-        setRxresumeValidation({ ...result, checked: true });
-        return result;
-      }
-
-      const v5Result = await validateRxresumeVersion("v5");
-      const v4Result = await validateRxresumeVersion("v4");
+      const versionResult = await validateRxresumeVersion(selectedMode);
       setRxresumeVersionValidations((current) => ({
         ...current,
-        v5: v5Result,
-        v4: v4Result,
+        [selectedMode]: versionResult,
       }));
 
-      const result: ValidationResult = v5Result.valid
-        ? { valid: true, message: null }
-        : v4Result.valid
-          ? { valid: true, message: null }
-          : {
-              valid: false,
-              message:
-                v5Result.message && v4Result.message
-                  ? `Auto test failed. v5: ${v5Result.message} v4: ${v4Result.message}`
-                  : v5Result.message || v4Result.message || "Auto test failed",
-            };
+      const result: ValidationResult = {
+        valid: versionResult.valid,
+        message: versionResult.message,
+      };
       setRxresumeValidation({ ...result, checked: true });
       return result;
     } finally {
@@ -536,14 +509,6 @@ export const OnboardingGate: React.FC = () => {
       if (!hasRxresumeEmail && !emailValue) missing.push("RxResume email");
       if (!hasRxresumePassword && !passwordValue)
         missing.push("RxResume password");
-    } else {
-      const hasAnyV4 =
-        (hasRxresumeEmail && hasRxresumePassword) ||
-        (emailValue && passwordValue);
-      const hasAnyV5 = hasRxresumeApiKey || Boolean(apiKeyValue);
-      if (!hasAnyV4 && !hasAnyV5) {
-        missing.push("RxResume v5 API key or v4 email/password");
-      }
     }
 
     if (missing.length > 0) {

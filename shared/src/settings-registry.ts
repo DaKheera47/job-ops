@@ -138,23 +138,19 @@ export const settingsRegistry = {
   },
   rxresumeMode: {
     kind: "typed" as const,
-    schema: z.enum(["auto", "v4", "v5"]),
-    default: (): "auto" | "v4" | "v5" =>
+    schema: z.enum(["v4", "v5"]),
+    default: (): "v4" | "v5" =>
       (typeof process !== "undefined"
         ? process.env.RXRESUME_MODE
         : undefined) === "v4"
         ? "v4"
-        : (typeof process !== "undefined"
-              ? process.env.RXRESUME_MODE
-              : undefined) === "v5"
-          ? "v5"
-          : "auto",
-    parse: (raw: string | undefined): "auto" | "v4" | "v5" | null => {
+        : "v5",
+    parse: (raw: string | undefined): "v4" | "v5" | null => {
       if (!raw) return null;
-      return raw === "auto" || raw === "v4" || raw === "v5" ? raw : null;
+      return raw === "v4" || raw === "v5" ? raw : null;
     },
     serialize: (
-      value: "auto" | "v4" | "v5" | null | undefined,
+      value: "v4" | "v5" | null | undefined,
     ): string | null => value ?? null,
   },
   ukvisajobsMaxJobs: {

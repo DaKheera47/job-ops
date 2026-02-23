@@ -79,7 +79,6 @@ At generation time:
 Before connecting Reactive Resume to JobOps:
 
 1. Choose a mode in **Settings → Reactive Resume**:
-   - `auto` (default, prefers v5 then falls back to v4)
    - `v5` (API key)
    - `v4` (email/password)
 2. For **v5** (recommended for self-hosted/latest), generate an API key and configure `rxresumeApiKey` or `RXRESUME_API_KEY`.
@@ -94,13 +93,13 @@ Important:
 
 Configure in **Settings → Reactive Resume**:
 
-- `rxresumeMode` (`auto`, `v5`, or `v4`)
+- `rxresumeMode` (`v5` or `v4`)
 - `rxresumeApiKey` (for v5)
 - `rxresumeEmail` + `rxresumePassword` (for v4)
 
 Or via environment variables:
 
-- `RXRESUME_MODE` (`auto`, `v5`, or `v4`)
+- `RXRESUME_MODE` (`v5` or `v4`)
 - `RXRESUME_API_KEY` (for v5)
 - `RXRESUME_EMAIL`
 - `RXRESUME_PASSWORD`

@@ -40,7 +40,7 @@ type ReactiveResumeSectionProps = {
   setRxResumeBaseResumeIdDraft: (value: string | null) => void;
   // True when v4 credentials or v5 API key are configured.
   hasRxResumeAccess: boolean;
-  rxresumeMode: "auto" | "v4" | "v5";
+  rxresumeMode: "v4" | "v5";
   rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -69,7 +69,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
     watch,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
-  const selectedMode = watch("rxresumeMode") ?? rxresumeMode ?? "auto";
+  const selectedMode = watch("rxresumeMode") ?? rxresumeMode ?? "v5";
 
   return (
     <AccordionItem value="reactive-resume" className="border rounded-lg px-4">
@@ -117,7 +117,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                     control={control}
                     render={({ field }) => (
                       <Select
-                        value={field.value ?? "auto"}
+                        value={field.value ?? "v5"}
                         onValueChange={(value) => field.onChange(value)}
                         disabled={isLoading || isSaving}
                       >
@@ -125,9 +125,6 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                           <SelectValue placeholder="Select mode" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="auto">
-                            Auto (prefer v5, fallback to v4)
-                          </SelectItem>
                           <SelectItem value="v5">Reactive Resume v5</SelectItem>
                           <SelectItem value="v4">Reactive Resume v4</SelectItem>
                         </SelectContent>
@@ -149,15 +146,13 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                     disabled={isLoading || isSaving}
                     {...register("rxresumeApiKey")}
                   />
-                  {errors.rxresumeApiKey && (
+                {errors.rxresumeApiKey && (
                     <p className="text-xs text-destructive">
                       {errors.rxresumeApiKey.message as string}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Used for Reactive Resume v5 (self-hosted/latest). In{" "}
-                    <code>auto</code> mode, JobOps prefers this over v4
-                    credentials.
+                    Used for Reactive Resume v5 (self-hosted/latest).
                   </p>
                   {rxresumeApiKeyHint && (
                     <p className="text-xs text-muted-foreground">

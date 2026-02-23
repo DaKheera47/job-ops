@@ -12,7 +12,7 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
-export type RxResumeMode = "auto" | "v4" | "v5";
+export type RxResumeMode = "v4" | "v5";
 
 export interface ResumeProfile {
   basics?: {

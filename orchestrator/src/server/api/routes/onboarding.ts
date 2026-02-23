@@ -120,10 +120,7 @@ async function validateRxresume(options?: {
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
   const rawMode = options?.mode?.trim();
-  const mode =
-    rawMode === "auto" || rawMode === "v4" || rawMode === "v5"
-      ? rawMode
-      : undefined;
+  const mode = rawMode === "v4" || rawMode === "v5" ? rawMode : undefined;
 
   const result = await validateRxResumeCredentials({
     mode,

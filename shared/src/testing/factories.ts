@@ -199,6 +199,6 @@ export const createAppSettings = (
   penalizeMissingSalary: { value: false, default: false, override: null },
   missingSalaryPenalty: { value: 10, default: 10, override: null },
   autoSkipScoreThreshold: { value: null, default: null, override: null },
-  rxresumeMode: { value: "auto", default: "auto", override: null },
+  rxresumeMode: { value: "v5", default: "v5", override: null },
   ...overrides,
 });

@@ -1288,7 +1288,7 @@ export async function validateLlm(input: {
 }
 
 export async function validateRxresume(input?: {
-  mode?: "auto" | "v4" | "v5";
+  mode?: "v4" | "v5";
   email?: string;
   password?: string;
   apiKey?: string;

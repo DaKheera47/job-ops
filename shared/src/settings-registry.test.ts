@@ -105,12 +105,11 @@ describe("settingsRegistry helpers", () => {
 
   describe("RxResume settings", () => {
     it("parses rxresumeMode enum values and rejects invalid values", () => {
-      expect(settingsRegistry.rxresumeMode.parse("auto")).toBe("auto");
       expect(settingsRegistry.rxresumeMode.parse("v4")).toBe("v4");
       expect(settingsRegistry.rxresumeMode.parse("v5")).toBe("v5");
       expect(settingsRegistry.rxresumeMode.parse("")).toBeNull();
       expect(settingsRegistry.rxresumeMode.parse("latest")).toBeNull();
-      expect(settingsRegistry.rxresumeMode.serialize("auto")).toBe("auto");
+      expect(settingsRegistry.rxresumeMode.serialize("v5")).toBe("v5");
       expect(settingsRegistry.rxresumeMode.serialize(null)).toBeNull();
     });
 

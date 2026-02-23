@@ -52,7 +52,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
-  rxresumeMode: "auto",
+  rxresumeMode: "v5",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   chatStyleTone: "",
@@ -374,8 +374,7 @@ export const SettingsPage: React.FC = () => {
   const isLoadingBackups = backupsQuery.isLoading;
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
-  const rxresumeMode = (settings?.rxresumeMode?.value ??
-    "auto") as RxResumeMode;
+  const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
   const hasV4RxResumeAccess = Boolean(
     settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
   );
@@ -383,9 +382,7 @@ export const SettingsPage: React.FC = () => {
   const hasRxResumeAccess =
     rxresumeMode === "v5"
       ? hasV5RxResumeAccess
-      : rxresumeMode === "v4"
-        ? hasV4RxResumeAccess
-        : hasV5RxResumeAccess || hasV4RxResumeAccess;
+      : hasV4RxResumeAccess;
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -659,7 +656,7 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
-        rxresumeMode: data.rxresumeMode ?? "auto",
+        rxresumeMode: data.rxresumeMode ?? "v5",
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
         chatStyleTone: normalizeString(data.chatStyleTone),
