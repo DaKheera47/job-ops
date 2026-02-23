@@ -827,7 +827,6 @@ export const SettingsPage: React.FC = () => {
         <Accordion
           type="multiple"
           className="w-full space-y-4"
-          defaultValue={["model", "feature", "webhooks", "chat"]}
         >
           <ModelSettingsSection
             values={model}

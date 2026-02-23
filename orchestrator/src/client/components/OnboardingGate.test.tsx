@@ -95,6 +95,7 @@ const settingsResponse = {
     llmProvider: { value: "openrouter", default: "openrouter", override: null },
     llmApiKeyHint: null,
     rxresumeEmail: "",
+    rxresumeApiKeyHint: null,
     rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,
   },
@@ -139,6 +140,13 @@ describe("OnboardingGate", () => {
   });
 
   it("hides the gate when all validations succeed", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      ...settingsResponse,
+      settings: {
+        ...settingsResponse.settings,
+        rxresumeApiKeyHint: "abcd1234",
+      },
+    } as any);
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -177,8 +185,9 @@ describe("OnboardingGate", () => {
 
     render(<OnboardingGate />);
 
-    await waitFor(() => expect(api.validateRxresume).toHaveBeenCalled());
+    await waitFor(() => expect(api.validateResumeConfig).toHaveBeenCalled());
     expect(api.validateLlm).not.toHaveBeenCalled();
+    expect(api.validateRxresume).not.toHaveBeenCalled();
     await waitFor(() => {
       expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
     });

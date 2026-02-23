@@ -4,7 +4,6 @@ import { useSettings } from "@client/hooks/useSettings";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
-  formatSecretHint,
   getLlmProviderConfig,
   LLM_PROVIDER_LABELS,
   LLM_PROVIDERS,
@@ -44,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type ValidationState = ValidationResult & { checked: boolean };
+type TimestampedValidationState = ValidationState & { testedAt: number | null };
 
 type OnboardingFormData = {
   llmProvider: string;
@@ -55,6 +55,49 @@ type OnboardingFormData = {
   rxresumeApiKey: string;
   rxresumeBaseResumeId: string | null;
 };
+
+const EMPTY_VALIDATION_STATE: ValidationState = {
+  valid: false,
+  message: null,
+  checked: false,
+};
+
+const EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
+  ...EMPTY_VALIDATION_STATE,
+  testedAt: null,
+};
+
+function formatLastTested(value: number | null): string {
+  if (!value) return "Never";
+  return new Date(value).toLocaleString();
+}
+
+function getRxresumeRuleText(mode: RxResumeMode): string {
+  if (mode === "v5") {
+    return "No fallback. Pipeline fails if v5 validation fails.";
+  }
+  if (mode === "v4") {
+    return "No fallback. Pipeline fails if v4 validation fails.";
+  }
+  return "We use v5 if v5 validation passes; otherwise we use v4 if v4 validation passes.";
+}
+
+function getRxresumeTestLabel(mode: RxResumeMode): string {
+  if (mode === "v5") return "Test v5";
+  if (mode === "v4") return "Test v4";
+  return "Test Auto";
+}
+
+function getInitialOnboardingRxresumeMode(input: {
+  savedMode: RxResumeMode | null | undefined;
+  hasV4: boolean;
+  hasV5: boolean;
+}): RxResumeMode {
+  if (input.savedMode === "v4" || input.savedMode === "v5")
+    return input.savedMode;
+  if (input.hasV4 && !input.hasV5) return "v4";
+  return "v5";
+}
 
 function getStepPrimaryLabel(input: {
   currentStep: string | null;
@@ -83,24 +126,21 @@ export const OnboardingGate: React.FC = () => {
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
   const [isValidatingBaseResume, setIsValidatingBaseResume] = useState(false);
-  const [llmValidation, setLlmValidation] = useState<ValidationState>({
-    valid: false,
-    message: null,
-    checked: false,
-  });
-  const [rxresumeValidation, setRxresumeValidation] = useState<ValidationState>(
-    {
-      valid: false,
-      message: null,
-      checked: false,
-    },
+  const [llmValidation, setLlmValidation] = useState<ValidationState>(
+    EMPTY_VALIDATION_STATE,
   );
+  const [rxresumeValidation, setRxresumeValidation] = useState<ValidationState>(
+    EMPTY_VALIDATION_STATE,
+  );
+  const [rxresumeVersionValidations, setRxresumeVersionValidations] = useState<{
+    v4: TimestampedValidationState;
+    v5: TimestampedValidationState;
+  }>({
+    v4: EMPTY_TIMESTAMPED_VALIDATION_STATE,
+    v5: EMPTY_TIMESTAMPED_VALIDATION_STATE,
+  });
   const [baseResumeValidation, setBaseResumeValidation] =
-    useState<ValidationState>({
-      valid: false,
-      message: null,
-      checked: false,
-    });
+    useState<ValidationState>(EMPTY_VALIDATION_STATE);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const demoInfo = useDemoInfo();
   const demoMode = demoInfo?.demoMode ?? false;
@@ -111,7 +151,7 @@ export const OnboardingGate: React.FC = () => {
         llmProvider: "",
         llmBaseUrl: "",
         llmApiKey: "",
-        rxresumeMode: "auto",
+        rxresumeMode: "v5",
         rxresumeEmail: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
@@ -153,30 +193,6 @@ export const OnboardingGate: React.FC = () => {
     }
   }, [getValues, settings?.llmProvider]);
 
-  const validateRxresume = useCallback(async () => {
-    const values = getValues();
-
-    setIsValidatingRxresume(true);
-    try {
-      const result = await api.validateRxresume({
-        mode: values.rxresumeMode,
-        email: values.rxresumeEmail.trim() || undefined,
-        password: values.rxresumePassword.trim() || undefined,
-        apiKey: values.rxresumeApiKey.trim() || undefined,
-      });
-      setRxresumeValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "RxResume validation failed";
-      const result = { valid: false, message };
-      setRxresumeValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingRxresume(false);
-    }
-  }, [getValues]);
-
   const validateBaseResume = useCallback(async () => {
     setIsValidatingBaseResume(true);
     try {
@@ -213,9 +229,10 @@ export const OnboardingGate: React.FC = () => {
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
   const hasRxresumeApiKey = Boolean(settings?.rxresumeApiKeyHint);
+  const hasSavedV4RxresumeCreds = hasRxresumeEmail && hasRxresumePassword;
   const rxresumeModeCurrent = (rxresumeModeValue ||
     settings?.rxresumeMode?.value ||
-    "auto") as RxResumeMode;
+    "v5") as RxResumeMode;
   const hasCheckedValidations =
     (requiresLlmKey ? llmValidation.checked : true) &&
     rxresumeValidation.checked &&
@@ -227,12 +244,103 @@ export const OnboardingGate: React.FC = () => {
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
 
-  const rxresumeEmailCurrent = settings?.rxresumeEmail?.trim()
-    ? settings.rxresumeEmail
-    : undefined;
-  const rxresumePasswordCurrent = settings?.rxresumePasswordHint
-    ? formatSecretHint(settings?.rxresumePasswordHint)
-    : undefined;
+  const validateRxresumeVersion = useCallback(
+    async (
+      version: "v4" | "v5",
+    ): Promise<ValidationResult & { checked: true; testedAt: number }> => {
+      const values = getValues();
+      const emailValue = values.rxresumeEmail.trim();
+      const passwordValue = values.rxresumePassword.trim();
+      const apiKeyValue = values.rxresumeApiKey.trim();
+      const hasV4Configured =
+        (hasRxresumeEmail || Boolean(emailValue)) &&
+        (hasRxresumePassword || Boolean(passwordValue));
+      const hasV5Configured = hasRxresumeApiKey || Boolean(apiKeyValue);
+      const testedAt = Date.now();
+
+      if (version === "v5" && !hasV5Configured) {
+        return {
+          valid: false,
+          message: "v5 API key required. Add a v5 API key, then test again.",
+          checked: true,
+          testedAt,
+        };
+      }
+
+      if (version === "v4" && !hasV4Configured) {
+        return {
+          valid: false,
+          message:
+            "v4 email and password required. Add both credentials, then test again.",
+          checked: true,
+          testedAt,
+        };
+      }
+
+      try {
+        const result = await api.validateRxresume({
+          mode: version,
+          email: emailValue || undefined,
+          password: passwordValue || undefined,
+          apiKey: apiKeyValue || undefined,
+        });
+        return { ...result, checked: true, testedAt };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : `RxResume ${version} validation failed`;
+        return { valid: false, message, checked: true, testedAt };
+      }
+    },
+    [getValues, hasRxresumeApiKey, hasRxresumeEmail, hasRxresumePassword],
+  );
+
+  const validateRxresume = useCallback(async () => {
+    const values = getValues();
+    const selectedMode = values.rxresumeMode;
+
+    setIsValidatingRxresume(true);
+    try {
+      if (selectedMode === "v4" || selectedMode === "v5") {
+        const versionResult = await validateRxresumeVersion(selectedMode);
+        setRxresumeVersionValidations((current) => ({
+          ...current,
+          [selectedMode]: versionResult,
+        }));
+        const result = {
+          valid: versionResult.valid,
+          message: versionResult.message,
+        };
+        setRxresumeValidation({ ...result, checked: true });
+        return result;
+      }
+
+      const v5Result = await validateRxresumeVersion("v5");
+      const v4Result = await validateRxresumeVersion("v4");
+      setRxresumeVersionValidations((current) => ({
+        ...current,
+        v5: v5Result,
+        v4: v4Result,
+      }));
+
+      const result: ValidationResult = v5Result.valid
+        ? { valid: true, message: null }
+        : v4Result.valid
+          ? { valid: true, message: null }
+          : {
+              valid: false,
+              message:
+                v5Result.message && v4Result.message
+                  ? `Auto test failed. v5: ${v5Result.message} v4: ${v4Result.message}`
+                  : v5Result.message || v4Result.message || "Auto test failed",
+            };
+      setRxresumeValidation({ ...result, checked: true });
+      return result;
+    } finally {
+      setIsValidatingRxresume(false);
+    }
+  }, [getValues, validateRxresumeVersion]);
 
   // Initialize form values from settings
   useEffect(() => {
@@ -241,7 +349,14 @@ export const OnboardingGate: React.FC = () => {
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
         llmApiKey: "",
-        rxresumeMode: (settings.rxresumeMode?.value || "auto") as RxResumeMode,
+        rxresumeMode: getInitialOnboardingRxresumeMode({
+          savedMode: (settings.rxresumeMode?.value ??
+            null) as RxResumeMode | null,
+          hasV4: Boolean(
+            settings.rxresumeEmail?.trim() && settings.rxresumePasswordHint,
+          ),
+          hasV5: Boolean(settings.rxresumeApiKeyHint),
+        }),
         rxresumeEmail: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
@@ -275,7 +390,7 @@ export const OnboardingGate: React.FC = () => {
       {
         id: "rxresume",
         label: "Connect Reactive Resume",
-        subtitle: "Reactive Resume login",
+        subtitle: "Version + credentials",
         complete: rxresumeValidation.valid,
         disabled: false,
       },
@@ -438,18 +553,6 @@ export const OnboardingGate: React.FC = () => {
       return false;
     }
 
-    const resultingHasV4 =
-      (hasRxresumeEmail || Boolean(emailValue)) &&
-      (hasRxresumePassword || Boolean(passwordValue));
-    const resultingHasV5 = hasRxresumeApiKey || Boolean(apiKeyValue);
-    if (resultingHasV4 && resultingHasV5) {
-      toast.error("Choose one Reactive Resume auth method", {
-        description:
-          "Save either a v5 API key or v4 email/password, not both. Clear the other credentials first.",
-      });
-      return false;
-    }
-
     try {
       const validation = await validateRxresume();
       if (!validation.valid) {
@@ -481,6 +584,46 @@ export const OnboardingGate: React.FC = () => {
           : "Failed to save RxResume credentials";
       toast.error(message);
       return false;
+    } finally {
+      setIsSavingEnv(false);
+    }
+  };
+
+  const handleClearRxresumeStored = async (version: "v4" | "v5") => {
+    try {
+      setIsSavingEnv(true);
+      if (version === "v5") {
+        await api.updateSettings({ rxresumeApiKey: null });
+        setValue("rxresumeApiKey", "");
+        setRxresumeVersionValidations((current) => ({
+          ...current,
+          v5: EMPTY_TIMESTAMPED_VALIDATION_STATE,
+        }));
+      } else {
+        await api.updateSettings({
+          rxresumeEmail: null,
+          rxresumePassword: null,
+        });
+        setValue("rxresumeEmail", "");
+        setValue("rxresumePassword", "");
+        setRxresumeVersionValidations((current) => ({
+          ...current,
+          v4: EMPTY_TIMESTAMPED_VALIDATION_STATE,
+        }));
+      }
+      setRxresumeValidation(EMPTY_VALIDATION_STATE);
+      await refreshSettings();
+      toast.success(
+        version === "v5"
+          ? "Cleared saved v5 API key"
+          : "Cleared saved v4 credentials",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to clear Reactive Resume credentials";
+      toast.error(message);
     } finally {
       setIsSavingEnv(false);
     }
@@ -538,6 +681,29 @@ export const OnboardingGate: React.FC = () => {
     rxresumeValidated: rxresumeValidation.valid,
     baseResumeValidated: baseResumeValidation.valid,
   });
+  const secondaryActionLabel =
+    currentStep === "rxresume"
+      ? getRxresumeTestLabel(rxresumeModeCurrent)
+      : "Re-test status";
+  const primaryActionLabel =
+    currentStep === "rxresume" ? "Save & Continue" : primaryLabel;
+
+  const handleSecondaryAction = async () => {
+    if (!currentStep) return;
+    if (currentStep === "llm") {
+      await validateLlm();
+      return;
+    }
+    if (currentStep === "rxresume") {
+      await validateRxresume();
+      return;
+    }
+    if (currentStep === "baseresume") {
+      await validateBaseResume();
+      return;
+    }
+    await handleRefresh();
+  };
 
   const handlePrimaryAction = async () => {
     if (!currentStep) return;
@@ -720,116 +886,153 @@ export const OnboardingGate: React.FC = () => {
                   Link your RxResume account
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Used to export tailored PDFs. Use <code>auto</code> to prefer
-                  Reactive Resume v5 (API key, self-hosted/latest) and fall back
-                  to v4 email/password.
+                  Used to export tailored PDFs. Choose between Reactive Resume
+                  version 4 and 5, and provide the credentials.
                 </p>
               </div>
+
               <Controller
                 name="rxresumeMode"
                 control={control}
                 render={({ field }) => (
                   <Field>
                     <FieldContent>
-                      <FieldLabel htmlFor="onboarding-rxresume-mode">
-                        <FieldTitle>Reactive Resume mode</FieldTitle>
-                      </FieldLabel>
-                      <Select
-                        value={field.value}
-                        onValueChange={(value) => field.onChange(value)}
-                        disabled={isSavingEnv}
+                      <Tabs
+                        value={field.value === "v4" ? "v4" : "v5"}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          setRxresumeValidation(EMPTY_VALIDATION_STATE);
+                        }}
                       >
-                        <SelectTrigger id="onboarding-rxresume-mode">
-                          <SelectValue placeholder="Select mode" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">
-                            Auto (v5 then v4)
-                          </SelectItem>
-                          <SelectItem value="v5">v5 (API key)</SelectItem>
-                          <SelectItem value="v4">
-                            v4 (email/password)
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FieldDescription>
-                        Explicit v4/v5 modes do not fallback if credentials are
-                        missing.
-                      </FieldDescription>
+                        <TabsList
+                          id="onboarding-rxresume-version-tabs"
+                          className="grid h-auto w-full grid-cols-2"
+                        >
+                          <TabsTrigger value="v5" disabled={isSavingEnv}>
+                            v5 (API key)
+                          </TabsTrigger>
+                          <TabsTrigger value="v4" disabled={isSavingEnv}>
+                            v4 (Email + Password)
+                          </TabsTrigger>
+                        </TabsList>
+                      </Tabs>
                     </FieldContent>
                   </Field>
                 )}
               />
-              <div className="grid gap-4 md:grid-cols-2">
-                <Controller
-                  name="rxresumeApiKey"
-                  control={control}
-                  render={({ field }) => (
-                    <SettingsInput
-                      label="v5 API Key"
-                      inputProps={{
-                        name: "rxresumeApiKey",
-                        value: field.value,
-                        onChange: field.onChange,
-                      }}
-                      type="password"
-                      placeholder="Enter v5 API key"
-                      current={
-                        settings?.rxresumeApiKeyHint
-                          ? formatSecretHint(settings.rxresumeApiKeyHint)
-                          : undefined
-                      }
-                      helper="Used for Reactive Resume v5 (self-hosted/latest)."
-                      disabled={isSavingEnv}
+
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-medium text-foreground">
+                    Validation status
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-md border px-2 py-1",
+                      rxresumeVersionValidations.v5.checked
+                        ? rxresumeVersionValidations.v5.valid
+                          ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
+                          : "border-destructive/30 bg-destructive/5 text-destructive"
+                        : "border-border/60 bg-background text-muted-foreground",
+                    )}
+                  >
+                    v5 status:{" "}
+                    {rxresumeVersionValidations.v5.checked
+                      ? rxresumeVersionValidations.v5.valid
+                        ? "Connected"
+                        : "Failed"
+                      : "Not tested"}
+                  </span>
+                  <span
+                    className={cn(
+                      "rounded-md border px-2 py-1",
+                      rxresumeVersionValidations.v4.checked
+                        ? rxresumeVersionValidations.v4.valid
+                          ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
+                          : "border-destructive/30 bg-destructive/5 text-destructive"
+                        : "border-border/60 bg-background text-muted-foreground",
+                    )}
+                  >
+                    v4 status:{" "}
+                    {rxresumeVersionValidations.v4.checked
+                      ? rxresumeVersionValidations.v4.valid
+                        ? "Connected"
+                        : "Failed"
+                      : "Not tested"}
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  {rxresumeVersionValidations.v5.checked &&
+                    rxresumeVersionValidations.v5.message && (
+                      <p>v5 reason: {rxresumeVersionValidations.v5.message}</p>
+                    )}
+                  {rxresumeVersionValidations.v4.checked &&
+                    rxresumeVersionValidations.v4.message && (
+                      <p>v4 reason: {rxresumeVersionValidations.v4.message}</p>
+                    )}
+                </div>
+
+              {rxresumeModeCurrent === "v5" && (
+                <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Controller
+                      name="rxresumeApiKey"
+                      control={control}
+                      render={({ field }) => (
+                        <SettingsInput
+                          label="v5 API key"
+                          inputProps={{
+                            name: "rxresumeApiKey",
+                            value: field.value,
+                            onChange: field.onChange,
+                          }}
+                          type="password"
+                          placeholder="Enter v5 API key"
+                          helper="Required for v5. Enter a new key to replace the saved key when you save."
+                          disabled={isSavingEnv}
+                        />
+                      )}
                     />
-                  )}
-                />
-                <Controller
-                  name="rxresumeEmail"
-                  control={control}
-                  render={({ field }) => (
-                    <SettingsInput
-                      label="Email"
-                      inputProps={{
-                        name: "rxresumeEmail",
-                        value: field.value,
-                        onChange: field.onChange,
-                      }}
-                      placeholder="you@example.com"
-                      current={rxresumeEmailCurrent}
-                      helper={
-                        rxresumeModeCurrent === "v5"
-                          ? "Optional in v5 mode."
-                          : "Used for Reactive Resume v4."
-                      }
-                      disabled={isSavingEnv}
+                  </div>
+                </div>
+              )}
+
+              {rxresumeModeCurrent === "v4" && (
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Controller
+                      name="rxresumeEmail"
+                      control={control}
+                      render={({ field }) => (
+                        <SettingsInput
+                          label="v4 Email"
+                          inputProps={{
+                            name: "rxresumeEmail",
+                            value: field.value,
+                            onChange: field.onChange,
+                          }}
+                          placeholder="you@example.com"
+                          disabled={isSavingEnv}
+                        />
+                      )}
                     />
-                  )}
-                />
-                <Controller
-                  name="rxresumePassword"
-                  control={control}
-                  render={({ field }) => (
-                    <SettingsInput
-                      label="Password"
-                      inputProps={{
-                        name: "rxresumePassword",
-                        value: field.value,
-                        onChange: field.onChange,
-                      }}
-                      type="password"
-                      placeholder="Enter password"
-                      current={rxresumePasswordCurrent}
-                      helper={
-                        rxresumeModeCurrent === "v5"
-                          ? "Optional in v5 mode."
-                          : "Used for Reactive Resume v4."
-                      }
-                      disabled={isSavingEnv}
+                    <Controller
+                      name="rxresumePassword"
+                      control={control}
+                      render={({ field }) => (
+                        <SettingsInput
+                          label="v4 Password"
+                          inputProps={{
+                            name: "rxresumePassword",
+                            value: field.value,
+                            onChange: field.onChange,
+                          }}
+                          type="password"
+                          placeholder="Enter v4 password"
+                          disabled={isSavingEnv}
+                        />
+                      )}
                     />
-                  )}
-                />
-              </div>
+                  </div>
+              )}
             </TabsContent>
 
             <TabsContent value="baseresume" className="space-y-4 pt-6">
@@ -866,11 +1069,15 @@ export const OnboardingGate: React.FC = () => {
               Back
             </Button>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" onClick={handleRefresh} disabled={isBusy}>
-                Refresh status
+              <Button
+                variant="ghost"
+                onClick={handleSecondaryAction}
+                disabled={isBusy}
+              >
+                {secondaryActionLabel}
               </Button>
               <Button onClick={handlePrimaryAction} disabled={isBusy}>
-                {isBusy ? "Working..." : primaryLabel}
+                {isBusy ? "Working..." : primaryActionLabel}
               </Button>
             </div>
           </div>
