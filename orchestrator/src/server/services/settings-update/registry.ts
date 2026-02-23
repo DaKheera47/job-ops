@@ -6,6 +6,10 @@ import {
   extractProjectsFromProfile,
   normalizeResumeProjectsSettings,
 } from "@server/services/resumeProjects";
+import {
+  getRxResumeBaseResumeIdKey,
+  normalizeRxResumeMode,
+} from "@server/services/rxresume/baseResumeId";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 
@@ -91,6 +95,28 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
 
       return result({
         actions: [persistAction(targetKey, JSON.stringify(normalized))],
+      });
+    };
+    continue;
+  }
+
+  if (key === "rxresumeBaseResumeId") {
+    settingsUpdateRegistry.rxresumeBaseResumeId = async ({ value, context }) => {
+      const serialized = normalizeEnvInput(value as string | null | undefined);
+      const mode = normalizeRxResumeMode(
+        context.input.rxresumeMode ??
+          (await settingsRepo.getSetting("rxresumeMode")) ??
+          process.env.RXRESUME_MODE ??
+          null,
+      );
+      const modeSpecificKey = getRxResumeBaseResumeIdKey(mode);
+
+      return result({
+        actions: [
+          // Keep the legacy/current key in sync for compatibility and fallback.
+          persistAction("rxresumeBaseResumeId", serialized),
+          persistAction(modeSpecificKey, serialized),
+        ],
       });
     };
     continue;

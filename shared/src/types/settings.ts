@@ -149,6 +149,8 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
+  rxresumeBaseResumeIdV4: string | null;
+  rxresumeBaseResumeIdV5: string | null;
   rxresumeEmail: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;

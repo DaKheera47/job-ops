@@ -3,6 +3,7 @@ import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { LlmService } from "@server/services/llm/service";
+import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import {
   getResume,
   RxResumeAuthConfigError,
@@ -59,7 +60,8 @@ async function validateLlm(options: {
 async function validateResumeConfig(): Promise<ValidationResponse> {
   try {
     // Check if rxresumeBaseResumeId is configured
-    const rxresumeBaseResumeId = await getSetting("rxresumeBaseResumeId");
+    const { resumeId: rxresumeBaseResumeId } =
+      await getConfiguredRxResumeBaseResumeId();
 
     if (!rxresumeBaseResumeId) {
       return {

@@ -15,6 +15,7 @@ type ReactiveResumeSectionProps = {
   // True when v4 credentials or v5 API key are configured.
   hasRxResumeAccess: boolean;
   rxresumeMode: RxResumeMode;
+  onRxresumeModeChange?: (mode: RxResumeMode) => void;
   rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -29,6 +30,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   setRxResumeBaseResumeIdDraft,
   hasRxResumeAccess,
   rxresumeMode,
+  onRxresumeModeChange,
   rxresumeApiKeyHint,
   profileProjects,
   lockedCount,
@@ -56,9 +58,13 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
       <AccordionContent className="pb-4">
         <ReactiveResumeConfigPanel
           mode={selectedMode}
-          onModeChange={(mode) =>
-            setValue("rxresumeMode", mode, { shouldDirty: true, shouldTouch: true })
-          }
+          onModeChange={(mode) => {
+            onRxresumeModeChange?.(mode);
+            setValue("rxresumeMode", mode, {
+              shouldDirty: true,
+              shouldTouch: true,
+            });
+          }}
           disabled={isLoading || isSaving}
           showAccessAlert
           hasRxResumeAccess={hasRxResumeAccess}

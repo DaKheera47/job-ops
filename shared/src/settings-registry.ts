@@ -375,6 +375,14 @@ export const settingsRegistry = {
     kind: "string" as const,
     schema: z.string().trim().max(200),
   },
+  rxresumeBaseResumeIdV4: {
+    kind: "string" as const,
+    schema: z.string().trim().max(200),
+  },
+  rxresumeBaseResumeIdV5: {
+    kind: "string" as const,
+    schema: z.string().trim().max(200),
+  },
   rxresumeEmail: {
     kind: "string" as const,
     envKey: "RXRESUME_EMAIL",

@@ -325,6 +325,11 @@ export const SettingsPage: React.FC = () => {
   const [rxResumeBaseResumeIdDraft, setRxResumeBaseResumeIdDraft] = useState<
     string | null
   >(null);
+  const [rxResumeBaseResumeIdsByMode, setRxResumeBaseResumeIdsByMode] =
+    useState<Record<RxResumeMode, string | null>>({
+      v4: null,
+      v5: null,
+    });
   const [rxResumeProjectsOverride, setRxResumeProjectsOverride] = useState<
     ResumeProjectCatalogItem[] | null
   >(null);
@@ -392,7 +397,15 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    const storedId = settings.rxresumeBaseResumeId ?? null;
+    const effectiveMode = (settings.rxresumeMode?.value ?? "v5") as RxResumeMode;
+    const v4Id =
+      settings.rxresumeBaseResumeIdV4 ??
+      (effectiveMode === "v4" ? settings.rxresumeBaseResumeId : null);
+    const v5Id =
+      settings.rxresumeBaseResumeIdV5 ??
+      (effectiveMode === "v5" ? settings.rxresumeBaseResumeId : null);
+    setRxResumeBaseResumeIdsByMode({ v4: v4Id, v5: v5Id });
+    const storedId = (effectiveMode === "v4" ? v4Id : v5Id) ?? null;
     setRxResumeBaseResumeIdDraft(storedId);
     setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false });
     setRxResumeProjectsOverride(null);
@@ -813,7 +826,18 @@ export const SettingsPage: React.FC = () => {
           />
           <ReactiveResumeSection
             rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
+            onRxresumeModeChange={(mode) => {
+              const nextId = rxResumeBaseResumeIdsByMode[mode] ?? null;
+              setRxResumeBaseResumeIdDraft(nextId);
+              setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
+              setRxResumeProjectsOverride(null);
+            }}
             setRxResumeBaseResumeIdDraft={(value) => {
+              const mode = (getValues("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
+              setRxResumeBaseResumeIdsByMode((prev) => ({
+                ...prev,
+                [mode]: value,
+              }));
               setRxResumeBaseResumeIdDraft(value);
               setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
             }}

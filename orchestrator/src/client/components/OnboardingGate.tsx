@@ -126,6 +126,11 @@ export const OnboardingGate: React.FC = () => {
   });
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
+  const [rxresumeBaseResumeIdsByMode, setRxresumeBaseResumeIdsByMode] =
+    useState<Record<RxResumeMode, string | null>>({
+      v4: null,
+      v5: null,
+    });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const demoInfo = useDemoInfo();
   const demoMode = demoInfo?.demoMode ?? false;
@@ -306,22 +311,29 @@ export const OnboardingGate: React.FC = () => {
   // Initialize form values from settings
   useEffect(() => {
     if (settings) {
+      const initialMode = getInitialOnboardingRxresumeMode({
+        savedMode: (settings.rxresumeMode?.value ?? null) as RxResumeMode | null,
+        hasV4: Boolean(
+          settings.rxresumeEmail?.trim() && settings.rxresumePasswordHint,
+        ),
+        hasV5: Boolean(settings.rxresumeApiKeyHint),
+      });
+      const v4Id =
+        settings.rxresumeBaseResumeIdV4 ??
+        (initialMode === "v4" ? settings.rxresumeBaseResumeId : null);
+      const v5Id =
+        settings.rxresumeBaseResumeIdV5 ??
+        (initialMode === "v5" ? settings.rxresumeBaseResumeId : null);
+      setRxresumeBaseResumeIdsByMode({ v4: v4Id, v5: v5Id });
       reset({
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
         llmApiKey: "",
-        rxresumeMode: getInitialOnboardingRxresumeMode({
-          savedMode: (settings.rxresumeMode?.value ??
-            null) as RxResumeMode | null,
-          hasV4: Boolean(
-            settings.rxresumeEmail?.trim() && settings.rxresumePasswordHint,
-          ),
-          hasV5: Boolean(settings.rxresumeApiKeyHint),
-        }),
+        rxresumeMode: initialMode,
         rxresumeEmail: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
-        rxresumeBaseResumeId: settings.rxresumeBaseResumeId || null,
+        rxresumeBaseResumeId: (initialMode === "v4" ? v4Id : v5Id) || null,
       });
     }
   }, [settings, reset]);
@@ -553,6 +565,7 @@ export const OnboardingGate: React.FC = () => {
     try {
       setIsSavingEnv(true);
       await api.updateSettings({
+        rxresumeMode: values.rxresumeMode,
         rxresumeBaseResumeId: values.rxresumeBaseResumeId,
       });
       const validation = await validateBaseResume();
@@ -798,6 +811,7 @@ export const OnboardingGate: React.FC = () => {
                 mode={rxresumeModeCurrent}
                 onModeChange={(mode) => {
                   setValue("rxresumeMode", mode);
+                  setValue("rxresumeBaseResumeId", rxresumeBaseResumeIdsByMode[mode]);
                   setRxresumeValidation(EMPTY_VALIDATION_STATE);
                 }}
                 disabled={isSavingEnv}
@@ -840,7 +854,14 @@ export const OnboardingGate: React.FC = () => {
                 render={({ field }) => (
                   <BaseResumeSelection
                     value={field.value}
-                    onValueChange={field.onChange}
+                    onValueChange={(value) => {
+                      const mode = (getValues("rxresumeMode") ?? "v5") as RxResumeMode;
+                      setRxresumeBaseResumeIdsByMode((prev) => ({
+                        ...prev,
+                        [mode]: value,
+                      }));
+                      field.onChange(value);
+                    }}
                     hasRxResumeAccess={rxresumeValidation.valid}
                     disabled={isSavingEnv}
                   />

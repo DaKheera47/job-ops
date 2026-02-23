@@ -1,6 +1,6 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { getSetting } from "../repositories/settings";
+import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
 
 let cachedProfile: ResumeProfile | null = null;
@@ -16,7 +16,8 @@ let cachedResumeId: string | null = null;
  * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
 export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
-  const rxresumeBaseResumeId = await getSetting("rxresumeBaseResumeId");
+  const { resumeId: rxresumeBaseResumeId } =
+    await getConfiguredRxResumeBaseResumeId();
 
   if (!rxresumeBaseResumeId) {
     throw new Error(

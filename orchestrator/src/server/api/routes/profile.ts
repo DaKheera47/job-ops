@@ -2,9 +2,9 @@ import { toAppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
-import { getSetting } from "@server/repositories/settings";
 import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
+import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
 import { type Request, type Response, Router } from "express";
 
@@ -44,7 +44,8 @@ profileRouter.get("/", async (_req: Request, res: Response) => {
  */
 profileRouter.get("/status", async (_req: Request, res: Response) => {
   try {
-    const rxresumeBaseResumeId = await getSetting("rxresumeBaseResumeId");
+    const { resumeId: rxresumeBaseResumeId } =
+      await getConfiguredRxResumeBaseResumeId();
 
     if (!rxresumeBaseResumeId) {
       ok(res, {

@@ -43,6 +43,7 @@ describe("getProfile", () => {
 
     const profile = await getProfile();
 
+    expect(getSetting).toHaveBeenCalledWith("rxresumeMode");
     expect(getSetting).toHaveBeenCalledWith("rxresumeBaseResumeId");
     expect(getResume).toHaveBeenCalledWith("test-resume-id");
     expect(profile).toEqual(mockResumeData);
@@ -59,8 +60,8 @@ describe("getProfile", () => {
     await getProfile();
     await getProfile();
 
-    // getSetting is called each time to check resumeId
-    expect(getSetting).toHaveBeenCalledTimes(2);
+    // The helper reads mode + legacy/per-mode resume-id settings each call.
+    expect(getSetting).toHaveBeenCalledTimes(8);
     // But getResume should only be called once due to caching
     expect(getResume).toHaveBeenCalledTimes(1);
   });

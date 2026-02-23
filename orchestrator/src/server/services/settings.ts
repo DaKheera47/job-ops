@@ -8,6 +8,7 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "./resumeProjects";
+import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
@@ -29,7 +30,12 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
 export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrides = await settingsRepo.getAllSettings();
 
-  const rxresumeBaseResumeId = overrides.rxresumeBaseResumeId ?? null;
+  const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
+    rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
+    rxresumeBaseResumeId: overrides.rxresumeBaseResumeId ?? null,
+    rxresumeBaseResumeIdV4: overrides.rxresumeBaseResumeIdV4 ?? null,
+    rxresumeBaseResumeIdV5: overrides.rxresumeBaseResumeIdV5 ?? null,
+  });
   let profile: Record<string, unknown> = {};
 
   if (rxresumeBaseResumeId) {
@@ -132,6 +138,9 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       }
     }
   }
+
+  // Always expose the effective base resume id for the active RxResume mode.
+  result.rxresumeBaseResumeId = rxresumeBaseResumeId;
 
   return result as AppSettings;
 }
