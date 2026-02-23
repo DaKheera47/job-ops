@@ -872,16 +872,6 @@ export const OnboardingGate: React.FC = () => {
                     : "Not tested"}
                 </span>
               </div>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                {rxresumeVersionValidations.v5.checked &&
-                  rxresumeVersionValidations.v5.message && (
-                    <p>v5 reason: {rxresumeVersionValidations.v5.message}</p>
-                  )}
-                {rxresumeVersionValidations.v4.checked &&
-                  rxresumeVersionValidations.v4.message && (
-                    <p>v4 reason: {rxresumeVersionValidations.v4.message}</p>
-                  )}
-              </div>
 
               {rxresumeModeCurrent === "v5" && (
                 <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
