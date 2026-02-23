@@ -152,7 +152,7 @@ export async function getResume(
   config?: RxResumeApiConfig,
 ): Promise<RxResumeGetByIdResponse> {
   return (await fetchRxResume(
-    `/resume/${id}`,
+    `/resumes/${id}`,
     {},
     config,
   )) as RxResumeGetByIdResponse;
@@ -187,7 +187,7 @@ export async function importResume(
   payload.data = resumeDataSchema.parse(payload.data);
 
   const result = (await fetchRxResume(
-    "/resume/import",
+    "/resumes/import",
     {
       method: "POST",
       body: JSON.stringify(payload),
@@ -206,7 +206,11 @@ export async function deleteResume(
   id: string,
   config?: RxResumeApiConfig,
 ): Promise<void> {
-  await fetchRxResume(`/resume/${id}`, { method: "DELETE" }, config);
+  await fetchRxResume(
+    `/resumes/${id}`,
+    { method: "DELETE", body: JSON.stringify({}) },
+    config,
+  );
 }
 
 /**
@@ -217,7 +221,7 @@ export async function exportResumePdf(
   config?: RxResumeApiConfig,
 ): Promise<string> {
   const result = (await fetchRxResume(
-    `/printer/resume/${id}/pdf`,
+    `/resumes/${id}/pdf`,
     {},
     config,
   )) as RxResumeExportPdfResponse;
