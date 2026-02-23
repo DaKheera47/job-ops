@@ -52,14 +52,12 @@ describe("EnvironmentSettingsSection", () => {
   it("renders values grouped logically and masks private secrets with hints", () => {
     render(<EnvironmentSettingsHarness />);
 
-    expect(screen.getByDisplayValue("resume@example.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("adzuna-id")).toBeInTheDocument();
 
     expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/adzu\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument();
-    expect(screen.getByText("Not set")).toBeInTheDocument();
 
     // Basic Auth
     expect(screen.getByLabelText("Enable basic authentication")).toBeChecked();
@@ -68,5 +66,6 @@ describe("EnvironmentSettingsSection", () => {
     // Sections
     expect(screen.getByText("Service Accounts")).toBeInTheDocument();
     expect(screen.getByText("Security")).toBeInTheDocument();
+    expect(screen.queryByText("RxResume")).not.toBeInTheDocument();
   });
 });

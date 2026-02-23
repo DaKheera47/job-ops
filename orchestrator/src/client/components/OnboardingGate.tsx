@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
@@ -793,148 +794,34 @@ export const OnboardingGate: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="rxresume" className="space-y-4 pt-6">
-              <div>
-                <p className="text-sm font-semibold">
-                  Link your RxResume account
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Used to export tailored PDFs. Choose between Reactive Resume
-                  version 4 and 5, and provide the credentials.
-                </p>
-              </div>
-
-              <Controller
-                name="rxresumeMode"
-                control={control}
-                render={({ field }) => (
-                  <Field>
-                    <FieldContent>
-                      <Tabs
-                        value={field.value === "v4" ? "v4" : "v5"}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          setRxresumeValidation(EMPTY_VALIDATION_STATE);
-                        }}
-                      >
-                        <TabsList
-                          id="onboarding-rxresume-version-tabs"
-                          className="grid h-auto w-full grid-cols-2"
-                        >
-                          <TabsTrigger value="v5" disabled={isSavingEnv}>
-                            v5 (API key)
-                          </TabsTrigger>
-                          <TabsTrigger value="v4" disabled={isSavingEnv}>
-                            v4 (Email + Password)
-                          </TabsTrigger>
-                        </TabsList>
-                      </Tabs>
-                    </FieldContent>
-                  </Field>
-                )}
+              <ReactiveResumeConfigPanel
+                mode={rxresumeModeCurrent}
+                onModeChange={(mode) => {
+                  setValue("rxresumeMode", mode);
+                  setRxresumeValidation(EMPTY_VALIDATION_STATE);
+                }}
+                disabled={isSavingEnv}
+                showValidationStatus
+                validationStatuses={rxresumeVersionValidations}
+                intro={{
+                  title: "Link your RxResume account",
+                  description:
+                    "Used to export tailored PDFs. Choose between Reactive Resume version 4 and 5, and provide the credentials.",
+                }}
+                v5={{
+                  apiKey: watch("rxresumeApiKey"),
+                  onApiKeyChange: (value) => setValue("rxresumeApiKey", value),
+                  helper:
+                    "Required for v5. Enter a new key to replace the saved key when you save.",
+                }}
+                v4={{
+                  email: watch("rxresumeEmail"),
+                  onEmailChange: (value) => setValue("rxresumeEmail", value),
+                  password: watch("rxresumePassword"),
+                  onPasswordChange: (value) =>
+                    setValue("rxresumePassword", value),
+                }}
               />
-
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="font-medium text-foreground">
-                  Validation status
-                </span>
-                <span
-                  className={cn(
-                    "rounded-md border px-2 py-1",
-                    rxresumeVersionValidations.v5.checked
-                      ? rxresumeVersionValidations.v5.valid
-                        ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
-                        : "border-destructive/30 bg-destructive/5 text-destructive"
-                      : "border-border/60 bg-background text-muted-foreground",
-                  )}
-                >
-                  v5 status:{" "}
-                  {rxresumeVersionValidations.v5.checked
-                    ? rxresumeVersionValidations.v5.valid
-                      ? "Connected"
-                      : "Failed"
-                    : "Not tested"}
-                </span>
-                <span
-                  className={cn(
-                    "rounded-md border px-2 py-1",
-                    rxresumeVersionValidations.v4.checked
-                      ? rxresumeVersionValidations.v4.valid
-                        ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
-                        : "border-destructive/30 bg-destructive/5 text-destructive"
-                      : "border-border/60 bg-background text-muted-foreground",
-                  )}
-                >
-                  v4 status:{" "}
-                  {rxresumeVersionValidations.v4.checked
-                    ? rxresumeVersionValidations.v4.valid
-                      ? "Connected"
-                      : "Failed"
-                    : "Not tested"}
-                </span>
-              </div>
-
-              {rxresumeModeCurrent === "v5" && (
-                <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Controller
-                      name="rxresumeApiKey"
-                      control={control}
-                      render={({ field }) => (
-                        <SettingsInput
-                          label="v5 API key"
-                          inputProps={{
-                            name: "rxresumeApiKey",
-                            value: field.value,
-                            onChange: field.onChange,
-                          }}
-                          type="password"
-                          placeholder="Enter v5 API key"
-                          helper="Required for v5. Enter a new key to replace the saved key when you save."
-                          disabled={isSavingEnv}
-                        />
-                      )}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {rxresumeModeCurrent === "v4" && (
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Controller
-                    name="rxresumeEmail"
-                    control={control}
-                    render={({ field }) => (
-                      <SettingsInput
-                        label="v4 Email"
-                        inputProps={{
-                          name: "rxresumeEmail",
-                          value: field.value,
-                          onChange: field.onChange,
-                        }}
-                        placeholder="you@example.com"
-                        disabled={isSavingEnv}
-                      />
-                    )}
-                  />
-                  <Controller
-                    name="rxresumePassword"
-                    control={control}
-                    render={({ field }) => (
-                      <SettingsInput
-                        label="v4 Password"
-                        inputProps={{
-                          name: "rxresumePassword",
-                          value: field.value,
-                          onChange: field.onChange,
-                        }}
-                        type="password"
-                        placeholder="Enter v4 password"
-                        disabled={isSavingEnv}
-                      />
-                    )}
-                  />
-                </div>
-              )}
             </TabsContent>
 
             <TabsContent value="baseresume" className="space-y-4 pt-6">
