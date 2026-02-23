@@ -256,6 +256,12 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                                   project.id,
                                 ),
                               );
+                              const projectMeta =
+                                selectedMode === "v5"
+                                  ? project.date
+                                  : [project.description, project.date]
+                                      .filter(Boolean)
+                                      .join(" - ");
 
                               return (
                                 <TableRow key={project.id}>
@@ -265,9 +271,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                                         {project.name || project.id}
                                       </div>
                                       <div className="text-xs text-muted-foreground">
-                                        {[project.description, project.date]
-                                          .filter(Boolean)
-                                          .join(" - ")}
+                                        {projectMeta}
                                       </div>
                                     </div>
                                   </TableCell>
