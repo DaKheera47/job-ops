@@ -236,9 +236,5 @@ export async function listResumes(config?: {
   baseUrl?: string;
   apiKey?: string;
 }): Promise<RxResumeListItem[]> {
-  return (await fetchRxResume(
-    "/resumes",
-    {},
-    config,
-  )) as RxResumeListItem[];
+  return (await fetchRxResume("/resumes", {}, config)) as RxResumeListItem[];
 }

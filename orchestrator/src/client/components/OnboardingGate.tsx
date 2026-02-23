@@ -67,18 +67,6 @@ const EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
   testedAt: null,
 };
 
-function formatLastTested(value: number | null): string {
-  if (!value) return "Never";
-  return new Date(value).toLocaleString();
-}
-
-function getRxresumeRuleText(mode: RxResumeMode): string {
-  if (mode === "v5") {
-    return "No fallback. Pipeline fails if v5 validation fails.";
-  }
-  return "No fallback. Pipeline fails if v4 validation fails.";
-}
-
 function getRxresumeTestLabel(mode: RxResumeMode): string {
   if (mode === "v5") return "Test v5";
   return "Test v4";
@@ -225,7 +213,6 @@ export const OnboardingGate: React.FC = () => {
   const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
   const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
   const hasRxresumeApiKey = Boolean(settings?.rxresumeApiKeyHint);
-  const hasSavedV4RxresumeCreds = hasRxresumeEmail && hasRxresumePassword;
   const rxresumeModeCurrent = (rxresumeModeValue ||
     settings?.rxresumeMode?.value ||
     "v5") as RxResumeMode;
@@ -549,46 +536,6 @@ export const OnboardingGate: React.FC = () => {
           : "Failed to save RxResume credentials";
       toast.error(message);
       return false;
-    } finally {
-      setIsSavingEnv(false);
-    }
-  };
-
-  const handleClearRxresumeStored = async (version: "v4" | "v5") => {
-    try {
-      setIsSavingEnv(true);
-      if (version === "v5") {
-        await api.updateSettings({ rxresumeApiKey: null });
-        setValue("rxresumeApiKey", "");
-        setRxresumeVersionValidations((current) => ({
-          ...current,
-          v5: EMPTY_TIMESTAMPED_VALIDATION_STATE,
-        }));
-      } else {
-        await api.updateSettings({
-          rxresumeEmail: null,
-          rxresumePassword: null,
-        });
-        setValue("rxresumeEmail", "");
-        setValue("rxresumePassword", "");
-        setRxresumeVersionValidations((current) => ({
-          ...current,
-          v4: EMPTY_TIMESTAMPED_VALIDATION_STATE,
-        }));
-      }
-      setRxresumeValidation(EMPTY_VALIDATION_STATE);
-      await refreshSettings();
-      toast.success(
-        version === "v5"
-          ? "Cleared saved v5 API key"
-          : "Cleared saved v4 credentials",
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to clear Reactive Resume credentials";
-      toast.error(message);
     } finally {
       setIsSavingEnv(false);
     }

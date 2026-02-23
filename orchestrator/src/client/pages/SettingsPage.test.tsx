@@ -57,6 +57,11 @@ const renderPage = () => {
   );
 };
 
+const openModelSection = async () => {
+  const modelTrigger = await screen.findByRole("button", { name: /^model$/i });
+  fireEvent.click(modelTrigger);
+};
+
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -84,6 +89,7 @@ describe("SettingsPage", () => {
     });
 
     renderPage();
+    await openModelSection();
 
     const modelInput = screen.getByLabelText(/default model/i);
     await waitFor(() => expect(modelInput).toBeEnabled());
@@ -107,6 +113,7 @@ describe("SettingsPage", () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
 
     renderPage();
+    await openModelSection();
 
     const modelInput = screen.getByLabelText(/default model/i);
     await waitFor(() => expect(modelInput).toBeEnabled());
@@ -166,6 +173,7 @@ describe("SettingsPage", () => {
     renderPage();
     const saveButton = screen.getByRole("button", { name: /^save$/i });
     expect(saveButton).toBeDisabled();
+    await openModelSection();
 
     const modelInput = screen.getByLabelText(/default model/i);
     // Wait for the query to resolve and input to be enabled
