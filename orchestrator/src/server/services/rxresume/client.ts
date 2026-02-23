@@ -4,8 +4,8 @@
 // - Used by rxresume/v4.ts to provide a higher-level service surface.
 // - The v5 client should be a drop-in replacement in the future.
 
-import type { ResumeData } from "@shared/rxresume-schema";
 import { normalizeWhitespace } from "@shared/utils/string";
+import type { ResumeData } from "./schema/v4";
 
 type AnyObj = Record<string, unknown>;
 const MAX_ERROR_SNIPPET = 300;

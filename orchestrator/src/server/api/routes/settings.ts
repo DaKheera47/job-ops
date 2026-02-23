@@ -15,6 +15,7 @@ import {
   listResumes,
   RxResumeAuthConfigError,
   RxResumeRequestError,
+  validateResumeSchema,
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
@@ -148,7 +149,12 @@ settingsRouter.get(
       }
 
       const resume = await getResume(resumeId);
-      const profile = resume.data ?? {};
+      const validated = await validateResumeSchema(resume.data ?? {});
+      if (!validated.ok) {
+        fail(res, badRequest(validated.message));
+        return;
+      }
+      const profile = validated.data;
       const { catalog } = extractProjectsFromProfile(profile);
 
       ok(res, { projects: catalog });

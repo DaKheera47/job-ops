@@ -1,7 +1,7 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
-import type { ResumeData } from "@shared/rxresume-schema";
-import { resumeDataSchema } from "@shared/rxresume-schema";
+import { parseV4ResumeData, type ResumeData } from "./schema/v4";
+import { parseV5ResumeData } from "./schema/v5";
 
 type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
 
@@ -151,11 +151,17 @@ export async function getResume(
   id: string,
   config?: RxResumeApiConfig,
 ): Promise<RxResumeGetByIdResponse> {
-  return (await fetchRxResume(
+  const payload = (await fetchRxResume(
     `/resumes/${id}`,
     {},
     config,
   )) as RxResumeGetByIdResponse;
+  if (payload.data !== undefined) {
+    payload.data = parseV5ResumeData(payload.data) as
+      | ResumeData
+      | Record<string, unknown>;
+  }
+  return payload;
 }
 
 export async function verifyApiKey(
@@ -184,7 +190,13 @@ export async function importResume(
   payload: RxResumeImportRequest,
   config?: RxResumeApiConfig,
 ): Promise<string> {
-  payload.data = resumeDataSchema.parse(payload.data);
+  try {
+    payload.data = parseV5ResumeData(payload.data);
+  } catch {
+    // JobOps still generates the legacy/internal resume shape for tailoring.
+    // Accept it for v5 imports until the write path is upgraded to a native v5 schema.
+    payload.data = parseV4ResumeData(payload.data);
+  }
 
   const result = (await fetchRxResume(
     "/resumes/import",

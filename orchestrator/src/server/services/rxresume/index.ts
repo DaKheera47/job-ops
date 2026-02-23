@@ -1,8 +1,12 @@
 import { getSetting } from "@server/repositories/settings";
-import type { ResumeData } from "@shared/rxresume-schema";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { RxResumeMode } from "@shared/types";
 import { RxResumeClient } from "./client";
+import {
+  getResumeSchemaValidationMessage,
+  safeParseResumeDataForMode,
+} from "./schema";
+import type { ResumeData } from "./schema/v4";
 import * as v4 from "./v4";
 import * as v5 from "./v5";
 
@@ -295,6 +299,43 @@ export async function getResume(
     v4: async (creds) =>
       (await v4.getResume(resumeId, toV4Override(creds))) as RxResumeResume,
   });
+}
+
+export async function validateResumeSchema(
+  resumeData: unknown,
+  options: ResolveModeOptions = {},
+): Promise<
+  | { ok: true; mode: RxResumeResolvedMode; data: Record<string, unknown> }
+  | { ok: false; mode: RxResumeResolvedMode; message: string }
+> {
+  const mode = await resolveRxResumeMode(options);
+  const result = safeParseResumeDataForMode(mode, resumeData);
+  if (!result.success) {
+    return {
+      ok: false,
+      mode,
+      message: getResumeSchemaValidationMessage(result.error),
+    };
+  }
+
+  if (
+    !result.data ||
+    typeof result.data !== "object" ||
+    Array.isArray(result.data)
+  ) {
+    return {
+      ok: false,
+      mode,
+      message:
+        "Resume schema validation failed: root payload must be an object.",
+    };
+  }
+
+  return {
+    ok: true,
+    mode,
+    data: result.data as Record<string, unknown>,
+  };
 }
 
 export async function importResume(

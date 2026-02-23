@@ -955,3 +955,11 @@ export const sampleResume: ResumeData = {
     notes: "",
   },
 };
+
+export function parseV4ResumeData(data: unknown) {
+  return resumeDataSchema.parse(data);
+}
+
+export function safeParseV4ResumeData(data: unknown) {
+  return resumeDataSchema.safeParse(data);
+}

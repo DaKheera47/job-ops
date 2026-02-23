@@ -1,5 +1,5 @@
-import { sampleResume } from "@shared/rxresume-schema";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { sampleResume } from "./schema/v4";
 import {
   deleteResume,
   exportResumePdf,

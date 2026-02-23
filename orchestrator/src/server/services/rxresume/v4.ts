@@ -5,9 +5,8 @@
 // - Keeps the rest of the app v5-ready (swap imports later).
 
 import { getSetting } from "@server/repositories/settings";
-import type { ResumeData } from "@shared/rxresume-schema";
-import { resumeDataSchema } from "@shared/rxresume-schema";
 import { RxResumeClient, type RxResumeResume } from "./client";
+import { parseV4ResumeData, type ResumeData } from "./schema/v4";
 
 export type RxResumeCredentials = {
   email: string;
@@ -78,16 +77,20 @@ export async function getResume(
   resumeId: string,
   override?: Partial<RxResumeCredentials>,
 ): Promise<RxResumeResume> {
-  return withRxResumeClient(override, (client, token) =>
+  const resume = await withRxResumeClient(override, (client, token) =>
     client.get(resumeId, token),
   );
+  if (resume.data) {
+    resume.data = parseV4ResumeData(resume.data) as ResumeData;
+  }
+  return resume;
 }
 
 export async function importResume(
   payload: RxResumeImportPayload,
   override?: Partial<RxResumeCredentials>,
 ): Promise<string> {
-  const data = resumeDataSchema.parse(payload.data);
+  const data = parseV4ResumeData(payload.data) as ResumeData;
   const title = payload.name?.trim() || undefined;
   const slug = payload.slug?.trim() || undefined;
 

@@ -6,9 +6,9 @@ import { LlmService } from "@server/services/llm/service";
 import {
   getResume,
   RxResumeAuthConfigError,
+  validateResumeSchema,
   validateCredentials as validateRxResumeCredentials,
 } from "@server/services/rxresume";
-import { resumeDataSchema } from "@shared/rxresume-schema";
 import { type Request, type Response, Router } from "express";
 
 export const onboardingRouter = Router();
@@ -80,15 +80,9 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
         };
       }
 
-      // Validate against schema
-      const result = resumeDataSchema.safeParse(resume.data);
-      if (!result.success) {
-        const issue = result.error.issues[0];
-        const path = issue?.path?.join(".") || "";
-        const baseMessage =
-          issue?.message ?? "Resume does not match the expected schema.";
-        const details = path ? `Field "${path}": ${baseMessage}` : baseMessage;
-        return { valid: false, message: details };
+      const validated = await validateResumeSchema(resume.data);
+      if (!validated.ok) {
+        return { valid: false, message: validated.message };
       }
 
       return { valid: true, message: null };
