@@ -278,7 +278,7 @@ describe.sequential("Onboarding API routes", () => {
     it("validates v5 API key mode against Reactive Resume OpenAPI", async () => {
       global.fetch = vi.fn((input, init) => {
         const url = typeof input === "string" ? input : input.url;
-        if (url.includes("/api/openapi/resume/list")) {
+        if (url.includes("/api/openapi/resumes")) {
           return Promise.resolve({
             ok: true,
             status: 200,

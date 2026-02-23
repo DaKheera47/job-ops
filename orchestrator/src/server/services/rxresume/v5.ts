@@ -163,7 +163,7 @@ export async function verifyApiKey(
   baseUrl?: string,
 ): Promise<VerifyApiKeyResult> {
   try {
-    await fetchRxResume("/resume/list", {}, { apiKey, baseUrl });
+    await fetchRxResume("/resumes", {}, { apiKey, baseUrl });
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network error";
@@ -226,14 +226,14 @@ export async function exportResumePdf(
 
 /**
  * List all resumes.
- * According to official OpenAPI spec, the endpoint is /resume/list
+ * According to official OpenAPI spec, the endpoint is /resumes
  */
 export async function listResumes(config?: {
   baseUrl?: string;
   apiKey?: string;
 }): Promise<RxResumeListItem[]> {
   return (await fetchRxResume(
-    "/resume/list",
+    "/resumes",
     {},
     config,
   )) as RxResumeListItem[];
