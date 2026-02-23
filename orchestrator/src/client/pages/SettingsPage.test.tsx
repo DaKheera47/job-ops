@@ -218,6 +218,37 @@ describe("SettingsPage", () => {
     expect(saveButton).toBeEnabled();
   });
 
+  it("allows saving when both Reactive Resume v4 and v5 credentials are present", async () => {
+    const settingsWithBothRxResumeAuth = createAppSettings({
+      rxresumeEmail: "resume@example.com",
+      rxresumePasswordHint: "pass",
+      rxresumeApiKeyHint: "api_",
+    });
+    vi.mocked(api.getSettings).mockResolvedValue(settingsWithBothRxResumeAuth);
+    vi.mocked(api.updateSettings).mockResolvedValue(settingsWithBothRxResumeAuth);
+
+    renderPage();
+
+    const displayTrigger = await screen.findByRole("button", {
+      name: /display settings/i,
+    });
+    fireEvent.click(displayTrigger);
+    const sponsorCheckbox = screen.getByLabelText(
+      /show visa sponsor information/i,
+    );
+    fireEvent.click(sponsorCheckbox);
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(toast.error).not.toHaveBeenCalledWith(
+      "Choose one Reactive Resume auth method",
+      expect.anything(),
+    );
+  });
+
   it("enables save button when basic auth toggle is changed", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
