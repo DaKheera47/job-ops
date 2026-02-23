@@ -130,14 +130,8 @@ function normalizeV5ResumeListResponse(payload: unknown): RxResumeResume[] {
   });
 }
 
-function normalizeV5ResumeResponse(
-  payload: unknown,
-): Record<string, unknown> {
-  if (
-    !payload ||
-    typeof payload !== "object" ||
-    Array.isArray(payload)
-  ) {
+function normalizeV5ResumeResponse(payload: unknown): Record<string, unknown> {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     throw new RxResumeRequestError(
       "Reactive Resume v5 returned an unexpected resume response shape.",
     );

@@ -886,55 +886,55 @@ export const OnboardingGate: React.FC = () => {
                 )}
               />
 
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-medium text-foreground">
-                    Validation status
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-md border px-2 py-1",
-                      rxresumeVersionValidations.v5.checked
-                        ? rxresumeVersionValidations.v5.valid
-                          ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
-                          : "border-destructive/30 bg-destructive/5 text-destructive"
-                        : "border-border/60 bg-background text-muted-foreground",
-                    )}
-                  >
-                    v5 status:{" "}
-                    {rxresumeVersionValidations.v5.checked
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <span className="font-medium text-foreground">
+                  Validation status
+                </span>
+                <span
+                  className={cn(
+                    "rounded-md border px-2 py-1",
+                    rxresumeVersionValidations.v5.checked
                       ? rxresumeVersionValidations.v5.valid
-                        ? "Connected"
-                        : "Failed"
-                      : "Not tested"}
-                  </span>
-                  <span
-                    className={cn(
-                      "rounded-md border px-2 py-1",
-                      rxresumeVersionValidations.v4.checked
-                        ? rxresumeVersionValidations.v4.valid
-                          ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
-                          : "border-destructive/30 bg-destructive/5 text-destructive"
-                        : "border-border/60 bg-background text-muted-foreground",
-                    )}
-                  >
-                    v4 status:{" "}
-                    {rxresumeVersionValidations.v4.checked
+                        ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
+                        : "border-destructive/30 bg-destructive/5 text-destructive"
+                      : "border-border/60 bg-background text-muted-foreground",
+                  )}
+                >
+                  v5 status:{" "}
+                  {rxresumeVersionValidations.v5.checked
+                    ? rxresumeVersionValidations.v5.valid
+                      ? "Connected"
+                      : "Failed"
+                    : "Not tested"}
+                </span>
+                <span
+                  className={cn(
+                    "rounded-md border px-2 py-1",
+                    rxresumeVersionValidations.v4.checked
                       ? rxresumeVersionValidations.v4.valid
-                        ? "Connected"
-                        : "Failed"
-                      : "Not tested"}
-                  </span>
-                </div>
-                <div className="space-y-1 text-xs text-muted-foreground">
-                  {rxresumeVersionValidations.v5.checked &&
-                    rxresumeVersionValidations.v5.message && (
-                      <p>v5 reason: {rxresumeVersionValidations.v5.message}</p>
-                    )}
-                  {rxresumeVersionValidations.v4.checked &&
-                    rxresumeVersionValidations.v4.message && (
-                      <p>v4 reason: {rxresumeVersionValidations.v4.message}</p>
-                    )}
-                </div>
+                        ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
+                        : "border-destructive/30 bg-destructive/5 text-destructive"
+                      : "border-border/60 bg-background text-muted-foreground",
+                  )}
+                >
+                  v4 status:{" "}
+                  {rxresumeVersionValidations.v4.checked
+                    ? rxresumeVersionValidations.v4.valid
+                      ? "Connected"
+                      : "Failed"
+                    : "Not tested"}
+                </span>
+              </div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                {rxresumeVersionValidations.v5.checked &&
+                  rxresumeVersionValidations.v5.message && (
+                    <p>v5 reason: {rxresumeVersionValidations.v5.message}</p>
+                  )}
+                {rxresumeVersionValidations.v4.checked &&
+                  rxresumeVersionValidations.v4.message && (
+                    <p>v4 reason: {rxresumeVersionValidations.v4.message}</p>
+                  )}
+              </div>
 
               {rxresumeModeCurrent === "v5" && (
                 <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
@@ -962,41 +962,41 @@ export const OnboardingGate: React.FC = () => {
               )}
 
               {rxresumeModeCurrent === "v4" && (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Controller
-                      name="rxresumeEmail"
-                      control={control}
-                      render={({ field }) => (
-                        <SettingsInput
-                          label="v4 Email"
-                          inputProps={{
-                            name: "rxresumeEmail",
-                            value: field.value,
-                            onChange: field.onChange,
-                          }}
-                          placeholder="you@example.com"
-                          disabled={isSavingEnv}
-                        />
-                      )}
-                    />
-                    <Controller
-                      name="rxresumePassword"
-                      control={control}
-                      render={({ field }) => (
-                        <SettingsInput
-                          label="v4 Password"
-                          inputProps={{
-                            name: "rxresumePassword",
-                            value: field.value,
-                            onChange: field.onChange,
-                          }}
-                          type="password"
-                          placeholder="Enter v4 password"
-                          disabled={isSavingEnv}
-                        />
-                      )}
-                    />
-                  </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Controller
+                    name="rxresumeEmail"
+                    control={control}
+                    render={({ field }) => (
+                      <SettingsInput
+                        label="v4 Email"
+                        inputProps={{
+                          name: "rxresumeEmail",
+                          value: field.value,
+                          onChange: field.onChange,
+                        }}
+                        placeholder="you@example.com"
+                        disabled={isSavingEnv}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="rxresumePassword"
+                    control={control}
+                    render={({ field }) => (
+                      <SettingsInput
+                        label="v4 Password"
+                        inputProps={{
+                          name: "rxresumePassword",
+                          value: field.value,
+                          onChange: field.onChange,
+                        }}
+                        type="password"
+                        placeholder="Enter v4 password"
+                        disabled={isSavingEnv}
+                      />
+                    )}
+                  />
+                </div>
               )}
             </TabsContent>
 

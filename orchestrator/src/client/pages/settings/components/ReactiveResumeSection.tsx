@@ -146,7 +146,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
                     disabled={isLoading || isSaving}
                     {...register("rxresumeApiKey")}
                   />
-                {errors.rxresumeApiKey && (
+                  {errors.rxresumeApiKey && (
                     <p className="text-xs text-destructive">
                       {errors.rxresumeApiKey.message as string}
                     </p>

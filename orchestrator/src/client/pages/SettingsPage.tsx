@@ -380,9 +380,7 @@ export const SettingsPage: React.FC = () => {
   );
   const hasV5RxResumeAccess = Boolean(settings?.rxresumeApiKeyHint);
   const hasRxResumeAccess =
-    rxresumeMode === "v5"
-      ? hasV5RxResumeAccess
-      : hasV4RxResumeAccess;
+    rxresumeMode === "v5" ? hasV5RxResumeAccess : hasV4RxResumeAccess;
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -821,10 +819,7 @@ export const SettingsPage: React.FC = () => {
       />
 
       <main className="container mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12">
-        <Accordion
-          type="multiple"
-          className="w-full space-y-4"
-        >
+        <Accordion type="multiple" className="w-full space-y-4">
           <ModelSettingsSection
             values={model}
             isLoading={isLoading}
