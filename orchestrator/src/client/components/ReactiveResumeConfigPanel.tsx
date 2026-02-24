@@ -10,6 +10,7 @@ import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -52,6 +53,12 @@ type ReactiveResumeConfigPanelProps = {
   validationStatuses?: {
     v4: VersionValidationState;
     v5: VersionValidationState;
+  };
+  validationAction?: {
+    label: string;
+    onClick: () => void | Promise<void>;
+    isLoading?: boolean;
+    disabled?: boolean;
   };
   intro?: {
     title: string;
@@ -106,6 +113,7 @@ export const ReactiveResumeConfigPanel: React.FC<
   hasRxResumeAccess = false,
   showValidationStatus = false,
   validationStatuses,
+  validationAction,
   intro,
   v5,
   v4,
@@ -164,6 +172,22 @@ export const ReactiveResumeConfigPanel: React.FC<
           <span className="font-medium text-foreground">Validation status</span>
           {renderStatusPill("v5 status", validationStatuses.v5)}
           {renderStatusPill("v4 status", validationStatuses.v4)}
+        </div>
+      ) : null}
+
+      {validationAction ? (
+        <div className="flex justify-start">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void validationAction.onClick()}
+            disabled={
+              disabled || validationAction.disabled || validationAction.isLoading
+            }
+          >
+            {validationAction.isLoading ? "Testing..." : validationAction.label}
+          </Button>
         </div>
       ) : null}
 
@@ -231,6 +255,7 @@ export const ReactiveResumeConfigPanel: React.FC<
                 value={projectSelection.baseResumeId}
                 onValueChange={projectSelection.onBaseResumeIdChange}
                 hasRxResumeAccess={hasRxResumeAccess}
+                rxresumeMode={mode}
                 disabled={projectSelection.disabled}
               />
 

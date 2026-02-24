@@ -80,6 +80,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
 };
 
 type LlmProviderValue = LlmProviderId | null;
+type RxResumeValidationBadgeState = { checked: boolean; valid: boolean };
+const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
+  checked: false,
+  valid: false,
+};
 
 const normalizeLlmProviderValue = (
   value: string | null | undefined,
@@ -319,6 +324,15 @@ export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isValidatingRxresumeMode, setIsValidatingRxresumeMode] =
+    useState(false);
+  const [rxresumeValidationStatuses, setRxresumeValidationStatuses] = useState<{
+    v4: RxResumeValidationBadgeState;
+    v5: RxResumeValidationBadgeState;
+  }>({
+    v4: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
+    v5: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
+  });
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>([
     "discovered",
   ]);
@@ -380,12 +394,19 @@ export const SettingsPage: React.FC = () => {
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
   const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
+  const selectedRxresumeMode =
+    (watch("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
   const hasV4RxResumeAccess = Boolean(
     settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
   );
   const hasV5RxResumeAccess = Boolean(settings?.rxresumeApiKeyHint);
+  const hasSavedRxResumeAccess =
+    selectedRxresumeMode === "v5" ? hasV5RxResumeAccess : hasV4RxResumeAccess;
+  const hasValidatedRxResumeAccess = Boolean(
+    rxresumeValidationStatuses[selectedRxresumeMode].valid,
+  );
   const hasRxResumeAccess =
-    rxresumeMode === "v5" ? hasV5RxResumeAccess : hasV4RxResumeAccess;
+    hasSavedRxResumeAccess || hasValidatedRxResumeAccess;
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -431,7 +452,11 @@ export const SettingsPage: React.FC = () => {
 
     setIsFetchingRxResumeProjects(true);
     api
-      .getRxResumeProjects(rxResumeBaseResumeIdDraft, controller.signal)
+      .getRxResumeProjects(
+        rxResumeBaseResumeIdDraft,
+        controller.signal,
+        selectedRxresumeMode,
+      )
       .then((projects) => {
         if (!isMounted) return;
         setRxResumeProjectsOverride(projects);
@@ -461,7 +486,13 @@ export const SettingsPage: React.FC = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [rxResumeBaseResumeIdDraft, hasRxResumeAccess, getValues, setValue]);
+  }, [
+    rxResumeBaseResumeIdDraft,
+    hasRxResumeAccess,
+    selectedRxresumeMode,
+    getValues,
+    setValue,
+  ]);
 
   const derived = getDerivedSettings(settings);
   const {
@@ -535,7 +566,74 @@ export const SettingsPage: React.FC = () => {
     }
   }, [refreshReadiness]);
 
-  const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects;
+  const handleValidateRxresumeMode = useCallback(async () => {
+    const mode = (getValues("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
+    const values = getValues();
+    const emailValue = values.rxresumeEmail?.trim() ?? "";
+    const passwordValue = values.rxresumePassword?.trim() ?? "";
+    const apiKeyValue = values.rxresumeApiKey?.trim() ?? "";
+    const hasStoredV4 = Boolean(
+      settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
+    );
+    const hasStoredV5 = Boolean(settings?.rxresumeApiKeyHint);
+
+    if (mode === "v5" && !hasStoredV5 && !apiKeyValue) {
+      toast.info("Add a v5 API key, then test again.");
+      setRxresumeValidationStatuses((current) => ({
+        ...current,
+        v5: { checked: true, valid: false },
+      }));
+      return;
+    }
+
+    if (
+      mode === "v4" &&
+      !(
+        (hasStoredV4 || Boolean(emailValue)) &&
+        (Boolean(settings?.rxresumePasswordHint) || Boolean(passwordValue))
+      )
+    ) {
+      toast.info("Add v4 email and password, then test again.");
+      setRxresumeValidationStatuses((current) => ({
+        ...current,
+        v4: { checked: true, valid: false },
+      }));
+      return;
+    }
+
+    setIsValidatingRxresumeMode(true);
+    try {
+      const result = await api.validateRxresume({
+        mode,
+        email: emailValue || undefined,
+        password: passwordValue || undefined,
+        apiKey: apiKeyValue || undefined,
+      });
+      setRxresumeValidationStatuses((current) => ({
+        ...current,
+        [mode]: { checked: true, valid: result.valid },
+      }));
+      if (result.valid) {
+        toast.success(`Reactive Resume ${mode} validation passed`);
+      } else {
+        toast.error(result.message || `Reactive Resume ${mode} validation failed`);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "RxResume validation failed";
+      setRxresumeValidationStatuses((current) => ({
+        ...current,
+        [mode]: { checked: true, valid: false },
+      }));
+      toast.error(message);
+    } finally {
+      setIsValidatingRxresumeMode(false);
+    }
+  }, [getValues, rxresumeMode, settings]);
+
+  const effectiveProfileProjects =
+    rxResumeProjectsOverride ??
+    (selectedRxresumeMode === rxresumeMode ? profileProjects : []);
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
 
   const watchedValues = watch();
@@ -843,6 +941,9 @@ export const SettingsPage: React.FC = () => {
             }}
             hasRxResumeAccess={hasRxResumeAccess}
             rxresumeMode={rxresumeMode}
+            validationStatuses={rxresumeValidationStatuses}
+            onValidateCurrentMode={handleValidateRxresumeMode}
+            isValidatingMode={isValidatingRxresumeMode}
             rxresumeApiKeyHint={settings?.rxresumeApiKeyHint ?? null}
             profileProjects={effectiveProfileProjects}
             lockedCount={lockedCount}

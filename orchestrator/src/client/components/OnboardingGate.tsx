@@ -863,6 +863,7 @@ export const OnboardingGate: React.FC = () => {
                       field.onChange(value);
                     }}
                     hasRxResumeAccess={rxresumeValidation.valid}
+                    rxresumeMode={rxresumeModeCurrent}
                     disabled={isSavingEnv}
                   />
                 )}

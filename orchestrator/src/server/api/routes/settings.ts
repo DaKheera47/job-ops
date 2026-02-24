@@ -119,9 +119,12 @@ function failRxResume(res: Response, error: unknown): void {
 
 settingsRouter.get(
   "/rx-resumes",
-  asyncRoute(async (_req: Request, res: Response) => {
+  asyncRoute(async (req: Request, res: Response) => {
     try {
-      const resumes = await listResumes();
+      const modeParam =
+        typeof req.query.mode === "string" ? req.query.mode : undefined;
+      const mode = modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
+      const resumes = await listResumes({ mode });
 
       ok(res, {
         resumes: resumes.map((resume) => ({
@@ -148,8 +151,12 @@ settingsRouter.get(
         return;
       }
 
-      const resume = await getResume(resumeId);
-      const validated = await validateResumeSchema(resume.data ?? {});
+      const modeParam =
+        typeof req.query.mode === "string" ? req.query.mode : undefined;
+      const mode = modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
+
+      const resume = await getResume(resumeId, { mode });
+      const validated = await validateResumeSchema(resume.data ?? {}, { mode });
       if (!validated.ok) {
         fail(res, badRequest(validated.message));
         return;

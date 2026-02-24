@@ -16,6 +16,12 @@ type ReactiveResumeSectionProps = {
   hasRxResumeAccess: boolean;
   rxresumeMode: RxResumeMode;
   onRxresumeModeChange?: (mode: RxResumeMode) => void;
+  validationStatuses?: {
+    v4: { checked: boolean; valid: boolean };
+    v5: { checked: boolean; valid: boolean };
+  };
+  onValidateCurrentMode?: () => void | Promise<void>;
+  isValidatingMode?: boolean;
   rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -31,6 +37,9 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   hasRxResumeAccess,
   rxresumeMode,
   onRxresumeModeChange,
+  validationStatuses,
+  onValidateCurrentMode,
+  isValidatingMode = false,
   rxresumeApiKeyHint,
   profileProjects,
   lockedCount,
@@ -68,6 +77,17 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           disabled={isLoading || isSaving}
           showAccessAlert
           hasRxResumeAccess={hasRxResumeAccess}
+          showValidationStatus={Boolean(validationStatuses)}
+          validationStatuses={validationStatuses}
+          validationAction={
+            onValidateCurrentMode
+              ? {
+                  label: selectedMode === "v4" ? "Test v4" : "Test v5",
+                  onClick: onValidateCurrentMode,
+                  isLoading: isValidatingMode,
+                }
+              : undefined
+          }
           v5={{
             apiKey: rxresumeApiKeyValue,
             onApiKeyChange: (value) =>
@@ -77,7 +97,6 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
               }),
             error: errors.rxresumeApiKey?.message as string | undefined,
             hint: rxresumeApiKeyHint,
-            helper: "Used for Reactive Resume v5 (self-hosted/latest).",
           }}
           v4={{
             email: rxresumeEmailValue,

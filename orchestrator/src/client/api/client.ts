@@ -35,6 +35,7 @@ import type {
   PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
   ProfileStatusResponse,
+  RxResumeMode,
   ResumeProfile,
   ResumeProjectCatalogItem,
   StageEvent,
@@ -1253,7 +1254,11 @@ export async function getResumeProjectsCatalog(): Promise<
   try {
     const settings = await getSettings();
     if (settings.rxresumeBaseResumeId) {
-      return await getRxResumeProjects(settings.rxresumeBaseResumeId);
+      return await getRxResumeProjects(
+        settings.rxresumeBaseResumeId,
+        undefined,
+        settings.rxresumeMode?.value,
+      );
     }
   } catch {
     // fall through to profile-based projects
@@ -1313,9 +1318,10 @@ export async function updateSettings(
   });
 }
 
-export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
+export async function getRxResumes(mode?: RxResumeMode): Promise<{ id: string; name: string }[]> {
+  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
   const data = await fetchApi<{ resumes: { id: string; name: string }[] }>(
-    "/settings/rx-resumes",
+    `/settings/rx-resumes${query}`,
   );
   return data.resumes;
 }
@@ -1323,9 +1329,11 @@ export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
 export async function getRxResumeProjects(
   resumeId: string,
   signal?: AbortSignal,
+  mode?: RxResumeMode,
 ): Promise<ResumeProjectCatalogItem[]> {
+  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
   const data = await fetchApi<{ projects: ResumeProjectCatalogItem[] }>(
-    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects`,
+    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects${query}`,
     { signal },
   );
   return data.projects;

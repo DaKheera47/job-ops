@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import type { RxResumeMode } from "@shared/types.js";
 import { RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -15,6 +16,7 @@ type BaseResumeSelectionProps = {
   value: string | null;
   onValueChange: (value: string | null) => void;
   hasRxResumeAccess: boolean;
+  rxresumeMode?: RxResumeMode;
   disabled?: boolean;
   isLoading?: boolean;
 };
@@ -23,6 +25,7 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   value,
   onValueChange,
   hasRxResumeAccess,
+  rxresumeMode,
   disabled = false,
   isLoading = false,
 }) => {
@@ -31,12 +34,16 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchResumes = useCallback(async () => {
-    if (!hasRxResumeAccess) return;
+    if (!hasRxResumeAccess) {
+      setResumes([]);
+      setFetchError(null);
+      return;
+    }
 
     setIsFetchingResumes(true);
     setFetchError(null);
     try {
-      const data = await api.getRxResumes();
+      const data = await api.getRxResumes(rxresumeMode);
       setResumes(data);
 
       // Preselect if only one option is available and no value is currently set
@@ -44,19 +51,32 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
         onValueChange(data[0].id);
       }
     } catch (error) {
+      setResumes([]);
       setFetchError(
         error instanceof Error ? error.message : "Failed to fetch resumes",
       );
     } finally {
       setIsFetchingResumes(false);
     }
-  }, [hasRxResumeAccess, onValueChange, value]);
+  }, [hasRxResumeAccess, onValueChange, rxresumeMode, value]);
 
   useEffect(() => {
     if (hasRxResumeAccess) {
       fetchResumes();
     }
   }, [hasRxResumeAccess, fetchResumes]);
+
+  useEffect(() => {
+    if (!hasRxResumeAccess) {
+      setResumes([]);
+      setFetchError(null);
+    }
+  }, [hasRxResumeAccess]);
+
+  useEffect(() => {
+    setResumes([]);
+    setFetchError(null);
+  }, [rxresumeMode]);
 
   return (
     <div className="space-y-2">
