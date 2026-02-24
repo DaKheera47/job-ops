@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useVersionCheck } from "../hooks/useVersionCheck";
+import { StatusBadgeIndicator } from "./StatusIndicator";
 import { isNavActive, NAV_LINKS } from "./navigation";
 
 // ============================================================================
@@ -165,47 +166,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   );
 };
 
-// ============================================================================
-// Status Indicator (Pipeline running, Updating, etc.)
-// ============================================================================
-
-interface StatusIndicatorProps {
-  label: string;
-  variant?: "amber" | "emerald" | "sky";
-}
-
-export const StatusIndicator: React.FC<StatusIndicatorProps> = ({
-  label,
-  variant = "amber",
-}) => {
-  const colorMap = {
-    amber: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-    emerald: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-    sky: "border-sky-500/30 bg-sky-500/10 text-sky-200",
-  };
-  const dotMap = {
-    amber: "bg-amber-400",
-    emerald: "bg-emerald-400",
-    sky: "bg-sky-400",
-  };
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide",
-        colorMap[variant],
-      )}
-    >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full animate-pulse",
-          dotMap[variant],
-        )}
-      />
-      {label}
-    </span>
-  );
-};
+export const StatusIndicator = StatusBadgeIndicator;
 
 // ============================================================================
 // Split Layout (List + Detail panels)

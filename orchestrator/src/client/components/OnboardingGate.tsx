@@ -68,11 +68,6 @@ const EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
   testedAt: null,
 };
 
-function getRxresumeTestLabel(mode: RxResumeMode): string {
-  if (mode === "v5") return "Test v5";
-  return "Test v4";
-}
-
 function getInitialOnboardingRxresumeMode(input: {
   savedMode: RxResumeMode | null | undefined;
   hasV4: boolean;
@@ -312,7 +307,8 @@ export const OnboardingGate: React.FC = () => {
   useEffect(() => {
     if (settings) {
       const initialMode = getInitialOnboardingRxresumeMode({
-        savedMode: (settings.rxresumeMode?.value ?? null) as RxResumeMode | null,
+        savedMode: (settings.rxresumeMode?.value ??
+          null) as RxResumeMode | null,
         hasV4: Boolean(
           settings.rxresumeEmail?.trim() && settings.rxresumePasswordHint,
         ),
@@ -601,35 +597,6 @@ export const OnboardingGate: React.FC = () => {
     isValidatingRxresume ||
     isValidatingBaseResume;
   const canGoBack = stepIndex > 0;
-  const primaryLabel = getStepPrimaryLabel({
-    currentStep,
-    llmValidated,
-    rxresumeValidated: rxresumeValidation.valid,
-    baseResumeValidated: baseResumeValidation.valid,
-  });
-  const secondaryActionLabel =
-    currentStep === "rxresume"
-      ? getRxresumeTestLabel(rxresumeModeCurrent)
-      : "Re-test status";
-  const primaryActionLabel =
-    currentStep === "rxresume" ? "Save & Continue" : primaryLabel;
-
-  const handleSecondaryAction = async () => {
-    if (!currentStep) return;
-    if (currentStep === "llm") {
-      await validateLlm();
-      return;
-    }
-    if (currentStep === "rxresume") {
-      await validateRxresume();
-      return;
-    }
-    if (currentStep === "baseresume") {
-      await validateBaseResume();
-      return;
-    }
-    await handleRefresh();
-  };
 
   const handlePrimaryAction = async () => {
     if (!currentStep) return;
@@ -657,10 +624,10 @@ export const OnboardingGate: React.FC = () => {
   return (
     <AlertDialog open>
       <AlertDialogContent
-        className="max-w-3xl max-h-[90vh] overflow-hidden p-0"
+        className='max-w-3xl max-h-[90vh] overflow-hidden p-0'
         onEscapeKeyDown={(event) => event.preventDefault()}
       >
-        <div className="space-y-6 px-6 py-6 max-h-[calc(90vh-3.5rem)] overflow-y-auto">
+        <div className='space-y-6 px-6 py-6 max-h-[calc(90vh-3.5rem)] overflow-y-auto'>
           <AlertDialogHeader>
             <AlertDialogTitle>Welcome to Job Ops</AlertDialogTitle>
             <AlertDialogDescription>
@@ -669,8 +636,11 @@ export const OnboardingGate: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <Tabs value={currentStep} onValueChange={setCurrentStep}>
-            <TabsList className="grid h-auto w-full grid-cols-1 gap-2 border-b border-border/60 bg-transparent p-0 text-left sm:grid-cols-3">
+          <Tabs
+            value={currentStep}
+            onValueChange={setCurrentStep}
+          >
+            <TabsList className='grid h-auto w-full grid-cols-1 gap-2 border-b border-border/60 bg-transparent p-0 text-left sm:grid-cols-3'>
               {steps.map((step, index) => {
                 const isActive = step.id === currentStep;
                 const isComplete = step.complete;
@@ -693,7 +663,10 @@ export const OnboardingGate: React.FC = () => {
                           : "text-muted-foreground",
                       )}
                     >
-                      <Field orientation="horizontal" className="items-start">
+                      <Field
+                        orientation='horizontal'
+                        className='items-start'
+                      >
                         <FieldContent>
                           <FieldTitle>{step.label}</FieldTitle>
                           <FieldDescription>{step.subtitle}</FieldDescription>
@@ -707,7 +680,7 @@ export const OnboardingGate: React.FC = () => {
                           )}
                         >
                           {isComplete ? (
-                            <Check className="h-3.5 w-3.5" />
+                            <Check className='h-3.5 w-3.5' />
                           ) : (
                             index + 1
                           )}
@@ -719,20 +692,26 @@ export const OnboardingGate: React.FC = () => {
               })}
             </TabsList>
 
-            <TabsContent value="llm" className="space-y-4 pt-6">
+            <TabsContent
+              value='llm'
+              className='space-y-4 pt-6'
+            >
               <div>
-                <p className="text-sm font-semibold">Connect LLM provider</p>
-                <p className="text-xs text-muted-foreground">
+                <p className='text-sm font-semibold'>Connect LLM provider</p>
+                <p className='text-xs text-muted-foreground'>
                   Used for job scoring, summaries, and tailoring.
                 </p>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label htmlFor="llmProvider" className="text-sm font-medium">
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <label
+                    htmlFor='llmProvider'
+                    className='text-sm font-medium'
+                  >
                     Provider
                   </label>
                   <Controller
-                    name="llmProvider"
+                    name='llmProvider'
                     control={control}
                     render={({ field }) => (
                       <Select
@@ -742,12 +721,15 @@ export const OnboardingGate: React.FC = () => {
                         }}
                         disabled={isSavingEnv}
                       >
-                        <SelectTrigger id="llmProvider">
-                          <SelectValue placeholder="Select provider" />
+                        <SelectTrigger id='llmProvider'>
+                          <SelectValue placeholder='Select provider' />
                         </SelectTrigger>
                         <SelectContent>
                           {LLM_PROVIDERS.map((provider) => (
-                            <SelectItem key={provider} value={provider}>
+                            <SelectItem
+                              key={provider}
+                              value={provider}
+                            >
                               {LLM_PROVIDER_LABELS[provider]}
                             </SelectItem>
                           ))}
@@ -755,17 +737,17 @@ export const OnboardingGate: React.FC = () => {
                       </Select>
                     )}
                   />
-                  <p className="text-xs text-muted-foreground">
+                  <p className='text-xs text-muted-foreground'>
                     {providerConfig.providerHint}
                   </p>
                 </div>
                 {showBaseUrl && (
                   <Controller
-                    name="llmBaseUrl"
+                    name='llmBaseUrl'
                     control={control}
                     render={({ field }) => (
                       <SettingsInput
-                        label="LLM base URL"
+                        label='LLM base URL'
                         inputProps={{
                           name: "llmBaseUrl",
                           value: field.value,
@@ -781,18 +763,18 @@ export const OnboardingGate: React.FC = () => {
                 )}
                 {showApiKey && (
                   <Controller
-                    name="llmApiKey"
+                    name='llmApiKey'
                     control={control}
                     render={({ field }) => (
                       <SettingsInput
-                        label="LLM API key"
+                        label='LLM API key'
                         inputProps={{
                           name: "llmApiKey",
                           value: field.value,
                           onChange: field.onChange,
                         }}
-                        type="password"
-                        placeholder="Enter key"
+                        type='password'
+                        placeholder='Enter key'
                         helper={
                           llmKeyHint
                             ? `${providerConfig.keyHelper}. Leave blank to use the saved key.`
@@ -806,12 +788,18 @@ export const OnboardingGate: React.FC = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="rxresume" className="space-y-4 pt-6">
+            <TabsContent
+              value='rxresume'
+              className='space-y-4 pt-6'
+            >
               <ReactiveResumeConfigPanel
                 mode={rxresumeModeCurrent}
                 onModeChange={(mode) => {
                   setValue("rxresumeMode", mode);
-                  setValue("rxresumeBaseResumeId", rxresumeBaseResumeIdsByMode[mode]);
+                  setValue(
+                    "rxresumeBaseResumeId",
+                    rxresumeBaseResumeIdsByMode[mode],
+                  );
                   setRxresumeValidation(EMPTY_VALIDATION_STATE);
                 }}
                 disabled={isSavingEnv}
@@ -825,8 +813,6 @@ export const OnboardingGate: React.FC = () => {
                 v5={{
                   apiKey: watch("rxresumeApiKey"),
                   onApiKeyChange: (value) => setValue("rxresumeApiKey", value),
-                  helper:
-                    "Required for v5. Enter a new key to replace the saved key when you save.",
                 }}
                 v4={{
                   email: watch("rxresumeEmail"),
@@ -838,24 +824,28 @@ export const OnboardingGate: React.FC = () => {
               />
             </TabsContent>
 
-            <TabsContent value="baseresume" className="space-y-4 pt-6">
+            <TabsContent
+              value='baseresume'
+              className='space-y-4 pt-6'
+            >
               <div>
-                <p className="text-sm font-semibold">
+                <p className='text-sm font-semibold'>
                   Select your template resume
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className='text-xs text-muted-foreground'>
                   Choose the resume you want to use as a template. The selected
                   resume will be used as a template for tailoring.
                 </p>
               </div>
               <Controller
-                name="rxresumeBaseResumeId"
+                name='rxresumeBaseResumeId'
                 control={control}
                 render={({ field }) => (
                   <BaseResumeSelection
                     value={field.value}
                     onValueChange={(value) => {
-                      const mode = (getValues("rxresumeMode") ?? "v5") as RxResumeMode;
+                      const mode = (getValues("rxresumeMode") ??
+                        "v5") as RxResumeMode;
                       setRxresumeBaseResumeIdsByMode((prev) => ({
                         ...prev,
                         [mode]: value,
@@ -871,38 +861,44 @@ export const OnboardingGate: React.FC = () => {
             </TabsContent>
           </Tabs>
 
-          <div className="flex items-center justify-between">
+          <div className='flex items-center justify-between'>
             <Button
-              variant="outline"
+              variant='outline'
               onClick={handleBack}
               disabled={!canGoBack || isBusy}
             >
               Back
             </Button>
-            <div className="flex items-center gap-2">
+            <div className='flex items-center gap-2'>
               <Button
-                variant="ghost"
-                onClick={handleSecondaryAction}
+                onClick={handlePrimaryAction}
                 disabled={isBusy}
               >
-                {secondaryActionLabel}
-              </Button>
-              <Button onClick={handlePrimaryAction} disabled={isBusy}>
-                {isBusy ? "Working..." : primaryActionLabel}
+                {isBusy
+                  ? "Validating..."
+                  : getStepPrimaryLabel({
+                      currentStep,
+                      llmValidated,
+                      rxresumeValidated: rxresumeValidation.valid,
+                      baseResumeValidated: baseResumeValidation.valid,
+                    })}
               </Button>
             </div>
           </div>
 
-          <Progress value={progressValue} className="h-2" />
+          <Progress
+            value={progressValue}
+            className='h-2'
+          />
 
-          <div className="rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground">
+          <div className='rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground'>
             Friendly heads-up: pipelines can be slow or a little flaky in alpha.
             If anything feels off, open a GitHub issue and we will take a look.{" "}
             <a
-              className="font-semibold text-foreground underline underline-offset-2"
-              href="https://github.com/DaKheera47/job-ops/issues"
-              target="_blank"
-              rel="noreferrer"
+              className='font-semibold text-foreground underline underline-offset-2'
+              href='https://github.com/DaKheera47/job-ops/issues'
+              target='_blank'
+              rel='noreferrer'
             >
               Open an issue
             </a>

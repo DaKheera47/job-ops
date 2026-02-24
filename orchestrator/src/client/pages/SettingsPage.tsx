@@ -614,6 +614,16 @@ export const SettingsPage: React.FC = () => {
         [mode]: { checked: true, valid: result.valid },
       }));
       if (result.valid) {
+        const update: Partial<UpdateSettingsInput> = {
+          rxresumeMode: mode,
+        };
+        if (emailValue) update.rxresumeEmail = emailValue;
+        if (passwordValue) update.rxresumePassword = passwordValue;
+        if (apiKeyValue) update.rxresumeApiKey = apiKeyValue;
+
+        const updatedSettings = await api.updateSettings(update);
+        setSettings(updatedSettings);
+        queryClient.setQueryData(queryKeys.settings.current(), updatedSettings);
         toast.success(`Reactive Resume ${mode} validation passed`);
       } else {
         toast.error(result.message || `Reactive Resume ${mode} validation failed`);
@@ -629,7 +639,7 @@ export const SettingsPage: React.FC = () => {
     } finally {
       setIsValidatingRxresumeMode(false);
     }
-  }, [getValues, rxresumeMode, settings]);
+  }, [getValues, queryClient, rxresumeMode, settings]);
 
   const effectiveProfileProjects =
     rxResumeProjectsOverride ??

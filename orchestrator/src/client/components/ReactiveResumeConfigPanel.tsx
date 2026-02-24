@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { cn, clampInt } from "@/lib/utils";
+import { clampInt } from "@/lib/utils";
+import { StatusIndicator } from "./StatusIndicator";
 
 type VersionValidationState = {
   checked: boolean;
@@ -87,19 +88,22 @@ type ReactiveResumeConfigPanelProps = {
 };
 
 function renderStatusPill(label: string, state: VersionValidationState) {
+  const statusLabel = state.checked
+    ? state.valid
+      ? "Connected"
+      : "Failed"
+    : "Not tested";
+  const dotColor = state.checked
+    ? state.valid
+      ? "bg-emerald-500"
+      : "bg-destructive"
+    : "bg-muted-foreground";
+
   return (
-    <span
-      className={cn(
-        "rounded-md border px-2 py-1",
-        state.checked
-          ? state.valid
-            ? "border-green-300 bg-green-50 text-green-700 dark:border-green-900/30 dark:bg-green-900/10 dark:text-green-300"
-            : "border-destructive/30 bg-destructive/5 text-destructive"
-          : "border-border/60 bg-background text-muted-foreground",
-      )}
-    >
-      {label}: {state.checked ? (state.valid ? "Connected" : "Failed") : "Not tested"}
-    </span>
+    <StatusIndicator
+      label={`${label}: ${statusLabel}`}
+      dotColor={dotColor}
+    />
   );
 }
 
@@ -168,8 +172,7 @@ export const ReactiveResumeConfigPanel: React.FC<
       </Tabs>
 
       {showValidationStatus && validationStatuses ? (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-medium text-foreground">Validation status</span>
+        <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
           {renderStatusPill("v5 status", validationStatuses.v5)}
           {renderStatusPill("v4 status", validationStatuses.v4)}
         </div>
@@ -204,7 +207,6 @@ export const ReactiveResumeConfigPanel: React.FC<
               type="password"
               placeholder={v5.placeholder ?? "Enter v5 API key"}
               helper={v5.helper}
-              current={formatSecretHint(v5.hint ?? null)}
               disabled={disabled}
               error={v5.error}
             />
