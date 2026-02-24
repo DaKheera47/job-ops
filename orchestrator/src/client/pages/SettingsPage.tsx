@@ -2,6 +2,16 @@ import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
+import {
+  RXRESUME_MODES,
+  getRxResumeBaseResumeIdForMode,
+  getRxResumeBaseResumeIdsByMode,
+  getRxResumeCredentialDrafts,
+  getRxResumeCredentialPrecheckFailure,
+  getRxResumeModeFromSettings,
+  getStoredRxResumeCredentialAvailability,
+  toRxResumeValidationPayload,
+} from "@client/lib/rxresume-config";
 import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
 import { ChatSettingsSection } from "@client/pages/settings/components/ChatSettingsSection";
 import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneSection";
@@ -399,6 +409,7 @@ export const SettingsPage: React.FC = () => {
   const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
   const selectedRxresumeMode = (watch("rxresumeMode") ??
     rxresumeMode) as RxResumeMode;
+  const storedRxResume = getStoredRxResumeCredentialAvailability(settings);
   const hasRxResumeAccess = Boolean(
     rxresumeValidationStatuses[selectedRxresumeMode].valid,
   );
@@ -413,16 +424,16 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    const effectiveMode = (settings.rxresumeMode?.value ??
-      "v5") as RxResumeMode;
-    const v4Id =
-      settings.rxresumeBaseResumeIdV4 ??
-      (effectiveMode === "v4" ? settings.rxresumeBaseResumeId : null);
-    const v5Id =
-      settings.rxresumeBaseResumeIdV5 ??
-      (effectiveMode === "v5" ? settings.rxresumeBaseResumeId : null);
-    setRxResumeBaseResumeIdsByMode({ v4: v4Id, v5: v5Id });
-    const storedId = (effectiveMode === "v4" ? v4Id : v5Id) ?? null;
+    const effectiveMode = getRxResumeModeFromSettings(settings);
+    const baseResumeIdsByMode = getRxResumeBaseResumeIdsByMode(
+      settings,
+      effectiveMode,
+    );
+    setRxResumeBaseResumeIdsByMode(baseResumeIdsByMode);
+    const storedId = getRxResumeBaseResumeIdForMode(
+      baseResumeIdsByMode,
+      effectiveMode,
+    );
     setRxResumeBaseResumeIdDraft(storedId);
     setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false });
     setRxResumeProjectsOverride(null);
@@ -570,15 +581,14 @@ export const SettingsPage: React.FC = () => {
       const { silent = false, persistOnSuccess = true } = options ?? {};
       const notify = !silent;
       const values = getValues();
-      const emailValue = values.rxresumeEmail?.trim() ?? "";
-      const passwordValue = values.rxresumePassword?.trim() ?? "";
-      const apiKeyValue = values.rxresumeApiKey?.trim() ?? "";
-      const hasStoredV4 = Boolean(
-        settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
-      );
-      const hasStoredV5 = Boolean(settings?.rxresumeApiKeyHint);
+      const draftCredentials = getRxResumeCredentialDrafts(values);
+      const precheckFailure = getRxResumeCredentialPrecheckFailure({
+        mode,
+        stored: storedRxResume,
+        draft: draftCredentials,
+      });
 
-      if (mode === "v5" && !hasStoredV5 && !apiKeyValue) {
+      if (precheckFailure === "missing-v5-api-key") {
         if (notify) {
           toast.info("Add a v5 API key, then test again.");
         }
@@ -593,13 +603,7 @@ export const SettingsPage: React.FC = () => {
         return;
       }
 
-      if (
-        mode === "v4" &&
-        !(
-          (hasStoredV4 || Boolean(emailValue)) &&
-          (Boolean(settings?.rxresumePasswordHint) || Boolean(passwordValue))
-        )
-      ) {
+      if (precheckFailure === "missing-v4-email-password") {
         if (notify) {
           toast.info("Add v4 email and password, then test again.");
         }
@@ -617,9 +621,7 @@ export const SettingsPage: React.FC = () => {
       try {
         const result = await api.validateRxresume({
           mode,
-          email: emailValue || undefined,
-          password: passwordValue || undefined,
-          apiKey: apiKeyValue || undefined,
+          ...toRxResumeValidationPayload(draftCredentials),
         });
         setRxresumeValidationStatuses((current) => ({
           ...current,
@@ -633,9 +635,12 @@ export const SettingsPage: React.FC = () => {
           const update: Partial<UpdateSettingsInput> = {
             rxresumeMode: mode,
           };
-          if (emailValue) update.rxresumeEmail = emailValue;
-          if (passwordValue) update.rxresumePassword = passwordValue;
-          if (apiKeyValue) update.rxresumeApiKey = apiKeyValue;
+          if (draftCredentials.email)
+            update.rxresumeEmail = draftCredentials.email;
+          if (draftCredentials.password)
+            update.rxresumePassword = draftCredentials.password;
+          if (draftCredentials.apiKey)
+            update.rxresumeApiKey = draftCredentials.apiKey;
 
           const updatedSettings = await api.updateSettings(update);
           setSettings(updatedSettings);
@@ -663,13 +668,19 @@ export const SettingsPage: React.FC = () => {
         }
       }
     },
-    [getValues, queryClient, settings],
+    [
+      getValues,
+      queryClient,
+      storedRxResume.apiKey,
+      storedRxResume.email,
+      storedRxResume.password,
+    ],
   );
 
   useEffect(() => {
     if (!settings) return;
 
-    const modesToCheck = (["v4", "v5"] as const).filter(
+    const modesToCheck = RXRESUME_MODES.filter(
       (mode) => !rxresumeValidationStatuses[mode].checked,
     );
     if (modesToCheck.length === 0) return;
@@ -975,7 +986,10 @@ export const SettingsPage: React.FC = () => {
           <ReactiveResumeSection
             rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
             onRxresumeModeChange={(mode) => {
-              const nextId = rxResumeBaseResumeIdsByMode[mode] ?? null;
+              const nextId = getRxResumeBaseResumeIdForMode(
+                rxResumeBaseResumeIdsByMode,
+                mode,
+              );
               setRxResumeBaseResumeIdDraft(nextId);
               setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
               setRxResumeProjectsOverride(null);
@@ -993,7 +1007,6 @@ export const SettingsPage: React.FC = () => {
             hasRxResumeAccess={hasRxResumeAccess}
             rxresumeMode={rxresumeMode}
             validationStatuses={rxresumeValidationStatuses}
-            rxresumeApiKeyHint={settings?.rxresumeApiKeyHint ?? null}
             profileProjects={effectiveProfileProjects}
             lockedCount={lockedCount}
             maxProjectsTotal={effectiveMaxProjectsTotal}

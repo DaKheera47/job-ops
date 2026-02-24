@@ -4,7 +4,6 @@ import {
   toggleAiSelectable,
   toggleMustInclude,
 } from "@client/pages/settings/resume-projects-state";
-import { formatSecretHint } from "@client/pages/settings/utils";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
@@ -63,7 +62,6 @@ type ReactiveResumeConfigPanelProps = {
     apiKey: string;
     onApiKeyChange: (value: string) => void;
     error?: string;
-    hint?: string | null;
     helper?: string;
     placeholder?: string;
   };
@@ -74,7 +72,6 @@ type ReactiveResumeConfigPanelProps = {
     password: string;
     onPasswordChange: (value: string) => void;
     passwordError?: string;
-    passwordHint?: string | null;
     emailPlaceholder?: string;
     passwordPlaceholder?: string;
   };
@@ -98,7 +95,9 @@ function renderStatusPill(label: string, state: VersionValidationState) {
       label={`${label}: ${statusLabel}`}
       dotColor={dotColor}
       tooltip={
-        state.checked && !state.valid && state.message ? state.message : undefined
+        state.checked && !state.valid && state.message
+          ? state.message
+          : undefined
       }
     />
   );
@@ -118,7 +117,12 @@ export const ReactiveResumeConfigPanel: React.FC<
   v4,
   projectSelection,
 }) => {
-  const canShowProjectSelection = Boolean(projectSelection && hasRxResumeAccess);
+  const canShowProjectSelection = Boolean(
+    projectSelection && hasRxResumeAccess,
+  );
+  const selectedValidationStatus = validationStatuses?.[mode];
+  const handleModeChange = (value: string) =>
+    onModeChange(value === "v4" ? "v4" : "v5");
 
   return (
     <div className="space-y-4">
@@ -131,7 +135,7 @@ export const ReactiveResumeConfigPanel: React.FC<
         </div>
       ) : null}
 
-      <Tabs value={mode} onValueChange={(value) => onModeChange(value === "v4" ? "v4" : "v5")}>
+      <Tabs value={mode} onValueChange={handleModeChange}>
         <TabsList className="grid h-auto w-full grid-cols-2">
           <TabsTrigger value="v5" disabled={disabled}>
             v5 (API key)
@@ -142,31 +146,27 @@ export const ReactiveResumeConfigPanel: React.FC<
         </TabsList>
       </Tabs>
 
-      {showValidationStatus && validationStatuses ? (
+      {showValidationStatus && selectedValidationStatus ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
-          {/* only show one at a time */}
-          {
-            mode === "v5"              ? renderStatusPill("v5 status", validationStatuses.v5)
-              : renderStatusPill("v4 status", validationStatuses.v4)
-          }
+          {renderStatusPill(`${mode} status`, selectedValidationStatus)}
         </div>
       ) : null}
 
       {mode === "v5" ? (
-          <div className="grid gap-4">
-            <SettingsInput
-              label="v5 API key"
-              inputProps={{
-                name: "rxresumeApiKey",
-                value: v5.apiKey,
-                onChange: (event) => v5.onApiKeyChange(event.currentTarget.value),
-              }}
-              type="password"
-              placeholder={v5.placeholder ?? "Enter v5 API key"}
-              helper={v5.helper}
-              disabled={disabled}
-              error={v5.error}
-            />
+        <div className="grid gap-4">
+          <SettingsInput
+            label="v5 API key"
+            inputProps={{
+              name: "rxresumeApiKey",
+              value: v5.apiKey,
+              onChange: (event) => v5.onApiKeyChange(event.currentTarget.value),
+            }}
+            type="password"
+            placeholder={v5.placeholder ?? "Enter v5 API key"}
+            helper={v5.helper}
+            disabled={disabled}
+            error={v5.error}
+          />
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -296,7 +296,9 @@ export const ReactiveResumeConfigPanel: React.FC<
                           <TableRow key={project.id}>
                             <TableCell>
                               <div className="space-y-0.5">
-                                <div className="font-medium">{project.name}</div>
+                                <div className="font-medium">
+                                  {project.name}
+                                </div>
                                 {projectMeta ? (
                                   <div className="text-xs text-muted-foreground">
                                     {projectMeta}

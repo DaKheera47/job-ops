@@ -20,7 +20,6 @@ type ReactiveResumeSectionProps = {
     v4: { checked: boolean; valid: boolean; message?: string | null };
     v5: { checked: boolean; valid: boolean; message?: string | null };
   };
-  rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
   maxProjectsTotal: number;
@@ -36,7 +35,6 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   rxresumeMode,
   onRxresumeModeChange,
   validationStatuses,
-  rxresumeApiKeyHint,
   profileProjects,
   lockedCount,
   maxProjectsTotal,
@@ -54,6 +52,14 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   const rxresumeEmailValue = watch("rxresumeEmail") ?? "";
   const rxresumePasswordValue = watch("rxresumePassword") ?? "";
   const resumeProjectsValue = watch("resumeProjects");
+  const setDirtyTouchedValue = <TField extends keyof UpdateSettingsInput>(
+    field: TField,
+    value: UpdateSettingsInput[TField],
+  ) =>
+    setValue(field, value, {
+      shouldDirty: true,
+      shouldTouch: true,
+    });
 
   return (
     <AccordionItem value="reactive-resume" className="border rounded-lg px-4">
@@ -65,10 +71,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           mode={selectedMode}
           onModeChange={(mode) => {
             onRxresumeModeChange?.(mode);
-            setValue("rxresumeMode", mode, {
-              shouldDirty: true,
-              shouldTouch: true,
-            });
+            setDirtyTouchedValue("rxresumeMode", mode);
           }}
           disabled={isLoading || isSaving}
           hasRxResumeAccess={hasRxResumeAccess}
@@ -77,39 +80,27 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           v5={{
             apiKey: rxresumeApiKeyValue,
             onApiKeyChange: (value) =>
-              setValue("rxresumeApiKey", value, {
-                shouldDirty: true,
-                shouldTouch: true,
-              }),
+              setDirtyTouchedValue("rxresumeApiKey", value),
             error: errors.rxresumeApiKey?.message as string | undefined,
-            hint: rxresumeApiKeyHint,
           }}
           v4={{
             email: rxresumeEmailValue,
             onEmailChange: (value) =>
-              setValue("rxresumeEmail", value, {
-                shouldDirty: true,
-                shouldTouch: true,
-              }),
+              setDirtyTouchedValue("rxresumeEmail", value),
             emailError: errors.rxresumeEmail?.message as string | undefined,
             password: rxresumePasswordValue,
             onPasswordChange: (value) =>
-              setValue("rxresumePassword", value, {
-                shouldDirty: true,
-                shouldTouch: true,
-              }),
-            passwordError: errors.rxresumePassword?.message as string | undefined,
+              setDirtyTouchedValue("rxresumePassword", value),
+            passwordError: errors.rxresumePassword?.message as
+              | string
+              | undefined,
           }}
           projectSelection={{
             baseResumeId: rxResumeBaseResumeIdDraft,
             onBaseResumeIdChange: setRxResumeBaseResumeIdDraft,
             projects: profileProjects,
             value: resumeProjectsValue,
-            onChange: (next) =>
-              setValue("resumeProjects", next, {
-                shouldDirty: true,
-                shouldTouch: true,
-              }),
+            onChange: (next) => setDirtyTouchedValue("resumeProjects", next),
             lockedCount,
             maxProjectsTotal,
             isProjectsLoading,

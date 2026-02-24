@@ -2,6 +2,15 @@ import * as api from "@client/api";
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
+import {
+  getInitialRxResumeMode,
+  getRxResumeBaseResumeIdForMode,
+  getRxResumeBaseResumeIdsByMode,
+  getRxResumeCredentialDrafts,
+  getRxResumeCredentialPrecheckFailure,
+  getStoredRxResumeCredentialAvailability,
+  toRxResumeValidationPayload,
+} from "@client/lib/rxresume-config";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
@@ -67,17 +76,6 @@ const EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
   ...EMPTY_VALIDATION_STATE,
   testedAt: null,
 };
-
-function getInitialOnboardingRxresumeMode(input: {
-  savedMode: RxResumeMode | null | undefined;
-  hasV4: boolean;
-  hasV5: boolean;
-}): RxResumeMode {
-  if (input.savedMode === "v4" || input.savedMode === "v5")
-    return input.savedMode;
-  if (input.hasV4 && !input.hasV5) return "v4";
-  return "v5";
-}
 
 function getStepPrimaryLabel(input: {
   currentStep: string | null;
@@ -211,9 +209,7 @@ export const OnboardingGate: React.FC = () => {
 
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
-  const hasRxresumeEmail = Boolean(settings?.rxresumeEmail?.trim());
-  const hasRxresumePassword = Boolean(settings?.rxresumePasswordHint);
-  const hasRxresumeApiKey = Boolean(settings?.rxresumeApiKeyHint);
+  const storedRxResume = getStoredRxResumeCredentialAvailability(settings);
   const rxresumeModeCurrent = (rxresumeModeValue ||
     settings?.rxresumeMode?.value ||
     "v5") as RxResumeMode;
@@ -233,16 +229,16 @@ export const OnboardingGate: React.FC = () => {
       version: "v4" | "v5",
     ): Promise<ValidationResult & { checked: true; testedAt: number }> => {
       const values = getValues();
-      const emailValue = values.rxresumeEmail.trim();
-      const passwordValue = values.rxresumePassword.trim();
-      const apiKeyValue = values.rxresumeApiKey.trim();
-      const hasV4Configured =
-        (hasRxresumeEmail || Boolean(emailValue)) &&
-        (hasRxresumePassword || Boolean(passwordValue));
-      const hasV5Configured = hasRxresumeApiKey || Boolean(apiKeyValue);
+      const draftCredentials = getRxResumeCredentialDrafts(values);
       const testedAt = Date.now();
 
-      if (version === "v5" && !hasV5Configured) {
+      const precheckFailure = getRxResumeCredentialPrecheckFailure({
+        mode: version,
+        stored: storedRxResume,
+        draft: draftCredentials,
+      });
+
+      if (precheckFailure === "missing-v5-api-key") {
         return {
           valid: false,
           message: "v5 API key required. Add a v5 API key, then test again.",
@@ -251,7 +247,7 @@ export const OnboardingGate: React.FC = () => {
         };
       }
 
-      if (version === "v4" && !hasV4Configured) {
+      if (precheckFailure === "missing-v4-email-password") {
         return {
           valid: false,
           message:
@@ -264,9 +260,7 @@ export const OnboardingGate: React.FC = () => {
       try {
         const result = await api.validateRxresume({
           mode: version,
-          email: emailValue || undefined,
-          password: passwordValue || undefined,
-          apiKey: apiKeyValue || undefined,
+          ...toRxResumeValidationPayload(draftCredentials),
         });
         return { ...result, checked: true, testedAt };
       } catch (error) {
@@ -277,7 +271,12 @@ export const OnboardingGate: React.FC = () => {
         return { valid: false, message, checked: true, testedAt };
       }
     },
-    [getValues, hasRxresumeApiKey, hasRxresumeEmail, hasRxresumePassword],
+    [
+      getValues,
+      storedRxResume.apiKey,
+      storedRxResume.email,
+      storedRxResume.password,
+    ],
   );
 
   const validateRxresume = useCallback(async () => {
@@ -306,21 +305,17 @@ export const OnboardingGate: React.FC = () => {
   // Initialize form values from settings
   useEffect(() => {
     if (settings) {
-      const initialMode = getInitialOnboardingRxresumeMode({
+      const initialMode = getInitialRxResumeMode({
         savedMode: (settings.rxresumeMode?.value ??
           null) as RxResumeMode | null,
-        hasV4: Boolean(
-          settings.rxresumeEmail?.trim() && settings.rxresumePasswordHint,
-        ),
-        hasV5: Boolean(settings.rxresumeApiKeyHint),
+        hasV4: storedRxResume.hasV4,
+        hasV5: storedRxResume.hasV5,
       });
-      const v4Id =
-        settings.rxresumeBaseResumeIdV4 ??
-        (initialMode === "v4" ? settings.rxresumeBaseResumeId : null);
-      const v5Id =
-        settings.rxresumeBaseResumeIdV5 ??
-        (initialMode === "v5" ? settings.rxresumeBaseResumeId : null);
-      setRxresumeBaseResumeIdsByMode({ v4: v4Id, v5: v5Id });
+      const baseResumeIdsByMode = getRxResumeBaseResumeIdsByMode(
+        settings,
+        initialMode,
+      );
+      setRxresumeBaseResumeIdsByMode(baseResumeIdsByMode);
       reset({
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
@@ -329,10 +324,13 @@ export const OnboardingGate: React.FC = () => {
         rxresumeEmail: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
-        rxresumeBaseResumeId: (initialMode === "v4" ? v4Id : v5Id) || null,
+        rxresumeBaseResumeId: getRxResumeBaseResumeIdForMode(
+          baseResumeIdsByMode,
+          initialMode,
+        ),
       });
     }
-  }, [settings, reset]);
+  }, [settings, reset, storedRxResume.hasV4, storedRxResume.hasV5]);
 
   // Clear base URL when provider doesn't require it
   useEffect(() => {
@@ -493,18 +491,34 @@ export const OnboardingGate: React.FC = () => {
   const handleSaveRxresume = async (): Promise<boolean> => {
     const values = getValues();
     const modeValue = values.rxresumeMode;
-    const emailValue = values.rxresumeEmail.trim();
-    const passwordValue = values.rxresumePassword.trim();
-    const apiKeyValue = values.rxresumeApiKey.trim();
+    const draftCredentials = getRxResumeCredentialDrafts(values);
     const missing: string[] = [];
 
     if (modeValue === "v5") {
-      if (!hasRxresumeApiKey && !apiKeyValue)
+      if (
+        getRxResumeCredentialPrecheckFailure({
+          mode: "v5",
+          stored: storedRxResume,
+          draft: draftCredentials,
+        }) === "missing-v5-api-key"
+      ) {
         missing.push("RxResume v5 API key");
+      }
     } else if (modeValue === "v4") {
-      if (!hasRxresumeEmail && !emailValue) missing.push("RxResume email");
-      if (!hasRxresumePassword && !passwordValue)
-        missing.push("RxResume password");
+      const missingV4 =
+        getRxResumeCredentialPrecheckFailure({
+          mode: "v4",
+          stored: storedRxResume,
+          draft: draftCredentials,
+        }) === "missing-v4-email-password";
+      if (missingV4) {
+        if (!storedRxResume.email && !draftCredentials.email) {
+          missing.push("RxResume email");
+        }
+        if (!storedRxResume.password && !draftCredentials.password) {
+          missing.push("RxResume password");
+        }
+      }
     }
 
     if (missing.length > 0) {
@@ -524,9 +538,11 @@ export const OnboardingGate: React.FC = () => {
       const update: Partial<UpdateSettingsInput> = {
         rxresumeMode: modeValue,
       };
-      if (emailValue) update.rxresumeEmail = emailValue;
-      if (passwordValue) update.rxresumePassword = passwordValue;
-      if (apiKeyValue) update.rxresumeApiKey = apiKeyValue;
+      if (draftCredentials.email) update.rxresumeEmail = draftCredentials.email;
+      if (draftCredentials.password)
+        update.rxresumePassword = draftCredentials.password;
+      if (draftCredentials.apiKey)
+        update.rxresumeApiKey = draftCredentials.apiKey;
 
       if (Object.keys(update).length > 0) {
         setIsSavingEnv(true);
@@ -624,10 +640,10 @@ export const OnboardingGate: React.FC = () => {
   return (
     <AlertDialog open>
       <AlertDialogContent
-        className='max-w-3xl max-h-[90vh] overflow-hidden p-0'
+        className="max-w-3xl max-h-[90vh] overflow-hidden p-0"
         onEscapeKeyDown={(event) => event.preventDefault()}
       >
-        <div className='space-y-6 px-6 py-6 max-h-[calc(90vh-3.5rem)] overflow-y-auto'>
+        <div className="space-y-6 px-6 py-6 max-h-[calc(90vh-3.5rem)] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Welcome to Job Ops</AlertDialogTitle>
             <AlertDialogDescription>
@@ -636,11 +652,8 @@ export const OnboardingGate: React.FC = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <Tabs
-            value={currentStep}
-            onValueChange={setCurrentStep}
-          >
-            <TabsList className='grid h-auto w-full grid-cols-1 gap-2 border-b border-border/60 bg-transparent p-0 text-left sm:grid-cols-3'>
+          <Tabs value={currentStep} onValueChange={setCurrentStep}>
+            <TabsList className="grid h-auto w-full grid-cols-1 gap-2 border-b border-border/60 bg-transparent p-0 text-left sm:grid-cols-3">
               {steps.map((step, index) => {
                 const isActive = step.id === currentStep;
                 const isComplete = step.complete;
@@ -663,10 +676,7 @@ export const OnboardingGate: React.FC = () => {
                           : "text-muted-foreground",
                       )}
                     >
-                      <Field
-                        orientation='horizontal'
-                        className='items-start'
-                      >
+                      <Field orientation="horizontal" className="items-start">
                         <FieldContent>
                           <FieldTitle>{step.label}</FieldTitle>
                           <FieldDescription>{step.subtitle}</FieldDescription>
@@ -680,7 +690,7 @@ export const OnboardingGate: React.FC = () => {
                           )}
                         >
                           {isComplete ? (
-                            <Check className='h-3.5 w-3.5' />
+                            <Check className="h-3.5 w-3.5" />
                           ) : (
                             index + 1
                           )}
@@ -692,26 +702,20 @@ export const OnboardingGate: React.FC = () => {
               })}
             </TabsList>
 
-            <TabsContent
-              value='llm'
-              className='space-y-4 pt-6'
-            >
+            <TabsContent value="llm" className="space-y-4 pt-6">
               <div>
-                <p className='text-sm font-semibold'>Connect LLM provider</p>
-                <p className='text-xs text-muted-foreground'>
+                <p className="text-sm font-semibold">Connect LLM provider</p>
+                <p className="text-xs text-muted-foreground">
                   Used for job scoring, summaries, and tailoring.
                 </p>
               </div>
-              <div className='grid gap-4 md:grid-cols-2'>
-                <div className='space-y-2'>
-                  <label
-                    htmlFor='llmProvider'
-                    className='text-sm font-medium'
-                  >
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="llmProvider" className="text-sm font-medium">
                     Provider
                   </label>
                   <Controller
-                    name='llmProvider'
+                    name="llmProvider"
                     control={control}
                     render={({ field }) => (
                       <Select
@@ -721,15 +725,12 @@ export const OnboardingGate: React.FC = () => {
                         }}
                         disabled={isSavingEnv}
                       >
-                        <SelectTrigger id='llmProvider'>
-                          <SelectValue placeholder='Select provider' />
+                        <SelectTrigger id="llmProvider">
+                          <SelectValue placeholder="Select provider" />
                         </SelectTrigger>
                         <SelectContent>
                           {LLM_PROVIDERS.map((provider) => (
-                            <SelectItem
-                              key={provider}
-                              value={provider}
-                            >
+                            <SelectItem key={provider} value={provider}>
                               {LLM_PROVIDER_LABELS[provider]}
                             </SelectItem>
                           ))}
@@ -737,17 +738,17 @@ export const OnboardingGate: React.FC = () => {
                       </Select>
                     )}
                   />
-                  <p className='text-xs text-muted-foreground'>
+                  <p className="text-xs text-muted-foreground">
                     {providerConfig.providerHint}
                   </p>
                 </div>
                 {showBaseUrl && (
                   <Controller
-                    name='llmBaseUrl'
+                    name="llmBaseUrl"
                     control={control}
                     render={({ field }) => (
                       <SettingsInput
-                        label='LLM base URL'
+                        label="LLM base URL"
                         inputProps={{
                           name: "llmBaseUrl",
                           value: field.value,
@@ -763,18 +764,18 @@ export const OnboardingGate: React.FC = () => {
                 )}
                 {showApiKey && (
                   <Controller
-                    name='llmApiKey'
+                    name="llmApiKey"
                     control={control}
                     render={({ field }) => (
                       <SettingsInput
-                        label='LLM API key'
+                        label="LLM API key"
                         inputProps={{
                           name: "llmApiKey",
                           value: field.value,
                           onChange: field.onChange,
                         }}
-                        type='password'
-                        placeholder='Enter key'
+                        type="password"
+                        placeholder="Enter key"
                         helper={
                           llmKeyHint
                             ? `${providerConfig.keyHelper}. Leave blank to use the saved key.`
@@ -788,17 +789,17 @@ export const OnboardingGate: React.FC = () => {
               </div>
             </TabsContent>
 
-            <TabsContent
-              value='rxresume'
-              className='space-y-4 pt-6'
-            >
+            <TabsContent value="rxresume" className="space-y-4 pt-6">
               <ReactiveResumeConfigPanel
                 mode={rxresumeModeCurrent}
                 onModeChange={(mode) => {
                   setValue("rxresumeMode", mode);
                   setValue(
                     "rxresumeBaseResumeId",
-                    rxresumeBaseResumeIdsByMode[mode],
+                    getRxResumeBaseResumeIdForMode(
+                      rxresumeBaseResumeIdsByMode,
+                      mode,
+                    ),
                   );
                   setRxresumeValidation((previous) => ({
                     ...EMPTY_VALIDATION_STATE,
@@ -827,21 +828,18 @@ export const OnboardingGate: React.FC = () => {
               />
             </TabsContent>
 
-            <TabsContent
-              value='baseresume'
-              className='space-y-4 pt-6'
-            >
+            <TabsContent value="baseresume" className="space-y-4 pt-6">
               <div>
-                <p className='text-sm font-semibold'>
+                <p className="text-sm font-semibold">
                   Select your template resume
                 </p>
-                <p className='text-xs text-muted-foreground'>
+                <p className="text-xs text-muted-foreground">
                   Choose the resume you want to use as a template. The selected
                   resume will be used as a template for tailoring.
                 </p>
               </div>
               <Controller
-                name='rxresumeBaseResumeId'
+                name="rxresumeBaseResumeId"
                 control={control}
                 render={({ field }) => (
                   <BaseResumeSelection
@@ -864,19 +862,16 @@ export const OnboardingGate: React.FC = () => {
             </TabsContent>
           </Tabs>
 
-          <div className='flex items-center justify-between'>
+          <div className="flex items-center justify-between">
             <Button
-              variant='outline'
+              variant="outline"
               onClick={handleBack}
               disabled={!canGoBack || isBusy}
             >
               Back
             </Button>
-            <div className='flex items-center gap-2'>
-              <Button
-                onClick={handlePrimaryAction}
-                disabled={isBusy}
-              >
+            <div className="flex items-center gap-2">
+              <Button onClick={handlePrimaryAction} disabled={isBusy}>
                 {isBusy
                   ? "Validating..."
                   : getStepPrimaryLabel({
@@ -889,10 +884,7 @@ export const OnboardingGate: React.FC = () => {
             </div>
           </div>
 
-          <Progress
-            value={progressValue}
-            className='h-2'
-          />
+          <Progress value={progressValue} className="h-2" />
         </div>
       </AlertDialogContent>
     </AlertDialog>
