@@ -169,7 +169,18 @@ export async function verifyApiKey(
   baseUrl?: string,
 ): Promise<VerifyApiKeyResult> {
   try {
-    await fetchRxResume("/resumes", {}, { apiKey, baseUrl });
+    const payload = await fetchRxResume("/resumes", {}, { apiKey, baseUrl });
+    if (!Array.isArray(payload)) {
+      return {
+        ok: false,
+        status: 0,
+        message: extractErrorMessage(
+          payload,
+          "Reactive Resume v5 validation failed: unexpected response payload.",
+        ),
+        details: payload,
+      };
+    }
     return { ok: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Network error";
