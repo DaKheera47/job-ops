@@ -49,18 +49,11 @@ type ReactiveResumeConfigPanelProps = {
   mode: RxResumeMode;
   onModeChange: (mode: RxResumeMode) => void;
   disabled?: boolean;
-  showAccessAlert?: boolean;
   hasRxResumeAccess?: boolean;
   showValidationStatus?: boolean;
   validationStatuses?: {
     v4: VersionValidationState;
     v5: VersionValidationState;
-  };
-  validationAction?: {
-    label: string;
-    onClick: () => void | Promise<void>;
-    isLoading?: boolean;
-    disabled?: boolean;
   };
   intro?: {
     title: string;
@@ -117,11 +110,9 @@ export const ReactiveResumeConfigPanel: React.FC<
   mode,
   onModeChange,
   disabled = false,
-  showAccessAlert = false,
   hasRxResumeAccess = false,
   showValidationStatus = false,
   validationStatuses,
-  validationAction,
   intro,
   v5,
   v4,
@@ -138,30 +129,6 @@ export const ReactiveResumeConfigPanel: React.FC<
             <p className="text-xs text-muted-foreground">{intro.description}</p>
           ) : null}
         </div>
-      ) : null}
-
-      {showAccessAlert ? (
-        hasRxResumeAccess ? (
-          <Alert className="bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-900/20">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <AlertTitle className="text-green-800 dark:text-green-300">
-              RxResume Access Ready
-            </AlertTitle>
-            <AlertDescription className="text-green-700 dark:text-green-400">
-              Reactive Resume access is active.
-            </AlertDescription>
-          </Alert>
-        ) : (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>RxResume Access Missing</AlertTitle>
-            <AlertDescription>
-              {mode === "v5"
-                ? "Configure a Reactive Resume v5 API key to enable access."
-                : "Configure Reactive Resume v4 email/password credentials to enable access."}
-            </AlertDescription>
-          </Alert>
-        )
       ) : null}
 
       <Tabs value={mode} onValueChange={(value) => onModeChange(value === "v4" ? "v4" : "v5")}>
@@ -182,22 +149,6 @@ export const ReactiveResumeConfigPanel: React.FC<
             mode === "v5"              ? renderStatusPill("v5 status", validationStatuses.v5)
               : renderStatusPill("v4 status", validationStatuses.v4)
           }
-        </div>
-      ) : null}
-
-      {validationAction ? (
-        <div className="flex justify-start">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void validationAction.onClick()}
-            disabled={
-              disabled || validationAction.disabled || validationAction.isLoading
-            }
-          >
-            {validationAction.isLoading ? "Testing..." : validationAction.label}
-          </Button>
         </div>
       ) : null}
 
@@ -242,7 +193,6 @@ export const ReactiveResumeConfigPanel: React.FC<
             placeholder={v4.passwordPlaceholder ?? "Enter v4 password"}
             disabled={disabled}
             error={v4.passwordError}
-            current={formatSecretHint(v4.passwordHint ?? null)}
           />
         </div>
       )}

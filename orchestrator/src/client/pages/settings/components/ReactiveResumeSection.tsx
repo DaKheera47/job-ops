@@ -20,8 +20,6 @@ type ReactiveResumeSectionProps = {
     v4: { checked: boolean; valid: boolean; message?: string | null };
     v5: { checked: boolean; valid: boolean; message?: string | null };
   };
-  onValidateCurrentMode?: () => void | Promise<void>;
-  isValidatingMode?: boolean;
   rxresumeApiKeyHint: string | null;
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -38,8 +36,6 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   rxresumeMode,
   onRxresumeModeChange,
   validationStatuses,
-  onValidateCurrentMode,
-  isValidatingMode = false,
   rxresumeApiKeyHint,
   profileProjects,
   lockedCount,
@@ -75,19 +71,9 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
             });
           }}
           disabled={isLoading || isSaving}
-          showAccessAlert
           hasRxResumeAccess={hasRxResumeAccess}
           showValidationStatus={Boolean(validationStatuses)}
           validationStatuses={validationStatuses}
-          validationAction={
-            onValidateCurrentMode
-              ? {
-                  label: selectedMode === "v4" ? "Test v4" : "Test v5",
-                  onClick: onValidateCurrentMode,
-                  isLoading: isValidatingMode,
-                }
-              : undefined
-          }
           v5={{
             apiKey: rxresumeApiKeyValue,
             onApiKeyChange: (value) =>

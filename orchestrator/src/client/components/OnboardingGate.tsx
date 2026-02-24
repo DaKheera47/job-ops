@@ -800,7 +800,10 @@ export const OnboardingGate: React.FC = () => {
                     "rxresumeBaseResumeId",
                     rxresumeBaseResumeIdsByMode[mode],
                   );
-                  setRxresumeValidation(EMPTY_VALIDATION_STATE);
+                  setRxresumeValidation((previous) => ({
+                    ...EMPTY_VALIDATION_STATE,
+                    checked: previous.checked,
+                  }));
                 }}
                 disabled={isSavingEnv}
                 showValidationStatus
@@ -890,20 +893,6 @@ export const OnboardingGate: React.FC = () => {
             value={progressValue}
             className='h-2'
           />
-
-          <div className='rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground'>
-            Friendly heads-up: pipelines can be slow or a little flaky in alpha.
-            If anything feels off, open a GitHub issue and we will take a look.{" "}
-            <a
-              className='font-semibold text-foreground underline underline-offset-2'
-              href='https://github.com/DaKheera47/job-ops/issues'
-              target='_blank'
-              rel='noreferrer'
-            >
-              Open an issue
-            </a>
-            .
-          </div>
         </div>
       </AlertDialogContent>
     </AlertDialog>

@@ -329,8 +329,6 @@ export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [isValidatingRxresumeMode, setIsValidatingRxresumeMode] =
-    useState(false);
   const [rxresumeValidationStatuses, setRxresumeValidationStatuses] = useState<{
     v4: RxResumeValidationBadgeState;
     v5: RxResumeValidationBadgeState;
@@ -399,19 +397,11 @@ export const SettingsPage: React.FC = () => {
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
   const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
-  const selectedRxresumeMode =
-    (watch("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
-  const hasV4RxResumeAccess = Boolean(
-    settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
-  );
-  const hasV5RxResumeAccess = Boolean(settings?.rxresumeApiKeyHint);
-  const hasSavedRxResumeAccess =
-    selectedRxresumeMode === "v5" ? hasV5RxResumeAccess : hasV4RxResumeAccess;
-  const hasValidatedRxResumeAccess = Boolean(
+  const selectedRxresumeMode = (watch("rxresumeMode") ??
+    rxresumeMode) as RxResumeMode;
+  const hasRxResumeAccess = Boolean(
     rxresumeValidationStatuses[selectedRxresumeMode].valid,
   );
-  const hasRxResumeAccess =
-    hasSavedRxResumeAccess || hasValidatedRxResumeAccess;
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -423,7 +413,8 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    const effectiveMode = (settings.rxresumeMode?.value ?? "v5") as RxResumeMode;
+    const effectiveMode = (settings.rxresumeMode?.value ??
+      "v5") as RxResumeMode;
     const v4Id =
       settings.rxresumeBaseResumeIdV4 ??
       (effectiveMode === "v4" ? settings.rxresumeBaseResumeId : null);
@@ -571,92 +562,124 @@ export const SettingsPage: React.FC = () => {
     }
   }, [refreshReadiness]);
 
-  const handleValidateRxresumeMode = useCallback(async () => {
-    const mode = (getValues("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
-    const values = getValues();
-    const emailValue = values.rxresumeEmail?.trim() ?? "";
-    const passwordValue = values.rxresumePassword?.trim() ?? "";
-    const apiKeyValue = values.rxresumeApiKey?.trim() ?? "";
-    const hasStoredV4 = Boolean(
-      settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
-    );
-    const hasStoredV5 = Boolean(settings?.rxresumeApiKeyHint);
+  const validateRxresumeMode = useCallback(
+    async (
+      mode: RxResumeMode,
+      options?: { silent?: boolean; persistOnSuccess?: boolean },
+    ) => {
+      const { silent = false, persistOnSuccess = true } = options ?? {};
+      const notify = !silent;
+      const values = getValues();
+      const emailValue = values.rxresumeEmail?.trim() ?? "";
+      const passwordValue = values.rxresumePassword?.trim() ?? "";
+      const apiKeyValue = values.rxresumeApiKey?.trim() ?? "";
+      const hasStoredV4 = Boolean(
+        settings?.rxresumeEmail?.trim() && settings?.rxresumePasswordHint,
+      );
+      const hasStoredV5 = Boolean(settings?.rxresumeApiKeyHint);
 
-    if (mode === "v5" && !hasStoredV5 && !apiKeyValue) {
-      toast.info("Add a v5 API key, then test again.");
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        v5: {
-          checked: true,
-          valid: false,
-          message: "Add a v5 API key, then test again.",
-        },
-      }));
-      return;
-    }
-
-    if (
-      mode === "v4" &&
-      !(
-        (hasStoredV4 || Boolean(emailValue)) &&
-        (Boolean(settings?.rxresumePasswordHint) || Boolean(passwordValue))
-      )
-    ) {
-      toast.info("Add v4 email and password, then test again.");
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        v4: {
-          checked: true,
-          valid: false,
-          message: "Add v4 email and password, then test again.",
-        },
-      }));
-      return;
-    }
-
-    setIsValidatingRxresumeMode(true);
-    try {
-      const result = await api.validateRxresume({
-        mode,
-        email: emailValue || undefined,
-        password: passwordValue || undefined,
-        apiKey: apiKeyValue || undefined,
-      });
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        [mode]: {
-          checked: true,
-          valid: result.valid,
-          message: result.valid ? null : (result.message ?? null),
-        },
-      }));
-      if (result.valid) {
-        const update: Partial<UpdateSettingsInput> = {
-          rxresumeMode: mode,
-        };
-        if (emailValue) update.rxresumeEmail = emailValue;
-        if (passwordValue) update.rxresumePassword = passwordValue;
-        if (apiKeyValue) update.rxresumeApiKey = apiKeyValue;
-
-        const updatedSettings = await api.updateSettings(update);
-        setSettings(updatedSettings);
-        queryClient.setQueryData(queryKeys.settings.current(), updatedSettings);
-        toast.success(`Reactive Resume ${mode} validation passed`);
-      } else {
-        toast.error(result.message || `Reactive Resume ${mode} validation failed`);
+      if (mode === "v5" && !hasStoredV5 && !apiKeyValue) {
+        if (notify) {
+          toast.info("Add a v5 API key, then test again.");
+        }
+        setRxresumeValidationStatuses((current) => ({
+          ...current,
+          v5: {
+            checked: true,
+            valid: false,
+            message: "Add a v5 API key, then test again.",
+          },
+        }));
+        return;
       }
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "RxResume validation failed";
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        [mode]: { checked: true, valid: false, message },
-      }));
-      toast.error(message);
-    } finally {
-      setIsValidatingRxresumeMode(false);
-    }
-  }, [getValues, queryClient, rxresumeMode, settings]);
+
+      if (
+        mode === "v4" &&
+        !(
+          (hasStoredV4 || Boolean(emailValue)) &&
+          (Boolean(settings?.rxresumePasswordHint) || Boolean(passwordValue))
+        )
+      ) {
+        if (notify) {
+          toast.info("Add v4 email and password, then test again.");
+        }
+        setRxresumeValidationStatuses((current) => ({
+          ...current,
+          v4: {
+            checked: true,
+            valid: false,
+            message: "Add v4 email and password, then test again.",
+          },
+        }));
+        return;
+      }
+
+      try {
+        const result = await api.validateRxresume({
+          mode,
+          email: emailValue || undefined,
+          password: passwordValue || undefined,
+          apiKey: apiKeyValue || undefined,
+        });
+        setRxresumeValidationStatuses((current) => ({
+          ...current,
+          [mode]: {
+            checked: true,
+            valid: result.valid,
+            message: result.valid ? null : (result.message ?? null),
+          },
+        }));
+        if (result.valid && persistOnSuccess) {
+          const update: Partial<UpdateSettingsInput> = {
+            rxresumeMode: mode,
+          };
+          if (emailValue) update.rxresumeEmail = emailValue;
+          if (passwordValue) update.rxresumePassword = passwordValue;
+          if (apiKeyValue) update.rxresumeApiKey = apiKeyValue;
+
+          const updatedSettings = await api.updateSettings(update);
+          setSettings(updatedSettings);
+          queryClient.setQueryData(
+            queryKeys.settings.current(),
+            updatedSettings,
+          );
+          if (notify) {
+            toast.success(`Reactive Resume ${mode} validation passed`);
+          }
+        } else if (!result.valid && notify) {
+          toast.error(
+            result.message || `Reactive Resume ${mode} validation failed`,
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "RxResume validation failed";
+        setRxresumeValidationStatuses((current) => ({
+          ...current,
+          [mode]: { checked: true, valid: false, message },
+        }));
+        if (notify) {
+          toast.error(message);
+        }
+      }
+    },
+    [getValues, queryClient, settings],
+  );
+
+  useEffect(() => {
+    if (!settings) return;
+
+    const modesToCheck = (["v4", "v5"] as const).filter(
+      (mode) => !rxresumeValidationStatuses[mode].checked,
+    );
+    if (modesToCheck.length === 0) return;
+
+    void Promise.all(
+      modesToCheck.map((mode) =>
+        validateRxresumeMode(mode, { silent: true, persistOnSuccess: false }),
+      ),
+    );
+  }, [settings, rxresumeValidationStatuses, validateRxresumeMode]);
 
   const effectiveProfileProjects =
     rxResumeProjectsOverride ??
@@ -958,7 +981,8 @@ export const SettingsPage: React.FC = () => {
               setRxResumeProjectsOverride(null);
             }}
             setRxResumeBaseResumeIdDraft={(value) => {
-              const mode = (getValues("rxresumeMode") ?? rxresumeMode) as RxResumeMode;
+              const mode = (getValues("rxresumeMode") ??
+                rxresumeMode) as RxResumeMode;
               setRxResumeBaseResumeIdsByMode((prev) => ({
                 ...prev,
                 [mode]: value,
@@ -969,8 +993,6 @@ export const SettingsPage: React.FC = () => {
             hasRxResumeAccess={hasRxResumeAccess}
             rxresumeMode={rxresumeMode}
             validationStatuses={rxresumeValidationStatuses}
-            onValidateCurrentMode={handleValidateRxresumeMode}
-            isValidatingMode={isValidatingRxresumeMode}
             rxresumeApiKeyHint={settings?.rxresumeApiKeyHint ?? null}
             profileProjects={effectiveProfileProjects}
             lockedCount={lockedCount}
