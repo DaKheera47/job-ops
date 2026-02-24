@@ -1,15 +1,14 @@
 import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
-import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
+import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import {
-  RXRESUME_MODES,
-  RXRESUME_PRECHECK_MESSAGES,
   coerceRxResumeMode,
   getRxResumeCredentialDrafts,
-  getRxResumeCredentialPrecheckFailure,
-  toRxResumeValidationPayload,
+  RXRESUME_MODES,
+  RXRESUME_PRECHECK_MESSAGES,
+  validateAndMaybePersistRxResumeMode,
 } from "@client/lib/rxresume-config";
 import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
 import { ChatSettingsSection } from "@client/pages/settings/components/ChatSettingsSection";
@@ -43,7 +42,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Settings } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
-import { FormProvider, type Resolver, useForm } from "react-hook-form";
+import {
+  FormProvider,
+  type Resolver,
+  useForm,
+  useWatch,
+} from "react-hook-form";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -381,7 +385,7 @@ export const SettingsPage: React.FC = () => {
     setError,
     setValue,
     getValues,
-    watch,
+    control,
     formState: { isDirty, errors, isValid, dirtyFields },
   } = methods;
   const {
@@ -407,8 +411,14 @@ export const SettingsPage: React.FC = () => {
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
   const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
-  const selectedRxresumeMode = (watch("rxresumeMode") ??
-    rxresumeMode) as RxResumeMode;
+  const selectedRxresumeMode = (useWatch({
+    control,
+    name: "rxresumeMode",
+  }) ?? rxresumeMode) as RxResumeMode;
+  const resumeProjectsValue = useWatch({
+    control,
+    name: "resumeProjects",
+  });
   const hasRxResumeAccess = Boolean(
     rxresumeValidationStatuses[selectedRxresumeMode].valid,
   );
@@ -573,85 +583,61 @@ export const SettingsPage: React.FC = () => {
       const notify = !silent;
       const values = getValues();
       const draftCredentials = getRxResumeCredentialDrafts(values);
-      const precheckFailure = getRxResumeCredentialPrecheckFailure({
+      const result = await validateAndMaybePersistRxResumeMode({
         mode,
         stored: storedRxResume,
         draft: draftCredentials,
+        validate: api.validateRxresume,
+        persist: api.updateSettings,
+        persistOnSuccess,
+        getPrecheckMessage: (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
+        getValidationErrorMessage: (error) =>
+          error instanceof Error ? error.message : "RxResume validation failed",
+        getPersistErrorMessage: (error) =>
+          error instanceof Error ? error.message : "RxResume validation failed",
       });
 
-      if (precheckFailure) {
-        const message = RXRESUME_PRECHECK_MESSAGES[precheckFailure];
+      setRxresumeValidationStatuses((current) => ({
+        ...current,
+        [mode]: {
+          checked: true,
+          valid: result.validation.valid,
+          message: result.validation.valid
+            ? null
+            : (result.validation.message ?? null),
+        },
+      }));
+
+      if (result.updatedSettings) {
+        setSettings(result.updatedSettings);
+        queryClient.setQueryData(
+          queryKeys.settings.current(),
+          result.updatedSettings,
+        );
         if (notify) {
-          toast.info(message);
+          toast.success(`Reactive Resume ${mode} validation passed`);
         }
-        setRxresumeValidationStatuses((current) => ({
-          ...current,
-          [mode]: {
-            checked: true,
-            valid: false,
-            message,
-          },
-        }));
         return;
       }
 
-      try {
-        const result = await api.validateRxresume({
-          mode,
-          ...toRxResumeValidationPayload(draftCredentials),
-        });
-        setRxresumeValidationStatuses((current) => ({
-          ...current,
-          [mode]: {
-            checked: true,
-            valid: result.valid,
-            message: result.valid ? null : (result.message ?? null),
-          },
-        }));
-        if (result.valid && persistOnSuccess) {
-          const update: Partial<UpdateSettingsInput> = {
-            rxresumeMode: mode,
-          };
-          if (draftCredentials.email)
-            update.rxresumeEmail = draftCredentials.email;
-          if (draftCredentials.password)
-            update.rxresumePassword = draftCredentials.password;
-          if (draftCredentials.apiKey)
-            update.rxresumeApiKey = draftCredentials.apiKey;
-
-          const updatedSettings = await api.updateSettings(update);
-          setSettings(updatedSettings);
-          queryClient.setQueryData(
-            queryKeys.settings.current(),
-            updatedSettings,
-          );
-          if (notify) {
-            toast.success(`Reactive Resume ${mode} validation passed`);
-          }
-        } else if (!result.valid && notify) {
-          toast.error(
-            result.message || `Reactive Resume ${mode} validation failed`,
-          );
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "RxResume validation failed";
-        setRxresumeValidationStatuses((current) => ({
-          ...current,
-          [mode]: { checked: true, valid: false, message },
-        }));
-        if (notify) {
-          toast.error(message);
-        }
+      if (!notify || result.validation.valid) {
+        return;
       }
+
+      if (result.precheckFailure) {
+        toast.info(
+          result.validation.message ??
+            RXRESUME_PRECHECK_MESSAGES[result.precheckFailure],
+        );
+        return;
+      }
+
+      toast.error(
+        result.validation.message ||
+          `Reactive Resume ${mode} validation failed`,
+      );
     },
-    [
-      getValues,
-      queryClient,
-      storedRxResume.apiKey,
-      storedRxResume.email,
-      storedRxResume.password,
-    ],
+    [getValues, queryClient, storedRxResume],
   );
 
   useEffect(() => {
@@ -674,9 +660,7 @@ export const SettingsPage: React.FC = () => {
     (selectedRxresumeMode === rxresumeMode ? profileProjects : []);
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
 
-  const watchedValues = watch();
-  const lockedCount =
-    watchedValues.resumeProjects?.lockedProjectIds.length ?? 0;
+  const lockedCount = resumeProjectsValue?.lockedProjectIds.length ?? 0;
 
   const canSave = isDirty && isValid;
 

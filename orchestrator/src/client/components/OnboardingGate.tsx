@@ -7,9 +7,7 @@ import {
   getInitialRxResumeMode,
   getRxResumeCredentialDrafts,
   getRxResumeMissingCredentialLabels,
-  getRxResumeCredentialPrecheckFailure,
-  RXRESUME_PRECHECK_MESSAGES,
-  toRxResumeValidationPayload,
+  validateAndMaybePersistRxResumeMode,
 } from "@client/lib/rxresume-config";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
@@ -231,52 +229,23 @@ export const OnboardingGate: React.FC = () => {
       const values = getValues();
       const draftCredentials = getRxResumeCredentialDrafts(values);
       const testedAt = Date.now();
-
-      const precheckFailure = getRxResumeCredentialPrecheckFailure({
+      const result = await validateAndMaybePersistRxResumeMode({
         mode: version,
         stored: storedRxResume,
         draft: draftCredentials,
-      });
-
-      if (precheckFailure === "missing-v5-api-key") {
-        return {
-          valid: false,
-          message: `v5 API key required. ${RXRESUME_PRECHECK_MESSAGES[precheckFailure]}`,
-          checked: true,
-          testedAt,
-        };
-      }
-
-      if (precheckFailure === "missing-v4-email-password") {
-        return {
-          valid: false,
-          message:
-            "v4 email and password required. Add both credentials, then test again.",
-          checked: true,
-          testedAt,
-        };
-      }
-
-      try {
-        const result = await api.validateRxresume({
-          mode: version,
-          ...toRxResumeValidationPayload(draftCredentials),
-        });
-        return { ...result, checked: true, testedAt };
-      } catch (error) {
-        const message =
+        validate: api.validateRxresume,
+        getPrecheckMessage: (failure) =>
+          failure === "missing-v5-api-key"
+            ? "v5 API key required. Add a v5 API key, then test again."
+            : "v4 email and password required. Add both credentials, then test again.",
+        getValidationErrorMessage: (error, mode) =>
           error instanceof Error
             ? error.message
-            : `RxResume ${version} validation failed`;
-        return { valid: false, message, checked: true, testedAt };
-      }
+            : `RxResume ${mode} validation failed`,
+      });
+      return { ...result.validation, checked: true, testedAt };
     },
-    [
-      getValues,
-      storedRxResume.apiKey,
-      storedRxResume.email,
-      storedRxResume.password,
-    ],
+    [getValues, storedRxResume],
   );
 
   const validateRxresume = useCallback(async () => {
@@ -428,20 +397,6 @@ export const OnboardingGate: React.FC = () => {
     demoMode,
   ]);
 
-  const handleRefresh = async () => {
-    const results = await Promise.allSettled([
-      refreshSettings(),
-      runAllValidations(),
-    ]);
-    const failed = results.find((result) => result.status === "rejected");
-    if (failed) {
-      const reason = failed.status === "rejected" ? failed.reason : null;
-      const message =
-        reason instanceof Error ? reason.message : "Failed to refresh setup";
-      toast.error(message);
-    }
-  };
-
   const handleSaveLlm = async (): Promise<boolean> => {
     const values = getValues();
     const apiKeyValue = values.llmApiKey.trim();
@@ -505,28 +460,50 @@ export const OnboardingGate: React.FC = () => {
     }
 
     try {
-      const validation = await validateRxresume();
-      if (!validation.valid) {
-        toast.error(validation.message || "RxResume validation failed");
+      setIsValidatingRxresume(true);
+      const result = await validateAndMaybePersistRxResumeMode({
+        mode: modeValue,
+        stored: storedRxResume,
+        draft: draftCredentials,
+        validate: api.validateRxresume,
+        persist: async (update) => {
+          setIsSavingEnv(true);
+          try {
+            await api.updateSettings(update);
+            await refreshSettings();
+          } finally {
+            setIsSavingEnv(false);
+          }
+        },
+        persistOnSuccess: true,
+        getPrecheckMessage: (failure) =>
+          failure === "missing-v5-api-key"
+            ? "v5 API key required. Add a v5 API key, then test again."
+            : "v4 email and password required. Add both credentials, then test again.",
+        getValidationErrorMessage: (error) =>
+          error instanceof Error ? error.message : "RxResume validation failed",
+        getPersistErrorMessage: (error) =>
+          error instanceof Error
+            ? error.message
+            : "Failed to save RxResume credentials",
+      });
+
+      setRxresumeVersionValidations((current) => ({
+        ...current,
+        [modeValue]: {
+          ...result.validation,
+          checked: true,
+          testedAt: Date.now(),
+        },
+      }));
+      setRxresumeValidation({ ...result.validation, checked: true });
+
+      if (!result.validation.valid) {
+        toast.error(result.validation.message || "RxResume validation failed");
         return false;
       }
-
-      const update: Partial<UpdateSettingsInput> = {
-        rxresumeMode: modeValue,
-      };
-      if (draftCredentials.email) update.rxresumeEmail = draftCredentials.email;
-      if (draftCredentials.password)
-        update.rxresumePassword = draftCredentials.password;
-      if (draftCredentials.apiKey)
-        update.rxresumeApiKey = draftCredentials.apiKey;
-
-      if (Object.keys(update).length > 0) {
-        setIsSavingEnv(true);
-        await api.updateSettings(update);
-        await refreshSettings();
-        setValue("rxresumePassword", "");
-        setValue("rxresumeApiKey", "");
-      }
+      setValue("rxresumePassword", "");
+      setValue("rxresumeApiKey", "");
 
       toast.success("RxResume connected");
       return true;
@@ -538,6 +515,7 @@ export const OnboardingGate: React.FC = () => {
       toast.error(message);
       return false;
     } finally {
+      setIsValidatingRxresume(false);
       setIsSavingEnv(false);
     }
   };

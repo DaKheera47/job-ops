@@ -1,8 +1,13 @@
+import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
 import type React from "react";
-import { useFormContext } from "react-hook-form";
-import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
+import {
+  type Path,
+  type PathValue,
+  useFormContext,
+  useWatch,
+} from "react-hook-form";
 import {
   AccordionContent,
   AccordionItem,
@@ -43,18 +48,21 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   isSaving,
 }) => {
   const {
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
-  const selectedMode = watch("rxresumeMode") ?? rxresumeMode ?? "v5";
-  const rxresumeApiKeyValue = watch("rxresumeApiKey") ?? "";
-  const rxresumeEmailValue = watch("rxresumeEmail") ?? "";
-  const rxresumePasswordValue = watch("rxresumePassword") ?? "";
-  const resumeProjectsValue = watch("resumeProjects");
-  const setDirtyTouchedValue = <TField extends keyof UpdateSettingsInput>(
+  const selectedMode =
+    useWatch({ control, name: "rxresumeMode" }) ?? rxresumeMode ?? "v5";
+  const rxresumeApiKeyValue =
+    useWatch({ control, name: "rxresumeApiKey" }) ?? "";
+  const rxresumeEmailValue = useWatch({ control, name: "rxresumeEmail" }) ?? "";
+  const rxresumePasswordValue =
+    useWatch({ control, name: "rxresumePassword" }) ?? "";
+  const resumeProjectsValue = useWatch({ control, name: "resumeProjects" });
+  const setDirtyTouchedValue = <TField extends Path<UpdateSettingsInput>>(
     field: TField,
-    value: UpdateSettingsInput[TField],
+    value: PathValue<UpdateSettingsInput, TField>,
   ) =>
     setValue(field, value, {
       shouldDirty: true,

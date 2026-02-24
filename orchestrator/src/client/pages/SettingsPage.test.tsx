@@ -14,6 +14,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
 vi.mock("../api", () => ({
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
+  validateRxresume: vi.fn(),
   clearDatabase: vi.fn(),
   deleteJobsByStatus: vi.fn(),
   getTracerReadiness: vi.fn(),
@@ -74,6 +75,10 @@ describe("SettingsPage", () => {
       checkedAt: Date.now(),
       lastSuccessAt: Date.now(),
       reason: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Missing credentials",
     });
   });
 
@@ -215,7 +220,7 @@ describe("SettingsPage", () => {
       /show visa sponsor information/i,
     );
     fireEvent.click(sponsorCheckbox);
-    expect(saveButton).toBeEnabled();
+    await waitFor(() => expect(saveButton).toBeEnabled());
   });
 
   it("allows saving when both Reactive Resume v4 and v5 credentials are present", async () => {
@@ -225,7 +230,9 @@ describe("SettingsPage", () => {
       rxresumeApiKeyHint: "api_",
     });
     vi.mocked(api.getSettings).mockResolvedValue(settingsWithBothRxResumeAuth);
-    vi.mocked(api.updateSettings).mockResolvedValue(settingsWithBothRxResumeAuth);
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      settingsWithBothRxResumeAuth,
+    );
 
     renderPage();
 

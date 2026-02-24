@@ -1,4 +1,5 @@
-import type { RxResumeMode } from "@shared/types.js";
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import type { RxResumeMode, ValidationResult } from "@shared/types.js";
 
 export type RxResumeSettingsLike =
   | {
@@ -68,16 +69,18 @@ export const getRxResumeCredentialDrafts = (input: {
   apiKey: input.rxresumeApiKey?.trim() ?? "",
 });
 
-type Drafts = ReturnType<typeof getRxResumeCredentialDrafts>;
-type Stored = Pick<
+export type RxResumeCredentialDrafts = ReturnType<
+  typeof getRxResumeCredentialDrafts
+>;
+export type RxResumeStoredCredentialAvailability = Pick<
   ReturnType<typeof getStoredRxResumeCredentialAvailability>,
   "email" | "password" | "apiKey"
 >;
 
 export const getRxResumeCredentialPrecheckFailure = (input: {
   mode: RxResumeMode;
-  stored: Stored;
-  draft: Drafts;
+  stored: RxResumeStoredCredentialAvailability;
+  draft: RxResumeCredentialDrafts;
 }) => {
   const hasV4 =
     (input.stored.email || Boolean(input.draft.email)) &&
@@ -89,10 +92,14 @@ export const getRxResumeCredentialPrecheckFailure = (input: {
   return null;
 };
 
+export type RxResumeCredentialPrecheckFailure = ReturnType<
+  typeof getRxResumeCredentialPrecheckFailure
+>;
+
 export const getRxResumeMissingCredentialLabels = (input: {
   mode: RxResumeMode;
-  stored: Stored;
-  draft: Drafts;
+  stored: RxResumeStoredCredentialAvailability;
+  draft: RxResumeCredentialDrafts;
 }) =>
   input.mode === "v5"
     ? input.stored.apiKey || input.draft.apiKey
@@ -105,8 +112,134 @@ export const getRxResumeMissingCredentialLabels = (input: {
           : ["RxResume password"]),
       ];
 
-export const toRxResumeValidationPayload = (draft: Drafts) => ({
+export const toRxResumeValidationPayload = (
+  draft: RxResumeCredentialDrafts,
+) => ({
   email: draft.email || undefined,
   password: draft.password || undefined,
   apiKey: draft.apiKey || undefined,
 });
+
+export const buildRxResumeSettingsUpdate = (
+  mode: RxResumeMode,
+  draft: RxResumeCredentialDrafts,
+): Partial<UpdateSettingsInput> => {
+  const update: Partial<UpdateSettingsInput> = {
+    rxresumeMode: mode,
+  };
+  if (draft.email) update.rxresumeEmail = draft.email;
+  if (draft.password) update.rxresumePassword = draft.password;
+  if (draft.apiKey) update.rxresumeApiKey = draft.apiKey;
+  return update;
+};
+
+type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
+  mode: RxResumeMode;
+  stored: RxResumeStoredCredentialAvailability;
+  draft: RxResumeCredentialDrafts;
+  validate: (
+    payload: { mode: RxResumeMode } & ReturnType<
+      typeof toRxResumeValidationPayload
+    >,
+  ) => Promise<ValidationResult>;
+  persist?: (update: Partial<UpdateSettingsInput>) => Promise<TSettings>;
+  persistOnSuccess?: boolean;
+  getPrecheckMessage?: (
+    failure: Exclude<RxResumeCredentialPrecheckFailure, null>,
+  ) => string;
+  getValidationErrorMessage?: (error: unknown, mode: RxResumeMode) => string;
+  getPersistErrorMessage?: (error: unknown, mode: RxResumeMode) => string;
+};
+
+export type ValidateAndMaybePersistRxResumeModeResult<TSettings> = {
+  validation: ValidationResult;
+  precheckFailure: RxResumeCredentialPrecheckFailure;
+  updatedSettings: TSettings | null;
+};
+
+export const validateAndMaybePersistRxResumeMode = async <TSettings>(
+  input: ValidateAndMaybePersistRxResumeModeInput<TSettings>,
+): Promise<ValidateAndMaybePersistRxResumeModeResult<TSettings>> => {
+  const {
+    mode,
+    stored,
+    draft,
+    validate,
+    persist,
+    persistOnSuccess = false,
+    getPrecheckMessage = (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
+    getValidationErrorMessage = (error) =>
+      error instanceof Error ? error.message : "RxResume validation failed",
+    getPersistErrorMessage = (error) =>
+      error instanceof Error
+        ? error.message
+        : "Failed to save RxResume settings",
+  } = input;
+
+  const precheckFailure = getRxResumeCredentialPrecheckFailure({
+    mode,
+    stored,
+    draft,
+  });
+  if (precheckFailure) {
+    return {
+      validation: {
+        valid: false,
+        message: getPrecheckMessage(precheckFailure),
+      },
+      precheckFailure,
+      updatedSettings: null,
+    };
+  }
+
+  let validation: ValidationResult;
+  try {
+    validation = await validate({
+      mode,
+      ...toRxResumeValidationPayload(draft),
+    });
+  } catch (error) {
+    return {
+      validation: {
+        valid: false,
+        message: getValidationErrorMessage(error, mode),
+      },
+      precheckFailure: null,
+      updatedSettings: null,
+    };
+  }
+
+  if (!validation.valid || !persistOnSuccess || !persist) {
+    return {
+      validation: {
+        valid: validation.valid,
+        message: validation.valid ? null : (validation.message ?? null),
+      },
+      precheckFailure: null,
+      updatedSettings: null,
+    };
+  }
+
+  try {
+    const updatedSettings = await persist(
+      buildRxResumeSettingsUpdate(mode, draft),
+    );
+    return {
+      validation: {
+        valid: true,
+        message: null,
+      },
+      precheckFailure: null,
+      updatedSettings,
+    };
+  } catch (error) {
+    return {
+      validation: {
+        valid: false,
+        message: getPersistErrorMessage(error, mode),
+      },
+      precheckFailure: null,
+      updatedSettings: null,
+    };
+  }
+};
