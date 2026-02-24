@@ -6,7 +6,6 @@ import {
 } from "@client/pages/settings/resume-projects-state";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { clampInt } from "@/lib/utils";
 import { StatusIndicator } from "./StatusIndicator";
 

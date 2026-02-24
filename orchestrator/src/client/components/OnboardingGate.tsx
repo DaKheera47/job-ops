@@ -1,14 +1,14 @@
 import * as api from "@client/api";
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
+import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
 import {
   getInitialRxResumeMode,
-  getRxResumeBaseResumeIdForMode,
-  getRxResumeBaseResumeIdsByMode,
   getRxResumeCredentialDrafts,
+  getRxResumeMissingCredentialLabels,
   getRxResumeCredentialPrecheckFailure,
-  getStoredRxResumeCredentialAvailability,
+  RXRESUME_PRECHECK_MESSAGES,
   toRxResumeValidationPayload,
 } from "@client/lib/rxresume-config";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
@@ -99,6 +99,12 @@ export const OnboardingGate: React.FC = () => {
     isLoading: settingsLoading,
     refreshSettings,
   } = useSettings();
+  const {
+    storedRxResume,
+    getBaseResumeIdForMode,
+    setBaseResumeIdForMode,
+    syncBaseResumeIdsForMode,
+  } = useRxResumeConfigState(settings);
 
   const [isSavingEnv, setIsSavingEnv] = useState(false);
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
@@ -119,11 +125,6 @@ export const OnboardingGate: React.FC = () => {
   });
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
-  const [rxresumeBaseResumeIdsByMode, setRxresumeBaseResumeIdsByMode] =
-    useState<Record<RxResumeMode, string | null>>({
-      v4: null,
-      v5: null,
-    });
   const [currentStep, setCurrentStep] = useState<string | null>(null);
   const demoInfo = useDemoInfo();
   const demoMode = demoInfo?.demoMode ?? false;
@@ -209,7 +210,6 @@ export const OnboardingGate: React.FC = () => {
 
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
-  const storedRxResume = getStoredRxResumeCredentialAvailability(settings);
   const rxresumeModeCurrent = (rxresumeModeValue ||
     settings?.rxresumeMode?.value ||
     "v5") as RxResumeMode;
@@ -241,7 +241,7 @@ export const OnboardingGate: React.FC = () => {
       if (precheckFailure === "missing-v5-api-key") {
         return {
           valid: false,
-          message: "v5 API key required. Add a v5 API key, then test again.",
+          message: `v5 API key required. ${RXRESUME_PRECHECK_MESSAGES[precheckFailure]}`,
           checked: true,
           testedAt,
         };
@@ -311,11 +311,7 @@ export const OnboardingGate: React.FC = () => {
         hasV4: storedRxResume.hasV4,
         hasV5: storedRxResume.hasV5,
       });
-      const baseResumeIdsByMode = getRxResumeBaseResumeIdsByMode(
-        settings,
-        initialMode,
-      );
-      setRxresumeBaseResumeIdsByMode(baseResumeIdsByMode);
+      const selectedId = syncBaseResumeIdsForMode(initialMode);
       reset({
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
@@ -324,13 +320,16 @@ export const OnboardingGate: React.FC = () => {
         rxresumeEmail: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
-        rxresumeBaseResumeId: getRxResumeBaseResumeIdForMode(
-          baseResumeIdsByMode,
-          initialMode,
-        ),
+        rxresumeBaseResumeId: selectedId,
       });
     }
-  }, [settings, reset, storedRxResume.hasV4, storedRxResume.hasV5]);
+  }, [
+    settings,
+    reset,
+    storedRxResume.hasV4,
+    storedRxResume.hasV5,
+    syncBaseResumeIdsForMode,
+  ]);
 
   // Clear base URL when provider doesn't require it
   useEffect(() => {
@@ -492,34 +491,11 @@ export const OnboardingGate: React.FC = () => {
     const values = getValues();
     const modeValue = values.rxresumeMode;
     const draftCredentials = getRxResumeCredentialDrafts(values);
-    const missing: string[] = [];
-
-    if (modeValue === "v5") {
-      if (
-        getRxResumeCredentialPrecheckFailure({
-          mode: "v5",
-          stored: storedRxResume,
-          draft: draftCredentials,
-        }) === "missing-v5-api-key"
-      ) {
-        missing.push("RxResume v5 API key");
-      }
-    } else if (modeValue === "v4") {
-      const missingV4 =
-        getRxResumeCredentialPrecheckFailure({
-          mode: "v4",
-          stored: storedRxResume,
-          draft: draftCredentials,
-        }) === "missing-v4-email-password";
-      if (missingV4) {
-        if (!storedRxResume.email && !draftCredentials.email) {
-          missing.push("RxResume email");
-        }
-        if (!storedRxResume.password && !draftCredentials.password) {
-          missing.push("RxResume password");
-        }
-      }
-    }
+    const missing = getRxResumeMissingCredentialLabels({
+      mode: modeValue,
+      stored: storedRxResume,
+      draft: draftCredentials,
+    });
 
     if (missing.length > 0) {
       toast.info("Almost there", {
@@ -796,10 +772,7 @@ export const OnboardingGate: React.FC = () => {
                   setValue("rxresumeMode", mode);
                   setValue(
                     "rxresumeBaseResumeId",
-                    getRxResumeBaseResumeIdForMode(
-                      rxresumeBaseResumeIdsByMode,
-                      mode,
-                    ),
+                    getBaseResumeIdForMode(mode),
                   );
                   setRxresumeValidation((previous) => ({
                     ...EMPTY_VALIDATION_STATE,
@@ -847,10 +820,7 @@ export const OnboardingGate: React.FC = () => {
                     onValueChange={(value) => {
                       const mode = (getValues("rxresumeMode") ??
                         "v5") as RxResumeMode;
-                      setRxresumeBaseResumeIdsByMode((prev) => ({
-                        ...prev,
-                        [mode]: value,
-                      }));
+                      setBaseResumeIdForMode(mode, value);
                       field.onChange(value);
                     }}
                     hasRxResumeAccess={rxresumeValidation.valid}

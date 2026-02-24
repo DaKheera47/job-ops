@@ -1,15 +1,14 @@
 import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
+import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import {
   RXRESUME_MODES,
-  getRxResumeBaseResumeIdForMode,
-  getRxResumeBaseResumeIdsByMode,
+  RXRESUME_PRECHECK_MESSAGES,
+  coerceRxResumeMode,
   getRxResumeCredentialDrafts,
   getRxResumeCredentialPrecheckFailure,
-  getRxResumeModeFromSettings,
-  getStoredRxResumeCredentialAvailability,
   toRxResumeValidationPayload,
 } from "@client/lib/rxresume-config";
 import { BackupSettingsSection } from "@client/pages/settings/components/BackupSettingsSection";
@@ -352,11 +351,6 @@ export const SettingsPage: React.FC = () => {
   const [rxResumeBaseResumeIdDraft, setRxResumeBaseResumeIdDraft] = useState<
     string | null
   >(null);
-  const [rxResumeBaseResumeIdsByMode, setRxResumeBaseResumeIdsByMode] =
-    useState<Record<RxResumeMode, string | null>>({
-      v4: null,
-      v5: null,
-    });
   const [rxResumeProjectsOverride, setRxResumeProjectsOverride] = useState<
     ResumeProjectCatalogItem[] | null
   >(null);
@@ -390,6 +384,12 @@ export const SettingsPage: React.FC = () => {
     watch,
     formState: { isDirty, errors, isValid, dirtyFields },
   } = methods;
+  const {
+    storedRxResume,
+    getBaseResumeIdForMode,
+    setBaseResumeIdForMode,
+    syncBaseResumeIdsForMode,
+  } = useRxResumeConfigState(settings);
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings.current(),
@@ -409,7 +409,6 @@ export const SettingsPage: React.FC = () => {
   const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
   const selectedRxresumeMode = (watch("rxresumeMode") ??
     rxresumeMode) as RxResumeMode;
-  const storedRxResume = getStoredRxResumeCredentialAvailability(settings);
   const hasRxResumeAccess = Boolean(
     rxresumeValidationStatuses[selectedRxresumeMode].valid,
   );
@@ -424,20 +423,12 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    const effectiveMode = getRxResumeModeFromSettings(settings);
-    const baseResumeIdsByMode = getRxResumeBaseResumeIdsByMode(
-      settings,
-      effectiveMode,
-    );
-    setRxResumeBaseResumeIdsByMode(baseResumeIdsByMode);
-    const storedId = getRxResumeBaseResumeIdForMode(
-      baseResumeIdsByMode,
-      effectiveMode,
-    );
+    const effectiveMode = coerceRxResumeMode(settings.rxresumeMode?.value);
+    const storedId = syncBaseResumeIdsForMode(effectiveMode);
     setRxResumeBaseResumeIdDraft(storedId);
     setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false });
     setRxResumeProjectsOverride(null);
-  }, [settings, setValue]);
+  }, [settings, setValue, syncBaseResumeIdsForMode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -588,31 +579,17 @@ export const SettingsPage: React.FC = () => {
         draft: draftCredentials,
       });
 
-      if (precheckFailure === "missing-v5-api-key") {
+      if (precheckFailure) {
+        const message = RXRESUME_PRECHECK_MESSAGES[precheckFailure];
         if (notify) {
-          toast.info("Add a v5 API key, then test again.");
+          toast.info(message);
         }
         setRxresumeValidationStatuses((current) => ({
           ...current,
-          v5: {
+          [mode]: {
             checked: true,
             valid: false,
-            message: "Add a v5 API key, then test again.",
-          },
-        }));
-        return;
-      }
-
-      if (precheckFailure === "missing-v4-email-password") {
-        if (notify) {
-          toast.info("Add v4 email and password, then test again.");
-        }
-        setRxresumeValidationStatuses((current) => ({
-          ...current,
-          v4: {
-            checked: true,
-            valid: false,
-            message: "Add v4 email and password, then test again.",
+            message,
           },
         }));
         return;
@@ -986,10 +963,7 @@ export const SettingsPage: React.FC = () => {
           <ReactiveResumeSection
             rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
             onRxresumeModeChange={(mode) => {
-              const nextId = getRxResumeBaseResumeIdForMode(
-                rxResumeBaseResumeIdsByMode,
-                mode,
-              );
+              const nextId = getBaseResumeIdForMode(mode);
               setRxResumeBaseResumeIdDraft(nextId);
               setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
               setRxResumeProjectsOverride(null);
@@ -997,10 +971,7 @@ export const SettingsPage: React.FC = () => {
             setRxResumeBaseResumeIdDraft={(value) => {
               const mode = (getValues("rxresumeMode") ??
                 rxresumeMode) as RxResumeMode;
-              setRxResumeBaseResumeIdsByMode((prev) => ({
-                ...prev,
-                [mode]: value,
-              }));
+              setBaseResumeIdForMode(mode, value);
               setRxResumeBaseResumeIdDraft(value);
               setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
             }}
