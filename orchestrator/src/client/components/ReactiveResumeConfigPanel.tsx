@@ -29,6 +29,7 @@ import { StatusIndicator } from "./StatusIndicator";
 type VersionValidationState = {
   checked: boolean;
   valid: boolean;
+  message?: string | null;
 };
 
 type ProjectSelectionConfig = {
@@ -103,6 +104,9 @@ function renderStatusPill(label: string, state: VersionValidationState) {
     <StatusIndicator
       label={`${label}: ${statusLabel}`}
       dotColor={dotColor}
+      tooltip={
+        state.checked && !state.valid && state.message ? state.message : undefined
+      }
     />
   );
 }
@@ -173,8 +177,11 @@ export const ReactiveResumeConfigPanel: React.FC<
 
       {showValidationStatus && validationStatuses ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
-          {renderStatusPill("v5 status", validationStatuses.v5)}
-          {renderStatusPill("v4 status", validationStatuses.v4)}
+          {/* only show one at a time */}
+          {
+            mode === "v5"              ? renderStatusPill("v5 status", validationStatuses.v5)
+              : renderStatusPill("v4 status", validationStatuses.v4)
+          }
         </div>
       ) : null}
 
@@ -195,8 +202,7 @@ export const ReactiveResumeConfigPanel: React.FC<
       ) : null}
 
       {mode === "v5" ? (
-        <div className="space-y-4 rounded-lg border border-border/60 bg-background p-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4">
             <SettingsInput
               label="v5 API key"
               inputProps={{
@@ -210,7 +216,6 @@ export const ReactiveResumeConfigPanel: React.FC<
               disabled={disabled}
               error={v5.error}
             />
-          </div>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">

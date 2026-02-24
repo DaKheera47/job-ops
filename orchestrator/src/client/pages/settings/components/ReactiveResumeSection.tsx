@@ -17,8 +17,8 @@ type ReactiveResumeSectionProps = {
   rxresumeMode: RxResumeMode;
   onRxresumeModeChange?: (mode: RxResumeMode) => void;
   validationStatuses?: {
-    v4: { checked: boolean; valid: boolean };
-    v5: { checked: boolean; valid: boolean };
+    v4: { checked: boolean; valid: boolean; message?: string | null };
+    v5: { checked: boolean; valid: boolean; message?: string | null };
   };
   onValidateCurrentMode?: () => void | Promise<void>;
   isValidatingMode?: boolean;

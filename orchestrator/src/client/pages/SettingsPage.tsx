@@ -80,10 +80,15 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
 };
 
 type LlmProviderValue = LlmProviderId | null;
-type RxResumeValidationBadgeState = { checked: boolean; valid: boolean };
+type RxResumeValidationBadgeState = {
+  checked: boolean;
+  valid: boolean;
+  message: string | null;
+};
 const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
   checked: false,
   valid: false,
+  message: null,
 };
 
 const normalizeLlmProviderValue = (
@@ -581,7 +586,11 @@ export const SettingsPage: React.FC = () => {
       toast.info("Add a v5 API key, then test again.");
       setRxresumeValidationStatuses((current) => ({
         ...current,
-        v5: { checked: true, valid: false },
+        v5: {
+          checked: true,
+          valid: false,
+          message: "Add a v5 API key, then test again.",
+        },
       }));
       return;
     }
@@ -596,7 +605,11 @@ export const SettingsPage: React.FC = () => {
       toast.info("Add v4 email and password, then test again.");
       setRxresumeValidationStatuses((current) => ({
         ...current,
-        v4: { checked: true, valid: false },
+        v4: {
+          checked: true,
+          valid: false,
+          message: "Add v4 email and password, then test again.",
+        },
       }));
       return;
     }
@@ -611,7 +624,11 @@ export const SettingsPage: React.FC = () => {
       });
       setRxresumeValidationStatuses((current) => ({
         ...current,
-        [mode]: { checked: true, valid: result.valid },
+        [mode]: {
+          checked: true,
+          valid: result.valid,
+          message: result.valid ? null : (result.message ?? null),
+        },
       }));
       if (result.valid) {
         const update: Partial<UpdateSettingsInput> = {
@@ -633,7 +650,7 @@ export const SettingsPage: React.FC = () => {
         error instanceof Error ? error.message : "RxResume validation failed";
       setRxresumeValidationStatuses((current) => ({
         ...current,
-        [mode]: { checked: true, valid: false },
+        [mode]: { checked: true, valid: false, message },
       }));
       toast.error(message);
     } finally {
