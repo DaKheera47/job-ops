@@ -1,0 +1,396 @@
+{
+  "version": "1.0.1",
+  "notes": {
+    "placementRule": "placement tells you where to put the first name relative to the line",
+    "placements": {
+      "prefix": "Render as: `${firstName}, ${line}`",
+      "suffix": "Render as: `${line}, ${firstName}.` (or just append the name with punctuation)",
+      "inline": "Line already contains `{name}` token. Replace it.",
+      "none": "No name needed for this one"
+    }
+  },
+  "lines": [
+    {
+      "id": "g001",
+      "placement": "inline",
+      "text": "Welcome back, {name}. The jobs missed you."
+    },
+    {
+      "id": "g002",
+      "placement": "none",
+      "text": "Welcome back. The backlog is still undefeated, but we can change that."
+    },
+    {
+      "id": "g003",
+      "placement": "inline",
+      "text": "{name} detected. Deploying mild chaos."
+    },
+    {
+      "id": "g004",
+      "placement": "none",
+      "text": "Good morning. Or whatever time it is. Let’s find you a job."
+    },
+    {
+      "id": "g005",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Same jobs. New ambition."
+    },
+    {
+      "id": "g006",
+      "placement": "none",
+      "text": "Alright. Let’s pretend we’re excited to be here. It’s more fun that way."
+    },
+    {
+      "id": "g007",
+      "placement": "inline",
+      "text": "Hi {name}. Your future self asked me to keep you honest."
+    },
+    {
+      "id": "g008",
+      "placement": "none",
+      "text": "The pipeline is quiet. Suspiciously quiet."
+    },
+    {
+      "id": "g009",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Try not to break the ATS today. It’s sensitive."
+    },
+    {
+      "id": "g010",
+      "placement": "none",
+      "text": "Let’s find a job where “we’re a family” means we leave at 5."
+    },
+
+    {
+      "id": "g011",
+      "placement": "inline",
+      "text": "Nice of you to show up, {name}. The jobs didn’t apply to themselves. Unfortunately."
+    },
+    {
+      "id": "g012",
+      "placement": "none",
+      "text": "We go again. With feelings. And also jobs."
+    },
+    {
+      "id": "g013",
+      "placement": "inline",
+      "text": "Welcome back, {name}. I saved you a fresh batch of jobs. You’re welcome."
+    },
+    {
+      "id": "g014",
+      "placement": "none",
+      "text": "Somewhere, a recruiter is about to misread your title."
+    },
+    {
+      "id": "g015",
+      "placement": "inline",
+      "text": "Hey {name}. Let’s turn applied into done. Or at least applied into less sad."
+    },
+    {
+      "id": "g016",
+      "placement": "none",
+      "text": "If you’re here, you’re either ambitious or avoiding something. Let’s assume the former."
+    },
+    {
+      "id": "g017",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Time to bully the backlog (respectfully)."
+    },
+    {
+      "id": "g018",
+      "placement": "none",
+      "text": "No meetings here. Just you, the jobs, and your existential dread. Let’s go."
+    },
+    {
+      "id": "g019",
+      "placement": "inline",
+      "text": "You’ve returned, {name}. The system approves. Barely."
+    },
+    {
+      "id": "g020",
+      "placement": "none",
+      "text": "Your dream job doesn’t exist. But one that pays the bills does. Let’s find it."
+    },
+
+    {
+      "id": "g021",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Today we choose now over later. Again."
+    },
+    {
+      "id": "g022",
+      "placement": "none",
+      "text": "I found more jobs. You’re welcome. I’m sorry."
+    },
+    {
+      "id": "g023",
+      "placement": "inline",
+      "text": "Hi {name}. Your keyboard missed the violence."
+    },
+    {
+      "id": "g024",
+      "placement": "none",
+      "text": "Time to turn browsing into outcomes."
+    },
+    {
+      "id": "g025",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Please do not feed the procrastination gremlin."
+    },
+    {
+      "id": "g026",
+      "placement": "none",
+      "text": "New day. Same mission. Let’s get it."
+    },
+    {
+      "id": "g027",
+      "placement": "inline",
+      "text": "Alright {name}. Pick a job and make it nervous."
+    },
+    {
+      "id": "g028",
+      "placement": "none",
+      "text": "Your to do list called. It sounded stressed."
+    },
+    {
+      "id": "g029",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Jobs are like buses. Miss one, and another will come. But let’s not miss this one."
+    },
+    {
+      "id": "g030",
+      "placement": "none",
+      "text": "If it’s not tracked, it didn’t happen."
+    },
+
+    {
+      "id": "g031",
+      "placement": "inline",
+      "text": "Hey {name}. We’re doing the sensible thing today. Applying to jobs."
+    },
+    {
+      "id": "g032",
+      "placement": "none",
+      "text": "You have jobs. You have time. You have questionable optimism."
+    },
+    {
+      "id": "g033",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Make the ATS regret its life choices."
+    },
+    {
+      "id": "g034",
+      "placement": "none",
+      "text": "Apply. Get auto rejected. Build character. Repeat."
+    },
+    {
+      "id": "g035",
+      "placement": "inline",
+      "text": "Good to see you, {name}. Let’s turn Ready into Hired."
+    },
+    {
+      "id": "g036",
+      "placement": "none",
+      "text": "You can’t pay rent with exposure. Let’s go."
+    },
+    {
+      "id": "g037",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Fresh opportunities and mild dread."
+    },
+    {
+      "id": "g038",
+      "placement": "none",
+      "text": "A clean inbox is a problem, let’s get to work."
+    },
+    {
+      "id": "g039",
+      "placement": "inline",
+      "text": "Hi {name}. Your next offer is hiding behind consistency."
+    },
+    {
+      "id": "g040",
+      "placement": "none",
+      "text": "Cover letters are dead. Let’s write one anyway, for the love of the game."
+    },
+
+    {
+      "id": "g041",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Light chaos. Heavy output."
+    },
+    {
+      "id": "g042",
+      "placement": "none",
+      "text": "I checked. The jobs are still out there being jobs."
+    },
+    {
+      "id": "g043",
+      "placement": "inline",
+      "text": "Okay {name}. No drama. Just execution."
+    },
+    {
+      "id": "g044",
+      "placement": "none",
+      "text": "If you’re waiting for motivation, you’ll be waiting a while."
+    },
+    {
+      "id": "g045",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Increase snacks today, just because."
+    },
+    {
+      "id": "g046",
+      "placement": "none",
+      "text": "The ATS isn’t going to confuse itself. Get in there."
+    },
+    {
+      "id": "g047",
+      "placement": "inline",
+      "text": "Hey {name}. I’m rooting for you. Quietly. Like a normal app."
+    },
+    {
+      "id": "g048",
+      "placement": "none",
+      "text": "Job search mode is on. Feelings are optional."
+    },
+    {
+      "id": "g049",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Your 'later' has arrived."
+    },
+    {
+      "id": "g050",
+      "placement": "none",
+      "text": "Let’s be annoyingly consistent. It works. You know it works. Let’s do it."
+    },
+
+    {
+      "id": "g051",
+      "placement": "inline",
+      "text": "Hi {name}. I’d say take your time but I’d be lying, so let’s not."
+    },
+    {
+      "id": "g052",
+      "placement": "none",
+      "text": "I’ve seen your screen time. Let’s focus on the job board."
+    },
+    {
+      "id": "g053",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Turn effort into results."
+    },
+    {
+      "id": "g054",
+      "placement": "none",
+      "text": "Somewhere, an ATS is preparing to be unimpressed."
+    },
+    {
+      "id": "g055",
+      "placement": "inline",
+      "text": "Hey {name}. Apply like you mean it."
+    },
+    {
+      "id": "g056",
+      "placement": "none",
+      "text": "Your dream job is out there. But so are a lot of other jobs. Let’s find one that’s real."
+    },
+    {
+      "id": "g057",
+      "placement": "inline",
+      "text": "Welcome back, {name}. Minimal drama. Maximum output."
+    },
+    {
+      "id": "g058",
+      "placement": "none",
+      "text": "Today’s vibe is avoiding the phrase 'fast paced environment'."
+    },
+    {
+      "id": "g059",
+      "placement": "inline",
+      "text": "Alright {name}. Let’s make the algorithm regret ignoring you."
+    },
+    {
+      "id": "g060",
+      "placement": "none",
+      "text": "Your calendar is empty. That means we apply, not scroll."
+    },
+
+    {
+      "id": "g061",
+      "placement": "inline",
+      "text": "Welcome back, {name}. The pipeline yearns for activity."
+    },
+    {
+      "id": "g062",
+      "placement": "none",
+      "text": "Open the job. Read it. Actually read it."
+    },
+    {
+      "id": "g063",
+      "placement": "inline",
+      "text": "Hi {name}. Your next win is one follow up away."
+    },
+    {
+      "id": "g064",
+      "placement": "none",
+      "text": "If the job description asks for a rockstar, run."
+    },
+    {
+      "id": "g065",
+      "placement": "inline",
+      "text": "Welcome back, {name}. jobops believes in you more than you do."
+    },
+    {
+      "id": "g066",
+      "placement": "none",
+      "text": "We’re not here to vibe. We’re here to convert."
+    },
+    {
+      "id": "g067",
+      "placement": "inline",
+      "text": "Hey {name}. You’ve got this. And if you don’t, you’ve got this."
+    },
+    {
+      "id": "g068",
+      "placement": "none",
+      "text": "Stop refreshing your inbox. It’s been four seconds."
+    },
+    {
+      "id": "g069",
+      "placement": "inline",
+      "text": "Welcome back, {name}. The Ready tab is feeling ignored."
+    },
+    {
+      "id": "g070",
+      "placement": "none",
+      "text": "Perfection is the enemy of good enough to get an interview."
+    },
+
+    {
+      "id": "g071",
+      "placement": "inline",
+      "text": "Welcome back, {name}. You’re one good week from a different life."
+    },
+    {
+      "id": "g072",
+      "placement": "none",
+      "text": "I brought jobs. You bring focus. Deal."
+    },
+    {
+      "id": "g073",
+      "placement": "inline",
+      "text": "Hi {name}. Overthinking won’t write your cover letter."
+    },
+    {
+      "id": "g074",
+      "placement": "none",
+      "text": "A recruiter somewhere just typed ninja. Stay strong."
+    },
+    {
+      "id": "g075",
+      "placement": "inline",
+      "text": "Welcome back, {name}. This is where the luck gets manufactured."
+    }
+  ]
+}
