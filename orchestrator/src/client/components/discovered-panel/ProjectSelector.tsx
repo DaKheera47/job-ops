@@ -24,9 +24,6 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
-        <span className="text-xs font-medium text-muted-foreground">
-          Selected Projects
-        </span>
         {tooManyProjects && (
           <span className="flex items-center gap-1 text-[10px] text-amber-500 font-medium">
             <AlertTriangle className="h-3 w-3" />
