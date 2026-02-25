@@ -1,6 +1,7 @@
 import {
   __resetAnalyticsTestState,
   bucketQueryLength,
+  trackEvent,
   trackProductEvent,
 } from "./analytics";
 
@@ -12,6 +13,7 @@ describe("analytics", () => {
     vi.setSystemTime(new Date("2026-02-25T12:00:00Z"));
     track.mockReset();
     __resetAnalyticsTestState();
+    window.localStorage.clear();
     Object.defineProperty(window, "umami", {
       configurable: true,
       value: { track },
@@ -32,6 +34,22 @@ describe("analytics", () => {
     trackProductEvent("tracer_drilldown_mode_changed", { mode: "human" });
 
     expect(track).toHaveBeenCalledTimes(2);
+  });
+
+  it("attaches a stable anonymous analytics user id to every event", () => {
+    trackEvent("star_repo_click", { location: "demo_mode_banner" });
+    trackProductEvent("tracer_drilldown_mode_changed", { mode: "all" });
+
+    expect(track).toHaveBeenCalledTimes(2);
+
+    const firstPayload = track.mock.calls[0][1] as Record<string, unknown>;
+    const secondPayload = track.mock.calls[1][1] as Record<string, unknown>;
+    const storedId = window.localStorage.getItem("jobops.analytics.user_id.v1");
+
+    expect(typeof firstPayload.analytics_user_id).toBe("string");
+    expect(firstPayload.analytics_user_id).toBeTruthy();
+    expect(secondPayload.analytics_user_id).toBe(firstPayload.analytics_user_id);
+    expect(storedId).toBe(firstPayload.analytics_user_id);
   });
 
   it("drops disallowed keys and non-primitive payload values", () => {
@@ -57,6 +75,7 @@ describe("analytics", () => {
       country: "uk",
       has_city_locations: true,
       search_terms_count: 3,
+      analytics_user_id: expect.any(String),
     });
   });
 

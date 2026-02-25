@@ -10,7 +10,15 @@ declare global {
 
 export function trackEvent(event: string, data?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
-  window.umami?.track(event, data);
+  const analyticsUserId = getAnalyticsUserId();
+  const payload =
+    analyticsUserId === null
+      ? data
+      : {
+          ...(data ?? {}),
+          analytics_user_id: analyticsUserId,
+        };
+  window.umami?.track(event, payload);
 }
 
 type ProductEventMap = {
@@ -114,8 +122,37 @@ type ProductEventName = keyof ProductEventMap;
 type Primitive = string | number | boolean | null;
 type SanitizedPayload = Record<string, Primitive>;
 
+function generateAnalyticsUserId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `anon_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
+function getAnalyticsUserId(): string | null {
+  if (typeof window === "undefined") return null;
+  if (cachedAnalyticsUserId) return cachedAnalyticsUserId;
+
+  try {
+    const existing = window.localStorage.getItem(ANALYTICS_USER_ID_STORAGE_KEY);
+    if (existing) {
+      cachedAnalyticsUserId = existing;
+      return existing;
+    }
+
+    const next = generateAnalyticsUserId();
+    window.localStorage.setItem(ANALYTICS_USER_ID_STORAGE_KEY, next);
+    cachedAnalyticsUserId = next;
+    return next;
+  } catch {
+    return null;
+  }
+}
+
 const DEDUPE_WINDOW_MS = 3_000;
+const ANALYTICS_USER_ID_STORAGE_KEY = "jobops.analytics.user_id.v1";
 const recentEventCache = new Map<string, number>();
+let cachedAnalyticsUserId: string | null = null;
 const DISALLOWED_KEY_PARTS = [
   "query",
   "url",
@@ -221,4 +258,5 @@ export function bucketQueryLength(value: string | number): string {
 
 export function __resetAnalyticsTestState() {
   recentEventCache.clear();
+  cachedAnalyticsUserId = null;
 }
