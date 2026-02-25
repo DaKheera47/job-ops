@@ -152,11 +152,64 @@ vi.mock("./resumeProjects", () => ({
   }),
 }));
 
-vi.mock("./rxresume", () => ({
-  importResume: mockRxResume.importResume,
-  exportResumePdf: mockRxResume.exportResumePdf,
-  deleteResume: mockRxResume.deleteResume,
+vi.mock("./rxresume/baseResumeId", () => ({
+  getConfiguredRxResumeBaseResumeId: vi.fn().mockResolvedValue({
+    mode: "v4",
+    resumeId: "base-resume-id",
+  }),
 }));
+
+vi.mock("./rxresume", async () => {
+  const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+  const { createId } = await import("@paralleldrive/cuid2");
+  const profileModule = await import("./profile");
+  return {
+    getResume: vi.fn().mockImplementation(async () => ({
+      id: "base-resume-id",
+      name: "Base Resume",
+      mode: "v4",
+      data: await profileModule.getProfile(),
+    })),
+    prepareTailoredResumeForPdf: vi.fn().mockImplementation(async (args: any) => {
+      const data = clone(args.resumeData);
+      if (data.sections?.skills?.items && Array.isArray(data.sections.skills.items)) {
+        data.sections.skills.items = data.sections.skills.items.map((skill: any) => ({
+          ...skill,
+          id: skill.id || createId(),
+          visible: skill.visible ?? true,
+          description: skill.description ?? "",
+          level: skill.level ?? 1,
+          keywords: skill.keywords || [],
+        }));
+      }
+
+      if (args.tailoredContent?.skills && data.sections?.skills) {
+        const existingSkills = data.sections.skills.items || [];
+        data.sections.skills.items = args.tailoredContent.skills.map((newSkill: any) => {
+          const existing = existingSkills.find((s: any) => s.name === newSkill.name);
+          return {
+            id: newSkill.id || existing?.id || createId(),
+            visible: newSkill.visible ?? existing?.visible ?? true,
+            name: newSkill.name || existing?.name || "",
+            description: newSkill.description ?? existing?.description ?? "",
+            level: newSkill.level ?? existing?.level ?? 0,
+            keywords: newSkill.keywords || existing?.keywords || [],
+          };
+        });
+      }
+
+      return {
+        mode: "v4",
+        data,
+        projectCatalog: [],
+        selectedProjectIds: [],
+      };
+    }),
+    importResume: mockRxResume.importResume,
+    exportResumePdf: mockRxResume.exportResumePdf,
+    deleteResume: mockRxResume.deleteResume,
+  };
+});
 
 // Mock stream pipeline for downloading PDF
 vi.mock("stream/promises", () => ({

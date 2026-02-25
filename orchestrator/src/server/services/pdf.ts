@@ -8,24 +8,15 @@ import { join } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { logger } from "@infra/logger";
-import { createId } from "@paralleldrive/cuid2";
 import { getDataDir } from "../config/dataDir";
-import { getSetting } from "../repositories/settings";
-import { getProfile } from "./profile";
-import { pickProjectIdsForJob } from "./projectSelection";
-import {
-  extractProjectsFromProfile,
-  resolveResumeProjectsSettings,
-} from "./resumeProjects";
 import {
   deleteResume as deleteRemoteResume,
   exportResumePdf,
+  getResume as getRxResume,
   importResume as importRemoteResume,
+  prepareTailoredResumeForPdf,
 } from "./rxresume";
-import {
-  resolveTracerPublicBaseUrl,
-  rewriteResumeLinksWithTracer,
-} from "./tracer-links";
+import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 const OUTPUT_DIR = join(getDataDir(), "pdfs");
 
@@ -84,7 +75,7 @@ export async function generatePdf(
   jobId: string,
   tailoredContent: TailoredPdfContent,
   jobDescription: string,
-  _baseResumePath?: string, // Deprecated: now always uses getProfile() which fetches from v4 API
+  _baseResumePath?: string, // Deprecated: now always uses configured Reactive Resume base resume
   selectedProjectIds?: string | null,
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
@@ -96,169 +87,39 @@ export async function generatePdf(
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    // Read base resume from profile (fetches from configured Reactive Resume mode)
-    const baseResume = JSON.parse(JSON.stringify(await getProfile(true)));
-
-    // Sanitize skills: Ensure all skills have required schema fields (visible, description, id, level, keywords)
-    // This fixes issues where the base JSON uses a shorthand format (missing required fields)
-    if (
-      baseResume.sections?.skills?.items &&
-      Array.isArray(baseResume.sections.skills.items)
-    ) {
-      baseResume.sections.skills.items = baseResume.sections.skills.items.map(
-        (skill: Record<string, unknown>) => ({
-          ...skill,
-          id: (skill.id as string) || createId(),
-          visible: (skill.visible as boolean | undefined) ?? true,
-          // Zod schema requires string, default to empty string if missing
-          description: (skill.description as string | undefined) ?? "",
-          level: (skill.level as number | undefined) ?? 1,
-          keywords: (skill.keywords as string[] | undefined) || [],
-        }),
+    const { resumeId: baseResumeId } = await getConfiguredRxResumeBaseResumeId();
+    if (!baseResumeId) {
+      throw new Error(
+        "Base resume not configured. Please select a base resume from your Reactive Resume account in Settings.",
       );
     }
-
-    // Inject tailored summary
-    if (tailoredContent.summary) {
-      if (baseResume.sections?.summary) {
-        baseResume.sections.summary.content = tailoredContent.summary;
-      } else if (baseResume.basics?.summary) {
-        baseResume.basics.summary = tailoredContent.summary;
-      }
+    const baseResume = await getRxResume(baseResumeId);
+    if (!baseResume.data || typeof baseResume.data !== "object") {
+      throw new Error("Reactive Resume base resume is empty or invalid.");
     }
 
-    // Inject tailored headline
-    if (tailoredContent.headline) {
-      if (baseResume.basics) {
-        baseResume.basics.headline = tailoredContent.headline;
-        baseResume.basics.label = tailoredContent.headline;
-      }
-    }
-
-    // Inject tailored skills
-    if (tailoredContent.skills) {
-      const newSkills = Array.isArray(tailoredContent.skills)
-        ? tailoredContent.skills
-        : typeof tailoredContent.skills === "string"
-          ? JSON.parse(tailoredContent.skills)
-          : null;
-
-      if (newSkills && baseResume.sections?.skills) {
-        // Ensure each skill item has required schema fields
-        const existingSkills = (baseResume.sections.skills.items ||
-          []) as Array<Record<string, unknown>>;
-        const skillsWithSchema = newSkills.map(
-          (newSkill: Record<string, unknown>) => {
-            // Try to find matching existing skill to preserve id and other fields
-            const existing = existingSkills.find(
-              (s) => s.name === newSkill.name,
-            );
-
-            return {
-              id:
-                (newSkill.id as string) ||
-                (existing?.id as string) ||
-                createId(),
-              visible:
-                newSkill.visible !== undefined
-                  ? (newSkill.visible as boolean)
-                  : ((existing?.visible as boolean | undefined) ?? true),
-              name:
-                (newSkill.name as string) || (existing?.name as string) || "",
-              description:
-                newSkill.description !== undefined
-                  ? (newSkill.description as string)
-                  : (existing?.description as string) || "",
-              level:
-                newSkill.level !== undefined
-                  ? (newSkill.level as number)
-                  : ((existing?.level as number | undefined) ?? 0),
-              keywords:
-                (newSkill.keywords as string[]) ||
-                (existing?.keywords as string[]) ||
-                [],
-            };
-          },
-        );
-
-        baseResume.sections.skills.items = skillsWithSchema;
-      }
-    }
-
-    // Select projects and set visibility
+    let preparedResumeData: Record<string, unknown>;
     try {
-      let selectedSet: Set<string>;
-
-      if (selectedProjectIds !== null && selectedProjectIds !== undefined) {
-        selectedSet = new Set(
-          selectedProjectIds
-            .split(",")
-            .map((s) => s.trim())
-            .filter(Boolean),
-        );
-      } else {
-        const { catalog, selectionItems } =
-          extractProjectsFromProfile(baseResume);
-        const overrideResumeProjectsRaw = await getSetting("resumeProjects");
-        const { resumeProjects } = resolveResumeProjectsSettings({
-          catalog,
-          overrideRaw: overrideResumeProjectsRaw,
-        });
-
-        const locked = resumeProjects.lockedProjectIds;
-        const desiredCount = Math.max(
-          0,
-          resumeProjects.maxProjects - locked.length,
-        );
-        const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-        const eligibleProjects = selectionItems.filter((p) =>
-          eligibleSet.has(p.id),
-        );
-
-        const picked = await pickProjectIdsForJob({
-          jobDescription,
-          eligibleProjects,
-          desiredCount,
-        });
-
-        selectedSet = new Set([...locked, ...picked]);
-      }
-
-      const projectsSection = baseResume.sections?.projects;
-      const projectItems = projectsSection?.items;
-      if (Array.isArray(projectItems)) {
-        for (const item of projectItems) {
-          if (!item || typeof item !== "object") continue;
-          const typedItem = item as Record<string, unknown>;
-          const id = typeof typedItem.id === "string" ? typedItem.id : "";
-          if (!id) continue;
-          typedItem.visible = selectedSet.has(id);
-        }
-        projectsSection.visible = true;
-      }
+      const prepared = await prepareTailoredResumeForPdf({
+        resumeData: baseResume.data,
+        mode: baseResume.mode,
+        tailoredContent,
+        jobDescription,
+        selectedProjectIds,
+        jobId,
+        tracerLinks: {
+          enabled: Boolean(options?.tracerLinksEnabled),
+          requestOrigin: options?.requestOrigin ?? null,
+          companyName: options?.tracerCompanyName ?? null,
+        },
+      });
+      preparedResumeData = prepared.data;
     } catch (err) {
-      logger.warn("Project visibility step failed during PDF generation", {
+      logger.warn("Resume tailoring step failed during PDF generation", {
         jobId,
         error: err,
       });
-    }
-
-    if (options?.tracerLinksEnabled) {
-      const tracerBaseUrl = resolveTracerPublicBaseUrl({
-        requestOrigin: options.requestOrigin,
-      });
-      if (!tracerBaseUrl) {
-        throw new Error(
-          "Tracer links are enabled but no public base URL is available. Set JOBOPS_PUBLIC_BASE_URL.",
-        );
-      }
-
-      await rewriteResumeLinksWithTracer({
-        jobId,
-        resumeData: baseResume,
-        publicBaseUrl: tracerBaseUrl,
-        companyName: options.tracerCompanyName ?? null,
-      });
+      throw err;
     }
 
     const outputPath = join(OUTPUT_DIR, `resume_${jobId}.pdf`);
@@ -266,7 +127,7 @@ export async function generatePdf(
     try {
       logger.debug("Uploading temporary resume for PDF generation", { jobId });
       resumeId = await importRemoteResume({
-        data: baseResume,
+        data: preparedResumeData,
         name: `JobOps Tailored Resume ${jobId}`,
         slug: "",
       });

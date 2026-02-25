@@ -1,12 +1,27 @@
 import { getSetting } from "@server/repositories/settings";
+import { pickProjectIdsForJob } from "@server/services/projectSelection";
+import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
+import {
+  resolveTracerPublicBaseUrl,
+  rewriteResumeLinksWithTracer,
+} from "@server/services/tracer-links";
 import { settingsRegistry } from "@shared/settings-registry";
+import type { ResumeProjectCatalogItem } from "@shared/types";
 import type { RxResumeMode } from "@shared/types";
 import { RxResumeClient } from "./client";
 import {
   getResumeSchemaValidationMessage,
   safeParseResumeDataForMode,
 } from "./schema";
-import type { ResumeData } from "./schema/v4";
+import {
+  applyProjectVisibility,
+  applyTailoredChunks,
+  cloneResumeData,
+  extractProjectsFromResume as extractProjectsFromResumeByMode,
+  inferRxResumeModeFromData,
+  validateAndParseResumeDataForMode,
+  type TailoredSkillsInput,
+} from "./tailoring";
 import * as v4 from "./v4";
 import * as v5 from "./v5";
 
@@ -17,14 +32,22 @@ export type RxResumeResume = {
   name: string;
   title?: string;
   slug?: string;
-  data?: ResumeData;
+  mode?: RxResumeResolvedMode;
+  data?: unknown;
   [key: string]: unknown;
 };
 
 export type RxResumeImportPayload = {
   name?: string;
   slug?: string;
-  data: ResumeData;
+  data: unknown;
+};
+
+export type PreparedRxResumePdfPayload = {
+  mode: RxResumeResolvedMode;
+  data: Record<string, unknown>;
+  projectCatalog: ResumeProjectCatalogItem[];
+  selectedProjectIds: string[];
 };
 
 export class RxResumeAuthConfigError extends Error {
@@ -286,18 +309,18 @@ export async function getResume(
       ) as RxResumeResume;
       return {
         ...resume,
+        mode: "v5",
         title:
           typeof resume.name === "string" && resume.name.trim()
             ? resume.name
             : (resume.slug ?? resume.id),
-        data:
-          resume.data && typeof resume.data === "object"
-            ? (resume.data as ResumeData)
-            : undefined,
-      };
+        data: resume.data,
+      } as RxResumeResume;
     },
-    v4: async (creds) =>
-      (await v4.getResume(resumeId, toV4Override(creds))) as RxResumeResume,
+    v4: async (creds) => ({
+      ...((await v4.getResume(resumeId, toV4Override(creds))) as RxResumeResume),
+      mode: "v4",
+    }),
   });
 }
 
@@ -338,6 +361,124 @@ export async function validateResumeSchema(
   };
 }
 
+function parseSelectedProjectIds(selectedProjectIds?: string | null): string[] {
+  if (selectedProjectIds === null || selectedProjectIds === undefined) return [];
+  return selectedProjectIds
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function extractProjectsFromResume(
+  resumeData: unknown,
+  options: { mode?: RxResumeMode } = {},
+): { mode: RxResumeResolvedMode; catalog: ResumeProjectCatalogItem[] } {
+  const mode = (options.mode ??
+    inferRxResumeModeFromData(resumeData) ??
+    "v5") as RxResumeResolvedMode;
+  const parsed = validateAndParseResumeDataForMode(mode, resumeData);
+  if (!parsed.ok) {
+    throw new Error(parsed.message);
+  }
+  const { catalog } = extractProjectsFromResumeByMode(mode, parsed.data);
+  return { mode, catalog };
+}
+
+export async function prepareTailoredResumeForPdf(args: {
+  resumeData: unknown;
+  mode?: RxResumeMode;
+  tailoredContent: {
+    summary?: string | null;
+    headline?: string | null;
+    skills?: TailoredSkillsInput;
+  };
+  jobDescription: string;
+  selectedProjectIds?: string | null;
+  tracerLinks?: {
+    enabled: boolean;
+    requestOrigin?: string | null;
+    companyName?: string | null;
+  };
+  forceVisibleProjectsSection?: boolean;
+  jobId?: string;
+}): Promise<PreparedRxResumePdfPayload> {
+  const mode = (args.mode ?? (await readConfiguredMode())) as RxResumeResolvedMode;
+  const parsed = validateAndParseResumeDataForMode(mode, args.resumeData);
+  if (!parsed.ok) {
+    throw new Error(parsed.message);
+  }
+
+  const workingCopy = cloneResumeData(parsed.data);
+  applyTailoredChunks({
+    mode,
+    resumeData: workingCopy,
+    tailoredContent: args.tailoredContent,
+  });
+
+  const { catalog, selectionItems } = extractProjectsFromResumeByMode(
+    mode,
+    workingCopy,
+  );
+
+  let selectedIds = parseSelectedProjectIds(args.selectedProjectIds);
+
+  if (args.selectedProjectIds === null || args.selectedProjectIds === undefined) {
+    const overrideResumeProjectsRaw = await getSetting("resumeProjects");
+    const { resumeProjects } = resolveResumeProjectsSettings({
+      catalog,
+      overrideRaw: overrideResumeProjectsRaw,
+    });
+
+    const locked = resumeProjects.lockedProjectIds;
+    const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
+    const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
+    const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
+    const picked = await pickProjectIdsForJob({
+      jobDescription: args.jobDescription,
+      eligibleProjects,
+      desiredCount,
+    });
+    selectedIds = [...locked, ...picked];
+  }
+
+  applyProjectVisibility({
+    mode,
+    resumeData: workingCopy,
+    selectedProjectIds: new Set(selectedIds),
+    forceVisibleProjectsSection: args.forceVisibleProjectsSection,
+  });
+
+  if (args.tracerLinks?.enabled) {
+    const tracerBaseUrl = resolveTracerPublicBaseUrl({
+      requestOrigin: args.tracerLinks.requestOrigin,
+    });
+    if (!tracerBaseUrl) {
+      throw new Error(
+        "Tracer links are enabled but no public base URL is available. Set JOBOPS_PUBLIC_BASE_URL.",
+      );
+    }
+    if (!args.jobId) {
+      throw new Error(
+        "Tracer links are enabled but jobId was not provided for resume tailoring.",
+      );
+    }
+
+    await rewriteResumeLinksWithTracer({
+      jobId: args.jobId,
+      resumeData: workingCopy,
+      publicBaseUrl: tracerBaseUrl,
+      companyName: args.tracerLinks.companyName ?? null,
+    });
+  }
+
+  return {
+    mode,
+    data: workingCopy,
+    projectCatalog: catalog,
+    selectedProjectIds: selectedIds,
+  };
+}
+
 export async function importResume(
   payload: RxResumeImportPayload,
   options: ResolveModeOptions = {},
@@ -355,7 +496,8 @@ export async function importResume(
           baseUrl: creds.baseUrl,
         },
       ),
-    v4: async (creds) => await v4.importResume(payload, toV4Override(creds)),
+    v4: async (creds) =>
+      await v4.importResume(payload as v4.RxResumeImportPayload, toV4Override(creds)),
   });
 }
 

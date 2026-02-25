@@ -4,11 +4,12 @@ import { settingsRegistry } from "@shared/settings-registry";
 import type { AppSettings } from "@shared/types";
 import { getEnvSettingsData } from "./envSettings";
 import { getProfile } from "./profile";
+import { resolveResumeProjectsSettings } from "./resumeProjects";
 import {
-  extractProjectsFromProfile,
-  resolveResumeProjectsSettings,
-} from "./resumeProjects";
-import { getResume, RxResumeAuthConfigError } from "./rxresume";
+  extractProjectsFromResume,
+  getResume,
+  RxResumeAuthConfigError,
+} from "./rxresume";
 import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
@@ -101,7 +102,16 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       }
 
       if (key === "resumeProjects") {
-        const { catalog } = extractProjectsFromProfile(profile);
+        let catalog: AppSettings["profileProjects"] = [];
+        if (Object.keys(profile).length > 0) {
+          try {
+            catalog = extractProjectsFromResume(profile).catalog;
+          } catch (error) {
+            logger.warn("Failed to extract projects from Reactive Resume data", {
+              error,
+            });
+          }
+        }
         const resolved = resolveResumeProjectsSettings({
           catalog,
           overrideRaw: rawOverride ?? null,

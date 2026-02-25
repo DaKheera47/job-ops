@@ -31,8 +31,10 @@ vi.mock("./client", () => ({
 import { getSetting } from "@server/repositories/settings";
 import { RxResumeClient } from "./client";
 import {
+  extractProjectsFromResume,
   getResume as getResumeFromAdapter,
   listResumes,
+  prepareTailoredResumeForPdf,
   RxResumeAuthConfigError,
   resolveRxResumeMode,
   validateCredentials,
@@ -179,5 +181,137 @@ describe("rxresume adapter", () => {
       status: 401,
       message: "Reactive Resume API error (401): Unauthorized",
     });
+  });
+
+  it("prepares tailored v5 resume payload without relying on v4 fields", async () => {
+    const v5ResumeData = {
+      basics: {
+        name: "Test User",
+        headline: "Old headline",
+        email: "test@example.com",
+        phone: "",
+        location: "",
+        website: { url: "https://example.com", label: "Portfolio" },
+        customFields: [],
+      },
+      picture: {},
+      summary: { content: "Old summary" },
+      sections: {
+        projects: {
+          title: "Projects",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "p1",
+              hidden: false,
+              name: "Visible project",
+              period: "2024",
+              website: { url: "https://p1.example.com", label: "P1" },
+              description: "Alpha",
+            },
+            {
+              id: "p2",
+              hidden: false,
+              name: "Hidden project",
+              period: "2023",
+              website: { url: "https://p2.example.com", label: "P2" },
+              description: "Beta",
+            },
+          ],
+        },
+        skills: {
+          title: "Skills",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "skill1",
+              hidden: false,
+              name: "Existing",
+              description: "",
+              keywords: ["x"],
+              level: 0,
+            },
+          ],
+        },
+      },
+      customSections: [],
+      metadata: {},
+    };
+
+    const prepared = await prepareTailoredResumeForPdf({
+      mode: "v5",
+      resumeData: v5ResumeData,
+      tailoredContent: {
+        headline: "New headline",
+        summary: "New summary",
+        skills: [{ name: "Frontend", keywords: ["React", "TS"] }],
+      },
+      jobDescription: "Test JD",
+      selectedProjectIds: "p1",
+    });
+
+    expect(prepared.mode).toBe("v5");
+    expect(prepared.selectedProjectIds).toEqual(["p1"]);
+    expect(prepared.projectCatalog).toMatchObject([
+      { id: "p1", date: "2024", isVisibleInBase: true },
+      { id: "p2", date: "2023", isVisibleInBase: true },
+    ]);
+
+    const data = prepared.data as any;
+    expect(data.basics.headline).toBe("New headline");
+    expect(data.summary.content).toBe("New summary");
+    expect(data.sections.projects.hidden).toBe(false);
+    expect(data.sections.projects.items[0].hidden).toBe(false);
+    expect(data.sections.projects.items[1].hidden).toBe(true);
+    expect(data.sections.skills.items[0].name).toBe("Frontend");
+    expect(data.sections.skills.items[0].keywords).toEqual(["React", "TS"]);
+  });
+
+  it("extracts project catalog from v5 payloads", () => {
+    const result = extractProjectsFromResume({
+      basics: {
+        name: "",
+        headline: "",
+        email: "",
+        phone: "",
+        location: "",
+        website: { url: "", label: "" },
+        customFields: [],
+      },
+      picture: {},
+      summary: {},
+      sections: {
+        projects: {
+          title: "Projects",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "proj-1",
+              hidden: true,
+              name: "API",
+              period: "2025",
+              website: { url: "https://example.com", label: "Site" },
+              description: "Built API",
+            },
+          ],
+        },
+      },
+      customSections: [],
+      metadata: {},
+    });
+
+    expect(result.mode).toBe("v5");
+    expect(result.catalog).toEqual([
+      {
+        id: "proj-1",
+        name: "API",
+        description: "Built API",
+        date: "2025",
+        isVisibleInBase: false,
+      },
+    ]);
   });
 });

@@ -9,8 +9,8 @@ import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { setBackupSettings } from "@server/services/backup/index";
-import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
+  extractProjectsFromResume,
   getResume,
   listResumes,
   RxResumeAuthConfigError,
@@ -163,8 +163,9 @@ settingsRouter.get(
         fail(res, badRequest(validated.message));
         return;
       }
-      const profile = validated.data;
-      const { catalog } = extractProjectsFromProfile(profile);
+      const { catalog } = extractProjectsFromResume(resume.data ?? {}, {
+        mode: validated.mode,
+      });
 
       ok(res, { projects: catalog });
     } catch (error) {

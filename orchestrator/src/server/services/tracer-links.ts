@@ -198,6 +198,24 @@ function deriveSourceLabel(sourcePath: string, linkNode: LinkNode): string {
     return nth ? `${baseLabel} Link ${nth}` : `${baseLabel} Link`;
   }
 
+  const v5SectionMatch = sourcePath.match(
+    /^sections\.([a-z]+)\.items\[(\d+)\]\.website\.url$/,
+  );
+  if (v5SectionMatch) {
+    const section = v5SectionMatch[1];
+    const index = Number(v5SectionMatch[2]);
+    const nth = Number.isFinite(index) ? index + 1 : null;
+    const sectionLabels: Record<string, string> = {
+      projects: "Project",
+      experience: "Experience",
+      education: "Education",
+    };
+    const baseLabel = sectionLabels[section] ?? "Resume";
+    return nth ? `${baseLabel} Link ${nth}` : `${baseLabel} Link`;
+  }
+
+  if (sourcePath === "basics.website.url") return "Portfolio";
+
   return "Resume Link";
 }
 
@@ -243,6 +261,31 @@ function collectUrlTargets(
 
             // Preserve descriptive labels; only rewrite label text when it was
             // empty or mirrored the original destination URL.
+            if (!currentLabel || currentLabel === rawHref) {
+              linkValue.label = url;
+            }
+          },
+        });
+      }
+      continue;
+    }
+
+    if (key === "website" && isRecord(value)) {
+      const linkValue = value as { url?: unknown; label?: unknown };
+      const rawHref = typeof linkValue.url === "string" ? linkValue.url.trim() : "";
+      if (rawHref && isHttpUrl(rawHref)) {
+        const sourcePath = `${nextPath}.url`;
+        targets.push({
+          sourcePath,
+          sourceLabel: deriveSourceLabel(sourcePath, {
+            label: linkValue.label,
+            href: rawHref,
+          }),
+          destinationUrl: rawHref,
+          applyTracerUrl: (url: string) => {
+            const currentLabel =
+              typeof linkValue.label === "string" ? linkValue.label.trim() : "";
+            linkValue.url = url;
             if (!currentLabel || currentLabel === rawHref) {
               linkValue.label = url;
             }

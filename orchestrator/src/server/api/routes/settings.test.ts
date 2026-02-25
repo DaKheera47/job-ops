@@ -4,6 +4,35 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@server/services/rxresume", () => ({
   listResumes: vi.fn(),
   getResume: vi.fn(),
+  validateResumeSchema: vi.fn(async (data: unknown) => ({
+    ok: true,
+    mode:
+      data &&
+      typeof data === "object" &&
+      typeof (data as Record<string, unknown>).summary === "object"
+        ? "v5"
+        : "v4",
+    data,
+  })),
+  extractProjectsFromResume: vi.fn((data: unknown) => {
+    const root = (data ?? {}) as Record<string, unknown>;
+    const sections = (root.sections ?? {}) as Record<string, unknown>;
+    const projects = (sections.projects ?? {}) as Record<string, unknown>;
+    const items = Array.isArray(projects.items) ? projects.items : [];
+    return {
+      mode: "v5",
+      catalog: items.map((item) => {
+        const project = item as Record<string, unknown>;
+        return {
+          id: String(project.id ?? ""),
+          name: String(project.name ?? ""),
+          description: String(project.description ?? ""),
+          date: String(project.period ?? ""),
+          isVisibleInBase: !Boolean(project.hidden),
+        };
+      }),
+    };
+  }),
   RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor(message = "Reactive Resume auth config missing") {
       super(message);
@@ -23,7 +52,7 @@ vi.mock("@server/services/rxresume", () => ({
   },
 }));
 
-import { getResume } from "@server/services/rxresume";
+import { extractProjectsFromResume, getResume } from "@server/services/rxresume";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Settings API routes", () => {
@@ -161,5 +190,49 @@ describe.sequential("Settings API routes", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("NOT_FOUND");
     expect(body.error.message).toContain("404");
+  });
+
+  it("returns project catalog for v5-shaped Reactive Resume payloads", async () => {
+    vi.mocked(getResume).mockResolvedValue({
+      id: "resume-v5",
+      name: "Resume v5",
+      mode: "v5",
+      data: {
+        sections: {
+          projects: {
+            title: "Projects",
+            columns: 1,
+            hidden: false,
+            items: [
+              {
+                id: "p1",
+                hidden: false,
+                name: "JobOps",
+                period: "2024",
+                website: { url: "https://example.com", label: "Example" },
+                description: "Project description",
+              },
+            ],
+          },
+        },
+        summary: {},
+      },
+    } as any);
+
+    const res = await fetch(`${baseUrl}/api/settings/rx-resumes/resume-v5/projects?mode=v5`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.projects).toEqual([
+      {
+        id: "p1",
+        name: "JobOps",
+        description: "Project description",
+        date: "2024",
+        isVisibleInBase: true,
+      },
+    ]);
+    expect(extractProjectsFromResume).toHaveBeenCalled();
   });
 });
