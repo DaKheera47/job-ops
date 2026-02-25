@@ -204,41 +204,77 @@ function applyTailoredSkillsV5(resumeData: RecordLike, skills: Array<RecordLike>
     .map((item) => asRecord(item))
     .filter((item): item is RecordLike => Boolean(item));
 
+  const template = existing[0] ?? null;
+  if (!template) return;
+
   skillsSection.items = skills.map((newSkill) => {
-    const match = existing.find((item) => item.name === newSkill.name);
-    return {
-      ...(match ?? {}),
-      id:
+    const match = existing.find((item) => item.name === newSkill.name) ?? template;
+    const next: RecordLike = { ...match };
+
+    if ("id" in next) {
+      next.id =
         (typeof newSkill.id === "string" && newSkill.id) ||
-        (match && typeof match.id === "string" ? match.id : "") ||
-        createId(),
-      hidden:
-        typeof newSkill.hidden === "boolean"
-          ? newSkill.hidden
-          : typeof match?.hidden === "boolean"
-            ? match.hidden
-            : false,
-      name:
+        (typeof match.id === "string" ? match.id : "") ||
+        createId();
+    }
+    if ("name" in next) {
+      next.name =
         (typeof newSkill.name === "string" ? newSkill.name : "") ||
-        (typeof match?.name === "string" ? match.name : ""),
-      description:
+        (typeof match.name === "string" ? match.name : "");
+    }
+    if ("keywords" in next) {
+      next.keywords = Array.isArray(newSkill.keywords)
+        ? newSkill.keywords.filter((k) => typeof k === "string")
+        : Array.isArray(match.keywords)
+          ? match.keywords.filter((k) => typeof k === "string")
+          : [];
+    }
+
+    // Only patch optional fields when the instance already uses them.
+    if ("description" in next) {
+      next.description =
         typeof newSkill.description === "string"
           ? newSkill.description
-          : typeof match?.description === "string"
+          : typeof match.description === "string"
             ? match.description
-            : "",
-      level:
+            : "";
+    }
+    if ("proficiency" in next) {
+      next.proficiency =
+        typeof newSkill.proficiency === "string"
+          ? newSkill.proficiency
+          : typeof newSkill.description === "string"
+            ? newSkill.description
+            : typeof match.proficiency === "string"
+              ? match.proficiency
+              : "";
+    }
+    if ("level" in next) {
+      next.level =
         typeof newSkill.level === "number"
           ? newSkill.level
-          : typeof match?.level === "number"
+          : typeof match.level === "number"
             ? match.level
-            : 0,
-      keywords: Array.isArray(newSkill.keywords)
-        ? newSkill.keywords.filter((k) => typeof k === "string")
-        : Array.isArray(match?.keywords)
-          ? match.keywords.filter((k) => typeof k === "string")
-          : [],
-    };
+            : next.level;
+    }
+    if ("hidden" in next) {
+      next.hidden =
+        typeof newSkill.hidden === "boolean"
+          ? newSkill.hidden
+          : typeof match.hidden === "boolean"
+            ? match.hidden
+            : next.hidden;
+    }
+    if ("visible" in next) {
+      next.visible =
+        typeof newSkill.visible === "boolean"
+          ? newSkill.visible
+          : typeof match.visible === "boolean"
+            ? match.visible
+            : next.visible;
+    }
+
+    return next;
   });
 }
 
@@ -334,7 +370,11 @@ export function applyProjectVisibility(args: {
     const id = typeof item.id === "string" ? item.id : "";
     if (!id) continue;
     if (args.mode === "v5") {
-      item.hidden = !args.selectedProjectIds.has(id);
+      if ("hidden" in item) {
+        item.hidden = !args.selectedProjectIds.has(id);
+      } else if ("visible" in item) {
+        item.visible = args.selectedProjectIds.has(id);
+      }
     } else {
       item.visible = args.selectedProjectIds.has(id);
     }
@@ -342,7 +382,11 @@ export function applyProjectVisibility(args: {
 
   if (args.forceVisibleProjectsSection !== false) {
     if (args.mode === "v5") {
-      projectsSection.hidden = false;
+      if ("hidden" in projectsSection) {
+        projectsSection.hidden = false;
+      } else if ("visible" in projectsSection) {
+        projectsSection.visible = true;
+      }
     } else {
       projectsSection.visible = true;
     }

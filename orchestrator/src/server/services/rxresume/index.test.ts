@@ -195,7 +195,12 @@ describe("rxresume adapter", () => {
         customFields: [],
       },
       picture: {},
-      summary: { content: "Old summary" },
+      summary: {
+        title: "Summary",
+        columns: 1,
+        hidden: false,
+        content: "Old summary",
+      },
       sections: {
         projects: {
           title: "Projects",
@@ -228,10 +233,11 @@ describe("rxresume adapter", () => {
             {
               id: "skill1",
               hidden: false,
+              icon: "",
               name: "Existing",
-              description: "",
-              keywords: ["x"],
+              proficiency: "",
               level: 0,
+              keywords: ["x"],
             },
           ],
         },
@@ -281,7 +287,12 @@ describe("rxresume adapter", () => {
         customFields: [],
       },
       picture: {},
-      summary: {},
+      summary: {
+        title: "Summary",
+        columns: 1,
+        hidden: false,
+        content: "",
+      },
       sections: {
         projects: {
           title: "Projects",
@@ -295,6 +306,22 @@ describe("rxresume adapter", () => {
               period: "2025",
               website: { url: "https://example.com", label: "Site" },
               description: "Built API",
+            },
+          ],
+        },
+        skills: {
+          title: "Skills",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "skill-1",
+              hidden: false,
+              icon: "",
+              name: "Frontend",
+              proficiency: "",
+              level: 0,
+              keywords: ["React"],
             },
           ],
         },

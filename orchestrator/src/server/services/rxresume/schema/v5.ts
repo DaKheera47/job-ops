@@ -32,6 +32,26 @@ const v5ProjectsSectionSchema = v5SectionBaseSchema.extend({
   items: z.array(v5ProjectItemSchema),
 });
 
+const v5SummarySectionSchema = v5SectionBaseSchema.extend({
+  content: z.string(),
+});
+
+const v5SkillItemSchema = z
+  .object({
+    id: z.string(),
+    hidden: z.boolean(),
+    icon: z.string(),
+    name: z.string(),
+    proficiency: z.string(),
+    level: z.number(),
+    keywords: z.array(z.string()),
+  })
+  .passthrough();
+
+const v5SkillsSectionSchema = v5SectionBaseSchema.extend({
+  items: z.array(v5SkillItemSchema),
+});
+
 export const v5ResumeDataSchema = z
   .object({
     picture: looseObject,
@@ -46,10 +66,11 @@ export const v5ResumeDataSchema = z
         customFields: z.array(looseObject),
       })
       .passthrough(),
-    summary: looseObject,
+    summary: v5SummarySectionSchema,
     sections: z
       .object({
         projects: v5ProjectsSectionSchema,
+        skills: v5SkillsSectionSchema,
       })
       .passthrough(),
     customSections: z.array(looseObject),
