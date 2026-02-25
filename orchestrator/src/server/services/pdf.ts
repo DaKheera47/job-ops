@@ -87,7 +87,8 @@ export async function generatePdf(
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    const { resumeId: baseResumeId } = await getConfiguredRxResumeBaseResumeId();
+    const { resumeId: baseResumeId } =
+      await getConfiguredRxResumeBaseResumeId();
     if (!baseResumeId) {
       throw new Error(
         "Base resume not configured. Please select a base resume from your Reactive Resume account in Settings.",

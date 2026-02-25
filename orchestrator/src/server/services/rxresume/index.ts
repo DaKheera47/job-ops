@@ -6,8 +6,7 @@ import {
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
 import { settingsRegistry } from "@shared/settings-registry";
-import type { ResumeProjectCatalogItem } from "@shared/types";
-import type { RxResumeMode } from "@shared/types";
+import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types";
 import { RxResumeClient } from "./client";
 import {
   getResumeSchemaValidationMessage,
@@ -19,8 +18,8 @@ import {
   cloneResumeData,
   extractProjectsFromResume as extractProjectsFromResumeByMode,
   inferRxResumeModeFromData,
-  validateAndParseResumeDataForMode,
   type TailoredSkillsInput,
+  validateAndParseResumeDataForMode,
 } from "./tailoring";
 import * as v4 from "./v4";
 import * as v5 from "./v5";
@@ -318,7 +317,10 @@ export async function getResume(
       } as RxResumeResume;
     },
     v4: async (creds) => ({
-      ...((await v4.getResume(resumeId, toV4Override(creds))) as RxResumeResume),
+      ...((await v4.getResume(
+        resumeId,
+        toV4Override(creds),
+      )) as RxResumeResume),
       mode: "v4",
     }),
   });
@@ -362,7 +364,8 @@ export async function validateResumeSchema(
 }
 
 function parseSelectedProjectIds(selectedProjectIds?: string | null): string[] {
-  if (selectedProjectIds === null || selectedProjectIds === undefined) return [];
+  if (selectedProjectIds === null || selectedProjectIds === undefined)
+    return [];
   return selectedProjectIds
     .split(",")
     .map((s) => s.trim())
@@ -402,7 +405,8 @@ export async function prepareTailoredResumeForPdf(args: {
   forceVisibleProjectsSection?: boolean;
   jobId?: string;
 }): Promise<PreparedRxResumePdfPayload> {
-  const mode = (args.mode ?? (await readConfiguredMode())) as RxResumeResolvedMode;
+  const mode = (args.mode ??
+    (await readConfiguredMode())) as RxResumeResolvedMode;
   const parsed = validateAndParseResumeDataForMode(mode, args.resumeData);
   if (!parsed.ok) {
     throw new Error(parsed.message);
@@ -422,7 +426,10 @@ export async function prepareTailoredResumeForPdf(args: {
 
   let selectedIds = parseSelectedProjectIds(args.selectedProjectIds);
 
-  if (args.selectedProjectIds === null || args.selectedProjectIds === undefined) {
+  if (
+    args.selectedProjectIds === null ||
+    args.selectedProjectIds === undefined
+  ) {
     const overrideResumeProjectsRaw = await getSetting("resumeProjects");
     const { resumeProjects } = resolveResumeProjectsSettings({
       catalog,
@@ -430,9 +437,14 @@ export async function prepareTailoredResumeForPdf(args: {
     });
 
     const locked = resumeProjects.lockedProjectIds;
-    const desiredCount = Math.max(0, resumeProjects.maxProjects - locked.length);
+    const desiredCount = Math.max(
+      0,
+      resumeProjects.maxProjects - locked.length,
+    );
     const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-    const eligibleProjects = selectionItems.filter((p) => eligibleSet.has(p.id));
+    const eligibleProjects = selectionItems.filter((p) =>
+      eligibleSet.has(p.id),
+    );
     const picked = await pickProjectIdsForJob({
       jobDescription: args.jobDescription,
       eligibleProjects,
@@ -497,7 +509,10 @@ export async function importResume(
         },
       ),
     v4: async (creds) =>
-      await v4.importResume(payload as v4.RxResumeImportPayload, toV4Override(creds)),
+      await v4.importResume(
+        payload as v4.RxResumeImportPayload,
+        toV4Override(creds),
+      ),
   });
 }
 

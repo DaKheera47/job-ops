@@ -28,7 +28,7 @@ vi.mock("@server/services/rxresume", () => ({
           name: String(project.name ?? ""),
           description: String(project.description ?? ""),
           date: String(project.period ?? ""),
-          isVisibleInBase: !Boolean(project.hidden),
+          isVisibleInBase: !project.hidden,
         };
       }),
     };
@@ -52,7 +52,10 @@ vi.mock("@server/services/rxresume", () => ({
   },
 }));
 
-import { extractProjectsFromResume, getResume } from "@server/services/rxresume";
+import {
+  extractProjectsFromResume,
+  getResume,
+} from "@server/services/rxresume";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Settings API routes", () => {
@@ -219,7 +222,9 @@ describe.sequential("Settings API routes", () => {
       },
     } as any);
 
-    const res = await fetch(`${baseUrl}/api/settings/rx-resumes/resume-v5/projects?mode=v5`);
+    const res = await fetch(
+      `${baseUrl}/api/settings/rx-resumes/resume-v5/projects?mode=v5`,
+    );
     const body = await res.json();
 
     expect(res.status).toBe(200);

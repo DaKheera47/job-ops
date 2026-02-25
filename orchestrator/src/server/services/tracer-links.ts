@@ -272,7 +272,8 @@ function collectUrlTargets(
 
     if (key === "website" && isRecord(value)) {
       const linkValue = value as { url?: unknown; label?: unknown };
-      const rawHref = typeof linkValue.url === "string" ? linkValue.url.trim() : "";
+      const rawHref =
+        typeof linkValue.url === "string" ? linkValue.url.trim() : "";
       if (rawHref && isHttpUrl(rawHref)) {
         const sourcePath = `${nextPath}.url`;
         targets.push({

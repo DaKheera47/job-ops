@@ -1,10 +1,10 @@
 import { createId } from "@paralleldrive/cuid2";
-import type {
-  ResumeProjectCatalogItem,
-  RxResumeMode,
-} from "@shared/types";
+import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
-import { getResumeSchemaValidationMessage, safeParseResumeDataForMode } from "./schema";
+import {
+  getResumeSchemaValidationMessage,
+  safeParseResumeDataForMode,
+} from "./schema";
 
 type RecordLike = Record<string, unknown>;
 
@@ -42,11 +42,16 @@ export function validateAndParseResumeDataForMode(
       message: getResumeSchemaValidationMessage(result.error),
     };
   }
-  if (!result.data || typeof result.data !== "object" || Array.isArray(result.data)) {
+  if (
+    !result.data ||
+    typeof result.data !== "object" ||
+    Array.isArray(result.data)
+  ) {
     return {
       ok: false,
       mode,
-      message: "Resume schema validation failed: root payload must be an object.",
+      message:
+        "Resume schema validation failed: root payload must be an object.",
     };
   }
   return { ok: true, mode, data: result.data as RecordLike };
@@ -70,7 +75,9 @@ function asArray(value: unknown): unknown[] | null {
   return Array.isArray(value) ? value : null;
 }
 
-function parseTailoredSkills(skills: TailoredSkillsInput): Array<RecordLike> | null {
+function parseTailoredSkills(
+  skills: TailoredSkillsInput,
+): Array<RecordLike> | null {
   if (!skills) return null;
   const parsed = Array.isArray(skills)
     ? skills
@@ -78,7 +85,9 @@ function parseTailoredSkills(skills: TailoredSkillsInput): Array<RecordLike> | n
       ? (JSON.parse(skills) as unknown)
       : null;
   if (!Array.isArray(parsed)) return null;
-  return parsed.filter((item) => item && typeof item === "object") as RecordLike[];
+  return parsed.filter(
+    (item) => item && typeof item === "object",
+  ) as RecordLike[];
 }
 
 export function applyTailoredHeadline(
@@ -104,11 +113,17 @@ export function applyTailoredSummary(
   if (mode === "v5") {
     const topSummary = asRecord(resumeData.summary);
     if (topSummary) {
-      if (typeof topSummary.content === "string" || topSummary.content === undefined) {
+      if (
+        typeof topSummary.content === "string" ||
+        topSummary.content === undefined
+      ) {
         topSummary.content = summary;
         return;
       }
-      if (typeof topSummary.value === "string" || topSummary.value === undefined) {
+      if (
+        typeof topSummary.value === "string" ||
+        topSummary.value === undefined
+      ) {
         topSummary.value = summary;
         return;
       }
@@ -148,7 +163,10 @@ function sanitizeV4SkillsSection(resumeData: RecordLike): void {
   });
 }
 
-function applyTailoredSkillsV4(resumeData: RecordLike, skills: Array<RecordLike>): void {
+function applyTailoredSkillsV4(
+  resumeData: RecordLike,
+  skills: Array<RecordLike>,
+): void {
   sanitizeV4SkillsSection(resumeData);
   const sections = asRecord(resumeData.sections);
   const skillsSection = asRecord(sections?.skills);
@@ -195,7 +213,10 @@ function applyTailoredSkillsV4(resumeData: RecordLike, skills: Array<RecordLike>
   });
 }
 
-function applyTailoredSkillsV5(resumeData: RecordLike, skills: Array<RecordLike>): void {
+function applyTailoredSkillsV5(
+  resumeData: RecordLike,
+  skills: Array<RecordLike>,
+): void {
   const sections = asRecord(resumeData.sections);
   const skillsSection = asRecord(sections?.skills);
   const existingItems = asArray(skillsSection?.items);
@@ -208,7 +229,8 @@ function applyTailoredSkillsV5(resumeData: RecordLike, skills: Array<RecordLike>
   if (!template) return;
 
   skillsSection.items = skills.map((newSkill) => {
-    const match = existing.find((item) => item.name === newSkill.name) ?? template;
+    const match =
+      existing.find((item) => item.name === newSkill.name) ?? template;
     const next: RecordLike = { ...match };
 
     if ("id" in next) {
@@ -298,7 +320,10 @@ export function applyTailoredSkills(
 export function extractProjectsFromResume(
   mode: RxResumeMode,
   resumeData: RecordLike,
-): { catalog: ResumeProjectCatalogItem[]; selectionItems: ResumeProjectSelectionItem[] } {
+): {
+  catalog: ResumeProjectCatalogItem[];
+  selectionItems: ResumeProjectSelectionItem[];
+} {
   const sections = asRecord(resumeData.sections);
   const projectsSection = asRecord(sections?.projects);
   const items = asArray(projectsSection?.items);
@@ -314,7 +339,8 @@ export function extractProjectsFromResume(
     if (!id) continue;
 
     const name = typeof item.name === "string" ? item.name : id;
-    const description = typeof item.description === "string" ? item.description : "";
+    const description =
+      typeof item.description === "string" ? item.description : "";
     const date =
       mode === "v5"
         ? typeof item.period === "string"
@@ -399,6 +425,14 @@ export function applyTailoredChunks(args: {
   tailoredContent: TailorChunkInput;
 }): void {
   applyTailoredSkills(args.mode, args.resumeData, args.tailoredContent.skills);
-  applyTailoredSummary(args.mode, args.resumeData, args.tailoredContent.summary);
-  applyTailoredHeadline(args.mode, args.resumeData, args.tailoredContent.headline);
+  applyTailoredSummary(
+    args.mode,
+    args.resumeData,
+    args.tailoredContent.summary,
+  );
+  applyTailoredHeadline(
+    args.mode,
+    args.resumeData,
+    args.tailoredContent.headline,
+  );
 }

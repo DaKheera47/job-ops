@@ -158,7 +158,7 @@ vi.mock("./rxresume/baseResumeId", () => ({
 }));
 
 vi.mock("./rxresume", async () => {
-  const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+  const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
   const projectSelectionModule = await import("./projectSelection");
   return {
     getResume: vi.fn().mockResolvedValue({
@@ -167,55 +167,57 @@ vi.mock("./rxresume", async () => {
       mode: "v4",
       data: mockProfile,
     }),
-    prepareTailoredResumeForPdf: vi.fn().mockImplementation(async (args: any) => {
-      const data = clone(args.resumeData);
-      if (args.tailedContent?.summary || args.tailoredContent?.summary) {
-        const summary = args.tailoredContent?.summary;
-        if (data.sections?.summary) data.sections.summary.content = summary;
-      }
-      if (args.tailoredContent?.headline && data.basics) {
-        data.basics.headline = args.tailoredContent.headline;
-      }
+    prepareTailoredResumeForPdf: vi
+      .fn()
+      .mockImplementation(async (args: any) => {
+        const data = clone(args.resumeData);
+        if (args.tailedContent?.summary || args.tailoredContent?.summary) {
+          const summary = args.tailoredContent?.summary;
+          if (data.sections?.summary) data.sections.summary.content = summary;
+        }
+        if (args.tailoredContent?.headline && data.basics) {
+          data.basics.headline = args.tailoredContent.headline;
+        }
 
-      let selected = (args.selectedProjectIds as string | null | undefined)
-        ?.split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (!selected) {
-        selected = await projectSelectionModule.pickProjectIdsForJob({
-          jobDescription: args.jobDescription,
-          eligibleProjects: [
-            { id: "p1", name: "Project 1" },
-            { id: "p2", name: "Project 2" },
-          ],
-          desiredCount: 3,
-        } as any);
-      }
-      const selectedSet = new Set(selected);
-      for (const item of data.sections?.projects?.items ?? []) {
-        item.visible = selectedSet.has(item.id);
-      }
-      if (data.sections?.projects) data.sections.projects.visible = true;
+        let selected = (args.selectedProjectIds as string | null | undefined)
+          ?.split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (!selected) {
+          selected = await projectSelectionModule.pickProjectIdsForJob({
+            jobDescription: args.jobDescription,
+            eligibleProjects: [
+              { id: "p1", name: "Project 1" },
+              { id: "p2", name: "Project 2" },
+            ],
+            desiredCount: 3,
+          } as any);
+        }
+        const selectedSet = new Set(selected);
+        for (const item of data.sections?.projects?.items ?? []) {
+          item.visible = selectedSet.has(item.id);
+        }
+        if (data.sections?.projects) data.sections.projects.visible = true;
 
-      if (args.tracerLinks?.enabled) {
-        mockTracerLinks.resolveTracerPublicBaseUrl({
-          requestOrigin: args.tracerLinks.requestOrigin,
-        });
-        await mockTracerLinks.rewriteResumeLinksWithTracer({
-          jobId: args.jobId,
-          resumeData: data,
-          publicBaseUrl: "https://jobops.example",
-          companyName: args.tracerLinks.companyName ?? null,
-        });
-      }
+        if (args.tracerLinks?.enabled) {
+          mockTracerLinks.resolveTracerPublicBaseUrl({
+            requestOrigin: args.tracerLinks.requestOrigin,
+          });
+          await mockTracerLinks.rewriteResumeLinksWithTracer({
+            jobId: args.jobId,
+            resumeData: data,
+            publicBaseUrl: "https://jobops.example",
+            companyName: args.tracerLinks.companyName ?? null,
+          });
+        }
 
-      return {
-        mode: "v4",
-        data,
-        projectCatalog: [],
-        selectedProjectIds: [...selectedSet],
-      };
-    }),
+        return {
+          mode: "v4",
+          data,
+          projectCatalog: [],
+          selectedProjectIds: [...selectedSet],
+        };
+      }),
     importResume: mockRxResume.importResume,
     exportResumePdf: mockRxResume.exportResumePdf,
     deleteResume: mockRxResume.deleteResume,

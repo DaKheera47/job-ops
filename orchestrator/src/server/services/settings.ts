@@ -107,9 +107,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
           try {
             catalog = extractProjectsFromResume(profile).catalog;
           } catch (error) {
-            logger.warn("Failed to extract projects from Reactive Resume data", {
-              error,
-            });
+            logger.warn(
+              "Failed to extract projects from Reactive Resume data",
+              {
+                error,
+              },
+            );
           }
         }
         const resolved = resolveResumeProjectsSettings({
