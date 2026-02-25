@@ -35,9 +35,9 @@ import type {
   PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
   ProfileStatusResponse,
-  RxResumeMode,
   ResumeProfile,
   ResumeProjectCatalogItem,
+  RxResumeMode,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -1318,7 +1318,9 @@ export async function updateSettings(
   });
 }
 
-export async function getRxResumes(mode?: RxResumeMode): Promise<{ id: string; name: string }[]> {
+export async function getRxResumes(
+  mode?: RxResumeMode,
+): Promise<{ id: string; name: string }[]> {
   const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
   const data = await fetchApi<{ resumes: { id: string; name: string }[] }>(
     `/settings/rx-resumes${query}`,

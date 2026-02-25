@@ -1,14 +1,16 @@
-import React from "react";
-import { statusTokens } from "../pages/orchestrator/constants";
-import { JobStatus } from "@shared/types/jobs";
-import { defaultStatusToken } from "../pages/orchestrator/constants";
-import { cn } from "@/lib/utils";
+import type { JobStatus } from "@shared/types/jobs";
+import type React from "react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import {
+  defaultStatusToken,
+  statusTokens,
+} from "../pages/orchestrator/constants";
 
 const STATUS_INDICATOR_BASE_CLASS =
   "inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/80";
@@ -71,7 +73,9 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
     >
       <span
         className={cn(
-          appearance === "badge" ? "h-1.5 w-1.5 rounded-full" : STATUS_INDICATOR_DOT_CLASS,
+          appearance === "badge"
+            ? "h-1.5 w-1.5 rounded-full"
+            : STATUS_INDICATOR_DOT_CLASS,
           animateDot ? "animate-pulse" : undefined,
           resolvedDotColor,
           dotClassName,

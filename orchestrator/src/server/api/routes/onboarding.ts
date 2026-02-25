@@ -3,13 +3,13 @@ import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { LlmService } from "@server/services/llm/service";
-import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import {
   getResume,
   RxResumeAuthConfigError,
   validateResumeSchema,
   validateCredentials as validateRxResumeCredentials,
 } from "@server/services/rxresume";
+import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { type Request, type Response, Router } from "express";
 
 export const onboardingRouter = Router();

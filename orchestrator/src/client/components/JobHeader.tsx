@@ -12,7 +12,12 @@ import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
 import {
@@ -29,18 +34,18 @@ interface JobHeaderProps {
 
 const ScoreMeter: React.FC<{ score: number | null }> = ({ score }) => {
   if (score == null) {
-    return <span className='text-[10px] text-muted-foreground/60'>-</span>;
+    return <span className="text-[10px] text-muted-foreground/60">-</span>;
   }
 
   return (
-    <div className='flex items-center gap-1.5 text-[10px] text-muted-foreground/70'>
-      <div className='h-1 w-12 rounded-full bg-muted/30'>
+    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+      <div className="h-1 w-12 rounded-full bg-muted/30">
         <div
-          className='h-1 rounded-full bg-primary/50'
+          className="h-1 rounded-full bg-primary/50"
           style={{ width: `${Math.max(4, Math.min(100, score))}%` }}
         />
       </div>
-      <span className='tabular-nums'>{score}</span>
+      <span className="tabular-nums">{score}</span>
     </div>
   );
 };
@@ -80,24 +85,24 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
         <Tooltip delayDuration={0}>
           <TooltipTrigger asChild>
             <Button
-              size='sm'
-              variant='ghost'
-              className='h-5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1'
+              size="sm"
+              variant="ghost"
+              className="h-5 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
               onClick={handleCheck}
               disabled={isChecking}
             >
               {isChecking ? (
-                <Loader2 className='h-2 w-2 animate-spin' />
+                <Loader2 className="h-2 w-2 animate-spin" />
               ) : (
-                <Search className='h-2 w-2' />
+                <Search className="h-2 w-2" />
               )}
               <span>
                 {isChecking ? "Checking..." : "Check Sponsorship Status"}
               </span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent side='top'>
-            <p className='text-xs'>Check if employer is a visa sponsor</p>
+          <TooltipContent side="top">
+            <p className="text-xs">Check if employer is a visa sponsor</p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -132,12 +137,12 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   const tooltip = (
     <>
       {parsedNames.length > 0 && (
-        <p className='text-xs font-medium space-x-1'>
-          <span className='opacity-70'>Matched</span>
+        <p className="text-xs font-medium space-x-1">
+          <span className="opacity-70">Matched</span>
           <span>{parsedNames.join(", ")}</span>
         </p>
       )}
-      <p className='opacity-80 mt-1 text-[10px]'>{`${score}% match`}</p>
+      <p className="opacity-80 mt-1 text-[10px]">{`${score}% match`}</p>
     </>
   );
 
@@ -145,9 +150,9 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
     <StatusIndicator
       dotColor={status.dot}
       label={status.label}
-      className='cursor-help'
+      className="cursor-help"
       tooltip={tooltip}
-      tooltipClassName='max-w-xs'
+      tooltipClassName="max-w-xs"
     />
   );
 };
@@ -167,29 +172,29 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Detail header: lighter weight than list items */}
-      <div className='flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between'>
-        <div className='min-w-0 w-full sm:w-auto sm:flex-1'>
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 w-full sm:w-auto sm:flex-1">
           <Link
             to={`/job/${job.id}`}
-            className='block text-base font-semibold leading-snug text-foreground/90 underline-offset-2 break-words hover:underline'
+            className="block text-base font-semibold leading-snug text-foreground/90 underline-offset-2 break-words hover:underline"
           >
             {job.title}
           </Link>
-          <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>{job.employer}</span>
           </div>
         </div>
-        <div className='flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end'>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
           <Badge
-            variant='outline'
-            className='text-[10px] uppercase tracking-wide text-muted-foreground border-border/50'
+            variant="outline"
+            className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
           >
             {sourceLabel[job.source]}
           </Badge>
           {job.isRemote === true && (
             <Badge
-              variant='outline'
-              className='text-[10px] uppercase tracking-wide text-muted-foreground border-border/50'
+              variant="outline"
+              className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
             >
               Remote
             </Badge>
@@ -197,13 +202,13 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           {!isJobPage && (
             <Button
               asChild
-              size='sm'
-              variant='ghost'
-              className='h-6 px-2 text-[10px] uppercase tracking-wide'
+              size="sm"
+              variant="ghost"
+              className="h-6 px-2 text-[10px] uppercase tracking-wide"
             >
               <Link to={`/job/${job.id}`}>
                 View
-                <ArrowUpRight className='h-3 w-3' />
+                <ArrowUpRight className="h-3 w-3" />
               </Link>
             </Button>
           )}
@@ -211,30 +216,30 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
       </div>
 
       {/* Tertiary metadata - subdued */}
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground/70'>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground/70">
         {job.location && (
-          <span className='flex items-center gap-1'>
-            <MapPin className='h-3 w-3' />
+          <span className="flex items-center gap-1">
+            <MapPin className="h-3 w-3" />
             {job.location}
           </span>
         )}
         {deadline && (
-          <span className='flex items-center gap-1'>
-            <Calendar className='h-3 w-3' />
+          <span className="flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
             {deadline}
           </span>
         )}
         {job.salary && (
-          <span className='flex items-center gap-1'>
-            <DollarSign className='h-3 w-3' />
+          <span className="flex items-center gap-1">
+            <DollarSign className="h-3 w-3" />
             {job.salary}
           </span>
         )}
       </div>
 
       {/* Status and score: single line, subdued */}
-      <div className='flex items-center justify-between gap-2 py-1 border-y border-border/30'>
-        <div className='flex items-center gap-4'>
+      <div className="flex items-center justify-between gap-2 py-1 border-y border-border/30">
+        <div className="flex items-center gap-4">
           <StatusIndicator
             dotColor={jobStatus.dotColor}
             label={jobStatus.label}

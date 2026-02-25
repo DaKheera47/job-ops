@@ -1,7 +1,7 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
+import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;

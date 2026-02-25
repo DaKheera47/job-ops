@@ -73,11 +73,6 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
     }
   }, [hasRxResumeAccess]);
 
-  useEffect(() => {
-    setResumes([]);
-    setFetchError(null);
-  }, [rxresumeMode]);
-
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">

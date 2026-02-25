@@ -101,7 +101,10 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
   }
 
   if (key === "rxresumeBaseResumeId") {
-    settingsUpdateRegistry.rxresumeBaseResumeId = async ({ value, context }) => {
+    settingsUpdateRegistry.rxresumeBaseResumeId = async ({
+      value,
+      context,
+    }) => {
       const serialized = normalizeEnvInput(value as string | null | undefined);
       const mode = normalizeRxResumeMode(
         context.input.rxresumeMode ??

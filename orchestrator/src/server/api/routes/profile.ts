@@ -4,8 +4,8 @@ import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
-import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
+import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { type Request, type Response, Router } from "express";
 
 export const profileRouter = Router();

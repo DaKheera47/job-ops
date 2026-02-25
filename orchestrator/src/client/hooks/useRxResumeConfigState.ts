@@ -1,10 +1,10 @@
-import type { RxResumeMode } from "@shared/types.js";
-import { useCallback, useMemo, useState } from "react";
 import {
   getRxResumeBaseResumeSelection,
   getStoredRxResumeCredentialAvailability,
   type RxResumeSettingsLike,
 } from "@client/lib/rxresume-config";
+import type { RxResumeMode } from "@shared/types.js";
+import { useCallback, useMemo, useState } from "react";
 
 const EMPTY_IDS_BY_MODE: Record<RxResumeMode, string | null> = {
   v4: null,

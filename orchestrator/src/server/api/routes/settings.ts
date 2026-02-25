@@ -123,7 +123,8 @@ settingsRouter.get(
     try {
       const modeParam =
         typeof req.query.mode === "string" ? req.query.mode : undefined;
-      const mode = modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
+      const mode =
+        modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
       const resumes = await listResumes({ mode });
 
       ok(res, {
@@ -153,7 +154,8 @@ settingsRouter.get(
 
       const modeParam =
         typeof req.query.mode === "string" ? req.query.mode : undefined;
-      const mode = modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
+      const mode =
+        modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
 
       const resume = await getResume(resumeId, { mode });
       const validated = await validateResumeSchema(resume.data ?? {}, { mode });

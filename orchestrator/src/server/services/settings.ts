@@ -8,8 +8,8 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "./resumeProjects";
-import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
+import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase();

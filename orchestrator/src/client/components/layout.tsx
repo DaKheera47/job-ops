@@ -24,8 +24,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useVersionCheck } from "../hooks/useVersionCheck";
-import { StatusBadgeIndicator } from "./StatusIndicator";
 import { isNavActive, NAV_LINKS } from "./navigation";
+import { StatusBadgeIndicator } from "./StatusIndicator";
 
 // ============================================================================
 // Page Header
