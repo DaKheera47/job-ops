@@ -46,7 +46,9 @@ export async function getConfiguredRxResumeBaseResumeId(): Promise<{
     getSetting("rxresumeBaseResumeIdV4"),
     getSetting("rxresumeBaseResumeIdV5"),
   ]);
-  const mode = normalizeRxResumeMode(modeRaw);
+  const mode = normalizeRxResumeMode(
+    modeRaw ?? process.env.RXRESUME_MODE ?? null,
+  );
   return {
     mode,
     resumeId: resolveRxResumeBaseResumeIdForMode(
