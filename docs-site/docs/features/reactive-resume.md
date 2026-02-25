@@ -205,7 +205,6 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 - Ensure the selected mode has credentials configured.
 - `v5`: set a valid API key.
 - `v4`: set email + password.
-- `auto`: set either a v5 API key or v4 credentials.
 - Save settings, then refresh resumes in the Reactive Resume section.
 
 ### No resumes appear in dropdown

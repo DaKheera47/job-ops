@@ -36,9 +36,9 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume (`auto` mode by default), and select a template resume.
+   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume (`v5` or `v4`), and select a template resume.
 
-   `auto` mode prefers Reactive Resume v5 (API key, ideal for self-hosted/latest) and falls back to v4 email/password.
+   `v5` (API key) is recommended for self-hosted/latest Reactive Resume. Use `v4` when connecting to the legacy email/password flow.
 
    OpenRouter is the default LLM provider, but LM Studio, Ollama, OpenAI, and Gemini are also supported.
 
@@ -144,5 +144,5 @@ npm start
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
 - **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI/Gemini/LM Studio/Ollama)
-- **PDF Generation:** Reactive Resume v4/v5 API export (configured via Settings; `auto` mode defaults to v5-first)
+- **PDF Generation:** Reactive Resume v4/v5 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler
