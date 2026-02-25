@@ -49,7 +49,9 @@ describe("analytics", () => {
 
     expect(typeof firstPayload.analytics_user_id).toBe("string");
     expect(firstPayload.analytics_user_id).toBeTruthy();
-    expect(secondPayload.analytics_user_id).toBe(firstPayload.analytics_user_id);
+    expect(secondPayload.analytics_user_id).toBe(
+      firstPayload.analytics_user_id,
+    );
     expect(storedId).toBe(firstPayload.analytics_user_id);
     expect(firstPayload.app_version).toBe("abc1234-dev");
     expect(secondPayload.app_version).toBe("abc1234-dev");

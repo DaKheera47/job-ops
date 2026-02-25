@@ -127,7 +127,10 @@ type Primitive = string | number | boolean | null;
 type SanitizedPayload = Record<string, Primitive>;
 
 function generateAnalyticsUserId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
   return `anon_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
