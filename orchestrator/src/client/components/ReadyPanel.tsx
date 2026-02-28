@@ -58,6 +58,7 @@ import { TailorMode } from "./discovered-panel/TailorMode";
 import { GhostwriterDrawer } from "./ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 import { KbdHint } from "./KbdHint";
+import { buildReadyPanelGoogleDorks } from "./ready-panel-google-dorks";
 
 type PanelMode = "ready" | "tailor";
 
@@ -127,6 +128,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const selectedProjectIds = useMemo(() => {
     return job?.selectedProjectIds?.split(",").filter(Boolean) ?? [];
   }, [job?.selectedProjectIds]);
+  const googleDorks = useMemo(
+    () => (job ? buildReadyPanelGoogleDorks(job) : []),
+    [job],
+  );
 
   const handleUndoApplied = useCallback(
     async (jobId: string) => {
@@ -436,6 +441,28 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         <div className="space-y-3">
           <FitAssessment job={job} />
           <TailoredSummary job={job} />
+
+          {googleDorks.length > 0 ? (
+            <div className="rounded-lg border border-border/40 bg-muted/10 px-3 py-2.5">
+              <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Search Dorks
+              </div>
+              <div className="space-y-1.5">
+                {googleDorks.map((dork) => (
+                  <a
+                    key={dork.query}
+                    className="block text-xs text-foreground/80 underline-offset-4 hover:text-foreground hover:underline"
+                    href={dork.href}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title={dork.query}
+                  >
+                    {dork.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Project selection - expandable accordion */}
           <Accordion type="single" collapsible className="w-full">
