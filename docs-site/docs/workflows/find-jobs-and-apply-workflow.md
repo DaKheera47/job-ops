@@ -57,9 +57,10 @@ These jobs already have tailored PDFs generated for the specific job description
 At this stage:
 
 1. Open job details.
-2. Optionally enable tracer links for that specific job.
-3. Download the tailored PDF.
-4. Submit your application externally.
+2. Open the **search links** row when you want quick external research on LinkedIn, GitHub, or the wider web.
+3. Optionally enable tracer links for that specific job.
+4. Download the tailored PDF.
+5. Submit your application externally.
 
 ### 5) Mark jobs as applied in JobOps
 

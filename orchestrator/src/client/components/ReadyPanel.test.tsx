@@ -147,4 +147,44 @@ describe("ReadyPanel", () => {
       screen.queryByTestId("job-details-edit-drawer"),
     ).not.toBeInTheDocument();
   });
+
+  it("renders descriptive google dork links in the ready summary", async () => {
+    render(
+      <MemoryRouter>
+        <ReadyPanel
+          job={createJob({
+            employer: "HP",
+            title: "Frontend Engineer",
+            skills: "Wolf Security, React, TypeScript",
+          })}
+          onJobUpdated={vi.fn()}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /3 search links/i,
+      }),
+    );
+
+    const linkedInLink = screen.getByRole("link", {
+      name: "LinkedIn profiles with HP, Wolf Security, and React in them",
+    });
+    expect(linkedInLink).toHaveAttribute(
+      "href",
+      `https://www.google.com/search?q=${encodeURIComponent('site:linkedin.com/in "HP" "Wolf Security" "React"')}`,
+    );
+    expect(linkedInLink).toHaveAttribute("target", "_blank");
+    expect(linkedInLink).toHaveAttribute("rel", "noopener noreferrer");
+    expect(linkedInLink).toHaveAttribute(
+      "title",
+      'site:linkedin.com/in "HP" "Wolf Security" "React"',
+    );
+  });
 });

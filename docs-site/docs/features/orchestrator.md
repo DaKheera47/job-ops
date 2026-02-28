@@ -36,6 +36,7 @@ It exists to ensure:
 - a consistent path from discovery to tailored output
 - clear status transitions across manual and automated workflows
 - predictable regeneration behavior when job data changes
+- faster external research from the Ready tab with prebuilt search links for LinkedIn, GitHub, and broader web results
 
 ## How to use it
 
@@ -56,6 +57,18 @@ It exists to ensure:
 Ghostwriter is available in `discovered` and `ready` job views.
 
 For details, see [Ghostwriter](/docs/next/features/ghostwriter).
+
+### Ready tab search links
+
+In the `ready` view, JobOps can show prebuilt search links based on the current job's employer, title, and skills.
+
+This enables you to:
+
+- quickly open Google searches for likely LinkedIn profiles tied to the company and target skills
+- search GitHub for matching public profiles or repositories without rewriting the query yourself
+- run a broader web search to gather context before applying
+
+Open the **search links** row in the Ready summary to reveal the generated links.
 
 ### Opening documentation from the sidebar
 

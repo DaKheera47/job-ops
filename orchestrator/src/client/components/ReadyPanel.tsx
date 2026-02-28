@@ -25,13 +25,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +52,8 @@ import { TailorMode } from "./discovered-panel/TailorMode";
 import { GhostwriterDrawer } from "./ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 import { KbdHint } from "./KbdHint";
+import { ReadySummaryAccordion } from "./ReadySummaryAccordion";
+import { buildReadyPanelGoogleDorks } from "./ready-panel-google-dorks";
 
 type PanelMode = "ready" | "tailor";
 
@@ -127,6 +123,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const selectedProjectIds = useMemo(() => {
     return job?.selectedProjectIds?.split(",").filter(Boolean) ?? [];
   }, [job?.selectedProjectIds]);
+  const googleDorks = useMemo(
+    () => (job ? buildReadyPanelGoogleDorks(job) : []),
+    [job],
+  );
 
   const handleUndoApplied = useCallback(
     async (jobId: string) => {
@@ -427,47 +427,66 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         </div>
       </div>
 
-      {/* ─────────────────────────────────────────────────────────────────────
-          APPLICATION KIT SUMMARY
-          Abstract representation of what the PDF contains - verify at a glance
-      ───────────────────────────────────────────────────────────────────── */}
       <div className="flex-1 py-4 space-y-4">
-        {/* Job identity - confirm this is the right role */}
         <div className="space-y-3">
           <FitAssessment job={job} />
           <TailoredSummary job={job} />
 
+          {googleDorks.length > 0 ? (
+            <ReadySummaryAccordion
+              icon={ExternalLink}
+              summary={
+                <>
+                  {googleDorks.length}{" "}
+                  {googleDorks.length === 1 ? "search link" : "search links"}
+                </>
+              }
+              value="search-dorks"
+            >
+              <div className="text-muted-foreground flex flex-col items-start gap-2">
+                {googleDorks.map((dork) => (
+                  <a
+                    key={dork.query}
+                    href={dork.href}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title={dork.query}
+                    className={cn(
+                      buttonVariants({ variant: "link", size: "sm" }),
+                      "justify-start w-fit h-fit gap-1 px-0 wrap-break-word",
+                    )}
+                  >
+                    {dork.label}
+                    <ExternalLink className="ml-1" />
+                  </a>
+                ))}
+              </div>
+            </ReadySummaryAccordion>
+          ) : null}
+
           {/* Project selection - expandable accordion */}
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="projects" className="border-none">
-              <AccordionTrigger className="hover:no-underline py-0 data-[state=open]:pb-2">
-                <div className="flex items-center gap-3 w-full">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
-                    <FolderKanban className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="text-sm font-medium text-foreground leading-tight">
-                      {selectedProjectIds.length}{" "}
-                      {selectedProjectIds.length === 1 ? "project" : "projects"}{" "}
-                      selected
-                    </div>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pt-1 pl-11">
-                <ul className="list-disc text-xs text-muted-foreground space-y-1">
-                  {selectedProjectIds.map((id) => {
-                    const name = catalog.find((p) => p.id === id)?.name;
-                    if (!name) return null;
-                    return <li key={id}>{name}</li>;
-                  })}
-                  {selectedProjectIds.length === 0 && (
-                    <li className="list-none italic">No projects selected</li>
-                  )}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <ReadySummaryAccordion
+            icon={FolderKanban}
+            summary={
+              <>
+                {selectedProjectIds.length}{" "}
+                {selectedProjectIds.length === 1 ? "project" : "projects"}{" "}
+                selected
+              </>
+            }
+            value="projects"
+          >
+            <ul className="list-disc text-xs text-muted-foreground space-y-1">
+              {selectedProjectIds.map((id) => {
+                const name = catalog.find((p) => p.id === id)?.name;
+                if (!name) return null;
+                return <li key={id}>{name}</li>;
+              })}
+              {selectedProjectIds.length === 0 && (
+                <li className="list-none italic">No projects selected</li>
+              )}
+            </ul>
+          </ReadySummaryAccordion>
         </div>
       </div>
 
