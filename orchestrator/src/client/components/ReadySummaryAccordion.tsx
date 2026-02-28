@@ -23,7 +23,7 @@ export const ReadySummaryAccordion: React.FC<ReadySummaryAccordionProps> = ({
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={value} className="border-none">
-        <AccordionTrigger className="cursor-pointer py-1 rounded-xl data-[state=open]:rounded-b-none border border-border/40 px-2 hover:bg-muted/50! hover:no-underline data-[state=open]:bg-muted/10 data-[state=open]:pb-2">
+        <AccordionTrigger className="cursor-pointer rounded-xl border border-border/40 px-2 py-1 hover:bg-muted/50 hover:no-underline data-[state=open]:rounded-b-none data-[state=open]:bg-muted/10 data-[state=open]:pb-2">
           <div className="flex items-center gap-3 w-full">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/50 text-muted-foreground">
               <Icon className="h-4 w-4" />
@@ -37,7 +37,9 @@ export const ReadySummaryAccordion: React.FC<ReadySummaryAccordionProps> = ({
           </div>
         </AccordionTrigger>
 
-        <AccordionContent className="pt-4 pl-13 border border-border/40 bg-muted/10 rounded-b-xl">{children}</AccordionContent>
+        <AccordionContent className="rounded-b-xl border border-border/40 bg-muted/10 pt-4 pl-13">
+          {children}
+        </AccordionContent>
       </AccordionItem>
     </Accordion>
   );

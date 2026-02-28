@@ -70,7 +70,7 @@ function buildDork(
   return {
     query,
     href: `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-    label: `${prefix} with ${formatTermList(queryTerms)}`,
+    label: `${prefix} with ${formatTermList(queryTerms)} in them`,
   };
 }
 
@@ -99,7 +99,7 @@ export function buildReadyPanelGoogleDorks(
     links.push({
       query: linkedinQuery,
       href: `https://www.google.com/search?q=${encodeURIComponent(linkedinQuery)}`,
-      label: `LinkedIn profiles with ${formatTermList(linkedinTerms)}`,
+      label: `LinkedIn profiles with ${formatTermList(linkedinTerms)} in them`,
     });
   }
 
@@ -109,7 +109,7 @@ export function buildReadyPanelGoogleDorks(
     links.push({
       query: githubQuery,
       href: `https://www.google.com/search?q=${encodeURIComponent(githubQuery)}`,
-      label: `GitHub pages with ${formatTermList(githubTerms)}`,
+      label: `GitHub pages with ${formatTermList(githubTerms)} in them`,
     });
   }
 

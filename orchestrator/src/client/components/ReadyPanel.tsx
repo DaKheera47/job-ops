@@ -316,14 +316,14 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   // Empty state
   if (!job) {
     return (
-      <div className='flex h-full min-h-[300px] flex-col items-center justify-center gap-2 text-center'>
-        <div className='flex h-12 w-12 items-center justify-center rounded-full bg-muted/30'>
-          <FileText className='h-5 w-5 text-muted-foreground' />
+      <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-2 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/30">
+          <FileText className="h-5 w-5 text-muted-foreground" />
         </div>
-        <div className='text-sm font-medium text-muted-foreground'>
+        <div className="text-sm font-medium text-muted-foreground">
           No job selected
         </div>
-        <p className='text-xs text-muted-foreground/70 max-w-[200px]'>
+        <p className="text-xs text-muted-foreground/70 max-w-[200px]">
           Select a Ready job to view its application kit and take action.
         </p>
       </div>
@@ -338,17 +338,17 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         onBack={() => setMode("ready")}
         onFinalize={handleTailorFinalize}
         isFinalizing={isRegenerating}
-        variant='ready'
+        variant="ready"
         onDirtyChange={onTailoringDirtyChange}
       />
     );
   }
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className="flex flex-col h-full">
       <JobHeader
         job={job}
-        className='pb-4 border-b border-border/40'
+        className="pb-4 border-b border-border/40"
         onCheckSponsor={async () => {
           try {
             await api.checkSponsor(job.id);
@@ -373,75 +373,62 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           PRIMARY ACTION CLUSTER
           All actions in one line: View, Save, Open, and Mark Applied
       ───────────────────────────────────────────────────────────────────── */}
-      <div className='pb-4 border-b border-border/40'>
-        <div className='grid gap-2 sm:grid-cols-2'>
+      <div className="pb-4 border-b border-border/40">
+        <div className="grid gap-2 sm:grid-cols-2">
           <GhostwriterDrawer
             job={job}
-            triggerClassName='h-9 w-full justify-center gap-1 px-2 text-xs'
+            triggerClassName="h-9 w-full justify-center gap-1 px-2 text-xs"
           />
 
           {/* Download PDF - primary artifact action */}
           <Button
             asChild
-            variant='outline'
-            className='h-9 w-full gap-1 px-2 text-xs'
+            variant="outline"
+            className="h-9 w-full gap-1 px-2 text-xs"
           >
             <a
               href={pdfHref}
               download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.pdf`}
             >
-              <Download className='h-3.5 w-3.5 shrink-0' />
-              <span className='truncate'>Download PDF</span>
-              <KbdHint
-                shortcut='d'
-                className='ml-auto'
-              />
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Download PDF</span>
+              <KbdHint shortcut="d" className="ml-auto" />
             </a>
           </Button>
 
           {/* Open job - to verify before applying */}
           <Button
             asChild
-            variant='outline'
-            className='h-9 w-full gap-1 px-2 text-xs'
+            variant="outline"
+            className="h-9 w-full gap-1 px-2 text-xs"
           >
-            <a
-              href={jobLink}
-              target='_blank'
-              rel='noopener noreferrer'
-            >
-              <ExternalLink className='h-3.5 w-3.5 shrink-0' />
-              <span className='truncate'>Open Job Listing</span>
-              <KbdHint
-                shortcut='o'
-                className='ml-auto'
-              />
+            <a href={jobLink} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">Open Job Listing</span>
+              <KbdHint shortcut="o" className="ml-auto" />
             </a>
           </Button>
 
           {/* Primary CTA: Mark Applied */}
           <Button
             onClick={handleMarkApplied}
-            variant='default'
-            className='h-9 w-full gap-1 px-2 text-xs'
+            variant="default"
+            className="h-9 w-full gap-1 px-2 text-xs"
             disabled={isMarkingApplied}
           >
             {isMarkingApplied ? (
-              <Loader2 className='h-3.5 w-3.5 animate-spin' />
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <CheckCircle2 className='h-3.5 w-3.5' />
+              <CheckCircle2 className="h-3.5 w-3.5" />
             )}
-            <span className='truncate'>Mark Applied</span>
-            <KbdHint
-              shortcut='a'
-              className='ml-auto'
-            />
+            <span className="truncate">Mark Applied</span>
+            <KbdHint shortcut="a" className="ml-auto" />
           </Button>
         </div>
       </div>
 
-      <div className='flex-1 py-4 space-y-4'>
-        <div className='space-y-3'>
+      <div className="flex-1 py-4 space-y-4">
+        <div className="space-y-3">
           <FitAssessment job={job} />
           <TailoredSummary job={job} />
 
@@ -454,23 +441,24 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
                   {googleDorks.length === 1 ? "search link" : "search links"}
                 </>
               }
-              value='search-dorks'
+              value="search-dorks"
             >
-              <div className='text-muted-foreground flex flex-col items-start gap-2'>
+              <div className="text-muted-foreground flex flex-col items-start gap-2">
                 {googleDorks.map((dork) => (
-                    <a
-                      href={dork.href}
-                      rel='noopener noreferrer'
-                      target='_blank'
-                      className={cn(
-                        buttonVariants({ variant: "link", size: "sm" }),
-                        "justify-start w-fit h-fit gap-1 px-0 wrap-break-word",
-                      )}
-                    >
-                      {dork.label}
-
-                      <ExternalLink className='ml-1' />
-                    </a>
+                  <a
+                    key={dork.query}
+                    href={dork.href}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title={dork.query}
+                    className={cn(
+                      buttonVariants({ variant: "link", size: "sm" }),
+                      "justify-start w-fit h-fit gap-1 px-0 wrap-break-word",
+                    )}
+                  >
+                    {dork.label}
+                    <ExternalLink className="ml-1" />
+                  </a>
                 ))}
               </div>
             </ReadySummaryAccordion>
@@ -486,16 +474,16 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
                 selected
               </>
             }
-            value='projects'
+            value="projects"
           >
-            <ul className='list-disc text-xs text-muted-foreground space-y-1'>
+            <ul className="list-disc text-xs text-muted-foreground space-y-1">
               {selectedProjectIds.map((id) => {
                 const name = catalog.find((p) => p.id === id)?.name;
                 if (!name) return null;
                 return <li key={id}>{name}</li>;
               })}
               {selectedProjectIds.length === 0 && (
-                <li className='list-none italic'>No projects selected</li>
+                <li className="list-none italic">No projects selected</li>
               )}
             </ul>
           </ReadySummaryAccordion>
@@ -506,29 +494,26 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           SECONDARY ACTIONS
           Fix/More menu - all non-critical actions demoted here
       ───────────────────────────────────────────────────────────────────── */}
-      <div className='pt-3 border-t border-border/40'>
+      <div className="pt-3 border-t border-border/40">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant='ghost'
-              size='sm'
-              className='w-full h-8 gap-2 text-xs text-muted-foreground hover:text-foreground justify-center'
+              variant="ghost"
+              size="sm"
+              className="w-full h-8 gap-2 text-xs text-muted-foreground hover:text-foreground justify-center"
             >
               More actions
-              <ChevronUp className='h-3 w-3 ml-1' />
+              <ChevronUp className="h-3 w-3 ml-1" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align='center'
-            className='w-56'
-          >
+          <DropdownMenuContent align="center" className="w-56">
             {/* Fix/Edit actions */}
             <DropdownMenuItem onSelect={() => setMode("tailor")}>
-              <Edit2 className='mr-2 h-4 w-4' />
+              <Edit2 className="mr-2 h-4 w-4" />
               Edit tailoring
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
-              <Edit2 className='mr-2 h-4 w-4' />
+              <Edit2 className="mr-2 h-4 w-4" />
               Edit details
             </DropdownMenuItem>
 
@@ -542,10 +527,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               {isRegenerating ? "Regenerating..." : "Regenerate PDF"}
             </DropdownMenuItem>
 
-            <DropdownMenuItem
-              onSelect={handleRescore}
-              disabled={isRescoring}
-            >
+            <DropdownMenuItem onSelect={handleRescore} disabled={isRescoring}>
               <RefreshCcw
                 className={cn("mr-2 h-4 w-4", isRescoring && "animate-spin")}
               />
@@ -560,12 +542,12 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
                 window.open(pdfHref, "_blank", "noopener,noreferrer")
               }
             >
-              <FileText className='mr-2 h-4 w-4' />
+              <FileText className="mr-2 h-4 w-4" />
               View PDF
             </DropdownMenuItem>
 
             <DropdownMenuItem onSelect={handleCopyInfo}>
-              <Copy className='mr-2 h-4 w-4' />
+              <Copy className="mr-2 h-4 w-4" />
               Copy job info
             </DropdownMenuItem>
 
@@ -574,9 +556,9 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             {/* Destructive actions */}
             <DropdownMenuItem
               onSelect={handleSkip}
-              className='text-destructive focus:text-destructive'
+              className="text-destructive focus:text-destructive"
             >
-              <XCircle className='mr-2 h-4 w-4' />
+              <XCircle className="mr-2 h-4 w-4" />
               Skip this job
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -595,20 +577,20 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           Lightweight undo option after marking applied
       ───────────────────────────────────────────────────────────────────── */}
       {recentlyApplied && (
-        <div className='fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl'>
-          <div className='flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-lg'>
-            <CheckCircle2 className='h-4 w-4 text-emerald-500' />
-            <span className='min-w-0 flex-1 truncate text-sm'>
-              <span className='font-medium'>{recentlyApplied.jobTitle}</span>
-              <span className='text-muted-foreground'> marked applied</span>
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-xl">
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card px-4 py-2 shadow-lg">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <span className="min-w-0 flex-1 truncate text-sm">
+              <span className="font-medium">{recentlyApplied.jobTitle}</span>
+              <span className="text-muted-foreground"> marked applied</span>
             </span>
             <Button
-              variant='ghost'
-              size='sm'
-              className='h-7 gap-1.5 text-xs'
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 text-xs"
               onClick={() => handleUndoApplied(recentlyApplied.jobId)}
             >
-              <Undo2 className='h-3.5 w-3.5' />
+              <Undo2 className="h-3.5 w-3.5" />
               Undo
             </Button>
           </div>
