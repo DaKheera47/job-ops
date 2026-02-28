@@ -167,7 +167,11 @@ describe("ReadyPanel", () => {
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
-    expect(screen.getByText("Search Dorks")).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /3 search links/i,
+      }),
+    );
 
     const linkedInLink = screen.getByRole("link", {
       name: "LinkedIn profiles with HP, Wolf Security, and React in them",
