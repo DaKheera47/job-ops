@@ -103,10 +103,19 @@ export function serviceUnavailable(message: string): AppError {
   return new AppError({ status: 503, code: "SERVICE_UNAVAILABLE", message });
 }
 
+function isZodErrorLike(error: unknown): error is ZodError {
+  if (error instanceof ZodError) return true;
+  if (!(error instanceof Error) || error.name !== "ZodError") return false;
+
+  return Array.isArray((error as { issues?: unknown }).issues);
+}
+
 export function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
-  if (error instanceof ZodError) {
-    return badRequest(error.message, error.flatten());
+  if (isZodErrorLike(error)) {
+    const details =
+      typeof error.flatten === "function" ? error.flatten() : undefined;
+    return badRequest(error.message, details);
   }
   if (error instanceof Error && error.name === "AbortError") {
     return requestTimeout("Request timed out");

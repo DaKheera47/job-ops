@@ -27,21 +27,20 @@ export const settingsRouter = Router();
 /**
  * GET /api/settings - Get app settings (effective + defaults)
  */
-settingsRouter.get("/", async (_req: Request, res: Response) => {
-  try {
+settingsRouter.get(
+  "/",
+  asyncRoute(async (_req: Request, res: Response) => {
     const data = await getEffectiveSettings();
-    res.json({ success: true, data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
-  }
-});
+    ok(res, data);
+  }),
+);
 
 /**
  * PATCH /api/settings - Update settings overrides
  */
-settingsRouter.patch("/", async (req: Request, res: Response) => {
-  try {
+settingsRouter.patch(
+  "/",
+  asyncRoute(async (req: Request, res: Response) => {
     if (isDemoMode()) {
       return sendDemoBlocked(
         res,
@@ -62,12 +61,9 @@ settingsRouter.patch("/", async (req: Request, res: Response) => {
         maxCount: data.backupMaxCount.value,
       });
     }
-    res.json({ success: true, data });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(400).json({ success: false, error: message });
-  }
-});
+    ok(res, data);
+  }),
+);
 
 /**
  * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume (v4/v5 adapter)

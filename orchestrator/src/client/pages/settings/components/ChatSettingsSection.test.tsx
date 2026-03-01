@@ -1,0 +1,107 @@
+import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import { fireEvent, render, screen } from "@testing-library/react";
+import React from "react";
+import { FormProvider, useForm } from "react-hook-form";
+import { describe, expect, it, vi } from "vitest";
+import { Accordion } from "@/components/ui/accordion";
+import { ChatSettingsSection } from "./ChatSettingsSection";
+
+vi.mock("@/components/ui/select", () => {
+  const SelectContext = React.createContext<{
+    onValueChange?: (value: string) => void;
+  } | null>(null);
+
+  const Select = ({
+    children,
+    value,
+    onValueChange,
+  }: {
+    children: React.ReactNode;
+    value?: string;
+    onValueChange?: (value: string) => void;
+  }) => {
+    return (
+      <SelectContext.Provider value={{ onValueChange }}>
+        <div>
+          <input readOnly value={value ?? ""} aria-label="select-value" />
+          {children}
+        </div>
+      </SelectContext.Provider>
+    );
+  };
+
+  const SelectContent = ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectItem = ({
+    value,
+    children,
+  }: {
+    value: string;
+    children: React.ReactNode;
+  }) => {
+    const context = React.useContext(SelectContext);
+
+    return (
+      <button type="button" onClick={() => context?.onValueChange?.(value)}>
+        {children}
+      </button>
+    );
+  };
+  const SelectTrigger = ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  );
+  const SelectValue = () => null;
+
+  return {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+  };
+});
+
+const ChatSettingsHarness = () => {
+  const methods = useForm<UpdateSettingsInput>({
+    defaultValues: {
+      chatStyleTone: "",
+      chatStyleFormality: "",
+      chatStyleConstraints: "",
+      chatStyleDoNotUse: "",
+    },
+  });
+
+  return (
+    <FormProvider {...methods}>
+      <Accordion type="multiple" defaultValue={["chat"]}>
+        <ChatSettingsSection
+          values={{
+            tone: { effective: "professional", default: "professional" },
+            formality: { effective: "medium", default: "medium" },
+            constraints: { effective: "", default: "" },
+            doNotUse: { effective: "", default: "" },
+          }}
+          isLoading={false}
+          isSaving={false}
+        />
+      </Accordion>
+    </FormProvider>
+  );
+};
+
+describe("ChatSettingsSection", () => {
+  it("applies preset values to the writing style fields", () => {
+    render(<ChatSettingsHarness />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Friendly" })[0]);
+
+    expect(screen.getAllByDisplayValue("friendly").length).toBeGreaterThan(0);
+    expect(screen.getByDisplayValue("low")).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue(
+        "Keep the response warm, approachable, and confident.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

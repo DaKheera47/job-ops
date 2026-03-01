@@ -4,18 +4,11 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import type { Job, ResumeProfile } from "@shared/types";
 import * as jobsRepo from "../repositories/jobs";
 import { getProfile } from "./profile";
-import { getEffectiveSettings } from "./settings";
-
-type JobChatStyle = {
-  tone: string;
-  formality: string;
-  constraints: string;
-  doNotUse: string;
-};
+import { getWritingStyle, type WritingStyle } from "./writing-style";
 
 export type JobChatPromptContext = {
   job: Job;
-  style: JobChatStyle;
+  style: WritingStyle;
   systemPrompt: string;
   jobSnapshot: string;
   profileSnapshot: string;
@@ -103,7 +96,7 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
   ]);
 }
 
-function buildSystemPrompt(style: JobChatStyle): string {
+function buildSystemPrompt(style: WritingStyle): string {
   return compactJoin([
     "You are Ghostwriter, a job-application writing assistant for a single job.",
     "Use only the provided job and profile context unless the user gives extra details.",
@@ -117,17 +110,6 @@ function buildSystemPrompt(style: JobChatStyle): string {
   ]);
 }
 
-async function resolveStyle(): Promise<JobChatStyle> {
-  const settings = await getEffectiveSettings();
-
-  return {
-    tone: settings.chatStyleTone.value,
-    formality: settings.chatStyleFormality.value,
-    constraints: settings.chatStyleConstraints.value,
-    doNotUse: settings.chatStyleDoNotUse.value,
-  };
-}
-
 export async function buildJobChatPromptContext(
   jobId: string,
 ): Promise<JobChatPromptContext> {
@@ -136,7 +118,7 @@ export async function buildJobChatPromptContext(
     throw notFound("Job not found");
   }
 
-  const style = await resolveStyle();
+  const style = await getWritingStyle();
 
   let profile: ResumeProfile = {};
   try {

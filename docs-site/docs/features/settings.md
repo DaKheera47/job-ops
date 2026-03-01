@@ -15,7 +15,7 @@ It lets you configure:
 
 - LLM provider and models
 - Webhook destinations and secret
-- Display and Ghostwriter defaults
+- Display and writing-style defaults
 - Service credentials and basic auth
 - Reactive Resume project selection
 - Tracer Links readiness verification
@@ -62,15 +62,17 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 - Toggle visa sponsor badge visibility in job lists/details
 
-### Ghostwriter
+### Writing Style
 
 ![Ghostwriter settings section](/img/features/settings-ghostwriter-section.png)
 
+- Pick a preset for a quick starting point
 - Set global writing defaults:
   - Tone
   - Formality
   - Constraints
   - Do-not-use terms
+- These settings apply to Ghostwriter and resume tailoring
 
 ### Reactive Resume
 

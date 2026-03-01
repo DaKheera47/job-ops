@@ -7,35 +7,27 @@ vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
 }));
 
-vi.mock("./settings", () => ({
-  getEffectiveSettings: vi.fn(),
-}));
-
 vi.mock("./profile", () => ({
   getProfile: vi.fn(),
 }));
 
+vi.mock("./writing-style", () => ({
+  getWritingStyle: vi.fn(),
+}));
+
 import { getJobById } from "../repositories/jobs";
 import { getProfile } from "./profile";
-import { getEffectiveSettings } from "./settings";
+import { getWritingStyle } from "./writing-style";
 
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(getEffectiveSettings).mockResolvedValue({
-      chatStyleTone: {
-        value: "professional",
-        default: "professional",
-        override: null,
-      },
-      chatStyleFormality: {
-        value: "medium",
-        default: "medium",
-        override: null,
-      },
-      chatStyleConstraints: { value: "", default: "", override: null },
-      chatStyleDoNotUse: { value: "", default: "", override: null },
-    } as any);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "professional",
+      formality: "medium",
+      constraints: "",
+      doNotUse: "",
+    });
   });
 
   it("builds context with style directives and snapshots", async () => {
@@ -47,28 +39,12 @@ describe("buildJobChatPromptContext", () => {
     });
 
     vi.mocked(getJobById).mockResolvedValue(job);
-    vi.mocked(getEffectiveSettings).mockResolvedValue({
-      chatStyleTone: {
-        value: "direct",
-        default: "professional",
-        override: "direct",
-      },
-      chatStyleFormality: {
-        value: "high",
-        default: "medium",
-        override: "high",
-      },
-      chatStyleConstraints: {
-        value: "Keep responses under 120 words",
-        default: "",
-        override: "Keep responses under 120 words",
-      },
-      chatStyleDoNotUse: {
-        value: "synergy, leverage",
-        default: "",
-        override: "synergy, leverage",
-      },
-    } as any);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "direct",
+      formality: "high",
+      constraints: "Keep responses under 120 words",
+      doNotUse: "synergy, leverage",
+    });
     vi.mocked(getProfile).mockResolvedValue({
       basics: {
         name: "Test User",

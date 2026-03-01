@@ -1,8 +1,13 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import {
+  getMatchingWritingStylePresetId,
+  resolveWritingStyleDraft,
+  WRITING_STYLE_PRESETS,
+} from "@client/pages/settings/constants";
 import type { ChatValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 import {
   AccordionContent,
   AccordionItem,
@@ -30,15 +35,92 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
 }) => {
   const { tone, formality, constraints, doNotUse } = values;
 
-  const { control, register } = useFormContext<UpdateSettingsInput>();
+  const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
+  const [toneValue, formalityValue, constraintsValue, doNotUseValue] = useWatch(
+    {
+      control,
+      name: [
+        "chatStyleTone",
+        "chatStyleFormality",
+        "chatStyleConstraints",
+        "chatStyleDoNotUse",
+      ],
+    },
+  );
+  const resolvedStyle = resolveWritingStyleDraft({
+    values: {
+      tone: toneValue,
+      formality: formalityValue,
+      constraints: constraintsValue,
+      doNotUse: doNotUseValue,
+    },
+    defaults: values,
+  });
+  const selectedPresetId =
+    getMatchingWritingStylePresetId(resolvedStyle) ?? "custom";
 
   return (
     <AccordionItem value="chat" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
-        <span className="text-base font-semibold">Ghostwriter</span>
+        <span className="text-base font-semibold">Writing Style</span>
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            These defaults shape AI-generated writing across Ghostwriter and
+            resume tailoring.
+          </p>
+
+          <div className="space-y-2">
+            <label htmlFor="writingStylePreset" className="text-sm font-medium">
+              Preset
+            </label>
+            <Select
+              value={selectedPresetId}
+              onValueChange={(value) => {
+                if (value === "custom") return;
+
+                const preset = WRITING_STYLE_PRESETS.find(
+                  (item) => item.id === value,
+                );
+                if (!preset) return;
+
+                setValue("chatStyleTone", preset.values.tone, {
+                  shouldDirty: true,
+                });
+                setValue("chatStyleFormality", preset.values.formality, {
+                  shouldDirty: true,
+                });
+                setValue("chatStyleConstraints", preset.values.constraints, {
+                  shouldDirty: true,
+                });
+                setValue("chatStyleDoNotUse", preset.values.doNotUse, {
+                  shouldDirty: true,
+                });
+              }}
+              disabled={isLoading || isSaving}
+            >
+              <SelectTrigger id="writingStylePreset">
+                <SelectValue placeholder="Choose a writing preset" />
+              </SelectTrigger>
+              <SelectContent>
+                {WRITING_STYLE_PRESETS.map((preset) => (
+                  <SelectItem key={preset.id} value={preset.id}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="text-xs text-muted-foreground">
+              {selectedPresetId === "custom"
+                ? "Your current values are custom."
+                : (WRITING_STYLE_PRESETS.find(
+                    (preset) => preset.id === selectedPresetId,
+                  )?.description ?? "")}
+            </div>
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <label htmlFor="chatStyleTone" className="text-sm font-medium">
@@ -102,7 +184,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             inputProps={register("chatStyleConstraints")}
             placeholder="Example: keep answers under 120 words and include bullet points"
             disabled={isLoading || isSaving}
-            helper="Optional global writing constraints used by Ghostwriter replies."
+            helper="Optional global writing constraints applied to Ghostwriter replies and resume tailoring."
             current={constraints.effective || "—"}
           />
 

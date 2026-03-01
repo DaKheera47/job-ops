@@ -158,7 +158,7 @@ function getAnalyticsUserId(): string | null {
 
 function getAnalyticsAppVersion(): string | null {
   try {
-    return typeof __APP_VERSION__ !== "undefined" && __APP_VERSION__.trim()
+    return typeof __APP_VERSION__ !== "undefined" && __APP_VERSION__?.trim()
       ? __APP_VERSION__
       : null;
   } catch {

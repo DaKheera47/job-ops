@@ -7,6 +7,7 @@ import type { ResumeProfile } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import { getWritingStyle } from "./writing-style";
 
 export interface TailoredData {
   summary: string;
@@ -67,17 +68,19 @@ export async function generateTailoring(
   jobDescription: string,
   profile: ResumeProfile,
 ): Promise<TailoringResult> {
-  const [overrideModel, overrideModelTailoring] = await Promise.all([
-    getSetting("model"),
-    getSetting("modelTailoring"),
-  ]);
+  const [overrideModel, overrideModelTailoring, writingStyle] =
+    await Promise.all([
+      getSetting("model"),
+      getSetting("modelTailoring"),
+      getWritingStyle(),
+    ]);
   // Precedence: Tailoring-specific override > Global override > Env var > Default
   const model =
     overrideModelTailoring ||
     overrideModel ||
     process.env.MODEL ||
     "google/gemini-3-flash-preview";
-  const prompt = buildTailoringPrompt(profile, jobDescription);
+  const prompt = buildTailoringPrompt(profile, jobDescription, writingStyle);
 
   const llm = new LlmService();
   const result = await llm.callJson<TailoredData>({
@@ -132,7 +135,11 @@ export async function generateSummary(
   };
 }
 
-function buildTailoringPrompt(profile: ResumeProfile, jd: string): string {
+function buildTailoringPrompt(
+  profile: ResumeProfile,
+  jd: string,
+  writingStyle: Awaited<ReturnType<typeof getWritingStyle>>,
+): string {
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {
     basics: {
@@ -181,6 +188,12 @@ INSTRUCTIONS:
    - Keyword Stuffing: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
    - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.
    - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
+
+WRITING STYLE PREFERENCES:
+- Tone: ${writingStyle.tone}
+- Formality: ${writingStyle.formality}
+${writingStyle.constraints ? `- Additional constraints: ${writingStyle.constraints}` : ""}
+${writingStyle.doNotUse ? `- Avoid these words or phrases: ${writingStyle.doNotUse}` : ""}
 
 OUTPUT FORMAT (JSON):
 {
