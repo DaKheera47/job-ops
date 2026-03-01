@@ -49,4 +49,5 @@ export type ScoringValues = {
   missingSalaryPenalty: EffectiveDefault<number>;
   autoSkipScoreThreshold: EffectiveDefault<number | null>;
   blockedCompanyKeywords: EffectiveDefault<string[]>;
+  scoringInstructions: EffectiveDefault<string>;
 };

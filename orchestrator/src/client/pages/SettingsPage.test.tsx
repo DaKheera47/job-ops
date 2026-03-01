@@ -341,4 +341,45 @@ describe("SettingsPage", () => {
       }),
     );
   });
+
+  it("saves scoring instructions from scoring settings", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...baseSettings,
+      scoringInstructions: {
+        value:
+          "Open to relocating, so do not mark down for location discrepancies.",
+        default: "",
+        override:
+          "Open to relocating, so do not mark down for location discrepancies.",
+      },
+    });
+
+    renderPage();
+
+    const scoringTrigger = await screen.findByRole("button", {
+      name: /scoring settings/i,
+    });
+    fireEvent.click(scoringTrigger);
+
+    const textarea = screen.getByLabelText(/scoring instructions/i);
+    fireEvent.change(textarea, {
+      target: {
+        value:
+          "Open to relocating, so do not mark down for location discrepancies.",
+      },
+    });
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scoringInstructions:
+          "Open to relocating, so do not mark down for location discrepancies.",
+      }),
+    );
+  });
 });

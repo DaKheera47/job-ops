@@ -419,6 +419,50 @@ describe("salary penalty", () => {
   });
 
   describe("penalty application", () => {
+    it("includes custom scoring instructions in the scorer prompt", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm/service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: {
+          value:
+            "Open to relocating, so do not mark down for location discrepancies.",
+          default: "",
+          override:
+            "Open to relocating, so do not mark down for location discrepancies.",
+        },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      const callJsonMock = vi
+        .spyOn(LlmService.prototype, "callJson")
+        .mockResolvedValue({
+          success: true,
+          data: { score: 80, reason: "Good match" },
+        });
+
+      const job = createJob({
+        id: "test-job-1",
+        title: "Software Engineer",
+      });
+
+      await scoreJobSuitability(job, {});
+
+      expect(callJsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [
+            expect.objectContaining({
+              content: expect.stringContaining(
+                "Open to relocating, so do not mark down for location discrepancies.",
+              ),
+            }),
+          ],
+        }),
+      );
+    });
+
     it("should not apply penalty when disabled", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       const { LlmService } = await import("./llm/service");

@@ -163,6 +163,11 @@ export const createAppSettings = (
     default: [],
     override: null,
   },
+  scoringInstructions: {
+    value: "",
+    default: "",
+    override: null,
+  },
   searchCities: {
     value: "United Kingdom",
     default: "United Kingdom",

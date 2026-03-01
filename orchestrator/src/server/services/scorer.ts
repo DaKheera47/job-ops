@@ -15,6 +15,10 @@ interface SuitabilityResult {
   reason: string; // Explanation
 }
 
+type ScoringPreferences = {
+  instructions: string;
+};
+
 /** JSON schema for suitability scoring response */
 const SCORING_SCHEMA: JsonSchemaDefinition = {
   name: "job_suitability_score",
@@ -96,7 +100,9 @@ export async function scoreJobSuitability(
     process.env.MODEL ||
     "google/gemini-3-flash-preview";
 
-  const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile));
+  const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile), {
+    instructions: settings.scoringInstructions?.value ?? "",
+  });
 
   const llm = new LlmService();
   const result = await llm.callJson<{ score: number; reason: string }>({
@@ -252,6 +258,7 @@ export function parseJsonFromContent(
 function buildScoringPrompt(
   job: Job,
   profile: Record<string, unknown>,
+  preferences: ScoringPreferences,
 ): string {
   return `You are evaluating a job listing for a candidate. Score how suitable this job is for the candidate on a scale of 0-100.
 
@@ -275,6 +282,13 @@ Disciplines: ${job.disciplines || "Not specified"}
 
 JOB DESCRIPTION:
 ${job.jobDescription || "No description available"}
+
+SCORING INSTRUCTIONS:
+${
+  preferences.instructions
+    ? preferences.instructions
+    : "No additional custom scoring instructions."
+}
 
 IMPORTANT: Respond with ONLY a valid JSON object. No markdown, no code fences, no explanation outside the JSON.
 

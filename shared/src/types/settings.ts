@@ -126,6 +126,7 @@ export interface AppSettings {
   gradcrackerMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
   blockedCompanyKeywords: Resolved<string[]>;
+  scoringInstructions: Resolved<string>;
   searchCities: Resolved<string>;
   jobspyResultsWanted: Resolved<number>;
   jobspyCountryIndeed: Resolved<string>;

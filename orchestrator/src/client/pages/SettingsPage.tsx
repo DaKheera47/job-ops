@@ -90,6 +90,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   missingSalaryPenalty: null,
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: [],
+  scoringInstructions: "",
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -145,6 +146,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   missingSalaryPenalty: null,
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: null,
+  scoringInstructions: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -183,6 +185,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   missingSalaryPenalty: data.missingSalaryPenalty.override,
   autoSkipScoreThreshold: data.autoSkipScoreThreshold.override,
   blockedCompanyKeywords: data.blockedCompanyKeywords.override ?? [],
+  scoringInstructions: data.scoringInstructions.override ?? "",
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -333,6 +336,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       blockedCompanyKeywords: {
         effective: settings?.blockedCompanyKeywords?.value ?? [],
         default: settings?.blockedCompanyKeywords?.default ?? [],
+      },
+      scoringInstructions: {
+        effective: settings?.scoringInstructions?.value ?? "",
+        default: settings?.scoringInstructions?.default ?? "",
       },
     },
   };
@@ -799,6 +806,10 @@ export const SettingsPage: React.FC = () => {
             ? null
             : normalized;
         })(),
+        scoringInstructions: nullIfSame(
+          normalizeString(data.scoringInstructions),
+          scoring.scoringInstructions.default,
+        ),
         ...envPayload,
       };
 

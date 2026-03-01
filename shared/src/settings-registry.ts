@@ -200,6 +200,14 @@ export const settingsRegistry = {
     parse: parseJsonArrayOrNull,
     serialize: serializeNullableJsonArray,
   },
+  scoringInstructions: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(4000),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
   searchCities: {
     kind: "typed" as const,
     schema: z.string().trim().max(100),

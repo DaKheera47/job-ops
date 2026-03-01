@@ -122,6 +122,7 @@ Readiness requires:
 - Set penalty amount
 - Optional auto-skip threshold for low-score jobs
 - Block jobs from companies that match configured keyword tokens
+- Add custom scoring instructions to tell the AI what to weigh more or less
 
 ### Danger Zone
 
