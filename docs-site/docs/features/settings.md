@@ -73,6 +73,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Constraints
   - Do-not-use terms
 - These settings apply to Ghostwriter and resume tailoring
+- Do-not-use terms are model guidance, not a guaranteed output filter
 
 ### Reactive Resume
 

@@ -44,6 +44,8 @@ Global settings affecting generations:
 - `Constraints`
 - `Do-not-use terms`
 
+`Do-not-use terms` are passed as guidance in the prompt. They are not enforced by a hard post-generation filter, so the model should avoid them but may still use them occasionally.
+
 Defaults:
 
 - Tone: `professional`

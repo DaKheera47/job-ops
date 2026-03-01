@@ -233,7 +233,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 })
               }
               placeholder='e.g. "synergize", "leverage"'
-              helperText="Optional words or phrases to avoid across AI-generated writing."
+              helperText="Optional words or phrases the AI should avoid when generating text. This is guidance to the model, not a guaranteed blocklist."
               removeLabelPrefix="Remove do-not-use term"
               disabled={isLoading || isSaving}
             />
