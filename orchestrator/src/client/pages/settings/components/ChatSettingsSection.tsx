@@ -41,6 +41,10 @@ function parseStoredTerms(value: string | null | undefined): string[] {
   return parseTokenizedTerms(value ?? "");
 }
 
+function normalizeBlank(value: string | null | undefined): string | undefined {
+  return value === "" ? undefined : value;
+}
+
 export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   values,
   isLoading,
@@ -61,18 +65,24 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
       ],
     },
   );
+  const toneDraft = normalizeBlank(toneValue);
+  const formalityDraft = normalizeBlank(formalityValue);
+  const constraintsDraft = normalizeBlank(constraintsValue);
+  const doNotUseDraftValue = normalizeBlank(doNotUseValue);
   const resolvedStyle = resolveWritingStyleDraft({
     values: {
-      tone: toneValue,
-      formality: formalityValue,
-      constraints: constraintsValue,
-      doNotUse: doNotUseValue,
+      tone: toneDraft,
+      formality: formalityDraft,
+      constraints: constraintsDraft,
+      doNotUse: doNotUseDraftValue,
     },
     defaults: values,
   });
   const selectedPresetId =
     getMatchingWritingStylePresetId(resolvedStyle) ?? "custom";
-  const doNotUseTokens = parseStoredTerms(doNotUseValue ?? doNotUse.default);
+  const doNotUseTokens = parseStoredTerms(
+    doNotUseDraftValue ?? doNotUse.default,
+  );
 
   return (
     <AccordionItem value="chat" className="border rounded-lg px-4">
@@ -146,7 +156,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value ?? tone.default}
+                    value={normalizeBlank(field.value) ?? tone.default}
                     onValueChange={(value) => field.onChange(value)}
                     disabled={isLoading || isSaving}
                   >
@@ -176,7 +186,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <Select
-                    value={field.value ?? formality.default}
+                    value={normalizeBlank(field.value) ?? formality.default}
                     onValueChange={(value) => field.onChange(value)}
                     disabled={isLoading || isSaving}
                   >

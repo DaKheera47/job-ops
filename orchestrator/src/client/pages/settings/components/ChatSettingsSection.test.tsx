@@ -91,6 +91,15 @@ const ChatSettingsHarness = () => {
 };
 
 describe("ChatSettingsSection", () => {
+  it("treats blank overrides as unset so preset and selects stay aligned", () => {
+    render(<ChatSettingsHarness />);
+
+    expect(screen.getAllByDisplayValue("professional").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getByDisplayValue("medium")).toBeInTheDocument();
+  });
+
   it("applies preset values to the writing style fields", () => {
     render(<ChatSettingsHarness />);
 
