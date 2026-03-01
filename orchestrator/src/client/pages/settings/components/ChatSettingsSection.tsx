@@ -1,4 +1,4 @@
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import {
   getMatchingWritingStylePresetId,
   resolveWritingStyleDraft,
@@ -7,6 +7,7 @@ import {
 import type { ChatValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
+import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
 import {
   AccordionContent,
@@ -21,12 +22,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 type ChatSettingsSectionProps = {
   values: ChatValues;
   isLoading: boolean;
   isSaving: boolean;
 };
+
+function parseTokenizedTerms(input: string): string[] {
+  return input
+    .split(/[\n,]/g)
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function parseStoredTerms(value: string | null | undefined): string[] {
+  return parseTokenizedTerms(value ?? "");
+}
 
 export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   values,
@@ -36,6 +49,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   const { tone, formality, constraints, doNotUse } = values;
 
   const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
+  const [doNotUseDraft, setDoNotUseDraft] = useState("");
   const [toneValue, formalityValue, constraintsValue, doNotUseValue] = useWatch(
     {
       control,
@@ -58,6 +72,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   });
   const selectedPresetId =
     getMatchingWritingStylePresetId(resolvedStyle) ?? "custom";
+  const doNotUseTokens = parseStoredTerms(doNotUseValue ?? doNotUse.default);
 
   return (
     <AccordionItem value="chat" className="border rounded-lg px-4">
@@ -179,23 +194,54 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             </div>
           </div>
 
-          <SettingsInput
-            label="Constraints"
-            inputProps={register("chatStyleConstraints")}
-            placeholder="Example: keep answers under 120 words and include bullet points"
-            disabled={isLoading || isSaving}
-            helper="Optional global writing constraints applied to Ghostwriter replies and resume tailoring."
-            current={constraints.effective || "—"}
-          />
+          <div className="space-y-2">
+            <label
+              htmlFor="chatStyleConstraints"
+              className="text-sm font-medium"
+            >
+              Constraints
+            </label>
+            <Textarea
+              id="chatStyleConstraints"
+              placeholder="Example: keep answers under 120 words and include bullet points"
+              disabled={isLoading || isSaving}
+              {...register("chatStyleConstraints")}
+            />
+            <div className="text-xs text-muted-foreground">
+              Optional global writing constraints applied to Ghostwriter replies
+              and resume tailoring.
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Current:{" "}
+              <span className="font-mono">{constraints.effective || "—"}</span>
+            </div>
+          </div>
 
-          <SettingsInput
-            label="Do-not-use terms"
-            inputProps={register("chatStyleDoNotUse")}
-            placeholder="Example: synergize, leverage"
-            disabled={isLoading || isSaving}
-            helper="Optional comma-separated words or phrases to avoid."
-            current={doNotUse.effective || "—"}
-          />
+          <div className="space-y-2">
+            <label htmlFor="chatStyleDoNotUse" className="text-sm font-medium">
+              Do-not-use terms
+            </label>
+            <TokenizedInput
+              id="chatStyleDoNotUse"
+              values={doNotUseTokens}
+              draft={doNotUseDraft}
+              parseInput={parseTokenizedTerms}
+              onDraftChange={setDoNotUseDraft}
+              onValuesChange={(nextValues) =>
+                setValue("chatStyleDoNotUse", nextValues.join(", "), {
+                  shouldDirty: true,
+                })
+              }
+              placeholder='e.g. "synergize", "leverage"'
+              helperText="Optional words or phrases to avoid across AI-generated writing."
+              removeLabelPrefix="Remove do-not-use term"
+              disabled={isLoading || isSaving}
+            />
+            <div className="text-xs text-muted-foreground">
+              Current:{" "}
+              <span className="font-mono">{doNotUse.effective || "—"}</span>
+            </div>
+          </div>
 
           <Separator />
 
