@@ -114,7 +114,13 @@ export function toAppError(error: unknown): AppError {
   if (error instanceof AppError) return error;
   if (isZodErrorLike(error)) {
     const details =
-      typeof error.flatten === "function" ? error.flatten() : undefined;
+      typeof error.flatten === "function"
+        ? error.flatten()
+        : {
+            formErrors: [],
+            fieldErrors: {},
+            issues: error.issues,
+          };
     return badRequest(error.message, details);
   }
   if (error instanceof Error && error.name === "AbortError") {
