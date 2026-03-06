@@ -42,7 +42,7 @@ function parseStoredTerms(value: string | null | undefined): string[] {
 }
 
 function normalizeBlank(value: string | null | undefined): string | undefined {
-  return value === "" ? undefined : value;
+  return value == null || value === "" ? undefined : value;
 }
 
 export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({

@@ -101,10 +101,10 @@ export function resolveWritingStyleDraft(args: {
   const { values, defaults } = args;
 
   return {
-    tone: values.tone?.trim() || defaults.tone.default,
-    formality: values.formality?.trim() || defaults.formality.default,
-    constraints: values.constraints?.trim() || defaults.constraints.default,
-    doNotUse: values.doNotUse?.trim() || defaults.doNotUse.default,
+    tone: values.tone?.trim() || defaults.tone.effective,
+    formality: values.formality?.trim() || defaults.formality.effective,
+    constraints: values.constraints?.trim() || defaults.constraints.effective,
+    doNotUse: values.doNotUse?.trim() || defaults.doNotUse.effective,
   };
 }
 
