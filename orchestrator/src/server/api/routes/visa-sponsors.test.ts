@@ -42,6 +42,7 @@ describe.sequential("Visa sponsors API routes", () => {
     const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`);
     const statusBody = await statusRes.json();
     expect(statusBody.ok).toBe(true);
+    expect(typeof statusBody.meta.requestId).toBe("string");
     expect(statusBody.data.providers).toHaveLength(1);
     expect(statusBody.data.providers[0].totalSponsors).toBe(0);
 
@@ -49,6 +50,32 @@ describe.sequential("Visa sponsors API routes", () => {
       method: "POST",
     });
     expect(updateRes.status).toBe(500);
+    const updateBody = await updateRes.json();
+    expect(updateBody.ok).toBe(false);
+    expect(updateBody.error.code).toBe("INTERNAL_ERROR");
+    expect(typeof updateBody.meta.requestId).toBe("string");
+  });
+
+  it("returns service unavailable when no visa sponsor providers are registered", async () => {
+    const { downloadLatestCsv } = await import(
+      "@server/services/visa-sponsors/index"
+    );
+    vi.mocked(downloadLatestCsv).mockResolvedValue({
+      success: false,
+      message: "No providers registered",
+    });
+
+    const res = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
+      method: "POST",
+      headers: { "x-request-id": "req-visa-sponsors-empty" },
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(res.headers.get("x-request-id")).toBe("req-visa-sponsors-empty");
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
+    expect(body.meta.requestId).toBe("req-visa-sponsors-empty");
   });
 
   it("validates search payloads and handles missing organizations", async () => {
@@ -84,6 +111,7 @@ describe.sequential("Visa sponsors API routes", () => {
     });
     const body = await res.json();
     expect(body.ok).toBe(true);
+    expect(typeof body.meta.requestId).toBe("string");
     expect(body.data.total).toBe(1);
 
     const orgRes = await fetch(

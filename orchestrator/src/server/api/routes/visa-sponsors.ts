@@ -1,9 +1,13 @@
-import { notFound } from "@infra/errors";
-import { fail } from "@infra/http";
+import {
+  badRequest,
+  notFound,
+  serviceUnavailable,
+  toAppError,
+} from "@infra/errors";
+import { fail, ok } from "@infra/http";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type {
-  ApiResponse,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
@@ -18,14 +22,9 @@ export const visaSponsorsRouter = Router();
 visaSponsorsRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const status = await visaSponsors.getStatus();
-    const response: ApiResponse<VisaSponsorStatusResponse> = {
-      ok: true,
-      data: status,
-    };
-    res.json(response);
+    ok<VisaSponsorStatusResponse>(res, status);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -53,21 +52,16 @@ visaSponsorsRouter.post("/search", async (req: Request, res: Response) => {
       countryKey,
     });
 
-    const response: ApiResponse<VisaSponsorSearchResponse> = {
-      ok: true,
-      data: {
-        results,
-        query: input.query,
-        total: results.length,
-      },
-    };
-    res.json(response);
+    ok<VisaSponsorSearchResponse>(res, {
+      results,
+      query: input.query,
+      total: results.length,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -85,13 +79,9 @@ visaSponsorsRouter.get(
         return fail(res, notFound("Organization not found"));
       }
 
-      res.json({
-        success: true,
-        data: entries,
-      });
+      ok(res, entries);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ success: false, error: message });
+      fail(res, toAppError(error));
     }
   },
 );
@@ -104,21 +94,34 @@ visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
     const result = await visaSponsors.downloadLatestCsv();
 
     if (!result.success) {
-      return res.status(500).json({ success: false, error: result.message });
+      return fail(
+        res,
+        result.message === "No providers registered"
+          ? serviceUnavailable(result.message)
+          : toAppError(new Error(result.message)),
+      );
     }
 
-    res.json({
-      success: true,
-      data: {
-        message: result.message,
-        status: await visaSponsors.getStatus(),
-      },
+    ok(res, {
+      message: result.message,
+      status: await visaSponsors.getStatus(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
+
+function mapUpdateProviderError(message: string) {
+  if (message.startsWith("Provider '") && message.endsWith("' not found")) {
+    return notFound(message);
+  }
+
+  if (message === "No providers registered") {
+    return serviceUnavailable(message);
+  }
+
+  return toAppError(new Error(message));
+}
 
 /**
  * POST /api/visa-sponsors/update/:providerId - Trigger a manual update for a specific provider
@@ -131,19 +134,15 @@ visaSponsorsRouter.post(
       const result = await visaSponsors.downloadLatestCsv(providerId);
 
       if (!result.success) {
-        return res.status(500).json({ success: false, error: result.message });
+        return fail(res, mapUpdateProviderError(result.message));
       }
 
-      res.json({
-        success: true,
-        data: {
-          message: result.message,
-          status: await visaSponsors.getStatus(),
-        },
+      ok(res, {
+        message: result.message,
+        status: await visaSponsors.getStatus(),
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ success: false, error: message });
+      fail(res, toAppError(error));
     }
   },
 );

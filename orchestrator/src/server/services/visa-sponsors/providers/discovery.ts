@@ -6,17 +6,13 @@ import type { VisaSponsorProviderManifest } from "@shared/types";
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
 
-// This file lives at:
-//   orchestrator/src/server/services/visa-sponsors/providers/discovery.ts
-// Going up 6 levels reaches the repo root.
-const DEFAULT_PROVIDERS_ROOT = resolve(
-  process.cwd(),
-  "../visa-sponsor-providers",
-);
-const MODULE_RELATIVE_PROVIDERS_ROOT = resolve(
-  moduleDir,
-  "../../../../../../visa-sponsor-providers",
-);
+function getProvidersRootCandidates(): string[] {
+  return [
+    resolve(process.cwd(), "visa-sponsor-providers"),
+    resolve(process.cwd(), "../visa-sponsor-providers"),
+    resolve(moduleDir, "../../../../../../visa-sponsor-providers"),
+  ];
+}
 
 const MANIFEST_CANDIDATES = ["manifest.ts", "src/manifest.ts"] as const;
 
@@ -39,15 +35,15 @@ async function directoryExists(path: string): Promise<boolean> {
 }
 
 async function resolveProvidersRoot(): Promise<string> {
-  if (await directoryExists(DEFAULT_PROVIDERS_ROOT)) {
-    return DEFAULT_PROVIDERS_ROOT;
+  const candidates = getProvidersRootCandidates();
+
+  for (const candidate of candidates) {
+    if (await directoryExists(candidate)) {
+      return candidate;
+    }
   }
 
-  if (await directoryExists(MODULE_RELATIVE_PROVIDERS_ROOT)) {
-    return MODULE_RELATIVE_PROVIDERS_ROOT;
-  }
-
-  return DEFAULT_PROVIDERS_ROOT;
+  return candidates[0];
 }
 
 export async function discoverProviderManifestPaths(
