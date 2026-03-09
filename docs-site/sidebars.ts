@@ -18,6 +18,7 @@ const sidebars: SidebarsConfig = {
         "workflows/find-jobs-and-apply-workflow",
         "workflows/post-application-workflow",
         "workflows/add-an-extractor",
+        "workflows/add-a-visa-sponsor-provider",
       ],
     },
     {
