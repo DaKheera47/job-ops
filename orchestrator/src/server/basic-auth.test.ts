@@ -17,9 +17,7 @@ function createMockRequest(input: {
   return {
     method: input.method,
     path: input.path,
-    headers: input.authorization
-      ? { authorization: input.authorization }
-      : {},
+    headers: input.authorization ? { authorization: input.authorization } : {},
   } as Request;
 }
 
@@ -32,7 +30,10 @@ function createMockResponse(): Response & {
     jsonBody: null,
     getHeader: vi.fn(() => undefined),
     setHeader: vi.fn(),
-    status: vi.fn(function status(this: Response & { statusCode: number }, code) {
+    status: vi.fn(function status(
+      this: Response & { statusCode: number },
+      code,
+    ) {
       this.statusCode = code;
       return this;
     }),
@@ -118,7 +119,10 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     delete process.env.BASIC_AUTH_PASSWORD;
 
     const { middleware } = createBasicAuthGuard();
-    const req = createMockRequest({ method: "POST", path: "/api/jobs/actions" });
+    const req = createMockRequest({
+      method: "POST",
+      path: "/api/jobs/actions",
+    });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 

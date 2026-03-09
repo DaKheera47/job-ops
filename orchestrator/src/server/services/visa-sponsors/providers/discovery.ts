@@ -49,10 +49,13 @@ async function resolveProvidersRoot(): Promise<string> {
     }
   }
 
-  logger.warn("No visa sponsor providers root exists; using default candidate", {
-    selectedRoot: candidates[0],
-    candidates,
-  });
+  logger.warn(
+    "No visa sponsor providers root exists; using default candidate",
+    {
+      selectedRoot: candidates[0],
+      candidates,
+    },
+  );
   return candidates[0];
 }
 
@@ -61,9 +64,12 @@ export async function discoverProviderManifestPaths(
 ): Promise<string[]> {
   const root = providersRoot ?? (await resolveProvidersRoot());
   if (basename(root) !== "visa-sponsor-providers") {
-    logger.warn("Visa sponsor providers root rejected due to unexpected basename", {
-      root,
-    });
+    logger.warn(
+      "Visa sponsor providers root rejected due to unexpected basename",
+      {
+        root,
+      },
+    );
     return [];
   }
 
