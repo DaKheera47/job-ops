@@ -27,6 +27,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn, formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import {
@@ -53,12 +60,21 @@ const getScoreTokens = (score: number) => {
   return { badge: "border-rose-500/30 bg-rose-500/10 text-rose-200" };
 };
 
+const ALL_SOURCES_VALUE = "__all_sources__";
+
+const formatCountryLabel = (countryKey: string) =>
+  countryKey
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+
 export const VisaSponsorsPage: React.FC = () => {
   const queryClient = useQueryClient();
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   // Loading states
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
@@ -75,11 +91,24 @@ export const VisaSponsorsPage: React.FC = () => {
   const status = statusQuery.data ?? null;
   useQueryErrorToast(statusQuery.error, "Failed to fetch status");
   const statusProviders = status?.providers ?? [];
-  const totalSponsors = statusProviders.reduce(
+  const providerOptions = statusProviders.map((provider) => ({
+    value: provider.countryKey,
+    label: formatCountryLabel(provider.countryKey),
+    providerId: provider.providerId,
+  }));
+  const selectedCountryLabel =
+    providerOptions.find((option) => option.value === selectedCountry)?.label ??
+    "All sources";
+  const activeProviders = selectedCountry
+    ? statusProviders.filter(
+        (provider) => provider.countryKey === selectedCountry,
+      )
+    : statusProviders;
+  const totalSponsors = activeProviders.reduce(
     (sum, provider) => sum + provider.totalSponsors,
     0,
   );
-  const latestUpdatedAt = statusProviders.reduce<string | null>(
+  const latestUpdatedAt = activeProviders.reduce<string | null>(
     (latest, provider) => {
       if (!provider.lastUpdated) return latest;
       if (!latest) return provider.lastUpdated;
@@ -102,12 +131,14 @@ export const VisaSponsorsPage: React.FC = () => {
       debouncedSearchQuery.trim(),
       100,
       20,
+      selectedCountry ?? undefined,
     ),
     queryFn: () =>
       api.searchVisaSponsors({
         query: debouncedSearchQuery.trim(),
         limit: 100,
         minScore: 20,
+        country: selectedCountry ?? undefined,
       }),
     enabled: Boolean(debouncedSearchQuery.trim()),
   });
@@ -180,6 +211,7 @@ export const VisaSponsorsPage: React.FC = () => {
             debouncedSearchQuery.trim(),
             100,
             20,
+            selectedCountry ?? undefined,
           ),
         });
       }
@@ -200,6 +232,12 @@ export const VisaSponsorsPage: React.FC = () => {
     if (!isDesktop) {
       setIsDetailDrawerOpen(true);
     }
+  };
+
+  const handleCountryChange = (value: string) => {
+    setSelectedCountry(value === ALL_SOURCES_VALUE ? null : value);
+    setSelectedOrg(null);
+    setIsDetailDrawerOpen(false);
   };
 
   const selectedResult = useMemo(
@@ -298,9 +336,9 @@ export const VisaSponsorsPage: React.FC = () => {
           What does this mean?
         </div>
         <p className="text-xs text-sky-300/80">
-          This organisation is licensed by the UK Home Office to sponsor workers
-          on the routes listed above. An "A rating" means they're fully
-          compliant.
+          This organisation appears in the selected sponsor source and may be
+          able to sponsor workers on the routes listed above. Always verify the
+          latest source entry before relying on it.
         </p>
       </div>
     </div>
@@ -311,10 +349,10 @@ export const VisaSponsorsPage: React.FC = () => {
       <PageHeader
         icon={Shield}
         title="Visa Sponsors"
-        subtitle="UK Register Search"
         statusIndicator={
           isUpdateInProgress ? <StatusIndicator label="Updating" /> : undefined
         }
+        subtitle={`${selectedCountryLabel} Register Search`}
         actions={
           <>
             {status && (
@@ -349,37 +387,67 @@ export const VisaSponsorsPage: React.FC = () => {
       <PageMain>
         {/* Search section */}
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="sponsor-search"
-              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              Company name
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="sponsor-search"
-                placeholder="Search for a company name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 h-10"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <label
+                htmlFor="sponsor-source"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Source
+              </label>
+              <Select
+                value={selectedCountry ?? ALL_SOURCES_VALUE}
+                onValueChange={handleCountryChange}
+              >
+                <SelectTrigger
+                  id="sponsor-source"
+                  aria-label="Select sponsor source"
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+                  <SelectValue placeholder="All sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_SOURCES_VALUE}>All sources</SelectItem>
+                  {providerOptions.map((option) => (
+                    <SelectItem key={option.providerId} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Enter a company name to check if they're a licensed UK visa
-              sponsor.
-            </p>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="sponsor-search"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Company name
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  id="sponsor-search"
+                  placeholder="Search for a company name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10 h-10"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter a company name to check if they&apos;re a licensed visa
+                sponsor in {selectedCountryLabel.toLowerCase()}.
+              </p>
+            </div>
           </div>
         </section>
 
@@ -430,7 +498,7 @@ export const VisaSponsorsPage: React.FC = () => {
               <EmptyState
                 icon={Search}
                 title="Search for a company"
-                description="Enter a company name above to check the sponsor register."
+                description={`Enter a company name above to check the ${selectedCountryLabel.toLowerCase()} sponsor register.`}
               />
             )}
 

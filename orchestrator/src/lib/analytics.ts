@@ -119,6 +119,7 @@ type ProductEventMap = {
     query_length_bucket: string;
     limit?: number;
     min_score?: number;
+    country?: string;
   };
 };
 
