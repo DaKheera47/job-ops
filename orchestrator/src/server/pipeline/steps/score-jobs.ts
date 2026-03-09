@@ -70,7 +70,7 @@ export async function scoreJobsStep(args: {
       let sponsorMatchNames: string | undefined;
 
       if (job.employer) {
-        const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+        const sponsorResults = await visaSponsors.searchSponsors(job.employer, {
           limit: 10,
           minScore: 50,
         });

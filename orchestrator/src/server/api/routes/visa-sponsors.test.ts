@@ -20,13 +20,19 @@ describe.sequential("Visa sponsors API routes", () => {
     const { getStatus, downloadLatestCsv } = await import(
       "@server/services/visa-sponsors/index"
     );
-    vi.mocked(getStatus).mockReturnValue({
-      lastUpdated: null,
-      csvPath: null,
-      totalSponsors: 0,
-      isUpdating: false,
-      nextScheduledUpdate: null,
-      error: null,
+    vi.mocked(getStatus).mockResolvedValue({
+      providers: [
+        {
+          providerId: "uk",
+          countryKey: "united kingdom",
+          lastUpdated: null,
+          csvPath: null,
+          totalSponsors: 0,
+          isUpdating: false,
+          nextScheduledUpdate: null,
+          error: null,
+        },
+      ],
     });
     vi.mocked(downloadLatestCsv).mockResolvedValue({
       success: false,
@@ -36,7 +42,8 @@ describe.sequential("Visa sponsors API routes", () => {
     const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`);
     const statusBody = await statusRes.json();
     expect(statusBody.ok).toBe(true);
-    expect(statusBody.data.totalSponsors).toBe(0);
+    expect(statusBody.data.providers).toHaveLength(1);
+    expect(statusBody.data.providers[0].totalSponsors).toBe(0);
 
     const updateRes = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
       method: "POST",
@@ -48,7 +55,7 @@ describe.sequential("Visa sponsors API routes", () => {
     const { searchSponsors, getOrganizationDetails } = await import(
       "@server/services/visa-sponsors/index"
     );
-    vi.mocked(searchSponsors).mockReturnValue([
+    vi.mocked(searchSponsors).mockResolvedValue([
       {
         sponsor: {
           organisationName: "Acme",
@@ -61,7 +68,7 @@ describe.sequential("Visa sponsors API routes", () => {
         matchedName: "acme",
       },
     ]);
-    vi.mocked(getOrganizationDetails).mockReturnValue([]);
+    vi.mocked(getOrganizationDetails).mockResolvedValue([]);
 
     const badRes = await fetch(`${baseUrl}/api/visa-sponsors/search`, {
       method: "POST",

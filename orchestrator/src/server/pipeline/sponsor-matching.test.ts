@@ -117,7 +117,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning a match
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
           sponsor: { organisationName: "ACME CORPORATION LIMITED" },
           score: 85,
@@ -152,7 +152,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning perfect matches
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
           sponsor: { organisationName: "MICROSOFT UK LIMITED" },
           score: 100,
@@ -191,7 +191,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning partial matches only
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
           sponsor: { organisationName: "TECH CORPORATION" },
           score: 75,
@@ -222,7 +222,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning no matches
-      searchSponsors.mockReturnValue([]);
+      searchSponsors.mockResolvedValue([]);
 
       const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
@@ -279,7 +279,7 @@ describe("Sponsor Match Calculation", () => {
     it("should use correct limit and minScore options", async () => {
       const mockJob = createJob({ employer: "Test Company" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
-      searchSponsors.mockReturnValue([]);
+      searchSponsors.mockResolvedValue([]);
 
       const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
@@ -294,7 +294,7 @@ describe("Sponsor Match Calculation", () => {
       const mockJob = createJob({ employer: "Google UK" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
           sponsor: { organisationName: "GOOGLE UK LIMITED" },
           score: 100,
@@ -329,14 +329,14 @@ describe("Sponsor Match Calculation", () => {
 
       // Different results for each employer
       searchSponsors
-        .mockReturnValueOnce([
+        .mockResolvedValueOnce([
           {
             sponsor: { organisationName: "AMAZON UK SERVICES LTD" },
             score: 90,
             matchedName: "amazon uk",
           },
         ])
-        .mockReturnValueOnce([
+        .mockResolvedValueOnce([
           {
             sponsor: { organisationName: "META PLATFORMS IRELAND LIMITED" },
             score: 80,

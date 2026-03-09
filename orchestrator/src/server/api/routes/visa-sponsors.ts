@@ -6,17 +6,18 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
+import { normalizeCountryKey } from "@shared/location-support.js";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const visaSponsorsRouter = Router();
 
 /**
- * GET /api/visa-sponsors/status - Get status of the visa sponsor service
+ * GET /api/visa-sponsors/status - Get status of all registered providers
  */
 visaSponsorsRouter.get("/status", async (_req: Request, res: Response) => {
   try {
-    const status = visaSponsors.getStatus();
+    const status = await visaSponsors.getStatus();
     const response: ApiResponse<VisaSponsorStatusResponse> = {
       ok: true,
       data: status,
@@ -30,20 +31,26 @@ visaSponsorsRouter.get("/status", async (_req: Request, res: Response) => {
 
 /**
  * POST /api/visa-sponsors/search - Search for visa sponsors
+ * Optional `country` field restricts results to a specific provider.
  */
 const visaSponsorSearchSchema = z.object({
   query: z.string().min(1),
   limit: z.number().int().min(1).max(200).optional(),
   minScore: z.number().int().min(0).max(100).optional(),
+  country: z.string().optional(),
 });
 
 visaSponsorsRouter.post("/search", async (req: Request, res: Response) => {
   try {
     const input = visaSponsorSearchSchema.parse(req.body);
+    const countryKey = input.country
+      ? normalizeCountryKey(input.country)
+      : undefined;
 
-    const results = visaSponsors.searchSponsors(input.query, {
+    const results = await visaSponsors.searchSponsors(input.query, {
       limit: input.limit,
       minScore: input.minScore,
+      countryKey,
     });
 
     const response: ApiResponse<VisaSponsorSearchResponse> = {
@@ -72,7 +79,7 @@ visaSponsorsRouter.get(
   async (req: Request, res: Response) => {
     try {
       const name = decodeURIComponent(req.params.name);
-      const entries = visaSponsors.getOrganizationDetails(name);
+      const entries = await visaSponsors.getOrganizationDetails(name);
 
       if (entries.length === 0) {
         return fail(res, notFound("Organization not found"));
@@ -90,7 +97,7 @@ visaSponsorsRouter.get(
 );
 
 /**
- * POST /api/visa-sponsors/update - Trigger a manual update of the visa sponsor list
+ * POST /api/visa-sponsors/update - Trigger a manual update for all providers
  */
 visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
   try {
@@ -104,7 +111,7 @@ visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
       success: true,
       data: {
         message: result.message,
-        status: visaSponsors.getStatus(),
+        status: await visaSponsors.getStatus(),
       },
     });
   } catch (error) {
@@ -112,3 +119,31 @@ visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
     res.status(500).json({ success: false, error: message });
   }
 });
+
+/**
+ * POST /api/visa-sponsors/update/:providerId - Trigger a manual update for a specific provider
+ */
+visaSponsorsRouter.post(
+  "/update/:providerId",
+  async (req: Request, res: Response) => {
+    try {
+      const { providerId } = req.params;
+      const result = await visaSponsors.downloadLatestCsv(providerId);
+
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.message });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          message: result.message,
+          status: await visaSponsors.getStatus(),
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ success: false, error: message });
+    }
+  },
+);
