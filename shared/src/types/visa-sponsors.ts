@@ -1,3 +1,5 @@
+import type { VisaSponsorProviderId } from "../visa-sponsor-providers";
+
 export interface VisaSponsor {
   organisationName: string;
   townCity: string;
@@ -19,7 +21,7 @@ export interface VisaSponsorSearchResponse {
 }
 
 export interface VisaSponsorProviderStatus {
-  providerId: string;
+  providerId: VisaSponsorProviderId;
   countryKey: string;
   lastUpdated: string | null;
   csvPath: string | null;
@@ -40,7 +42,7 @@ export interface VisaSponsorStatusResponse {
  */
 export interface VisaSponsorProviderManifest {
   /** Unique slug, must be in VISA_SPONSOR_PROVIDER_IDS catalog. e.g. "uk", "au" */
-  id: string;
+  id: VisaSponsorProviderId;
   /** Human-readable display name. e.g. "United Kingdom" */
   displayName: string;
   /** normalizeCountryKey()-compatible string. e.g. "united kingdom", "australia" */

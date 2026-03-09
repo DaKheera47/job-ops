@@ -437,10 +437,11 @@ export async function searchSponsors(
   const results: VisaSponsorSearchResult[] = [];
   const seen = new Set<string>();
 
-  for (const { sponsors } of providerData) {
+  for (const { providerId, sponsors } of providerData) {
     for (const sponsor of sponsors) {
-      if (seen.has(sponsor.organisationName)) continue;
-      seen.add(sponsor.organisationName);
+      const dedupeKey = `${providerId}::${sponsor.organisationName}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
 
       const normalizedSponsor = normalizeCompanyName(sponsor.organisationName);
       const score = calculateSimilarity(normalizedQuery, normalizedSponsor);

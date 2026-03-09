@@ -78,6 +78,67 @@ describe.sequential("Visa sponsors API routes", () => {
     expect(body.meta.requestId).toBe("req-visa-sponsors-empty");
   });
 
+  it("updates an individual provider and returns its refreshed status", async () => {
+    const { downloadLatestCsv, getStatus } = await import(
+      "@server/services/visa-sponsors/index"
+    );
+    vi.mocked(downloadLatestCsv).mockResolvedValue({
+      success: true,
+      message: "Updated 1/1 providers",
+    });
+    vi.mocked(getStatus).mockResolvedValue({
+      providers: [
+        {
+          providerId: "uk",
+          countryKey: "united kingdom",
+          lastUpdated: "2026-03-09T12:00:00.000Z",
+          csvPath: "/tmp/uk/visa_sponsors_2026-03-09.csv",
+          totalSponsors: 123,
+          isUpdating: false,
+          nextScheduledUpdate: "2026-03-10T02:00:00.000Z",
+          error: null,
+        },
+      ],
+    });
+
+    const res = await fetch(`${baseUrl}/api/visa-sponsors/update/uk`, {
+      method: "POST",
+      headers: { "x-request-id": "req-visa-sponsors-uk" },
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-request-id")).toBe("req-visa-sponsors-uk");
+    expect(vi.mocked(downloadLatestCsv)).toHaveBeenCalledWith("uk");
+    expect(body.ok).toBe(true);
+    expect(body.data.message).toBe("Updated 1/1 providers");
+    expect(body.data.status.providers).toHaveLength(1);
+    expect(body.meta.requestId).toBe("req-visa-sponsors-uk");
+  });
+
+  it("returns not found when updating an unknown provider", async () => {
+    const { downloadLatestCsv } = await import(
+      "@server/services/visa-sponsors/index"
+    );
+    vi.mocked(downloadLatestCsv).mockResolvedValue({
+      success: false,
+      message: "Provider 'au' not found",
+    });
+
+    const res = await fetch(`${baseUrl}/api/visa-sponsors/update/au`, {
+      method: "POST",
+      headers: { "x-request-id": "req-visa-sponsors-au" },
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(res.headers.get("x-request-id")).toBe("req-visa-sponsors-au");
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(body.error.message).toBe("Provider 'au' not found");
+    expect(body.meta.requestId).toBe("req-visa-sponsors-au");
+  });
+
   it("validates search payloads and handles missing organizations", async () => {
     const { searchSponsors, getOrganizationDetails } = await import(
       "@server/services/visa-sponsors/index"

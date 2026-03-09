@@ -32,7 +32,7 @@ function createMockResponse(): Response & {
     setHeader: vi.fn(),
     status: vi.fn(function status(
       this: Response & { statusCode: number },
-      code,
+      code: number,
     ) {
       this.statusCode = code;
       return this;
