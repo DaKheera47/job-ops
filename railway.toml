@@ -4,6 +4,7 @@
 # Deploy: Connect this repo to Railway → it auto-detects this config.
 # Volume: Mount a persistent volume at /app/data in the Railway dashboard.
 # Env vars: Set in Railway dashboard (LLM_API_KEY, BASIC_AUTH_USER, etc.)
+# Public URL: https://sloth-jobs-production.up.railway.app
 
 [build]
 # Use the existing multi-stage Dockerfile
