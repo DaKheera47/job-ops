@@ -6,13 +6,11 @@
 [![Release](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml/badge.svg)](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml)
 [![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](Contributors)
 
+<img width="1200" height="600" alt="Jobops-banner-900" src="https://github.com/user-attachments/assets/e929e389-2ebb-4de1-82c6-8e136b849b78" />
 
 Scrapes major job boards (LinkedIn, Indeed, Glassdoor & more), AI-scores suitability, tailors resumes (RxResume), and tracks application emails automatically.
 
 You still apply to every job yourself. JobOps just finds jobs, makes sure you're applying to the right ones with a tailored CV, and not losing track of where you're at.
-
-<img width="1200" height="600" alt="image" src="https://github.com/user-attachments/assets/7328102a-530d-4bd0-af0b-ce8a1b864f41" />
-
 
 Self-hosted. Docker-based.
 
