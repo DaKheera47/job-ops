@@ -10,14 +10,16 @@
 import { join } from "node:path";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
-import type { PipelineConfig } from "@shared/types";
+import type { PipelineConfig, ResumeProfile } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import { getSetting } from "../repositories/settings";
+import { generateLatexResumeArtifacts } from "../services/latex-export";
 import { generatePdf } from "../services/pdf";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
+import { getConfiguredResumeExportMode } from "../services/resume-export-mode";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
@@ -243,7 +245,21 @@ export async function summarizeJob(
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
 
-      const profile = await getProfile();
+      const resumeExportMode = await getConfiguredResumeExportMode();
+      let profile: ResumeProfile = {};
+      try {
+        profile = await getProfile();
+      } catch (error) {
+        if (resumeExportMode === "rxresume") {
+          throw error;
+        }
+        jobLogger.warn(
+          "Profile unavailable in LaTeX export mode; tailoring will continue with limited context",
+          {
+            error,
+          },
+        );
+      }
 
       // 1. Generate Summary & Tailoring
       let tailoredSummary = job.tailoredSummary;
@@ -270,7 +286,10 @@ export async function summarizeJob(
 
       // 2. Suggest Projects
       let selectedProjectIds = job.selectedProjectIds;
-      if (!selectedProjectIds || options?.force) {
+      if (
+        resumeExportMode === "rxresume" &&
+        (!selectedProjectIds || options?.force)
+      ) {
         jobLogger.info("Selecting projects");
         try {
           const { catalog, selectionItems } =
@@ -335,37 +354,93 @@ export async function generateFinalPdf(
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
+      const resumeExportMode = await getConfiguredResumeExportMode();
 
       // Mark as processing
       await jobsRepo.updateJob(job.id, { status: "processing" });
 
-      const pdfResult = await generatePdf(
-        job.id,
-        {
-          summary: job.tailoredSummary || "",
-          headline: job.tailoredHeadline || "",
-          skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
-        },
-        job.jobDescription || "",
-        undefined, // deprecated baseResumePath parameter
-        job.selectedProjectIds,
-        {
-          tracerLinksEnabled: job.tracerLinksEnabled,
-          requestOrigin: options?.requestOrigin ?? null,
-          tracerCompanyName: job.employer ?? null,
-        },
-      );
+      const tailoredSkills = (() => {
+        if (!job.tailoredSkills) return [];
+        try {
+          return JSON.parse(job.tailoredSkills);
+        } catch {
+          return [];
+        }
+      })();
 
-      if (!pdfResult.success) {
-        // Revert status if failed
-        await jobsRepo.updateJob(job.id, { status: "discovered" });
-        return { success: false, error: pdfResult.error };
+      if (resumeExportMode === "rxresume") {
+        const pdfResult = await generatePdf(
+          job.id,
+          {
+            summary: job.tailoredSummary || "",
+            headline: job.tailoredHeadline || "",
+            skills: tailoredSkills,
+          },
+          job.jobDescription || "",
+          undefined, // deprecated baseResumePath parameter
+          job.selectedProjectIds,
+          {
+            tracerLinksEnabled: job.tracerLinksEnabled,
+            requestOrigin: options?.requestOrigin ?? null,
+            tracerCompanyName: job.employer ?? null,
+          },
+        );
+
+        if (!pdfResult.success) {
+          // Revert status if failed
+          await jobsRepo.updateJob(job.id, { status: "discovered" });
+          return { success: false, error: pdfResult.error };
+        }
+
+        await jobsRepo.updateJob(job.id, {
+          status: "ready",
+          pdfPath: pdfResult.pdfPath,
+        });
+      } else {
+        const latexResult = await generateLatexResumeArtifacts({
+          jobId: job.id,
+          companyName: job.employer || "Company",
+          jobTitle: job.title || "Role",
+          jobDescription: job.jobDescription || "",
+          suitabilityReason: job.suitabilityReason,
+          tailoredSummary: job.tailoredSummary || "",
+          tailoredHeadline: job.tailoredHeadline || "",
+          tailoredSkills: Array.isArray(tailoredSkills) ? tailoredSkills : [],
+        });
+
+        if (!latexResult.success) {
+          await jobsRepo.updateJob(job.id, { status: "discovered" });
+          return { success: false, error: latexResult.error };
+        }
+
+        const artifactPath = latexResult.pdfPath ?? latexResult.texPath;
+        if (!artifactPath) {
+          await jobsRepo.updateJob(job.id, { status: "discovered" });
+          return {
+            success: false,
+            error: "LaTeX export did not produce a CV artifact.",
+          };
+        }
+
+        await jobsRepo.updateJob(job.id, {
+          status: "ready",
+          pdfPath: artifactPath,
+        });
+
+        jobLogger.info("LaTeX export completed", {
+          compileStatus: latexResult.compileStatus,
+          artifactPath,
+          message: latexResult.message ?? null,
+        });
       }
 
-      await jobsRepo.updateJob(job.id, {
-        status: "ready",
-        pdfPath: pdfResult.pdfPath,
-      });
+      jobLogger.info(
+        "Resume artifacts generated; this workflow does not auto-apply jobs",
+        {
+          resumeExportMode,
+          status: "ready",
+        },
+      );
 
       return { success: true };
     } catch (error) {

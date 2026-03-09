@@ -13,6 +13,7 @@ vi.mock("@client/api", () => ({
   getDemoInfo: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
+  validateLatexConfig: vi.fn(),
   validateResumeConfig: vi.fn(),
   updateSettings: vi.fn(),
 }));
@@ -94,10 +95,17 @@ const settingsResponse = {
   settings: {
     llmProvider: { value: "openrouter", default: "openrouter", override: null },
     llmApiKeyHint: null,
+    resumeExportMode: {
+      value: "rxresume",
+      default: "rxresume",
+      override: null,
+    },
     rxresumeEmail: "",
     rxresumeApiKeyHint: null,
     rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,
+    latexCvTemplatePath: "",
+    latexCoverTemplatePath: "",
   },
   isLoading: false,
   refreshSettings: vi.fn(),
@@ -123,6 +131,10 @@ describe("OnboardingGate", () => {
       message: "Invalid",
     });
     vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateLatexConfig).mockResolvedValue({
       valid: true,
       message: null,
     });
@@ -178,6 +190,10 @@ describe("OnboardingGate", () => {
       valid: false,
       message: "Missing",
     });
+    vi.mocked(api.validateLatexConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
     vi.mocked(api.validateResumeConfig).mockResolvedValue({
       valid: true,
       message: null,
@@ -192,5 +208,36 @@ describe("OnboardingGate", () => {
       expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
     });
     expect(screen.queryByText("LLM API key")).not.toBeInTheDocument();
+  });
+
+  it("validates LaTeX config instead of RxResume when export mode is latex", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      ...settingsResponse,
+      settings: {
+        ...settingsResponse.settings,
+        resumeExportMode: {
+          value: "latex",
+          default: "rxresume",
+          override: "latex",
+        },
+      },
+    } as any);
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateLatexConfig).mockResolvedValue({
+      valid: false,
+      message: "Missing LaTeX CV template path",
+    });
+
+    render(<OnboardingGate />);
+
+    await waitFor(() => expect(api.validateLatexConfig).toHaveBeenCalled());
+    expect(api.validateRxresume).not.toHaveBeenCalled();
+    expect(api.validateResumeConfig).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
+    });
   });
 });

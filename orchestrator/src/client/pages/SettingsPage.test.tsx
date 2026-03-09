@@ -15,6 +15,7 @@ vi.mock("../api", () => ({
   getSettings: vi.fn(),
   updateSettings: vi.fn(),
   validateRxresume: vi.fn(),
+  validateLatexConfig: vi.fn(),
   clearDatabase: vi.fn(),
   deleteJobsByStatus: vi.fn(),
   getTracerReadiness: vi.fn(),
@@ -79,6 +80,10 @@ describe("SettingsPage", () => {
     vi.mocked(api.validateRxresume).mockResolvedValue({
       valid: false,
       message: "Missing credentials",
+    });
+    vi.mocked(api.validateLatexConfig).mockResolvedValue({
+      valid: true,
+      message: null,
     });
   });
 

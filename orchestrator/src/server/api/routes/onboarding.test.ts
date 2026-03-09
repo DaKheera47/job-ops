@@ -1,4 +1,6 @@
 import type { Server } from "node:http";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { RxResumeClient } from "@server/services/rxresume/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
@@ -317,6 +319,39 @@ describe.sequential("Onboarding API routes", () => {
       expect(res.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("not configured");
+    });
+  });
+
+  describe("POST /api/onboarding/validate/latex", () => {
+    it("returns invalid when no CV template path is configured", async () => {
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/latex`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(false);
+      expect(body.data.message).toContain("LATEX_CV_TEMPLATE_PATH");
+    });
+
+    it("validates configured LaTeX template paths", async () => {
+      const cvTemplatePath = join(tempDir, "cv-template.tex");
+      await writeFile(cvTemplatePath, "\\documentclass{article}", "utf8");
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/latex`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cvTemplatePath }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(true);
+      expect(body.data.message).toMatch(/template paths are valid/i);
     });
   });
 

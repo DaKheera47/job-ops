@@ -30,6 +30,11 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
  */
 export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrides = await settingsRepo.getAllSettings();
+  const resumeExportModeRaw =
+    overrides.resumeExportMode ?? process.env.RESUME_EXPORT_MODE ?? undefined;
+  const resumeExportMode =
+    settingsRegistry.resumeExportMode.parse(resumeExportModeRaw) ??
+    settingsRegistry.resumeExportMode.default();
 
   const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
     rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
@@ -39,7 +44,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   });
   let profile: Record<string, unknown> = {};
 
-  if (rxresumeBaseResumeId) {
+  if (resumeExportMode === "rxresume" && rxresumeBaseResumeId) {
     try {
       const resume = await getResume(rxresumeBaseResumeId);
       if (resume.data && typeof resume.data === "object") {
@@ -63,7 +68,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     }
   }
 
-  if (Object.keys(profile).length === 0) {
+  if (resumeExportMode === "rxresume" && Object.keys(profile).length === 0) {
     profile = await getProfile().catch((error) => {
       logger.warn("Failed to load base resume profile for settings", { error });
       return {};

@@ -17,6 +17,7 @@ It lets you configure:
 - Webhook destinations and secret
 - Display and writing-style defaults
 - Service credentials and basic auth
+- Resume export mode (RxResume or LaTeX templates)
 - Reactive Resume project selection
 - Tracer Links readiness verification
 - Backup and scoring rules
@@ -84,6 +85,17 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Max projects
   - Must-include projects
   - AI-selectable projects
+
+### Resume Export
+
+- Select export mode:
+  - `RxResume` for API-based PDF generation
+  - `LaTeX` for local template-based generation
+- In LaTeX mode:
+  - set CV template path (required)
+  - set cover template path (optional)
+  - validate paths before saving
+- Export generates tailored artifacts only and does not auto-apply jobs
 
 ### Tracer Links
 
@@ -191,6 +203,7 @@ curl -X POST "http://localhost:3001/api/backups"
 ## Related pages
 
 - [Reactive Resume](./reactive-resume)
+- [LaTeX Resume Mode](./latex-resume-mode)
 - [Database Backups](../getting-started/database-backups)
 - [Overview](./overview)
 - [Orchestrator](./orchestrator)

@@ -13,6 +13,7 @@ import {
   useSkipJobMutation,
 } from "@client/hooks/queries/useJobMutations";
 import { useProfile } from "@client/hooks/useProfile";
+import { getResumeArtifact } from "@client/lib/resume-artifact";
 import type { Job, JobListItem } from "@shared/types.js";
 import {
   CheckCircle2,
@@ -169,7 +170,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       if (pendingDescription) parts.push("job description");
       if (pendingTailoring) parts.push("tailoring changes");
 
-      const message = `You have unsaved ${parts.join(" and ")}. Save before generating the PDF?`;
+      const message = `You have unsaved ${parts.join(" and ")}. Save before generating artifacts?`;
       if (!window.confirm(message)) return false;
 
       try {
@@ -347,13 +348,17 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     [activeJobs, onSelectJobId],
   );
 
-  const selectedHasPdf = !!selectedJob?.pdfPath;
+  const selectedArtifact = selectedJob
+    ? getResumeArtifact({
+        storedPath: selectedJob.pdfPath,
+        updatedAt: selectedJob.updatedAt,
+      })
+    : null;
+  const selectedHasPdf = Boolean(selectedArtifact);
   const selectedJobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
     : "#";
-  const selectedPdfHref = selectedJob
-    ? `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`
-    : "#";
+  const selectedPdfHref = selectedArtifact?.href ?? "#";
   const canApply = selectedJob?.status === "ready";
   const canMoveToInProgress = selectedJob?.status === "applied";
   const canProcess = selectedJob
@@ -454,7 +459,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 rel="noopener noreferrer"
               >
                 <FileText className="h-3.5 w-3.5" />
-                PDF
+                {selectedArtifact?.isPdf ? "PDF" : "TEX"}
               </a>
             </Button>
           ) : (
@@ -465,7 +470,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               disabled
             >
               <FileText className="h-3.5 w-3.5" />
-              PDF
+              {selectedArtifact?.isPdf ? "PDF" : "TEX"}
             </Button>
           ))}
 
@@ -524,8 +529,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 {isProcessingSelected
                   ? "Processing..."
                   : selectedJob.status === "ready"
-                    ? "Regenerate PDF"
-                    : "Generate PDF"}
+                    ? "Regenerate Artifact"
+                    : "Generate Artifact"}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -555,7 +560,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       rel="noopener noreferrer"
                     >
                       <ExternalLink className="mr-2 h-4 w-4" />
-                      View PDF
+                      {selectedArtifact?.isPdf ? "View PDF" : "View TEX"}
                     </a>
                   </DropdownMenuItem>
                 )}
@@ -565,7 +570,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    Download PDF
+                    {selectedArtifact?.isPdf
+                      ? "Download PDF"
+                      : "Download TEX"}
                   </a>
                 </DropdownMenuItem>
               </>

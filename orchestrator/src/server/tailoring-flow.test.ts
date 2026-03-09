@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateFinalPdf } from "./pipeline/orchestrator";
 import * as jobsRepo from "./repositories/jobs";
+import * as latexExportService from "./services/latex-export";
 import * as pdfService from "./services/pdf";
+import * as resumeExportModeService from "./services/resume-export-mode";
 
 // Mock dependencies
 vi.mock("./repositories/jobs");
 vi.mock("./services/pdf");
+vi.mock("./services/resume-export-mode", () => ({
+  getConfiguredResumeExportMode: vi.fn().mockResolvedValue("rxresume"),
+}));
+vi.mock("./services/latex-export");
 
 describe("Tailoring Flow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(resumeExportModeService.getConfiguredResumeExportMode).mockResolvedValue(
+      "rxresume",
+    );
   });
 
   it("should use manual overrides (tailoring) when generating PDF", async () => {
@@ -93,6 +102,50 @@ describe("Tailoring Flow", () => {
       expect.objectContaining({
         requestOrigin: null,
         tracerLinksEnabled: undefined,
+      }),
+    );
+  });
+
+  it("uses LaTeX export mode and succeeds when pdflatex is unavailable", async () => {
+    vi.mocked(resumeExportModeService.getConfiguredResumeExportMode).mockResolvedValue(
+      "latex",
+    );
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue({
+      id: "job-latex-789",
+      title: "Platform Engineer",
+      employer: "Acme Labs",
+      jobDescription: "TypeScript Node.js backend role",
+      suitabilityReason: "Strong backend match",
+      tailoredSummary: "Tailored summary",
+      tailoredHeadline: "Platform Engineer",
+      tailoredSkills: JSON.stringify([
+        { name: "Backend", keywords: ["TypeScript", "Node.js"] },
+      ]),
+      status: "discovered",
+    } as any);
+    vi.mocked(latexExportService.generateLatexResumeArtifacts).mockResolvedValue(
+      {
+        success: true,
+        compileStatus: "skipped_missing_pdflatex",
+        texPath: "/tmp/job-latex-789/CV_Acme_Labs.tex",
+        message: "pdflatex missing",
+      },
+    );
+
+    const result = await generateFinalPdf("job-latex-789");
+
+    expect(result.success).toBe(true);
+    expect(latexExportService.generateLatexResumeArtifacts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-latex-789",
+        companyName: "Acme Labs",
+      }),
+    );
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith(
+      "job-latex-789",
+      expect.objectContaining({
+        status: "ready",
+        pdfPath: "/tmp/job-latex-789/CV_Acme_Labs.tex",
       }),
     );
   });

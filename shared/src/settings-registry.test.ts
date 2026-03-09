@@ -117,4 +117,28 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.rxresumeApiKey.envKey).toBe("RXRESUME_API_KEY");
     });
   });
+
+  describe("Resume export mode settings", () => {
+    it("parses resumeExportMode values and rejects invalid values", () => {
+      expect(settingsRegistry.resumeExportMode.parse("rxresume")).toBe(
+        "rxresume",
+      );
+      expect(settingsRegistry.resumeExportMode.parse("latex")).toBe("latex");
+      expect(settingsRegistry.resumeExportMode.parse("")).toBeNull();
+      expect(settingsRegistry.resumeExportMode.parse("pdf")).toBeNull();
+      expect(settingsRegistry.resumeExportMode.serialize("latex")).toBe(
+        "latex",
+      );
+      expect(settingsRegistry.resumeExportMode.serialize(null)).toBeNull();
+    });
+
+    it("has env-backed LaTeX template path settings", () => {
+      expect(settingsRegistry.latexCvTemplatePath.envKey).toBe(
+        "LATEX_CV_TEMPLATE_PATH",
+      );
+      expect(settingsRegistry.latexCoverTemplatePath.envKey).toBe(
+        "LATEX_COVER_TEMPLATE_PATH",
+      );
+    });
+  });
 });

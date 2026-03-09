@@ -17,6 +17,7 @@ import { DisplaySettingsSection } from "@client/pages/settings/components/Displa
 import { EnvironmentSettingsSection } from "@client/pages/settings/components/EnvironmentSettingsSection";
 import { ModelSettingsSection } from "@client/pages/settings/components/ModelSettingsSection";
 import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection";
+import { ResumeExportSection } from "@client/pages/settings/components/ResumeExportSection";
 import { ScoringSettingsSection } from "@client/pages/settings/components/ScoringSettingsSection";
 import { TracerLinksSettingsSection } from "@client/pages/settings/components/TracerLinksSettingsSection";
 import { WebhooksSection } from "@client/pages/settings/components/WebhooksSection";
@@ -36,6 +37,7 @@ import type {
   JobStatus,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
+  ResumeExportMode,
   RxResumeMode,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -65,8 +67,11 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
+  resumeExportMode: "rxresume",
   rxresumeMode: "v5",
   rxresumeBaseResumeId: null,
+  latexCvTemplatePath: "",
+  latexCoverTemplatePath: "",
   showSponsorInfo: null,
   chatStyleTone: "",
   chatStyleFormality: "",
@@ -120,8 +125,11 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
+  resumeExportMode: null,
   rxresumeMode: null,
   rxresumeBaseResumeId: null,
+  latexCvTemplatePath: null,
+  latexCoverTemplatePath: null,
   showSponsorInfo: null,
   chatStyleTone: null,
   chatStyleFormality: null,
@@ -160,8 +168,12 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
+  resumeExportMode:
+    data.resumeExportMode.override ?? data.resumeExportMode.value,
   rxresumeMode: data.rxresumeMode.override ?? data.rxresumeMode.value,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
+  latexCvTemplatePath: data.latexCvTemplatePath ?? "",
+  latexCoverTemplatePath: data.latexCoverTemplatePath ?? "",
   showSponsorInfo: data.showSponsorInfo.override,
   chatStyleTone: data.chatStyleTone.override ?? "",
   chatStyleFormality: data.chatStyleFormality.override ?? "",
@@ -288,6 +300,8 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     envSettings: {
       readable: {
         rxresumeEmail: settings?.rxresumeEmail ?? "",
+        latexCvTemplatePath: settings?.latexCvTemplatePath ?? "",
+        latexCoverTemplatePath: settings?.latexCoverTemplatePath ?? "",
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
         adzunaAppId: settings?.adzunaAppId ?? "",
         basicAuthUser: settings?.basicAuthUser ?? "",
@@ -356,6 +370,15 @@ export const SettingsPage: React.FC = () => {
     v4: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
     v5: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
   });
+  const [latexValidation, setLatexValidation] = useState<{
+    checked: boolean;
+    valid: boolean;
+    message: string | null;
+  }>({
+    checked: false,
+    valid: false,
+    message: null,
+  });
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>([
     "discovered",
   ]);
@@ -422,12 +445,19 @@ export const SettingsPage: React.FC = () => {
     control,
     name: "rxresumeMode",
   }) ?? rxresumeMode) as RxResumeMode;
+  const resumeExportMode = (settings?.resumeExportMode?.value ??
+    "rxresume") as ResumeExportMode;
+  const selectedResumeExportMode = (useWatch({
+    control,
+    name: "resumeExportMode",
+  }) ?? resumeExportMode) as ResumeExportMode;
   const resumeProjectsValue = useWatch({
     control,
     name: "resumeProjects",
   });
   const hasRxResumeAccess = Boolean(
-    rxresumeValidationStatuses[selectedRxresumeMode].valid,
+    selectedResumeExportMode === "rxresume" &&
+      rxresumeValidationStatuses[selectedRxresumeMode].valid,
   );
 
   useEffect(() => {
@@ -647,8 +677,48 @@ export const SettingsPage: React.FC = () => {
     [getValues, queryClient, storedRxResume],
   );
 
+  const validateLatexMode = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const { silent = false } = options ?? {};
+      const values = getValues();
+      try {
+        const result = await api.validateLatexConfig({
+          cvTemplatePath: values.latexCvTemplatePath?.trim() || undefined,
+          coverTemplatePath:
+            values.latexCoverTemplatePath?.trim() || undefined,
+        });
+        setLatexValidation({
+          checked: true,
+          valid: result.valid,
+          message: result.message ?? null,
+        });
+        if (!silent) {
+          if (result.valid) {
+            toast.success("LaTeX template validation passed");
+          } else {
+            toast.error(result.message || "LaTeX template validation failed");
+          }
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "LaTeX template validation failed";
+        setLatexValidation({
+          checked: true,
+          valid: false,
+          message,
+        });
+        if (!silent) {
+          toast.error(message);
+        }
+      }
+    },
+    [getValues],
+  );
+
   useEffect(() => {
-    if (!settings) return;
+    if (!settings || selectedResumeExportMode !== "rxresume") return;
 
     const modesToCheck = RXRESUME_MODES.filter(
       (mode) => !rxresumeValidationStatuses[mode].checked,
@@ -660,11 +730,33 @@ export const SettingsPage: React.FC = () => {
         validateRxresumeMode(mode, { silent: true, persistOnSuccess: false }),
       ),
     );
-  }, [settings, rxresumeValidationStatuses, validateRxresumeMode]);
+  }, [
+    settings,
+    rxresumeValidationStatuses,
+    validateRxresumeMode,
+    selectedResumeExportMode,
+  ]);
+
+  useEffect(() => {
+    if (!settings || selectedResumeExportMode !== "latex") return;
+    if (latexValidation.checked) return;
+    void validateLatexMode({ silent: true });
+  }, [settings, selectedResumeExportMode, latexValidation, validateLatexMode]);
+
+  useEffect(() => {
+    if (selectedResumeExportMode === "latex") return;
+    setLatexValidation({
+      checked: false,
+      valid: false,
+      message: null,
+    });
+  }, [selectedResumeExportMode]);
 
   const effectiveProfileProjects =
-    rxResumeProjectsOverride ??
-    (selectedRxresumeMode === rxresumeMode ? profileProjects : []);
+    selectedResumeExportMode === "rxresume"
+      ? rxResumeProjectsOverride ??
+        (selectedRxresumeMode === rxresumeMode ? profileProjects : [])
+      : [];
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
 
   const lockedCount = resumeProjectsValue?.lockedProjectIds.length ?? 0;
@@ -699,6 +791,13 @@ export const SettingsPage: React.FC = () => {
 
       if (dirtyFields.rxresumeEmail || dirtyFields.rxresumePassword) {
         envPayload.rxresumeEmail = normalizeString(data.rxresumeEmail);
+      }
+
+      if (dirtyFields.latexCvTemplatePath || dirtyFields.latexCoverTemplatePath) {
+        envPayload.latexCvTemplatePath = normalizeString(data.latexCvTemplatePath);
+        envPayload.latexCoverTemplatePath = normalizeString(
+          data.latexCoverTemplatePath,
+        );
       }
 
       if (dirtyFields.ukvisajobsEmail || dirtyFields.ukvisajobsPassword) {
@@ -773,6 +872,7 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
+        resumeExportMode: data.resumeExportMode ?? "rxresume",
         rxresumeMode: data.rxresumeMode ?? "v5",
         rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId),
         showSponsorInfo: nullIfSame(data.showSponsorInfo, display.default),
@@ -955,31 +1055,42 @@ export const SettingsPage: React.FC = () => {
             isLoading={isLoading}
             isSaving={isSaving}
           />
-          <ReactiveResumeSection
-            rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
-            onRxresumeModeChange={(mode) => {
-              const nextId = getBaseResumeIdForMode(mode);
-              setRxResumeBaseResumeIdDraft(nextId);
-              setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
-              setRxResumeProjectsOverride(null);
+          <ResumeExportSection
+            exportModeValue={resumeExportMode}
+            latexValidation={latexValidation}
+            onValidateLatex={() => {
+              void validateLatexMode();
             }}
-            setRxResumeBaseResumeIdDraft={(value) => {
-              const mode = (getValues("rxresumeMode") ??
-                rxresumeMode) as RxResumeMode;
-              setBaseResumeIdForMode(mode, value);
-              setRxResumeBaseResumeIdDraft(value);
-              setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
-            }}
-            hasRxResumeAccess={hasRxResumeAccess}
-            rxresumeMode={rxresumeMode}
-            validationStatuses={rxresumeValidationStatuses}
-            profileProjects={effectiveProfileProjects}
-            lockedCount={lockedCount}
-            maxProjectsTotal={effectiveMaxProjectsTotal}
-            isProjectsLoading={isFetchingRxResumeProjects}
             isLoading={isLoading}
             isSaving={isSaving}
           />
+          {selectedResumeExportMode === "rxresume" ? (
+            <ReactiveResumeSection
+              rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
+              onRxresumeModeChange={(mode) => {
+                const nextId = getBaseResumeIdForMode(mode);
+                setRxResumeBaseResumeIdDraft(nextId);
+                setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
+                setRxResumeProjectsOverride(null);
+              }}
+              setRxResumeBaseResumeIdDraft={(value) => {
+                const mode = (getValues("rxresumeMode") ??
+                  rxresumeMode) as RxResumeMode;
+                setBaseResumeIdForMode(mode, value);
+                setRxResumeBaseResumeIdDraft(value);
+                setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
+              }}
+              hasRxResumeAccess={hasRxResumeAccess}
+              rxresumeMode={rxresumeMode}
+              validationStatuses={rxresumeValidationStatuses}
+              profileProjects={effectiveProfileProjects}
+              lockedCount={lockedCount}
+              maxProjectsTotal={effectiveMaxProjectsTotal}
+              isProjectsLoading={isFetchingRxResumeProjects}
+              isLoading={isLoading}
+              isSaving={isSaving}
+            />
+          ) : null}
           <TracerLinksSettingsSection
             readiness={tracerReadiness}
             isLoading={isLoading || isTracerReadinessLoading}

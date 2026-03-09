@@ -152,6 +152,23 @@ export const settingsRegistry = {
     serialize: (value: "v4" | "v5" | null | undefined): string | null =>
       value ?? null,
   },
+  resumeExportMode: {
+    kind: "typed" as const,
+    schema: z.enum(["rxresume", "latex"]),
+    default: (): "rxresume" | "latex" =>
+      (typeof process !== "undefined"
+        ? process.env.RESUME_EXPORT_MODE
+        : undefined) === "latex"
+        ? "latex"
+        : "rxresume",
+    parse: (raw: string | undefined): "rxresume" | "latex" | null => {
+      if (!raw) return null;
+      return raw === "rxresume" || raw === "latex" ? raw : null;
+    },
+    serialize: (
+      value: "rxresume" | "latex" | null | undefined,
+    ): string | null => value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
@@ -395,6 +412,16 @@ export const settingsRegistry = {
     kind: "string" as const,
     envKey: "RXRESUME_EMAIL",
     schema: z.string().trim().max(200),
+  },
+  latexCvTemplatePath: {
+    kind: "string" as const,
+    envKey: "LATEX_CV_TEMPLATE_PATH",
+    schema: z.string().trim().max(2000),
+  },
+  latexCoverTemplatePath: {
+    kind: "string" as const,
+    envKey: "LATEX_COVER_TEMPLATE_PATH",
+    schema: z.string().trim().max(2000),
   },
   ukvisajobsEmail: {
     kind: "string" as const,

@@ -1253,6 +1253,9 @@ export async function getResumeProjectsCatalog(): Promise<
 > {
   try {
     const settings = await getSettings();
+    if (settings.resumeExportMode?.value === "latex") {
+      return [];
+    }
     if (settings.rxresumeBaseResumeId) {
       return await getRxResumeProjects(
         settings.rxresumeBaseResumeId,
@@ -1307,6 +1310,16 @@ export async function validateRxresume(input?: {
 
 export async function validateResumeConfig(): Promise<ValidationResult> {
   return fetchApi<ValidationResult>("/onboarding/validate/resume");
+}
+
+export async function validateLatexConfig(input?: {
+  cvTemplatePath?: string;
+  coverTemplatePath?: string;
+}): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>("/onboarding/validate/latex", {
+    method: "POST",
+    body: JSON.stringify(input ?? {}),
+  });
 }
 
 export async function updateSettings(

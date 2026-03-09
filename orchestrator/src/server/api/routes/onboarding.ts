@@ -2,7 +2,9 @@ import { ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
+import { validateLatexTemplateConfig } from "@server/services/latex-export";
 import { LlmService } from "@server/services/llm/service";
+import { getConfiguredResumeExportMode } from "@server/services/resume-export-mode";
 import {
   getResume,
   RxResumeAuthConfigError,
@@ -58,6 +60,15 @@ async function validateLlm(options: {
  * Validate that a base resume is configured and accessible via Reactive Resume.
  */
 async function validateResumeConfig(): Promise<ValidationResponse> {
+  const exportMode = await getConfiguredResumeExportMode();
+  if (exportMode === "latex") {
+    const latexValidation = await validateLatexTemplateConfig();
+    return {
+      valid: latexValidation.valid,
+      message: latexValidation.message,
+    };
+  }
+
   try {
     // Check if rxresumeBaseResumeId is configured
     const { resumeId: rxresumeBaseResumeId } =
@@ -106,6 +117,20 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
       error instanceof Error ? error.message : "Resume validation failed.";
     return { valid: false, message };
   }
+}
+
+async function validateLatexConfig(options?: {
+  cvTemplatePath?: string | null;
+  coverTemplatePath?: string | null;
+}): Promise<ValidationResponse> {
+  const result = await validateLatexTemplateConfig({
+    cvTemplatePath: options?.cvTemplatePath,
+    coverTemplatePath: options?.coverTemplatePath,
+  });
+  return {
+    valid: result.valid,
+    message: result.message,
+  };
 }
 
 async function validateRxresume(options?: {
@@ -221,6 +246,36 @@ onboardingRouter.post(
       password,
       apiKey,
       baseUrl,
+    });
+    ok(res, result);
+  },
+);
+
+onboardingRouter.post(
+  "/validate/latex",
+  async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          valid: true,
+          message: "Demo mode: LaTeX validation is simulated.",
+        },
+        { simulated: true },
+      );
+    }
+
+    const cvTemplatePath =
+      typeof req.body?.cvTemplatePath === "string"
+        ? req.body.cvTemplatePath
+        : undefined;
+    const coverTemplatePath =
+      typeof req.body?.coverTemplatePath === "string"
+        ? req.body.coverTemplatePath
+        : undefined;
+    const result = await validateLatexConfig({
+      cvTemplatePath,
+      coverTemplatePath,
     });
     ok(res, result);
   },

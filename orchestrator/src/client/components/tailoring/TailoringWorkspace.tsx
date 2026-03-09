@@ -531,22 +531,22 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               {finalizeVariant === "ready"
-                ? "Regenerating PDF..."
-                : "Finalizing & generating PDF..."}
+                ? "Regenerating artifact..."
+                : "Finalizing & generating artifact..."}
             </>
           ) : (
             <>
               <Check className="mr-2 h-4 w-4" />
               {finalizeVariant === "ready"
-                ? "Regenerate PDF"
+                ? "Regenerate Artifact"
                 : "Finalize & Move to Ready"}
             </>
           )}
         </Button>
         <p className="text-center text-[10px] text-muted-foreground/70">
           {finalizeVariant === "ready"
-            ? "This will save your changes and regenerate the tailored PDF."
-            : "This will generate your tailored PDF and move the job to Ready."}
+            ? "This saves your edits and regenerates tailored resume artifacts. It does not auto-apply."
+            : "This generates tailored resume artifacts and moves the job to Ready. It does not auto-apply."}
         </p>
       </div>
     </div>

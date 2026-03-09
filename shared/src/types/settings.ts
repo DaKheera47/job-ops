@@ -13,6 +13,7 @@ export interface ResumeProjectsSettings {
 }
 
 export type RxResumeMode = "v4" | "v5";
+export type ResumeExportMode = "rxresume" | "latex";
 
 export interface ResumeProfile {
   basics?: {
@@ -142,6 +143,7 @@ export interface AppSettings {
   missingSalaryPenalty: Resolved<number>;
   autoSkipScoreThreshold: Resolved<number | null>;
   rxresumeMode: Resolved<RxResumeMode>;
+  resumeExportMode: Resolved<ResumeExportMode>;
 
   // Model variants (no own default, fallback to model.value):
   modelScorer: ModelResolved;
@@ -153,6 +155,8 @@ export interface AppSettings {
   rxresumeBaseResumeIdV4: string | null;
   rxresumeBaseResumeIdV5: string | null;
   rxresumeEmail: string | null;
+  latexCvTemplatePath: string | null;
+  latexCoverTemplatePath: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;
   basicAuthUser: string | null;

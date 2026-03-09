@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { trackProductEvent } from "@/lib/analytics";
+import { getResumeArtifact } from "@/client/lib/resume-artifact";
 import {
   cn,
   copyTextToClipboard,
@@ -114,9 +115,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   }, [onTailoringDirtyChange]);
 
   // Compute derived values
-  const pdfHref = job
-    ? `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`
-    : "#";
+  const resumeArtifact = job
+    ? getResumeArtifact({ storedPath: job.pdfPath, updatedAt: job.updatedAt })
+    : null;
+  const pdfHref = resumeArtifact?.href ?? "#";
 
   const jobLink = job ? job.applicationLink || job.jobUrl : "#";
 
@@ -381,20 +383,33 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           />
 
           {/* Download PDF - primary artifact action */}
-          <Button
-            asChild
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-          >
-            <a
-              href={pdfHref}
-              download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.pdf`}
+          {resumeArtifact ? (
+            <Button
+              asChild
+              variant="outline"
+              className="h-9 w-full gap-1 px-2 text-xs"
+            >
+              <a
+                href={pdfHref}
+                download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.${resumeArtifact.extension}`}
+              >
+                <Download className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  {resumeArtifact.isPdf ? "Download PDF" : "Download TEX"}
+                </span>
+                <KbdHint shortcut="d" className="ml-auto" />
+              </a>
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="h-9 w-full gap-1 px-2 text-xs"
+              disabled
             >
               <Download className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Download PDF</span>
-              <KbdHint shortcut="d" className="ml-auto" />
-            </a>
-          </Button>
+              <span className="truncate">No Artifact</span>
+            </Button>
+          )}
 
           {/* Open job - to verify before applying */}
           <Button
@@ -425,6 +440,10 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <KbdHint shortcut="a" className="ml-auto" />
           </Button>
         </div>
+        <p className="pt-2 text-xs text-muted-foreground">
+          Generated artifacts do not auto-submit applications. Use "Mark
+          Applied" after you apply externally.
+        </p>
       </div>
 
       <div className="flex-1 py-4 space-y-4">
@@ -524,7 +543,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <RefreshCcw
                 className={cn("mr-2 h-4 w-4", isRegenerating && "animate-spin")}
               />
-              {isRegenerating ? "Regenerating..." : "Regenerate PDF"}
+              {isRegenerating ? "Regenerating..." : "Regenerate Artifact"}
             </DropdownMenuItem>
 
             <DropdownMenuItem onSelect={handleRescore} disabled={isRescoring}>
@@ -537,14 +556,16 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <DropdownMenuSeparator />
 
             {/* Utility actions */}
-            <DropdownMenuItem
-              onSelect={() =>
-                window.open(pdfHref, "_blank", "noopener,noreferrer")
-              }
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              View PDF
-            </DropdownMenuItem>
+            {resumeArtifact ? (
+              <DropdownMenuItem
+                onSelect={() =>
+                  window.open(pdfHref, "_blank", "noopener,noreferrer")
+                }
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                {resumeArtifact.isPdf ? "View PDF" : "View TEX"}
+              </DropdownMenuItem>
+            ) : null}
 
             <DropdownMenuItem onSelect={handleCopyInfo}>
               <Copy className="mr-2 h-4 w-4" />

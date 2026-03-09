@@ -38,6 +38,7 @@ import {
 } from "@/client/hooks/queries/useJobMutations";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
+import { getResumeArtifact } from "@/client/lib/resume-artifact";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -293,7 +294,7 @@ export const JobPage: React.FC = () => {
     await runAction("regenerate-pdf", async () => {
       if (!job) return;
       await generatePdfMutation.mutateAsync(job.id);
-      toast.success("Resume PDF generated");
+      toast.success("Resume artifact generated");
     });
   };
 
@@ -327,9 +328,10 @@ export const JobPage: React.FC = () => {
   const canTrackStages = job?.status === "in_progress";
   const canLogEvents = canTrackStages && !isClosedStage;
   const jobLink = job ? job.applicationLink || job.jobUrl : null;
-  const pdfHref = job?.pdfPath
-    ? `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`
+  const resumeArtifact = job
+    ? getResumeArtifact({ storedPath: job.pdfPath, updatedAt: job.updatedAt })
     : null;
+  const pdfHref = resumeArtifact?.href ?? null;
   const isBusy = activeAction !== null;
   const isDiscovered = job?.status === "discovered";
   const isReady = job?.status === "ready";
@@ -475,7 +477,7 @@ export const JobPage: React.FC = () => {
                 >
                   <a href={pdfHref} target="_blank" rel="noopener noreferrer">
                     <FileText className="mr-1.5 h-3.5 w-3.5" />
-                    View PDF
+                    {resumeArtifact?.isPdf ? "View PDF" : "View TEX"}
                   </a>
                 </Button>
               )}
@@ -489,7 +491,7 @@ export const JobPage: React.FC = () => {
                   disabled={isBusy}
                 >
                   <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                  Regenerate PDF
+                  Regenerate Artifact
                 </Button>
               )}
 

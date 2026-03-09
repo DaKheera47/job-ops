@@ -11,6 +11,10 @@ Reactive Resume integration powers JobOps PDF generation.
 
 JobOps uses a selected RxResume base resume as the source of truth, then applies job-specific tailoring (summary, headline, skills, project visibility) before exporting a PDF.
 
+Migration note:
+
+- If you switch to **LaTeX Resume Mode**, Reactive Resume becomes optional.
+
 ## Why it exists
 
 Most users need a repeatable resume pipeline:
@@ -255,6 +259,7 @@ Example:
 ## Related pages
 
 - [Settings](./settings)
+- [LaTeX Resume Mode](./latex-resume-mode)
 - [Orchestrator](./orchestrator)
 - [Ghostwriter](./ghostwriter)
 - [Self-Hosting](../getting-started/self-hosting)
