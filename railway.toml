@@ -19,5 +19,6 @@ healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 
-# Give the container time to build DB + start Express
-startCommand = "cd /app/orchestrator && npx tsx src/server/db/migrate.ts && npm run start"
+# Let the Dockerfile CMD handle startup (WORKDIR is already /app/orchestrator)
+# Railway executes startCommand as a raw executable, not through a shell,
+# so shell builtins like `cd` don't work. The Dockerfile CMD uses sh -c instead.
