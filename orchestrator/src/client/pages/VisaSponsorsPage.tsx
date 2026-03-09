@@ -393,6 +393,38 @@ export const VisaSponsorsPage: React.FC = () => {
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
           <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
             <div className="space-y-2">
+              <div className="space-y-2">
+                <label
+                  htmlFor="sponsor-search"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  Company name
+                </label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="sponsor-search"
+                    placeholder="Search for a company name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10 h-10"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter a company name to check if they&apos;re a licensed visa
+                  sponsor in {searchScopeLabel}.
+                </p>
+              </div>
               <label
                 htmlFor="sponsor-source"
                 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
@@ -418,39 +450,6 @@ export const VisaSponsorsPage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label
-                htmlFor="sponsor-search"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Company name
-              </label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  id="sponsor-search"
-                  placeholder="Search for a company name..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-10 h-10"
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Enter a company name to check if they&apos;re a licensed visa
-                sponsor in {searchScopeLabel}.
-              </p>
             </div>
           </div>
         </section>
