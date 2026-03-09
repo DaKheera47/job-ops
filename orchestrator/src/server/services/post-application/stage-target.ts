@@ -24,13 +24,16 @@ export function messageTypeFromStageTarget(
 ): PostApplicationMessageType {
   if (
     target === "assessment" ||
+    target === "take_home_assessment" ||
     target === "hiring_manager_screen" ||
+    target === "behavioral_interview" ||
     target === "technical_interview" ||
-    target === "onsite"
+    target === "onsite" ||
+    target === "background_check"
   ) {
     return "interview";
   }
-  if (target === "offer") return "offer";
+  if (target === "offer" || target === "offer_negotiation") return "offer";
   if (target === "rejected" || target === "withdrawn" || target === "closed") {
     return "rejection";
   }

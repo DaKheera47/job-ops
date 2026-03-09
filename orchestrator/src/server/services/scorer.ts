@@ -260,14 +260,21 @@ function buildScoringPrompt(
   profile: Record<string, unknown>,
   preferences: ScoringPreferences,
 ): string {
-  return `You are evaluating a job listing for a candidate. Score how suitable this job is for the candidate on a scale of 0-100.
+  return `You are evaluating a job listing for a candidate based in the United States. Score how suitable this job is for the candidate on a scale of 0-100.
 
 SCORING CRITERIA:
-- Skills match (technologies, frameworks, languages): 0-30 points
-- Experience level match: 0-25 points
+- Skills match (technologies, frameworks, languages, certifications): 0-30 points
+- Experience level match (years, seniority, leadership): 0-25 points
 - Location/remote work alignment: 0-15 points
 - Industry/domain fit: 0-15 points
-- Career growth potential: 0-15 points
+- Career growth potential and compensation competitiveness: 0-15 points
+
+EVALUATION GUIDELINES:
+- Value practical experience, certifications (e.g., AWS, CISSP, PMP), and portfolio work equally to formal degrees.
+- For cybersecurity roles, weight industry certifications and hands-on experience heavily.
+- Treat "degree preferred" as non-blocking if the candidate has equivalent experience.
+- Remote-friendly roles should score higher for location alignment when candidate prefers remote.
+- If salary is listed, consider whether it aligns with market rates for the role and location.
 
 CANDIDATE PROFILE:
 ${JSON.stringify(profile, null, 2)}
@@ -277,8 +284,8 @@ Title: ${job.title}
 Employer: ${job.employer}
 Location: ${job.location || "Not specified"}
 Salary: ${job.salary || "Not specified"}
-Degree Required: ${job.degreeRequired || "Not specified"}
-Disciplines: ${job.disciplines || "Not specified"}
+${job.degreeRequired ? `Degree Required: ${job.degreeRequired}` : ""}
+${job.disciplines ? `Disciplines: ${job.disciplines}` : ""}
 
 JOB DESCRIPTION:
 ${job.jobDescription || "No description available"}

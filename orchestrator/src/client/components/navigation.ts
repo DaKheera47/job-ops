@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   Link2,
   Settings,
-  Shield,
 } from "lucide-react";
 
 export type NavLink = {
@@ -41,7 +40,6 @@ export const NAV_LINKS: NavLink[] = [
     icon: Link2,
     activePaths: ["/tracer-links"],
   },
-  { to: "/visa-sponsors", label: "Visa Sponsors", icon: Shield },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

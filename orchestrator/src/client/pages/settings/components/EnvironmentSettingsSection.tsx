@@ -45,32 +45,6 @@ export const EnvironmentSettingsSection: React.FC<
             </div>
 
             <div className="space-y-4">
-              <div className="text-sm font-semibold">UKVisaJobs</div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <SettingsInput
-                  label="Email"
-                  inputProps={register("ukvisajobsEmail")}
-                  placeholder="you@example.com"
-                  disabled={isLoading || isSaving}
-                  error={errors.ukvisajobsEmail?.message as string | undefined}
-                />
-                <SettingsInput
-                  label="Password"
-                  inputProps={register("ukvisajobsPassword")}
-                  type="password"
-                  placeholder="Enter new password"
-                  disabled={isLoading || isSaving}
-                  error={
-                    errors.ukvisajobsPassword?.message as string | undefined
-                  }
-                  current={formatSecretHint(
-                    privateValues.ukvisajobsPasswordHint,
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4">
               <div className="text-sm font-semibold">Adzuna</div>
               <div className="grid gap-4 md:grid-cols-2">
                 <SettingsInput

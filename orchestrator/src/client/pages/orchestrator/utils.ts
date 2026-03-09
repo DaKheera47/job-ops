@@ -1,5 +1,5 @@
 import type { AppSettings, JobListItem, JobSource } from "@shared/types";
-import type { FilterTab, JobSort } from "./constants";
+import type { FilterTab, JobSort, JobTypeFilter, WorkplaceFilter } from "./constants";
 import {
   DEFAULT_PIPELINE_SOURCES,
   orderedFilterSources,
@@ -205,4 +205,42 @@ export const getEnabledSources = (
   }
 
   return enabled.length > 0 ? enabled : [...DEFAULT_PIPELINE_SOURCES];
+};
+
+/**
+ * Normalize workplace arrangement from isRemote flag and workFromHomeType string.
+ * JobSpy provides inconsistent values across sources, so we bucket them.
+ */
+export const getWorkplaceCategory = (
+  job: JobListItem,
+): WorkplaceFilter => {
+  const wfh = job.workFromHomeType?.trim().toLowerCase() ?? "";
+
+  if (wfh === "hybrid" || wfh.includes("hybrid")) return "hybrid";
+  if (wfh === "remote" || wfh.includes("remote") || wfh.includes("work from home")) return "remote";
+  if (wfh === "onsite" || wfh === "on-site" || wfh === "in_office" || wfh.includes("office") || wfh.includes("on-site") || wfh.includes("in person")) return "onsite";
+
+  // Fall back to isRemote boolean
+  if (job.isRemote === true) return "remote";
+  if (job.isRemote === false) return "onsite";
+
+  return "all"; // unknown
+};
+
+/**
+ * Normalize job type (full-time, contract, part-time, internship).
+ * JobSpy values vary: "fulltime", "full-time", "Full Time", "contract", "contractor", etc.
+ */
+export const getJobTypeCategory = (
+  job: JobListItem,
+): JobTypeFilter => {
+  const raw = job.jobType?.trim().toLowerCase() ?? "";
+  if (!raw) return "all"; // unknown
+
+  if (raw.includes("full") || raw === "fulltime" || raw === "permanent") return "fulltime";
+  if (raw.includes("contract") || raw.includes("freelance") || raw.includes("temporary") || raw.includes("temp")) return "contract";
+  if (raw.includes("part") || raw === "parttime") return "parttime";
+  if (raw.includes("intern")) return "internship";
+
+  return "all"; // unrecognized
 };

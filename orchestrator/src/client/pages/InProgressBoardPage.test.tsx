@@ -44,6 +44,8 @@ const makeJob = (overrides: Partial<JobListItem>): JobListItem => ({
   salaryMinAmount: null,
   salaryMaxAmount: null,
   salaryCurrency: null,
+  isRemote: null,
+  workFromHomeType: null,
   discoveredAt: "2026-01-01T00:00:00.000Z",
   appliedAt: null,
   updatedAt: "2026-01-01T00:00:00.000Z",

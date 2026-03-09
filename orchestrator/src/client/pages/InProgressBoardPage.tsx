@@ -156,10 +156,14 @@ export const InProgressBoardPage: React.FC = () => {
     const grouped: Record<BoardStage, BoardCard[]> = {
       recruiter_screen: [],
       assessment: [],
+      take_home_assessment: [],
       hiring_manager_screen: [],
+      behavioral_interview: [],
       technical_interview: [],
       onsite: [],
+      background_check: [],
       offer: [],
+      offer_negotiation: [],
       closed: [],
     };
 

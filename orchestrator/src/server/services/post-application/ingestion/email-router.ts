@@ -143,7 +143,7 @@ export async function classifyWithSmartRouter(args: {
     {
       role: "system" as const,
       content:
-        "You are a smart router for post-application emails. Return only strict JSON. Ignore sensitive data and include only routing fields.",
+        "You are a smart router for post-application emails in the US job market. Return only strict JSON. Ignore sensitive data and include only routing fields. Recognize common US hiring pipeline patterns: recruiter screen → technical interview → behavioral interview → onsite → offer. Also recognize take-home assessments, background checks, and offer negotiation stages.",
     },
     {
       role: "user" as const,

@@ -19,10 +19,14 @@ const STAGE_TO_STATUS: Record<ApplicationStage, JobStatus> = {
   applied: "applied",
   recruiter_screen: "in_progress",
   assessment: "in_progress",
+  take_home_assessment: "in_progress",
   hiring_manager_screen: "in_progress",
+  behavioral_interview: "in_progress",
   technical_interview: "in_progress",
   onsite: "in_progress",
+  background_check: "in_progress",
   offer: "in_progress",
+  offer_negotiation: "in_progress",
   closed: "in_progress",
 };
 

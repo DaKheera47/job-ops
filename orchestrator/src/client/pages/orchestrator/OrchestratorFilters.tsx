@@ -29,9 +29,11 @@ import { sourceLabel } from "@/lib/utils";
 import type {
   FilterTab,
   JobSort,
+  JobTypeFilter,
   SalaryFilter,
   SalaryFilterMode,
   SponsorFilter,
+  WorkplaceFilter,
 } from "./constants";
 import { defaultSortDirection, orderedFilterSources, tabs } from "./constants";
 
@@ -46,6 +48,10 @@ interface OrchestratorFiltersProps {
   onSponsorFilterChange: (value: SponsorFilter) => void;
   salaryFilter: SalaryFilter;
   onSalaryFilterChange: (value: SalaryFilter) => void;
+  workplaceFilter: WorkplaceFilter;
+  onWorkplaceFilterChange: (value: WorkplaceFilter) => void;
+  jobTypeFilter: JobTypeFilter;
+  onJobTypeFilterChange: (value: JobTypeFilter) => void;
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
@@ -64,6 +70,27 @@ const sponsorOptions: Array<{
   { value: "potential", label: "Potential sponsor" },
   { value: "not_found", label: "Sponsor not found" },
   { value: "unknown", label: "Unchecked sponsor" },
+];
+
+const workplaceOptions: Array<{
+  value: WorkplaceFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All arrangements" },
+  { value: "remote", label: "Remote" },
+  { value: "hybrid", label: "Hybrid" },
+  { value: "onsite", label: "On-site" },
+];
+
+const jobTypeOptions: Array<{
+  value: JobTypeFilter;
+  label: string;
+}> = [
+  { value: "all", label: "All types" },
+  { value: "fulltime", label: "Full-time" },
+  { value: "contract", label: "Contract" },
+  { value: "parttime", label: "Part-time" },
+  { value: "internship", label: "Internship" },
 ];
 
 const salaryModeOptions: Array<{
@@ -123,6 +150,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSponsorFilterChange,
   salaryFilter,
   onSalaryFilterChange,
+  workplaceFilter,
+  onWorkplaceFilterChange,
+  jobTypeFilter,
+  onJobTypeFilterChange,
   sourcesWithJobs,
   sort,
   onSortChange,
@@ -146,8 +177,10 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
       Number(
         (typeof salaryFilter.min === "number" && salaryFilter.min > 0) ||
           (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
-      ),
-    [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max],
+      ) +
+      Number(workplaceFilter !== "all") +
+      Number(jobTypeFilter !== "all"),
+    [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max, workplaceFilter, jobTypeFilter],
   );
   const showSalaryMin =
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
@@ -224,7 +257,7 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                     )}
                   </SheetTitle>
                   <SheetDescription>
-                    Refine sources, sponsor status, salary, and sorting.
+                    Refine sources, workplace, job type, salary, and more.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -276,6 +309,52 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                               : "outline"
                           }
                           onClick={() => onSponsorFilterChange(option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Workplace</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                      {workplaceOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          size="sm"
+                          variant={
+                            workplaceFilter === option.value
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => onWorkplaceFilterChange(option.value)}
+                        >
+                          {option.label}
+                        </Button>
+                      ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Job type</CardTitle>
+                    </CardHeader>
+                    <CardContent className="flex flex-wrap gap-2">
+                      {jobTypeOptions.map((option) => (
+                        <Button
+                          key={option.value}
+                          type="button"
+                          size="sm"
+                          variant={
+                            jobTypeFilter === option.value
+                              ? "default"
+                              : "outline"
+                          }
+                          onClick={() => onJobTypeFilterChange(option.value)}
                         >
                           {option.label}
                         </Button>

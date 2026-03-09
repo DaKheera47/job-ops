@@ -68,7 +68,7 @@ export const settingsRegistry = {
     schema: z.preprocess(
       (v) => (v === "" ? null : v),
       z
-        .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"])
+        .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini", "anthropic"])
         .nullable(),
     ),
     default: (): string =>
@@ -213,8 +213,10 @@ export const settingsRegistry = {
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.SEARCH_CITIES || process.env.JOBSPY_LOCATION || "UK"
-        : "UK",
+        ? process.env.SEARCH_CITIES ||
+          process.env.JOBSPY_LOCATION ||
+          "United States"
+        : "United States",
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
@@ -237,8 +239,8 @@ export const settingsRegistry = {
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.JOBSPY_COUNTRY_INDEED || "UK"
-        : "UK",
+        ? process.env.JOBSPY_COUNTRY_INDEED || "US"
+        : "US",
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
@@ -246,7 +248,7 @@ export const settingsRegistry = {
   showSponsorInfo: {
     kind: "typed" as const,
     schema: z.boolean(),
-    default: (): boolean => true,
+    default: (): boolean => false,
     parse: parseBitBoolOrNull,
     serialize: serializeBitBool,
   },

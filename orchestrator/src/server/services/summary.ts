@@ -161,7 +161,7 @@ function buildTailoringPrompt(
   };
 
   return `
-You are an expert resume writer tailoring a profile for a specific job application.
+You are an expert US resume writer tailoring a profile for a specific job application.
 You must return a JSON object with three fields: "headline", "summary", and "skills".
 
 JOB DESCRIPTION (JD):
@@ -179,13 +179,16 @@ INSTRUCTIONS:
 
 2. "summary" (String):
    - The Hook. This needs to mirror the company's "About You" / "What we're looking for" section.
-   - Keep it concise, warm, and confident.
+   - Keep it concise (2-4 sentences), warm, and confident.
    - Do NOT invent experience.
+   - Lead with impact metrics where possible (revenue, users, uptime, cost savings).
    - Use the profile to add context.
+   - US resume best practice: focus on measurable outcomes, not just responsibilities.
 
 3. "skills" (Array of Objects):
    - Review my existing skills section structure.
-   - Keyword Stuffing: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
+   - Keyword Optimization: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
+   - Include relevant certifications and tools as keywords (e.g., "AWS Certified", "CISSP", "Terraform").
    - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.
    - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
 

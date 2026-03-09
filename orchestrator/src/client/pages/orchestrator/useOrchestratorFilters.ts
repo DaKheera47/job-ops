@@ -3,9 +3,11 @@ import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
   JobSort,
+  JobTypeFilter,
   SalaryFilter,
   SalaryFilterMode,
   SponsorFilter,
+  WorkplaceFilter,
 } from "./constants";
 import { DEFAULT_SORT } from "./constants";
 
@@ -21,6 +23,20 @@ const allowedSalaryModes: SalaryFilterMode[] = [
   "at_most",
   "between",
 ];
+const allowedWorkplaceFilters: WorkplaceFilter[] = [
+  "all",
+  "remote",
+  "hybrid",
+  "onsite",
+];
+const allowedJobTypeFilters: JobTypeFilter[] = [
+  "all",
+  "fulltime",
+  "contract",
+  "parttime",
+  "internship",
+];
+
 const allowedSortKeys: JobSort["key"][] = [
   "discoveredAt",
   "score",
@@ -121,6 +137,48 @@ export const useOrchestratorFilters = () => {
     [setSearchParams],
   );
 
+  const workplaceFilter = useMemo((): WorkplaceFilter => {
+    const raw = searchParams.get("workplace") ?? "all";
+    return allowedWorkplaceFilters.includes(raw as WorkplaceFilter)
+      ? (raw as WorkplaceFilter)
+      : "all";
+  }, [searchParams]);
+
+  const setWorkplaceFilter = useCallback(
+    (value: WorkplaceFilter) => {
+      setSearchParams(
+        (prev) => {
+          if (value === "all") prev.delete("workplace");
+          else prev.set("workplace", value);
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  const jobTypeFilter = useMemo((): JobTypeFilter => {
+    const raw = searchParams.get("jobType") ?? "all";
+    return allowedJobTypeFilters.includes(raw as JobTypeFilter)
+      ? (raw as JobTypeFilter)
+      : "all";
+  }, [searchParams]);
+
+  const setJobTypeFilter = useCallback(
+    (value: JobTypeFilter) => {
+      setSearchParams(
+        (prev) => {
+          if (value === "all") prev.delete("jobType");
+          else prev.set("jobType", value);
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const sort = useMemo((): JobSort => {
     const sortValue = searchParams.get("sort");
     if (!sortValue) return DEFAULT_SORT;
@@ -168,6 +226,8 @@ export const useOrchestratorFilters = () => {
         prev.delete("salaryMin");
         prev.delete("salaryMax");
         prev.delete("minSalary");
+        prev.delete("workplace");
+        prev.delete("jobType");
         prev.delete("sort");
         return prev;
       },
@@ -183,6 +243,10 @@ export const useOrchestratorFilters = () => {
     setSponsorFilter,
     salaryFilter,
     setSalaryFilter,
+    workplaceFilter,
+    setWorkplaceFilter,
+    jobTypeFilter,
+    setJobTypeFilter,
     sort,
     setSort,
     resetFilters,

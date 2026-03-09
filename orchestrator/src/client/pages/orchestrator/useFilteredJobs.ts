@@ -3,10 +3,12 @@ import { useMemo } from "react";
 import type {
   FilterTab,
   JobSort,
+  JobTypeFilter,
   SalaryFilter,
   SponsorFilter,
+  WorkplaceFilter,
 } from "./constants";
-import { compareJobs, parseSalaryBounds } from "./utils";
+import { compareJobs, getJobTypeCategory, getWorkplaceCategory, parseSalaryBounds } from "./utils";
 
 const getSponsorCategory = (score: number | null): SponsorFilter => {
   if (score == null) return "unknown";
@@ -21,6 +23,8 @@ export const useFilteredJobs = (
   sourceFilter: JobSource | "all",
   sponsorFilter: SponsorFilter,
   salaryFilter: SalaryFilter,
+  workplaceFilter: WorkplaceFilter,
+  jobTypeFilter: JobTypeFilter,
   sort: JobSort,
 ) =>
   useMemo(() => {
@@ -47,6 +51,18 @@ export const useFilteredJobs = (
     if (sponsorFilter !== "all") {
       filtered = filtered.filter(
         (job) => getSponsorCategory(job.sponsorMatchScore) === sponsorFilter,
+      );
+    }
+
+    if (workplaceFilter !== "all") {
+      filtered = filtered.filter(
+        (job) => getWorkplaceCategory(job) === workplaceFilter,
+      );
+    }
+
+    if (jobTypeFilter !== "all") {
+      filtered = filtered.filter(
+        (job) => getJobTypeCategory(job) === jobTypeFilter,
       );
     }
 
@@ -89,4 +105,4 @@ export const useFilteredJobs = (
     }
 
     return [...filtered].sort((a, b) => compareJobs(a, b, sort));
-  }, [jobs, activeTab, sourceFilter, sponsorFilter, salaryFilter, sort]);
+  }, [jobs, activeTab, sourceFilter, sponsorFilter, salaryFilter, workplaceFilter, jobTypeFilter, sort]);

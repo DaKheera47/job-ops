@@ -20,6 +20,7 @@ export const formatSecretHint = (hint: string | null) =>
   hint ? `${hint}********` : "Not set";
 
 export const LLM_PROVIDERS = [
+  "anthropic",
   "openrouter",
   "lmstudio",
   "ollama",
@@ -30,6 +31,7 @@ export const LLM_PROVIDERS = [
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
+  anthropic: "Anthropic (Claude)",
   openrouter: "OpenRouter",
   lmstudio: "LM Studio",
   ollama: "Ollama",
@@ -38,6 +40,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
 };
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
+  "anthropic",
   "openrouter",
   "openai",
   "gemini",
@@ -46,6 +49,8 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
 const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>(["lmstudio", "ollama"]);
 
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
+  anthropic:
+    "Anthropic uses the Messages API with Claude models for scoring and tailoring.",
   openrouter:
     "OpenRouter uses your API key and supports model routing across providers.",
   lmstudio: "LM Studio runs locally via its OpenAI-compatible server.",
@@ -55,6 +60,7 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
 };
 
 const PROVIDER_KEY_HELPERS: Record<LlmProviderId, string> = {
+  anthropic: "Create a key at console.anthropic.com/settings/keys",
   openrouter: "Create a key at openrouter.ai",
   lmstudio: "No API key required for LM Studio",
   ollama: "No API key required for Ollama",

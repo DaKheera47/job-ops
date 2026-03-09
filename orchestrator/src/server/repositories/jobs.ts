@@ -65,6 +65,8 @@ export async function getJobListItems(
     salaryMinAmount: jobs.salaryMinAmount,
     salaryMaxAmount: jobs.salaryMaxAmount,
     salaryCurrency: jobs.salaryCurrency,
+    isRemote: jobs.isRemote,
+    workFromHomeType: jobs.workFromHomeType,
     discoveredAt: jobs.discoveredAt,
     appliedAt: jobs.appliedAt,
     updatedAt: jobs.updatedAt,

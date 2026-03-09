@@ -13,10 +13,14 @@ export const APPLICATION_STAGES = [
   "applied",
   "recruiter_screen",
   "assessment",
+  "take_home_assessment",
   "hiring_manager_screen",
+  "behavioral_interview",
   "technical_interview",
   "onsite",
+  "background_check",
   "offer",
+  "offer_negotiation",
   "closed",
 ] as const;
 
@@ -26,10 +30,14 @@ export const STAGE_LABELS: Record<ApplicationStage, string> = {
   applied: "Applied",
   recruiter_screen: "Recruiter Screen",
   assessment: "Assessment",
+  take_home_assessment: "Take-Home Assessment",
   hiring_manager_screen: "Team Match",
+  behavioral_interview: "Behavioral Interview",
   technical_interview: "Technical Interview",
   onsite: "Final Round",
+  background_check: "Background Check",
   offer: "Offer",
+  offer_negotiation: "Offer Negotiation",
   closed: "Closed",
 };
 
@@ -213,6 +221,8 @@ export type JobListItem = Pick<
   | "salaryMinAmount"
   | "salaryMaxAmount"
   | "salaryCurrency"
+  | "isRemote"
+  | "workFromHomeType"
   | "discoveredAt"
   | "appliedAt"
   | "updatedAt"

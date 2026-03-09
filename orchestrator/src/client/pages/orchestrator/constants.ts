@@ -90,6 +90,9 @@ export type SponsorFilter =
   | "unknown";
 export type SalaryFilterMode = "at_least" | "at_most" | "between";
 
+export type WorkplaceFilter = "all" | "remote" | "hybrid" | "onsite";
+export type JobTypeFilter = "all" | "fulltime" | "contract" | "parttime" | "internship";
+
 export interface SalaryFilter {
   mode: SalaryFilterMode;
   min: number | null;

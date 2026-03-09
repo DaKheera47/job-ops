@@ -37,8 +37,8 @@ describe("useSettings", () => {
     const { result } = renderHookWithQueryClient(() => useSettings());
 
     await waitFor(() => {
-      // settings is null, so showSponsorInfo should default to true
-      expect(result.current.showSponsorInfo).toBe(true);
+      // settings is null, so showSponsorInfo should default to false
+      expect(result.current.showSponsorInfo).toBe(false);
     });
   });
 

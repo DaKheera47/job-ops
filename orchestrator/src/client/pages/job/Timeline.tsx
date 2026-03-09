@@ -24,10 +24,14 @@ const stageIcons: Record<ApplicationStage, React.ReactNode> = {
   applied: <CheckCircle2 className="h-4 w-4" />,
   recruiter_screen: <PhoneCall className="h-4 w-4" />,
   assessment: <FileText className="h-4 w-4" />,
+  take_home_assessment: <FileText className="h-4 w-4" />,
   hiring_manager_screen: <UserRound className="h-4 w-4" />,
+  behavioral_interview: <UserRound className="h-4 w-4" />,
   technical_interview: <Video className="h-4 w-4" />,
   onsite: <Presentation className="h-4 w-4" />,
+  background_check: <ClipboardList className="h-4 w-4" />,
   offer: <MailCheck className="h-4 w-4" />,
+  offer_negotiation: <MailCheck className="h-4 w-4" />,
   closed: <ClipboardList className="h-4 w-4" />,
 };
 

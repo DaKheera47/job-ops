@@ -8,10 +8,8 @@ const EnvironmentSettingsHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
     defaultValues: {
       rxresumeEmail: "resume@example.com",
-      ukvisajobsEmail: "visa@example.com",
       basicAuthUser: "admin",
       rxresumePassword: "",
-      ukvisajobsPassword: "",
       adzunaAppId: "adzuna-id",
       adzunaAppKey: "",
       basicAuthPassword: "",
@@ -27,13 +25,11 @@ const EnvironmentSettingsHarness = () => {
           values={{
             readable: {
               rxresumeEmail: "resume@example.com",
-              ukvisajobsEmail: "visa@example.com",
               adzunaAppId: "adzuna-id",
               basicAuthUser: "admin",
             },
             private: {
               rxresumePasswordHint: null,
-              ukvisajobsPasswordHint: "pass",
               adzunaAppKeyHint: "adzu",
               basicAuthPasswordHint: "abcd",
               webhookSecretHint: "sec-",
@@ -52,10 +48,8 @@ describe("EnvironmentSettingsSection", () => {
   it("renders values grouped logically and masks private secrets with hints", () => {
     render(<EnvironmentSettingsHarness />);
 
-    expect(screen.getByDisplayValue("visa@example.com")).toBeInTheDocument();
     expect(screen.getByDisplayValue("adzuna-id")).toBeInTheDocument();
 
-    expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/adzu\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/abcd\*{8}/)).toBeInTheDocument();
 
