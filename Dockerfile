@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.6
-
 # ============================================================================
 # BUILD STAGE
 # ============================================================================
@@ -22,13 +20,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Install Python dependencies with pip cache
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install --no-cache-dir --break-system-packages playwright python-jobspy
+# Install Python dependencies
+RUN pip3 install --no-cache-dir --break-system-packages playwright python-jobspy
 
-# Install Firefox for Python Playwright with cache
-RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m playwright install firefox
+# Install Firefox for Python Playwright
+RUN python3 -m playwright install firefox
 
 # Copy package files for dependency installation
 COPY package*.json ./
@@ -41,9 +37,8 @@ COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/dice/package*.json ./extractors/dice/
 
-# Install Node dependencies with npm cache (dev deps needed for build)
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --workspaces --include-workspace-root --include=dev \
+# Install Node dependencies (dev deps needed for build)
+RUN npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
 
 # Fetch Camoufox binaries - do this before copying source code to cache the download
@@ -110,8 +105,7 @@ COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/dice/package*.json ./extractors/dice/
 
 # Install production Node dependencies only
-RUN --mount=type=cache,target=/root/.npm \
-    npm install --workspaces --include-workspace-root --omit=dev \
+RUN npm install --workspaces --include-workspace-root --omit=dev \
     --no-audit --no-fund --progress=false
 
 # Copy built assets and source code from builder
