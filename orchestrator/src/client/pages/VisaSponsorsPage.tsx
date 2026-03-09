@@ -1,8 +1,3 @@
-/**
- * UK Visa Sponsors search page.
- * Allows searching the government's list of licensed visa sponsors.
- */
-
 import type {
   VisaSponsor,
   VisaSponsorSearchResult,
@@ -79,6 +74,21 @@ export const VisaSponsorsPage: React.FC = () => {
   });
   const status = statusQuery.data ?? null;
   useQueryErrorToast(statusQuery.error, "Failed to fetch status");
+  const statusProviders = status?.providers ?? [];
+  const totalSponsors = statusProviders.reduce(
+    (sum, provider) => sum + provider.totalSponsors,
+    0,
+  );
+  const latestUpdatedAt = statusProviders.reduce<string | null>(
+    (latest, provider) => {
+      if (!provider.lastUpdated) return latest;
+      if (!latest) return provider.lastUpdated;
+      return new Date(provider.lastUpdated) > new Date(latest)
+        ? provider.lastUpdated
+        : latest;
+    },
+    null,
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -198,7 +208,9 @@ export const VisaSponsorsPage: React.FC = () => {
     [results, selectedOrg],
   );
 
-  const isUpdateInProgress = updateListMutation.isPending || status?.isUpdating;
+  const isUpdateInProgress =
+    updateListMutation.isPending ||
+    statusProviders.some((provider) => provider.isUpdating);
   const isLoadingStatus = statusQuery.isLoading;
   const isSearching = searchQueryResult.isFetching;
   const isLoadingDetails = orgDetailsQuery.isLoading;
@@ -309,11 +321,11 @@ export const VisaSponsorsPage: React.FC = () => {
               <div className="hidden md:flex items-center gap-4 text-xs text-muted-foreground mr-2">
                 <span className="flex items-center gap-1.5">
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  {status.totalSponsors.toLocaleString()} sponsors
+                  {totalSponsors.toLocaleString()} sponsors
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatDateTime(status.lastUpdated) || "Never"}
+                  {formatDateTime(latestUpdatedAt) || "Never"}
                 </span>
               </div>
             )}
@@ -387,7 +399,7 @@ export const VisaSponsorsPage: React.FC = () => {
               ) : null
             }
           >
-            {!isLoadingStatus && status?.totalSponsors === 0 && (
+            {!isLoadingStatus && status && totalSponsors === 0 && (
               <EmptyState
                 icon={AlertCircle}
                 title="No sponsor data available"
@@ -414,7 +426,7 @@ export const VisaSponsorsPage: React.FC = () => {
               />
             )}
 
-            {status && status.totalSponsors > 0 && !searchQuery && (
+            {status && totalSponsors > 0 && !searchQuery && (
               <EmptyState
                 icon={Search}
                 title="Search for a company"

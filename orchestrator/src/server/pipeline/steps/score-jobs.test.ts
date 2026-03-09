@@ -60,7 +60,7 @@ describe("scoreJobsStep auto-skip behavior", () => {
       score: 40,
       reason: "Low fit",
     });
-    vi.mocked(visaSponsors.searchSponsors).mockReturnValue([]);
+    vi.mocked(visaSponsors.searchSponsors).mockResolvedValue([]);
     vi.mocked(visaSponsors.calculateSponsorMatchSummary).mockReturnValue({
       sponsorMatchScore: 0,
       sponsorMatchNames: null,

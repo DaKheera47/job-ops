@@ -24,7 +24,7 @@ import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function createBasicAuthGuard() {
+export function createBasicAuthGuard() {
   function getAuthConfig() {
     const user = process.env.BASIC_AUTH_USER || "";
     const pass = process.env.BASIC_AUTH_PASSWORD || "";

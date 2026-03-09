@@ -23,7 +23,9 @@
     "db:drop": "tsx src/server/db/clear.ts --drop",
     "pipeline:run": "tsx src/server/pipeline/run.ts",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:run:non-routes": "vitest run --exclude src/server/api/routes/jobs-tailoring.test.ts --exclude src/server/api/routes/demo-mode.test.ts --exclude src/server/api/routes/webhook.test.ts --exclude src/server/basic-auth.test.ts",
+    "test:run:routes": "vitest run --fileParallelism=false src/server/api/routes/jobs-tailoring.test.ts src/server/api/routes/demo-mode.test.ts src/server/api/routes/webhook.test.ts src/server/basic-auth.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
