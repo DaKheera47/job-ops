@@ -32,7 +32,7 @@ Many roles require sponsorship-ready employers. This page helps you quickly vali
 
 ### Refresh schedule
 
-Each provider refreshes independently on its own daily schedule (default: **02:00** server local time). Use the download/update button in the page header to fetch the latest register immediately for all providers.
+Each provider refreshes independently on its own daily schedule (default: **02:00 UTC**). Use the download/update button in the page header to fetch the latest register immediately for all providers.
 
 ### API examples
 
@@ -89,8 +89,9 @@ curl -X POST http://localhost:3001/api/visa-sponsors/update/uk
 
 ### A country's provider is missing
 
-- Check startup logs for registry warnings about that provider id.
-- Ensure the provider manifest exists at `visa-sponsor-providers/<id>/manifest.ts` and its id is registered in `shared/src/visa-sponsor-providers/index.ts`.
+- Check startup logs for registry warnings about that provider id, including skipped invalid manifests.
+- Ensure the provider id is registered in `shared/src/visa-sponsor-providers/index.ts`.
+- Ensure the manifest exists at `visa-sponsor-providers/<id>/manifest.ts` or `visa-sponsor-providers/<id>/src/manifest.ts`.
 - See [Add a Visa Sponsor Provider](/docs/next/workflows/add-a-visa-sponsor-provider) for the full workflow.
 
 ## Related pages

@@ -2,6 +2,8 @@ import type { Dirent } from "node:fs";
 import { access, readdir, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { logger } from "@infra/logger";
+import { sanitizeUnknown } from "@infra/sanitize";
 import type { VisaSponsorProviderManifest } from "@shared/types";
 
 const moduleDir = dirname(fileURLToPath(import.meta.url));
@@ -39,10 +41,18 @@ async function resolveProvidersRoot(): Promise<string> {
 
   for (const candidate of candidates) {
     if (await directoryExists(candidate)) {
+      logger.info("Resolved visa sponsor providers root", {
+        selectedRoot: candidate,
+        candidates,
+      });
       return candidate;
     }
   }
 
+  logger.warn("No visa sponsor providers root exists; using default candidate", {
+    selectedRoot: candidates[0],
+    candidates,
+  });
   return candidates[0];
 }
 
@@ -51,6 +61,9 @@ export async function discoverProviderManifestPaths(
 ): Promise<string[]> {
   const root = providersRoot ?? (await resolveProvidersRoot());
   if (basename(root) !== "visa-sponsor-providers") {
+    logger.warn("Visa sponsor providers root rejected due to unexpected basename", {
+      root,
+    });
     return [];
   }
 
@@ -60,6 +73,10 @@ export async function discoverProviderManifestPaths(
   } catch (error) {
     const known = error as NodeJS.ErrnoException;
     if (known.code === "ENOENT") return [];
+    logger.warn("Failed to read visa sponsor providers root", {
+      root,
+      error: sanitizeUnknown(error),
+    });
     throw error;
   }
 
@@ -75,7 +92,14 @@ export async function discoverProviderManifestPaths(
     }
   }
 
-  return paths.sort();
+  const sortedPaths = paths.sort();
+  logger.info("Discovered visa sponsor provider manifest paths", {
+    root,
+    manifestCount: sortedPaths.length,
+    manifestPaths: sortedPaths,
+  });
+
+  return sortedPaths;
 }
 
 function isProviderManifest(
@@ -94,7 +118,24 @@ function isProviderManifest(
 export async function loadProviderManifestFromFile(
   path: string,
 ): Promise<VisaSponsorProviderManifest> {
-  const loaded = await import(pathToFileURL(path).href);
+  const fileUrl = pathToFileURL(path).href;
+  logger.info("Loading visa sponsor provider manifest", {
+    path,
+    fileUrl,
+  });
+
+  let loaded: unknown;
+  try {
+    loaded = await import(fileUrl);
+  } catch (error) {
+    logger.warn("Failed to import visa sponsor provider manifest", {
+      path,
+      fileUrl,
+      error: sanitizeUnknown(error),
+    });
+    throw error;
+  }
+
   const candidateManifest = (loaded as { manifest?: unknown }).manifest;
   const candidateDefault = (loaded as { default?: unknown }).default;
   const manifest = isProviderManifest(candidateManifest)
@@ -102,8 +143,20 @@ export async function loadProviderManifestFromFile(
     : candidateDefault;
 
   if (!isProviderManifest(manifest)) {
+    logger.warn("Visa sponsor provider manifest export shape is invalid", {
+      path,
+      fileUrl,
+      exportedKeys:
+        loaded && typeof loaded === "object" ? Object.keys(loaded) : [],
+    });
     throw new Error(`Invalid visa sponsor provider manifest in ${path}`);
   }
+
+  logger.info("Loaded visa sponsor provider manifest", {
+    path,
+    id: manifest.id,
+    countryKey: manifest.countryKey,
+  });
 
   return manifest;
 }

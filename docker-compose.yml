@@ -43,6 +43,9 @@ services:
         - path: ./orchestrator/src
           target: /app/orchestrator/src
           action: sync+restart
+        - path: ./visa-sponsor-providers
+          target: /app/visa-sponsor-providers
+          action: sync+restart
         # Sync extractor changes
         - path: ./extractors/gradcracker/src
           target: /app/extractors/gradcracker/src

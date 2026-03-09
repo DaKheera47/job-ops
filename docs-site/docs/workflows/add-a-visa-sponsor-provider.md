@@ -37,7 +37,8 @@ The service layer handles everything else.
 4. Add the new id to `shared/src/visa-sponsor-providers/index.ts`:
    - append to `VISA_SPONSOR_PROVIDER_IDS`
    - add an entry in `VISA_SPONSOR_PROVIDER_METADATA`
-5. Run the full CI checks.
+5. Start the server and confirm the startup log reports the provider in the registry.
+6. Run the full CI checks.
 
 Example manifest:
 
@@ -45,7 +46,7 @@ Example manifest:
 import type {
   VisaSponsor,
   VisaSponsorProviderManifest,
-} from "@shared/types/visa-sponsors";
+} from "../../shared/src/types/visa-sponsors";
 
 export const manifest: VisaSponsorProviderManifest = {
   id: "au",
@@ -77,11 +78,11 @@ export const VISA_SPONSOR_PROVIDER_METADATA = {
 
 ## Common problems
 
-### Provider not discovered at startup
+### Provider not registered at startup
 
 - Check the file path: valid locations are `visa-sponsor-providers/<id>/manifest.ts` or `visa-sponsor-providers/<id>/src/manifest.ts`.
 - Ensure the file exports `default` or a named `manifest`.
-- Check startup logs for registry warnings about the provider id.
+- Check startup logs for registry warnings such as skipped invalid manifests, duplicate ids, duplicate country keys, or ids missing from the shared catalog.
 
 ### Provider id rejected at runtime
 
