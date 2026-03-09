@@ -9,7 +9,10 @@ const moduleDir = dirname(fileURLToPath(import.meta.url));
 // This file lives at:
 //   orchestrator/src/server/services/visa-sponsors/providers/discovery.ts
 // Going up 6 levels reaches the repo root.
-const DEFAULT_PROVIDERS_ROOT = resolve(process.cwd(), "../visa-sponsor-providers");
+const DEFAULT_PROVIDERS_ROOT = resolve(
+  process.cwd(),
+  "../visa-sponsor-providers",
+);
 const MODULE_RELATIVE_PROVIDERS_ROOT = resolve(
   moduleDir,
   "../../../../../../visa-sponsor-providers",

@@ -1,10 +1,10 @@
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
-import {
-  VISA_SPONSOR_PROVIDER_IDS,
-  isVisaSponsorProviderId,
-} from "@shared/visa-sponsor-providers";
 import type { VisaSponsorProviderManifest } from "@shared/types";
+import {
+  isVisaSponsorProviderId,
+  VISA_SPONSOR_PROVIDER_IDS,
+} from "@shared/visa-sponsor-providers";
 import {
   discoverProviderManifestPaths,
   loadProviderManifestFromFile,
@@ -51,10 +51,13 @@ async function createRegistry(): Promise<VisaSponsorProviderRegistry> {
       }
 
       if (manifestByCountryKey.has(manifest.countryKey)) {
-        logger.warn("Duplicate countryKey in visa sponsor providers — skipping", {
-          countryKey: manifest.countryKey,
-          path,
-        });
+        logger.warn(
+          "Duplicate countryKey in visa sponsor providers — skipping",
+          {
+            countryKey: manifest.countryKey,
+            path,
+          },
+        );
         continue;
       }
 

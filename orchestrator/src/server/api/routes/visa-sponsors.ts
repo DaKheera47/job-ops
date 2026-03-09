@@ -1,12 +1,12 @@
 import { notFound } from "@infra/errors";
 import { fail } from "@infra/http";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
+import { normalizeCountryKey } from "@shared/location-support.js";
 import type {
   ApiResponse,
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
-import { normalizeCountryKey } from "@shared/location-support.js";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 

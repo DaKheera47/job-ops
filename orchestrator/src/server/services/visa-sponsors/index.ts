@@ -43,16 +43,18 @@ interface ProviderState {
 const providerState = new Map<string, ProviderState>();
 
 function getOrCreateProviderState(providerId: string): ProviderState {
-  if (!providerState.has(providerId)) {
-    providerState.set(providerId, {
+  let state = providerState.get(providerId);
+  if (!state) {
+    state = {
       cache: null,
       cacheLoadedAt: null,
       isUpdating: false,
       updateError: null,
       scheduler: null,
-    });
+    };
+    providerState.set(providerId, state);
   }
-  return providerState.get(providerId)!;
+  return state;
 }
 
 // ============================================================================
@@ -201,9 +203,10 @@ function getMetadataPath(providerId: string): string {
   return path.join(getProviderDataDir(providerId), "metadata.json");
 }
 
-function readMetadata(
-  providerId: string,
-): { lastUpdated: string | null; csvFile: string | null } {
+function readMetadata(providerId: string): {
+  lastUpdated: string | null;
+  csvFile: string | null;
+} {
   const metaPath = getMetadataPath(providerId);
   if (!fs.existsSync(metaPath)) {
     return { lastUpdated: null, csvFile: null };
@@ -242,7 +245,10 @@ function cleanupOldCsvFiles(providerId: string): void {
         fs.unlinkSync(filePath);
         console.log(`🗑️ Removed old CSV for ${providerId}: ${file}`);
       } catch (err) {
-        console.warn(`⚠️ Failed to remove old CSV for ${providerId}: ${file}`, err);
+        console.warn(
+          `⚠️ Failed to remove old CSV for ${providerId}: ${file}`,
+          err,
+        );
       }
     }
   }
@@ -299,7 +305,9 @@ async function downloadLatestDataForProvider(
     state.cache = null;
     state.cacheLoadedAt = null;
 
-    console.log(`✅ Downloaded ${sponsors.length} sponsors for provider: ${id}`);
+    console.log(
+      `✅ Downloaded ${sponsors.length} sponsors for provider: ${id}`,
+    );
     return {
       success: true,
       message: `Successfully downloaded ${sponsors.length} sponsors`,
@@ -307,7 +315,10 @@ async function downloadLatestDataForProvider(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     state.updateError = message;
-    console.error(`❌ Failed to download sponsors for provider ${id}:`, message);
+    console.error(
+      `❌ Failed to download sponsors for provider ${id}:`,
+      message,
+    );
     return { success: false, message };
   } finally {
     state.isUpdating = false;
@@ -356,7 +367,9 @@ export async function downloadLatestCsv(
   const reg = await getVisaSponsorProviderRegistry();
 
   const manifests = providerId
-    ? ([reg.manifests.get(providerId)].filter(Boolean) as VisaSponsorProviderManifest[])
+    ? ([reg.manifests.get(providerId)].filter(
+        Boolean,
+      ) as VisaSponsorProviderManifest[])
     : [...reg.manifests.values()];
 
   if (manifests.length === 0) {
@@ -374,8 +387,7 @@ export async function downloadLatestCsv(
 
   const failures = results.filter(
     (r) =>
-      r.status === "rejected" ||
-      (r.status === "fulfilled" && !r.value.success),
+      r.status === "rejected" || (r.status === "fulfilled" && !r.value.success),
   );
 
   if (failures.length === manifests.length) {
@@ -466,25 +478,25 @@ export function calculateSponsorMatchSummary(
 export async function getStatus(): Promise<VisaSponsorStatusResponse> {
   const reg = await getVisaSponsorProviderRegistry();
 
-  const providers: VisaSponsorProviderStatus[] = [...reg.manifests.values()].map(
-    (manifest) => {
-      const state = getOrCreateProviderState(manifest.id);
-      const metadata = readMetadata(manifest.id);
-      const dir = getProviderDataDir(manifest.id);
-      const sponsors = loadSponsorsForProvider(manifest.id);
+  const providers: VisaSponsorProviderStatus[] = [
+    ...reg.manifests.values(),
+  ].map((manifest) => {
+    const state = getOrCreateProviderState(manifest.id);
+    const metadata = readMetadata(manifest.id);
+    const dir = getProviderDataDir(manifest.id);
+    const sponsors = loadSponsorsForProvider(manifest.id);
 
-      return {
-        providerId: manifest.id,
-        countryKey: manifest.countryKey,
-        lastUpdated: metadata.lastUpdated,
-        csvPath: metadata.csvFile ? path.join(dir, metadata.csvFile) : null,
-        totalSponsors: sponsors.length,
-        isUpdating: state.isUpdating,
-        nextScheduledUpdate: state.scheduler?.getNextRun() ?? null,
-        error: state.updateError,
-      };
-    },
-  );
+    return {
+      providerId: manifest.id,
+      countryKey: manifest.countryKey,
+      lastUpdated: metadata.lastUpdated,
+      csvPath: metadata.csvFile ? path.join(dir, metadata.csvFile) : null,
+      totalSponsors: sponsors.length,
+      isUpdating: state.isUpdating,
+      nextScheduledUpdate: state.scheduler?.getNextRun() ?? null,
+      error: state.updateError,
+    };
+  });
 
   return { providers };
 }
