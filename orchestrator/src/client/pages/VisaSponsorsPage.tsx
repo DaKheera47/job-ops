@@ -68,6 +68,9 @@ const formatCountryLabel = (countryKey: string) =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
+const getSearchScopeLabel = (countryLabel: string) =>
+  countryLabel === "All sources" ? "all sources" : `the ${countryLabel} source`;
+
 export const VisaSponsorsPage: React.FC = () => {
   const queryClient = useQueryClient();
   // State
@@ -99,6 +102,7 @@ export const VisaSponsorsPage: React.FC = () => {
   const selectedCountryLabel =
     providerOptions.find((option) => option.value === selectedCountry)?.label ??
     "All sources";
+  const searchScopeLabel = getSearchScopeLabel(selectedCountryLabel);
   const activeProviders = selectedCountry
     ? statusProviders.filter(
         (provider) => provider.countryKey === selectedCountry,
@@ -352,7 +356,7 @@ export const VisaSponsorsPage: React.FC = () => {
         statusIndicator={
           isUpdateInProgress ? <StatusIndicator label="Updating" /> : undefined
         }
-        subtitle={`${selectedCountryLabel} Register Search`}
+        subtitle="Search sponsor data across available sources"
         actions={
           <>
             {status && (
@@ -445,7 +449,7 @@ export const VisaSponsorsPage: React.FC = () => {
               </div>
               <p className="text-xs text-muted-foreground">
                 Enter a company name to check if they&apos;re a licensed visa
-                sponsor in {selectedCountryLabel.toLowerCase()}.
+                sponsor in {searchScopeLabel}.
               </p>
             </div>
           </div>
@@ -498,7 +502,7 @@ export const VisaSponsorsPage: React.FC = () => {
               <EmptyState
                 icon={Search}
                 title="Search for a company"
-                description={`Enter a company name above to check the ${selectedCountryLabel.toLowerCase()} sponsor register.`}
+                description={`Enter a company name above to search ${searchScopeLabel}.`}
               />
             )}
 
