@@ -81,6 +81,15 @@ describe("buildJobChatPromptContext", () => {
     expect(context.systemPrompt).toContain("Writing style tone: direct.");
     expect(context.systemPrompt).toContain("Writing style formality: high.");
     expect(context.systemPrompt).toContain(
+      "Follow the user's requested output language exactly when they specify one.",
+    );
+    expect(context.systemPrompt).toContain(
+      "If the global writing constraints specify an output language, follow that when the user has not requested a different language.",
+    );
+    expect(context.systemPrompt).toContain(
+      "If no output language is specified elsewhere, reply in the same language as the most recent user message.",
+    );
+    expect(context.systemPrompt).toContain(
       "Writing constraints: Keep responses under 120 words",
     );
     expect(context.systemPrompt).toContain(
@@ -102,6 +111,24 @@ describe("buildJobChatPromptContext", () => {
     expect(context.job.id).toBe("job-ctx-2");
     expect(context.profileSnapshot).toContain("Name: Unknown");
     expect(context.systemPrompt).toContain("Writing style tone: professional.");
+  });
+
+  it("preserves language instructions inside global writing constraints", async () => {
+    const job = createJob({ id: "job-ctx-3" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "professional",
+      formality: "medium",
+      constraints: "Always respond in French.",
+      doNotUse: "",
+    });
+    vi.mocked(getProfile).mockResolvedValue({});
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.systemPrompt).toContain(
+      "Writing constraints: Always respond in French.",
+    );
   });
 
   it("throws not found for unknown job", async () => {
