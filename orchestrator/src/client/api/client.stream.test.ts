@@ -4,7 +4,6 @@ import * as api from "./client";
 describe("API client SSE streaming", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    api.__resetApiClientAuthForTests();
   });
 
   it("propagates handler errors and cancels the stream reader", async () => {

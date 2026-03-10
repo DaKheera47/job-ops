@@ -13,7 +13,6 @@ describe("API client demo toasts", () => {
   beforeEach(() => {
     customToast.mockClear();
     vi.restoreAllMocks();
-    api.__resetApiClientAuthForTests();
   });
 
   it("shows simulated toast when response meta.simulated is true", async () => {

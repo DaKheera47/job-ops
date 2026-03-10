@@ -23,10 +23,6 @@ vi.mock("@/components/ui/sonner", () => ({
   Toaster: () => null,
 }));
 
-vi.mock("./components/BasicAuthPrompt", () => ({
-  BasicAuthPrompt: () => null,
-}));
-
 vi.mock("./components/OnboardingGate", () => ({
   OnboardingGate: () => null,
 }));
