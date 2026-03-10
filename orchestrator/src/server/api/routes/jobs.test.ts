@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders, testReauthHeaders } from "./test-utils";
 
 describe.sequential("Jobs API routes", () => {
   let server: Server;
@@ -26,14 +26,14 @@ describe.sequential("Jobs API routes", () => {
       jobDescription: "Test description",
     });
 
-    const listRes = await fetch(`${baseUrl}/api/jobs`);
+    const listRes = await fetch(`${baseUrl}/api/jobs`, { headers: testAuthHeaders() });
     const listBody = await listRes.json();
     expect(listBody.ok).toBe(true);
     expect(listBody.data.total).toBe(1);
     expect(listBody.data.jobs[0].id).toBe(job.id);
     expect(typeof listBody.data.revision).toBe("string");
 
-    const filteredRes = await fetch(`${baseUrl}/api/jobs?status=skipped`);
+    const filteredRes = await fetch(`${baseUrl}/api/jobs?status=skipped`, { headers: testAuthHeaders() });
     const filteredBody = await filteredRes.json();
     expect(filteredBody.data.total).toBe(0);
     expect(typeof filteredBody.data.revision).toBe("string");
@@ -49,7 +49,7 @@ describe.sequential("Jobs API routes", () => {
       jobDescription: "Heavy description that should not be in list mode",
     });
 
-    const listRes = await fetch(`${baseUrl}/api/jobs?view=list`);
+    const listRes = await fetch(`${baseUrl}/api/jobs?view=list`, { headers: testAuthHeaders() });
     const listBody = await listRes.json();
     expect(listRes.status).toBe(200);
     expect(listBody.ok).toBe(true);
@@ -59,7 +59,7 @@ describe.sequential("Jobs API routes", () => {
     expect(listBody.data.jobs[0]).not.toHaveProperty("jobDescription");
     expect(typeof listBody.data.revision).toBe("string");
 
-    const fullRes = await fetch(`${baseUrl}/api/jobs?view=full`);
+    const fullRes = await fetch(`${baseUrl}/api/jobs?view=full`, { headers: testAuthHeaders() });
     const fullBody = await fullRes.json();
     expect(fullRes.status).toBe(200);
     expect(fullBody.ok).toBe(true);
@@ -67,7 +67,7 @@ describe.sequential("Jobs API routes", () => {
     expect(fullBody.data.jobs[0]).toHaveProperty("jobDescription");
     expect(typeof fullBody.data.revision).toBe("string");
 
-    const defaultRes = await fetch(`${baseUrl}/api/jobs`);
+    const defaultRes = await fetch(`${baseUrl}/api/jobs`, { headers: testAuthHeaders() });
     const defaultBody = await defaultRes.json();
     expect(defaultRes.status).toBe(200);
     expect(defaultBody.ok).toBe(true);
@@ -94,7 +94,7 @@ describe.sequential("Jobs API routes", () => {
     await updateJob(readyJob.id, { status: "ready" });
     await updateJob(appliedJob.id, { status: "applied" });
 
-    const allRes = await fetch(`${baseUrl}/api/jobs/revision`);
+    const allRes = await fetch(`${baseUrl}/api/jobs/revision`, { headers: testAuthHeaders() });
     const allBody = await allRes.json();
 
     expect(allRes.status).toBe(200);
@@ -107,6 +107,7 @@ describe.sequential("Jobs API routes", () => {
 
     const filteredRes = await fetch(
       `${baseUrl}/api/jobs/revision?status=applied,ready`,
+      { headers: testAuthHeaders() },
     );
     const filteredBody = await filteredRes.json();
 
@@ -118,7 +119,7 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("rejects invalid jobs list view query", async () => {
-    const res = await fetch(`${baseUrl}/api/jobs?view=compact`);
+    const res = await fetch(`${baseUrl}/api/jobs?view=compact`, { headers: testAuthHeaders() });
     const body = await res.json();
 
     expect(res.status).toBe(400);
@@ -128,7 +129,7 @@ describe.sequential("Jobs API routes", () => {
   });
 
   it("returns 404 for missing jobs", async () => {
-    const res = await fetch(`${baseUrl}/api/jobs/missing-id`);
+    const res = await fetch(`${baseUrl}/api/jobs/missing-id`, { headers: testAuthHeaders() });
     expect(res.status).toBe(404);
   });
 
@@ -144,7 +145,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         title: "Updated Title",
         employer: "Updated Employer",
@@ -200,7 +201,7 @@ describe.sequential("Jobs API routes", () => {
     try {
       const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ tracerLinksEnabled: true }),
       });
       const body = await res.json();
@@ -247,7 +248,7 @@ describe.sequential("Jobs API routes", () => {
     try {
       const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           title: "Tracer Already On (Edited)",
           tracerLinksEnabled: true,
@@ -276,7 +277,7 @@ describe.sequential("Jobs API routes", () => {
   it("returns 404 when patching a missing job", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/missing-id`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ title: "Updated Title" }),
     });
     const body = await res.json();
@@ -307,6 +308,7 @@ describe.sequential("Jobs API routes", () => {
         headers: {
           "x-forwarded-proto": "http",
           "x-forwarded-host": "attacker.example",
+          ...testAuthHeaders(),
         },
       });
 
@@ -342,7 +344,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/${second.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ jobUrl: first.jobUrl }),
     });
     const body = await res.json();
@@ -365,7 +367,7 @@ describe.sequential("Jobs API routes", () => {
 
     const badRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ suitabilityScore: 1000 }),
     });
     const badBody = await badRes.json();
@@ -376,7 +378,7 @@ describe.sequential("Jobs API routes", () => {
 
     const invalidCoreRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ employer: "   " }),
     });
     const invalidCoreBody = await invalidCoreRes.json();
@@ -387,7 +389,7 @@ describe.sequential("Jobs API routes", () => {
 
     const patchRes = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ suitabilityScore: 77 }),
     });
     const patchBody = await patchRes.json();
@@ -398,7 +400,7 @@ describe.sequential("Jobs API routes", () => {
 
     const skipRes = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ action: "skip", jobIds: [job.id] }),
     });
     const skipBody = await skipRes.json();
@@ -408,6 +410,7 @@ describe.sequential("Jobs API routes", () => {
 
     const deleteRes = await fetch(`${baseUrl}/api/jobs/status/skipped`, {
       method: "DELETE",
+      headers: testReauthHeaders(),
     });
     const deleteBody = await deleteRes.json();
     expect(deleteBody.data.count).toBe(1);
@@ -442,7 +445,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         action: "skip",
         jobIds: [discovered.id, ready.id, applied.id, "missing-id"],
@@ -488,7 +491,7 @@ describe.sequential("Jobs API routes", () => {
     try {
       const res = await fetch(`${baseUrl}/api/jobs/actions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           action: "move_to_ready",
           jobIds: [discovered.id, ready.id],
@@ -531,6 +534,7 @@ describe.sequential("Jobs API routes", () => {
     try {
       const res = await fetch(`${baseUrl}/api/jobs/${job.id}/process`, {
         method: "POST",
+        headers: testAuthHeaders(),
       });
       const body = await res.json();
 
@@ -586,7 +590,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         action: "rescore",
         jobIds: [discovered.id, ready.id, processing.id, "missing-id"],
@@ -645,7 +649,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/actions/stream`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         action: "skip",
         jobIds: [discovered.id, ready.id, applied.id],
@@ -713,7 +717,7 @@ describe.sequential("Jobs API routes", () => {
     );
     const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         action: "skip",
         jobIds: tooManyIds,
@@ -738,6 +742,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/${job.id}/apply`, {
       method: "POST",
+      headers: testAuthHeaders(),
     });
     const body = await res.json();
     expect(body.ok).toBe(true);
@@ -772,7 +777,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ action: "rescore", jobIds: [job.id] }),
     });
     const body = await res.json();
@@ -839,6 +844,7 @@ describe.sequential("Jobs API routes", () => {
     // Delete jobs below score 50
     const deleteRes = await fetch(`${baseUrl}/api/jobs/score/50`, {
       method: "DELETE",
+      headers: testReauthHeaders(),
     });
     const deleteBody = await deleteRes.json();
 
@@ -847,7 +853,7 @@ describe.sequential("Jobs API routes", () => {
     expect(deleteBody.data.threshold).toBe(50);
 
     // Verify only the low score non-applied job was deleted
-    const listRes = await fetch(`${baseUrl}/api/jobs`);
+    const listRes = await fetch(`${baseUrl}/api/jobs`, { headers: testAuthHeaders() });
     const listBody = await listRes.json();
 
     const remainingJobIds = listBody.data.jobs.map((j: any) => j.id);
@@ -862,6 +868,7 @@ describe.sequential("Jobs API routes", () => {
     // Test invalid threshold (above 100)
     const invalidRes = await fetch(`${baseUrl}/api/jobs/score/150`, {
       method: "DELETE",
+      headers: testReauthHeaders(),
     });
     expect(invalidRes.status).toBe(400);
     const invalidBody = await invalidRes.json();
@@ -871,12 +878,14 @@ describe.sequential("Jobs API routes", () => {
     // Test invalid threshold (below 0)
     const negativeRes = await fetch(`${baseUrl}/api/jobs/score/-10`, {
       method: "DELETE",
+      headers: testReauthHeaders(),
     });
     expect(negativeRes.status).toBe(400);
 
     // Test non-numeric threshold
     const nanRes = await fetch(`${baseUrl}/api/jobs/score/abc`, {
       method: "DELETE",
+      headers: testReauthHeaders(),
     });
     expect(nanRes.status).toBe(400);
   });
@@ -903,6 +912,7 @@ describe.sequential("Jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/jobs/${job.id}/check-sponsor`, {
       method: "POST",
+      headers: testAuthHeaders(),
     });
     const body = await res.json();
 
@@ -929,7 +939,7 @@ describe.sequential("Jobs API routes", () => {
       // 1. Initial transition to applied
       const trans1 = await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ toStage: "applied" }),
       });
       const body1 = await trans1.json();
@@ -940,7 +950,7 @@ describe.sequential("Jobs API routes", () => {
       // 2. Transition to recruiter_screen with metadata
       await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           toStage: "recruiter_screen",
           metadata: { note: "Called by recruiter" },
@@ -948,7 +958,7 @@ describe.sequential("Jobs API routes", () => {
       });
 
       // 3. Get events
-      const eventsRes = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
+      const eventsRes = await fetch(`${baseUrl}/api/jobs/${jobId}/events`, { headers: testAuthHeaders() });
       const eventsBody = await eventsRes.json();
       expect(eventsBody.ok).toBe(true);
       expect(eventsBody.data).toHaveLength(2);
@@ -961,13 +971,13 @@ describe.sequential("Jobs API routes", () => {
         `${baseUrl}/api/jobs/${jobId}/events/${eventId}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...testAuthHeaders() },
           body: JSON.stringify({ metadata: { note: "Updated note" } }),
         },
       );
       expect(patchRes.status).toBe(200);
 
-      const eventsRes2 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
+      const eventsRes2 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`, { headers: testAuthHeaders() });
       const eventsBody2 = await eventsRes2.json();
       expect(eventsBody2.data[0].metadata.note).toBe("Updated note");
 
@@ -976,11 +986,12 @@ describe.sequential("Jobs API routes", () => {
         `${baseUrl}/api/jobs/${jobId}/events/${eventId}`,
         {
           method: "DELETE",
+          headers: testAuthHeaders(),
         },
       );
       expect(deleteRes.status).toBe(200);
 
-      const eventsRes3 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
+      const eventsRes3 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`, { headers: testAuthHeaders() });
       const eventsBody3 = await eventsRes3.json();
       expect(eventsBody3.data).toHaveLength(1);
     });
@@ -991,7 +1002,7 @@ describe.sequential("Jobs API routes", () => {
       const { tasks } = schema;
 
       // 1. Initial state
-      const res1 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
+      const res1 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`, { headers: testAuthHeaders() });
       const body1 = await res1.json();
       expect(body1.ok).toBe(true);
       expect(body1.data).toEqual([]);
@@ -1008,7 +1019,7 @@ describe.sequential("Jobs API routes", () => {
         })
         .run();
 
-      const res2 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
+      const res2 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`, { headers: testAuthHeaders() });
       const body2 = await res2.json();
       expect(body2.data).toHaveLength(1);
       expect(body2.data[0].title).toBe("Complete test task");
@@ -1020,12 +1031,13 @@ describe.sequential("Jobs API routes", () => {
         .where(eq(tasks.id, "task-1"))
         .run();
 
-      const res3 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`);
+      const res3 = await fetch(`${baseUrl}/api/jobs/${jobId}/tasks`, { headers: testAuthHeaders() });
       const body3 = await res3.json();
       expect(body3.data).toHaveLength(0); // includeCompleted defaults to false
 
       const res4 = await fetch(
         `${baseUrl}/api/jobs/${jobId}/tasks?includeCompleted=true`,
+        { headers: testAuthHeaders() },
       );
       const body4 = await res4.json();
       expect(body4.data).toHaveLength(1);
@@ -1034,7 +1046,7 @@ describe.sequential("Jobs API routes", () => {
     it("updates job outcome", async () => {
       const res = await fetch(`${baseUrl}/api/jobs/${jobId}/outcome`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ outcome: "rejected" }),
       });
       const body = await res.json();

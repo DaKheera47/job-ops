@@ -3,7 +3,7 @@ import {
   DEMO_BASELINE_VERSION,
 } from "@server/config/demo-defaults";
 import { describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Demo mode API behavior", () => {
   it("returns demo info when demo mode is disabled", async () => {
@@ -55,7 +55,7 @@ describe.sequential("Demo mode API behavior", () => {
     try {
       const response = await fetch(`${baseUrl}/api/pipeline/run`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ sources: ["linkedin"] }),
       });
       expect(response.status).toBe(200);
@@ -79,7 +79,7 @@ describe.sequential("Demo mode API behavior", () => {
     try {
       const response = await fetch(`${baseUrl}/api/settings`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ llmProvider: "openrouter" }),
       });
       expect(response.status).toBe(403);
@@ -101,7 +101,7 @@ describe.sequential("Demo mode API behavior", () => {
     try {
       const imported = await fetch(`${baseUrl}/api/manual-jobs/import`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({
           job: {
             title: "Demo Imported Job",
@@ -117,6 +117,7 @@ describe.sequential("Demo mode API behavior", () => {
 
       const response = await fetch(`${baseUrl}/api/jobs/${jobId}/apply`, {
         method: "POST",
+        headers: testAuthHeaders(),
       });
       const body = await response.json();
 

@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Webhook API routes", () => {
   let server: Server;

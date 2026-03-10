@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Jobs tailoring PATCH route", () => {
   let server: Server;
@@ -19,7 +19,7 @@ describe.sequential("Jobs tailoring PATCH route", () => {
   async function createManualJobId(): Promise<string> {
     const response = await fetch(`${baseUrl}/api/manual-jobs/import`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
         job: {
           title: "Backend Engineer",
@@ -51,7 +51,7 @@ describe.sequential("Jobs tailoring PATCH route", () => {
 
     const response = await fetch(`${baseUrl}/api/jobs/${jobId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
         tailoredHeadline: "Senior Backend Engineer",
         tailoredSkills: skills,
@@ -73,7 +73,7 @@ describe.sequential("Jobs tailoring PATCH route", () => {
 
     const response = await fetch(`${baseUrl}/api/jobs/${jobId}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { ...testAuthHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
         tailoredHeadline: "Senior Backend Engineer",
         tailoredSkills: '{"name":"Backend","keywords":["TypeScript"]}',

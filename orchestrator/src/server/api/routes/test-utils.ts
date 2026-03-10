@@ -3,6 +3,10 @@ import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { vi } from "vitest";
+import { issueAccessToken, issueReauthToken } from "@server/lib/tokens";
+
+const TEST_JWT_SECRET = "test-jwt-secret-for-testing";
+const TEST_ADMIN_ID = "test-admin-id";
 
 vi.mock("@server/pipeline/index", () => {
   const progress = {
@@ -50,6 +54,17 @@ vi.mock("@server/pipeline/index", () => {
     },
   };
 });
+
+vi.mock("@server/extractors/registry", () => ({
+  getExtractorRegistry: vi.fn().mockResolvedValue({
+    manifestBySource: new Map([
+      ["gradcracker", { id: "gradcracker" }],
+      ["glassdoor", { id: "glassdoor" }],
+      ["adzuna", { id: "adzuna" }],
+      ["linkedin", { id: "linkedin" }],
+    ]),
+  }),
+}));
 
 vi.mock("@server/services/manualJob", () => ({
   inferManualJobDetails: vi.fn(),
@@ -99,6 +114,7 @@ export async function startServer(options?: {
     NODE_ENV: "test",
     MODEL: "test-model",
     JOBSPY_SEARCH_TERMS: "alpha|beta",
+    JWT_SECRET: TEST_JWT_SECRET,
     ...envOverrides,
   };
 
@@ -147,4 +163,18 @@ export async function stopServer(args: {
   }
   process.env = { ...originalEnv };
   vi.clearAllMocks();
+}
+
+export function testAuthHeaders(): Record<string, string> {
+  const token = issueAccessToken(TEST_ADMIN_ID, TEST_JWT_SECRET);
+  return { Authorization: `Bearer ${token}` };
+}
+
+export function testReauthHeaders(): Record<string, string> {
+  const accessToken = issueAccessToken(TEST_ADMIN_ID, TEST_JWT_SECRET);
+  const reauthToken = issueReauthToken(TEST_ADMIN_ID, TEST_JWT_SECRET);
+  return {
+    Authorization: `Bearer ${accessToken}`,
+    "X-Reauth-Token": reauthToken,
+  };
 }

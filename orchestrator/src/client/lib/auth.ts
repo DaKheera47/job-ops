@@ -34,7 +34,7 @@ export async function refreshAccessToken(): Promise<string | null> {
         return null;
       }
       const data = await res.json();
-      const newToken = data.data?.accessToken || data.accessToken;
+      const newToken = data.data?.accessToken ?? data.accessToken ?? null;
       setAccessToken(newToken);
       return newToken;
     } catch {

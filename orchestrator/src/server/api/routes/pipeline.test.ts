@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Pipeline API routes", () => {
   let server: Server;
@@ -17,7 +17,7 @@ describe.sequential("Pipeline API routes", () => {
   });
 
   it("reports pipeline status", async () => {
-    const res = await fetch(`${baseUrl}/api/pipeline/status`);
+    const res = await fetch(`${baseUrl}/api/pipeline/status`, { headers: testAuthHeaders() });
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.isRunning).toBe(false);
@@ -27,7 +27,7 @@ describe.sequential("Pipeline API routes", () => {
   it("validates pipeline run payloads", async () => {
     const badRun = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ minSuitabilityScore: 120 }),
     });
     expect(badRun.status).toBe(400);
@@ -35,7 +35,7 @@ describe.sequential("Pipeline API routes", () => {
     const { runPipeline } = await import("@server/pipeline/index");
     const runRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ topN: 5, sources: ["gradcracker"] }),
     });
     const runBody = await runRes.json();
@@ -47,7 +47,7 @@ describe.sequential("Pipeline API routes", () => {
 
     const glassdoorRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ sources: ["glassdoor"] }),
     });
     const glassdoorRunBody = await glassdoorRunRes.json();
@@ -58,7 +58,7 @@ describe.sequential("Pipeline API routes", () => {
 
     const adzunaRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ sources: ["adzuna"] }),
     });
     const adzunaRunBody = await adzunaRunRes.json();
@@ -71,6 +71,7 @@ describe.sequential("Pipeline API routes", () => {
   it("returns conflict when cancelling with no active pipeline", async () => {
     const res = await fetch(`${baseUrl}/api/pipeline/cancel`, {
       method: "POST",
+      headers: testAuthHeaders(),
     });
     const body = await res.json();
 
@@ -90,6 +91,7 @@ describe.sequential("Pipeline API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/pipeline/cancel`, {
       method: "POST",
+      headers: testAuthHeaders(),
     });
     const body = await res.json();
 
@@ -103,6 +105,7 @@ describe.sequential("Pipeline API routes", () => {
   it("streams pipeline progress over SSE", async () => {
     const controller = new AbortController();
     const res = await fetch(`${baseUrl}/api/pipeline/progress`, {
+      headers: testAuthHeaders(),
       signal: controller.signal,
     });
 

@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 vi.mock("@server/services/post-application/providers", () => ({
   executePostApplicationProviderAction: vi.fn(),
@@ -58,6 +58,7 @@ describe.sequential("Post-Application Provider actions API", () => {
         headers: {
           "Content-Type": "application/json",
           "x-request-id": "req-post-app-1",
+          ...testAuthHeaders(),
         },
         body: JSON.stringify({ accountKey: "primary" }),
       },
@@ -110,7 +111,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       `${baseUrl}/api/post-application/providers/gmail/actions/connect`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           payload: {
             refreshToken: "redacted-token",
@@ -141,7 +142,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       `${baseUrl}/api/post-application/providers/gmail/actions/invalid`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({}),
       },
     );
@@ -170,7 +171,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       `${baseUrl}/api/post-application/providers/gmail/actions/sync`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ accountKey: "primary", maxMessages: 20 }),
       },
     );
@@ -193,6 +194,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       {
         headers: {
           "x-request-id": "req-post-app-oauth-start",
+          ...testAuthHeaders(),
         },
       },
     );
@@ -222,6 +224,7 @@ describe.sequential("Post-Application Provider actions API", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...testAuthHeaders(),
         },
         body: JSON.stringify({
           accountKey: "default",
@@ -247,6 +250,7 @@ describe.sequential("Post-Application Provider actions API", () => {
 
     const startRes = await fetch(
       `${baseUrl}/api/post-application/providers/gmail/oauth/start`,
+      { headers: testAuthHeaders() },
     );
     const startBody = await startRes.json();
     expect(startRes.status).toBe(200);
@@ -257,7 +261,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       `${baseUrl}/api/post-application/providers/gmail/oauth/exchange`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           accountKey: "default",
           state: startBody.data.state,
@@ -280,17 +284,20 @@ describe.sequential("Post-Application Provider actions API", () => {
 
     const firstStart = await fetch(
       `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=first`,
+      { headers: testAuthHeaders() },
     );
     const firstBody = await firstStart.json();
     expect(firstStart.status).toBe(200);
 
     const secondStart = await fetch(
       `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=second`,
+      { headers: testAuthHeaders() },
     );
     expect(secondStart.status).toBe(200);
 
     const thirdStart = await fetch(
       `${baseUrl}/api/post-application/providers/gmail/oauth/start?accountKey=third`,
+      { headers: testAuthHeaders() },
     );
     expect(thirdStart.status).toBe(200);
 
@@ -298,7 +305,7 @@ describe.sequential("Post-Application Provider actions API", () => {
       `${baseUrl}/api/post-application/providers/gmail/oauth/exchange`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           accountKey: "first",
           state: firstBody.data.state,
@@ -320,6 +327,7 @@ describe.sequential("Post-Application Provider actions API", () => {
 
     const res = await fetch(
       `${baseUrl}/api/post-application/providers/gmail/oauth/start`,
+      { headers: testAuthHeaders() },
     );
     const body = await res.json();
 

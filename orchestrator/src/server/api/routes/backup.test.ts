@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders, testReauthHeaders } from "./test-utils";
 
 describe.sequential("Backup API routes", () => {
   let server: Server;
@@ -19,7 +19,9 @@ describe.sequential("Backup API routes", () => {
 
   describe("GET /api/backups", () => {
     it("should return empty array when no backups exist", async () => {
-      const res = await fetch(`${baseUrl}/api/backups`);
+      const res = await fetch(`${baseUrl}/api/backups`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -30,9 +32,14 @@ describe.sequential("Backup API routes", () => {
 
     it("should list backups with metadata", async () => {
       // Create a backup first
-      await fetch(`${baseUrl}/api/backups`, { method: "POST" });
+      await fetch(`${baseUrl}/api/backups`, {
+        method: "POST",
+        headers: testAuthHeaders(),
+      });
 
-      const res = await fetch(`${baseUrl}/api/backups`);
+      const res = await fetch(`${baseUrl}/api/backups`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -47,7 +54,10 @@ describe.sequential("Backup API routes", () => {
 
   describe("POST /api/backups", () => {
     it("should create a manual backup", async () => {
-      const res = await fetch(`${baseUrl}/api/backups`, { method: "POST" });
+      const res = await fetch(`${baseUrl}/api/backups`, {
+        method: "POST",
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.status).toBe(200);
@@ -63,7 +73,10 @@ describe.sequential("Backup API routes", () => {
       // Delete the database
       await fs.promises.unlink(`${tempDir}/jobs.db`);
 
-      const res = await fetch(`${baseUrl}/api/backups`, { method: "POST" });
+      const res = await fetch(`${baseUrl}/api/backups`, {
+        method: "POST",
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.status).toBe(500);
@@ -77,6 +90,7 @@ describe.sequential("Backup API routes", () => {
       // Create a backup first
       const createRes = await fetch(`${baseUrl}/api/backups`, {
         method: "POST",
+        headers: testAuthHeaders(),
       });
       const createBody = await createRes.json();
       const filename = createBody.data.filename;
@@ -84,6 +98,7 @@ describe.sequential("Backup API routes", () => {
       // Delete the backup
       const deleteRes = await fetch(`${baseUrl}/api/backups/${filename}`, {
         method: "DELETE",
+        headers: testReauthHeaders(),
       });
       const deleteBody = await deleteRes.json();
 
@@ -92,7 +107,9 @@ describe.sequential("Backup API routes", () => {
       expect(deleteBody.data.message).toContain("deleted successfully");
 
       // Verify it's gone
-      const listRes = await fetch(`${baseUrl}/api/backups`);
+      const listRes = await fetch(`${baseUrl}/api/backups`, {
+        headers: testAuthHeaders(),
+      });
       const listBody = await listRes.json();
       expect(listBody.data.backups).toHaveLength(0);
     });
@@ -100,6 +117,7 @@ describe.sequential("Backup API routes", () => {
     it("should return 404 for non-existent backup", async () => {
       const res = await fetch(`${baseUrl}/api/backups/jobs_2026_01_01.db`, {
         method: "DELETE",
+        headers: testReauthHeaders(),
       });
       const body = await res.json();
 
@@ -111,6 +129,7 @@ describe.sequential("Backup API routes", () => {
     it("should return 400 for invalid filename", async () => {
       const res = await fetch(`${baseUrl}/api/backups/invalid_filename.txt`, {
         method: "DELETE",
+        headers: testReauthHeaders(),
       });
       const body = await res.json();
 

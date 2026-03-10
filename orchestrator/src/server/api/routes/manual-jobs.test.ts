@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Manual jobs API routes", () => {
   let server: Server;
@@ -20,7 +20,7 @@ describe.sequential("Manual jobs API routes", () => {
     it("rejects invalid URLs", async () => {
       const res = await fetch(`${baseUrl}/api/manual-jobs/fetch`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ url: "not-a-valid-url" }),
       });
 
@@ -30,7 +30,7 @@ describe.sequential("Manual jobs API routes", () => {
     it("rejects empty payload", async () => {
       const res = await fetch(`${baseUrl}/api/manual-jobs/fetch`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({}),
       });
 
@@ -41,7 +41,7 @@ describe.sequential("Manual jobs API routes", () => {
   it("infers manual jobs and rejects empty payloads", async () => {
     const badRes = await fetch(`${baseUrl}/api/manual-jobs/infer`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({}),
     });
     expect(badRes.status).toBe(400);
@@ -56,7 +56,7 @@ describe.sequential("Manual jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/manual-jobs/infer`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ jobDescription: "Role description" }),
     });
     const body = await res.json();
@@ -74,7 +74,7 @@ describe.sequential("Manual jobs API routes", () => {
 
     const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         job: {
           title: "Backend Engineer",

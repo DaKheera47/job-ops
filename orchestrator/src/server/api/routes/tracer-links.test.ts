@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Server } from "node:http";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Tracer links routes", () => {
   let server: Server;
@@ -120,6 +120,7 @@ describe.sequential("Tracer links routes", () => {
 
     const analyticsRes = await fetch(
       `${baseUrl}/api/tracer-links/analytics?jobId=${jobId}&includeBots=0&from=${now - 3600}&to=${now}`,
+      { headers: testAuthHeaders() },
     );
 
     expect(analyticsRes.status).toBe(200);
@@ -139,6 +140,7 @@ describe.sequential("Tracer links routes", () => {
 
     const jobRes = await fetch(
       `${baseUrl}/api/tracer-links/jobs/${jobId}?includeBots=1`,
+      { headers: testAuthHeaders() },
     );
     expect(jobRes.status).toBe(200);
     const jobBody = (await jobRes.json()) as {
@@ -196,7 +198,9 @@ describe.sequential("Tracer links routes", () => {
     vi.stubGlobal("fetch", mockFetch);
 
     try {
-      const res = await fetch(`${baseUrl}/api/tracer-links/readiness?force=1`);
+      const res = await fetch(`${baseUrl}/api/tracer-links/readiness?force=1`, {
+        headers: testAuthHeaders(),
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
         ok: boolean;
@@ -223,7 +227,7 @@ describe.sequential("Tracer links routes", () => {
     }
   });
 
-  it("requires auth for tracer analytics GET routes when basic auth is enabled", async () => {
+  it("requires JWT auth for tracer analytics even when basic auth env is set", async () => {
     await stopServer({ server, closeDb, tempDir });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
@@ -232,15 +236,23 @@ describe.sequential("Tracer links routes", () => {
       },
     }));
 
+    // Without any auth → 401 from JWT auth middleware
     const unauthorized = await fetch(`${baseUrl}/api/tracer-links/analytics`);
     expect(unauthorized.status).toBe(401);
 
+    // JWT auth is sufficient even when basic auth env vars are set
+    const jwtAuth = await fetch(`${baseUrl}/api/tracer-links/analytics`, {
+      headers: testAuthHeaders(),
+    });
+    expect(jwtAuth.status).toBe(200);
+
+    // Basic auth alone is not sufficient (JWT is required)
     const credentials = Buffer.from("admin:secret").toString("base64");
-    const authorized = await fetch(`${baseUrl}/api/tracer-links/analytics`, {
+    const basicOnly = await fetch(`${baseUrl}/api/tracer-links/analytics`, {
       headers: {
         Authorization: `Basic ${credentials}`,
       },
     });
-    expect(authorized.status).toBe(200);
+    expect(basicOnly.status).toBe(401);
   });
 });

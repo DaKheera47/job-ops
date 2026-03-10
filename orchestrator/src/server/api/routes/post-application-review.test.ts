@@ -5,7 +5,7 @@ import type {
   PostApplicationRouterStageTarget,
 } from "@shared/types";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Post-Application Review Workflow API", () => {
   let server: Server;
@@ -80,6 +80,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
     const res = await fetch(
       `${baseUrl}/api/post-application/inbox?provider=gmail&accountKey=default`,
+      { headers: testAuthHeaders() },
     );
     const body = await res.json();
 
@@ -99,7 +100,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",
@@ -133,7 +134,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",
@@ -148,7 +149,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",
@@ -175,7 +176,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/deny`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",
@@ -196,7 +197,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
     const res = await fetch(`${baseUrl}/api/post-application/inbox/actions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         action: "approve",
         provider: "gmail",
@@ -229,6 +230,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
 
     const res = await fetch(
       `${baseUrl}/api/post-application/runs/${run.id}/messages?provider=gmail&accountKey=default`,
+      { headers: testAuthHeaders() },
     );
     const body = await res.json();
 
@@ -249,7 +251,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",
@@ -280,7 +282,7 @@ describe.sequential("Post-Application Review Workflow API", () => {
       `${baseUrl}/api/post-application/inbox/${message.id}/approve`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gmail",
           accountKey: "default",

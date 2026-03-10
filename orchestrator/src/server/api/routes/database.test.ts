@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders, testReauthHeaders } from "./test-utils";
 
 describe.sequential("Database API routes", () => {
   let server: Server;
@@ -26,7 +26,10 @@ describe.sequential("Database API routes", () => {
       jobDescription: "Test description",
     });
 
-    const res = await fetch(`${baseUrl}/api/database`, { method: "DELETE" });
+    const res = await fetch(`${baseUrl}/api/database`, {
+      method: "DELETE",
+      headers: testReauthHeaders(),
+    });
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.jobsDeleted).toBe(1);

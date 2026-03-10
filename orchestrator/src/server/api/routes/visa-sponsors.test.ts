@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Visa sponsors API routes", () => {
   let server: Server;
@@ -33,13 +33,16 @@ describe.sequential("Visa sponsors API routes", () => {
       message: "failed",
     });
 
-    const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`);
+    const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`, {
+      headers: testAuthHeaders(),
+    });
     const statusBody = await statusRes.json();
     expect(statusBody.ok).toBe(true);
     expect(statusBody.data.totalSponsors).toBe(0);
 
     const updateRes = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
       method: "POST",
+      headers: testAuthHeaders(),
     });
     expect(updateRes.status).toBe(500);
   });
@@ -65,14 +68,14 @@ describe.sequential("Visa sponsors API routes", () => {
 
     const badRes = await fetch(`${baseUrl}/api/visa-sponsors/search`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({}),
     });
     expect(badRes.status).toBe(400);
 
     const res = await fetch(`${baseUrl}/api/visa-sponsors/search`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ query: "Acme" }),
     });
     const body = await res.json();
@@ -81,6 +84,7 @@ describe.sequential("Visa sponsors API routes", () => {
 
     const orgRes = await fetch(
       `${baseUrl}/api/visa-sponsors/organization/Acme`,
+      { headers: testAuthHeaders() },
     );
     expect(orgRes.status).toBe(404);
   });

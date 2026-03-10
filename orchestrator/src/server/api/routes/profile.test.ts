@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 // Mock the RxResume adapter service
 vi.mock("@server/services/rxresume", () => ({
@@ -75,7 +75,9 @@ describe.sequential("Profile API routes", () => {
       };
       vi.mocked(getProfile).mockResolvedValue(mockProfile);
 
-      const res = await fetch(`${baseUrl}/api/profile/projects`);
+      const res = await fetch(`${baseUrl}/api/profile/projects`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);
@@ -89,7 +91,9 @@ describe.sequential("Profile API routes", () => {
         new Error("Base resume not configured."),
       );
 
-      const res = await fetch(`${baseUrl}/api/profile/projects`);
+      const res = await fetch(`${baseUrl}/api/profile/projects`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(false);
@@ -110,7 +114,9 @@ describe.sequential("Profile API routes", () => {
           new Error("should not be used"),
         );
 
-        const res = await fetch(`${demoServer.baseUrl}/api/profile/projects`);
+        const res = await fetch(`${demoServer.baseUrl}/api/profile/projects`, {
+          headers: testAuthHeaders(),
+        });
         const body = await res.json();
 
         expect(res.ok).toBe(true);
@@ -135,7 +141,9 @@ describe.sequential("Profile API routes", () => {
       };
       vi.mocked(getProfile).mockResolvedValue(mockProfile);
 
-      const res = await fetch(`${baseUrl}/api/profile`);
+      const res = await fetch(`${baseUrl}/api/profile`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);
@@ -148,7 +156,9 @@ describe.sequential("Profile API routes", () => {
         new Error("Base resume not configured."),
       );
 
-      const res = await fetch(`${baseUrl}/api/profile`);
+      const res = await fetch(`${baseUrl}/api/profile`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(false);
@@ -161,7 +171,9 @@ describe.sequential("Profile API routes", () => {
     it("returns exists: false when rxresumeBaseResumeId is not configured", async () => {
       vi.mocked(getSetting).mockResolvedValue(null);
 
-      const res = await fetch(`${baseUrl}/api/profile/status`);
+      const res = await fetch(`${baseUrl}/api/profile/status`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);
@@ -177,7 +189,9 @@ describe.sequential("Profile API routes", () => {
         data: { basics: { name: "Test" } },
       } as any);
 
-      const res = await fetch(`${baseUrl}/api/profile/status`);
+      const res = await fetch(`${baseUrl}/api/profile/status`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);
@@ -192,7 +206,9 @@ describe.sequential("Profile API routes", () => {
         new (RxResumeAuthConfigError as unknown as new () => Error)(),
       );
 
-      const res = await fetch(`${baseUrl}/api/profile/status`);
+      const res = await fetch(`${baseUrl}/api/profile/status`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);
@@ -208,7 +224,9 @@ describe.sequential("Profile API routes", () => {
         data: null,
       } as any);
 
-      const res = await fetch(`${baseUrl}/api/profile/status`);
+      const res = await fetch(`${baseUrl}/api/profile/status`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);

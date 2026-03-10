@@ -56,7 +56,7 @@ import {
   extractProjectsFromResume,
   getResume,
 } from "@server/services/rxresume";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Settings API routes", () => {
   let server: Server;
@@ -78,7 +78,9 @@ describe.sequential("Settings API routes", () => {
   });
 
   it("returns settings with defaults", async () => {
-    const res = await fetch(`${baseUrl}/api/settings`);
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      headers: testAuthHeaders(),
+    });
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.model.default).toBe("test-model");
@@ -91,14 +93,14 @@ describe.sequential("Settings API routes", () => {
   it("rejects invalid settings updates and persists overrides", async () => {
     const badPatch = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ jobspyResultsWanted: 9999 }),
     });
     expect(badPatch.status).toBe(400);
 
     const patchRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         searchTerms: ["engineer"],
         rxresumeEmail: "updated@example.com",
@@ -116,7 +118,7 @@ describe.sequential("Settings API routes", () => {
   it("validates basic auth requirements", async () => {
     const res = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         enableBasicAuth: true,
         basicAuthUser: "",
@@ -130,7 +132,9 @@ describe.sequential("Settings API routes", () => {
 
   it("handles salary penalty settings with validation", async () => {
     // Get initial settings
-    const initialRes = await fetch(`${baseUrl}/api/settings`);
+    const initialRes = await fetch(`${baseUrl}/api/settings`, {
+      headers: testAuthHeaders(),
+    });
     const initialBody = await initialRes.json();
     expect(initialBody.ok).toBe(true);
     expect(initialBody.data.penalizeMissingSalary.value).toBe(false);
@@ -139,14 +143,14 @@ describe.sequential("Settings API routes", () => {
     // Test invalid penalty values
     const invalidRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ missingSalaryPenalty: 150 }),
     });
     expect(invalidRes.status).toBe(400);
 
     const negativeRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({ missingSalaryPenalty: -10 }),
     });
     expect(negativeRes.status).toBe(400);
@@ -154,7 +158,7 @@ describe.sequential("Settings API routes", () => {
     // Test valid settings update
     const validRes = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...testAuthHeaders() },
       body: JSON.stringify({
         penalizeMissingSalary: true,
         missingSalaryPenalty: 20,
@@ -168,7 +172,9 @@ describe.sequential("Settings API routes", () => {
     expect(validBody.data.missingSalaryPenalty.override).toBe(20);
 
     // Verify persistence
-    const getRes = await fetch(`${baseUrl}/api/settings`);
+    const getRes = await fetch(`${baseUrl}/api/settings`, {
+      headers: testAuthHeaders(),
+    });
     const getBody = await getRes.json();
     expect(getBody.ok).toBe(true);
     expect(getBody.data.penalizeMissingSalary.value).toBe(true);
@@ -186,6 +192,7 @@ describe.sequential("Settings API routes", () => {
 
     const res = await fetch(
       `${baseUrl}/api/settings/rx-resumes/missing/projects`,
+      { headers: testAuthHeaders() },
     );
     const body = await res.json();
 
@@ -224,6 +231,7 @@ describe.sequential("Settings API routes", () => {
 
     const res = await fetch(
       `${baseUrl}/api/settings/rx-resumes/resume-v5/projects?mode=v5`,
+      { headers: testAuthHeaders() },
     );
     const body = await res.json();
 

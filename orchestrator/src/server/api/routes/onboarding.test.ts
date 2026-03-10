@@ -1,7 +1,7 @@
 import type { Server } from "node:http";
 import { RxResumeClient } from "@server/services/rxresume/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 describe.sequential("Onboarding API routes", () => {
   let server: Server;
@@ -24,7 +24,7 @@ describe.sequential("Onboarding API routes", () => {
     it("returns invalid when no API key is provided and none in env", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/openrouter`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({}),
       });
       const body = await res.json();
@@ -38,7 +38,7 @@ describe.sequential("Onboarding API routes", () => {
     it("returns invalid when API key is empty string", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/openrouter`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ apiKey: "   " }),
       });
       const body = await res.json();
@@ -62,7 +62,7 @@ describe.sequential("Onboarding API routes", () => {
       });
       const res = await fetch(`${baseUrl}/api/onboarding/validate/openrouter`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ apiKey: "sk-or-invalid-key-12345" }),
       });
       const body = await res.json();
@@ -101,7 +101,7 @@ describe.sequential("Onboarding API routes", () => {
 
       const res = await fetch(`${baseUrl}/api/onboarding/validate/llm`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gemini",
           apiKey: "invalid-gemini-key",
@@ -143,7 +143,7 @@ describe.sequential("Onboarding API routes", () => {
 
       const res = await fetch(`${baseUrl}/api/onboarding/validate/llm`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           provider: "gemini",
           apiKey: "valid-gemini-key",
@@ -161,7 +161,7 @@ describe.sequential("Onboarding API routes", () => {
     it("falls back to stored settings when request omits apiKey", async () => {
       await fetch(`${baseUrl}/api/settings`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           llmProvider: "gemini",
           llmApiKey: "db-gemini-key",
@@ -187,7 +187,7 @@ describe.sequential("Onboarding API routes", () => {
 
       const res = await fetch(`${baseUrl}/api/onboarding/validate/llm`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ provider: "gemini" }),
       });
       const body = await res.json();
@@ -216,7 +216,7 @@ describe.sequential("Onboarding API routes", () => {
     it("returns invalid when no credentials are provided and none in env", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({}),
       });
       const body = await res.json();
@@ -230,7 +230,7 @@ describe.sequential("Onboarding API routes", () => {
     it("returns invalid when only email is provided", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ email: "test@example.com" }),
       });
       const body = await res.json();
@@ -243,7 +243,7 @@ describe.sequential("Onboarding API routes", () => {
     it("returns invalid when only password is provided", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ password: "testpass" }),
       });
       const body = await res.json();
@@ -261,7 +261,7 @@ describe.sequential("Onboarding API routes", () => {
       });
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           email: "nonexistent@test.com",
           password: "wrongpassword123",
@@ -291,7 +291,7 @@ describe.sequential("Onboarding API routes", () => {
 
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({
           mode: "v5",
           apiKey: "rr-v5-test-key",
@@ -309,7 +309,7 @@ describe.sequential("Onboarding API routes", () => {
     it("handles whitespace-only credentials", async () => {
       const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...testAuthHeaders() },
         body: JSON.stringify({ email: "   ", password: "   " }),
       });
       const body = await res.json();
@@ -322,7 +322,9 @@ describe.sequential("Onboarding API routes", () => {
 
   describe("GET /api/onboarding/validate/resume", () => {
     it("returns invalid when rxresumeBaseResumeId is not configured", async () => {
-      const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`);
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/resume`, {
+        headers: testAuthHeaders(),
+      });
       const body = await res.json();
 
       expect(res.ok).toBe(true);

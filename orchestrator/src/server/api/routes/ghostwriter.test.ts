@@ -1,6 +1,6 @@
 import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { startServer, stopServer } from "./test-utils";
+import { startServer, stopServer, testAuthHeaders } from "./test-utils";
 
 vi.mock("@server/services/ghostwriter", () => ({
   listThreads: vi.fn(async () => [
@@ -154,6 +154,7 @@ describe.sequential("Ghostwriter API", () => {
   it("lists messages with request id metadata", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/messages`, {
       headers: {
+        ...testAuthHeaders(),
         "x-request-id": "chat-req-1",
       },
     });
@@ -170,6 +171,7 @@ describe.sequential("Ghostwriter API", () => {
     const messageRes = await fetch(`${baseUrl}/api/jobs/job-1/chat/messages`, {
       method: "POST",
       headers: {
+        ...testAuthHeaders(),
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ content: "hello" }),
