@@ -62,7 +62,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 - Toggle visa sponsor badge visibility in job lists/details
 
-### Writing Style
+### Writing Style & Language
 
 ![Ghostwriter settings section](/img/features/settings-ghostwriter-section.png)
 
@@ -75,6 +75,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Constraints
   - Do-not-use terms
 - These settings apply to Ghostwriter and resume tailoring
+- Use the output language controls as the primary way to choose generated language
+- Constraints can still add extra language guidance, but the explicit language setting is the safer and more predictable default
 - Choose how AI output language is resolved:
   - `Manual`: always use the language you select, such as English, German, French, or Spanish
   - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output
@@ -87,7 +89,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 Use these steps when you want Ghostwriter and resume tailoring to stay in a specific language:
 
 1. Open **Settings**.
-2. Expand **Writing Style**.
+2. Expand **Writing Style & Language**.
 3. Choose a preset if you want a starting point for tone and formality.
 4. Under the language control, choose one of these modes:
    - **Manual**: pick the output language directly.
@@ -196,7 +198,7 @@ curl -X POST "http://localhost:3001/api/backups"
 
 ### Resume tailoring used English instead of my resume language
 
-- Open **Settings → Writing Style** and confirm whether the language mode is set to **Manual** or **Match Resume**.
+- Open **Settings → Writing Style & Language** and confirm whether the language mode is set to **Manual** or **Match Resume**.
 - If you want a specific language every time, switch to **Manual** and select that language explicitly.
 - If you use **Match Resume**, make sure your resume/profile text has enough content in the target language for detection.
 - If detection is ambiguous, JobOps falls back to English by design.

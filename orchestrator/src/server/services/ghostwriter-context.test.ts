@@ -93,7 +93,16 @@ describe("buildJobChatPromptContext", () => {
       "Avoid these terms: synergy, leverage",
     );
     expect(context.systemPrompt).toContain(
-      "Default to writing user-visible resume or application content in German.",
+      "Follow the user's requested output language exactly when they specify one.",
+    );
+    expect(context.systemPrompt).toContain(
+      "When the user does not request a language, default to writing user-visible resume or application content in German.",
+    );
+    expect(context.systemPrompt).toContain(
+      "Treat any language hints inside global writing constraints as secondary guidance when they do not conflict with the user's request or the configured default output language.",
+    );
+    expect(context.systemPrompt).toContain(
+      "If neither the user nor settings provide an explicit language preference, reply in the same language as the most recent user message.",
     );
     expect(context.systemPrompt).toContain(
       "When suggesting a headline or job title, preserve the original wording instead of translating it.",
@@ -144,7 +153,30 @@ describe("buildJobChatPromptContext", () => {
     const context = await buildJobChatPromptContext(job.id);
 
     expect(context.systemPrompt).toContain(
-      "Default to writing user-visible resume or application content in French.",
+      "When the user does not request a language, default to writing user-visible resume or application content in French.",
+    );
+  });
+
+  it("preserves language instructions inside global writing constraints", async () => {
+    const job = createJob({ id: "job-ctx-4" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "professional",
+      formality: "medium",
+      constraints: "Always respond in French.",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+    });
+    vi.mocked(getProfile).mockResolvedValue({});
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.systemPrompt).toContain(
+      "When the user does not request a language, default to writing user-visible resume or application content in English.",
+    );
+    expect(context.systemPrompt).toContain(
+      "Writing constraints: Always respond in French.",
     );
   });
 
