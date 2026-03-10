@@ -27,6 +27,8 @@ describe("buildJobChatPromptContext", () => {
       formality: "medium",
       constraints: "",
       doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
     });
   });
 
@@ -44,6 +46,8 @@ describe("buildJobChatPromptContext", () => {
       formality: "high",
       constraints: "Keep responses under 120 words",
       doNotUse: "synergy, leverage",
+      languageMode: "manual",
+      manualLanguage: "german",
     });
     vi.mocked(getProfile).mockResolvedValue({
       basics: {
@@ -77,6 +81,8 @@ describe("buildJobChatPromptContext", () => {
       formality: "high",
       constraints: "Keep responses under 120 words",
       doNotUse: "synergy, leverage",
+      languageMode: "manual",
+      manualLanguage: "german",
     });
     expect(context.systemPrompt).toContain("Writing style tone: direct.");
     expect(context.systemPrompt).toContain("Writing style formality: high.");
@@ -85,6 +91,12 @@ describe("buildJobChatPromptContext", () => {
     );
     expect(context.systemPrompt).toContain(
       "Avoid these terms: synergy, leverage",
+    );
+    expect(context.systemPrompt).toContain(
+      "Default to writing user-visible resume or application content in German.",
+    );
+    expect(context.systemPrompt).toContain(
+      "When suggesting a headline or job title, preserve the original wording instead of translating it.",
     );
     expect(context.jobSnapshot).toContain('"id": "job-ctx-1"');
     expect(context.jobSnapshot.length).toBeLessThan(6000);
@@ -102,6 +114,38 @@ describe("buildJobChatPromptContext", () => {
     expect(context.job.id).toBe("job-ctx-2");
     expect(context.profileSnapshot).toContain("Name: Unknown");
     expect(context.systemPrompt).toContain("Writing style tone: professional.");
+  });
+
+  it("matches Ghostwriter language to detected resume language when configured", async () => {
+    const job = createJob({ id: "job-ctx-3" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "professional",
+      formality: "medium",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "match-resume",
+      manualLanguage: "english",
+    });
+    vi.mocked(getProfile).mockResolvedValue({
+      basics: {
+        name: "Claire",
+        summary:
+          "Je conçois des plateformes de données et je travaille avec des équipes produit et ingénierie.",
+      },
+      sections: {
+        summary: {
+          content:
+            "Expérience en développement, livraison et accompagnement des équipes.",
+        },
+      },
+    });
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.systemPrompt).toContain(
+      "Default to writing user-visible resume or application content in French.",
+    );
   });
 
   it("throws not found for unknown job", async () => {

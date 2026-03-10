@@ -8,6 +8,8 @@ import { _resetTracerReadinessCache } from "../hooks/useTracerReadiness";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { SettingsPage } from "./SettingsPage";
 
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+
 const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
 
@@ -63,9 +65,20 @@ const openModelSection = async () => {
   fireEvent.click(modelTrigger);
 };
 
+const openWritingStyleSection = async () => {
+  const chatTrigger = await screen.findByRole("button", {
+    name: /writing style & language/i,
+  });
+  fireEvent.click(chatTrigger);
+};
+
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: vi.fn(),
+    });
     _resetTracerReadinessCache();
     vi.mocked(api.getTracerReadiness).mockResolvedValue({
       status: "ready",
@@ -79,6 +92,13 @@ describe("SettingsPage", () => {
     vi.mocked(api.validateRxresume).mockResolvedValue({
       valid: false,
       message: "Missing credentials",
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: originalScrollIntoView,
     });
   });
 
@@ -253,6 +273,43 @@ describe("SettingsPage", () => {
     expect(toast.error).not.toHaveBeenCalledWith(
       "Choose one Reactive Resume auth method",
       expect.anything(),
+    );
+  });
+
+  it("saves the writing language mode through the settings page", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      createAppSettings({
+        chatStyleLanguageMode: {
+          value: "match-resume",
+          default: "manual",
+          override: "match-resume",
+        },
+      }),
+    );
+
+    renderPage();
+    await openWritingStyleSection();
+
+    fireEvent.click(
+      screen.getByRole("combobox", { name: /output language/i }),
+    );
+    fireEvent.click(await screen.findByText("Match current resume language"));
+
+    expect(
+      screen.queryByRole("combobox", { name: /specific language/i }),
+    ).not.toBeInTheDocument();
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatStyleLanguageMode: "match-resume",
+        chatStyleManualLanguage: null,
+      }),
     );
   });
 

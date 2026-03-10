@@ -1,3 +1,8 @@
+import type {
+  ChatStyleLanguageMode,
+  ChatStyleManualLanguage,
+} from "@shared/types.js";
+
 export type EffectiveDefault<T> = {
   effective: T;
   default: T;
@@ -19,6 +24,8 @@ export type ChatValues = {
   formality: EffectiveDefault<string>;
   constraints: EffectiveDefault<string>;
   doNotUse: EffectiveDefault<string>;
+  languageMode: EffectiveDefault<ChatStyleLanguageMode>;
+  manualLanguage: EffectiveDefault<ChatStyleManualLanguage>;
 };
 
 export type EnvSettingsValues = {

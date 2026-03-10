@@ -6,6 +6,11 @@ import {
 } from "@client/pages/settings/constants";
 import type { ChatValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import {
+  CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
+  type ChatStyleLanguageMode,
+  type ChatStyleManualLanguage,
+} from "@shared/types.js";
 import type React from "react";
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
@@ -30,6 +35,18 @@ type ChatSettingsSectionProps = {
   isSaving: boolean;
 };
 
+const LANGUAGE_MODE_LABELS: Record<ChatStyleLanguageMode, string> = {
+  manual: "Choose specific language",
+  "match-resume": "Match current resume language",
+};
+
+const MANUAL_LANGUAGE_LABELS: Record<ChatStyleManualLanguage, string> = {
+  english: "English",
+  german: "German",
+  french: "French",
+  spanish: "Spanish",
+};
+
 function parseTokenizedTerms(input: string): string[] {
   return input
     .split(/[\n,]/g)
@@ -50,25 +67,40 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   isLoading,
   isSaving,
 }) => {
-  const { tone, formality, constraints, doNotUse } = values;
+  const {
+    tone,
+    formality,
+    constraints,
+    doNotUse,
+    languageMode,
+    manualLanguage,
+  } = values;
 
   const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
   const [doNotUseDraft, setDoNotUseDraft] = useState("");
-  const [toneValue, formalityValue, constraintsValue, doNotUseValue] = useWatch(
-    {
-      control,
-      name: [
-        "chatStyleTone",
-        "chatStyleFormality",
-        "chatStyleConstraints",
-        "chatStyleDoNotUse",
-      ],
-    },
-  );
+  const [
+    toneValue,
+    formalityValue,
+    constraintsValue,
+    doNotUseValue,
+    languageModeValue,
+  ] = useWatch({
+    control,
+    name: [
+      "chatStyleTone",
+      "chatStyleFormality",
+      "chatStyleConstraints",
+      "chatStyleDoNotUse",
+      "chatStyleLanguageMode",
+    ],
+  });
   const toneDraft = normalizeBlank(toneValue);
   const formalityDraft = normalizeBlank(formalityValue);
   const constraintsDraft = normalizeBlank(constraintsValue);
   const doNotUseDraftValue = normalizeBlank(doNotUseValue);
+  const resolvedLanguageMode =
+    normalizeBlank(languageModeValue) ?? languageMode.default;
+  const showManualLanguage = resolvedLanguageMode === "manual";
   const resolvedStyle = resolveWritingStyleDraft({
     values: {
       tone: toneDraft,
@@ -87,7 +119,9 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   return (
     <AccordionItem value="chat" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
-        <span className="text-base font-semibold">Writing Style</span>
+        <span className="text-base font-semibold">
+          Writing Style &amp; Language
+        </span>
       </AccordionTrigger>
       <AccordionContent className="pb-4">
         <div className="space-y-4">
@@ -144,6 +178,97 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                     (preset) => preset.id === selectedPresetId,
                   )?.description ?? "")}
             </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <label
+                htmlFor="chatStyleLanguageMode"
+                className="text-sm font-medium"
+              >
+                Output language
+              </label>
+              <Controller
+                name="chatStyleLanguageMode"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    value={normalizeBlank(field.value) ?? languageMode.default}
+                    onValueChange={(value) => {
+                      const nextValue = value as ChatStyleLanguageMode;
+                      field.onChange(nextValue);
+                      if (nextValue !== "manual") {
+                        setValue("chatStyleManualLanguage", null, {
+                          shouldDirty: true,
+                        });
+                      }
+                    }}
+                    disabled={isLoading || isSaving}
+                  >
+                    <SelectTrigger
+                      id="chatStyleLanguageMode"
+                      aria-label="Output language"
+                    >
+                      <SelectValue placeholder="Select output language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="match-resume">
+                        Match current resume language
+                      </SelectItem>
+                      <SelectItem value="manual">
+                        Choose specific language
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <div className="text-xs text-muted-foreground">
+                Choose how AI picks the output language.
+              </div>
+            </div>
+
+            {showManualLanguage ? (
+              <div className="space-y-2">
+                <label
+                  htmlFor="chatStyleManualLanguage"
+                  className="text-sm font-medium"
+                >
+                  Specific language
+                </label>
+                <Controller
+                  name="chatStyleManualLanguage"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={
+                        normalizeBlank(field.value) ?? manualLanguage.default
+                      }
+                      onValueChange={(value) =>
+                        field.onChange(value as ChatStyleManualLanguage)
+                      }
+                      disabled={isLoading || isSaving}
+                    >
+                      <SelectTrigger
+                        id="chatStyleManualLanguage"
+                        aria-label="Specific language"
+                      >
+                        <SelectValue placeholder="Select language" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CHAT_STYLE_MANUAL_LANGUAGE_VALUES.map((language) => (
+                          <SelectItem key={language} value={language}>
+                            {MANUAL_LANGUAGE_LABELS[language]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <div className="text-xs text-muted-foreground">
+                  Used when output language is set to a specific language.
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -255,7 +380,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
 
           <Separator />
 
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
+          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <div className="text-xs text-muted-foreground">Tone</div>
               <div className="break-words font-mono text-xs">
@@ -266,6 +391,22 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
               <div className="text-xs text-muted-foreground">Formality</div>
               <div className="break-words font-mono text-xs">
                 Effective: {formality.effective} | Default: {formality.default}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Language mode</div>
+              <div className="break-words font-mono text-xs">
+                Effective: {LANGUAGE_MODE_LABELS[languageMode.effective]} |
+                Default: {LANGUAGE_MODE_LABELS[languageMode.default]}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">
+                Specific language
+              </div>
+              <div className="break-words font-mono text-xs">
+                Effective: {MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
+                Default: {MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
               </div>
             </div>
           </div>

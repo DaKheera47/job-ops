@@ -7,6 +7,10 @@ import type { ResumeProfile } from "@shared/types";
 import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import {
+  getWritingLanguageLabel,
+  resolveWritingOutputLanguage,
+} from "./output-language";
 import { getWritingStyle } from "./writing-style";
 
 export interface TailoredData {
@@ -140,6 +144,12 @@ function buildTailoringPrompt(
   jd: string,
   writingStyle: Awaited<ReturnType<typeof getWritingStyle>>,
 ): string {
+  const resolvedLanguage = resolveWritingOutputLanguage({
+    style: writingStyle,
+    profile,
+  });
+  const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
+
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {
     basics: {
@@ -175,25 +185,32 @@ INSTRUCTIONS:
 1. "headline" (String):
    - CRITICAL: This is the #1 ATS factor.
    - It must match the Job Title from the JD exactly (e.g., if JD says "Senior React Dev", use "Senior React Dev").
-   - If the JD title is very generic, you may add one specialty, but keep it matching the role.
+   - Do NOT translate, localize, or paraphrase the headline, even if the rest of the output is in ${outputLanguage}.
 
 2. "summary" (String):
    - The Hook. This needs to mirror the company's "About You" / "What we're looking for" section.
    - Keep it concise, warm, and confident.
    - Do NOT invent experience.
    - Use the profile to add context.
+   - Write the summary in ${outputLanguage}.
 
 3. "skills" (Array of Objects):
    - Review my existing skills section structure.
    - Keyword Stuffing: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
    - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.
    - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
+   - Write user-visible skill text in ${outputLanguage} when natural, but keep exact JD terms, acronyms, and technology names when that helps ATS matching.
 
 WRITING STYLE PREFERENCES:
 - Tone: ${writingStyle.tone}
 - Formality: ${writingStyle.formality}
+ - Output language for summary and skills: ${outputLanguage}
 ${writingStyle.constraints ? `- Additional constraints: ${writingStyle.constraints}` : ""}
 ${writingStyle.doNotUse ? `- Avoid these words or phrases: ${writingStyle.doNotUse}` : ""}
+
+ATS SAFETY:
+- Keep "headline" in the exact original job-title wording from the JD.
+- Do not translate the headline, even when summary and skills are written in ${outputLanguage}.
 
 OUTPUT FORMAT (JSON):
 {

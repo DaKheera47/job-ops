@@ -3,6 +3,10 @@ import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import type { Job, ResumeProfile } from "@shared/types";
 import * as jobsRepo from "../repositories/jobs";
+import {
+  getWritingLanguageLabel,
+  resolveWritingOutputLanguage,
+} from "./output-language";
 import { getProfile } from "./profile";
 import { getWritingStyle, type WritingStyle } from "./writing-style";
 
@@ -96,13 +100,24 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
   ]);
 }
 
-function buildSystemPrompt(style: WritingStyle): string {
+function buildSystemPrompt(
+  style: WritingStyle,
+  profile: ResumeProfile,
+): string {
+  const resolvedLanguage = resolveWritingOutputLanguage({
+    style,
+    profile,
+  });
+  const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
+
   return compactJoin([
     "You are Ghostwriter, a job-application writing assistant for a single job.",
     "Use only the provided job and profile context unless the user gives extra details.",
     "Do not claim actions were executed. You are read-only and advisory.",
     "If details are missing, say what is missing before making assumptions.",
     "Avoid exposing private profile details that are unrelated to the user request.",
+    `Default to writing user-visible resume or application content in ${outputLanguage}.`,
+    `When suggesting a headline or job title, preserve the original wording instead of translating it.`,
     `Writing style tone: ${style.tone}.`,
     `Writing style formality: ${style.formality}.`,
     style.constraints ? `Writing constraints: ${style.constraints}` : null,
@@ -130,9 +145,9 @@ export async function buildJobChatPromptContext(
     });
   }
 
-  const systemPrompt = buildSystemPrompt(style);
-  const jobSnapshot = buildJobSnapshot(job);
   const profileSnapshot = buildProfileSnapshot(profile);
+  const systemPrompt = buildSystemPrompt(style, profile);
+  const jobSnapshot = buildJobSnapshot(job);
 
   if (!jobSnapshot.trim()) {
     throw badRequest("Unable to build job context");

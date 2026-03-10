@@ -20,6 +20,8 @@ describe("getWritingStyle", () => {
       formality: "medium",
       constraints: "",
       doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
     });
   });
 
@@ -34,6 +36,10 @@ describe("getWritingStyle", () => {
           return "Keep it short";
         case "chatStyleDoNotUse":
           return "synergy";
+        case "chatStyleLanguageMode":
+          return "match-resume";
+        case "chatStyleManualLanguage":
+          return "german";
         default:
           return null;
       }
@@ -44,6 +50,8 @@ describe("getWritingStyle", () => {
       formality: "low",
       constraints: "Keep it short",
       doNotUse: "synergy",
+      languageMode: "match-resume",
+      manualLanguage: "german",
     });
   });
 });

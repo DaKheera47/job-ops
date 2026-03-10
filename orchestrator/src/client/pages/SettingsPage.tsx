@@ -72,6 +72,8 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleFormality: "",
   chatStyleConstraints: "",
   chatStyleDoNotUse: "",
+  chatStyleLanguageMode: null,
+  chatStyleManualLanguage: null,
   rxresumeEmail: "",
   rxresumePassword: "",
   rxresumeApiKey: "",
@@ -127,6 +129,8 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleFormality: null,
   chatStyleConstraints: null,
   chatStyleDoNotUse: null,
+  chatStyleLanguageMode: null,
+  chatStyleManualLanguage: null,
   rxresumeEmail: null,
   rxresumePassword: null,
   rxresumeApiKey: null,
@@ -167,6 +171,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleFormality: data.chatStyleFormality.override ?? "",
   chatStyleConstraints: data.chatStyleConstraints.override ?? "",
   chatStyleDoNotUse: data.chatStyleDoNotUse.override ?? "",
+  chatStyleLanguageMode: data.chatStyleLanguageMode.override ?? null,
+  chatStyleManualLanguage: data.chatStyleManualLanguage.override ?? null,
   rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumePassword: "",
   rxresumeApiKey: "",
@@ -283,6 +289,14 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       doNotUse: {
         effective: settings?.chatStyleDoNotUse?.value ?? "",
         default: settings?.chatStyleDoNotUse?.default ?? "",
+      },
+      languageMode: {
+        effective: settings?.chatStyleLanguageMode?.value ?? "manual",
+        default: settings?.chatStyleLanguageMode?.default ?? "manual",
+      },
+      manualLanguage: {
+        effective: settings?.chatStyleManualLanguage?.value ?? "english",
+        default: settings?.chatStyleManualLanguage?.default ?? "english",
       },
     },
     envSettings: {
@@ -780,6 +794,8 @@ export const SettingsPage: React.FC = () => {
         chatStyleFormality: normalizeString(data.chatStyleFormality),
         chatStyleConstraints: normalizeString(data.chatStyleConstraints),
         chatStyleDoNotUse: normalizeString(data.chatStyleDoNotUse),
+        chatStyleLanguageMode: data.chatStyleLanguageMode ?? null,
+        chatStyleManualLanguage: data.chatStyleManualLanguage ?? null,
         backupEnabled: nullIfSame(
           data.backupEnabled,
           backup.backupEnabled.default,

@@ -117,4 +117,45 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.rxresumeApiKey.envKey).toBe("RXRESUME_API_KEY");
     });
   });
+
+  describe("writing-style language settings", () => {
+    it("defaults to manual english", () => {
+      expect(settingsRegistry.chatStyleLanguageMode.default()).toBe("manual");
+      expect(settingsRegistry.chatStyleManualLanguage.default()).toBe(
+        "english",
+      );
+    });
+
+    it("parses and serializes supported language settings", () => {
+      expect(settingsRegistry.chatStyleLanguageMode.parse("manual")).toBe(
+        "manual",
+      );
+      expect(settingsRegistry.chatStyleLanguageMode.parse("match-resume")).toBe(
+        "match-resume",
+      );
+      expect(settingsRegistry.chatStyleLanguageMode.parse("auto")).toBeNull();
+      expect(settingsRegistry.chatStyleLanguageMode.parse("")).toBeNull();
+      expect(
+        settingsRegistry.chatStyleLanguageMode.serialize("match-resume"),
+      ).toBe("match-resume");
+      expect(settingsRegistry.chatStyleLanguageMode.serialize(null)).toBeNull();
+
+      expect(settingsRegistry.chatStyleManualLanguage.parse("english")).toBe(
+        "english",
+      );
+      expect(settingsRegistry.chatStyleManualLanguage.parse("german")).toBe(
+        "german",
+      );
+      expect(
+        settingsRegistry.chatStyleManualLanguage.parse("italian"),
+      ).toBeNull();
+      expect(settingsRegistry.chatStyleManualLanguage.parse("")).toBeNull();
+      expect(
+        settingsRegistry.chatStyleManualLanguage.serialize("spanish"),
+      ).toBe("spanish");
+      expect(
+        settingsRegistry.chatStyleManualLanguage.serialize(null),
+      ).toBeNull();
+    });
+  });
 });

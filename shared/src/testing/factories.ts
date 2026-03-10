@@ -188,6 +188,16 @@ export const createAppSettings = (
   chatStyleFormality: { value: "medium", default: "medium", override: null },
   chatStyleConstraints: { value: "", default: "", override: null },
   chatStyleDoNotUse: { value: "", default: "", override: null },
+  chatStyleLanguageMode: {
+    value: "manual",
+    default: "manual",
+    override: null,
+  },
+  chatStyleManualLanguage: {
+    value: "english",
+    default: "english",
+    override: null,
+  },
   llmApiKeyHint: null,
   rxresumeApiKeyHint: null,
   rxresumeEmail: null,

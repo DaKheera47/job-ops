@@ -48,8 +48,13 @@ vi.mock("@/components/ui/select", () => {
       </button>
     );
   };
-  const SelectTrigger = ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
+  const SelectTrigger = ({
+    children,
+    ...props
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" role="combobox" {...props}>
+      {children}
+    </button>
   );
   const SelectValue = () => null;
 
@@ -69,6 +74,8 @@ const ChatSettingsHarness = () => {
       chatStyleFormality: "",
       chatStyleConstraints: "",
       chatStyleDoNotUse: "",
+      chatStyleLanguageMode: null,
+      chatStyleManualLanguage: null,
     },
   });
 
@@ -81,6 +88,8 @@ const ChatSettingsHarness = () => {
             formality: { effective: "medium", default: "medium" },
             constraints: { effective: "", default: "" },
             doNotUse: { effective: "", default: "" },
+            languageMode: { effective: "manual", default: "manual" },
+            manualLanguage: { effective: "english", default: "english" },
           }}
           isLoading={false}
           isSaving={false}
@@ -98,6 +107,8 @@ describe("ChatSettingsSection", () => {
       0,
     );
     expect(screen.getByDisplayValue("medium")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("manual")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("english")).toBeInTheDocument();
   });
 
   it("applies preset values to the writing style fields", () => {
@@ -112,5 +123,18 @@ describe("ChatSettingsSection", () => {
         "Keep the response warm, approachable, and confident.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("hides the manual language selector when matching the resume language", () => {
+    render(<ChatSettingsHarness />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Match current resume language" }),
+    );
+
+    expect(
+      screen.queryByRole("combobox", { name: /specific language/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("english")).not.toBeInTheDocument();
   });
 });

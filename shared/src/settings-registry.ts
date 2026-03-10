@@ -1,5 +1,11 @@
 import { z } from "zod";
-import type { ResumeProjectsSettings } from "./types/settings";
+import {
+  CHAT_STYLE_LANGUAGE_MODE_VALUES,
+  CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
+  type ChatStyleLanguageMode,
+  type ChatStyleManualLanguage,
+  type ResumeProjectsSettings,
+} from "./types/settings";
 
 function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
   return raw === undefined || raw === "" ? null : raw;
@@ -42,6 +48,25 @@ function serializeBitBool(value: boolean | null | undefined): string | null {
   if (value === null || value === undefined) return null;
   return value ? "1" : "0";
 }
+
+function createEnumParser<const TValues extends readonly [string, ...string[]]>(
+  values: TValues,
+): (raw: string | undefined) => TValues[number] | null {
+  const allowedValues = new Set<string>(values);
+
+  return (raw: string | undefined): TValues[number] | null => {
+    if (!raw) return null;
+    return allowedValues.has(raw) ? (raw as TValues[number]) : null;
+  };
+}
+
+const parseChatStyleLanguageModeOrNull = createEnumParser(
+  CHAT_STYLE_LANGUAGE_MODE_VALUES,
+);
+
+const parseChatStyleManualLanguageOrNull = createEnumParser(
+  CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
+);
 
 export const resumeProjectsSchema = z.object({
   maxProjects: z.number().int().min(0).max(100),
@@ -293,6 +318,34 @@ export const settingsRegistry = {
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
+  },
+  chatStyleLanguageMode: {
+    kind: "typed" as const,
+    schema: z.enum(CHAT_STYLE_LANGUAGE_MODE_VALUES),
+    default: (): ChatStyleLanguageMode =>
+      parseChatStyleLanguageModeOrNull(
+        typeof process !== "undefined"
+          ? process.env.CHAT_STYLE_LANGUAGE_MODE
+          : undefined,
+      ) ?? "manual",
+    parse: parseChatStyleLanguageModeOrNull,
+    serialize: (
+      value: ChatStyleLanguageMode | null | undefined,
+    ): string | null => value ?? null,
+  },
+  chatStyleManualLanguage: {
+    kind: "typed" as const,
+    schema: z.enum(CHAT_STYLE_MANUAL_LANGUAGE_VALUES),
+    default: (): ChatStyleManualLanguage =>
+      parseChatStyleManualLanguageOrNull(
+        typeof process !== "undefined"
+          ? process.env.CHAT_STYLE_MANUAL_LANGUAGE
+          : undefined,
+      ) ?? "english",
+    parse: parseChatStyleManualLanguageOrNull,
+    serialize: (
+      value: ChatStyleManualLanguage | null | undefined,
+    ): string | null => value ?? null,
   },
   backupEnabled: {
     kind: "typed" as const,

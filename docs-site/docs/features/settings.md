@@ -70,10 +70,39 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Set global writing defaults:
   - Tone
   - Formality
+  - Output language mode
+  - Manual output language
   - Constraints
   - Do-not-use terms
 - These settings apply to Ghostwriter and resume tailoring
+- Choose how AI output language is resolved:
+  - `Manual`: always use the language you select, such as English, German, French, or Spanish
+  - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output
+- If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
+- Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
 - Do-not-use terms are model guidance, not a guaranteed output filter
+
+#### Writing Style & Language workflow
+
+Use these steps when you want Ghostwriter and resume tailoring to stay in a specific language:
+
+1. Open **Settings**.
+2. Expand **Writing Style**.
+3. Choose a preset if you want a starting point for tone and formality.
+4. Under the language control, choose one of these modes:
+   - **Manual**: pick the output language directly.
+   - **Match Resume**: let JobOps infer the language from your resume/profile text.
+5. If you chose **Manual**, select the language you want the AI to use.
+6. Review the rest of the writing defaults such as tone, formality, constraints, and do-not-use terms.
+7. Click **Save Changes**.
+8. Run Ghostwriter or start resume tailoring again so the new language preference is applied to new output.
+
+Defaults and constraints:
+
+- `Manual` is best when you always want output in one language regardless of the resume source text.
+- `Match Resume` is best when your base resume is already written in the language you want to preserve.
+- If JobOps cannot determine a reliable resume/profile language, it safely uses English.
+- The generated resume content follows the resolved language, but ATS-sensitive headline and job-title wording stays exact so matching and parsing remain safer.
 
 ### Reactive Resume
 
@@ -165,6 +194,19 @@ curl -X POST "http://localhost:3001/api/backups"
 - Some settings apply only to new runs/actions after save.
 - Re-run scoring/tailoring/pipeline to validate effect.
 
+### Resume tailoring used English instead of my resume language
+
+- Open **Settings → Writing Style** and confirm whether the language mode is set to **Manual** or **Match Resume**.
+- If you want a specific language every time, switch to **Manual** and select that language explicitly.
+- If you use **Match Resume**, make sure your resume/profile text has enough content in the target language for detection.
+- If detection is ambiguous, JobOps falls back to English by design.
+
+### My headline or target job title did not get translated
+
+- This is expected during resume tailoring.
+- JobOps intentionally preserves exact headline and job-title wording for ATS safety, even when other tailored sections are generated in another language.
+- If you need a different headline or target title, change the source resume/profile text first and then re-run tailoring.
+
 ### RxResume controls are disabled
 
 - Configure RxResume credentials in Environment & Accounts first.
@@ -190,9 +232,9 @@ curl -X POST "http://localhost:3001/api/backups"
 
 ## Related pages
 
-- [Reactive Resume](./reactive-resume)
-- [Database Backups](../getting-started/database-backups)
-- [Overview](./overview)
-- [Orchestrator](./orchestrator)
-- [Ghostwriter](./ghostwriter)
-- [Self-Hosting](../getting-started/self-hosting)
+- [Reactive Resume](/docs/next/features/reactive-resume)
+- [Database Backups](/docs/next/getting-started/database-backups)
+- [Overview](/docs/next/features/overview)
+- [Orchestrator](/docs/next/features/orchestrator)
+- [Ghostwriter](/docs/next/features/ghostwriter)
+- [Self-Hosting](/docs/next/getting-started/self-hosting)

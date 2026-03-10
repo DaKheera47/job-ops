@@ -22,6 +22,8 @@ describe("settings constants", () => {
             default: "Keep it warm",
           },
           doNotUse: { effective: "", default: "" },
+          languageMode: { effective: "manual", default: "manual" },
+          manualLanguage: { effective: "english", default: "english" },
         },
       }),
     ).toEqual({
@@ -49,6 +51,8 @@ describe("settings constants", () => {
             default: "",
           },
           doNotUse: { effective: "synergy", default: "" },
+          languageMode: { effective: "manual", default: "manual" },
+          manualLanguage: { effective: "english", default: "english" },
         },
       }),
     ).toEqual({

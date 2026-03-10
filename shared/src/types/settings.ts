@@ -14,6 +14,24 @@ export interface ResumeProjectsSettings {
 
 export type RxResumeMode = "v4" | "v5";
 
+export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
+  "manual",
+  "match-resume",
+] as const;
+
+export type ChatStyleLanguageMode =
+  (typeof CHAT_STYLE_LANGUAGE_MODE_VALUES)[number];
+
+export const CHAT_STYLE_MANUAL_LANGUAGE_VALUES = [
+  "english",
+  "german",
+  "french",
+  "spanish",
+] as const;
+
+export type ChatStyleManualLanguage =
+  (typeof CHAT_STYLE_MANUAL_LANGUAGE_VALUES)[number];
+
 export interface ResumeProfile {
   basics?: {
     name?: string;
@@ -135,6 +153,8 @@ export interface AppSettings {
   chatStyleFormality: Resolved<string>;
   chatStyleConstraints: Resolved<string>;
   chatStyleDoNotUse: Resolved<string>;
+  chatStyleLanguageMode: Resolved<ChatStyleLanguageMode>;
+  chatStyleManualLanguage: Resolved<ChatStyleManualLanguage>;
   backupEnabled: Resolved<boolean>;
   backupHour: Resolved<number>;
   backupMaxCount: Resolved<number>;
