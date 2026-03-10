@@ -7,6 +7,7 @@ import {
 } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { logAuditEvent } from "@server/lib/audit";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { setBackupSettings } from "@server/services/backup/index";
 import {
@@ -23,6 +24,17 @@ import { updateSettingsSchema } from "@shared/settings-schema";
 import { type Request, type Response, Router } from "express";
 
 export const settingsRouter = Router();
+
+/** Keys that correspond to secret/credential settings. */
+const CREDENTIAL_KEYS: ReadonlySet<string> = new Set([
+  "llmApiKey",
+  "rxresumePassword",
+  "rxresumeApiKey",
+  "ukvisajobsPassword",
+  "adzunaAppKey",
+  "basicAuthPassword",
+  "webhookSecret",
+]);
 
 /**
  * GET /api/settings - Get app settings (effective + defaults)
@@ -51,6 +63,20 @@ settingsRouter.patch(
 
     const input = updateSettingsSchema.parse(req.body);
     const plan = await applySettingsUpdates(input);
+
+    // Audit-log any credential field changes
+    const changedCredentials = Object.keys(input).filter(
+      (k) => CREDENTIAL_KEYS.has(k) && input[k as keyof typeof input] !== undefined,
+    );
+    if (changedCredentials.length > 0) {
+      logAuditEvent({
+        action: "settings.credentials.update",
+        adminId: req.auth?.adminId ?? null,
+        ip: req.ip ?? null,
+        userAgent: req.get("user-agent") ?? null,
+        metadata: { fields: changedCredentials },
+      });
+    }
 
     const data = await getEffectiveSettings();
 
