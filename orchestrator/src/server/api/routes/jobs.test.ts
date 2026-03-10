@@ -887,6 +887,8 @@ describe.sequential("Jobs API routes", () => {
     );
     vi.mocked(searchSponsors).mockResolvedValue([
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         sponsor: { organisationName: "ACME CORP SPONSOR" } as any,
         score: 100,
         matchedName: "acme corp sponsor",

@@ -20,6 +20,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { normalizeWhitespace } from "@shared/utils/string";
+import { parseVisaSponsorsCsv } from "@shared/visa-sponsors/csv";
 import {
   getVisaSponsorProviderRegistry,
   initializeVisaSponsorProviderRegistry,
@@ -131,58 +132,7 @@ export function calculateSimilarity(str1: string, str2: string): number {
 // CSV parsing (generic 5-column format used for stored files)
 // ============================================================================
 
-export function parseCsv(content: string): VisaSponsor[] {
-  const lines = content.split("\n");
-  const sponsors: VisaSponsor[] = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const fields = parseCSVLine(line);
-    if (fields.length >= 5) {
-      sponsors.push({
-        organisationName: fields[0] || "",
-        townCity: fields[1] || "",
-        county: fields[2] || "",
-        typeRating: fields[3] || "",
-        route: fields[4] || "",
-      });
-    }
-  }
-
-  return sponsors;
-}
-
-function parseCSVLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"' && !inQuotes) {
-      inQuotes = true;
-    } else if (char === '"' && inQuotes) {
-      if (nextChar === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = false;
-      }
-    } else if (char === "," && !inQuotes) {
-      fields.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-
-  fields.push(current.trim());
-  return fields;
-}
+export const parseCsv = parseVisaSponsorsCsv;
 
 // ============================================================================
 // Per-provider storage helpers
@@ -258,14 +208,32 @@ function cleanupOldCsvFiles(providerId: string): void {
 // Core per-provider operations
 // ============================================================================
 
+export type VisaSponsorDownloadErrorCode =
+  | "PROVIDER_NOT_FOUND"
+  | "NO_PROVIDERS_REGISTERED"
+  | "UPDATE_IN_PROGRESS"
+  | "ALL_PROVIDER_UPDATES_FAILED";
+
+export type VisaSponsorDownloadResult =
+  | { success: true; message: string }
+  | {
+      success: false;
+      message: string;
+      code: VisaSponsorDownloadErrorCode;
+    };
+
 async function downloadLatestDataForProvider(
   manifest: VisaSponsorProviderManifest,
-): Promise<{ success: boolean; message: string }> {
+): Promise<VisaSponsorDownloadResult> {
   const { id } = manifest;
   const state = getOrCreateProviderState(id);
 
   if (state.isUpdating) {
-    return { success: false, message: `Update already in progress for ${id}` };
+    return {
+      success: false,
+      message: `Update already in progress for ${id}`,
+      code: "UPDATE_IN_PROGRESS",
+    };
   }
 
   state.isUpdating = true;
@@ -319,7 +287,11 @@ async function downloadLatestDataForProvider(
       `❌ Failed to download sponsors for provider ${id}:`,
       message,
     );
-    return { success: false, message };
+    return {
+      success: false,
+      message,
+      code: "ALL_PROVIDER_UPDATES_FAILED",
+    };
   } finally {
     state.isUpdating = false;
   }
@@ -363,7 +335,7 @@ function loadSponsorsForProvider(providerId: string): VisaSponsor[] {
  */
 export async function downloadLatestCsv(
   providerId?: string,
-): Promise<{ success: boolean; message: string }> {
+): Promise<VisaSponsorDownloadResult> {
   const reg = await getVisaSponsorProviderRegistry();
 
   const manifests = providerId
@@ -378,6 +350,7 @@ export async function downloadLatestCsv(
       message: providerId
         ? `Provider '${providerId}' not found`
         : "No providers registered",
+      code: providerId ? "PROVIDER_NOT_FOUND" : "NO_PROVIDERS_REGISTERED",
     };
   }
 
@@ -391,7 +364,15 @@ export async function downloadLatestCsv(
   );
 
   if (failures.length === manifests.length) {
-    return { success: false, message: "All provider updates failed" };
+    const firstFailure = failures[0];
+    if (firstFailure?.status === "fulfilled") {
+      return firstFailure.value;
+    }
+    return {
+      success: false,
+      message: "All provider updates failed",
+      code: "ALL_PROVIDER_UPDATES_FAILED",
+    };
   }
 
   const succeeded = manifests.length - failures.length;
@@ -404,9 +385,13 @@ export async function downloadLatestCsv(
 /**
  * Load sponsors across all registered providers, optionally filtered by countryKey.
  */
-async function loadAllSponsors(
-  countryKey?: string,
-): Promise<{ providerId: string; sponsors: VisaSponsor[] }[]> {
+async function loadAllSponsors(countryKey?: string): Promise<
+  {
+    providerId: VisaSponsorProviderManifest["id"];
+    countryKey: string;
+    sponsors: VisaSponsor[];
+  }[]
+> {
   const reg = await getVisaSponsorProviderRegistry();
   const manifests = countryKey
     ? ([reg.manifestByCountryKey.get(countryKey)].filter(
@@ -416,6 +401,7 @@ async function loadAllSponsors(
 
   return manifests.map((m) => ({
     providerId: m.id,
+    countryKey: m.countryKey,
     sponsors: loadSponsorsForProvider(m.id),
   }));
 }
@@ -437,7 +423,11 @@ export async function searchSponsors(
   const results: VisaSponsorSearchResult[] = [];
   const seen = new Set<string>();
 
-  for (const { providerId, sponsors } of providerData) {
+  for (const {
+    providerId,
+    countryKey: providerCountryKey,
+    sponsors,
+  } of providerData) {
     for (const sponsor of sponsors) {
       const dedupeKey = `${providerId}::${sponsor.organisationName}`;
       if (seen.has(dedupeKey)) continue;
@@ -447,7 +437,13 @@ export async function searchSponsors(
       const score = calculateSimilarity(normalizedQuery, normalizedSponsor);
 
       if (score >= minScore) {
-        results.push({ sponsor, score, matchedName: normalizedSponsor });
+        results.push({
+          providerId,
+          countryKey: providerCountryKey,
+          sponsor,
+          score,
+          matchedName: normalizedSponsor,
+        });
       }
     }
   }
@@ -504,8 +500,17 @@ export async function getStatus(): Promise<VisaSponsorStatusResponse> {
 
 export async function getOrganizationDetails(
   organisationName: string,
+  providerId?: string,
 ): Promise<VisaSponsor[]> {
-  const providerData = await loadAllSponsors();
+  const providerData = providerId
+    ? [
+        {
+          providerId,
+          countryKey: "",
+          sponsors: loadSponsorsForProvider(providerId),
+        },
+      ]
+    : await loadAllSponsors();
   return providerData
     .flatMap(({ sponsors }) => sponsors)
     .filter((s) => s.organisationName === organisationName);

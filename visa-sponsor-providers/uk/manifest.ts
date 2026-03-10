@@ -2,6 +2,7 @@ import type {
   VisaSponsor,
   VisaSponsorProviderManifest,
 } from "@shared/types/visa-sponsors";
+import { parseVisaSponsorsCsv } from "@shared/visa-sponsors/csv";
 
 const GOV_UK_PAGE_URL =
   "https://www.gov.uk/government/publications/register-of-licensed-sponsors-workers";
@@ -28,60 +29,6 @@ async function extractCsvUrl(): Promise<string> {
   return match[1];
 }
 
-function parseCSVLine(line: string): string[] {
-  const fields: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"' && !inQuotes) {
-      inQuotes = true;
-    } else if (char === '"' && inQuotes) {
-      if (nextChar === '"') {
-        current += '"';
-        i++;
-      } else {
-        inQuotes = false;
-      }
-    } else if (char === "," && !inQuotes) {
-      fields.push(current.trim());
-      current = "";
-    } else {
-      current += char;
-    }
-  }
-
-  fields.push(current.trim());
-  return fields;
-}
-
-function parseCsv(content: string): VisaSponsor[] {
-  const lines = content.split("\n");
-  const sponsors: VisaSponsor[] = [];
-
-  // Skip header row at index 0
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const fields = parseCSVLine(line);
-    if (fields.length >= 5) {
-      sponsors.push({
-        organisationName: fields[0] || "",
-        townCity: fields[1] || "",
-        county: fields[2] || "",
-        typeRating: fields[3] || "",
-        route: fields[4] || "",
-      });
-    }
-  }
-
-  return sponsors;
-}
-
 export const manifest: VisaSponsorProviderManifest = {
   id: "uk",
   displayName: "United Kingdom",
@@ -98,7 +45,7 @@ export const manifest: VisaSponsorProviderManifest = {
     }
 
     const content = await response.text();
-    const sponsors = parseCsv(content);
+    const sponsors = parseVisaSponsorsCsv(content);
     if (sponsors.length === 0) {
       throw new Error("UK sponsor CSV appears empty or invalid");
     }

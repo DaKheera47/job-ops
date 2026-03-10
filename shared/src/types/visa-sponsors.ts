@@ -9,6 +9,8 @@ export interface VisaSponsor {
 }
 
 export interface VisaSponsorSearchResult {
+  providerId: VisaSponsorProviderId;
+  countryKey: string;
   sponsor: VisaSponsor;
   score: number;
   matchedName: string;

@@ -59,8 +59,12 @@ export const queryKeys = {
         "search",
         { query, limit, minScore, country: country ?? null },
       ] as const,
-    organization: (name: string) =>
-      [...queryKeys.visaSponsors.all, "organization", name] as const,
+    organization: (name: string, providerId?: string) =>
+      [
+        ...queryKeys.visaSponsors.all,
+        "organization",
+        { name, providerId: providerId ?? null },
+      ] as const,
   },
   postApplication: {
     all: ["post-application"] as const,

@@ -37,6 +37,7 @@ describe.sequential("Visa sponsors API routes", () => {
     vi.mocked(downloadLatestCsv).mockResolvedValue({
       success: false,
       message: "failed",
+      code: "ALL_PROVIDER_UPDATES_FAILED",
     });
 
     const statusRes = await fetch(`${baseUrl}/api/visa-sponsors/status`);
@@ -63,6 +64,7 @@ describe.sequential("Visa sponsors API routes", () => {
     vi.mocked(downloadLatestCsv).mockResolvedValue({
       success: false,
       message: "No providers registered",
+      code: "NO_PROVIDERS_REGISTERED",
     });
 
     const res = await fetch(`${baseUrl}/api/visa-sponsors/update`, {
@@ -123,6 +125,7 @@ describe.sequential("Visa sponsors API routes", () => {
     vi.mocked(downloadLatestCsv).mockResolvedValue({
       success: false,
       message: "Provider 'au' not found",
+      code: "PROVIDER_NOT_FOUND",
     });
 
     const res = await fetch(`${baseUrl}/api/visa-sponsors/update/au`, {
@@ -145,6 +148,8 @@ describe.sequential("Visa sponsors API routes", () => {
     );
     vi.mocked(searchSponsors).mockResolvedValue([
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         sponsor: {
           organisationName: "Acme",
           townCity: "London",
@@ -176,7 +181,7 @@ describe.sequential("Visa sponsors API routes", () => {
     expect(body.data.total).toBe(1);
 
     const orgRes = await fetch(
-      `${baseUrl}/api/visa-sponsors/organization/Acme`,
+      `${baseUrl}/api/visa-sponsors/organization/Acme?providerId=uk`,
     );
     expect(orgRes.status).toBe(404);
   });

@@ -14,11 +14,15 @@ describe("calculateSponsorMatchSummary", () => {
   it("should report the top match when it is not a perfect match", () => {
     const results: VisaSponsorSearchResult[] = [
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 85,
         sponsor: { organisationName: "Tech Corp" } as any,
         matchedName: "tech corp",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 60,
         sponsor: { organisationName: "Other Ltd" } as any,
         matchedName: "other",
@@ -34,11 +38,15 @@ describe("calculateSponsorMatchSummary", () => {
   it("should report a single perfect match", () => {
     const results: VisaSponsorSearchResult[] = [
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 100,
         sponsor: { organisationName: "Exact Match Ltd" } as any,
         matchedName: "exact match",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 90,
         sponsor: { organisationName: "Close Match" } as any,
         matchedName: "close",
@@ -54,21 +62,29 @@ describe("calculateSponsorMatchSummary", () => {
   it("should report exactly two 100% matches when two or more exist", () => {
     const results: VisaSponsorSearchResult[] = [
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 100,
         sponsor: { organisationName: "First PerfectMatch" } as any,
         matchedName: "match",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 100,
         sponsor: { organisationName: "Second PerfectMatch" } as any,
         matchedName: "match",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 100,
         sponsor: { organisationName: "Third PerfectMatch" } as any,
         matchedName: "match",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 50,
         sponsor: { organisationName: "Common Co" } as any,
         matchedName: "common",
@@ -88,11 +104,15 @@ describe("calculateSponsorMatchSummary", () => {
   it("should only report the single top result if no 100% matches exist", () => {
     const results: VisaSponsorSearchResult[] = [
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 99,
         sponsor: { organisationName: "Almost Perfect" } as any,
         matchedName: "almost",
       },
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         score: 98,
         sponsor: { organisationName: "Second Best" } as any,
         matchedName: "best",

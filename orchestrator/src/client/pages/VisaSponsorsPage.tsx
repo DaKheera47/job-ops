@@ -71,12 +71,18 @@ const formatCountryLabel = (countryKey: string) =>
 const getSearchScopeLabel = (countryLabel: string) =>
   countryLabel === "All sources" ? "all sources" : `the ${countryLabel} source`;
 
+const getResultKey = (
+  result: Pick<VisaSponsorSearchResult, "providerId" | "sponsor">,
+) => `${result.providerId}::${result.sponsor.organisationName}`;
+
 export const VisaSponsorsPage: React.FC = () => {
   const queryClient = useQueryClient();
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [selectedResultKey, setSelectedResultKey] = useState<string | null>(
+    null,
+  );
   const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   // Loading states
@@ -148,42 +154,53 @@ export const VisaSponsorsPage: React.FC = () => {
   });
   useQueryErrorToast(searchQueryResult.error, "Search failed");
 
+  const results = useMemo<VisaSponsorSearchResult[]>(() => {
+    if (!debouncedSearchQuery.trim()) return [];
+    return searchQueryResult.data?.results ?? [];
+  }, [debouncedSearchQuery, searchQueryResult.data]);
+
+  const selectedResult = useMemo(
+    () => results.find((r) => getResultKey(r) === selectedResultKey) ?? null,
+    [results, selectedResultKey],
+  );
+  const selectedOrg = selectedResult?.sponsor.organisationName ?? null;
+
   const orgDetailsQuery = useQuery<VisaSponsor[]>({
-    queryKey: queryKeys.visaSponsors.organization(selectedOrg ?? ""),
+    queryKey: queryKeys.visaSponsors.organization(
+      selectedOrg ?? "",
+      selectedResult?.providerId,
+    ),
     queryFn: () =>
       selectedOrg
-        ? api.getVisaSponsorOrganization(selectedOrg)
+        ? api.getVisaSponsorOrganization(
+            selectedOrg,
+            selectedResult?.providerId,
+          )
         : Promise.resolve([]),
     enabled: Boolean(selectedOrg),
   });
   const orgDetails = orgDetailsQuery.data ?? [];
   useQueryErrorToast(orgDetailsQuery.error, "Failed to fetch details");
 
-  const results = useMemo<VisaSponsorSearchResult[]>(() => {
-    if (!debouncedSearchQuery.trim()) return [];
-    return searchQueryResult.data?.results ?? [];
-  }, [debouncedSearchQuery, searchQueryResult.data]);
-
   // Auto-select first result
   useEffect(() => {
     if (results.length === 0) {
-      setSelectedOrg(null);
+      setSelectedResultKey(null);
       return;
     }
     if (
-      !selectedOrg ||
-      !results.some((r) => r.sponsor.organisationName === selectedOrg)
+      !selectedResultKey ||
+      !results.some((r) => getResultKey(r) === selectedResultKey)
     ) {
-      const firstOrg = results[0].sponsor.organisationName;
-      setSelectedOrg(firstOrg);
+      setSelectedResultKey(getResultKey(results[0]));
     }
-  }, [results, selectedOrg]);
+  }, [results, selectedResultKey]);
 
   useEffect(() => {
-    if (!selectedOrg) {
+    if (!selectedResultKey) {
       setIsDetailDrawerOpen(false);
     }
-  }, [selectedOrg]);
+  }, [selectedResultKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -231,8 +248,8 @@ export const VisaSponsorsPage: React.FC = () => {
     await updateListMutation.mutateAsync();
   };
 
-  const handleSelectOrg = (orgName: string) => {
-    setSelectedOrg(orgName);
+  const handleSelectOrg = (resultKey: string) => {
+    setSelectedResultKey(resultKey);
     if (!isDesktop) {
       setIsDetailDrawerOpen(true);
     }
@@ -240,15 +257,9 @@ export const VisaSponsorsPage: React.FC = () => {
 
   const handleCountryChange = (value: string) => {
     setSelectedCountry(value === ALL_SOURCES_VALUE ? null : value);
-    setSelectedOrg(null);
+    setSelectedResultKey(null);
     setIsDetailDrawerOpen(false);
   };
-
-  const selectedResult = useMemo(
-    () =>
-      results.find((r) => r.sponsor.organisationName === selectedOrg) ?? null,
-    [results, selectedOrg],
-  );
 
   const isUpdateInProgress =
     updateListMutation.isPending ||
@@ -257,7 +268,7 @@ export const VisaSponsorsPage: React.FC = () => {
   const isSearching = searchQueryResult.isFetching;
   const isLoadingDetails = orgDetailsQuery.isLoading;
 
-  const detailPanelContent = !selectedOrg ? (
+  const detailPanelContent = !selectedResult ? (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <div className="text-base font-semibold">Select a company</div>
       <p className="text-sm text-muted-foreground">
@@ -289,6 +300,9 @@ export const VisaSponsorsPage: React.FC = () => {
           )}
         </div>
         <h2 className="text-lg font-semibold text-foreground">{selectedOrg}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Source: {formatCountryLabel(selectedResult.countryKey)}
+        </p>
       </div>
 
       {/* Location */}
@@ -514,13 +528,11 @@ export const VisaSponsorsPage: React.FC = () => {
             )}
 
             {results.length > 0 &&
-              results.map((result, index) => (
+              results.map((result) => (
                 <ListItem
-                  key={`${result.sponsor.organisationName}-${index}`}
-                  selected={selectedOrg === result.sponsor.organisationName}
-                  onClick={() =>
-                    handleSelectOrg(result.sponsor.organisationName)
-                  }
+                  key={getResultKey(result)}
+                  selected={selectedResultKey === getResultKey(result)}
+                  onClick={() => handleSelectOrg(getResultKey(result))}
                   className="gap-3"
                 >
                   <div className="flex-1 min-w-0">
@@ -533,11 +545,22 @@ export const VisaSponsorsPage: React.FC = () => {
                     {(result.sponsor.townCity || result.sponsor.county) && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        {[result.sponsor.townCity, result.sponsor.county]
+                        {[
+                          formatCountryLabel(result.countryKey),
+                          result.sponsor.townCity,
+                          result.sponsor.county,
+                        ]
                           .filter(Boolean)
                           .join(", ")}
                       </div>
                     )}
+                    {!result.sponsor.townCity &&
+                      !result.sponsor.county &&
+                      result.countryKey && (
+                        <div className="text-xs text-muted-foreground">
+                          {formatCountryLabel(result.countryKey)}
+                        </div>
+                      )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <ScoreMeter score={result.score} />

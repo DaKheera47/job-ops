@@ -74,4 +74,47 @@ describe("visa sponsor provider discovery", () => {
     expect(manifest.id).toBe("uk");
     expect(manifest.countryKey).toBe("united kingdom");
   });
+
+  it("loads provider manifests from default exports", async () => {
+    const repoRoot = await makeTempRepoRoot();
+    const manifestPath = join(repoRoot, "provider-manifest-default.mjs");
+    await writeFile(
+      manifestPath,
+      [
+        "export default {",
+        "  id: 'uk',",
+        "  displayName: 'United Kingdom',",
+        "  countryKey: 'united kingdom',",
+        "  async fetchSponsors() {",
+        "    return [];",
+        "  },",
+        "};",
+      ].join("\n"),
+      "utf8",
+    );
+
+    const manifest = await loadProviderManifestFromFile(manifestPath);
+
+    expect(manifest.id).toBe("uk");
+    expect(manifest.countryKey).toBe("united kingdom");
+  });
+
+  it("rejects invalid manifest export shapes", async () => {
+    const repoRoot = await makeTempRepoRoot();
+    const manifestPath = join(repoRoot, "provider-manifest-invalid.mjs");
+    await writeFile(
+      manifestPath,
+      [
+        "export default {",
+        "  id: 'uk',",
+        "  displayName: 'United Kingdom',",
+        "};",
+      ].join("\n"),
+      "utf8",
+    );
+
+    await expect(loadProviderManifestFromFile(manifestPath)).rejects.toThrow(
+      `Invalid visa sponsor provider manifest in ${manifestPath}`,
+    );
+  });
 });

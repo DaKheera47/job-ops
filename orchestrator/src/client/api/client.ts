@@ -1409,9 +1409,12 @@ export async function searchVisaSponsors(input: {
 
 export async function getVisaSponsorOrganization(
   name: string,
+  providerId?: string,
 ): Promise<VisaSponsor[]> {
+  const params = new URLSearchParams();
+  if (providerId) params.set("providerId", providerId);
   return fetchApi<VisaSponsor[]>(
-    `/visa-sponsors/organization/${encodeURIComponent(name)}`,
+    `/visa-sponsors/organization/${encodeURIComponent(name)}${params.size ? `?${params.toString()}` : ""}`,
   );
 }
 

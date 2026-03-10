@@ -72,8 +72,15 @@ visaSponsorsRouter.get(
   "/organization/:name",
   async (req: Request, res: Response) => {
     try {
-      const name = decodeURIComponent(req.params.name);
-      const entries = await visaSponsors.getOrganizationDetails(name);
+      const name = req.params.name;
+      const providerId =
+        typeof req.query.providerId === "string"
+          ? req.query.providerId
+          : undefined;
+      const entries = await visaSponsors.getOrganizationDetails(
+        name,
+        providerId,
+      );
 
       if (entries.length === 0) {
         return fail(res, notFound("Organization not found"));
@@ -96,7 +103,7 @@ visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
     if (!result.success) {
       return fail(
         res,
-        result.message === "No providers registered"
+        result.code === "NO_PROVIDERS_REGISTERED"
           ? serviceUnavailable(result.message)
           : toAppError(new Error(result.message)),
       );
@@ -112,15 +119,19 @@ visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
 });
 
 function mapUpdateProviderError(message: string) {
-  if (message.startsWith("Provider '") && message.endsWith("' not found")) {
-    return notFound(message);
-  }
-
-  if (message === "No providers registered") {
-    return serviceUnavailable(message);
-  }
-
   return toAppError(new Error(message));
+}
+
+function mapUpdateProviderErrorCode(input: { code?: string; message: string }) {
+  if (input.code === "PROVIDER_NOT_FOUND") {
+    return notFound(input.message);
+  }
+
+  if (input.code === "NO_PROVIDERS_REGISTERED") {
+    return serviceUnavailable(input.message);
+  }
+
+  return mapUpdateProviderError(input.message);
 }
 
 /**
@@ -134,7 +145,13 @@ visaSponsorsRouter.post(
       const result = await visaSponsors.downloadLatestCsv(providerId);
 
       if (!result.success) {
-        return fail(res, mapUpdateProviderError(result.message));
+        return fail(
+          res,
+          mapUpdateProviderErrorCode({
+            code: result.code,
+            message: result.message,
+          }),
+        );
       }
 
       ok(res, {

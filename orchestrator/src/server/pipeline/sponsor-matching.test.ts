@@ -119,6 +119,8 @@ describe("Sponsor Match Calculation", () => {
       // Mock sponsor search returning a match
       searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "ACME CORPORATION LIMITED" },
           score: 85,
           matchedName: "acme corporation",
@@ -154,16 +156,22 @@ describe("Sponsor Match Calculation", () => {
       // Mock sponsor search returning perfect matches
       searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT UK LIMITED" },
           score: 100,
           matchedName: "microsoft uk",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT UK LTD" },
           score: 100,
           matchedName: "microsoft uk",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT LIMITED" },
           score: 80,
           matchedName: "microsoft",
@@ -193,11 +201,15 @@ describe("Sponsor Match Calculation", () => {
       // Mock sponsor search returning partial matches only
       searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "TECH CORPORATION" },
           score: 75,
           matchedName: "tech corporation",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "TECHNO CORP" },
           score: 60,
           matchedName: "techno corp",
@@ -296,6 +308,8 @@ describe("Sponsor Match Calculation", () => {
 
       searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "GOOGLE UK LIMITED" },
           score: 100,
           matchedName: "google uk",
@@ -331,6 +345,8 @@ describe("Sponsor Match Calculation", () => {
       searchSponsors
         .mockResolvedValueOnce([
           {
+            providerId: "uk",
+            countryKey: "united kingdom",
             sponsor: { organisationName: "AMAZON UK SERVICES LTD" },
             score: 90,
             matchedName: "amazon uk",
@@ -338,6 +354,8 @@ describe("Sponsor Match Calculation", () => {
         ])
         .mockResolvedValueOnce([
           {
+            providerId: "uk",
+            countryKey: "united kingdom",
             sponsor: { organisationName: "META PLATFORMS IRELAND LIMITED" },
             score: 80,
             matchedName: "meta platforms",
