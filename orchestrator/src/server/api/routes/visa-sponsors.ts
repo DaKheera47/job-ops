@@ -6,11 +6,13 @@ import {
 } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
+import { getVisaSponsorProviderRegistry } from "@server/services/visa-sponsors/providers/registry";
 import { normalizeCountryKey } from "@shared/location-support.js";
 import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
+import { isVisaSponsorProviderId } from "@shared/visa-sponsor-providers";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -77,6 +79,18 @@ visaSponsorsRouter.get(
         typeof req.query.providerId === "string"
           ? req.query.providerId
           : undefined;
+
+      if (providerId) {
+        if (!isVisaSponsorProviderId(providerId)) {
+          return fail(res, badRequest(`Unknown provider '${providerId}'`));
+        }
+
+        const registry = await getVisaSponsorProviderRegistry();
+        if (!registry.manifests.has(providerId)) {
+          return fail(res, notFound(`Provider '${providerId}' not found`));
+        }
+      }
+
       const entries = await visaSponsors.getOrganizationDetails(
         name,
         providerId,

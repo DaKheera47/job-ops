@@ -31,7 +31,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 export function parseVisaSponsorsCsv(content: string): VisaSponsor[] {
-  const lines = content.split("\n");
+  const lines = content.replace(/^\uFEFF/, "").split(/\r?\n/);
   const sponsors: VisaSponsor[] = [];
 
   for (let i = 1; i < lines.length; i++) {

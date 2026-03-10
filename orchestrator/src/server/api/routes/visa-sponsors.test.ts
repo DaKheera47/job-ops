@@ -185,4 +185,28 @@ describe.sequential("Visa sponsors API routes", () => {
     );
     expect(orgRes.status).toBe(404);
   });
+
+  it("rejects invalid provider ids before organization lookup", async () => {
+    const { getOrganizationDetails } = await import(
+      "@server/services/visa-sponsors/index"
+    );
+
+    const res = await fetch(
+      `${baseUrl}/api/visa-sponsors/organization/Acme?providerId=../secrets`,
+      {
+        headers: { "x-request-id": "req-visa-sponsors-invalid-provider" },
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(res.headers.get("x-request-id")).toBe(
+      "req-visa-sponsors-invalid-provider",
+    );
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.error.message).toBe("Unknown provider '../secrets'");
+    expect(body.meta.requestId).toBe("req-visa-sponsors-invalid-provider");
+    expect(vi.mocked(getOrganizationDetails)).not.toHaveBeenCalled();
+  });
 });

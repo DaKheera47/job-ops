@@ -326,6 +326,17 @@ function loadSponsorsForProvider(providerId: string): VisaSponsor[] {
   }
 }
 
+async function getRegisteredProviderManifest(
+  providerId: string,
+): Promise<VisaSponsorProviderManifest | null> {
+  if (!isVisaSponsorProviderId(providerId)) {
+    return null;
+  }
+
+  const reg = await getVisaSponsorProviderRegistry();
+  return reg.manifests.get(providerId) ?? null;
+}
+
 // ============================================================================
 // Public API
 // These entry points are async and preserve the legacy responsibilities
@@ -340,15 +351,12 @@ export async function downloadLatestCsv(
   providerId?: string,
 ): Promise<VisaSponsorDownloadResult> {
   const reg = await getVisaSponsorProviderRegistry();
-  const validatedProviderId =
-    providerId && isVisaSponsorProviderId(providerId) ? providerId : null;
+  const validatedProvider = providerId
+    ? await getRegisteredProviderManifest(providerId)
+    : null;
 
   const manifests = providerId
-    ? ([
-        validatedProviderId
-          ? reg.manifests.get(validatedProviderId)
-          : undefined,
-      ].filter(Boolean) as VisaSponsorProviderManifest[])
+    ? ([validatedProvider].filter(Boolean) as VisaSponsorProviderManifest[])
     : [...reg.manifests.values()];
 
   if (manifests.length === 0) {
@@ -509,12 +517,17 @@ export async function getOrganizationDetails(
   organisationName: string,
   providerId?: string,
 ): Promise<VisaSponsor[]> {
+  const validatedProvider = providerId
+    ? await getRegisteredProviderManifest(providerId)
+    : null;
   const providerData = providerId
     ? [
         {
-          providerId,
-          countryKey: "",
-          sponsors: loadSponsorsForProvider(providerId),
+          providerId: validatedProvider?.id ?? providerId,
+          countryKey: validatedProvider?.countryKey ?? "",
+          sponsors: validatedProvider
+            ? loadSponsorsForProvider(validatedProvider.id)
+            : [],
         },
       ]
     : await loadAllSponsors();
