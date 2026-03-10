@@ -24,7 +24,7 @@ vi.mock("@paralleldrive/cuid2", () => ({
 
 describe("audit", () => {
   it("logs an audit event with all fields", async () => {
-    const { __testEvents } = await import("@server/db");
+    const { __testEvents } = (await import("@server/db")) as unknown as { __testEvents: unknown[] };
 
     logAuditEvent({
       action: "login.success",
@@ -46,7 +46,7 @@ describe("audit", () => {
   });
 
   it("logs event with null adminId for failed attempts", async () => {
-    const { __testEvents } = await import("@server/db");
+    const { __testEvents } = (await import("@server/db")) as unknown as { __testEvents: unknown[] };
     const countBefore = (__testEvents as unknown[]).length;
 
     logAuditEvent({

@@ -380,9 +380,8 @@ export const SettingsPage: React.FC = () => {
   } = useTracerReadiness();
 
   const methods = useForm<UpdateSettingsInput>({
-    resolver: zodResolver(
-      updateSettingsSchema,
-    ) as Resolver<UpdateSettingsInput>,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zod@3.25 exposes v4 internals that confuse @hookform/resolvers overloads
+    resolver: zodResolver(updateSettingsSchema as any) as Resolver<UpdateSettingsInput>,
     mode: "onChange",
     defaultValues: DEFAULT_FORM_VALUES,
   });
