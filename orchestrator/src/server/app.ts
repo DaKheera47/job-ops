@@ -4,96 +4,29 @@
 
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { dirname, extname, join } from "node:path";
+import { basename, dirname, extname, join, resolve as pathResolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { unauthorized } from "@infra/errors";
 import {
   apiErrorHandler,
-  fail,
   legacyApiResponseShim,
   notFoundApiHandler,
   requestContextMiddleware,
 } from "@infra/http";
 import { logger } from "@infra/logger";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
 import { apiRouter } from "./api/index";
 import { getDataDir } from "./config/dataDir";
 import { isDemoMode } from "./config/demo";
+import { apiLimiter } from "./middleware/rateLimiter";
 import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-function createBasicAuthGuard() {
-  function getAuthConfig() {
-    const user = process.env.BASIC_AUTH_USER || "";
-    const pass = process.env.BASIC_AUTH_PASSWORD || "";
-    return {
-      user,
-      pass,
-      enabled: user.length > 0 && pass.length > 0,
-    };
-  }
-
-  function isAuthorized(req: express.Request): boolean {
-    const { user: authUser, pass: authPass, enabled } = getAuthConfig();
-    if (!enabled) return false;
-    const authHeader = req.headers.authorization || "";
-    if (!authHeader.startsWith("Basic ")) return false;
-    const encoded = authHeader.slice("Basic ".length).trim();
-    let decoded = "";
-    try {
-      decoded = Buffer.from(encoded, "base64").toString("utf-8");
-    } catch {
-      return false;
-    }
-    const separatorIndex = decoded.indexOf(":");
-    if (separatorIndex === -1) return false;
-    const user = decoded.slice(0, separatorIndex);
-    const pass = decoded.slice(separatorIndex + 1);
-    return user === authUser && pass === authPass;
-  }
-
-  function isPublicReadOnlyRoute(method: string, path: string): boolean {
-    const normalizedMethod = method.toUpperCase();
-    const normalizedPath = path.split("?")[0] || path;
-    if (
-      normalizedMethod === "POST" &&
-      normalizedPath === "/api/visa-sponsors/search"
-    )
-      return true;
-    return false;
-  }
-
-  function requiresAuth(method: string, path: string): boolean {
-    if (isPublicReadOnlyRoute(method, path)) return false;
-    if (path.startsWith("/api/tracer-links")) {
-      return method.toUpperCase() !== "OPTIONS";
-    }
-    return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
-  }
-
-  const middleware = (
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction,
-  ) => {
-    const { enabled } = getAuthConfig();
-    if (!enabled || !requiresAuth(req.method, req.path)) return next();
-    if (isAuthorized(req)) return next();
-    fail(res, unauthorized("Authentication required"));
-  };
-
-  return {
-    middleware,
-    isAuthorized,
-    basicAuthEnabled: getAuthConfig().enabled,
-  };
-}
-
 export function createApp() {
   const app = express();
-  const authGuard = createBasicAuthGuard();
 
   const handleTracerRedirect = async (
     req: express.Request,
@@ -139,10 +72,40 @@ export function createApp() {
     }
   };
 
-  app.use(cors());
+  // Security headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", "data:"],
+          connectSrc: ["'self'"],
+        },
+      },
+      hsts: { maxAge: 31536000, includeSubDomains: true },
+      frameguard: { action: "deny" },
+      referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    }),
+  );
+
+  // CORS — locked to specific origin
+  app.use(
+    cors({
+      origin: process.env.ALLOWED_ORIGIN || false,
+      credentials: true,
+      methods: ["GET", "POST", "PATCH", "DELETE"],
+      allowedHeaders: ["Content-Type", "Authorization", "X-Reauth-Token"],
+    }),
+  );
+
   app.use(requestContextMiddleware());
   app.use(express.json({ limit: "5mb" }));
   app.use(legacyApiResponseShim());
+
+  // Cookie parser (for refresh token cookie)
+  app.use(cookieParser());
 
   // Logging middleware
   app.use((req, res, next) => {
@@ -159,8 +122,8 @@ export function createApp() {
     next();
   });
 
-  // Optional Basic Auth for write access (read-only by default)
-  app.use(authGuard.middleware);
+  // Rate limiter for API
+  app.use("/api", apiLimiter);
 
   // API routes
   app.use("/api", apiRouter);
@@ -185,7 +148,23 @@ export function createApp() {
       });
     });
   }
-  app.use("/pdfs", express.static(pdfDir));
+  // Serve static files for generated PDFs (with path traversal protection)
+  app.get("/pdfs/:filename", (req, res) => {
+    const filename = req.params.filename;
+    if (!filename) {
+      res.status(404).end();
+      return;
+    }
+    const safeName = basename(filename);
+    const resolved = pathResolve(pdfDir, safeName);
+    if (!resolved.startsWith(pdfDir)) {
+      res.status(403).end();
+      return;
+    }
+    res.sendFile(resolved, (error) => {
+      if (error) res.status(404).end();
+    });
+  });
 
   // Health check
   app.get("/health", (_req, res) => {
