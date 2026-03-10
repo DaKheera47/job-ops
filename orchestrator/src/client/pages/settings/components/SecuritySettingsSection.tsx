@@ -69,7 +69,8 @@ export const SecuritySettingsSection: React.FC = () => {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Session revocation
+  // Session revocation via ReauthModal
+  const [reauthRevokeOpen, setReauthRevokeOpen] = useState(false);
   const [revoking, setRevoking] = useState(false);
 
   /* ---------------------------------------------------------------- */
@@ -92,11 +93,18 @@ export const SecuritySettingsSection: React.FC = () => {
         return;
       }
 
-      const [passkeysData, sessionsData, auditData] = await Promise.all([
-        passkeysRes.json(),
-        sessionsRes.json(),
-        auditRes.json(),
-      ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- server JSON shape
+      let passkeysData: any, sessionsData: any, auditData: any;
+      try {
+        [passkeysData, sessionsData, auditData] = await Promise.all([
+          passkeysRes.json(),
+          sessionsRes.json(),
+          auditRes.json(),
+        ]);
+      } catch {
+        setError("Failed to parse security data.");
+        return;
+      }
 
       setPasskeys(
         (passkeysData.data ?? passkeysData).passkeys ?? [],
@@ -157,7 +165,7 @@ export const SecuritySettingsSection: React.FC = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...attestation,
-            friendlyName: passkeyName.trim() || undefined,
+            friendlyName: passkeyName.trim() ?? undefined,
           }),
         },
       );
@@ -202,7 +210,7 @@ export const SecuritySettingsSection: React.FC = () => {
   const handleConfirmDelete = useCallback(
     async (reauthToken: string) => {
       setReauthOpen(false);
-      if (!pendingDeleteId) return;
+      if (!pendingDeleteId || !/^[\w-]+$/.test(pendingDeleteId)) return;
 
       setDeleting(true);
       setError(null);
@@ -250,41 +258,49 @@ export const SecuritySettingsSection: React.FC = () => {
   /*  Session revocation                                              */
   /* ---------------------------------------------------------------- */
 
-  const handleRevokeAllSessions = useCallback(async () => {
-    const confirmed = window.confirm(
-      "Revoke all sessions? This will log you out on all devices.",
-    );
-    if (!confirmed) return;
+  const handleRequestRevoke = useCallback(() => {
+    setReauthRevokeOpen(true);
+  }, []);
 
-    setRevoking(true);
-    setError(null);
-    setFeedback(null);
+  const handleConfirmRevoke = useCallback(
+    async (reauthToken: string) => {
+      setReauthRevokeOpen(false);
+      setRevoking(true);
+      setError(null);
+      setFeedback(null);
 
-    try {
-      const res = await authFetch("/api/auth/sessions/revoke-all", {
-        method: "POST",
-      });
+      try {
+        const res = await authFetch("/api/auth/sessions/revoke-all", {
+          method: "POST",
+          headers: { "X-Reauth-Token": reauthToken },
+        });
 
-      if (!res.ok) {
-        let message = "Failed to revoke sessions.";
-        try {
-          const errData = await res.json();
-          message = errData.data?.message ?? errData.message ?? message;
-        } catch {
-          // non-JSON response
+        if (!res.ok) {
+          let message = "Failed to revoke sessions.";
+          try {
+            const errData = await res.json();
+            message = errData.data?.message ?? errData.message ?? message;
+          } catch {
+            // non-JSON response
+          }
+          setError(message);
+          return;
         }
-        setError(message);
-        return;
-      }
 
-      setFeedback("All sessions revoked.");
-      await loadData();
-    } catch {
-      setError("Network error revoking sessions.");
-    } finally {
-      setRevoking(false);
-    }
-  }, [loadData]);
+        setFeedback("All sessions revoked.");
+        await loadData();
+      } catch {
+        setError("Network error revoking sessions.");
+      } finally {
+        setRevoking(false);
+      }
+    },
+    [loadData],
+  );
+
+  const handleCancelRevoke = useCallback(() => {
+    setReauthRevokeOpen(false);
+  }, []);
 
   /* ---------------------------------------------------------------- */
   /*  Render                                                          */
@@ -311,7 +327,7 @@ export const SecuritySettingsSection: React.FC = () => {
                 </p>
               )}
               {feedback && (
-                <p className="text-sm text-green-600">{feedback}</p>
+                <p role="status" className="text-sm text-green-600">{feedback}</p>
               )}
 
               {/* -------------------------------------------------- */}
@@ -333,14 +349,14 @@ export const SecuritySettingsSection: React.FC = () => {
                         <TableHead>Name</TableHead>
                         <TableHead>Device Type</TableHead>
                         <TableHead>Created</TableHead>
-                        <TableHead />
+                        <TableHead><span className="sr-only">Actions</span></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {passkeys.map((pk) => (
                         <TableRow key={pk.id}>
                           <TableCell className="font-medium">
-                            {pk.friendlyName || "Unnamed"}
+                            {pk.friendlyName ?? "Unnamed"}
                           </TableCell>
                           <TableCell>
                             {pk.deviceType}
@@ -372,6 +388,7 @@ export const SecuritySettingsSection: React.FC = () => {
                     value={passkeyName}
                     onChange={(e) => setPasskeyName(e.target.value)}
                     disabled={registering}
+                    maxLength={64}
                     className="max-w-xs"
                   />
                   <Button
@@ -402,7 +419,7 @@ export const SecuritySettingsSection: React.FC = () => {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={handleRevokeAllSessions}
+                  onClick={handleRequestRevoke}
                   disabled={revoking || sessions.length === 0}
                 >
                   {revoking ? "Revoking..." : "Revoke All Sessions"}
@@ -458,6 +475,13 @@ export const SecuritySettingsSection: React.FC = () => {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
         description="Re-authenticate to remove this passkey."
+      />
+
+      <ReauthModal
+        open={reauthRevokeOpen}
+        onConfirm={handleConfirmRevoke}
+        onCancel={handleCancelRevoke}
+        description="Re-authenticate to revoke all sessions."
       />
     </>
   );
