@@ -54,6 +54,24 @@ Local URLs:
 4. Include screenshots or short clips for UI changes when helpful.
 5. Mention any tradeoffs or follow-up work in the PR description.
 
+## Releases
+
+Releases are driven from GitHub Actions.
+
+1. Open the `release` workflow in GitHub Actions.
+2. Enter the next version as `x.y.z` (for example `0.1.30`).
+3. Run the workflow.
+
+The workflow will:
+
+- bump `orchestrator/package.json`
+- update `package-lock.json`
+- commit the version bump to `main`
+- create and push tag `vX.Y.Z`
+- create the GitHub release
+
+The app version shown in the UI is sourced from `orchestrator/package.json`, so the release version, tag, and displayed app version stay aligned.
+
 ## Validation Before PR (CI-Parity Checks)
 
 Run from the repository root:

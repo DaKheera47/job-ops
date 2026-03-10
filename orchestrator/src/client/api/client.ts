@@ -1391,12 +1391,14 @@ export async function searchVisaSponsors(input: {
   query: string;
   limit?: number;
   minScore?: number;
+  country?: string;
 }): Promise<VisaSponsorSearchResponse> {
   if (input.query?.trim()) {
     trackProductEvent("visa_sponsor_search", {
       query_length_bucket: bucketQueryLength(input.query.trim()),
       limit: input.limit,
       min_score: input.minScore,
+      country: input.country ?? "all",
     });
   }
   return fetchApi<VisaSponsorSearchResponse>("/visa-sponsors/search", {
@@ -1407,9 +1409,12 @@ export async function searchVisaSponsors(input: {
 
 export async function getVisaSponsorOrganization(
   name: string,
+  providerId?: string,
 ): Promise<VisaSponsor[]> {
+  const params = new URLSearchParams();
+  if (providerId) params.set("providerId", providerId);
   return fetchApi<VisaSponsor[]>(
-    `/visa-sponsors/organization/${encodeURIComponent(name)}`,
+    `/visa-sponsors/organization/${encodeURIComponent(name)}${params.size ? `?${params.toString()}` : ""}`,
   );
 }
 

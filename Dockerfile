@@ -54,6 +54,7 @@ WORKDIR /app
 COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
+COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
@@ -116,6 +117,7 @@ COPY --from=builder /app/orchestrator/dist ./orchestrator/dist
 COPY --from=builder /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
+COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker

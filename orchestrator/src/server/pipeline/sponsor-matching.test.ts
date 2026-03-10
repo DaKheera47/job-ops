@@ -117,8 +117,10 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning a match
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "ACME CORPORATION LIMITED" },
           score: 85,
           matchedName: "acme corporation",
@@ -152,18 +154,24 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning perfect matches
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT UK LIMITED" },
           score: 100,
           matchedName: "microsoft uk",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT UK LTD" },
           score: 100,
           matchedName: "microsoft uk",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "MICROSOFT LIMITED" },
           score: 80,
           matchedName: "microsoft",
@@ -191,13 +199,17 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning partial matches only
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "TECH CORPORATION" },
           score: 75,
           matchedName: "tech corporation",
         },
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "TECHNO CORP" },
           score: 60,
           matchedName: "techno corp",
@@ -222,7 +234,7 @@ describe("Sponsor Match Calculation", () => {
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
       // Mock sponsor search returning no matches
-      searchSponsors.mockReturnValue([]);
+      searchSponsors.mockResolvedValue([]);
 
       const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
@@ -279,7 +291,7 @@ describe("Sponsor Match Calculation", () => {
     it("should use correct limit and minScore options", async () => {
       const mockJob = createJob({ employer: "Test Company" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
-      searchSponsors.mockReturnValue([]);
+      searchSponsors.mockResolvedValue([]);
 
       const { runPipeline } = await import("./orchestrator");
       await runPipeline({ sources: [], enableCrawling: false });
@@ -294,8 +306,10 @@ describe("Sponsor Match Calculation", () => {
       const mockJob = createJob({ employer: "Google UK" });
       getUnscoredDiscoveredJobs.mockResolvedValue([mockJob]);
 
-      searchSponsors.mockReturnValue([
+      searchSponsors.mockResolvedValue([
         {
+          providerId: "uk",
+          countryKey: "united kingdom",
           sponsor: { organisationName: "GOOGLE UK LIMITED" },
           score: 100,
           matchedName: "google uk",
@@ -329,15 +343,19 @@ describe("Sponsor Match Calculation", () => {
 
       // Different results for each employer
       searchSponsors
-        .mockReturnValueOnce([
+        .mockResolvedValueOnce([
           {
+            providerId: "uk",
+            countryKey: "united kingdom",
             sponsor: { organisationName: "AMAZON UK SERVICES LTD" },
             score: 90,
             matchedName: "amazon uk",
           },
         ])
-        .mockReturnValueOnce([
+        .mockResolvedValueOnce([
           {
+            providerId: "uk",
+            countryKey: "united kingdom",
             sponsor: { organisationName: "META PLATFORMS IRELAND LIMITED" },
             score: 80,
             matchedName: "meta platforms",

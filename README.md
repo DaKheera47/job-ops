@@ -5,8 +5,11 @@
 [![GHCR](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://github.com/DaKheera47/job-ops/pkgs/container/job-ops)
 [![Release](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml/badge.svg)](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml)
 [![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](Contributors)
+[![Cloud Waitlist](https://img.shields.io/badge/☁️_Cloud-Join_Waitlist-orange?style=flat-square)](https://try.jobops.app?utm_source=github&utm_medium=badge&utm_campaign=waitlist)
 
 <img width="1200" height="600" alt="Jobops-banner-900" src="https://github.com/user-attachments/assets/e929e389-2ebb-4de1-82c6-8e136b849b78" />
+
+Stop applying blind.
 
 Scrapes major job boards (LinkedIn, Indeed, Glassdoor & more), AI-scores suitability, tailors resumes (RxResume), and tracks application emails automatically.
 
@@ -45,12 +48,6 @@ If you want the serious view of the project, start here:
 - [Orchestrator Pipeline](https://jobops.dakheera47.com/docs/features/orchestrator)
 - [Extractor System](https://jobops.dakheera47.com/docs/extractors/overview)
 - [Troubleshooting](https://jobops.dakheera47.com/docs/troubleshooting/common-problems)
-
-## Contributing
-
-Want to contribute code, docs, or extractors? Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md).
-
-That guide is intentionally link-first so contributor workflow lives in one place while setup and feature docs stay in the canonical docs site.
 
 ## Quick Start (10 Min)
 
@@ -110,6 +107,23 @@ See [post-application tracking docs](https://jobops.dakheera47.com/docs/features
 
 **Note on Analytics**: The alpha version includes anonymous analytics (Umami) to help debug performance. To opt-out, block `umami.dakheera47.com` in your firewall/DNS.
 
+## ☁️ Cloud Version (Coming Soon)
+
+Self-hosting not your thing? A hosted version of JobOps is coming.
+
+- No Docker required
+- Up and running in 2 minutes
+- Managed updates
+- Self-hosted will always be free and open source
+
+👉 Join the waitlist at [https://try.jobops.app](https://try.jobops.app?utm_source=github&utm_medium=readme&utm_campaign=waitlist)
+
+## Contributing
+
+Want to contribute code, docs, or extractors? Start with [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+
+That guide is intentionally link-first so contributor workflow lives in one place while setup and feature docs stay in the canonical docs site.
+
 ## Star History
 
 <a href="https://www.star-history.com/#DaKheera47/job-ops&type=date&legend=top-left">
@@ -122,4 +136,6 @@ See [post-application tracking docs](https://jobops.dakheera47.com/docs/features
 
 ## License
 
-**AGPLv3** - Free to use and modify.
+**AGPLv3 + Commons Clause** - You can self-host, use, and modify JobOps, but
+you cannot sell the software itself or offer paid hosted/support services whose
+value substantially comes from JobOps. See [LICENSE](LICENSE).

@@ -20,24 +20,17 @@ export interface VersionCheckResult {
 }
 
 /**
- * Parse git version string into display format.
- * - Clean semver tags (v0.1.12) → v0.1.12
- * - Dev builds (v0.1.12-8-gabc123) → abc123-dev
+ * Normalize the app version into the user-facing release format.
  */
 export function parseVersion(rawVersion: string): string {
-  // If it's a clean semver tag (v0.1.12), return as-is
-  if (/^v\d+\.\d+\.\d+$/.test(rawVersion)) {
-    return rawVersion;
+  const normalized = rawVersion.trim();
+  if (/^v\d+\.\d+\.\d+$/.test(normalized)) {
+    return normalized;
   }
-  // If it's a dev build (v0.1.12-8-gabc123), extract commit hash and add -dev
-  const match = rawVersion.match(/-g([a-f0-9]+)$/);
-  if (match) {
-    return `${match[1].slice(0, 7)}-dev`;
+  if (/^\d+\.\d+\.\d+$/.test(normalized)) {
+    return `v${normalized}`;
   }
-  // Fallback: return shortened hash
-  return rawVersion.length > 7
-    ? `${rawVersion.slice(0, 7)}-dev`
-    : `${rawVersion}-dev`;
+  return normalized || "unknown";
 }
 
 /**
@@ -80,11 +73,10 @@ export async function checkForUpdate(): Promise<VersionCheckResult> {
     ) {
       throw new Error("Invalid response format");
     }
-    const latestVersion = (data as { tag_name: string }).tag_name;
+    const latestVersion = parseVersion((data as { tag_name: string }).tag_name);
 
-    // Update available if current is a clean tag and differs from latest
     const updateAvailable =
-      /^v\d+\.\d+\.\d+$/.test(currentRaw) && latestVersion !== currentRaw;
+      currentVersion !== "unknown" && latestVersion !== currentVersion;
 
     const result: VersionCheckResult = {
       currentVersion,

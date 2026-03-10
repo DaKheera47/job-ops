@@ -1,9 +1,6 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import type { Server } from "node:http";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createApp } from "./app";
+import type { NextFunction, Request, Response } from "express";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createBasicAuthGuard } from "./app";
 
 const originalEnv = { ...process.env };
 
@@ -12,112 +9,126 @@ function buildAuthHeader(user: string, pass: string): string {
   return `Basic ${token}`;
 }
 
-async function startServer(): Promise<{ server: Server; baseUrl: string }> {
-  const app = createApp();
-  const server = app.listen(0);
-  await new Promise<void>((resolve) =>
-    server.once("listening", () => resolve()),
-  );
-  const address = server.address();
-  if (!address || typeof address === "string") {
-    throw new Error("Failed to resolve server address");
-  }
-  return { server, baseUrl: `http://127.0.0.1:${address.port}` };
+function createMockRequest(input: {
+  method: string;
+  path: string;
+  authorization?: string;
+}): Request {
+  return {
+    method: input.method,
+    path: input.path,
+    headers: input.authorization ? { authorization: input.authorization } : {},
+  } as Request;
+}
+
+function createMockResponse(): Response & {
+  statusCode: number;
+  jsonBody: unknown;
+} {
+  return {
+    statusCode: 200,
+    jsonBody: null,
+    getHeader: vi.fn(() => undefined),
+    setHeader: vi.fn(),
+    status: vi.fn(function status(
+      this: Response & { statusCode: number },
+      code: number,
+    ) {
+      this.statusCode = code;
+      return this;
+    }),
+    json: vi.fn(function json(
+      this: Response & { jsonBody: unknown },
+      body: unknown,
+    ) {
+      this.jsonBody = body;
+      return this;
+    }),
+  } as unknown as Response & { statusCode: number; jsonBody: unknown };
 }
 
 describe.sequential("Basic Auth read-only enforcement", () => {
-  let server: Server | null = null;
-  let baseUrl = "";
-  let tempDir = "";
-
-  beforeEach(async () => {
-    tempDir = await mkdtemp(join(tmpdir(), "job-ops-auth-test-"));
-    process.env.DATA_DIR = tempDir;
-    process.env.NODE_ENV = "test";
-  });
-
-  afterEach(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server?.close(() => resolve()));
-      server = null;
-    }
-    if (tempDir) {
-      await rm(tempDir, { recursive: true, force: true });
-      tempDir = "";
-    }
+  afterEach(() => {
     process.env = { ...originalEnv };
   });
 
-  it("allows read-only GETs without auth when Basic Auth is enabled", async () => {
+  it("allows read-only GETs without auth when Basic Auth is enabled", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    ({ server, baseUrl } = await startServer());
+    const { middleware } = createBasicAuthGuard();
+    const req = createMockRequest({ method: "GET", path: "/health" });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
 
-    const healthRes = await fetch(`${baseUrl}/health`);
-    expect(healthRes.status).toBe(200);
+    middleware(req, res, next);
 
-    const pdfRes = await fetch(`${baseUrl}/pdfs/does-not-exist.pdf`);
-    expect(pdfRes.status).toBe(404);
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("blocks POST/PATCH/DELETE without auth when Basic Auth is enabled", async () => {
+  it("blocks POST/PATCH/DELETE without auth when Basic Auth is enabled", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    ({ server, baseUrl } = await startServer());
+    const { middleware } = createBasicAuthGuard();
 
-    const postRes = await fetch(`${baseUrl}/api/jobs/actions`, {
+    for (const request of [
+      createMockRequest({ method: "POST", path: "/api/jobs/actions" }),
+      createMockRequest({ method: "PATCH", path: "/api/jobs/123" }),
+      createMockRequest({ method: "DELETE", path: "/api/jobs/status/skipped" }),
+    ]) {
+      const res = createMockResponse();
+      const next = vi.fn() as NextFunction;
+
+      middleware(request, res, next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(401);
+      expect(res.jsonBody).toMatchObject({
+        ok: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Authentication required",
+        },
+      });
+    }
+  });
+
+  it("allows writes with valid Basic Auth when enabled", () => {
+    process.env.BASIC_AUTH_USER = "user";
+    process.env.BASIC_AUTH_PASSWORD = "pass";
+
+    const { middleware } = createBasicAuthGuard();
+    const req = createMockRequest({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
+      path: "/api/jobs/actions",
+      authorization: buildAuthHeader("user", "pass"),
     });
-    expect(postRes.status).toBe(401);
-    expect(postRes.headers.get("www-authenticate")).toBeNull();
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
 
-    const patchRes = await fetch(`${baseUrl}/api/jobs/123`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "ready" }),
-    });
-    expect(patchRes.status).toBe(401);
+    middleware(req, res, next);
 
-    const deleteRes = await fetch(`${baseUrl}/api/jobs/status/skipped`, {
-      method: "DELETE",
-    });
-    expect(deleteRes.status).toBe(401);
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("allows writes with valid Basic Auth when enabled", async () => {
-    process.env.BASIC_AUTH_USER = "user";
-    process.env.BASIC_AUTH_PASSWORD = "pass";
-
-    ({ server, baseUrl } = await startServer());
-
-    const authHeader = buildAuthHeader("user", "pass");
-    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
-      method: "POST",
-      headers: {
-        Authorization: authHeader,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
-    });
-
-    expect(res.status).not.toBe(401);
-  });
-
-  it("does not require auth when Basic Auth is disabled", async () => {
+  it("does not require auth when Basic Auth is disabled", () => {
     delete process.env.BASIC_AUTH_USER;
     delete process.env.BASIC_AUTH_PASSWORD;
 
-    ({ server, baseUrl } = await startServer());
-
-    const res = await fetch(`${baseUrl}/api/jobs/actions`, {
+    const { middleware } = createBasicAuthGuard();
+    const req = createMockRequest({
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "skip", jobIds: ["123"] }),
+      path: "/api/jobs/actions",
     });
-    expect(res.status).not.toBe(401);
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

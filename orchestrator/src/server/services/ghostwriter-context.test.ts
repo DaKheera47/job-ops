@@ -87,12 +87,6 @@ describe("buildJobChatPromptContext", () => {
     expect(context.systemPrompt).toContain("Writing style tone: direct.");
     expect(context.systemPrompt).toContain("Writing style formality: high.");
     expect(context.systemPrompt).toContain(
-      "Writing constraints: Keep responses under 120 words",
-    );
-    expect(context.systemPrompt).toContain(
-      "Avoid these terms: synergy, leverage",
-    );
-    expect(context.systemPrompt).toContain(
       "Follow the user's requested output language exactly when they specify one.",
     );
     expect(context.systemPrompt).toContain(
@@ -106,6 +100,12 @@ describe("buildJobChatPromptContext", () => {
     );
     expect(context.systemPrompt).toContain(
       "When suggesting a headline or job title, preserve the original wording instead of translating it.",
+    );
+    expect(context.systemPrompt).toContain(
+      "Writing constraints: Keep responses under 120 words",
+    );
+    expect(context.systemPrompt).toContain(
+      "Avoid these terms: synergy, leverage",
     );
     expect(context.jobSnapshot).toContain('"id": "job-ctx-1"');
     expect(context.jobSnapshot.length).toBeLessThan(6000);

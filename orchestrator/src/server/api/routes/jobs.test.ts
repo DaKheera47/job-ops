@@ -885,8 +885,10 @@ describe.sequential("Jobs API routes", () => {
     const { searchSponsors } = await import(
       "@server/services/visa-sponsors/index"
     );
-    vi.mocked(searchSponsors).mockReturnValue([
+    vi.mocked(searchSponsors).mockResolvedValue([
       {
+        providerId: "uk",
+        countryKey: "united kingdom",
         sponsor: { organisationName: "ACME CORP SPONSOR" } as any,
         score: 100,
         matchedName: "acme corp sponsor",

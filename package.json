@@ -20,6 +20,7 @@
     "check:docs": "npm --workspace docs-site run build",
     "docs:serve": "npm --workspace docs-site run serve",
     "docs:version": "npm --workspace docs-site run docs:version",
+    "release:set-version": "node ./scripts/set-orchestrator-version.mjs",
     "knip": "knip"
   },
   "devDependencies": {

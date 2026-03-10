@@ -2,16 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import type React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { trackEvent } from "@/lib/analytics";
 import { App } from "./App";
 import { useDemoInfo } from "./hooks/useDemoInfo";
 
 vi.mock("./hooks/useDemoInfo", () => ({
   useDemoInfo: vi.fn(),
-}));
-
-vi.mock("@/lib/analytics", () => ({
-  trackEvent: vi.fn(),
 }));
 
 vi.mock("react-transition-group", () => ({
@@ -66,9 +61,10 @@ vi.mock("./pages/VisaSponsorsPage", () => ({
 describe("App demo banner", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
-  it("shows a Star repo link in demo mode and tracks click", () => {
+  it("shows a waitlist link in demo mode", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: true,
       resetCadenceHours: 6,
@@ -84,18 +80,14 @@ describe("App demo banner", () => {
       </MemoryRouter>,
     );
 
-    const link = screen.getByRole("link", { name: /star .*repo/i });
+    const link = screen.getByRole("link", { name: "try.jobops.app" });
     expect(link).toHaveAttribute(
       "href",
-      "https://github.com/DaKheera47/job-ops",
+      "https://try.jobops.app?utm_source=demo&utm_medium=banner&utm_campaign=waitlist",
     );
-    fireEvent.click(link);
-    expect(trackEvent).toHaveBeenCalledWith("star_repo_click", {
-      location: "demo_mode_banner",
-    });
   });
 
-  it("does not render the demo banner CTA when demo mode is disabled", () => {
+  it("does not render the demo banner waitlist link when demo mode is disabled", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: false,
       resetCadenceHours: 6,
@@ -111,6 +103,32 @@ describe("App demo banner", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.queryByRole("link", { name: /star .*repo/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: "try.jobops.app" })).toBeNull();
+  });
+
+  it("lets the user dismiss the waitlist banner and keeps it hidden", () => {
+    vi.mocked(useDemoInfo).mockReturnValue({
+      demoMode: true,
+      resetCadenceHours: 6,
+      lastResetAt: null,
+      nextResetAt: null,
+      baselineVersion: null,
+      baselineName: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/overview"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /dismiss demo waitlist banner/i }),
+    );
+
+    expect(screen.queryByRole("link", { name: "try.jobops.app" })).toBeNull();
+    expect(localStorage.getItem("jobops.demoWaitlistBannerDismissed")).toBe(
+      "1",
+    );
   });
 });

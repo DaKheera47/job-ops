@@ -46,6 +46,7 @@ vi.mock("sonner", () => ({
 }));
 
 let mockIsPipelineRunning = false;
+let mockDemoMode = false;
 let mockPipelineTerminalEvent: {
   status: "completed" | "cancelled" | "failed";
   errorMessage: string | null;
@@ -122,6 +123,17 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
     pipelineTerminalEvent: mockPipelineTerminalEvent,
     setIsRefreshPaused: vi.fn(),
     loadJobs: vi.fn(),
+  }),
+}));
+
+vi.mock("../hooks/useDemoInfo", () => ({
+  useDemoInfo: () => ({
+    demoMode: mockDemoMode,
+    resetCadenceHours: 6,
+    lastResetAt: null,
+    nextResetAt: null,
+    baselineVersion: null,
+    baselineName: null,
   }),
 }));
 
@@ -373,6 +385,7 @@ describe("OrchestratorPage", () => {
     vi.clearAllMocks();
     localStorage.clear();
     localStorage.setItem("has-seen-keyboard-shortcuts", "true");
+    mockDemoMode = false;
     mockIsPipelineRunning = false;
     mockPipelineTerminalEvent = null;
     mockPipelineSources = ["linkedin"];
@@ -1066,6 +1079,25 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
     });
+  });
+
+  it("does not auto-open the keyboard shortcut dialog in demo mode", () => {
+    mockDemoMode = true;
+    localStorage.removeItem("has-seen-keyboard-shortcuts");
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
   });
 
   it("disables other shortcuts while help dialog is open", async () => {

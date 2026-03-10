@@ -119,6 +119,7 @@ type ProductEventMap = {
     query_length_bucket: string;
     limit?: number;
     min_score?: number;
+    country?: string;
   };
 };
 
@@ -158,9 +159,7 @@ function getAnalyticsUserId(): string | null {
 
 function getAnalyticsAppVersion(): string | null {
   try {
-    return typeof __APP_VERSION__ !== "undefined" && __APP_VERSION__?.trim()
-      ? __APP_VERSION__
-      : null;
+    return __APP_VERSION__?.trim() || null;
   } catch {
     return null;
   }

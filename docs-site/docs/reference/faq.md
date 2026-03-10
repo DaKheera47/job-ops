@@ -13,6 +13,12 @@ Yes. The docs static build is bundled and served locally at `/docs`.
 
 Docs are versioned using Docusaurus versions, intended to map to release tags.
 
+## How is the app version managed?
+
+The app version comes from `orchestrator/package.json`.
+
+Releases create a matching `vX.Y.Z` Git tag, and the UI shows that release version in the sidebar footer.
+
 ## Where should contributors edit docs?
 
 Edit files under `docs-site/docs` for latest docs.

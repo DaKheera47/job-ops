@@ -1,0 +1,90 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Next release version (x.y.z)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate release version
+        id: validate
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          if ! [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Version must be in x.y.z form, got '$RELEASE_VERSION'" >&2
+            exit 1
+          fi
+
+          CURRENT_VERSION="$(node -p "require('./orchestrator/package.json').version")"
+          if [ "$CURRENT_VERSION" = "$RELEASE_VERSION" ]; then
+            echo "Version $RELEASE_VERSION is already set in orchestrator/package.json"
+            echo "version_already_set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "version_already_set=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if git rev-parse "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$RELEASE_VERSION already exists locally" >&2
+            exit 1
+          fi
+
+          if git ls-remote --tags origin "refs/tags/v$RELEASE_VERSION" | grep -q .; then
+            echo "Tag v$RELEASE_VERSION already exists on origin" >&2
+            exit 1
+          fi
+
+      - name: Bump orchestrator version files
+        if: steps.validate.outputs.version_already_set != 'true'
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: node ./scripts/set-orchestrator-version.mjs "$RELEASE_VERSION"
+
+      - name: Commit and push version bump
+        if: steps.validate.outputs.version_already_set != 'true'
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add orchestrator/package.json package-lock.json
+          git commit -m "chore: release $RELEASE_VERSION"
+          git push origin HEAD:main
+
+      - name: Create and push release tag
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          git tag "v$RELEASE_VERSION"
+          git push origin "v$RELEASE_VERSION"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: gh release create "v$RELEASE_VERSION" --title "v$RELEASE_VERSION" --generate-notes

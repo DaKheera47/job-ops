@@ -1,8 +1,4 @@
-/**
- * UK Visa Sponsors search page.
- * Allows searching the government's list of licensed visa sponsors.
- */
-
+import { formatCountryLabel } from "@shared/location-support.js";
 import type {
   VisaSponsor,
   VisaSponsorSearchResult,
@@ -32,6 +28,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn, formatDateTime } from "@/lib/utils";
 import * as api from "../api";
 import {
@@ -58,12 +61,24 @@ const getScoreTokens = (score: number) => {
   return { badge: "border-rose-500/30 bg-rose-500/10 text-rose-200" };
 };
 
+const ALL_SOURCES_VALUE = "__all_sources__";
+
+const getSearchScopeLabel = (countryLabel: string) =>
+  countryLabel === "All sources" ? "all sources" : `the ${countryLabel} source`;
+
+const getResultKey = (
+  result: Pick<VisaSponsorSearchResult, "providerId" | "sponsor">,
+) => `${result.providerId}::${result.sponsor.organisationName}`;
+
 export const VisaSponsorsPage: React.FC = () => {
   const queryClient = useQueryClient();
   // State
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
-  const [selectedOrg, setSelectedOrg] = useState<string | null>(null);
+  const [selectedResultKey, setSelectedResultKey] = useState<string | null>(
+    null,
+  );
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   // Loading states
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
@@ -79,6 +94,35 @@ export const VisaSponsorsPage: React.FC = () => {
   });
   const status = statusQuery.data ?? null;
   useQueryErrorToast(statusQuery.error, "Failed to fetch status");
+  const statusProviders = status?.providers ?? [];
+  const providerOptions = statusProviders.map((provider) => ({
+    value: provider.countryKey,
+    label: formatCountryLabel(provider.countryKey),
+    providerId: provider.providerId,
+  }));
+  const selectedCountryLabel =
+    providerOptions.find((option) => option.value === selectedCountry)?.label ??
+    "All sources";
+  const searchScopeLabel = getSearchScopeLabel(selectedCountryLabel);
+  const activeProviders = selectedCountry
+    ? statusProviders.filter(
+        (provider) => provider.countryKey === selectedCountry,
+      )
+    : statusProviders;
+  const totalSponsors = activeProviders.reduce(
+    (sum, provider) => sum + provider.totalSponsors,
+    0,
+  );
+  const latestUpdatedAt = activeProviders.reduce<string | null>(
+    (latest, provider) => {
+      if (!provider.lastUpdated) return latest;
+      if (!latest) return provider.lastUpdated;
+      return new Date(provider.lastUpdated) > new Date(latest)
+        ? provider.lastUpdated
+        : latest;
+    },
+    null,
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -92,53 +136,66 @@ export const VisaSponsorsPage: React.FC = () => {
       debouncedSearchQuery.trim(),
       100,
       20,
+      selectedCountry ?? undefined,
     ),
     queryFn: () =>
       api.searchVisaSponsors({
         query: debouncedSearchQuery.trim(),
         limit: 100,
         minScore: 20,
+        country: selectedCountry ?? undefined,
       }),
     enabled: Boolean(debouncedSearchQuery.trim()),
   });
   useQueryErrorToast(searchQueryResult.error, "Search failed");
-
-  const orgDetailsQuery = useQuery<VisaSponsor[]>({
-    queryKey: queryKeys.visaSponsors.organization(selectedOrg ?? ""),
-    queryFn: () =>
-      selectedOrg
-        ? api.getVisaSponsorOrganization(selectedOrg)
-        : Promise.resolve([]),
-    enabled: Boolean(selectedOrg),
-  });
-  const orgDetails = orgDetailsQuery.data ?? [];
-  useQueryErrorToast(orgDetailsQuery.error, "Failed to fetch details");
 
   const results = useMemo<VisaSponsorSearchResult[]>(() => {
     if (!debouncedSearchQuery.trim()) return [];
     return searchQueryResult.data?.results ?? [];
   }, [debouncedSearchQuery, searchQueryResult.data]);
 
+  const selectedResult = useMemo(
+    () => results.find((r) => getResultKey(r) === selectedResultKey) ?? null,
+    [results, selectedResultKey],
+  );
+  const selectedOrg = selectedResult?.sponsor.organisationName ?? null;
+
+  const orgDetailsQuery = useQuery<VisaSponsor[]>({
+    queryKey: queryKeys.visaSponsors.organization(
+      selectedOrg ?? "",
+      selectedResult?.providerId,
+    ),
+    queryFn: () =>
+      selectedOrg
+        ? api.getVisaSponsorOrganization(
+            selectedOrg,
+            selectedResult?.providerId,
+          )
+        : Promise.resolve([]),
+    enabled: Boolean(selectedOrg),
+  });
+  const orgDetails = orgDetailsQuery.data ?? [];
+  useQueryErrorToast(orgDetailsQuery.error, "Failed to fetch details");
+
   // Auto-select first result
   useEffect(() => {
     if (results.length === 0) {
-      setSelectedOrg(null);
+      setSelectedResultKey(null);
       return;
     }
     if (
-      !selectedOrg ||
-      !results.some((r) => r.sponsor.organisationName === selectedOrg)
+      !selectedResultKey ||
+      !results.some((r) => getResultKey(r) === selectedResultKey)
     ) {
-      const firstOrg = results[0].sponsor.organisationName;
-      setSelectedOrg(firstOrg);
+      setSelectedResultKey(getResultKey(results[0]));
     }
-  }, [results, selectedOrg]);
+  }, [results, selectedResultKey]);
 
   useEffect(() => {
-    if (!selectedOrg) {
+    if (!selectedResultKey) {
       setIsDetailDrawerOpen(false);
     }
-  }, [selectedOrg]);
+  }, [selectedResultKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -170,6 +227,7 @@ export const VisaSponsorsPage: React.FC = () => {
             debouncedSearchQuery.trim(),
             100,
             20,
+            selectedCountry ?? undefined,
           ),
         });
       }
@@ -185,25 +243,27 @@ export const VisaSponsorsPage: React.FC = () => {
     await updateListMutation.mutateAsync();
   };
 
-  const handleSelectOrg = (orgName: string) => {
-    setSelectedOrg(orgName);
+  const handleSelectOrg = (resultKey: string) => {
+    setSelectedResultKey(resultKey);
     if (!isDesktop) {
       setIsDetailDrawerOpen(true);
     }
   };
 
-  const selectedResult = useMemo(
-    () =>
-      results.find((r) => r.sponsor.organisationName === selectedOrg) ?? null,
-    [results, selectedOrg],
-  );
+  const handleCountryChange = (value: string) => {
+    setSelectedCountry(value === ALL_SOURCES_VALUE ? null : value);
+    setSelectedResultKey(null);
+    setIsDetailDrawerOpen(false);
+  };
 
-  const isUpdateInProgress = updateListMutation.isPending || status?.isUpdating;
+  const isUpdateInProgress =
+    updateListMutation.isPending ||
+    statusProviders.some((provider) => provider.isUpdating);
   const isLoadingStatus = statusQuery.isLoading;
   const isSearching = searchQueryResult.isFetching;
   const isLoadingDetails = orgDetailsQuery.isLoading;
 
-  const detailPanelContent = !selectedOrg ? (
+  const detailPanelContent = !selectedResult ? (
     <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
       <div className="text-base font-semibold">Select a company</div>
       <p className="text-sm text-muted-foreground">
@@ -235,6 +295,9 @@ export const VisaSponsorsPage: React.FC = () => {
           )}
         </div>
         <h2 className="text-lg font-semibold text-foreground">{selectedOrg}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Source: {formatCountryLabel(selectedResult.countryKey)}
+        </p>
       </div>
 
       {/* Location */}
@@ -286,9 +349,9 @@ export const VisaSponsorsPage: React.FC = () => {
           What does this mean?
         </div>
         <p className="text-xs text-sky-300/80">
-          This organisation is licensed by the UK Home Office to sponsor workers
-          on the routes listed above. An "A rating" means they're fully
-          compliant.
+          This organisation appears in the selected sponsor source and may be
+          able to sponsor workers on the routes listed above. Always verify the
+          latest source entry before relying on it.
         </p>
       </div>
     </div>
@@ -299,21 +362,21 @@ export const VisaSponsorsPage: React.FC = () => {
       <PageHeader
         icon={Shield}
         title="Visa Sponsors"
-        subtitle="UK Register Search"
         statusIndicator={
           isUpdateInProgress ? <StatusIndicator label="Updating" /> : undefined
         }
+        subtitle="Search sponsor data across available sources"
         actions={
           <>
             {status && (
               <div className="hidden md:flex items-center gap-4 text-xs text-muted-foreground mr-2">
                 <span className="flex items-center gap-1.5">
                   <FileSpreadsheet className="h-3.5 w-3.5" />
-                  {status.totalSponsors.toLocaleString()} sponsors
+                  {totalSponsors.toLocaleString()} sponsors
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {formatDateTime(status.lastUpdated) || "Never"}
+                  {formatDateTime(latestUpdatedAt) || "Never"}
                 </span>
               </div>
             )}
@@ -337,37 +400,66 @@ export const VisaSponsorsPage: React.FC = () => {
       <PageMain>
         {/* Search section */}
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="sponsor-search"
-              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-            >
-              Company name
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="sponsor-search"
-                placeholder="Search for a company name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10 h-10"
-                autoFocus
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <div className="space-y-2">
+                <label
+                  htmlFor="sponsor-search"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
+                  Company name
+                </label>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="sponsor-search"
+                    placeholder="Search for a company name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-10 h-10"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter a company name to check if they&apos;re a licensed visa
+                  sponsor in {searchScopeLabel}.
+                </p>
+              </div>
+              <label
+                htmlFor="sponsor-source"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
+                Source
+              </label>
+              <Select
+                value={selectedCountry ?? ALL_SOURCES_VALUE}
+                onValueChange={handleCountryChange}
+              >
+                <SelectTrigger
+                  id="sponsor-source"
+                  aria-label="Select sponsor source"
+                >
+                  <SelectValue placeholder="All sources" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_SOURCES_VALUE}>All sources</SelectItem>
+                  {providerOptions.map((option) => (
+                    <SelectItem key={option.providerId} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Enter a company name to check if they're a licensed UK visa
-              sponsor.
-            </p>
           </div>
         </section>
 
@@ -387,7 +479,7 @@ export const VisaSponsorsPage: React.FC = () => {
               ) : null
             }
           >
-            {!isLoadingStatus && status?.totalSponsors === 0 && (
+            {!isLoadingStatus && status && totalSponsors === 0 && (
               <EmptyState
                 icon={AlertCircle}
                 title="No sponsor data available"
@@ -414,11 +506,11 @@ export const VisaSponsorsPage: React.FC = () => {
               />
             )}
 
-            {status && status.totalSponsors > 0 && !searchQuery && (
+            {status && totalSponsors > 0 && !searchQuery && (
               <EmptyState
                 icon={Search}
                 title="Search for a company"
-                description="Enter a company name above to check the sponsor register."
+                description={`Enter a company name above to search ${searchScopeLabel}.`}
               />
             )}
 
@@ -431,13 +523,11 @@ export const VisaSponsorsPage: React.FC = () => {
             )}
 
             {results.length > 0 &&
-              results.map((result, index) => (
+              results.map((result) => (
                 <ListItem
-                  key={`${result.sponsor.organisationName}-${index}`}
-                  selected={selectedOrg === result.sponsor.organisationName}
-                  onClick={() =>
-                    handleSelectOrg(result.sponsor.organisationName)
-                  }
+                  key={getResultKey(result)}
+                  selected={selectedResultKey === getResultKey(result)}
+                  onClick={() => handleSelectOrg(getResultKey(result))}
                   className="gap-3"
                 >
                   <div className="flex-1 min-w-0">
@@ -450,11 +540,22 @@ export const VisaSponsorsPage: React.FC = () => {
                     {(result.sponsor.townCity || result.sponsor.county) && (
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3" />
-                        {[result.sponsor.townCity, result.sponsor.county]
+                        {[
+                          formatCountryLabel(result.countryKey),
+                          result.sponsor.townCity,
+                          result.sponsor.county,
+                        ]
                           .filter(Boolean)
                           .join(", ")}
                       </div>
                     )}
+                    {!result.sponsor.townCity &&
+                      !result.sponsor.county &&
+                      result.countryKey && (
+                        <div className="text-xs text-muted-foreground">
+                          {formatCountryLabel(result.countryKey)}
+                        </div>
+                      )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <ScoreMeter score={result.score} />

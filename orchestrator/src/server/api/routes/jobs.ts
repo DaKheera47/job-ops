@@ -1164,7 +1164,7 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
     }
 
     // Search for sponsor matches
-    const sponsorResults = visaSponsors.searchSponsors(job.employer, {
+    const sponsorResults = await visaSponsors.searchSponsors(job.employer, {
       limit: 10,
       minScore: 50,
     });
