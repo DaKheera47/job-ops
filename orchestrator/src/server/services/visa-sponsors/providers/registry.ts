@@ -4,6 +4,7 @@ import type { VisaSponsorProviderManifest } from "@shared/types";
 import {
   isVisaSponsorProviderId,
   VISA_SPONSOR_PROVIDER_IDS,
+  type VisaSponsorProviderId,
 } from "@shared/visa-sponsor-providers";
 import {
   discoverProviderManifestPaths,
@@ -11,9 +12,9 @@ import {
 } from "./discovery";
 
 export interface VisaSponsorProviderRegistry {
-  manifests: Map<string, VisaSponsorProviderManifest>;
+  manifests: Map<VisaSponsorProviderId, VisaSponsorProviderManifest>;
   manifestByCountryKey: Map<string, VisaSponsorProviderManifest>;
-  availableProviderIds: string[];
+  availableProviderIds: VisaSponsorProviderId[];
 }
 
 let registry: VisaSponsorProviderRegistry | null = null;
@@ -26,7 +27,10 @@ export function __resetVisaSponsorRegistryForTests(): void {
 
 async function createRegistry(): Promise<VisaSponsorProviderRegistry> {
   const manifestPaths = await discoverProviderManifestPaths();
-  const manifests = new Map<string, VisaSponsorProviderManifest>();
+  const manifests = new Map<
+    VisaSponsorProviderId,
+    VisaSponsorProviderManifest
+  >();
   const manifestByCountryKey = new Map<string, VisaSponsorProviderManifest>();
 
   for (const path of manifestPaths) {

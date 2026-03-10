@@ -1,3 +1,4 @@
+import { formatCountryLabel } from "@shared/location-support.js";
 import type {
   VisaSponsor,
   VisaSponsorSearchResult,
@@ -61,12 +62,6 @@ const getScoreTokens = (score: number) => {
 };
 
 const ALL_SOURCES_VALUE = "__all_sources__";
-
-const formatCountryLabel = (countryKey: string) =>
-  countryKey
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 
 const getSearchScopeLabel = (countryLabel: string) =>
   countryLabel === "All sources" ? "all sources" : `the ${countryLabel} source`;

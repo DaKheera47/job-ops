@@ -20,6 +20,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { normalizeWhitespace } from "@shared/utils/string";
+import { isVisaSponsorProviderId } from "@shared/visa-sponsor-providers";
 import { parseVisaSponsorsCsv } from "@shared/visa-sponsors/csv";
 import {
   getVisaSponsorProviderRegistry,
@@ -326,7 +327,9 @@ function loadSponsorsForProvider(providerId: string): VisaSponsor[] {
 }
 
 // ============================================================================
-// Public API (same signatures as before, now multi-provider aware)
+// Public API
+// These entry points are async and preserve the legacy responsibilities
+// (download, search, status, load) while operating across multiple providers.
 // ============================================================================
 
 /**
@@ -337,11 +340,15 @@ export async function downloadLatestCsv(
   providerId?: string,
 ): Promise<VisaSponsorDownloadResult> {
   const reg = await getVisaSponsorProviderRegistry();
+  const validatedProviderId =
+    providerId && isVisaSponsorProviderId(providerId) ? providerId : null;
 
   const manifests = providerId
-    ? ([reg.manifests.get(providerId)].filter(
-        Boolean,
-      ) as VisaSponsorProviderManifest[])
+    ? ([
+        validatedProviderId
+          ? reg.manifests.get(validatedProviderId)
+          : undefined,
+      ].filter(Boolean) as VisaSponsorProviderManifest[])
     : [...reg.manifests.values()];
 
   if (manifests.length === 0) {
