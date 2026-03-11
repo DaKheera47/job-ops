@@ -235,8 +235,8 @@ describe.sequential("Onboarding API routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: "openai",
-          apiKey: "test-openai-key",
+          provider: "openai_compatible",
+          apiKey: "test-compatible-key",
           baseUrl: "https://llm.example.com",
         }),
       });

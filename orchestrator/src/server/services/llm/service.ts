@@ -34,6 +34,7 @@ export class LlmService {
       null;
     const resolvedProvider = normalizeProvider(
       options.provider ?? process.env.LLM_PROVIDER ?? null,
+      normalizedBaseUrl,
     );
 
     const strategy = strategies[resolvedProvider];
@@ -280,9 +281,20 @@ export class LlmService {
   }
 }
 
-function normalizeProvider(raw: string | null): LlmProvider {
+function normalizeProvider(
+  raw: string | null,
+  baseUrl: string | null,
+): LlmProvider {
   const normalized = raw?.trim().toLowerCase();
-  if (normalized === "openai_compatible") return "openai_compatible";
+  if (normalized === "openai_compatible") {
+    if (
+      baseUrl?.includes("localhost:1234") ||
+      baseUrl?.includes("127.0.0.1:1234")
+    ) {
+      return "lmstudio";
+    }
+    return "openai_compatible";
+  }
   if (normalized === "openai") return "openai";
   if (normalized === "gemini") return "gemini";
   if (normalized === "lmstudio") return "lmstudio";

@@ -35,7 +35,7 @@ async function validateLlm(options: {
   const shouldUseBaseUrl =
     normalizedProvider === "lmstudio" ||
     normalizedProvider === "ollama" ||
-    normalizedProvider === "openai";
+    normalizedProvider === "openai_compatible";
   const resolvedBaseUrl = shouldUseBaseUrl
     ? options.baseUrl?.trim() || storedBaseUrl?.trim() || undefined
     : undefined;
