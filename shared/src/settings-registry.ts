@@ -68,7 +68,14 @@ export const settingsRegistry = {
     schema: z.preprocess(
       (v) => (v === "" ? null : v),
       z
-        .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"])
+        .enum([
+          "openrouter",
+          "lmstudio",
+          "ollama",
+          "openai",
+          "openai_compatible",
+          "gemini",
+        ])
         .nullable(),
     ),
     default: (): string =>

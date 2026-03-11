@@ -19,6 +19,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "openai") {
     return "https://api.openai.com";
   }
+  if (normalized === "openai_compatible") {
+    return "https://api.openai.com";
+  }
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }

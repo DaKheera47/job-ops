@@ -3,6 +3,7 @@ import { geminiStrategy } from "./gemini";
 import { lmStudioStrategy } from "./lmstudio";
 import { ollamaStrategy } from "./ollama";
 import { openAiStrategy } from "./openai";
+import { openAiCompatibleStrategy } from "./openai-compatible";
 import { openRouterStrategy } from "./openrouter";
 
 const schema = {
@@ -42,6 +43,18 @@ describe("provider adapters", () => {
           model: "model-a",
         },
         expectedUrl: "https://api.openai.com/v1/responses",
+      },
+      {
+        name: "openai-compatible-json_object",
+        strategy: openAiCompatibleStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://llm.example.com/v1/chat/completions",
+          apiKey: "x",
+          model: "model-a",
+        },
+        expectedUrl: "https://llm.example.com/v1/chat/completions",
+        expectedResponseFormat: "json_object",
       },
       {
         name: "gemini-json_schema",

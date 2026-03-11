@@ -3,6 +3,8 @@ import type { ModelValues } from "@client/pages/settings/types";
 import {
   formatSecretHint,
   getLlmProviderConfig,
+  LLM_PROVIDER_LABELS,
+  LLM_PROVIDERS,
 } from "@client/pages/settings/utils";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
@@ -97,11 +99,11 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                         <SelectValue placeholder="Select provider" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="openrouter">OpenRouter</SelectItem>
-                        <SelectItem value="lmstudio">LM Studio</SelectItem>
-                        <SelectItem value="ollama">Ollama</SelectItem>
-                        <SelectItem value="openai">OpenAI</SelectItem>
-                        <SelectItem value="gemini">Gemini</SelectItem>
+                        {LLM_PROVIDERS.map((provider) => (
+                          <SelectItem key={provider} value={provider}>
+                            {LLM_PROVIDER_LABELS[provider]}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
