@@ -119,7 +119,6 @@ function buildSystemPrompt(
     "Follow the user's requested output language exactly when they specify one.",
     `When the user does not request a language, default to writing user-visible resume or application content in ${outputLanguage}.`,
     "Treat any language hints inside global writing constraints as secondary guidance when they do not conflict with the user's request or the configured default output language.",
-    "If neither the user nor settings provide an explicit language preference, reply in the same language as the most recent user message.",
     `When suggesting a headline or job title, preserve the original wording instead of translating it.`,
     `Writing style tone: ${style.tone}.`,
     `Writing style formality: ${style.formality}.`,

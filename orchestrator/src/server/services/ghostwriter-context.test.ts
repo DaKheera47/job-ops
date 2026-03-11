@@ -96,9 +96,6 @@ describe("buildJobChatPromptContext", () => {
       "Treat any language hints inside global writing constraints as secondary guidance when they do not conflict with the user's request or the configured default output language.",
     );
     expect(context.systemPrompt).toContain(
-      "If neither the user nor settings provide an explicit language preference, reply in the same language as the most recent user message.",
-    );
-    expect(context.systemPrompt).toContain(
       "When suggesting a headline or job title, preserve the original wording instead of translating it.",
     );
     expect(context.systemPrompt).toContain(

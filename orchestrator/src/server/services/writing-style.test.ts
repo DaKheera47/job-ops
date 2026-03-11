@@ -8,8 +8,17 @@ import { getSetting } from "@server/repositories/settings";
 import { getWritingStyle } from "./writing-style";
 
 describe("getWritingStyle", () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     vi.resetAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.CHAT_STYLE_TONE;
+    delete process.env.CHAT_STYLE_FORMALITY;
+    delete process.env.CHAT_STYLE_CONSTRAINTS;
+    delete process.env.CHAT_STYLE_DO_NOT_USE;
+    delete process.env.CHAT_STYLE_LANGUAGE_MODE;
+    delete process.env.CHAT_STYLE_MANUAL_LANGUAGE;
   });
 
   it("uses defaults when no overrides are stored", async () => {

@@ -120,10 +120,30 @@ describe("settingsRegistry helpers", () => {
 
   describe("writing-style language settings", () => {
     it("defaults to manual english", () => {
-      expect(settingsRegistry.chatStyleLanguageMode.default()).toBe("manual");
-      expect(settingsRegistry.chatStyleManualLanguage.default()).toBe(
-        "english",
-      );
+      const previousLanguageMode = process.env.CHAT_STYLE_LANGUAGE_MODE;
+      const previousManualLanguage = process.env.CHAT_STYLE_MANUAL_LANGUAGE;
+
+      delete process.env.CHAT_STYLE_LANGUAGE_MODE;
+      delete process.env.CHAT_STYLE_MANUAL_LANGUAGE;
+
+      try {
+        expect(settingsRegistry.chatStyleLanguageMode.default()).toBe("manual");
+        expect(settingsRegistry.chatStyleManualLanguage.default()).toBe(
+          "english",
+        );
+      } finally {
+        if (previousLanguageMode === undefined) {
+          delete process.env.CHAT_STYLE_LANGUAGE_MODE;
+        } else {
+          process.env.CHAT_STYLE_LANGUAGE_MODE = previousLanguageMode;
+        }
+
+        if (previousManualLanguage === undefined) {
+          delete process.env.CHAT_STYLE_MANUAL_LANGUAGE;
+        } else {
+          process.env.CHAT_STYLE_MANUAL_LANGUAGE = previousManualLanguage;
+        }
+      }
     });
 
     it("parses and serializes supported language settings", () => {

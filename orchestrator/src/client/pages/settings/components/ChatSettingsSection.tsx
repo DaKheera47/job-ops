@@ -7,6 +7,7 @@ import {
 import type { ChatValues } from "@client/pages/settings/types";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import {
+  CHAT_STYLE_MANUAL_LANGUAGE_LABELS,
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
   type ChatStyleLanguageMode,
   type ChatStyleManualLanguage,
@@ -38,13 +39,6 @@ type ChatSettingsSectionProps = {
 const LANGUAGE_MODE_LABELS: Record<ChatStyleLanguageMode, string> = {
   manual: "Choose specific language",
   "match-resume": "Match current resume language",
-};
-
-const MANUAL_LANGUAGE_LABELS: Record<ChatStyleManualLanguage, string> = {
-  english: "English",
-  german: "German",
-  french: "French",
-  spanish: "Spanish",
 };
 
 function parseTokenizedTerms(input: string): string[] {
@@ -257,7 +251,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                       <SelectContent>
                         {CHAT_STYLE_MANUAL_LANGUAGE_VALUES.map((language) => (
                           <SelectItem key={language} value={language}>
-                            {MANUAL_LANGUAGE_LABELS[language]}
+                            {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[language]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -405,8 +399,10 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 Specific language
               </div>
               <div className="break-words font-mono text-xs">
-                Effective: {MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
-                Default: {MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
+                Effective:{" "}
+                {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
+                Default:{" "}
+                {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
               </div>
             </div>
           </div>

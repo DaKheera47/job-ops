@@ -291,9 +291,7 @@ describe("SettingsPage", () => {
     renderPage();
     await openWritingStyleSection();
 
-    fireEvent.click(
-      screen.getByRole("combobox", { name: /output language/i }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: /output language/i }));
     fireEvent.click(await screen.findByText("Match current resume language"));
 
     expect(

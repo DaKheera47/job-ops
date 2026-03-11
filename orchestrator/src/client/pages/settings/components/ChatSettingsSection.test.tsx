@@ -52,7 +52,7 @@ vi.mock("@/components/ui/select", () => {
     children,
     ...props
   }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" role="combobox" {...props}>
+    <button type="button" role="combobox" aria-expanded="false" {...props}>
       {children}
     </button>
   );

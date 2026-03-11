@@ -32,6 +32,16 @@ export const CHAT_STYLE_MANUAL_LANGUAGE_VALUES = [
 export type ChatStyleManualLanguage =
   (typeof CHAT_STYLE_MANUAL_LANGUAGE_VALUES)[number];
 
+export const CHAT_STYLE_MANUAL_LANGUAGE_LABELS: Record<
+  ChatStyleManualLanguage,
+  string
+> = {
+  english: "English",
+  german: "German",
+  french: "French",
+  spanish: "Spanish",
+};
+
 export interface ResumeProfile {
   basics?: {
     name?: string;

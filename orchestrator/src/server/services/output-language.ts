@@ -1,20 +1,18 @@
-import type { ChatStyleManualLanguage, ResumeProfile } from "@shared/types";
+import {
+  CHAT_STYLE_MANUAL_LANGUAGE_LABELS,
+  type ChatStyleLanguageMode,
+  type ChatStyleManualLanguage,
+  type ResumeProfile,
+} from "@shared/types";
 
 type WritingLanguageConfig = {
-  languageMode: "manual" | "match-resume";
+  languageMode: ChatStyleLanguageMode;
   manualLanguage: ChatStyleManualLanguage;
 };
 
 export type ResolvedWritingLanguage = {
   language: ChatStyleManualLanguage;
   source: "manual" | "detected" | "fallback";
-};
-
-const LANGUAGE_LABELS: Record<ChatStyleManualLanguage, string> = {
-  english: "English",
-  german: "German",
-  french: "French",
-  spanish: "Spanish",
 };
 
 const LANGUAGE_MARKERS: Record<ChatStyleManualLanguage, Set<string>> = {
@@ -142,7 +140,7 @@ export function detectProfileLanguage(
   }
 
   const scoredLanguages = (
-    Object.keys(LANGUAGE_LABELS) as ChatStyleManualLanguage[]
+    Object.keys(CHAT_STYLE_MANUAL_LANGUAGE_LABELS) as ChatStyleManualLanguage[]
   )
     .map((language) => ({
       language,
@@ -192,5 +190,5 @@ export function resolveWritingOutputLanguage(args: {
 export function getWritingLanguageLabel(
   language: ChatStyleManualLanguage,
 ): string {
-  return LANGUAGE_LABELS[language];
+  return CHAT_STYLE_MANUAL_LANGUAGE_LABELS[language];
 }
