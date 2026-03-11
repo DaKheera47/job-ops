@@ -117,4 +117,15 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.rxresumeApiKey.envKey).toBe("RXRESUME_API_KEY");
     });
   });
+
+  describe("LLM provider parsing", () => {
+    it("normalizes the documented openai-compatible alias", () => {
+      expect(settingsRegistry.llmProvider.parse("openai-compatible")).toBe(
+        "openai_compatible",
+      );
+      expect(settingsRegistry.llmProvider.parse("OPENAI-COMPATIBLE")).toBe(
+        "openai_compatible",
+      );
+    });
+  });
 });

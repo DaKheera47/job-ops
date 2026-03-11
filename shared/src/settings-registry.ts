@@ -26,6 +26,11 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   return raw === "true" || raw === "1";
 }
 
+function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
+  if (raw === undefined || raw === "") return null;
+  return raw.trim().toLowerCase().replace(/-/g, "_");
+}
+
 function serializeNullableNumber(
   value: number | null | undefined,
 ): string | null {
@@ -66,7 +71,7 @@ export const settingsRegistry = {
     kind: "typed" as const,
     envKey: "LLM_PROVIDER",
     schema: z.preprocess(
-      (v) => (v === "" ? null : v),
+      (v) => (typeof v === "string" ? normalizeLlmProviderOrNull(v) : v),
       z
         .enum([
           "openrouter",
@@ -80,9 +85,9 @@ export const settingsRegistry = {
     ),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.LLM_PROVIDER || "openrouter"
+        ? normalizeLlmProviderOrNull(process.env.LLM_PROVIDER) || "openrouter"
         : "openrouter",
-    parse: parseNonEmptyStringOrNull,
+    parse: normalizeLlmProviderOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },

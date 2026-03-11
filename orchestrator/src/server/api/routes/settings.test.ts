@@ -88,6 +88,28 @@ describe.sequential("Settings API routes", () => {
     expect(body.data.basicAuthActive).toBe(false);
   });
 
+  it("normalizes hyphenated openai-compatible env defaults", async () => {
+    const hyphenated = await startServer({
+      env: {
+        LLM_API_KEY: "secret-key",
+        LLM_PROVIDER: "openai-compatible",
+        RXRESUME_EMAIL: "resume@example.com",
+      },
+    });
+
+    try {
+      const res = await fetch(`${hyphenated.baseUrl}/api/settings`);
+      const body = await res.json();
+
+      expect(body.ok).toBe(true);
+      expect(body.data.llmProvider.default).toBe("openai_compatible");
+      expect(body.data.llmProvider.value).toBe("openai_compatible");
+      expect(body.data.llmBaseUrl.default).toBe("https://api.openai.com");
+    } finally {
+      await stopServer(hyphenated);
+    }
+  });
+
   it("rejects invalid settings updates and persists overrides", async () => {
     const badPatch = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",

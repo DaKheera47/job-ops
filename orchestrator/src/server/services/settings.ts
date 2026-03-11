@@ -13,7 +13,7 @@ import {
 import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
-  const normalized = provider.trim().toLowerCase();
+  const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "ollama") return "http://localhost:11434";
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") {
