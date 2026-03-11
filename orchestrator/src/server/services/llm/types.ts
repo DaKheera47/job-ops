@@ -3,6 +3,7 @@ export type LlmProvider =
   | "lmstudio"
   | "ollama"
   | "openai"
+  | "openai_compatible"
   | "gemini";
 
 export type ResponseMode = "json_schema" | "json_object" | "text" | "none";

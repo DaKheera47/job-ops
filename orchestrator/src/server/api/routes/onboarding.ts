@@ -30,10 +30,13 @@ async function validateLlm(options: {
     getSetting("llmBaseUrl"),
   ]);
 
-  const normalizedProvider =
-    options.provider?.trim() || storedProvider?.trim() || undefined;
+  const normalizedProvider = normalizeLlmProviderValue(
+    options.provider?.trim() || storedProvider?.trim() || undefined,
+  );
   const shouldUseBaseUrl =
-    normalizedProvider === "lmstudio" || normalizedProvider === "ollama";
+    normalizedProvider === "lmstudio" ||
+    normalizedProvider === "ollama" ||
+    normalizedProvider === "openai_compatible";
   const resolvedBaseUrl = shouldUseBaseUrl
     ? options.baseUrl?.trim() || storedBaseUrl?.trim() || undefined
     : undefined;
@@ -52,6 +55,13 @@ async function validateLlm(options: {
     baseUrl: resolvedBaseUrl,
   });
   return llm.validateCredentials();
+}
+
+function normalizeLlmProviderValue(
+  provider: string | undefined,
+): string | undefined {
+  if (!provider) return undefined;
+  return provider.toLowerCase().replace(/-/g, "_");
 }
 
 /**

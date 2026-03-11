@@ -32,6 +32,12 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   return raw === "true" || raw === "1";
 }
 
+function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
+  if (raw === undefined) return null;
+  const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
+  return normalized ? normalized : null;
+}
+
 function serializeNullableNumber(
   value: number | null | undefined,
 ): string | null {
@@ -91,16 +97,23 @@ export const settingsRegistry = {
     kind: "typed" as const,
     envKey: "LLM_PROVIDER",
     schema: z.preprocess(
-      (v) => (v === "" ? null : v),
+      (v) => (typeof v === "string" ? normalizeLlmProviderOrNull(v) : v),
       z
-        .enum(["openrouter", "lmstudio", "ollama", "openai", "gemini"])
+        .enum([
+          "openrouter",
+          "lmstudio",
+          "ollama",
+          "openai",
+          "openai_compatible",
+          "gemini",
+        ])
         .nullable(),
     ),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.LLM_PROVIDER || "openrouter"
+        ? normalizeLlmProviderOrNull(process.env.LLM_PROVIDER) || "openrouter"
         : "openrouter",
-    parse: parseNonEmptyStringOrNull,
+    parse: normalizeLlmProviderOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
