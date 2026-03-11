@@ -263,6 +263,69 @@ describe.sequential("Onboarding API routes", () => {
         ),
       ).toBe(false);
     });
+
+    it("does not reuse a stored baseUrl when openai-compatible validation is submitted with a blank baseUrl", async () => {
+      await fetch(`${baseUrl}/api/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          llmProvider: "openai_compatible",
+          llmApiKey: "stored-compatible-key",
+          llmBaseUrl: "https://stale.example.com/v1/",
+        }),
+      });
+
+      global.fetch = vi.fn((input, init) => {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.startsWith("https://api.openai.com/v1/models")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ data: [] }),
+          } as Response);
+        }
+        if (url.startsWith("https://stale.example.com/v1/models")) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: { message: "stale endpoint used" } }),
+          } as Response);
+        }
+        return originalFetch(input, init);
+      });
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/llm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: "openai-compatible",
+          apiKey: "test-compatible-key",
+          baseUrl: "   ",
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(true);
+      expect(body.data.message).toBeNull();
+      const fetchCalls = vi.mocked(global.fetch).mock.calls.map((call) => {
+        const requestInput = call[0];
+        if (typeof requestInput === "string") return requestInput;
+        if (requestInput instanceof URL) return requestInput.href;
+        return requestInput.url;
+      });
+      expect(
+        fetchCalls.some((url) =>
+          url.startsWith("https://api.openai.com/v1/models"),
+        ),
+      ).toBe(true);
+      expect(
+        fetchCalls.some((url) =>
+          url.startsWith("https://stale.example.com/v1/models"),
+        ),
+      ).toBe(false);
+    });
   });
 
   describe("POST /api/onboarding/validate/rxresume", () => {

@@ -14,6 +14,49 @@ export type WritingStyle = {
   manualLanguage: ChatStyleManualLanguage;
 };
 
+const LANGUAGE_NAMES_PATTERN = "english|german|french|spanish";
+
+const LANGUAGE_DIRECTIVE_PATTERNS = [
+  new RegExp(
+    String.raw`\b(?:always\s+)?(?:respond|reply|write|generate|output)(?:\s+\w+){0,3}\s+(?:in|using)\s+(?:${LANGUAGE_NAMES_PATTERN})\b[.!]?`,
+    "gi",
+  ),
+  new RegExp(
+    String.raw`\b(?:set|use|choose|default\s+to)\s+(?:the\s+)?(?:output\s+)?language(?:\s+to)?\s+(?:${LANGUAGE_NAMES_PATTERN})\b[.!]?`,
+    "gi",
+  ),
+  new RegExp(
+    String.raw`\b(?:output|response)\s+language\s*[:=]?\s*(?:${LANGUAGE_NAMES_PATTERN})\b[.!]?`,
+    "gi",
+  ),
+];
+
+export function stripLanguageDirectivesFromConstraints(
+  constraints: string,
+): string {
+  if (!constraints.trim()) {
+    return "";
+  }
+
+  return constraints
+    .split(/\r?\n/g)
+    .map((line) => {
+      let nextLine = line;
+
+      for (const pattern of LANGUAGE_DIRECTIVE_PATTERNS) {
+        nextLine = nextLine.replace(pattern, "");
+      }
+
+      return nextLine
+        .replace(/\s{2,}/g, " ")
+        .replace(/\s+([,.;:!?])/g, "$1")
+        .replace(/^[,.;:!?\s-]+|[,.;:!?\s-]+$/g, "")
+        .trim();
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
 export async function getWritingStyle(): Promise<WritingStyle> {
   const [
     toneRaw,

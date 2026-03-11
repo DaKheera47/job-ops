@@ -11,9 +11,14 @@ vi.mock("./profile", () => ({
   getProfile: vi.fn(),
 }));
 
-vi.mock("./writing-style", () => ({
-  getWritingStyle: vi.fn(),
-}));
+vi.mock("./writing-style", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./writing-style")>();
+
+  return {
+    ...actual,
+    getWritingStyle: vi.fn(),
+  };
+});
 
 import { getJobById } from "../repositories/jobs";
 import { getProfile } from "./profile";
@@ -93,9 +98,6 @@ describe("buildJobChatPromptContext", () => {
       "When the user does not request a language, default to writing user-visible resume or application content in German.",
     );
     expect(context.systemPrompt).toContain(
-      "Treat any language hints inside global writing constraints as secondary guidance when they do not conflict with the user's request or the configured default output language.",
-    );
-    expect(context.systemPrompt).toContain(
       "When suggesting a headline or job title, preserve the original wording instead of translating it.",
     );
     expect(context.systemPrompt).toContain(
@@ -154,13 +156,13 @@ describe("buildJobChatPromptContext", () => {
     );
   });
 
-  it("preserves language instructions inside global writing constraints", async () => {
+  it("removes language instructions from global writing constraints", async () => {
     const job = createJob({ id: "job-ctx-4" });
     vi.mocked(getJobById).mockResolvedValue(job);
     vi.mocked(getWritingStyle).mockResolvedValue({
       tone: "professional",
       formality: "medium",
-      constraints: "Always respond in French.",
+      constraints: "Always respond in French. Keep responses under 120 words.",
       doNotUse: "",
       languageMode: "manual",
       manualLanguage: "english",
@@ -173,8 +175,9 @@ describe("buildJobChatPromptContext", () => {
       "When the user does not request a language, default to writing user-visible resume or application content in English.",
     );
     expect(context.systemPrompt).toContain(
-      "Writing constraints: Always respond in French.",
+      "Writing constraints: Keep responses under 120 words",
     );
+    expect(context.systemPrompt).not.toContain("Always respond in French");
   });
 
   it("throws not found for unknown job", async () => {

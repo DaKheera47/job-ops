@@ -47,7 +47,7 @@ Global settings affecting generations:
 
 Ghostwriter follows the output language you request in your prompt. For example, `Ecris en français` should produce a French reply.
 
-If you want a persistent default language, put it in `Constraints`, for example: `Always respond in French.`
+If you want a persistent default language, set it in **Settings → Writing Style & Language**.
 
 `Do-not-use terms` are passed as guidance in the prompt. They are not enforced by a hard post-generation filter, so the model should avoid them but may still use them occasionally.
 
@@ -85,7 +85,7 @@ Compatibility thread endpoints remain, but UI behavior is one thread per job.
 
 - Check model/provider configuration in Settings.
 - Tighten prompts with explicit output intent (for example, "3 bullet points for recruiter outreach").
-- If you need a non-English response every time, add that language requirement to `Constraints`.
+- If you need a non-English response every time, set it in **Settings → Writing Style & Language**.
 
 ### Missing context in answers
 

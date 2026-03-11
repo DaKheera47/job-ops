@@ -11,7 +11,10 @@ import {
   getWritingLanguageLabel,
   resolveWritingOutputLanguage,
 } from "./output-language";
-import { getWritingStyle } from "./writing-style";
+import {
+  getWritingStyle,
+  stripLanguageDirectivesFromConstraints,
+} from "./writing-style";
 
 export interface TailoredData {
   summary: string;
@@ -149,6 +152,9 @@ function buildTailoringPrompt(
     profile,
   });
   const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
+  const effectiveConstraints = stripLanguageDirectivesFromConstraints(
+    writingStyle.constraints,
+  );
 
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {
@@ -205,7 +211,7 @@ WRITING STYLE PREFERENCES:
 - Tone: ${writingStyle.tone}
 - Formality: ${writingStyle.formality}
  - Output language for summary and skills: ${outputLanguage}
-${writingStyle.constraints ? `- Additional constraints: ${writingStyle.constraints}` : ""}
+${effectiveConstraints ? `- Additional constraints: ${effectiveConstraints}` : ""}
 ${writingStyle.doNotUse ? `- Avoid these words or phrases: ${writingStyle.doNotUse}` : ""}
 
 ATS SAFETY:

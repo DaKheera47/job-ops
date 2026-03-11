@@ -5,7 +5,10 @@ vi.mock("@server/repositories/settings", () => ({
 }));
 
 import { getSetting } from "@server/repositories/settings";
-import { getWritingStyle } from "./writing-style";
+import {
+  getWritingStyle,
+  stripLanguageDirectivesFromConstraints,
+} from "./writing-style";
 
 describe("getWritingStyle", () => {
   const originalEnv = process.env;
@@ -62,5 +65,13 @@ describe("getWritingStyle", () => {
       languageMode: "match-resume",
       manualLanguage: "german",
     });
+  });
+
+  it("strips language directives from constraints while keeping other guidance", () => {
+    expect(
+      stripLanguageDirectivesFromConstraints(
+        "Always respond in French. Keep it under 90 words. Output language: German.",
+      ),
+    ).toBe("Keep it under 90 words");
   });
 });

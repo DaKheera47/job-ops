@@ -76,7 +76,6 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Do-not-use terms
 - These settings apply to Ghostwriter and resume tailoring
 - Use the output language controls as the primary way to choose generated language
-- Constraints can still add extra language guidance, but the explicit language setting is the safer and more predictable default
 - Choose how AI output language is resolved:
   - `Manual`: always use the language you select, such as English, German, French, or Spanish
   - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output

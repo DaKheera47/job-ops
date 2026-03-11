@@ -8,7 +8,11 @@ import {
   resolveWritingOutputLanguage,
 } from "./output-language";
 import { getProfile } from "./profile";
-import { getWritingStyle, type WritingStyle } from "./writing-style";
+import {
+  getWritingStyle,
+  stripLanguageDirectivesFromConstraints,
+  type WritingStyle,
+} from "./writing-style";
 
 export type JobChatPromptContext = {
   job: Job;
@@ -109,6 +113,9 @@ function buildSystemPrompt(
     profile,
   });
   const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
+  const effectiveConstraints = stripLanguageDirectivesFromConstraints(
+    style.constraints,
+  );
 
   return compactJoin([
     "You are Ghostwriter, a job-application writing assistant for a single job.",
@@ -118,11 +125,12 @@ function buildSystemPrompt(
     "Avoid exposing private profile details that are unrelated to the user request.",
     "Follow the user's requested output language exactly when they specify one.",
     `When the user does not request a language, default to writing user-visible resume or application content in ${outputLanguage}.`,
-    "Treat any language hints inside global writing constraints as secondary guidance when they do not conflict with the user's request or the configured default output language.",
     `When suggesting a headline or job title, preserve the original wording instead of translating it.`,
     `Writing style tone: ${style.tone}.`,
     `Writing style formality: ${style.formality}.`,
-    style.constraints ? `Writing constraints: ${style.constraints}` : null,
+    effectiveConstraints
+      ? `Writing constraints: ${effectiveConstraints}`
+      : null,
     style.doNotUse ? `Avoid these terms: ${style.doNotUse}` : null,
   ]);
 }

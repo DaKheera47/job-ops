@@ -17,9 +17,14 @@ vi.mock("./llm/service", () => ({
   },
 }));
 
-vi.mock("./writing-style", () => ({
-  getWritingStyle: vi.fn(),
-}));
+vi.mock("./writing-style", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./writing-style")>();
+
+  return {
+    ...actual,
+    getWritingStyle: vi.fn(),
+  };
+});
 
 import { getSetting } from "../repositories/settings";
 import { generateTailoring } from "./summary";
@@ -82,6 +87,35 @@ describe("generateTailoring", () => {
     );
     expect(request?.messages?.[0]?.content).toContain(
       'Keep "headline" in the exact original job-title wording from the JD.',
+    );
+  });
+
+  it("removes language directives from constraints so explicit language settings win", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "Always respond in French. Keep it under 90 words.",
+      doNotUse: "synergy",
+      languageMode: "manual",
+      manualLanguage: "german",
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: {
+        name: "Test User",
+        label: "Engineer",
+      },
+    });
+
+    const request = callJsonMock.mock.calls.at(-1)?.[0];
+    expect(request?.messages?.[0]?.content).toContain(
+      "Additional constraints: Keep it under 90 words",
+    );
+    expect(request?.messages?.[0]?.content).not.toContain(
+      "Always respond in French",
+    );
+    expect(request?.messages?.[0]?.content).toContain(
+      "Output language for summary and skills: German",
     );
   });
 });
