@@ -27,8 +27,9 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
 }
 
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
-  if (raw === undefined || raw === "") return null;
-  return raw.trim().toLowerCase().replace(/-/g, "_");
+  if (raw === undefined) return null;
+  const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
+  return normalized ? normalized : null;
 }
 
 function serializeNullableNumber(
