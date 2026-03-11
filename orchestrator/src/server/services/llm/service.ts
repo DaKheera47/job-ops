@@ -285,7 +285,7 @@ function normalizeProvider(
   raw: string | null,
   baseUrl: string | null,
 ): LlmProvider {
-  const normalized = raw?.trim().toLowerCase();
+  const normalized = raw?.trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "openai_compatible") {
     if (
       baseUrl?.includes("localhost:1234") ||

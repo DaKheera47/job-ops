@@ -57,6 +57,30 @@ describe("provider adapters", () => {
         expectedResponseFormat: "json_object",
       },
       {
+        name: "openai-compatible-json_object-base-root",
+        strategy: openAiCompatibleStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://llm.example.com",
+          apiKey: "x",
+          model: "model-a",
+        },
+        expectedUrl: "https://llm.example.com/v1/chat/completions",
+        expectedResponseFormat: "json_object",
+      },
+      {
+        name: "openai-compatible-json_object-base-v1",
+        strategy: openAiCompatibleStrategy,
+        args: {
+          mode: "json_object" as const,
+          baseUrl: "https://llm.example.com/v1/",
+          apiKey: "x",
+          model: "model-a",
+        },
+        expectedUrl: "https://llm.example.com/v1/chat/completions",
+        expectedResponseFormat: "json_object",
+      },
+      {
         name: "gemini-json_schema",
         strategy: geminiStrategy,
         args: {
@@ -125,6 +149,27 @@ describe("provider adapters", () => {
     expect(openRouterStrategy.extractText(response)).toBe("ok");
     expect(lmStudioStrategy.extractText(response)).toBe("ok");
     expect(ollamaStrategy.extractText(response)).toBe("ok");
+  });
+
+  it("builds validation URLs for OpenAI-compatible base URLs and endpoints", () => {
+    expect(
+      openAiCompatibleStrategy.getValidationUrls({
+        baseUrl: "https://llm.example.com",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://llm.example.com/v1/models"]);
+    expect(
+      openAiCompatibleStrategy.getValidationUrls({
+        baseUrl: "https://llm.example.com/v1/",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://llm.example.com/v1/models"]);
+    expect(
+      openAiCompatibleStrategy.getValidationUrls({
+        baseUrl: "https://llm.example.com/v1/chat/completions",
+        apiKey: "x",
+      }),
+    ).toEqual(["https://llm.example.com/v1/models"]);
   });
 
   it("extracts text for openai and gemini variants", () => {

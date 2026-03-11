@@ -21,4 +21,14 @@ describe("LlmService provider normalization", () => {
     expect(llm.getProvider()).toBe("openai_compatible");
     expect(llm.getBaseUrl()).toBe("https://llm.example.com");
   });
+
+  it("normalizes the hyphenated openai-compatible alias", () => {
+    const llm = new LlmService({
+      provider: "openai-compatible",
+      baseUrl: "https://llm.example.com",
+    });
+
+    expect(llm.getProvider()).toBe("openai_compatible");
+    expect(llm.getBaseUrl()).toBe("https://llm.example.com");
+  });
 });

@@ -40,9 +40,10 @@ orchestrator/
 
    `v5` (API key) is recommended for self-hosted/latest Reactive Resume. Use `v4` when connecting to the legacy email/password flow.
 
-   OpenRouter is the default LLM provider, but LM Studio, Ollama, OpenAI-compatible endpoints, and Gemini are also supported.
+   OpenRouter is the default LLM provider, but LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.
 
    Use `LLM_API_KEY` / `llmApiKey` to configure providers that require an API key.
+   For compatible providers, use `LLM_PROVIDER=openai-compatible`.
 
 3. **Initialize database:**
    ```bash
@@ -143,6 +144,6 @@ npm start
 
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
-- **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI-compatible endpoints, Gemini, LM Studio, and Ollama)
+- **AI:** Configurable LLM provider (OpenRouter default; also supports `openai-compatible` endpoints, Gemini, LM Studio, and Ollama)
 - **PDF Generation:** Reactive Resume v4/v5 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler

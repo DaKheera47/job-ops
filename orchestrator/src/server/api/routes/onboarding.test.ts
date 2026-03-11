@@ -211,7 +211,7 @@ describe.sequential("Onboarding API routes", () => {
       ).toBe(true);
     });
 
-    it("uses the provided baseUrl for OpenAI-compatible validation", async () => {
+    it("uses the provided baseUrl for the hyphenated OpenAI-compatible alias", async () => {
       global.fetch = vi.fn((input, init) => {
         const url = typeof input === "string" ? input : input.url;
         if (url.startsWith("https://llm.example.com/v1/models")) {
@@ -235,9 +235,9 @@ describe.sequential("Onboarding API routes", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: "openai_compatible",
+          provider: "openai-compatible",
           apiKey: "test-compatible-key",
-          baseUrl: "https://llm.example.com",
+          baseUrl: "https://llm.example.com/v1/",
         }),
       });
       const body = await res.json();
