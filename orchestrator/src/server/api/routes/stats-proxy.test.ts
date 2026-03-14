@@ -1,4 +1,5 @@
 import type { Server } from "node:http";
+import { gzipSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -24,11 +25,12 @@ describe.sequential("Stats proxy routes", () => {
         const url = typeof input === "string" ? input : input.toString();
         if (url === "https://umami.dakheera47.com/script.js") {
           expect(init?.method).toBe("GET");
-          return new Response("console.log('umami')", {
+          return new Response(gzipSync("console.log('umami')"), {
             status: 200,
             headers: {
               "content-type": "application/javascript; charset=utf-8",
               "cache-control": "public, max-age=60",
+              "content-encoding": "gzip",
             },
           });
         }
@@ -44,6 +46,7 @@ describe.sequential("Stats proxy routes", () => {
       "application/javascript",
     );
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(response.headers.get("content-encoding")).toBe("gzip");
     expect(await response.text()).toContain("umami");
   });
 
@@ -55,9 +58,11 @@ describe.sequential("Stats proxy routes", () => {
         if (url === "https://umami.dakheera47.com/api/send?foo=bar") {
           expect(init?.method).toBe("POST");
           expect(init?.headers).toBeInstanceOf(Headers);
-          expect((init?.headers as Headers).get("content-type")).toBe(
-            "application/json",
-          );
+          const headers = init?.headers as Headers;
+          expect(headers.get("content-type")).toBe("application/json");
+          expect(headers.get("authorization")).toBeNull();
+          expect(headers.get("cookie")).toBeNull();
+          expect(headers.get("x-forwarded-for")).toBeNull();
           const normalizedBody = init?.body
             ? await new Response(init.body as BodyInit).text()
             : "";
@@ -72,12 +77,32 @@ describe.sequential("Stats proxy routes", () => {
     const response = await fetch(`${baseUrl}/stats/api/send?foo=bar`, {
       method: "POST",
       headers: {
+        authorization: "Basic abc123",
+        cookie: "session=secret",
         "content-type": "application/json",
+        "x-forwarded-for": "10.0.0.1",
       },
       body: JSON.stringify({ type: "event" }),
     });
 
     expect(response.status).toBe(202);
+  });
+
+  it("returns 404 for non-allowlisted stats routes", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) =>
+        realFetch(input, init),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats`);
+
+    expect(response.status).toBe(404);
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "https://umami.dakheera47.com/",
+      expect.anything(),
+    );
   });
 
   it("returns a sanitized upstream failure response", async () => {

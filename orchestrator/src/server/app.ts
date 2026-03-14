@@ -5,6 +5,9 @@
 import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
 import { unauthorized } from "@infra/errors";
 import {
@@ -27,7 +30,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const UMAMI_UPSTREAM_ORIGIN = "https://umami.dakheera47.com";
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
   "connection",
-  "content-encoding",
   "content-length",
   "keep-alive",
   "proxy-authenticate",
@@ -38,11 +40,19 @@ const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
   "upgrade",
 ]);
 const REQUEST_HEADERS_TO_SKIP = new Set([
+  "authorization",
   "connection",
   "content-length",
+  "cookie",
   "host",
   "transfer-encoding",
+  "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-port",
+  "x-forwarded-proto",
+  "x-forwarded-server",
 ]);
+const ALLOWED_UMAMI_PROXY_PATHS = new Set(["/script.js", "/api/send"]);
 
 function isStatsRoute(path: string): boolean {
   return path === "/stats" || path.startsWith("/stats/");
@@ -54,6 +64,10 @@ function getUmamiUpstreamUrl(originalUrl: string): URL {
   upstreamUrl.pathname = incomingUrl.pathname.replace(/^\/stats/, "") || "/";
   upstreamUrl.search = incomingUrl.search;
   return upstreamUrl;
+}
+
+function isAllowedUmamiProxyPath(pathname: string): boolean {
+  return ALLOWED_UMAMI_PROXY_PATHS.has(pathname);
 }
 
 function buildUmamiProxyBody(req: express.Request): BodyInit | undefined {
@@ -244,6 +258,10 @@ export function createApp() {
 
   app.all(/^\/stats(?:\/.*)?$/, async (req, res) => {
     const upstreamUrl = getUmamiUpstreamUrl(req.originalUrl);
+    if (!isAllowedUmamiProxyPath(upstreamUrl.pathname)) {
+      res.status(404).type("text/plain; charset=utf-8").send("Not found");
+      return;
+    }
 
     try {
       const upstreamResponse = await fetch(upstreamUrl, {
@@ -260,9 +278,15 @@ export function createApp() {
         res.end();
         return;
       }
+      if (!upstreamResponse.body) {
+        res.end();
+        return;
+      }
 
-      const body = Buffer.from(await upstreamResponse.arrayBuffer());
-      res.send(body);
+      await pipeline(
+        Readable.fromWeb(upstreamResponse.body as NodeReadableStream),
+        res,
+      );
     } catch (error) {
       logger.error("Umami proxy failed", {
         route: req.path,
