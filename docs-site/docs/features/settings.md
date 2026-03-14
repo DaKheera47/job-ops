@@ -212,9 +212,9 @@ curl -X POST "http://localhost:3001/api/backups"
 
 ### RxResume controls are disabled
 
+- JobOps resolves the RxResume URL in this order: the value saved in **Settings → Reactive Resume**, then the `RXRESUME_URL` environment variable (if set), and finally the public cloud default.
 - Open **Settings → Reactive Resume** and configure the shared RxResume URL if you use a self-hosted instance.
-- Add the credentials for the selected mode.
-- Leave the URL blank to use the public cloud default.
+- If you leave the URL blank, JobOps will fall back to `RXRESUME_URL` when it is configured; otherwise it uses the public cloud default.
 - Then refresh available resumes from the Reactive Resume section.
 
 ### RxResume projects look empty in the RxResume UI
