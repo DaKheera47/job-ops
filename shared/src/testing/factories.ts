@@ -201,6 +201,7 @@ export const createAppSettings = (
   llmApiKeyHint: null,
   rxresumeApiKeyHint: null,
   rxresumeEmail: null,
+  rxresumeUrl: null,
   rxresumePasswordHint: null,
   basicAuthUser: null,
   basicAuthPasswordHint: null,

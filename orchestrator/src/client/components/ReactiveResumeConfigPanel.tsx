@@ -62,6 +62,13 @@ type ReactiveResumeConfigPanelProps = {
     helper?: string;
     placeholder?: string;
   };
+  shared: {
+    baseUrl: string;
+    onBaseUrlChange: (value: string) => void;
+    baseUrlError?: string;
+    baseUrlHelper?: string;
+    baseUrlPlaceholder?: string;
+  };
   v4: {
     email: string;
     onEmailChange: (value: string) => void;
@@ -110,6 +117,7 @@ export const ReactiveResumeConfigPanel: React.FC<
   showValidationStatus = false,
   validationStatuses,
   intro,
+  shared,
   v5,
   v4,
   projectSelection,
@@ -152,6 +160,25 @@ export const ReactiveResumeConfigPanel: React.FC<
       {mode === "v5" ? (
         <div className="grid gap-4">
           <SettingsInput
+            label="RxResume URL"
+            inputProps={{
+              name: "rxresumeUrl",
+              value: shared.baseUrl,
+              onChange: (event) =>
+                shared.onBaseUrlChange(event.currentTarget.value),
+            }}
+            type="url"
+            placeholder={
+              shared.baseUrlPlaceholder ?? "https://resume.example.com"
+            }
+            helper={
+              shared.baseUrlHelper ??
+              "Leave blank to use the public cloud default for the selected mode."
+            }
+            disabled={disabled}
+            error={shared.baseUrlError}
+          />
+          <SettingsInput
             label="v5 API key"
             inputProps={{
               name: "rxresumeApiKey",
@@ -167,6 +194,27 @@ export const ReactiveResumeConfigPanel: React.FC<
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <SettingsInput
+              label="RxResume URL"
+              inputProps={{
+                name: "rxresumeUrl",
+                value: shared.baseUrl,
+                onChange: (event) =>
+                  shared.onBaseUrlChange(event.currentTarget.value),
+              }}
+              type="url"
+              placeholder={
+                shared.baseUrlPlaceholder ?? "https://resume.example.com"
+              }
+              helper={
+                shared.baseUrlHelper ??
+                "Leave blank to use the public cloud default for the selected mode."
+              }
+              disabled={disabled}
+              error={shared.baseUrlError}
+            />
+          </div>
           <SettingsInput
             label="v4 Email"
             inputProps={{

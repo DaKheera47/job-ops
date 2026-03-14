@@ -276,6 +276,38 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("saves a shared RxResume URL from the Reactive Resume section", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...baseSettings,
+      rxresumeUrl: "https://resume.example.com",
+    });
+
+    renderPage();
+
+    const reactiveResumeTrigger = await screen.findByRole("button", {
+      name: /reactive resume/i,
+    });
+    fireEvent.click(reactiveResumeTrigger);
+
+    const urlInput = screen.getByLabelText(/rxresume url/i);
+    await waitFor(() => expect(urlInput).toBeEnabled());
+    fireEvent.change(urlInput, {
+      target: { value: "https://resume.example.com" },
+    });
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rxresumeUrl: "https://resume.example.com",
+      }),
+    );
+  });
+
   it("saves the writing language mode through the settings page", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue(

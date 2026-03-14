@@ -109,6 +109,8 @@ Defaults and constraints:
 
 ![Reactive Resume settings section](/img/features/settings-reactive-resume-section.png)
 
+- Configure a shared RxResume URL for cloud or self-hosted deployments
+- Configure v4 email/password or v5 API key in the same section
 - Select a template/base resume
 - Configure project selection behavior:
   - Max projects
@@ -210,7 +212,9 @@ curl -X POST "http://localhost:3001/api/backups"
 
 ### RxResume controls are disabled
 
-- Configure RxResume credentials in Environment & Accounts first.
+- Open **Settings → Reactive Resume** and configure the shared RxResume URL if you use a self-hosted instance.
+- Add the credentials for the selected mode.
+- Leave the URL blank to use the public cloud default.
 - Then refresh available resumes from the Reactive Resume section.
 
 ### RxResume projects look empty in the RxResume UI

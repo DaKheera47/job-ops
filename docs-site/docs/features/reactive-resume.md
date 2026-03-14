@@ -94,6 +94,7 @@ Important:
 Configure in **Settings → Reactive Resume**:
 
 - `rxresumeMode` (`v5` or `v4`)
+- `rxresumeUrl` (optional shared URL for cloud or self-hosted deployments)
 - `rxresumeApiKey` (for v5)
 - `rxresumeEmail` + `rxresumePassword` (for v4)
 
@@ -104,6 +105,8 @@ Or via environment variables:
 - `RXRESUME_EMAIL`
 - `RXRESUME_PASSWORD`
 - optional `RXRESUME_URL` (works for both modes; v5 OpenAPI path is added automatically)
+
+If you leave the URL blank in the dashboard, JobOps keeps using the public cloud default for the selected mode.
 
 ### 2) Select base resume
 

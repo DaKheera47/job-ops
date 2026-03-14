@@ -57,6 +57,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   const rxresumeApiKeyValue =
     useWatch({ control, name: "rxresumeApiKey" }) ?? "";
   const rxresumeEmailValue = useWatch({ control, name: "rxresumeEmail" }) ?? "";
+  const rxresumeUrlValue = useWatch({ control, name: "rxresumeUrl" }) ?? "";
   const rxresumePasswordValue =
     useWatch({ control, name: "rxresumePassword" }) ?? "";
   const resumeProjectsValue = useWatch({ control, name: "resumeProjects" });
@@ -85,6 +86,12 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           hasRxResumeAccess={hasRxResumeAccess}
           showValidationStatus={Boolean(validationStatuses)}
           validationStatuses={validationStatuses}
+          shared={{
+            baseUrl: rxresumeUrlValue,
+            onBaseUrlChange: (value) =>
+              setDirtyTouchedValue("rxresumeUrl", value),
+            baseUrlError: errors.rxresumeUrl?.message as string | undefined,
+          }}
           v5={{
             apiKey: rxresumeApiKeyValue,
             onApiKeyChange: (value) =>

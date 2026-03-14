@@ -5,6 +5,7 @@ export type RxResumeSettingsLike =
   | {
       rxresumeMode?: { value?: string | null } | null;
       rxresumeEmail?: string | null;
+      rxresumeUrl?: string | null;
       rxresumePasswordHint?: string | null;
       rxresumeApiKeyHint?: string | null;
       rxresumeBaseResumeId?: string | null;
@@ -61,10 +62,12 @@ export const getRxResumeBaseResumeSelection = (
 
 export const getRxResumeCredentialDrafts = (input: {
   rxresumeEmail?: string | null;
+  rxresumeUrl?: string | null;
   rxresumePassword?: string | null;
   rxresumeApiKey?: string | null;
 }) => ({
   email: input.rxresumeEmail?.trim() ?? "",
+  baseUrl: input.rxresumeUrl?.trim() ?? "",
   password: input.rxresumePassword?.trim() ?? "",
   apiKey: input.rxresumeApiKey?.trim() ?? "",
 });
@@ -116,6 +119,7 @@ export const toRxResumeValidationPayload = (
   draft: RxResumeCredentialDrafts,
 ) => ({
   email: draft.email || undefined,
+  baseUrl: draft.baseUrl || undefined,
   password: draft.password || undefined,
   apiKey: draft.apiKey || undefined,
 });
@@ -126,6 +130,7 @@ export const buildRxResumeSettingsUpdate = (
 ): Partial<UpdateSettingsInput> => {
   const update: Partial<UpdateSettingsInput> = {
     rxresumeMode: mode,
+    rxresumeUrl: draft.baseUrl || null,
   };
   if (draft.email) update.rxresumeEmail = draft.email;
   if (draft.password) update.rxresumePassword = draft.password;

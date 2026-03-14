@@ -75,6 +75,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
   rxresumeEmail: "",
+  rxresumeUrl: "",
   rxresumePassword: "",
   rxresumeApiKey: "",
   basicAuthUser: "",
@@ -132,6 +133,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
   rxresumeEmail: null,
+  rxresumeUrl: null,
   rxresumePassword: null,
   rxresumeApiKey: null,
   basicAuthUser: null,
@@ -174,6 +176,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleLanguageMode: data.chatStyleLanguageMode.override ?? null,
   chatStyleManualLanguage: data.chatStyleManualLanguage.override ?? null,
   rxresumeEmail: data.rxresumeEmail ?? "",
+  rxresumeUrl: data.rxresumeUrl ?? "",
   rxresumePassword: "",
   rxresumeApiKey: "",
   basicAuthUser: data.basicAuthUser ?? "",
@@ -713,6 +716,10 @@ export const SettingsPage: React.FC = () => {
 
       if (dirtyFields.rxresumeEmail || dirtyFields.rxresumePassword) {
         envPayload.rxresumeEmail = normalizeString(data.rxresumeEmail);
+      }
+
+      if (dirtyFields.rxresumeUrl) {
+        envPayload.rxresumeUrl = normalizeString(data.rxresumeUrl);
       }
 
       if (dirtyFields.ukvisajobsEmail || dirtyFields.ukvisajobsPassword) {

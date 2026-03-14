@@ -56,6 +56,7 @@ describe("rxresume adapter", () => {
     delete process.env.RXRESUME_API_KEY;
     delete process.env.RXRESUME_EMAIL;
     delete process.env.RXRESUME_PASSWORD;
+    delete process.env.RXRESUME_URL;
     delete process.env.RXRESUME_MODE;
     mockSettings({});
   });
@@ -155,6 +156,44 @@ describe("rxresume adapter", () => {
     );
     expect(v5.verifyApiKey).not.toHaveBeenCalled();
     expect(result).toEqual({ ok: true, mode: "v4" });
+  });
+
+  it("prefers stored rxresumeUrl over environment values", async () => {
+    process.env.RXRESUME_URL = "https://env.rxresume.example.com";
+    mockSettings({
+      rxresumeMode: "v4",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+      rxresumeUrl: "https://stored.rxresume.example.com",
+    });
+    vi.mocked(RxResumeClient.verifyCredentials).mockResolvedValue({ ok: true });
+
+    await validateCredentials();
+
+    expect(RxResumeClient.verifyCredentials).toHaveBeenCalledWith(
+      "user@example.com",
+      "pw",
+      "https://stored.rxresume.example.com",
+    );
+  });
+
+  it("falls back to the default v4 URL when no env or stored URL is configured", async () => {
+    mockSettings({
+      rxresumeMode: "v4",
+      rxresumeEmail: "user@example.com",
+      rxresumePassword: "pw",
+    });
+    vi.mocked(RxResumeClient.verifyCredentials).mockResolvedValue({ ok: true });
+
+    await validateCredentials({
+      v4: { baseUrl: "   " },
+    });
+
+    expect(RxResumeClient.verifyCredentials).toHaveBeenCalledWith(
+      "user@example.com",
+      "pw",
+      "https://v4.rxresu.me",
+    );
   });
 
   it("does not fall back to v4 validation when explicit v5 validation fails", async () => {

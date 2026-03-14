@@ -116,6 +116,10 @@ describe("settingsRegistry helpers", () => {
     it("has env-backed v5 api key secret setting", () => {
       expect(settingsRegistry.rxresumeApiKey.envKey).toBe("RXRESUME_API_KEY");
     });
+
+    it("has env-backed rxresumeUrl string setting", () => {
+      expect(settingsRegistry.rxresumeUrl.envKey).toBe("RXRESUME_URL");
+    });
   });
 
   describe("writing-style language settings", () => {

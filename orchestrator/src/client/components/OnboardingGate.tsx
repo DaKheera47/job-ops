@@ -59,6 +59,7 @@ type OnboardingFormData = {
   llmApiKey: string;
   rxresumeMode: RxResumeMode;
   rxresumeEmail: string;
+  rxresumeUrl: string;
   rxresumePassword: string;
   rxresumeApiKey: string;
   rxresumeBaseResumeId: string | null;
@@ -135,6 +136,7 @@ export const OnboardingGate: React.FC = () => {
         llmApiKey: "",
         rxresumeMode: "v5",
         rxresumeEmail: "",
+        rxresumeUrl: "",
         rxresumePassword: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: null,
@@ -287,6 +289,7 @@ export const OnboardingGate: React.FC = () => {
         llmApiKey: "",
         rxresumeMode: initialMode,
         rxresumeEmail: "",
+        rxresumeUrl: settings.rxresumeUrl ?? "",
         rxresumePassword: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: selectedId,
@@ -768,6 +771,10 @@ export const OnboardingGate: React.FC = () => {
                 v5={{
                   apiKey: watch("rxresumeApiKey"),
                   onApiKeyChange: (value) => setValue("rxresumeApiKey", value),
+                }}
+                shared={{
+                  baseUrl: watch("rxresumeUrl"),
+                  onBaseUrlChange: (value) => setValue("rxresumeUrl", value),
                 }}
                 v4={{
                   email: watch("rxresumeEmail"),

@@ -462,6 +462,14 @@ export const settingsRegistry = {
     envKey: "RXRESUME_EMAIL",
     schema: z.string().trim().max(200),
   },
+  rxresumeUrl: {
+    kind: "string" as const,
+    envKey: "RXRESUME_URL",
+    schema: z.preprocess(
+      (value) => (value === "" ? null : value),
+      z.string().trim().url().max(2000).nullable(),
+    ),
+  },
   ukvisajobsEmail: {
     kind: "string" as const,
     envKey: "UKVISAJOBS_EMAIL",

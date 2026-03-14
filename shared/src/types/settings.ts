@@ -183,6 +183,7 @@ export interface AppSettings {
   rxresumeBaseResumeIdV4: string | null;
   rxresumeBaseResumeIdV5: string | null;
   rxresumeEmail: string | null;
+  rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;
   basicAuthUser: string | null;

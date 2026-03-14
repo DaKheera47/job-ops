@@ -1,6 +1,6 @@
 import * as api from "@client/api";
 import { useSettings } from "@client/hooks/useSettings";
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
@@ -22,7 +22,18 @@ vi.mock("@client/hooks/useSettings", () => ({
 }));
 
 vi.mock("@client/pages/settings/components/SettingsInput", () => ({
-  SettingsInput: ({ label }: { label: string }) => <div>{label}</div>,
+  SettingsInput: ({
+    label,
+    inputProps,
+  }: {
+    label: string;
+    inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
+  }) => (
+    <label>
+      <span>{label}</span>
+      <input {...inputProps} />
+    </label>
+  ),
 }));
 
 vi.mock("@client/pages/settings/components/BaseResumeSelection", () => ({
@@ -95,6 +106,7 @@ const settingsResponse = {
     llmProvider: { value: "openrouter", default: "openrouter", override: null },
     llmApiKeyHint: null,
     rxresumeEmail: "",
+    rxresumeUrl: "",
     rxresumeApiKeyHint: null,
     rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,
@@ -192,5 +204,49 @@ describe("OnboardingGate", () => {
       expect(screen.getByText("Welcome to Job Ops")).toBeInTheDocument();
     });
     expect(screen.queryByText("LLM API key")).not.toBeInTheDocument();
+  });
+
+  it("renders the RxResume URL field and includes it in validation", async () => {
+    vi.mocked(useSettings).mockReturnValue({
+      ...settingsResponse,
+      settings: {
+        ...settingsResponse.settings,
+        rxresumeUrl: "https://resume.example.com",
+        rxresumeApiKeyHint: "abcd1234",
+      },
+    } as any);
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "Invalid",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    render(<OnboardingGate />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("RxResume URL")).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(api.validateRxresume).toHaveBeenCalledWith(
+        expect.objectContaining({
+          baseUrl: "https://resume.example.com",
+        }),
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText("RxResume URL"), {
+      target: { value: "https://self-hosted.example.com" },
+    });
+
+    expect(
+      screen.getByDisplayValue("https://self-hosted.example.com"),
+    ).toBeInTheDocument();
   });
 });

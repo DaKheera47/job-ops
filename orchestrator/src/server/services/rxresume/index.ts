@@ -172,36 +172,42 @@ async function readConfiguredMode(): Promise<RxResumeMode> {
 }
 
 async function readV4Credentials(overrides?: ResolveModeOptions["v4"]) {
-  const [storedEmail, storedPassword] = await Promise.all([
+  const [storedEmail, storedPassword, storedBaseUrl] = await Promise.all([
     getSetting("rxresumeEmail"),
     getSetting("rxresumePassword"),
+    getSetting("rxresumeUrl"),
   ]);
   const email =
     overrides?.email?.trim() ||
-    process.env.RXRESUME_EMAIL?.trim() ||
     storedEmail?.trim() ||
+    process.env.RXRESUME_EMAIL?.trim() ||
     "";
   const password =
     overrides?.password?.trim() ||
-    process.env.RXRESUME_PASSWORD?.trim() ||
     storedPassword?.trim() ||
+    process.env.RXRESUME_PASSWORD?.trim() ||
     "";
   const baseUrl =
     overrides?.baseUrl?.trim() ||
+    storedBaseUrl?.trim() ||
     process.env.RXRESUME_URL?.trim() ||
     "https://v4.rxresu.me";
   return { email, password, baseUrl, available: Boolean(email && password) };
 }
 
 async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
-  const [storedApiKey] = await Promise.all([getSetting("rxresumeApiKey")]);
+  const [storedApiKey, storedBaseUrl] = await Promise.all([
+    getSetting("rxresumeApiKey"),
+    getSetting("rxresumeUrl"),
+  ]);
   const apiKey =
     overrides?.apiKey?.trim() ||
-    process.env.RXRESUME_API_KEY?.trim() ||
     storedApiKey?.trim() ||
+    process.env.RXRESUME_API_KEY?.trim() ||
     "";
   const baseUrl =
     overrides?.baseUrl?.trim() ||
+    storedBaseUrl?.trim() ||
     process.env.RXRESUME_URL?.trim() ||
     "https://rxresu.me";
   return { apiKey, baseUrl, available: Boolean(apiKey) };
