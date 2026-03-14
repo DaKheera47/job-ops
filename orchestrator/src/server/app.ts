@@ -28,6 +28,7 @@ import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UMAMI_UPSTREAM_ORIGIN = "https://umami.dakheera47.com";
+const UMAMI_PROXY_TIMEOUT_MS = 5_000;
 const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
   "connection",
   "content-length",
@@ -53,6 +54,10 @@ const REQUEST_HEADERS_TO_SKIP = new Set([
   "x-forwarded-server",
 ]);
 const ALLOWED_UMAMI_PROXY_PATHS = new Set(["/script.js", "/api/send"]);
+const ALLOWED_UMAMI_PROXY_METHODS = new Map<string, string[]>([
+  ["/script.js", ["GET", "HEAD"]],
+  ["/api/send", ["POST"]],
+]);
 
 function isStatsRoute(path: string): boolean {
   return path === "/stats" || path.startsWith("/stats/");
@@ -68,6 +73,29 @@ function getUmamiUpstreamUrl(originalUrl: string): URL {
 
 function isAllowedUmamiProxyPath(pathname: string): boolean {
   return ALLOWED_UMAMI_PROXY_PATHS.has(pathname);
+}
+
+function getAllowedUmamiMethods(pathname: string): string[] {
+  return ALLOWED_UMAMI_PROXY_METHODS.get(pathname) ?? [];
+}
+
+function isAllowedUmamiMethod(method: string, pathname: string): boolean {
+  return getAllowedUmamiMethods(pathname).includes(method.toUpperCase());
+}
+
+function isUmamiProxyTimeoutError(error: unknown): boolean {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  ) {
+    return true;
+  }
+  return (
+    error instanceof Error &&
+    (error.name === "AbortError" || error.name === "TimeoutError")
+  );
 }
 
 function buildUmamiProxyBody(req: express.Request): BodyInit | undefined {
@@ -174,6 +202,7 @@ export function createBasicAuthGuard() {
 export function createApp() {
   const app = express();
   const authGuard = createBasicAuthGuard();
+  const corsMiddleware = cors();
 
   const handleTracerRedirect = async (
     req: express.Request,
@@ -219,7 +248,13 @@ export function createApp() {
     }
   };
 
-  app.use(cors());
+  app.use((req, res, next) => {
+    if (isStatsRoute(req.path)) {
+      next();
+      return;
+    }
+    corsMiddleware(req, res, next);
+  });
   app.use(requestContextMiddleware());
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
   app.use(express.json({ limit: "5mb" }));
@@ -262,6 +297,17 @@ export function createApp() {
       res.status(404).type("text/plain; charset=utf-8").send("Not found");
       return;
     }
+    if (!isAllowedUmamiMethod(req.method, upstreamUrl.pathname)) {
+      res
+        .setHeader(
+          "Allow",
+          getAllowedUmamiMethods(upstreamUrl.pathname).join(", "),
+        )
+        .status(405)
+        .type("text/plain; charset=utf-8")
+        .send("Method not allowed");
+      return;
+    }
 
     try {
       const upstreamResponse = await fetch(upstreamUrl, {
@@ -269,6 +315,7 @@ export function createApp() {
         headers: buildUmamiProxyHeaders(req),
         body: buildUmamiProxyBody(req),
         redirect: "manual",
+        signal: AbortSignal.timeout(UMAMI_PROXY_TIMEOUT_MS),
       });
 
       res.status(upstreamResponse.status);
@@ -288,10 +335,27 @@ export function createApp() {
         res,
       );
     } catch (error) {
+      if (isUmamiProxyTimeoutError(error)) {
+        logger.warn("Umami proxy timed out", {
+          route: req.path,
+          method: req.method,
+          upstreamUrl: upstreamUrl.toString(),
+          requestId:
+            (res.getHeader("x-request-id") as string | undefined) ?? undefined,
+        });
+        res
+          .status(504)
+          .type("text/plain; charset=utf-8")
+          .send("Upstream timeout");
+        return;
+      }
+
       logger.error("Umami proxy failed", {
         route: req.path,
         method: req.method,
         upstreamUrl: upstreamUrl.toString(),
+        requestId:
+          (res.getHeader("x-request-id") as string | undefined) ?? undefined,
         error: sanitizeUnknown(error),
       });
       res.status(502).type("text/plain; charset=utf-8").send("Upstream error");

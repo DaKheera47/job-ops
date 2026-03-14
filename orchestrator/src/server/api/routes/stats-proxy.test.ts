@@ -105,6 +105,28 @@ describe.sequential("Stats proxy routes", () => {
     );
   });
 
+  it("returns 405 for unsupported methods on allowlisted stats routes", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) =>
+        realFetch(input, init),
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`, {
+      method: "POST",
+      body: "unexpected",
+    });
+
+    expect(response.status).toBe(405);
+    expect(response.headers.get("allow")).toBe("GET, HEAD");
+    expect(await response.text()).toBe("Method not allowed");
+    expect(mockFetch).not.toHaveBeenCalledWith(
+      "https://umami.dakheera47.com/script.js",
+      expect.anything(),
+    );
+  });
+
   it("returns a sanitized upstream failure response", async () => {
     const realFetch = global.fetch;
     const mockFetch = vi.fn(
@@ -122,6 +144,31 @@ describe.sequential("Stats proxy routes", () => {
 
     expect(response.status).toBe(502);
     expect(await response.text()).toBe("Upstream error");
+  });
+
+  it("returns 504 when the umami upstream times out", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/script.js") {
+          return await new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => {
+              reject(
+                new DOMException("The operation timed out", "TimeoutError"),
+              );
+            });
+          });
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`);
+
+    expect(response.status).toBe(504);
+    expect(await response.text()).toBe("Upstream timeout");
   });
 
   it("allows stats proxy requests when basic auth is enabled", async () => {
@@ -151,5 +198,31 @@ describe.sequential("Stats proxy routes", () => {
     const response = await fetch(`${baseUrl}/stats/script.js`);
 
     expect(response.status).toBe(200);
+  });
+
+  it("does not add CORS headers to stats proxy responses", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/script.js") {
+          return new Response("ok", {
+            status: 200,
+            headers: { "content-type": "application/javascript" },
+          });
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`, {
+      headers: {
+        origin: "https://evil.example",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
   });
 });
