@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { updateSettingsSchema } from "./settings-schema";
 
-describe("updateSettingsSchema language settings", () => {
+describe("updateSettingsSchema", () => {
   it("accepts supported language mode and manual language values", () => {
     expect(
       updateSettingsSchema.parse({
