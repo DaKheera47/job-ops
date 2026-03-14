@@ -1,0 +1,130 @@
+import type { Server } from "node:http";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { startServer, stopServer } from "./test-utils";
+
+describe.sequential("Stats proxy routes", () => {
+  let server: Server;
+  let baseUrl: string;
+  let closeDb: () => void;
+  let tempDir: string;
+
+  beforeEach(async () => {
+    ({ server, baseUrl, closeDb, tempDir } = await startServer());
+  });
+
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await stopServer({ server, closeDb, tempDir });
+  });
+
+  it("proxies the umami script through the first-party stats route", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/script.js") {
+          expect(init?.method).toBe("GET");
+          return new Response("console.log('umami')", {
+            status: 200,
+            headers: {
+              "content-type": "application/javascript; charset=utf-8",
+              "cache-control": "public, max-age=60",
+            },
+          });
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain(
+      "application/javascript",
+    );
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(await response.text()).toContain("umami");
+  });
+
+  it("forwards tracking requests to the umami upstream", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/api/send?foo=bar") {
+          expect(init?.method).toBe("POST");
+          expect(init?.headers).toBeInstanceOf(Headers);
+          expect((init?.headers as Headers).get("content-type")).toBe(
+            "application/json",
+          );
+          const normalizedBody = init?.body
+            ? await new Response(init.body as BodyInit).text()
+            : "";
+          expect(normalizedBody).toBe('{"type":"event"}');
+          return new Response(null, { status: 202 });
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/api/send?foo=bar`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ type: "event" }),
+    });
+
+    expect(response.status).toBe(202);
+  });
+
+  it("returns a sanitized upstream failure response", async () => {
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/script.js") {
+          throw new Error("upstream down");
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`);
+
+    expect(response.status).toBe(502);
+    expect(await response.text()).toBe("Upstream error");
+  });
+
+  it("allows stats proxy requests when basic auth is enabled", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        BASIC_AUTH_USER: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+      },
+    }));
+
+    const realFetch = global.fetch;
+    const mockFetch = vi.fn(
+      async (input: URL | RequestInfo, init?: RequestInit) => {
+        const url = typeof input === "string" ? input : input.toString();
+        if (url === "https://umami.dakheera47.com/script.js") {
+          return new Response("ok", {
+            status: 200,
+            headers: { "content-type": "application/javascript" },
+          });
+        }
+        return realFetch(input, init);
+      },
+    );
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await fetch(`${baseUrl}/stats/script.js`);
+
+    expect(response.status).toBe(200);
+  });
+});

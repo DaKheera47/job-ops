@@ -10,7 +10,7 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
 
 ## Getting Started
 
-- **[Self-Hosting Guide](/docs/next/getting-started/self-hosting)**
+- **<a href="/docs/next/getting-started/self-hosting" data-umami-event="docs_intro_self_hosting_click">Self-Hosting Guide</a>**
   - Docker setup instructions
   - Gmail OAuth configuration for email tracking
   - Environment variables reference

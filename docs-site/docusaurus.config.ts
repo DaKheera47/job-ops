@@ -29,6 +29,7 @@ const normalizedBaseUrl = configuredBaseUrl.startsWith("/")
 const siteBaseUrl = normalizedBaseUrl.endsWith("/")
   ? normalizedBaseUrl
   : `${normalizedBaseUrl}/`;
+const docsBuildDemoMode = process.env.DEMO_MODE === "true";
 
 const config: Config = {
   title: "JobOps Documentation",
@@ -48,6 +49,16 @@ const config: Config = {
   i18n: {
     defaultLocale: "en",
     locales: ["en"],
+  },
+  customFields: {
+    umami: {
+      docsBuildDemoMode,
+      defaultWebsiteId: "a3d08b50-443f-4d21-8ebb-9355ba67578b",
+      demoWebsiteId: "7956a54d-63f5-4528-af0f-f823dd421752",
+      proxyBasePath: "/stats",
+      upstreamOrigin: "https://umami.dakheera47.com",
+      standaloneDevPort: "3006",
+    },
   },
   presets: [
     [
@@ -113,12 +124,13 @@ const config: Config = {
         {
           type: "html",
           value:
-            '<a class="navbar__item navbar__link" href="/overview">Back to App</a>',
+            '<a class="navbar__item navbar__link" href="/overview" data-umami-event="docs_back_to_app_click">Back to App</a>',
           position: "right",
         },
         {
-          href: "https://github.com/DaKheera47/job-ops",
-          label: "GitHub",
+          type: "html",
+          value:
+            '<a class="navbar__item navbar__link" href="https://github.com/DaKheera47/job-ops" data-umami-event="docs_github_click">GitHub</a>',
           position: "right",
         },
       ],

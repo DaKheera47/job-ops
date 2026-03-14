@@ -43,6 +43,8 @@ export default defineConfig({
     include: [
       "src/**/*.test.ts",
       "src/**/*.test.tsx",
+      "../docs-site/src/**/*.test.ts",
+      "../docs-site/src/**/*.test.tsx",
       "../shared/src/**/*.test.ts",
       "../extractors/**/tests/**/*.test.ts",
     ],
@@ -65,6 +67,10 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/pdfs": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/stats": {
         target: "http://localhost:3001",
         changeOrigin: true,
       },

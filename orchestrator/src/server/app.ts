@@ -15,6 +15,7 @@ import {
   requestContextMiddleware,
 } from "@infra/http";
 import { logger } from "@infra/logger";
+import { sanitizeUnknown } from "@infra/sanitize";
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";
@@ -23,6 +24,70 @@ import { isDemoMode } from "./config/demo";
 import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const UMAMI_UPSTREAM_ORIGIN = "https://umami.dakheera47.com";
+const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
+  "connection",
+  "content-encoding",
+  "content-length",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+]);
+const REQUEST_HEADERS_TO_SKIP = new Set([
+  "connection",
+  "content-length",
+  "host",
+  "transfer-encoding",
+]);
+
+function isStatsRoute(path: string): boolean {
+  return path === "/stats" || path.startsWith("/stats/");
+}
+
+function getUmamiUpstreamUrl(originalUrl: string): URL {
+  const incomingUrl = new URL(originalUrl, "http://localhost");
+  const upstreamUrl = new URL(UMAMI_UPSTREAM_ORIGIN);
+  upstreamUrl.pathname = incomingUrl.pathname.replace(/^\/stats/, "") || "/";
+  upstreamUrl.search = incomingUrl.search;
+  return upstreamUrl;
+}
+
+function buildUmamiProxyBody(req: express.Request): BodyInit | undefined {
+  if (req.method === "GET" || req.method === "HEAD") return undefined;
+  if (Buffer.isBuffer(req.body)) return new Uint8Array(req.body);
+  if (typeof req.body === "string") return req.body;
+  if (req.body === undefined || req.body === null) return undefined;
+  if (
+    typeof req.body === "object" &&
+    Object.keys(req.body as Record<string, unknown>).length === 0
+  ) {
+    return undefined;
+  }
+  return JSON.stringify(req.body);
+}
+
+function copyUmamiResponseHeaders(
+  upstreamResponse: Response,
+  res: express.Response,
+): void {
+  for (const [key, value] of upstreamResponse.headers.entries()) {
+    if (HOP_BY_HOP_RESPONSE_HEADERS.has(key.toLowerCase())) continue;
+    res.setHeader(key, value);
+  }
+}
+
+function buildUmamiProxyHeaders(req: express.Request): Headers {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (!value || REQUEST_HEADERS_TO_SKIP.has(key.toLowerCase())) continue;
+    headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+  }
+  return headers;
+}
 
 export function createBasicAuthGuard() {
   function getAuthConfig() {
@@ -67,6 +132,7 @@ export function createBasicAuthGuard() {
 
   function requiresAuth(method: string, path: string): boolean {
     if (isPublicReadOnlyRoute(method, path)) return false;
+    if (isStatsRoute(path)) return false;
     if (path.startsWith("/api/tracer-links")) {
       return method.toUpperCase() !== "OPTIONS";
     }
@@ -141,6 +207,7 @@ export function createApp() {
 
   app.use(cors());
   app.use(requestContextMiddleware());
+  app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
   app.use(express.json({ limit: "5mb" }));
   app.use(legacyApiResponseShim());
 
@@ -173,6 +240,38 @@ export function createApp() {
       return;
     }
     await handleTracerRedirect(req, res, slug, "GET /cv/:slug");
+  });
+
+  app.all(/^\/stats(?:\/.*)?$/, async (req, res) => {
+    const upstreamUrl = getUmamiUpstreamUrl(req.originalUrl);
+
+    try {
+      const upstreamResponse = await fetch(upstreamUrl, {
+        method: req.method,
+        headers: buildUmamiProxyHeaders(req),
+        body: buildUmamiProxyBody(req),
+        redirect: "manual",
+      });
+
+      res.status(upstreamResponse.status);
+      copyUmamiResponseHeaders(upstreamResponse, res);
+
+      if (req.method === "HEAD") {
+        res.end();
+        return;
+      }
+
+      const body = Buffer.from(await upstreamResponse.arrayBuffer());
+      res.send(body);
+    } catch (error) {
+      logger.error("Umami proxy failed", {
+        route: req.path,
+        method: req.method,
+        upstreamUrl: upstreamUrl.toString(),
+        error: sanitizeUnknown(error),
+      });
+      res.status(502).type("text/plain; charset=utf-8").send("Upstream error");
+    }
   });
 
   // Serve static files for generated PDFs
