@@ -173,7 +173,7 @@ export const ReactiveResumeConfigPanel: React.FC<
             }
             helper={
               shared.baseUrlHelper ??
-              "Leave blank to use the public cloud default for the selected mode."
+              "Leave blank to use the default for the selected mode (or the RXRESUME_URL environment override, if set)."
             }
             disabled={disabled}
             error={shared.baseUrlError}
