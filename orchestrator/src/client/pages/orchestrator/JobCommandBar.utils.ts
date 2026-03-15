@@ -6,6 +6,7 @@ export type StatusLock =
   | "ready"
   | "discovered"
   | "applied"
+  | "in_progress"
   | "skipped"
   | "expired";
 
@@ -21,6 +22,7 @@ const lockAliases: Record<StatusLock, string[]> = {
   ready: ["ready", "rdy"],
   discovered: ["discovered", "discover", "disc"],
   applied: ["applied", "apply", "app"],
+  in_progress: ["in-progress", "inprogress", "progress", "prog"],
   skipped: ["skipped", "skip", "skp"],
   expired: ["expired", "expire", "exp"],
 };
@@ -29,6 +31,7 @@ export const lockLabel: Record<StatusLock, string> = {
   ready: "ready",
   discovered: "discovered",
   applied: "applied",
+  in_progress: "in-progress",
   skipped: "skipped",
   expired: "expired",
 };
@@ -124,6 +127,7 @@ export const jobMatchesLock = (job: JobListItem, lock: StatusLock) => {
   if (lock === "ready") return job.status === "ready";
   if (lock === "discovered") return job.status === "discovered";
   if (lock === "applied") return job.status === "applied";
+  if (lock === "in_progress") return job.status === "in_progress";
   if (lock === "skipped") return job.status === "skipped";
   if (lock === "expired") return job.status === "expired";
   return false;

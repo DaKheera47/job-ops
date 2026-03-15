@@ -15,6 +15,35 @@ const baseJob = createJob({
 });
 
 describe("useFilteredJobs", () => {
+  it("keeps in-progress jobs in the all jobs tab", () => {
+    const jobs: Job[] = [
+      { ...baseJob, id: "in-progress", status: "in_progress" },
+      { ...baseJob, id: "processing", status: "processing" },
+      {
+        ...baseJob,
+        id: "closed",
+        status: "in_progress",
+        closedAt: 1741996800,
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useFilteredJobs(
+        jobs,
+        "all",
+        "all",
+        "all",
+        { mode: "at_least", min: null, max: null },
+        {
+          key: "score",
+          direction: "desc",
+        },
+      ),
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual(["in-progress"]);
+  });
+
   it("filters by sponsor status categories", () => {
     const jobs: Job[] = [
       { ...baseJob, id: "confirmed", sponsorMatchScore: 99 },
