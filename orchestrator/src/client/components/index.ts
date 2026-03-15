@@ -3,6 +3,7 @@ export { FitAssessment } from "./FitAssessment";
 export { JobHeader } from "./JobHeader";
 export * from "./layout";
 export { ManualImportSheet } from "./ManualImportSheet";
+export { OpenJobListingButton } from "./OpenJobListingButton";
 export { PipelineProgress } from "./PipelineProgress";
 export { ReadyPanel } from "./ReadyPanel";
 export { ScoreIndicator } from "./ScoreIndicator";

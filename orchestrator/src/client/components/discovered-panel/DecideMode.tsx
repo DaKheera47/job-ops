@@ -2,7 +2,6 @@ import type { Job } from "@shared/types.js";
 import {
   ChevronUp,
   Edit2,
-  ExternalLink,
   Loader2,
   RefreshCcw,
   Sparkles,
@@ -20,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { FitAssessment, JobHeader, TailoredSummary } from "..";
 import { KbdHint } from "../KbdHint";
+import { OpenJobListingButton } from "../OpenJobListingButton";
 import { CollapsibleSection } from "./CollapsibleSection";
 import { getPlainDescription } from "./helpers";
 
@@ -58,6 +58,12 @@ export const DecideMode: React.FC<DecideModeProps> = ({
         <JobHeader job={job} onCheckSponsor={onCheckSponsor} />
 
         <div className="flex flex-col gap-2.5 pt-2 sm:flex-row">
+          {jobLink ? (
+            <OpenJobListingButton
+              href={jobLink}
+              className="flex-1 h-11 text-sm sm:h-10 sm:text-xs"
+            />
+          ) : null}
           <Button
             variant="outline"
             size="default"
@@ -133,20 +139,6 @@ export const DecideMode: React.FC<DecideModeProps> = ({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {jobLink ? (
-          <div className="flex justify-center">
-            <a
-              href={jobLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Original Job Listing
-            </a>
-          </div>
-        ) : null}
       </div>
     </div>
   );

@@ -140,4 +140,26 @@ describe("DiscoveredPanel", () => {
       screen.queryByTestId("job-details-edit-drawer"),
     ).not.toBeInTheDocument();
   });
+
+  it("shows an open job listing link when the discovered job has an external url", () => {
+    const job = createJob({
+      id: "job-3",
+      jobUrl: "https://example.com/jobs/visit-me",
+      applicationLink: null,
+    });
+
+    render(
+      <MemoryRouter>
+        <DiscoveredPanel
+          job={job}
+          onJobUpdated={vi.fn()}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("link", { name: /open job listing/i }),
+    ).toHaveAttribute("href", "https://example.com/jobs/visit-me");
+  });
 });

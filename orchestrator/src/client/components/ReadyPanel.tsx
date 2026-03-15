@@ -52,6 +52,7 @@ import { TailorMode } from "./discovered-panel/TailorMode";
 import { GhostwriterDrawer } from "./ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 import { KbdHint } from "./KbdHint";
+import { OpenJobListingButton } from "./OpenJobListingButton";
 import { ReadySummaryAccordion } from "./ReadySummaryAccordion";
 import { buildReadyPanelGoogleDorks } from "./ready-panel-google-dorks";
 
@@ -397,17 +398,11 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           </Button>
 
           {/* Open job - to verify before applying */}
-          <Button
-            asChild
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-          >
-            <a href={jobLink} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Open Job Listing</span>
-              <KbdHint shortcut="o" className="ml-auto" />
-            </a>
-          </Button>
+          <OpenJobListingButton
+            href={jobLink}
+            className="h-9 w-full px-2 text-xs"
+            shortcut="o"
+          />
 
           {/* Primary CTA: Mark Applied */}
           <Button
