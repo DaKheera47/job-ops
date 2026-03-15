@@ -1,3 +1,12 @@
+import type {
+  CanonicalResumeRef,
+  PlatformScoringStatus,
+  ResumeOwnershipMode,
+  ResumeSnapshotSummary,
+  WorkspaceProfileSummary,
+  WorkspaceSummary,
+} from "./platform";
+
 export interface ApiMeta {
   requestId: string;
   simulated?: boolean;
@@ -119,4 +128,24 @@ export interface TracerReadinessResponse {
   checkedAt: number;
   lastSuccessAt: number | null;
   reason: string | null;
+}
+
+export interface GetWorkspaceProfilesResponse {
+  workspace: WorkspaceSummary;
+  profiles: WorkspaceProfileSummary[];
+}
+
+export interface GetResumeStudioBootstrapResponse {
+  workspace: WorkspaceSummary;
+  profiles: WorkspaceProfileSummary[];
+  activeProfile: WorkspaceProfileSummary | null;
+  canonicalResume: CanonicalResumeRef | null;
+  latestSnapshot: ResumeSnapshotSummary | null;
+  ownership: ResumeOwnershipMode;
+}
+
+export interface GetScoringHealthResponse {
+  status: PlatformScoringStatus;
+  provider: string | null;
+  degradedReason: string | null;
 }

@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generatePdf } from "./pdf";
 import { getProfile } from "./profile";
 
-process.env.DATA_DIR = "/tmp";
-
 // Define mock data in hoisted block
 const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
   const profile = {
@@ -137,6 +135,56 @@ vi.mock("./tracer-links", () => ({
   rewriteResumeLinksWithTracer: vi
     .fn()
     .mockResolvedValue({ rewrittenLinks: 0 }),
+}));
+
+const mockPlatformResumeVariants = vi.hoisted(() => ({
+  createDerivedVariantFromJob: vi
+    .fn()
+    .mockImplementation(async (jobId: string) => {
+      const profileModule = await import("./profile");
+      const profile = await profileModule.getProfile();
+
+      return {
+        workspace: { id: "workspace-1", name: "Gipfeli", slug: "gipfeli" },
+        profile: {
+          id: "profile-1",
+          workspaceId: "workspace-1",
+          label: "Primary",
+          isDefault: true,
+        },
+        canonicalResume: {
+          id: "canonical-1",
+          workspaceId: "workspace-1",
+          profileId: "profile-1",
+          source: "rxresume",
+          rxresumeResumeId: "base-resume-id",
+        },
+        resume: {
+          id: "base-resume-id",
+          name: "Base Resume",
+          mode: "v4",
+          data: profile,
+        },
+        variant: {
+          id: `variant-${jobId}`,
+          workspaceId: "workspace-1",
+          profileId: "profile-1",
+          jobId,
+          sourceResumeId: "base-resume-id",
+          status: "pending",
+          pdfPath: null,
+        },
+      };
+    }),
+  markDerivedVariantFailed: vi.fn().mockResolvedValue(undefined),
+  markDerivedVariantReady: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("./platform/resumeVariants", () => ({
+  createDerivedVariantFromJob:
+    mockPlatformResumeVariants.createDerivedVariantFromJob,
+  markDerivedVariantFailed: mockPlatformResumeVariants.markDerivedVariantFailed,
+  markDerivedVariantReady: mockPlatformResumeVariants.markDerivedVariantReady,
 }));
 
 vi.mock("./resumeProjects", () => ({
@@ -312,6 +360,11 @@ describe("PDF Service Skills Validation", () => {
     // Optional but good to check
     expect(newSkill.id).toBeDefined();
     expect(newSkill.level).toBe(0);
+    expect(
+      mockPlatformResumeVariants.createDerivedVariantFromJob,
+    ).toHaveBeenCalledWith("job-skills-1", undefined, {
+      workspaceId: undefined,
+    });
 
     // Check "Existing Skill" - should preserve existing fields if not overwritten?
     // In the implementation, we look up existing.

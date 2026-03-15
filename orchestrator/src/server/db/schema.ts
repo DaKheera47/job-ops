@@ -20,6 +20,7 @@ import {
 } from "@shared/types";
 import { sql } from "drizzle-orm";
 import {
+  foreignKey,
   index,
   integer,
   real,
@@ -252,6 +253,166 @@ export const settings = sqliteTable("settings", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
+
+export const workspaces = sqliteTable(
+  "workspaces",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    slug: text("slug"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    slugUnique: uniqueIndex("idx_workspaces_slug_unique").on(table.slug),
+  }),
+);
+
+export const workspaceMembers = sqliteTable(
+  "workspace_members",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+    role: text("role", { enum: ["owner", "member"] })
+      .notNull()
+      .default("owner"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    workspaceUserUnique: uniqueIndex(
+      "idx_workspace_members_workspace_user_unique",
+    ).on(table.workspaceId, table.userId),
+    workspaceIndex: index("idx_workspace_members_workspace_id").on(
+      table.workspaceId,
+    ),
+  }),
+);
+
+export const profiles = sqliteTable(
+  "profiles",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    isDefault: integer("is_default", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    lane: text("lane"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    workspaceDefaultUnique: uniqueIndex("idx_profiles_workspace_default_unique")
+      .on(table.workspaceId)
+      .where(sql`${table.isDefault} = 1`),
+    workspaceIdIdUnique: uniqueIndex("idx_profiles_workspace_id_id_unique").on(
+      table.workspaceId,
+      table.id,
+    ),
+    workspaceIndex: index("idx_profiles_workspace_id").on(table.workspaceId),
+  }),
+);
+
+export const canonicalResumes = sqliteTable(
+  "canonical_resumes",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    source: text("source", { enum: ["rxresume"] })
+      .notNull()
+      .default("rxresume"),
+    rxresumeResumeId: text("rxresume_resume_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    profileUnique: uniqueIndex("idx_canonical_resumes_profile_unique").on(
+      table.profileId,
+    ),
+    workspaceIndex: index("idx_canonical_resumes_workspace_id").on(
+      table.workspaceId,
+    ),
+    workspaceProfileForeignKey: foreignKey({
+      columns: [table.workspaceId, table.profileId],
+      foreignColumns: [profiles.workspaceId, profiles.id],
+      name: "canonical_resumes_workspace_profile_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const derivedResumeVariants = sqliteTable(
+  "derived_resume_variants",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    sourceResumeId: text("source_resume_id").notNull(),
+    status: text("status", { enum: ["pending", "ready", "failed"] })
+      .notNull()
+      .default("pending"),
+    pdfPath: text("pdf_path"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    workspaceProfileIndex: index(
+      "idx_derived_resume_variants_workspace_profile",
+    ).on(table.workspaceId, table.profileId),
+    jobIndex: index("idx_derived_resume_variants_job_id").on(table.jobId),
+    workspaceProfileForeignKey: foreignKey({
+      columns: [table.workspaceId, table.profileId],
+      foreignColumns: [profiles.workspaceId, profiles.id],
+      name: "derived_resume_variants_workspace_profile_fk",
+    }).onDelete("cascade"),
+  }),
+);
+
+export const resumeSnapshots = sqliteTable(
+  "resume_snapshots",
+  {
+    id: text("id").primaryKey(),
+    workspaceId: text("workspace_id")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    sourceResumeId: text("source_resume_id").notNull(),
+    format: text("format").notNull().default("json"),
+    checksum: text("checksum").notNull(),
+    payload: text("payload").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    workspaceProfileIndex: index("idx_resume_snapshots_workspace_profile").on(
+      table.workspaceId,
+      table.profileId,
+    ),
+    workspaceProfileForeignKey: foreignKey({
+      columns: [table.workspaceId, table.profileId],
+      foreignColumns: [profiles.workspaceId, profiles.id],
+      name: "resume_snapshots_workspace_profile_fk",
+    }).onDelete("cascade"),
+  }),
+);
 
 export const postApplicationIntegrations = sqliteTable(
   "post_application_integrations",

@@ -1,61 +1,65 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { getResume, RxResumeAuthConfigError } from "./rxresume";
-import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
+import {
+  getCanonicalResumeAccess,
+  getCanonicalResumeSelection,
+} from "./platform/resumeStudio";
+import { RxResumeAuthConfigError } from "./rxresume";
 
 let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;
 
 /**
- * Get the base resume profile from RxResume.
+ * Get the canonical resume profile through the platform boundary.
  *
- * Requires rxresumeBaseResumeId to be configured in settings.
- * Results are cached until clearProfileCache() is called.
+ * Results are cached until clearProfileCache() is called, but ordinary reads
+ * still verify that the canonical resume identity has not changed.
  *
  * @param forceRefresh Force reload from API.
- * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
+ * @throws Error if a canonical resume is not configured or the upstream read fails.
  */
 export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
-  const { resumeId: rxresumeBaseResumeId } =
-    await getConfiguredRxResumeBaseResumeId();
-
-  if (!rxresumeBaseResumeId) {
-    throw new Error(
-      "Base resume not configured. Please select a base resume from your RxResume account in Settings.",
-    );
-  }
-
-  // Return cached profile if valid
-  if (
-    cachedProfile &&
-    cachedResumeId === rxresumeBaseResumeId &&
-    !forceRefresh
-  ) {
-    return cachedProfile;
-  }
-
   try {
-    logger.info("Fetching profile from Reactive Resume", {
-      resumeId: rxresumeBaseResumeId,
+    const selection = await getCanonicalResumeSelection({
+      bootstrapFromLegacy: true,
     });
-    const resume = await getResume(rxresumeBaseResumeId);
 
-    if (!resume.data || typeof resume.data !== "object") {
+    if (
+      cachedProfile &&
+      cachedResumeId === selection.canonicalResume.rxresumeResumeId &&
+      !forceRefresh
+    ) {
+      return cachedProfile;
+    }
+
+    const access = await getCanonicalResumeAccess({
+      profileId: selection.profile.id,
+      workspaceId: selection.workspace.id,
+      bootstrapFromLegacy: false,
+    });
+
+    logger.info("Fetching profile from canonical resume boundary", {
+      profileId: access.profile.id,
+      resumeId: access.canonicalResume.rxresumeResumeId,
+    });
+
+    if (!access.resume.data || typeof access.resume.data !== "object") {
       throw new Error("Resume data is empty or invalid");
     }
 
-    cachedProfile = resume.data as unknown as ResumeProfile;
-    cachedResumeId = rxresumeBaseResumeId;
-    logger.info("Profile loaded from Reactive Resume", {
-      resumeId: rxresumeBaseResumeId,
+    cachedProfile = access.resume.data as unknown as ResumeProfile;
+    cachedResumeId = access.canonicalResume.rxresumeResumeId;
+    logger.info("Profile loaded from canonical resume boundary", {
+      profileId: access.profile.id,
+      resumeId: access.canonicalResume.rxresumeResumeId,
     });
     return cachedProfile;
   } catch (error) {
     if (error instanceof RxResumeAuthConfigError) {
       throw new Error(error.message);
     }
-    logger.error("Failed to load profile from Reactive Resume", {
-      resumeId: rxresumeBaseResumeId,
+    logger.error("Failed to load profile from canonical resume boundary", {
+      resumeId: cachedResumeId,
       error,
     });
     throw error;

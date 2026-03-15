@@ -1,8 +1,85 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import type { Server } from "node:http";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { vi } from "vitest";
+
+const mockCanonicalResumeSelection = vi.hoisted(() => {
+  const timestamp = "2026-03-15T00:00:00.000Z";
+
+  const buildSelection = () => ({
+    workspace: {
+      id: "workspace-test",
+      name: "Test Workspace",
+      slug: "test-workspace",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    profile: {
+      id: "profile-test",
+      workspaceId: "workspace-test",
+      label: "Primary",
+      isDefault: true,
+      lane: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+    canonicalResume: {
+      id: "canonical-resume-test",
+      workspaceId: "workspace-test",
+      profileId: "profile-test",
+      source: "rxresume" as const,
+      rxresumeResumeId: "resume-test",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    },
+  });
+
+  const buildProfile = () => ({
+    basics: {
+      name: "Test Resume",
+      headline: "Test Headline",
+    },
+    sections: {
+      summary: {
+        content: "Test summary",
+      },
+      projects: {
+        items: [],
+      },
+    },
+  });
+
+  return {
+    buildSelection,
+    buildAccess: () => ({
+      ...buildSelection(),
+      resume: {
+        id: "resume-test",
+        name: "Test Resume",
+        mode: "v5" as const,
+        data: buildProfile(),
+      },
+    }),
+    getCanonicalResumeSelection: vi.fn(async () => buildSelection()),
+    getCanonicalResumeAccess: vi.fn(async () => ({
+      ...buildSelection(),
+      resume: {
+        id: "resume-test",
+        name: "Test Resume",
+        mode: "v5" as const,
+        data: buildProfile(),
+      },
+    })),
+  };
+});
+
+const mockProfileService = vi.hoisted(() => ({
+  getProfile: vi.fn(
+    async () => mockCanonicalResumeSelection.buildAccess().resume.data,
+  ),
+  getPersonName: vi.fn(async () => "Test Resume"),
+  clearProfileCache: vi.fn(),
+}));
 
 vi.mock("@server/pipeline/index", () => {
   const progress = {
@@ -59,8 +136,23 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
+vi.mock("@server/services/platform/resumeStudio", () => ({
+  getCanonicalResumeSelection:
+    mockCanonicalResumeSelection.getCanonicalResumeSelection,
+  getCanonicalResumeAccess:
+    mockCanonicalResumeSelection.getCanonicalResumeAccess,
+}));
+vi.mock("../../services/platform/resumeStudio", () => ({
+  getCanonicalResumeSelection:
+    mockCanonicalResumeSelection.getCanonicalResumeSelection,
+  getCanonicalResumeAccess:
+    mockCanonicalResumeSelection.getCanonicalResumeAccess,
+}));
+
 vi.mock("@server/services/profile", () => ({
-  getProfile: vi.fn().mockResolvedValue({}),
+  getProfile: mockProfileService.getProfile,
+  getPersonName: mockProfileService.getPersonName,
+  clearProfileCache: mockProfileService.clearProfileCache,
 }));
 
 vi.mock("@server/services/visa-sponsors/index", () => ({
@@ -91,7 +183,9 @@ export async function startServer(options?: {
   tempDir: string;
 }> {
   vi.resetModules();
-  const tempDir = await mkdtemp(join(tmpdir(), "job-ops-api-test-"));
+  const tempRoot = join(process.cwd(), ".tmp", "api-route-tests");
+  await mkdir(tempRoot, { recursive: true });
+  const tempDir = await mkdtemp(join(tempRoot, "job-ops-api-test-"));
   const envOverrides = options?.env ?? {};
   process.env = {
     ...originalEnv,
@@ -115,9 +209,10 @@ export async function startServer(options?: {
 
   const app = createApp();
   const server = app.listen(0);
-  await new Promise<void>((resolve) =>
-    server.once("listening", () => resolve()),
-  );
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.once("listening", () => resolve());
+  });
   const address = server.address();
   if (!address || typeof address === "string") {
     throw new Error("Failed to resolve server address");

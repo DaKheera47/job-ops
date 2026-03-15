@@ -10,13 +10,16 @@ import { pipeline } from "node:stream/promises";
 import { logger } from "@infra/logger";
 import { getDataDir } from "../config/dataDir";
 import {
+  createDerivedVariantFromJob,
+  markDerivedVariantFailed,
+  markDerivedVariantReady,
+} from "./platform/resumeVariants";
+import {
   deleteResume as deleteRemoteResume,
   exportResumePdf,
-  getResume as getRxResume,
   importResume as importRemoteResume,
   prepareTailoredResumeForPdf,
 } from "./rxresume";
-import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 const OUTPUT_DIR = join(getDataDir(), "pdfs");
 
@@ -36,6 +39,8 @@ export interface GeneratePdfOptions {
   tracerLinksEnabled?: boolean;
   requestOrigin?: string | null;
   tracerCompanyName?: string | null;
+  workspaceId?: string;
+  profileId?: string;
 }
 
 /**
@@ -80,6 +85,7 @@ export async function generatePdf(
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
   logger.info("Generating PDF resume", { jobId });
+  let variantId: string | null = null;
 
   try {
     // Ensure output directory exists
@@ -87,16 +93,17 @@ export async function generatePdf(
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    const { resumeId: baseResumeId } =
-      await getConfiguredRxResumeBaseResumeId();
-    if (!baseResumeId) {
-      throw new Error(
-        "Base resume not configured. Please select a base resume from your Reactive Resume account in Settings.",
-      );
-    }
-    const baseResume = await getRxResume(baseResumeId);
+    const variantContext = await createDerivedVariantFromJob(
+      jobId,
+      options?.profileId,
+      {
+        workspaceId: options?.workspaceId,
+      },
+    );
+    variantId = variantContext.variant.id;
+    const baseResume = variantContext.resume;
     if (!baseResume.data || typeof baseResume.data !== "object") {
-      throw new Error("Reactive Resume base resume is empty or invalid.");
+      throw new Error("Canonical resume data is empty or invalid.");
     }
 
     let preparedResumeData: Record<string, unknown>;
@@ -158,9 +165,15 @@ export async function generatePdf(
     }
 
     logger.info("PDF generated successfully", { jobId, outputPath });
+    if (variantId) {
+      await markDerivedVariantReady(variantId, outputPath);
+    }
     return { success: true, pdfPath: outputPath };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    if (variantId) {
+      await markDerivedVariantFailed(variantId);
+    }
     logger.error("PDF generation failed", { jobId, error });
     return { success: false, error: message };
   }

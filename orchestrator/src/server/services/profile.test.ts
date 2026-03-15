@@ -1,13 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearProfileCache, getProfile } from "./profile";
 
-// Mock the dependencies
-vi.mock("../repositories/settings", () => ({
-  getSetting: vi.fn(),
+vi.mock("./platform/resumeStudio", () => ({
+  getCanonicalResumeAccess: vi.fn(),
+  getCanonicalResumeSelection: vi.fn(),
 }));
 
 vi.mock("./rxresume", () => ({
-  getResume: vi.fn(),
   RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor() {
       super("Reactive Resume credentials not configured.");
@@ -16,8 +15,40 @@ vi.mock("./rxresume", () => ({
   },
 }));
 
-import { getSetting } from "../repositories/settings";
-import { getResume, RxResumeAuthConfigError } from "./rxresume";
+import {
+  getCanonicalResumeAccess,
+  getCanonicalResumeSelection,
+} from "./platform/resumeStudio";
+import { RxResumeAuthConfigError } from "./rxresume";
+
+function buildSelection(rxresumeResumeId = "test-resume-id") {
+  return {
+    workspace: { id: "workspace-1", name: "Gipfeli", slug: "gipfeli" },
+    profile: {
+      id: "profile-1",
+      workspaceId: "workspace-1",
+      label: "Primary",
+      isDefault: true,
+    },
+    canonicalResume: {
+      id: `canonical-${rxresumeResumeId}`,
+      workspaceId: "workspace-1",
+      profileId: "profile-1",
+      source: "rxresume" as const,
+      rxresumeResumeId,
+    },
+  };
+}
+
+function buildAccess(resumeData: unknown, rxresumeResumeId = "test-resume-id") {
+  return {
+    ...buildSelection(rxresumeResumeId),
+    resume: {
+      id: rxresumeResumeId,
+      data: resumeData,
+    },
+  };
+}
 
 describe("getProfile", () => {
   beforeEach(() => {
@@ -25,64 +56,62 @@ describe("getProfile", () => {
     clearProfileCache();
   });
 
-  it("should throw an error if rxresumeBaseResumeId is not configured", async () => {
-    vi.mocked(getSetting).mockResolvedValue(null);
-
-    await expect(getProfile()).rejects.toThrow(
-      "Base resume not configured. Please select a base resume from your RxResume account in Settings.",
-    );
-  });
-
-  it("should fetch profile from Reactive Resume when configured", async () => {
+  it("should fetch profile through the platform canonical access boundary", async () => {
     const mockResumeData = { basics: { name: "Test User" } };
-    vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockResolvedValue({
-      id: "test-resume-id",
-      data: mockResumeData,
-    } as any);
+    vi.mocked(getCanonicalResumeSelection).mockResolvedValue(
+      buildSelection() as never,
+    );
+    vi.mocked(getCanonicalResumeAccess).mockResolvedValue(
+      buildAccess(mockResumeData) as never,
+    );
 
-    const profile = await getProfile();
-
-    expect(getSetting).toHaveBeenCalledWith("rxresumeMode");
-    expect(getSetting).toHaveBeenCalledWith("rxresumeBaseResumeId");
-    expect(getResume).toHaveBeenCalledWith("test-resume-id");
-    expect(profile).toEqual(mockResumeData);
+    await expect(getProfile()).resolves.toEqual(mockResumeData);
+    expect(getCanonicalResumeSelection).toHaveBeenCalledWith({
+      bootstrapFromLegacy: true,
+    });
+    expect(getCanonicalResumeAccess).toHaveBeenCalledWith({
+      profileId: "profile-1",
+      workspaceId: "workspace-1",
+      bootstrapFromLegacy: false,
+    });
   });
 
   it("should cache the profile and not refetch on subsequent calls", async () => {
     const mockResumeData = { basics: { name: "Test User" } };
-    vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockResolvedValue({
-      id: "test-resume-id",
-      data: mockResumeData,
-    } as any);
+    vi.mocked(getCanonicalResumeSelection).mockResolvedValue(
+      buildSelection() as never,
+    );
+    vi.mocked(getCanonicalResumeAccess).mockResolvedValue(
+      buildAccess(mockResumeData) as never,
+    );
 
     await getProfile();
     await getProfile();
 
-    // The helper reads mode + legacy/per-mode resume-id settings each call.
-    expect(getSetting).toHaveBeenCalledTimes(8);
-    // But getResume should only be called once due to caching
-    expect(getResume).toHaveBeenCalledTimes(1);
+    expect(getCanonicalResumeSelection).toHaveBeenCalledTimes(2);
+    expect(getCanonicalResumeAccess).toHaveBeenCalledTimes(1);
   });
 
   it("should refetch when forceRefresh is true", async () => {
     const mockResumeData = { basics: { name: "Test User" } };
-    vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockResolvedValue({
-      id: "test-resume-id",
-      data: mockResumeData,
-    } as any);
+    vi.mocked(getCanonicalResumeSelection).mockResolvedValue(
+      buildSelection() as never,
+    );
+    vi.mocked(getCanonicalResumeAccess).mockResolvedValue(
+      buildAccess(mockResumeData) as never,
+    );
 
     await getProfile();
     await getProfile(true);
 
-    expect(getResume).toHaveBeenCalledTimes(2);
+    expect(getCanonicalResumeAccess).toHaveBeenCalledTimes(2);
   });
 
   it("should throw user-friendly error on credential issues", async () => {
-    vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockRejectedValue(
+    vi.mocked(getCanonicalResumeSelection).mockResolvedValue(
+      buildSelection() as never,
+    );
+    vi.mocked(getCanonicalResumeAccess).mockRejectedValue(
       new (RxResumeAuthConfigError as unknown as new () => Error)(),
     );
 
@@ -92,14 +121,41 @@ describe("getProfile", () => {
   });
 
   it("should throw error if resume data is empty", async () => {
-    vi.mocked(getSetting).mockResolvedValue("test-resume-id");
-    vi.mocked(getResume).mockResolvedValue({
-      id: "test-resume-id",
-      data: null,
-    } as any);
+    vi.mocked(getCanonicalResumeSelection).mockResolvedValue(
+      buildSelection() as never,
+    );
+    vi.mocked(getCanonicalResumeAccess).mockResolvedValue(
+      buildAccess(null) as never,
+    );
 
     await expect(getProfile()).rejects.toThrow(
       "Resume data is empty or invalid",
     );
+  });
+
+  it("should invalidate the cache when the canonical resume id changes", async () => {
+    vi.mocked(getCanonicalResumeSelection)
+      .mockResolvedValueOnce(buildSelection("resume-v1") as never)
+      .mockResolvedValueOnce(buildSelection("resume-v2") as never);
+    vi.mocked(getCanonicalResumeAccess)
+      .mockResolvedValueOnce(
+        buildAccess({ basics: { name: "First Resume" } }, "resume-v1") as never,
+      )
+      .mockResolvedValueOnce(
+        buildAccess(
+          { basics: { name: "Second Resume" } },
+          "resume-v2",
+        ) as never,
+      );
+
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "First Resume" },
+    });
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Second Resume" },
+    });
+
+    expect(getCanonicalResumeSelection).toHaveBeenCalledTimes(2);
+    expect(getCanonicalResumeAccess).toHaveBeenCalledTimes(2);
   });
 });

@@ -10,6 +10,7 @@ export * from "./types/chat";
 export * from "./types/extractors";
 export * from "./types/jobs";
 export * from "./types/pipeline";
+export * from "./types/platform";
 export * from "./types/post-application";
 export * from "./types/settings";
 export * from "./types/visa-sponsors";

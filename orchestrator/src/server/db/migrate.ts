@@ -473,6 +473,224 @@ const migrations = [
   `ALTER TABLE jobs_new RENAME TO jobs`,
   `PRAGMA foreign_keys = ON`,
 
+  `CREATE TABLE IF NOT EXISTS workspaces (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS workspace_members (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'owner' CHECK(role IN ('owner', 'member')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    UNIQUE(workspace_id, user_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS profiles (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    label TEXT NOT NULL,
+    is_default INTEGER NOT NULL DEFAULT 0,
+    lane TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+  )`,
+
+  `WITH ranked_defaults AS (
+     SELECT
+       id,
+       ROW_NUMBER() OVER (
+         PARTITION BY workspace_id
+         ORDER BY updated_at DESC, created_at DESC, id DESC
+       ) AS rank_in_workspace
+     FROM profiles
+     WHERE is_default = 1
+   )
+   UPDATE profiles
+   SET
+     is_default = 0,
+     updated_at = datetime('now')
+   WHERE id IN (
+     SELECT id
+     FROM ranked_defaults
+     WHERE rank_in_workspace > 1
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_workspace_default_unique
+   ON profiles(workspace_id)
+   WHERE is_default = 1`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_workspace_id_id_unique
+   ON profiles(workspace_id, id)`,
+
+  `CREATE TABLE IF NOT EXISTS canonical_resumes (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'rxresume' CHECK(source IN ('rxresume')),
+    rxresume_resume_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE,
+    UNIQUE(profile_id)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS derived_resume_variants (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    source_resume_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'ready', 'failed')),
+    pdf_path TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS resume_snapshots (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    source_resume_id TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'json',
+    checksum TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS canonical_resumes_new (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'rxresume' CHECK(source IN ('rxresume')),
+    rxresume_resume_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE,
+    UNIQUE(profile_id)
+  )`,
+  `INSERT OR REPLACE INTO canonical_resumes_new (
+    id, workspace_id, profile_id, source, rxresume_resume_id, created_at, updated_at
+  )
+  SELECT
+    cr.id,
+    cr.workspace_id,
+    cr.profile_id,
+    cr.source,
+    cr.rxresume_resume_id,
+    cr.created_at,
+    cr.updated_at
+  FROM canonical_resumes cr
+  WHERE EXISTS (
+    SELECT 1
+    FROM profiles p
+    WHERE p.id = cr.profile_id
+      AND p.workspace_id = cr.workspace_id
+  )`,
+  `DROP TABLE IF EXISTS canonical_resumes`,
+  `ALTER TABLE canonical_resumes_new RENAME TO canonical_resumes`,
+
+  `CREATE TABLE IF NOT EXISTS derived_resume_variants_new (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    job_id TEXT NOT NULL,
+    source_resume_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'ready', 'failed')),
+    pdf_path TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+  `INSERT OR REPLACE INTO derived_resume_variants_new (
+    id, workspace_id, profile_id, job_id, source_resume_id, status, pdf_path, created_at, updated_at
+  )
+  SELECT
+    drv.id,
+    drv.workspace_id,
+    drv.profile_id,
+    drv.job_id,
+    drv.source_resume_id,
+    drv.status,
+    drv.pdf_path,
+    drv.created_at,
+    drv.updated_at
+  FROM derived_resume_variants drv
+  WHERE EXISTS (
+    SELECT 1
+    FROM profiles p
+    WHERE p.id = drv.profile_id
+      AND p.workspace_id = drv.workspace_id
+  )`,
+  `DROP TABLE IF EXISTS derived_resume_variants`,
+  `ALTER TABLE derived_resume_variants_new RENAME TO derived_resume_variants`,
+
+  `CREATE TABLE IF NOT EXISTS resume_snapshots_new (
+    id TEXT PRIMARY KEY,
+    workspace_id TEXT NOT NULL,
+    profile_id TEXT NOT NULL,
+    source_resume_id TEXT NOT NULL,
+    format TEXT NOT NULL DEFAULT 'json',
+    checksum TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE,
+    FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE CASCADE,
+    FOREIGN KEY (workspace_id, profile_id) REFERENCES profiles(workspace_id, id) ON DELETE CASCADE
+  )`,
+  `INSERT OR REPLACE INTO resume_snapshots_new (
+    id, workspace_id, profile_id, source_resume_id, format, checksum, payload, created_at
+  )
+  SELECT
+    rs.id,
+    rs.workspace_id,
+    rs.profile_id,
+    rs.source_resume_id,
+    rs.format,
+    rs.checksum,
+    rs.payload,
+    rs.created_at
+  FROM resume_snapshots rs
+  WHERE EXISTS (
+    SELECT 1
+    FROM profiles p
+    WHERE p.id = rs.profile_id
+      AND p.workspace_id = rs.workspace_id
+  )`,
+  `DROP TABLE IF EXISTS resume_snapshots`,
+  `ALTER TABLE resume_snapshots_new RENAME TO resume_snapshots`,
+
+  `CREATE TRIGGER IF NOT EXISTS resume_snapshots_prevent_update
+   BEFORE UPDATE ON resume_snapshots
+   BEGIN
+     SELECT RAISE(ABORT, 'resume_snapshots are immutable and read-only');
+   END`,
+
+  `CREATE TRIGGER IF NOT EXISTS resume_snapshots_prevent_delete
+   BEFORE DELETE ON resume_snapshots
+   BEGIN
+     SELECT RAISE(ABORT, 'resume_snapshots are immutable and read-only');
+   END`,
+
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
@@ -487,6 +705,13 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_job_chat_threads_job_updated ON job_chat_threads(job_id, updated_at)`,
   `CREATE INDEX IF NOT EXISTS idx_job_chat_messages_thread_created ON job_chat_messages(thread_id, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_job_chat_runs_thread_status ON job_chat_runs(thread_id, status)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_workspaces_slug_unique ON workspaces(slug)`,
+  `CREATE INDEX IF NOT EXISTS idx_workspace_members_workspace_id ON workspace_members(workspace_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_profiles_workspace_id ON profiles(workspace_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_canonical_resumes_workspace_id ON canonical_resumes(workspace_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_derived_resume_variants_workspace_profile ON derived_resume_variants(workspace_id, profile_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_derived_resume_variants_job_id ON derived_resume_variants(job_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_resume_snapshots_workspace_profile ON resume_snapshots(workspace_id, profile_id)`,
   `CREATE INDEX IF NOT EXISTS idx_tracer_links_token ON tracer_links(token)`,
   `CREATE INDEX IF NOT EXISTS idx_tracer_links_job_id ON tracer_links(job_id)`,
   `CREATE INDEX IF NOT EXISTS idx_tracer_click_events_tracer_link_id ON tracer_click_events(tracer_link_id)`,

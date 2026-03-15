@@ -106,17 +106,27 @@ describe("Backup Service", () => {
       }
     });
 
-    it("should add a suffix when manual backup name collides", async () => {
+    it("should add a suffix when manual backup name collides using local-time filenames", async () => {
       // Only fake Date to keep async I/O (used by better-sqlite3 backup) real.
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
-        vi.setSystemTime(new Date("2026-01-15T12:30:45Z"));
+        const frozenInstant = new Date("2026-01-15T12:30:45Z");
+        vi.setSystemTime(frozenInstant);
+
+        const expectedTimestamp = [
+          frozenInstant.getFullYear(),
+          String(frozenInstant.getMonth() + 1).padStart(2, "0"),
+          String(frozenInstant.getDate()).padStart(2, "0"),
+          String(frozenInstant.getHours()).padStart(2, "0"),
+          String(frozenInstant.getMinutes()).padStart(2, "0"),
+          String(frozenInstant.getSeconds()).padStart(2, "0"),
+        ].join("_");
 
         const first = await backup.createBackup("manual");
         const second = await backup.createBackup("manual");
 
-        expect(first).toBe("jobs_manual_2026_01_15_12_30_45.db");
-        expect(second).toBe("jobs_manual_2026_01_15_12_30_45_1.db");
+        expect(first).toBe(`jobs_manual_${expectedTimestamp}.db`);
+        expect(second).toBe(`jobs_manual_${expectedTimestamp}_1.db`);
         expect(fs.existsSync(path.join(tempDir, second))).toBe(true);
       } finally {
         vi.useRealTimers();

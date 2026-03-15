@@ -145,9 +145,52 @@ const mockTracerLinks = vi.hoisted(() => ({
     .mockResolvedValue({ rewrittenLinks: 2 }),
 }));
 
+const mockPlatformResumeVariants = vi.hoisted(() => ({
+  createDerivedVariantFromJob: vi.fn().mockResolvedValue({
+    workspace: { id: "workspace-1", name: "Gipfeli", slug: "gipfeli" },
+    profile: {
+      id: "profile-1",
+      workspaceId: "workspace-1",
+      label: "Primary",
+      isDefault: true,
+    },
+    canonicalResume: {
+      id: "canonical-1",
+      workspaceId: "workspace-1",
+      profileId: "profile-1",
+      source: "rxresume",
+      rxresumeResumeId: "base-resume-id",
+    },
+    resume: {
+      id: "base-resume-id",
+      name: "Base Resume",
+      mode: "v4",
+      data: mockProfile,
+    },
+    variant: {
+      id: "variant-1",
+      workspaceId: "workspace-1",
+      profileId: "profile-1",
+      jobId: "job-1",
+      sourceResumeId: "base-resume-id",
+      status: "pending",
+      pdfPath: null,
+    },
+  }),
+  markDerivedVariantFailed: vi.fn().mockResolvedValue(undefined),
+  markDerivedVariantReady: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("./tracer-links", () => ({
   resolveTracerPublicBaseUrl: mockTracerLinks.resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer: mockTracerLinks.rewriteResumeLinksWithTracer,
+}));
+
+vi.mock("./platform/resumeVariants", () => ({
+  createDerivedVariantFromJob:
+    mockPlatformResumeVariants.createDerivedVariantFromJob,
+  markDerivedVariantFailed: mockPlatformResumeVariants.markDerivedVariantFailed,
+  markDerivedVariantReady: mockPlatformResumeVariants.markDerivedVariantReady,
 }));
 
 vi.mock("./rxresume/baseResumeId", () => ({
@@ -290,6 +333,43 @@ describe("PDF Service Tailoring Logic", () => {
     mockTracerLinks.rewriteResumeLinksWithTracer.mockResolvedValue({
       rewrittenLinks: 2,
     });
+    mockPlatformResumeVariants.createDerivedVariantFromJob.mockResolvedValue({
+      workspace: { id: "workspace-1", name: "Gipfeli", slug: "gipfeli" },
+      profile: {
+        id: "profile-1",
+        workspaceId: "workspace-1",
+        label: "Primary",
+        isDefault: true,
+      },
+      canonicalResume: {
+        id: "canonical-1",
+        workspaceId: "workspace-1",
+        profileId: "profile-1",
+        source: "rxresume",
+        rxresumeResumeId: "base-resume-id",
+      },
+      resume: {
+        id: "base-resume-id",
+        name: "Base Resume",
+        mode: "v4",
+        data: mockProfile,
+      },
+      variant: {
+        id: "variant-1",
+        workspaceId: "workspace-1",
+        profileId: "profile-1",
+        jobId: "job-1",
+        sourceResumeId: "base-resume-id",
+        status: "pending",
+        pdfPath: null,
+      },
+    });
+    mockPlatformResumeVariants.markDerivedVariantFailed.mockResolvedValue(
+      undefined,
+    );
+    mockPlatformResumeVariants.markDerivedVariantReady.mockResolvedValue(
+      undefined,
+    );
   });
 
   it("should use provided selectedProjectIds and BYPASS AI selection", async () => {
@@ -391,5 +471,34 @@ describe("PDF Service Tailoring Logic", () => {
     expect(mockTracerLinks.rewriteResumeLinksWithTracer).toHaveBeenCalledTimes(
       1,
     );
+  });
+
+  it("creates a derived variant record and does not mutate canonical resume metadata", async () => {
+    const originalCanonicalResumeId = "base-resume-id";
+
+    await generatePdf("job-variant-boundary", { summary: "Tailored" }, "desc");
+
+    expect(
+      mockPlatformResumeVariants.createDerivedVariantFromJob,
+    ).toHaveBeenCalledWith("job-variant-boundary", undefined, {
+      workspaceId: undefined,
+    });
+    expect(
+      mockPlatformResumeVariants.markDerivedVariantReady,
+    ).toHaveBeenCalledWith(
+      "variant-1",
+      expect.stringContaining("resume_job-variant-boundary.pdf"),
+    );
+    expect(
+      mockPlatformResumeVariants.markDerivedVariantFailed,
+    ).not.toHaveBeenCalled();
+    expect(
+      mockPlatformResumeVariants.createDerivedVariantFromJob.mock.results[0]
+        ?.value,
+    ).toBeDefined();
+
+    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(savedResumeJson.sections.summary.content).toBe("Tailored");
+    expect(originalCanonicalResumeId).toBe("base-resume-id");
   });
 });
