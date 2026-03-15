@@ -148,8 +148,27 @@ describe("JobCommandBar", () => {
     expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
     expect(screen.getByText("Lock to @discovered")).toBeInTheDocument();
     expect(screen.getByText("Lock to @applied")).toBeInTheDocument();
+    expect(screen.getByText("Lock to @in-progress")).toBeInTheDocument();
     expect(screen.getByText("Lock to @skipped")).toBeInTheDocument();
     expect(screen.getByText("Lock to @expired")).toBeInTheDocument();
+  });
+
+  it("creates in-progress lock from @prog + Tab", () => {
+    render(
+      <JobCommandBar
+        jobs={[createJob({ id: "job-1", status: "in_progress" })]}
+        onSelectJob={vi.fn()}
+      />,
+    );
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "@prog" } });
+    fireEvent.keyDown(input, { key: "Tab" });
+
+    expect(screen.getByText("@in-progress")).toBeInTheDocument();
   });
 
   it("searches by company name and routes to the matched state", () => {
@@ -377,9 +396,42 @@ describe("JobCommandBar", () => {
     fireEvent.keyDown(input, { key: "Tab" });
 
     expect(
-      screen.queryByText(/^@(ready|discovered|applied|skipped|expired)$/),
+      screen.queryByText(
+        /^@(ready|discovered|applied|in-progress|skipped|expired)$/,
+      ),
     ).not.toBeInTheDocument();
     expect((input as HTMLInputElement).value).toBe("@all");
+  });
+
+  it("routes in-progress jobs to the all jobs view", () => {
+    const onSelectJob = vi.fn();
+
+    render(
+      <JobCommandBar
+        jobs={[
+          createJob({
+            id: "in-progress-job",
+            title: "Staff Engineer",
+            employer: "Globex",
+            status: "in_progress",
+          }),
+        ]}
+        onSelectJob={onSelectJob}
+      />,
+    );
+
+    openWithKeyboard();
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Search jobs by job title or company name...",
+      ),
+      {
+        target: { value: "Globex" },
+      },
+    );
+    fireEvent.click(screen.getByText("Staff Engineer"));
+
+    expect(onSelectJob).toHaveBeenCalledWith("all", "in-progress-job");
   });
 
   it("excludes processing jobs from every lock scope", () => {
