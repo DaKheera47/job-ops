@@ -1,4 +1,5 @@
 import { createJob } from "@shared/testing/factories.js";
+import type { Job } from "@shared/types.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -94,6 +95,9 @@ const processingJob = createJob({
   status: "processing",
 });
 
+let mockJobs = [jobFixture, job2, processingJob];
+let mockSelectedJob: Job | null = jobFixture;
+
 const createMatchMedia = (matches: boolean) =>
   vi.fn().mockImplementation((query: string) => ({
     matches,
@@ -107,8 +111,8 @@ const createMatchMedia = (matches: boolean) =>
 
 vi.mock("./orchestrator/useOrchestratorData", () => ({
   useOrchestratorData: () => ({
-    jobs: [jobFixture, job2, processingJob],
-    selectedJob: jobFixture,
+    jobs: mockJobs,
+    selectedJob: mockSelectedJob,
     stats: {
       discovered: 1,
       processing: 1,
@@ -389,6 +393,8 @@ describe("OrchestratorPage", () => {
     mockIsPipelineRunning = false;
     mockPipelineTerminalEvent = null;
     mockPipelineSources = ["linkedin"];
+    mockJobs = [jobFixture, job2, processingJob];
+    mockSelectedJob = jobFixture;
     mockAutomaticRunValues = {
       topN: 12,
       minSuitabilityScore: 55,
@@ -473,6 +479,43 @@ describe("OrchestratorPage", () => {
     // Wait for URL to update
     await waitFor(() => {
       expect(locationText()).toContain("/all/job-2");
+    });
+  });
+
+  it("preserves the selected job id when a refresh temporarily excludes it", async () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/jobs/ready/job-1"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/ready/job-1");
+    });
+
+    mockJobs = [createJob({ ...jobFixture, id: "job-2", status: "ready" })];
+    mockSelectedJob = null;
+
+    rerender(
+      <MemoryRouter initialEntries={["/jobs/ready/job-1"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/ready/job-1");
     });
   });
 

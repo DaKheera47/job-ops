@@ -264,8 +264,8 @@ export const OrchestratorPage: React.FC = () => {
       if (selectedJobId) handleSelectJobId(null);
       return;
     }
-    if (!selectedJobId || !activeJobs.some((job) => job.id === selectedJobId)) {
-      // Auto-select first job ONLY on desktop
+    if (!selectedJobId) {
+      // Auto-select first job ONLY on desktop when nothing is currently selected.
       if (isDesktop) {
         navigateWithContext(activeTab, activeJobs[0].id, true);
       }
