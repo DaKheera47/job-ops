@@ -1,6 +1,6 @@
-import { createAppSettings } from "@shared/testing/factories.js";
+import { createAppSettings, createJob } from "@shared/testing/factories.js";
 import { describe, expect, it } from "vitest";
-import { getEnabledSources } from "./utils";
+import { getEnabledSources, getJobCounts } from "./utils";
 
 describe("orchestrator utils", () => {
   it("enables adzuna only when both app id and key are configured", () => {
@@ -15,5 +15,21 @@ describe("orchestrator utils", () => {
 
     expect(getEnabledSources(withCreds)).toContain("adzuna");
     expect(getEnabledSources(withoutKey)).not.toContain("adzuna");
+  });
+
+  it("counts processing jobs in ready and discovered tabs", () => {
+    const jobs = [
+      createJob({ id: "ready", status: "ready", closedAt: null }),
+      createJob({ id: "processing", status: "processing", closedAt: null }),
+      createJob({ id: "discovered", status: "discovered", closedAt: null }),
+      createJob({ id: "applied", status: "applied", closedAt: null }),
+    ];
+
+    expect(getJobCounts(jobs)).toEqual({
+      ready: 2,
+      discovered: 2,
+      applied: 1,
+      all: 4,
+    });
   });
 });
