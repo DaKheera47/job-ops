@@ -17,6 +17,10 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(withoutKey)).not.toContain("adzuna");
   });
 
+  it("enables startupjobs without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("startupjobs");
+  });
+
   it("counts processing jobs in ready and discovered tabs", () => {
     const jobs = [
       createJob({ id: "ready", status: "ready", closedAt: null }),

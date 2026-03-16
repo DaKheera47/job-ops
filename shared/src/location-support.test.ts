@@ -55,6 +55,10 @@ describe("location-support", () => {
     expect(isSourceAllowedForCountry("glassdoor", "japan")).toBe(false);
     expect(isSourceAllowedForCountry("adzuna", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("adzuna", "japan")).toBe(false);
+    expect(isSourceAllowedForCountry("startupjobs", "united states")).toBe(
+      true,
+    );
+    expect(isSourceAllowedForCountry("startupjobs", "worldwide")).toBe(true);
   });
 
   it("filters incompatible sources while preserving compatible order", () => {
@@ -66,11 +70,12 @@ describe("location-support", () => {
           "glassdoor",
           "ukvisajobs",
           "adzuna",
+          "startupjobs",
           "linkedin",
         ],
         "united states",
       ),
-    ).toEqual(["indeed", "glassdoor", "adzuna", "linkedin"]);
+    ).toEqual(["indeed", "glassdoor", "adzuna", "startupjobs", "linkedin"]);
   });
 
   it("supports glassdoor only in explicitly supported countries", () => {

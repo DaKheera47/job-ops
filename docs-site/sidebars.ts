@@ -49,6 +49,7 @@ const sidebars: SidebarsConfig = {
         "extractors/jobspy",
         "extractors/adzuna",
         "extractors/hiring-cafe",
+        "extractors/startup-jobs",
         "extractors/manual",
         "extractors/ukvisajobs",
       ],

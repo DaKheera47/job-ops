@@ -112,4 +112,21 @@ describe("automatic-run utilities", () => {
     expect(estimate.discovered.cap).toBeGreaterThan(0);
     expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
   });
+
+  it("includes startupjobs in estimate caps using the shared term budget", () => {
+    const estimate = calculateAutomaticEstimate({
+      values: {
+        topN: 10,
+        minSuitabilityScore: 50,
+        searchTerms: ["backend", "platform"],
+        runBudget: 120,
+        country: "united kingdom",
+        cityLocations: [],
+      },
+      sources: ["startupjobs"],
+    });
+
+    expect(estimate.discovered.cap).toBeGreaterThan(0);
+    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+  });
 });

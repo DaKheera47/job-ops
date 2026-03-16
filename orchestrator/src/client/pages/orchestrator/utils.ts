@@ -195,6 +195,10 @@ export const getEnabledSources = (
       enabled.push(source);
       continue;
     }
+    if (source === "startupjobs") {
+      enabled.push(source);
+      continue;
+    }
     if (
       source === "indeed" ||
       source === "linkedin" ||

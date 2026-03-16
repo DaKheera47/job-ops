@@ -82,6 +82,7 @@ export function deriveExtractorLimits(args: {
   const includesUkVisaJobs = args.sources.includes("ukvisajobs");
   const includesAdzuna = args.sources.includes("adzuna");
   const includesHiringCafe = args.sources.includes("hiringcafe");
+  const includesStartupJobs = args.sources.includes("startupjobs");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
@@ -90,7 +91,8 @@ export function deriveExtractorLimits(args: {
     (includesGradcracker ? termCount : 0) +
     (includesUkVisaJobs ? 1 : 0) +
     (includesAdzuna ? termCount : 0) +
-    (includesHiringCafe ? termCount : 0);
+    (includesHiringCafe ? termCount : 0) +
+    (includesStartupJobs ? termCount : 0);
 
   if (weightedContributors <= 0) {
     return {
@@ -173,6 +175,7 @@ export function calculateAutomaticEstimate(args: {
   const hasGlassdoor = sources.includes("glassdoor");
   const hasAdzuna = sources.includes("adzuna");
   const hasHiringCafe = sources.includes("hiringcafe");
+  const hasStartupJobs = sources.includes("startupjobs");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
@@ -191,9 +194,17 @@ export function calculateAutomaticEstimate(args: {
   const hiringCafeCap = hasHiringCafe
     ? limits.jobspyResultsWanted * termCount
     : 0;
+  const startupJobsCap = hasStartupJobs
+    ? limits.jobspyResultsWanted * termCount
+    : 0;
 
   const discoveredCap =
-    jobspyCap + gradcrackerCap + ukvisaCap + adzunaCap + hiringCafeCap;
+    jobspyCap +
+    gradcrackerCap +
+    ukvisaCap +
+    adzunaCap +
+    hiringCafeCap +
+    startupJobsCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);
   const discoveredMax = Math.round(discoveredCap * 0.75);
   const processedMin = Math.min(values.topN, discoveredMin);

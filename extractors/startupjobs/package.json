@@ -1,0 +1,17 @@
+{
+  "name": "startupjobs-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "startup.jobs extractor backed by the startup-jobs-scraper package",
+  "dependencies": {
+    "startup-jobs-scraper": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit",
+    "get-binaries": "playwright install"
+  }
+}
