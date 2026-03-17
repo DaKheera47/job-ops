@@ -152,6 +152,7 @@ export interface AppSettings {
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;
+  startupjobsMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
   blockedCompanyKeywords: Resolved<string[]>;
   scoringInstructions: Resolved<string>;

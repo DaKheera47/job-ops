@@ -753,6 +753,7 @@ describe("OrchestratorPage", () => {
         gradcrackerMaxJobsPerTerm: 150,
         ukvisajobsMaxJobs: 150,
         adzunaMaxJobsPerTerm: 150,
+        startupjobsMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
         searchCities: "United Kingdom",
       });

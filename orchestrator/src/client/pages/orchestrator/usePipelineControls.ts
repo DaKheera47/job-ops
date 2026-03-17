@@ -196,6 +196,7 @@ export function usePipelineControls(
         gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
         adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
+        startupjobsMaxJobsPerTerm: limits.startupjobsMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
         searchCities,
       });

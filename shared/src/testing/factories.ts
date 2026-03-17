@@ -153,6 +153,7 @@ export const createAppSettings = (
   ukvisajobsMaxJobs: { value: 50, default: 50, override: null },
   adzunaMaxJobsPerTerm: { value: 50, default: 50, override: null },
   gradcrackerMaxJobsPerTerm: { value: 50, default: 50, override: null },
+  startupjobsMaxJobsPerTerm: { value: 50, default: 50, override: null },
   searchTerms: {
     value: ["Software Engineer"],
     default: ["Software Engineer"],

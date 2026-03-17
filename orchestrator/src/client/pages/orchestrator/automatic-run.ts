@@ -66,6 +66,7 @@ export interface ExtractorLimits {
   gradcrackerMaxJobsPerTerm: number;
   ukvisajobsMaxJobs: number;
   adzunaMaxJobsPerTerm: number;
+  startupjobsMaxJobsPerTerm: number;
 }
 
 export function deriveExtractorLimits(args: {
@@ -100,6 +101,7 @@ export function deriveExtractorLimits(args: {
       gradcrackerMaxJobsPerTerm: budget,
       ukvisajobsMaxJobs: budget,
       adzunaMaxJobsPerTerm: budget,
+      startupjobsMaxJobsPerTerm: budget,
     };
   }
 
@@ -111,6 +113,7 @@ export function deriveExtractorLimits(args: {
     gradcrackerMaxJobsPerTerm: perUnit,
     ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
     adzunaMaxJobsPerTerm: perUnit,
+    startupjobsMaxJobsPerTerm: perUnit,
   };
 }
 
@@ -195,7 +198,7 @@ export function calculateAutomaticEstimate(args: {
     ? limits.jobspyResultsWanted * termCount
     : 0;
   const startupJobsCap = hasStartupJobs
-    ? limits.jobspyResultsWanted * termCount
+    ? limits.startupjobsMaxJobsPerTerm * termCount
     : 0;
 
   const discoveredCap =

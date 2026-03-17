@@ -182,6 +182,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     const rememberedRunBudget =
       settings?.jobspyResultsWanted?.value ??
+      settings?.startupjobsMaxJobsPerTerm?.value ??
       settings?.adzunaMaxJobsPerTerm?.value ??
       settings?.gradcrackerMaxJobsPerTerm?.value ??
       settings?.ukvisajobsMaxJobs?.value ??

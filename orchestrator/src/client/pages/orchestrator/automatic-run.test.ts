@@ -52,6 +52,17 @@ describe("automatic-run utilities", () => {
     expect(cap).toBeLessThanOrEqual(750);
   });
 
+  it("assigns a dedicated startupjobs max-jobs limit", () => {
+    const limits = deriveExtractorLimits({
+      budget: 120,
+      searchTerms: ["backend", "platform"],
+      sources: ["startupjobs"],
+    });
+
+    expect(limits.startupjobsMaxJobsPerTerm).toBeGreaterThan(0);
+    expect(limits.startupjobsMaxJobsPerTerm).toBeLessThanOrEqual(120);
+  });
+
   it("returns zero estimate when no search terms are provided", () => {
     const estimate = calculateAutomaticEstimate({
       values: {
