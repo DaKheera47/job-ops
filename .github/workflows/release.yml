@@ -7,9 +7,14 @@ on:
         description: "Next release version (x.y.z)"
         required: true
         type: string
+      release_title:
+        description: "Optional release title shown on GitHub (defaults to vX.Y.Z)"
+        required: false
+        type: string
 
 permissions:
   contents: write
+  packages: write
 
 concurrency:
   group: release-${{ inputs.version }}
@@ -83,8 +88,50 @@ jobs:
           git tag "v$RELEASE_VERSION"
           git push origin "v$RELEASE_VERSION"
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta (tags/labels)
+        id: docker-meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/job-ops
+          tags: |
+            type=raw,value=v${{ inputs.version }}
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push GHCR image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.docker-meta.outputs.tags }}
+          labels: ${{ steps.docker-meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
-        run: gh release create "v$RELEASE_VERSION" --title "v$RELEASE_VERSION" --generate-notes
+          INPUT_RELEASE_TITLE: ${{ inputs.release_title }}
+        run: |
+          RELEASE_TITLE="$(printf '%s' "$INPUT_RELEASE_TITLE" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+          if [ -z "$RELEASE_TITLE" ]; then
+            RELEASE_TITLE="v$RELEASE_VERSION"
+          fi
+
+          gh release create "v$RELEASE_VERSION" --title "$RELEASE_TITLE" --generate-notes

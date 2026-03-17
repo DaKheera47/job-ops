@@ -60,7 +60,8 @@ Releases are driven from GitHub Actions.
 
 1. Open the `release` workflow in GitHub Actions.
 2. Enter the next version as `x.y.z` (for example `0.1.30`).
-3. Run the workflow.
+3. Optionally enter a separate release title for GitHub (for example `Google Dorks!`).
+4. Run the workflow.
 
 The workflow will:
 
@@ -68,9 +69,10 @@ The workflow will:
 - update `package-lock.json`
 - commit the version bump to `main`
 - create and push tag `vX.Y.Z`
-- create the GitHub release
+- publish the `ghcr.io/.../job-ops` image for that release
+- create the GitHub release using either the custom title or `vX.Y.Z`
 
-The app version shown in the UI is sourced from `orchestrator/package.json`, so the release version, tag, and displayed app version stay aligned.
+The app version shown in the UI is sourced from `orchestrator/package.json`, so the release version, tag, and displayed app version stay aligned even when the GitHub release title is customized separately.
 
 ## Validation Before PR (CI-Parity Checks)
 
