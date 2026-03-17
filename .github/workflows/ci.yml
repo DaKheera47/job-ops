@@ -54,6 +54,7 @@ jobs:
           - adzuna-extractor
           - hiringcafe-extractor
           - gradcracker-extractor
+          - startupjobs-extractor
           - ukvisajobs-extractor
     steps:
       - uses: actions/checkout@v4
