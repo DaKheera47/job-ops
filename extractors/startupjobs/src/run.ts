@@ -41,6 +41,21 @@ export interface StartupJobsResult {
   error?: string;
 }
 
+function toPositiveIntOrFallback(
+  value: number | string | undefined,
+  fallback: number,
+): number {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number.parseInt(value, 10)
+        : Number.NaN;
+
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(1, Math.floor(parsed));
+}
+
 function inferJobType(disciplines: string | undefined): string | undefined {
   if (!disciplines) return undefined;
   const segments = disciplines
@@ -79,7 +94,14 @@ function resolveRunLocations(args: {
   const locations = resolveSearchCities({
     list: args.locations,
   });
-  if (locations.length > 0) return locations;
+
+  const normalizedLocations = locations
+    .map((location) => normalizeCountryKey(location))
+    .filter((location) => location !== "worldwide" && location !== "usa/ca");
+
+  if (normalizedLocations.length > 0) {
+    return normalizedLocations.map((location) => formatCountryLabel(location));
+  }
 
   const countryKey = normalizeCountryKey(args.selectedCountry);
   if (!countryKey || countryKey === "worldwide" || countryKey === "usa/ca") {
@@ -100,7 +122,7 @@ export async function runStartupJobs(
     selectedCountry: options.selectedCountry,
     locations: options.locations,
   });
-  const maxJobsPerTerm = Math.max(1, options.maxJobsPerTerm ?? 50);
+  const maxJobsPerTerm = toPositiveIntOrFallback(options.maxJobsPerTerm, 50);
   const termTotal = searchTerms.length * runLocations.length;
   const jobs: CreateJobInput[] = [];
   const seen = new Set<string>();

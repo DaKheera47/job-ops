@@ -47,8 +47,11 @@ export const manifest: ExtractorManifest = {
       return { success: true, jobs: [] };
     }
 
-    const maxJobsPerTerm = context.settings.jobspyResultsWanted
-      ? parseInt(context.settings.jobspyResultsWanted, 10)
+    const parsedMaxJobsPerTerm = context.settings.jobspyResultsWanted
+      ? Number.parseInt(context.settings.jobspyResultsWanted, 10)
+      : Number.NaN;
+    const maxJobsPerTerm = Number.isFinite(parsedMaxJobsPerTerm)
+      ? Math.max(1, parsedMaxJobsPerTerm)
       : 50;
 
     const result = await runStartupJobs({
