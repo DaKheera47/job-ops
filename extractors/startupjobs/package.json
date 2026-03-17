@@ -12,6 +12,6 @@
   },
   "scripts": {
     "check:types": "tsc --noEmit",
-    "get-binaries": "playwright install"
+    "get-binaries": "npx playwright install"
   }
 }

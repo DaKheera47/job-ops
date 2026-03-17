@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("startup-jobs-scraper", () => ({
   scrapeStartupJobsViaAlgolia: vi.fn(),
 }));
 
 describe("runStartupJobs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("falls back to the default max jobs per term when options.maxJobsPerTerm is NaN", async () => {
     const { scrapeStartupJobsViaAlgolia } = await import(
       "startup-jobs-scraper"
