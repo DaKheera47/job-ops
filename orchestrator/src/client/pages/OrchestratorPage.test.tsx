@@ -1090,13 +1090,16 @@ describe("OrchestratorPage", () => {
       );
     });
 
+    // Update mock so selectedJob matches the discovered tab — visibleSelectedJob
+    // filters out jobs whose status doesn't belong to the active tab.
+    mockSelectedJob = job2;
+
     fireEvent.click(screen.getByTestId("select-job-2"));
 
     pressKey("r");
     await waitFor(() => {
       expect(toast.message).toHaveBeenCalledWith("Moving job to Ready...");
-      // Mock useOrchestratorData returns selectedJob as job-1 always
-      expect(api.processJob).toHaveBeenCalledWith("job-1");
+      expect(api.processJob).toHaveBeenCalledWith("job-2");
     });
   });
 

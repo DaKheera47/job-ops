@@ -7,7 +7,7 @@ import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { KeyboardShortcutBar } from "../components/KeyboardShortcutBar";
 import { KeyboardShortcutDialog } from "../components/KeyboardShortcutDialog";
 import { useDemoInfo } from "../hooks/useDemoInfo";
-import type { FilterTab } from "./orchestrator/constants";
+import { type FilterTab, tabs } from "./orchestrator/constants";
 import { FloatingJobActionsBar } from "./orchestrator/FloatingJobActionsBar";
 import { JobCommandBar } from "./orchestrator/JobCommandBar";
 import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
@@ -93,13 +93,6 @@ export const OrchestratorPage: React.FC = () => {
       : false,
   );
 
-  const setActiveTab = useCallback(
-    (newTab: FilterTab) => {
-      navigateWithContext(newTab, selectedJobId);
-    },
-    [navigateWithContext, selectedJobId],
-  );
-
   const handleSelectJobId = useCallback(
     (id: string | null) => {
       navigateWithContext(activeTab, id);
@@ -154,6 +147,35 @@ export const OrchestratorPage: React.FC = () => {
     salaryFilter,
     sort,
   );
+  const setActiveTab = useCallback(
+    (newTab: FilterTab) => {
+      // Keep selected job if it belongs to the target tab, otherwise clear it.
+      // The auto-select effect will pick the first job on desktop when cleared.
+      const tabDef = tabs.find((t) => t.id === newTab);
+      const selectedItem = selectedJobId
+        ? jobs.find((j) => j.id === selectedJobId)
+        : null;
+      const jobFitsTab =
+        selectedItem &&
+        (tabDef?.statuses.length === 0 ||
+          tabDef?.statuses.includes(selectedItem.status));
+      navigateWithContext(newTab, jobFitsTab ? selectedJobId : null);
+    },
+    [navigateWithContext, selectedJobId, jobs],
+  );
+
+  // Synchronously null-out selectedJob when it doesn't belong to the current
+  // tab. The data hook resolves selectedJob from the full (unfiltered) job list
+  // via useEffect, so it lags by one render frame after a tab switch — without
+  // this guard the detail panel would briefly show the old job with the new
+  // tab's action buttons.
+  const visibleSelectedJob = useMemo(() => {
+    if (!selectedJob) return null;
+    const tabDef = tabs.find((t) => t.id === activeTab);
+    if (!tabDef || tabDef.statuses.length === 0) return selectedJob;
+    return tabDef.statuses.includes(selectedJob.status) ? selectedJob : null;
+  }, [selectedJob, activeTab]);
+
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
   const sourcesWithJobs = useMemo(() => getSourcesWithJobs(jobs), [jobs]);
   const {
@@ -222,7 +244,7 @@ export const OrchestratorPage: React.FC = () => {
     activeTab,
     activeJobs,
     selectedJobId,
-    selectedJob,
+    selectedJob: visibleSelectedJob,
     selectedJobIds,
     isDesktop,
     handleSelectJobId,
@@ -394,7 +416,7 @@ export const OrchestratorPage: React.FC = () => {
                 <JobDetailPanel
                   activeTab={activeTab}
                   activeJobs={activeJobs}
-                  selectedJob={selectedJob}
+                  selectedJob={visibleSelectedJob}
                   onSelectJobId={handleSelectJobId}
                   onJobUpdated={loadJobs}
                   onPauseRefreshChange={setIsRefreshPaused}
@@ -449,7 +471,7 @@ export const OrchestratorPage: React.FC = () => {
               <JobDetailPanel
                 activeTab={activeTab}
                 activeJobs={activeJobs}
-                selectedJob={selectedJob}
+                selectedJob={visibleSelectedJob}
                 onSelectJobId={handleSelectJobId}
                 onJobUpdated={loadJobs}
                 onPauseRefreshChange={setIsRefreshPaused}
