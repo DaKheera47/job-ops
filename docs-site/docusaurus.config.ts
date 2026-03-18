@@ -60,6 +60,21 @@ const config: Config = {
       standaloneDevPort: "3006",
     },
   },
+  themes: [
+    [
+      require.resolve("@easyops-cn/docusaurus-search-local"),
+      {
+        hashed: true,
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: "/",
+        searchResultLimits: 8,
+        searchResultContextMaxLength: 50,
+        explicitSearchResultPath: true,
+      },
+    ],
+  ],
   presets: [
     [
       "classic",
