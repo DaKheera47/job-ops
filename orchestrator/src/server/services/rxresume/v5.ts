@@ -239,17 +239,36 @@ export async function deleteResume(
 /**
  * Export a resume as PDF. Returns the URL.
  */
+
 export async function exportResumePdf(
   id: string,
   config?: RxResumeApiConfig,
 ): Promise<string> {
-  const result = (await fetchRxResume(
-    `/resumes/${id}/pdf`,
-    {},
-    config,
+  const baseUrl = config?.baseUrl ?? process.env.RXRESUME_URL ?? "https://rxresu.me";
+  
+  // Construct the direct printer API URL
+  const url = `${cleanBaseUrl(baseUrl)}/api/printer/${id}`;
+
+  const result = (await executeWithKeyRetries(
+    url,
+    { method: "GET" },
+    config?.apiKey,
   )) as RxResumeExportPdfResponse;
+
   return result.url;
 }
+
+// export async function exportResumePdf(
+//   id: string,
+//   config?: RxResumeApiConfig,
+// ): Promise<string> {
+//   const result = (await fetchRxResume(
+//     `/resumes/${id}/pdf`,
+//     {},
+//     config,
+//   )) as RxResumeExportPdfResponse;
+//   return result.url;
+// }
 
 /**
  * List all resumes.
