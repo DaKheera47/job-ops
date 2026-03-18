@@ -400,7 +400,7 @@ export const VisaSponsorsPage: React.FC = () => {
       <PageMain>
         {/* Search section */}
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
-          <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
+          <div className="grid gap-4">
             <div className="space-y-2">
               <div className="space-y-2">
                 <label
