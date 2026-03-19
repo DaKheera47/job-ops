@@ -300,6 +300,7 @@ describe("rxresume adapter", () => {
     const first = getResumeFromAdapter("resume-1");
     const second = getResumeFromAdapter("resume-1");
 
+    await new Promise((resolve) => setTimeout(resolve, 0));
     expect(v5.getResume).toHaveBeenCalledTimes(1);
     resolveResume?.({
       id: "resume-1",

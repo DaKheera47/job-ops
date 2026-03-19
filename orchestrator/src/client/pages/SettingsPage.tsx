@@ -6,6 +6,7 @@ import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import {
   coerceRxResumeMode,
   getRxResumeCredentialDrafts,
+  getRxResumeCredentialPrecheckFailure,
   isRxResumeAvailabilityValidationFailure,
   isRxResumeBlockingValidationFailure,
   RXRESUME_MODES,
@@ -658,6 +659,7 @@ export const SettingsPage: React.FC = () => {
         validate: api.validateRxresume,
         persist: api.updateSettings,
         persistOnSuccess,
+        skipPrecheck: silent,
         getPrecheckMessage: (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
         getValidationErrorMessage: (error) =>
           error instanceof Error ? error.message : "RxResume validation failed",
@@ -888,54 +890,65 @@ export const SettingsPage: React.FC = () => {
 
       if (shouldValidateRxResumeBeforeSave) {
         const validationDraft = getRxResumeCredentialDrafts(data);
-        const preserveBlankFields = [
-          ...(dirtyFields.rxresumeEmail ? (["email"] as const) : []),
-          ...(dirtyFields.rxresumePassword ? (["password"] as const) : []),
-          ...(dirtyFields.rxresumeApiKey ? (["apiKey"] as const) : []),
-          ...(dirtyFields.rxresumeUrl ? (["baseUrl"] as const) : []),
-        ];
-        const validation = await api.validateRxresume({
+        const precheckFailure = getRxResumeCredentialPrecheckFailure({
           mode: rxResumeValidationMode,
-          ...toRxResumeValidationPayload(validationDraft, {
-            preserveBlankFields: preserveBlankFields as Array<
-              keyof ReturnType<typeof getRxResumeCredentialDrafts>
-            >,
-          }),
+          stored: storedRxResume,
+          draft: validationDraft,
         });
 
-        setRxResumeValidationStatus(rxResumeValidationMode, validation);
+        if (!precheckFailure) {
+          const preserveBlankFields = [
+            ...(dirtyFields.rxresumeEmail ? (["email"] as const) : []),
+            ...(dirtyFields.rxresumePassword ? (["password"] as const) : []),
+            ...(dirtyFields.rxresumeApiKey ? (["apiKey"] as const) : []),
+            ...(dirtyFields.rxresumeUrl ? (["baseUrl"] as const) : []),
+          ];
+          const validation = await api.validateRxresume({
+            mode: rxResumeValidationMode,
+            ...toRxResumeValidationPayload(validationDraft, {
+              preserveBlankFields: preserveBlankFields as Array<
+                keyof ReturnType<typeof getRxResumeCredentialDrafts>
+              >,
+            }),
+          });
 
-        if (isRxResumeBlockingValidationFailure(validation)) {
+          setRxResumeValidationStatus(rxResumeValidationMode, validation);
+
+          if (isRxResumeBlockingValidationFailure(validation)) {
+            clearErrors(
+              getRxResumeValidationFieldsForMode(rxResumeValidationMode),
+            );
+            if (rxResumeValidationMode === "v5") {
+              setError("rxresumeApiKey", {
+                type: "manual",
+                message:
+                  validation.message ??
+                  "Reactive Resume v5 API key is invalid.",
+              });
+            } else {
+              setError("rxresumeEmail", {
+                type: "manual",
+                message:
+                  validation.message ??
+                  "Reactive Resume v4 email/password is invalid.",
+              });
+              setError("rxresumePassword", {
+                type: "manual",
+                message:
+                  validation.message ??
+                  "Reactive Resume v4 email/password is invalid.",
+              });
+            }
+            return;
+          }
+
           clearErrors(
             getRxResumeValidationFieldsForMode(rxResumeValidationMode),
           );
-          if (rxResumeValidationMode === "v5") {
-            setError("rxresumeApiKey", {
-              type: "manual",
-              message:
-                validation.message ?? "Reactive Resume v5 API key is invalid.",
-            });
-          } else {
-            setError("rxresumeEmail", {
-              type: "manual",
-              message:
-                validation.message ??
-                "Reactive Resume v4 email/password is invalid.",
-            });
-            setError("rxresumePassword", {
-              type: "manual",
-              message:
-                validation.message ??
-                "Reactive Resume v4 email/password is invalid.",
-            });
+          if (isRxResumeAvailabilityValidationFailure(validation)) {
+            rxResumeSaveWarningMessage =
+              "Settings saved, but JobOps could not verify Reactive Resume because the instance is unavailable.";
           }
-          return;
-        }
-
-        clearErrors(getRxResumeValidationFieldsForMode(rxResumeValidationMode));
-        if (isRxResumeAvailabilityValidationFailure(validation)) {
-          rxResumeSaveWarningMessage =
-            "Settings saved, but JobOps could not verify Reactive Resume because the instance is unavailable.";
         }
       }
 

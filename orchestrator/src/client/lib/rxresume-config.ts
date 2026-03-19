@@ -178,6 +178,7 @@ type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
   ) => Promise<ValidationResult>;
   persist?: (update: Partial<UpdateSettingsInput>) => Promise<TSettings>;
   persistOnSuccess?: boolean;
+  skipPrecheck?: boolean;
   getPrecheckMessage?: (
     failure: Exclude<RxResumeCredentialPrecheckFailure, null>,
   ) => string;
@@ -201,6 +202,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
     validate,
     persist,
     persistOnSuccess = false,
+    skipPrecheck = false,
     getPrecheckMessage = (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
     getValidationErrorMessage = (error) =>
       error instanceof Error ? error.message : "RxResume validation failed",
@@ -210,12 +212,14 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
         : "Failed to save RxResume settings",
   } = input;
 
-  const precheckFailure = getRxResumeCredentialPrecheckFailure({
-    mode,
-    stored,
-    draft,
-  });
-  if (precheckFailure) {
+  const precheckFailure = skipPrecheck
+    ? null
+    : getRxResumeCredentialPrecheckFailure({
+        mode,
+        stored,
+        draft,
+      });
+  if (precheckFailure !== null) {
     return {
       validation: {
         valid: false,

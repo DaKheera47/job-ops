@@ -51,6 +51,13 @@ function shouldValidateRxResumeOnSave(input: UpdateSettingsInput): boolean {
   return RXRESUME_SAVE_VALIDATION_KEYS.some((key) => hasInputKey(input, key));
 }
 
+function isMissingRxResumeConfigValidationResult(input: {
+  status: number;
+  message: string;
+}): boolean {
+  return input.status === 400 && /not configured/i.test(input.message);
+}
+
 function buildRxResumeValidationOptions(
   input: UpdateSettingsInput,
 ): Parameters<typeof validateRxResumeCredentials>[0] {
@@ -132,12 +139,25 @@ settingsRouter.patch(
       );
       if (!validation.ok) {
         const status = validation.status ?? 0;
-        if (status >= 400 && status < 500) {
+        if (
+          isMissingRxResumeConfigValidationResult({
+            status,
+            message: validation.message,
+          })
+        ) {
+          logger.info(
+            "Skipping save-time Reactive Resume validation because credentials are incomplete",
+            {
+              requestId: getRequestId() ?? null,
+              route: "PATCH /api/settings",
+              rxresumeMode: validation.mode ?? input.rxresumeMode ?? null,
+              status,
+            },
+          );
+        } else if (status >= 400 && status < 500) {
           fail(res, toRxResumeValidationAppError(status, validation.message));
           return;
-        }
-
-        if (status === 0 || status >= 500) {
+        } else if (status === 0 || status >= 500) {
           logger.warn(
             "Reactive Resume save-time validation could not verify upstream availability",
             {

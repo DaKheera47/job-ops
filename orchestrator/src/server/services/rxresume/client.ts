@@ -72,7 +72,7 @@ const tokenCache = new Map<string, CachedToken>();
 // Default token TTL: 50 minutes (JWT tokens typically expire in 1 hour)
 const DEFAULT_TOKEN_TTL_MS = 50 * 60 * 1000;
 
-export class RxResumeClient {
+class RxResumeClientImpl {
   private readonly tokenTtlMs: number;
 
   constructor(
@@ -455,6 +455,19 @@ export class RxResumeClient {
     return resume;
   }
 }
+
+type GlobalRxResumeClientClass = typeof globalThis & {
+  __jobOpsRxResumeClientClass?: typeof RxResumeClientImpl;
+};
+
+const globalRxResumeClientClass = globalThis as GlobalRxResumeClientClass;
+
+export const RxResumeClient =
+  globalRxResumeClientClass.__jobOpsRxResumeClientClass ??
+  (globalRxResumeClientClass.__jobOpsRxResumeClientClass =
+    RxResumeClientImpl);
+
+export type RxResumeClient = InstanceType<typeof RxResumeClientImpl>;
 
 function sanitizeResponseSnippet(text: string): string {
   if (!text) return "";

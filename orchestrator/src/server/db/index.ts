@@ -20,11 +20,14 @@ if (!existsSync(dataDir)) {
 
 const sqlite = new Database(DB_PATH);
 sqlite.pragma("journal_mode = WAL");
+let isClosed = false;
 
 export const db = drizzle(sqlite, { schema });
 
 export { schema };
 
 export function closeDb() {
+  if (isClosed) return;
   sqlite.close();
+  isClosed = true;
 }
