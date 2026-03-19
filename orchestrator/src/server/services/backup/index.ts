@@ -234,8 +234,7 @@ export async function listBackups(): Promise<BackupInfo[]> {
   }
 
   backups.sort(
-    (a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
   return backups;
@@ -265,8 +264,7 @@ export async function cleanupOldBackups(): Promise<void> {
   const autoBackups = backups.filter((b) => b.type === "auto");
 
   autoBackups.sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
   );
 
   const maxCount = currentSettings.maxCount;

@@ -462,10 +462,12 @@ type GlobalRxResumeClientClass = typeof globalThis & {
 
 const globalRxResumeClientClass = globalThis as GlobalRxResumeClientClass;
 
-export const RxResumeClient =
-  globalRxResumeClientClass.__jobOpsRxResumeClientClass ??
-  (globalRxResumeClientClass.__jobOpsRxResumeClientClass =
-    RxResumeClientImpl);
+const rxResumeClientClass =
+  globalRxResumeClientClass.__jobOpsRxResumeClientClass ?? RxResumeClientImpl;
+
+globalRxResumeClientClass.__jobOpsRxResumeClientClass = rxResumeClientClass;
+
+export const RxResumeClient = rxResumeClientClass;
 
 export type RxResumeClient = InstanceType<typeof RxResumeClientImpl>;
 
