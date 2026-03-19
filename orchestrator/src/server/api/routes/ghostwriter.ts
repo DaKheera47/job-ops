@@ -26,6 +26,11 @@ const regenerateSchema = z.object({
   stream: z.boolean().optional(),
 });
 
+const editMessageSchema = z.object({
+  content: z.string().trim().min(1).max(20000),
+  stream: z.boolean().optional(),
+});
+
 function getJobId(req: Request): string {
   const jobId = req.params.id;
   if (!jobId) {
@@ -47,12 +52,12 @@ ghostwriterRouter.get(
     }
 
     await runWithRequestContext({ jobId }, async () => {
-      const messages = await ghostwriterService.listMessagesForJob({
+      const result = await ghostwriterService.listMessagesForJob({
         jobId,
         limit: parsed.data.limit,
         offset: parsed.data.offset,
       });
-      ok(res, { messages });
+      ok(res, { messages: result.messages, branches: result.branches });
     });
   }),
 );
@@ -260,6 +265,123 @@ ghostwriterRouter.post(
 );
 
 ghostwriterRouter.post(
+  "/messages/:messageId/edit",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const messageId = req.params.messageId;
+    if (!messageId) {
+      return fail(res, badRequest("Missing message id"));
+    }
+
+    const parsed = editMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        badRequest(parsed.error.message, parsed.error.flatten()),
+      );
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      if (parsed.data.stream) {
+        setupSse(res, {
+          cacheControl: "no-cache, no-transform",
+          flushHeaders: true,
+        });
+
+        try {
+          await ghostwriterService.editMessageForJob({
+            jobId,
+            messageId,
+            content: parsed.data.content,
+            stream: {
+              onReady: ({ runId, threadId, messageId, requestId }) =>
+                writeSseData(res, {
+                  type: "ready",
+                  runId,
+                  threadId,
+                  messageId,
+                  requestId,
+                }),
+              onDelta: ({ runId, messageId, delta }) =>
+                writeSseData(res, {
+                  type: "delta",
+                  runId,
+                  messageId,
+                  delta,
+                }),
+              onCompleted: ({ runId, message }) =>
+                writeSseData(res, {
+                  type: "completed",
+                  runId,
+                  message,
+                }),
+              onCancelled: ({ runId, message }) =>
+                writeSseData(res, {
+                  type: "cancelled",
+                  runId,
+                  message,
+                }),
+              onError: ({ runId, code, message, requestId }) =>
+                writeSseData(res, {
+                  type: "error",
+                  runId,
+                  code,
+                  message,
+                  requestId,
+                }),
+            },
+          });
+        } catch (error) {
+          const appError = toAppError(error);
+          writeSseData(res, {
+            type: "error",
+            code: appError.code,
+            message: appError.message,
+            requestId: res.getHeader("x-request-id") || "unknown",
+          });
+        } finally {
+          res.end();
+        }
+
+        return;
+      }
+
+      const result = await ghostwriterService.editMessageForJob({
+        jobId,
+        messageId,
+        content: parsed.data.content,
+      });
+
+      ok(res, {
+        userMessage: result.userMessage,
+        assistantMessage: result.assistantMessage,
+        runId: result.runId,
+      });
+    });
+  }),
+);
+
+ghostwriterRouter.post(
+  "/messages/:messageId/switch-branch",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const messageId = req.params.messageId;
+    if (!messageId) {
+      return fail(res, badRequest("Missing message id"));
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      const result = await ghostwriterService.switchBranchForJob({
+        jobId,
+        messageId,
+      });
+
+      ok(res, { messages: result.messages, branches: result.branches });
+    });
+  }),
+);
+
+ghostwriterRouter.post(
   "/reset",
   asyncRoute(async (req, res) => {
     const jobId = getJobId(req);
@@ -326,13 +448,13 @@ ghostwriterRouter.get(
     }
 
     await runWithRequestContext({ jobId }, async () => {
-      const messages = await ghostwriterService.listMessages({
+      const result = await ghostwriterService.listMessages({
         jobId,
         threadId,
         limit: parsed.data.limit,
         offset: parsed.data.offset,
       });
-      ok(res, { messages });
+      ok(res, { messages: result.messages, branches: result.branches });
     });
   }),
 );

@@ -7,7 +7,7 @@ import {
 } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
-import type { JobChatMessage, JobChatRun } from "@shared/types";
+import type { BranchInfo, JobChatMessage, JobChatRun } from "@shared/types";
 import * as jobChatRepo from "../repositories/ghostwriter";
 import * as settingsRepo from "../repositories/settings";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
@@ -87,10 +87,13 @@ async function resolveLlmRuntimeSettings(): Promise<LlmRuntimeSettings> {
 
 async function buildConversationMessages(
   threadId: string,
+  targetMessageId?: string,
 ): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
-  const messages = await jobChatRepo.listMessagesForThread(threadId, {
-    limit: 40,
-  });
+  // If a target message is given, walk its ancestor path (branch-aware).
+  // Otherwise, fall back to the active path from root.
+  const messages = targetMessageId
+    ? await jobChatRepo.getAncestorPath(targetMessageId)
+    : await jobChatRepo.getActivePathFromRoot(threadId);
 
   return messages
     .filter(
@@ -98,6 +101,7 @@ async function buildConversationMessages(
         message.role === "user" || message.role === "assistant",
     )
     .filter((message) => message.status !== "failed")
+    .slice(-40)
     .map((message) => ({
       role: message.role,
       content: message.content,
@@ -110,6 +114,8 @@ type GenerateReplyOptions = {
   prompt: string;
   replaceMessageId?: string;
   version?: number;
+  /** Parent message ID for the assistant reply (i.e. the user message that triggered it). */
+  parentMessageId?: string;
   stream?: {
     onReady: (payload: {
       runId: string;
@@ -158,33 +164,50 @@ export async function listThreads(jobId: string) {
   return [thread];
 }
 
+async function buildBranchInfoForPath(
+  messages: JobChatMessage[],
+): Promise<BranchInfo[]> {
+  const branches: BranchInfo[] = [];
+
+  for (const msg of messages) {
+    const { siblings, activeIndex } = await jobChatRepo.getSiblingsOf(msg.id);
+    if (siblings.length > 1) {
+      branches.push({
+        messageId: msg.id,
+        siblingIds: siblings.map((s) => s.id),
+        activeIndex,
+      });
+    }
+  }
+
+  return branches;
+}
+
 export async function listMessages(input: {
   jobId: string;
   threadId: string;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
   const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
   if (!thread) {
     throw notFound("Thread not found for this job");
   }
 
-  return jobChatRepo.listMessagesForThread(input.threadId, {
-    limit: input.limit,
-    offset: input.offset,
-  });
+  const messages = await jobChatRepo.getActivePathFromRoot(input.threadId);
+  const branches = await buildBranchInfoForPath(messages);
+  return { messages, branches };
 }
 
 export async function listMessagesForJob(input: {
   jobId: string;
   limit?: number;
   offset?: number;
-}) {
+}): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
   const thread = await ensureJobThread(input.jobId);
-  return jobChatRepo.listMessagesForThread(thread.id, {
-    limit: input.limit,
-    offset: input.offset,
-  });
+  const messages = await jobChatRepo.getActivePathFromRoot(thread.id);
+  const branches = await buildBranchInfoForPath(messages);
+  return { messages, branches };
 }
 
 async function runAssistantReply(
@@ -206,7 +229,7 @@ async function runAssistantReply(
   const [context, llmConfig, history] = await Promise.all([
     buildJobChatPromptContext(options.jobId),
     resolveLlmRuntimeSettings(),
-    buildConversationMessages(options.threadId),
+    buildConversationMessages(options.threadId, options.parentMessageId),
   ]);
 
   const requestId = getRequestId() ?? "unknown";
@@ -237,6 +260,7 @@ async function runAssistantReply(
       status: "partial",
       version: options.version ?? 1,
       replacesMessageId: options.replaceMessageId ?? null,
+      parentMessageId: options.parentMessageId ?? null,
     });
   } catch (error) {
     await jobChatRepo.completeRun(run.id, {
@@ -424,6 +448,11 @@ export async function sendMessage(input: {
     throw notFound("Thread not found for this job");
   }
 
+  // Determine parent: last message on the current active path
+  const activePath = await jobChatRepo.getActivePathFromRoot(input.threadId);
+  const parentId =
+    activePath.length > 0 ? activePath[activePath.length - 1].id : null;
+
   const userMessage = await jobChatRepo.createMessage({
     threadId: input.threadId,
     jobId: input.jobId,
@@ -432,14 +461,27 @@ export async function sendMessage(input: {
     status: "complete",
     tokensIn: estimateTokenCount(content),
     tokensOut: null,
+    parentMessageId: parentId,
   });
+
+  // Update parent's activeChildId to point to this new user message
+  if (parentId) {
+    await jobChatRepo.setActiveChild(parentId, userMessage.id);
+  } else {
+    // First message in thread — set as active root
+    await jobChatRepo.setActiveRoot(input.threadId, userMessage.id);
+  }
 
   const result = await runAssistantReply({
     jobId: input.jobId,
     threadId: input.threadId,
     prompt: content,
+    parentMessageId: userMessage.id,
     stream: input.stream,
   });
+
+  // Update user message's activeChildId to point to the assistant reply
+  await jobChatRepo.setActiveChild(userMessage.id, result.messageId);
 
   const assistantMessage = await jobChatRepo.getMessageById(result.messageId);
   return {
@@ -487,36 +529,48 @@ export async function regenerateMessage(input: {
     throw badRequest("Only assistant messages can be regenerated");
   }
 
-  const latestAssistant = await jobChatRepo.getLatestAssistantMessage(
-    input.threadId,
-  );
-  if (!latestAssistant || latestAssistant.id !== target.id) {
-    throw badRequest("Only the latest assistant message can be regenerated");
+  // Find the parent user message (the user message that prompted this assistant reply).
+  // With branching, the parent is stored directly in parentMessageId.
+  let parentUserMessage: JobChatMessage | null = null;
+  if (target.parentMessageId) {
+    parentUserMessage = await jobChatRepo.getMessageById(
+      target.parentMessageId,
+    );
   }
 
-  const messages = await jobChatRepo.listMessagesForThread(input.threadId, {
-    limit: 200,
-  });
-  const targetIndex = messages.findIndex((message) => message.id === target.id);
-  const priorUser =
-    targetIndex > 0
-      ? [...messages.slice(0, targetIndex)]
-          .reverse()
-          .find((message) => message.role === "user")
-      : null;
+  // Fallback for legacy messages without parentMessageId: walk backwards in time
+  if (!parentUserMessage || parentUserMessage.role !== "user") {
+    const messages = await jobChatRepo.listMessagesForThread(input.threadId, {
+      limit: 200,
+    });
+    const targetIndex = messages.findIndex(
+      (message) => message.id === target.id,
+    );
+    parentUserMessage =
+      targetIndex > 0
+        ? ([...messages.slice(0, targetIndex)]
+            .reverse()
+            .find((message) => message.role === "user") ?? null)
+        : null;
+  }
 
-  if (!priorUser) {
+  if (!parentUserMessage) {
     throw badRequest("Could not find a user message to regenerate from");
   }
 
+  // Create a new sibling assistant message with the same parent (the user message)
   const result = await runAssistantReply({
     jobId: input.jobId,
     threadId: input.threadId,
-    prompt: priorUser.content,
+    prompt: parentUserMessage.content,
     replaceMessageId: target.id,
     version: (target.version || 1) + 1,
+    parentMessageId: parentUserMessage.id,
     stream: input.stream,
   });
+
+  // Update parent's activeChildId to the new assistant message (switch to new branch)
+  await jobChatRepo.setActiveChild(parentUserMessage.id, result.messageId);
 
   const assistantMessage = await jobChatRepo.getMessageById(result.messageId);
 
@@ -537,6 +591,138 @@ export async function regenerateMessageForJob(input: {
     threadId: thread.id,
     assistantMessageId: input.assistantMessageId,
     stream: input.stream,
+  });
+}
+
+export async function editMessage(input: {
+  jobId: string;
+  threadId: string;
+  messageId: string;
+  content: string;
+  stream?: GenerateReplyOptions["stream"];
+}) {
+  const content = input.content.trim();
+  if (!content) {
+    throw badRequest("Message content is required");
+  }
+
+  const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
+  if (!thread) {
+    throw notFound("Thread not found for this job");
+  }
+
+  const target = await jobChatRepo.getMessageById(input.messageId);
+  if (
+    !target ||
+    target.threadId !== input.threadId ||
+    target.jobId !== input.jobId
+  ) {
+    throw notFound("Message not found for this thread");
+  }
+
+  if (target.role !== "user") {
+    throw badRequest("Only user messages can be edited");
+  }
+
+  // Create a new sibling user message (same parent as the original)
+  const newUserMessage = await jobChatRepo.createMessage({
+    threadId: input.threadId,
+    jobId: input.jobId,
+    role: "user",
+    content,
+    status: "complete",
+    tokensIn: estimateTokenCount(content),
+    tokensOut: null,
+    parentMessageId: target.parentMessageId,
+  });
+
+  // Update the grandparent's activeChildId to point to the new user message
+  if (target.parentMessageId) {
+    await jobChatRepo.setActiveChild(target.parentMessageId, newUserMessage.id);
+  } else {
+    // Editing a root message — set the new message as active root
+    await jobChatRepo.setActiveRoot(input.threadId, newUserMessage.id);
+  }
+
+  // Generate assistant reply as a child of the new user message
+  const result = await runAssistantReply({
+    jobId: input.jobId,
+    threadId: input.threadId,
+    prompt: content,
+    parentMessageId: newUserMessage.id,
+    stream: input.stream,
+  });
+
+  // Update new user message's activeChildId to the assistant reply
+  await jobChatRepo.setActiveChild(newUserMessage.id, result.messageId);
+
+  const assistantMessage = await jobChatRepo.getMessageById(result.messageId);
+  return {
+    userMessage: newUserMessage,
+    assistantMessage,
+    runId: result.runId,
+  };
+}
+
+export async function editMessageForJob(input: {
+  jobId: string;
+  messageId: string;
+  content: string;
+  stream?: GenerateReplyOptions["stream"];
+}) {
+  const thread = await ensureJobThread(input.jobId);
+  return editMessage({
+    jobId: input.jobId,
+    threadId: thread.id,
+    messageId: input.messageId,
+    content: input.content,
+    stream: input.stream,
+  });
+}
+
+export async function switchBranch(input: {
+  jobId: string;
+  threadId: string;
+  messageId: string;
+}): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
+  const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
+  if (!thread) {
+    throw notFound("Thread not found for this job");
+  }
+
+  const target = await jobChatRepo.getMessageById(input.messageId);
+  if (
+    !target ||
+    target.threadId !== input.threadId ||
+    target.jobId !== input.jobId
+  ) {
+    throw notFound("Message not found for this thread");
+  }
+
+  if (target.parentMessageId) {
+    // Update the parent's activeChildId to point to this sibling
+    await jobChatRepo.setActiveChild(target.parentMessageId, target.id);
+  } else {
+    // Switching between root messages
+    await jobChatRepo.setActiveRoot(input.threadId, target.id);
+  }
+
+  // Return the updated active path
+  return listMessages({
+    jobId: input.jobId,
+    threadId: input.threadId,
+  });
+}
+
+export async function switchBranchForJob(input: {
+  jobId: string;
+  messageId: string;
+}): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
+  const thread = await ensureJobThread(input.jobId);
+  return switchBranch({
+    jobId: input.jobId,
+    threadId: thread.id,
+    messageId: input.messageId,
   });
 }
 

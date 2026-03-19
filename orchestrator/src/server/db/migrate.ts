@@ -103,6 +103,7 @@ const migrations = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_message_at TEXT,
+    active_root_message_id TEXT,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -117,6 +118,8 @@ const migrations = [
     tokens_out INTEGER,
     version INTEGER NOT NULL DEFAULT 1,
     replaces_message_id TEXT,
+    parent_message_id TEXT,
+    active_child_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (thread_id) REFERENCES job_chat_threads(id) ON DELETE CASCADE,
@@ -576,6 +579,45 @@ const migrations = [
        'closed'
      )`,
 
+  // Branching conversations: add parent_message_id and active_child_id to job_chat_messages
+  `ALTER TABLE job_chat_messages ADD COLUMN parent_message_id TEXT`,
+  `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
+  `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
+
+  // Backfill: link existing messages into a linear chain (each message's parent = its predecessor)
+  `UPDATE job_chat_messages
+   SET parent_message_id = (
+     SELECT prev.id
+     FROM job_chat_messages prev
+     WHERE prev.thread_id = job_chat_messages.thread_id
+       AND prev.created_at < job_chat_messages.created_at
+     ORDER BY prev.created_at DESC
+     LIMIT 1
+   )
+   WHERE parent_message_id IS NULL`,
+
+  // Backfill: for regenerated messages, re-link as siblings (same parent as the message they replaced)
+  `UPDATE job_chat_messages
+   SET parent_message_id = (
+     SELECT orig.parent_message_id
+     FROM job_chat_messages orig
+     WHERE orig.id = job_chat_messages.replaces_message_id
+   )
+   WHERE replaces_message_id IS NOT NULL`,
+
+  // Backfill: set active_child_id on every parent to its newest child
+  `UPDATE job_chat_messages
+   SET active_child_id = (
+     SELECT child.id
+     FROM job_chat_messages child
+     WHERE child.parent_message_id = job_chat_messages.id
+     ORDER BY child.created_at DESC
+     LIMIT 1
+   )
+   WHERE id IN (SELECT DISTINCT parent_message_id FROM job_chat_messages WHERE parent_message_id IS NOT NULL)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_job_chat_messages_parent ON job_chat_messages(parent_message_id)`,
+
   // Backfill: Mark closed applications from latest stage event.
   `UPDATE jobs
    SET
@@ -621,7 +663,13 @@ for (const migration of migrations) {
           .includes("alter table post_application_messages add column") ||
         migration
           .toLowerCase()
-          .includes("alter table stage_events add column")) &&
+          .includes("alter table stage_events add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table job_chat_messages add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table job_chat_threads add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
     if (isDuplicateColumn) {

@@ -9,6 +9,7 @@ import type {
   ApplicationTask,
   AppSettings,
   BackupInfo,
+  BranchInfo,
   DemoInfoResponse,
   Job,
   JobActionRequest,
@@ -559,7 +560,7 @@ export async function listJobChatThreads(jobId: string): Promise<{
 export async function listJobGhostwriterMessages(
   jobId: string,
   options?: { limit?: number; offset?: number },
-): Promise<{ messages: JobChatMessage[] }> {
+): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
   const params = new URLSearchParams();
   if (typeof options?.limit === "number") {
     params.set("limit", String(options.limit));
@@ -568,7 +569,7 @@ export async function listJobGhostwriterMessages(
     params.set("offset", String(options.offset));
   }
   const query = params.toString();
-  return fetchApi<{ messages: JobChatMessage[] }>(
+  return fetchApi<{ messages: JobChatMessage[]; branches: BranchInfo[] }>(
     `/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`,
   );
 }
@@ -743,6 +744,37 @@ export async function streamRegenerateJobGhostwriterMessage(
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
+    },
+  );
+}
+
+export async function editJobGhostwriterMessage(
+  jobId: string,
+  messageId: string,
+  input: { content: string; signal?: AbortSignal },
+  handlers: {
+    onEvent: (event: JobChatStreamEvent) => void;
+  },
+): Promise<void> {
+  return streamSseEvents(
+    `/jobs/${jobId}/chat/messages/${messageId}/edit`,
+    { content: input.content, stream: true },
+    {
+      onEvent: handlers.onEvent,
+      signal: input.signal,
+    },
+  );
+}
+
+export async function switchJobGhostwriterBranch(
+  jobId: string,
+  messageId: string,
+): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
+  return fetchApi<{ messages: JobChatMessage[]; branches: BranchInfo[] }>(
+    `/jobs/${jobId}/chat/messages/${messageId}/switch-branch`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
     },
   );
 }

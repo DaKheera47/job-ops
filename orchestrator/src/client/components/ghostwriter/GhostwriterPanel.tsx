@@ -1,5 +1,10 @@
 import * as api from "@client/api";
-import type { Job, JobChatMessage, JobChatStreamEvent } from "@shared/types";
+import type {
+  BranchInfo,
+  Job,
+  JobChatMessage,
+  JobChatStreamEvent,
+} from "@shared/types";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -22,6 +27,7 @@ type GhostwriterPanelProps = {
 
 export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
+  const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
@@ -49,6 +55,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       limit: 300,
     });
     setMessages(data.messages);
+    setBranches(data.branches);
   }, [job.id]);
 
   const load = useCallback(async () => {
@@ -94,6 +101,8 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
               tokensOut: null,
               version: 1,
               replacesMessageId: null,
+              parentMessageId: null,
+              activeChildId: null,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             },
@@ -158,6 +167,8 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         tokensOut: null,
         version: 1,
         replacesMessageId: null,
+        parentMessageId: null,
+        activeChildId: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -209,43 +220,120 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     }
   }, [activeRunId, job.id, loadMessages]);
 
-  const canRegenerate = useMemo(() => {
-    if (isStreaming || messages.length === 0) return false;
-    const last = messages[messages.length - 1];
-    return last.role === "assistant";
-  }, [isStreaming, messages]);
+  const regenerate = useCallback(
+    async (assistantMessageId: string) => {
+      if (isStreaming) return;
 
-  const regenerate = useCallback(async () => {
-    if (isStreaming || messages.length === 0) return;
-    const last = messages[messages.length - 1];
-    if (last.role !== "assistant") return;
+      // Remove messages below the branch point (everything after the regenerated message disappears)
+      setMessages((current) => {
+        const targetIndex = current.findIndex(
+          (m) => m.id === assistantMessageId,
+        );
+        if (targetIndex === -1) return current;
+        return current.slice(0, targetIndex);
+      });
 
-    setIsStreaming(true);
-    const controller = new AbortController();
-    streamAbortRef.current = controller;
+      setIsStreaming(true);
+      const controller = new AbortController();
+      streamAbortRef.current = controller;
 
-    try {
-      await api.streamRegenerateJobGhostwriterMessage(
-        job.id,
-        last.id,
-        { signal: controller.signal },
-        { onEvent: onStreamEvent },
-      );
-      await loadMessages();
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        return;
+      try {
+        await api.streamRegenerateJobGhostwriterMessage(
+          job.id,
+          assistantMessageId,
+          { signal: controller.signal },
+          { onEvent: onStreamEvent },
+        );
+        await loadMessages();
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to regenerate response";
+        toast.error(message);
+      } finally {
+        streamAbortRef.current = null;
+        setIsStreaming(false);
       }
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to regenerate response";
-      toast.error(message);
-    } finally {
-      streamAbortRef.current = null;
-      setIsStreaming(false);
-    }
-  }, [isStreaming, job.id, loadMessages, messages, onStreamEvent]);
+    },
+    [isStreaming, job.id, loadMessages, onStreamEvent],
+  );
+
+  const editMessage = useCallback(
+    async (messageId: string, content: string) => {
+      if (isStreaming) return;
+
+      // Remove the edited message and everything below it (old branch disappears)
+      setMessages((current) => {
+        const targetIndex = current.findIndex((m) => m.id === messageId);
+        if (targetIndex === -1) return current;
+        // Keep everything before the edited message, add an optimistic new user message
+        const before = current.slice(0, targetIndex);
+        return [
+          ...before,
+          {
+            id: `tmp-edit-${Date.now()}`,
+            threadId: current[0]?.threadId || "pending-thread",
+            jobId: job.id,
+            role: "user" as const,
+            content,
+            status: "complete" as const,
+            tokensIn: null,
+            tokensOut: null,
+            version: 1,
+            replacesMessageId: null,
+            parentMessageId: null,
+            activeChildId: null,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ];
+      });
+
+      setIsStreaming(true);
+      const controller = new AbortController();
+      streamAbortRef.current = controller;
+
+      try {
+        await api.editJobGhostwriterMessage(
+          job.id,
+          messageId,
+          { content, signal: controller.signal },
+          { onEvent: onStreamEvent },
+        );
+        await loadMessages();
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+        const message =
+          error instanceof Error ? error.message : "Failed to edit message";
+        toast.error(message);
+      } finally {
+        streamAbortRef.current = null;
+        setIsStreaming(false);
+      }
+    },
+    [isStreaming, job.id, loadMessages, onStreamEvent],
+  );
+
+  const switchBranch = useCallback(
+    async (messageId: string) => {
+      try {
+        const result = await api.switchJobGhostwriterBranch(job.id, messageId);
+        setMessages(result.messages);
+        setBranches(result.branches);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to switch branch";
+        toast.error(message);
+      }
+    },
+    [job.id],
+  );
 
   const canReset = useMemo(() => {
     return !isStreaming && messages.length > 0;
@@ -255,6 +343,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     try {
       await api.resetJobGhostwriterConversation(job.id);
       setMessages([]);
+      setBranches([]);
       toast.success("Conversation cleared");
     } catch (error) {
       const message =
@@ -283,8 +372,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         ) : (
           <MessageList
             messages={messages}
+            branches={branches}
             isStreaming={isStreaming}
             streamingMessageId={streamingMessageId}
+            onRegenerate={regenerate}
+            onEdit={editMessage}
+            onSwitchBranch={switchBranch}
           />
         )}
       </div>
@@ -293,9 +386,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         <Composer
           disabled={isLoading || isStreaming}
           isStreaming={isStreaming}
-          canRegenerate={canRegenerate}
           canReset={canReset}
-          onRegenerate={regenerate}
           onStop={stopStreaming}
           onSend={sendMessage}
           onReset={() => setIsResetDialogOpen(true)}

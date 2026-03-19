@@ -18,6 +18,12 @@ const mocks = vi.hoisted(() => ({
     getMessageById: vi.fn(),
     getLatestAssistantMessage: vi.fn(),
     getRunById: vi.fn(),
+    getActivePathFromRoot: vi.fn(),
+    getAncestorPath: vi.fn(),
+    setActiveChild: vi.fn(),
+    setActiveRoot: vi.fn(),
+    getSiblingsOf: vi.fn(),
+    getChildrenOfMessage: vi.fn(),
   },
   settings: {
     getAllSettings: vi.fn(),
@@ -57,6 +63,12 @@ vi.mock("../repositories/ghostwriter", () => ({
   getMessageById: mocks.repo.getMessageById,
   getLatestAssistantMessage: mocks.repo.getLatestAssistantMessage,
   getRunById: mocks.repo.getRunById,
+  getActivePathFromRoot: mocks.repo.getActivePathFromRoot,
+  getAncestorPath: mocks.repo.getAncestorPath,
+  setActiveChild: mocks.repo.setActiveChild,
+  getSiblingsOf: mocks.repo.getSiblingsOf,
+  getChildrenOfMessage: mocks.repo.getChildrenOfMessage,
+  setActiveRoot: mocks.repo.setActiveRoot,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -80,6 +92,7 @@ const thread = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   lastMessageAt: null,
+  activeRootMessageId: "user-1",
 };
 
 const baseUserMessage: JobChatMessage = {
@@ -93,6 +106,8 @@ const baseUserMessage: JobChatMessage = {
   tokensOut: null,
   version: 1,
   replacesMessageId: null,
+  parentMessageId: null,
+  activeChildId: "assistant-1",
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -108,6 +123,8 @@ const baseAssistantMessage: JobChatMessage = {
   tokensOut: 4,
   version: 1,
   replacesMessageId: null,
+  parentMessageId: "user-1",
+  activeChildId: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -182,6 +199,20 @@ describe("ghostwriter service", () => {
         status: "failed",
       },
     ]);
+    mocks.repo.getActivePathFromRoot.mockResolvedValue([
+      baseUserMessage,
+      baseAssistantMessage,
+    ]);
+    mocks.repo.getAncestorPath.mockResolvedValue([
+      baseUserMessage,
+      baseAssistantMessage,
+    ]);
+    mocks.repo.setActiveChild.mockResolvedValue(undefined);
+    mocks.repo.setActiveRoot.mockResolvedValue(undefined);
+    mocks.repo.getSiblingsOf.mockResolvedValue({
+      siblings: [baseAssistantMessage],
+      activeIndex: 0,
+    });
     mocks.llmCallJson.mockResolvedValue({
       success: true,
       data: { response: "Thanks for your question." },
@@ -328,23 +359,43 @@ describe("ghostwriter service", () => {
     expect(result.assistantMessage?.status).toBe("cancelled");
   });
 
-  it("enforces regenerate only on latest assistant message", async () => {
-    mocks.repo.getMessageById.mockResolvedValue(baseAssistantMessage);
-    mocks.repo.getLatestAssistantMessage.mockResolvedValue({
+  it("regenerates any assistant message, not just the latest", async () => {
+    const assistantPartial: JobChatMessage = {
       ...baseAssistantMessage,
-      id: "assistant-latest",
+      id: "assistant-regen",
+      content: "",
+      status: "partial",
+      parentMessageId: "user-1",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-regen",
+      content: "Thanks for your question.",
+      status: "complete",
+      parentMessageId: "user-1",
+    };
+
+    mocks.repo.getMessageById
+      .mockResolvedValueOnce(baseAssistantMessage) // target lookup
+      .mockResolvedValueOnce(baseUserMessage) // parent user lookup
+      .mockResolvedValueOnce(assistantComplete); // final lookup after run
+
+    mocks.repo.getAncestorPath.mockResolvedValue([baseUserMessage]);
+    mocks.repo.createMessage.mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantComplete);
+
+    const result = await regenerateMessage({
+      jobId: "job-1",
+      threadId: "thread-1",
+      assistantMessageId: "assistant-1",
     });
 
-    await expect(
-      regenerateMessage({
-        jobId: "job-1",
-        threadId: "thread-1",
-        assistantMessageId: "assistant-1",
-      }),
-    ).rejects.toMatchObject({
-      code: "INVALID_REQUEST",
-      status: 400,
-    });
+    expect(result.runId).toBe("run-1");
+    expect(result.assistantMessage?.id).toBe("assistant-regen");
+    expect(mocks.repo.setActiveChild).toHaveBeenCalledWith(
+      "user-1",
+      "assistant-regen",
+    );
   });
 
   it("returns alreadyFinished when cancelling non-running run", async () => {

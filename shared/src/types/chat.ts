@@ -29,6 +29,7 @@ export interface JobChatThread {
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
+  activeRootMessageId: string | null;
 }
 
 export interface JobChatMessage {
@@ -42,8 +43,19 @@ export interface JobChatMessage {
   tokensOut: number | null;
   version: number;
   replacesMessageId: string | null;
+  parentMessageId: string | null;
+  activeChildId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BranchInfo {
+  /** The message ID this branch info belongs to (the currently active sibling). */
+  messageId: string;
+  /** Ordered sibling IDs at this branch point (by createdAt). */
+  siblingIds: string[];
+  /** 0-based index of the active sibling within siblingIds. */
+  activeIndex: number;
 }
 
 export interface JobChatRun {

@@ -176,6 +176,7 @@ export const jobChatThreads = sqliteTable(
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
     lastMessageAt: text("last_message_at"),
+    activeRootMessageId: text("active_root_message_id"),
   },
   (table) => ({
     jobUpdatedIndex: index("idx_job_chat_threads_job_updated").on(
@@ -204,6 +205,8 @@ export const jobChatMessages = sqliteTable(
     tokensOut: integer("tokens_out"),
     version: integer("version").notNull().default(1),
     replacesMessageId: text("replaces_message_id"),
+    parentMessageId: text("parent_message_id"),
+    activeChildId: text("active_child_id"),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },

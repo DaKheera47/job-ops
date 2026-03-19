@@ -2,6 +2,19 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
+const baseMsgFields = {
+  threadId: "thread-1",
+  jobId: "job-1",
+  tokensIn: 1,
+  tokensOut: null,
+  version: 1,
+  replacesMessageId: null,
+  parentMessageId: null,
+  activeChildId: null,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 vi.mock("@server/services/ghostwriter", () => ({
   listThreads: vi.fn(async () => [
     {
@@ -23,97 +36,63 @@ vi.mock("@server/services/ghostwriter", () => ({
       lastMessageAt: null,
     }),
   ),
-  listMessages: vi.fn(async () => [
-    {
-      id: "message-1",
-      threadId: "thread-1",
-      jobId: "job-1",
-      role: "user",
-      content: "hello",
-      status: "complete",
-      tokensIn: 1,
-      tokensOut: null,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ]),
-  listMessagesForJob: vi.fn(async () => [
-    {
-      id: "message-1",
-      threadId: "thread-1",
-      jobId: "job-1",
-      role: "user",
-      content: "hello",
-      status: "complete",
-      tokensIn: 1,
-      tokensOut: null,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ]),
+  listMessages: vi.fn(async () => ({
+    messages: [
+      {
+        id: "message-1",
+        ...baseMsgFields,
+        role: "user",
+        content: "hello",
+        status: "complete",
+      },
+    ],
+    branches: [],
+  })),
+  listMessagesForJob: vi.fn(async () => ({
+    messages: [
+      {
+        id: "message-1",
+        ...baseMsgFields,
+        role: "user",
+        content: "hello",
+        status: "complete",
+      },
+    ],
+    branches: [],
+  })),
   sendMessage: vi.fn(async () => ({
     userMessage: {
       id: "user-1",
-      threadId: "thread-1",
-      jobId: "job-1",
+      ...baseMsgFields,
       role: "user",
       content: "hello",
       status: "complete",
-      tokensIn: 1,
-      tokensOut: null,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
     assistantMessage: {
       id: "assistant-1",
-      threadId: "thread-1",
-      jobId: "job-1",
+      ...baseMsgFields,
       role: "assistant",
       content: "hi",
       status: "complete",
-      tokensIn: 1,
       tokensOut: 1,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
     runId: "run-1",
   })),
   sendMessageForJob: vi.fn(async () => ({
     userMessage: {
       id: "user-1",
-      threadId: "thread-1",
-      jobId: "job-1",
+      ...baseMsgFields,
       role: "user",
       content: "hello",
       status: "complete",
-      tokensIn: 1,
-      tokensOut: null,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
     assistantMessage: {
       id: "assistant-1",
-      threadId: "thread-1",
-      jobId: "job-1",
+      ...baseMsgFields,
       role: "assistant",
       content: "hi",
       status: "complete",
-      tokensIn: 1,
       tokensOut: 1,
-      version: 1,
-      replacesMessageId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     },
     runId: "run-1",
   })),
@@ -122,18 +101,46 @@ vi.mock("@server/services/ghostwriter", () => ({
     runId: "run-2",
     assistantMessage: {
       id: "assistant-2",
-      threadId: "thread-1",
-      jobId: "job-1",
+      ...baseMsgFields,
       role: "assistant",
       content: "updated",
       status: "complete",
-      tokensIn: 1,
       tokensOut: 1,
       version: 2,
       replacesMessageId: "assistant-1",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      parentMessageId: "user-1",
     },
+  })),
+  editMessageForJob: vi.fn(async () => ({
+    userMessage: {
+      id: "user-2",
+      ...baseMsgFields,
+      role: "user",
+      content: "edited",
+      status: "complete",
+    },
+    assistantMessage: {
+      id: "assistant-3",
+      ...baseMsgFields,
+      role: "assistant",
+      content: "reply to edit",
+      status: "complete",
+      tokensOut: 3,
+      parentMessageId: "user-2",
+    },
+    runId: "run-3",
+  })),
+  switchBranchForJob: vi.fn(async () => ({
+    messages: [
+      {
+        id: "message-1",
+        ...baseMsgFields,
+        role: "user",
+        content: "hello",
+        status: "complete",
+      },
+    ],
+    branches: [],
   })),
 }));
 
@@ -151,7 +158,7 @@ describe.sequential("Ghostwriter API", () => {
     await stopServer({ server, closeDb, tempDir });
   });
 
-  it("lists messages with request id metadata", async () => {
+  it("lists messages with request id metadata and branch info", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/messages`, {
       headers: {
         "x-request-id": "chat-req-1",
@@ -163,6 +170,7 @@ describe.sequential("Ghostwriter API", () => {
     expect(res.headers.get("x-request-id")).toBe("chat-req-1");
     expect(body.ok).toBe(true);
     expect(body.data.messages.length).toBe(1);
+    expect(body.data.branches).toEqual([]);
     expect(body.meta.requestId).toBe("chat-req-1");
   });
 
@@ -181,5 +189,39 @@ describe.sequential("Ghostwriter API", () => {
     expect(messageBody.data.runId).toBe("run-1");
     expect(messageBody.data.assistantMessage.role).toBe("assistant");
     expect(typeof messageBody.meta.requestId).toBe("string");
+  });
+
+  it("edits a user message", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/jobs/job-1/chat/messages/user-1/edit`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "edited content" }),
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.runId).toBe("run-3");
+    expect(body.data.userMessage.content).toBe("edited");
+  });
+
+  it("switches branch", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/jobs/job-1/chat/messages/message-1/switch-branch`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.messages.length).toBe(1);
+    expect(body.data.branches).toEqual([]);
   });
 });

@@ -1,5 +1,5 @@
 import { getMetaShortcutLabel, isMetaKeyPressed } from "@client/lib/meta-key";
-import { Eraser, RefreshCcw, Send, Square } from "lucide-react";
+import { Eraser, Send, Square } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 type ComposerProps = {
   disabled?: boolean;
   isStreaming: boolean;
-  canRegenerate: boolean;
   canReset: boolean;
-  onRegenerate: () => Promise<void>;
   onStop: () => Promise<void>;
   onSend: (content: string) => Promise<void>;
   onReset: () => void;
@@ -19,9 +17,7 @@ type ComposerProps = {
 export const Composer: React.FC<ComposerProps> = ({
   disabled,
   isStreaming,
-  canRegenerate,
   canReset,
-  onRegenerate,
   onStop,
   onSend,
   onReset,
@@ -67,7 +63,7 @@ export const Composer: React.FC<ComposerProps> = ({
             <Eraser className="h-3.5 w-3.5" />
           </Button>
 
-          {isStreaming ? (
+          {isStreaming && (
             <Button
               size="icon"
               variant="outline"
@@ -76,17 +72,6 @@ export const Composer: React.FC<ComposerProps> = ({
               title="Stop generating"
             >
               <Square className="h-3.5 w-3.5" />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={() => void onRegenerate()}
-              disabled={disabled || !canRegenerate}
-              aria-label="Regenerate response"
-              title="Regenerate response"
-            >
-              <RefreshCcw className="h-3.5 w-3.5" />
             </Button>
           )}
 
