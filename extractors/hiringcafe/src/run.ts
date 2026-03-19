@@ -259,7 +259,10 @@ export async function runHiringCafe(
             try {
               const parsed = JSON.parse(raw) as Record<string, unknown>;
               // Detect challenge_required signal from the child process
-              if (parsed.event === "challenge_required" && typeof parsed.url === "string") {
+              if (
+                parsed.event === "challenge_required" &&
+                typeof parsed.url === "string"
+              ) {
                 challengeRequired = parsed.url;
                 return;
               }

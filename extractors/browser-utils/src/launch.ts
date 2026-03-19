@@ -18,7 +18,8 @@ const DEFAULTS: Required<Omit<BrowserLaunchOptions, "args">> = {
   humanize: true,
   geoip: true,
   block_webrtc: true,
-  // block_images intentionally omitted — camoufox warns it triggers WAF detection
+  // block_images intentionally NOT set — camoufox docs warn it triggers WAF
+  // detection because CF checks whether images are loaded by the browser
 };
 
 /**

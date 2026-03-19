@@ -30,11 +30,16 @@ export async function solveChallenge(
   timeoutMs = 5 * 60 * 1000,
 ): Promise<SolverResult> {
   let context: BrowserContext | undefined;
-  let browser: Awaited<ReturnType<typeof import("playwright").firefox.launch>> | undefined;
+  let browser:
+    | Awaited<ReturnType<typeof import("playwright").firefox.launch>>
+    | undefined;
 
   try {
     const { firefox } = await import("playwright");
-    // Always headed — the whole point is the human needs to see and interact
+    // Always headed — the whole point is a human needs to see the challenge
+    // and click through it. The solved cf_clearance cookie is tied to this
+    // browser's UA + TLS fingerprint, so extractors must reuse the same UA
+    // (persisted in the cookie jar) when creating their headless context.
     const { launchOptions } = await createLaunchOptions({ headless: false });
     browser = await firefox.launch(launchOptions);
     context = await browser.newContext();

@@ -82,7 +82,9 @@ const crawler = new PlaywrightCrawler({
   requestHandlerTimeoutSecs: 100,
   maxRequestRetries: 3,
   browserPoolOptions: {
-    // Disable the default fingerprint spoofing to avoid conflicts with Camoufox.
+    // Crawlee injects its own fingerprints by default. Camoufox already handles
+    // fingerprint spoofing at the C++ level — having both active causes conflicts
+    // (double-spoofed values that look obviously fake to CF).
     useFingerprints: false,
   },
   launchContext: {

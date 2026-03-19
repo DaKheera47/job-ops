@@ -316,7 +316,10 @@ export async function runUkVisaJobs(
               const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
               try {
                 const parsed = JSON.parse(raw) as Record<string, unknown>;
-                if (parsed.event === "challenge_required" && typeof parsed.url === "string") {
+                if (
+                  parsed.event === "challenge_required" &&
+                  typeof parsed.url === "string"
+                ) {
                   challengeRequired = parsed.url;
                   return;
                 }

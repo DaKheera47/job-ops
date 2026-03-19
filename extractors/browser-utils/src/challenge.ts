@@ -122,8 +122,9 @@ export async function navigateWithChallenge(
     return { response, challengeResult };
   }
 
-  // Response looked fine, but page content might still be a challenge
-  // (some CF challenges return 200 with challenge HTML)
+  // Response looked fine HTTP-wise, but page content might still be a challenge.
+  // CF's "managed challenge" variant returns HTTP 200 with challenge HTML —
+  // checking headers alone would miss it.
   if (await isChallengePage(page)) {
     const challengeResult = await waitForChallengeResolution(
       page,

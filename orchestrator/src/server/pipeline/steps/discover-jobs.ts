@@ -4,6 +4,7 @@ import { getExtractorRegistry } from "@server/extractors/registry";
 import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { asyncPool } from "@server/utils/async-pool";
+import type { ExtractorSourceId } from "@shared/extractors";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import {
   buildLocationEvidence as buildSharedLocationEvidence,
@@ -13,7 +14,6 @@ import {
 } from "@shared/location-domain.js";
 import { formatCountryLabel } from "@shared/location-support.js";
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
-import type { ExtractorSourceId } from "@shared/extractors";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import {
   type CrawlSource,
@@ -343,6 +343,9 @@ export async function discoverJobsStep(args: {
     },
   });
 
+  // Collect challenges after ALL extractors finish, not on first failure.
+  // This way the user sees every challenged site at once and can solve them
+  // in a single batch, rather than solve-one → re-run → hit-next → solve-again.
   const pendingChallenges: PendingChallenge[] = [];
   for (const sourceResult of sourceResults) {
     discoveredJobs.push(...sourceResult.discoveredJobs);

@@ -405,88 +405,79 @@ const solveChallengeSchema = z.object({
   url: z.string().url(),
 });
 
-pipelineRouter.post(
-  "/solve-challenge",
-  async (req: Request, res: Response) => {
-    try {
-      const body = solveChallengeSchema.parse(req.body);
+pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
+  try {
+    const body = solveChallengeSchema.parse(req.body);
 
-      const pending = getPendingChallenges();
-      const match = pending.find((c) => c.extractorId === body.extractorId);
-      if (!match) {
-        return fail(
-          res,
-          notFound(
-            `No pending challenge for extractor "${body.extractorId}"`,
-          ),
-        );
-      }
-
-      logger.info("Launching challenge solver", {
-        route: "/api/pipeline/solve-challenge",
-        extractorId: body.extractorId,
-        url: body.url,
-      });
-
-      // Resolve the extractor's storage directory so cookies are saved where
-      // the extractor reads them from on the next headless run.
-      // Convention: each Playwright extractor stores cookies at
-      // extractors/<id>/storage/<id>-cookies.json  (see browser-utils/cookies.ts)
-      const storageDir = resolve(
-        process.cwd(),
-        `../extractors/${body.extractorId}/storage`,
-      );
-
-      // Dynamic import: browser-utils pulls in playwright which is heavy.
-      // A top-level import would slow down every server startup even though
-      // most pipeline runs never hit a challenge.
-      const { solveChallenge } = await import("browser-utils");
-      const result = await solveChallenge(
-        body.url,
-        body.extractorId,
-        storageDir,
-      );
-
-      if (result.status === "solved") {
-        const { remaining } = resolvePipelineChallenge(body.extractorId);
-
-        logger.info("Challenge solved", {
-          route: "/api/pipeline/solve-challenge",
-          extractorId: body.extractorId,
-          challengesRemaining: remaining,
-        });
-
-        ok(res, {
-          status: "solved",
-          extractorId: body.extractorId,
-          challengesRemaining: remaining,
-        });
-      } else {
-        const message =
-          result.status === "timeout"
-            ? "Challenge timed out — browser was open for 5 minutes without the challenge being solved"
-            : `Solver error: ${result.message}`;
-
-        logger.warn("Challenge solver did not succeed", {
-          route: "/api/pipeline/solve-challenge",
-          extractorId: body.extractorId,
-          solverStatus: result.status,
-        });
-
-        fail(res, requestTimeout(message));
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return fail(res, badRequest(error.message, error.flatten()));
-      }
-      fail(
+    const pending = getPendingChallenges();
+    const match = pending.find((c) => c.extractorId === body.extractorId);
+    if (!match) {
+      return fail(
         res,
-        new AppError({
-          status: 500,
-          code: "INTERNAL_ERROR",
-          message: error instanceof Error ? error.message : "Unknown error",
-        }),
+        notFound(`No pending challenge for extractor "${body.extractorId}"`),
       );
     }
-  },
-);
+
+    logger.info("Launching challenge solver", {
+      route: "/api/pipeline/solve-challenge",
+      extractorId: body.extractorId,
+      url: body.url,
+    });
+
+    // Resolve the extractor's storage directory so cookies are saved where
+    // the extractor reads them from on the next headless run.
+    // Convention: each Playwright extractor stores cookies at
+    // extractors/<id>/storage/<id>-cookies.json  (see browser-utils/cookies.ts)
+    const storageDir = resolve(
+      process.cwd(),
+      `../extractors/${body.extractorId}/storage`,
+    );
+
+    // Dynamic import: browser-utils pulls in playwright which is heavy.
+    // A top-level import would slow down every server startup even though
+    // most pipeline runs never hit a challenge.
+    const { solveChallenge } = await import("browser-utils");
+    const result = await solveChallenge(body.url, body.extractorId, storageDir);
+
+    if (result.status === "solved") {
+      const { remaining } = resolvePipelineChallenge(body.extractorId);
+
+      logger.info("Challenge solved", {
+        route: "/api/pipeline/solve-challenge",
+        extractorId: body.extractorId,
+        challengesRemaining: remaining,
+      });
+
+      ok(res, {
+        status: "solved",
+        extractorId: body.extractorId,
+        challengesRemaining: remaining,
+      });
+    } else {
+      const message =
+        result.status === "timeout"
+          ? "Challenge timed out — browser was open for 5 minutes without the challenge being solved"
+          : `Solver error: ${result.message}`;
+
+      logger.warn("Challenge solver did not succeed", {
+        route: "/api/pipeline/solve-challenge",
+        extractorId: body.extractorId,
+        solverStatus: result.status,
+      });
+
+      fail(res, requestTimeout(message));
+    }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return fail(res, badRequest(error.message, error.flatten()));
+    }
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
