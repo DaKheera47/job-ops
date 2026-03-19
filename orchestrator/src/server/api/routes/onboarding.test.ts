@@ -341,6 +341,7 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("not configured");
+      expect(body.data.status).toBe(400);
     });
 
     it("returns invalid when only email is provided", async () => {
@@ -389,6 +390,68 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.ok).toBe(true);
       // Should be invalid because credentials are fake
       expect(body.data.valid).toBe(false);
+      expect(body.data.status).toBe(401);
+      expect(body.data.message).toContain("email/password");
+    });
+
+    it("returns a v5 API-key specific warning for invalid v5 credentials", async () => {
+      global.fetch = vi.fn((input, init) => {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.includes("/api/openapi/resumes")) {
+          return Promise.resolve({
+            ok: false,
+            status: 401,
+            headers: { get: () => "application/json" },
+            json: async () => ({ message: "Unauthorized" }),
+          } as unknown as Response);
+        }
+        return originalFetch(input, init);
+      });
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "v5",
+          apiKey: "rr-v5-invalid-key",
+          baseUrl: "http://localhost:3000",
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(false);
+      expect(body.data.status).toBe(401);
+      expect(body.data.message).toContain("API key");
+    });
+
+    it("returns an availability warning when the Reactive Resume instance is unreachable", async () => {
+      global.fetch = vi.fn((input, init) => {
+        const url = typeof input === "string" ? input : input.url;
+        if (url.includes("/api/openapi/resumes")) {
+          return Promise.reject(new TypeError("fetch failed"));
+        }
+        return originalFetch(input, init);
+      });
+
+      const res = await fetch(`${baseUrl}/api/onboarding/validate/rxresume`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "v5",
+          apiKey: "rr-v5-test-key",
+          baseUrl: "http://localhost:3000",
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(body.data.valid).toBe(false);
+      expect(body.data.status).toBe(0);
+      expect(body.data.message).toContain("http://localhost:3000");
+      expect(body.data.message).toContain("unavailable");
     });
 
     it("validates v5 API key mode against Reactive Resume OpenAPI", async () => {
@@ -420,6 +483,7 @@ describe.sequential("Onboarding API routes", () => {
       expect(body.ok).toBe(true);
       expect(body.data.valid).toBe(true);
       expect(body.data.message).toBeNull();
+      expect(body.data.status).toBeNull();
     });
 
     it("handles whitespace-only credentials", async () => {
@@ -433,6 +497,7 @@ describe.sequential("Onboarding API routes", () => {
       expect(res.ok).toBe(true);
       expect(body.data.valid).toBe(false);
       expect(body.data.message).toContain("not configured");
+      expect(body.data.status).toBe(400);
     });
   });
 

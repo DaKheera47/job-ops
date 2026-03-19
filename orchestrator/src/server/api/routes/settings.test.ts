@@ -2,8 +2,13 @@ import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@server/services/rxresume", () => ({
+  clearRxResumeResumeCache: vi.fn(),
   listResumes: vi.fn(),
   getResume: vi.fn(),
+  validateCredentials: vi.fn(async () => ({
+    ok: true,
+    mode: "v5",
+  })),
   validateResumeSchema: vi.fn(async (data: unknown) => ({
     ok: true,
     mode:
@@ -55,6 +60,7 @@ vi.mock("@server/services/rxresume", () => ({
 import {
   extractProjectsFromResume,
   getResume,
+  validateCredentials,
 } from "@server/services/rxresume";
 import { startServer, stopServer } from "./test-utils";
 
@@ -65,6 +71,11 @@ describe.sequential("Settings API routes", () => {
   let tempDir: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
+    vi.mocked(validateCredentials).mockResolvedValue({
+      ok: true,
+      mode: "v5",
+    });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         LLM_API_KEY: "secret-key",
@@ -137,6 +148,108 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
     expect(patchBody.data.rxresumeUrl).toBe("https://resume.example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
+  });
+
+  it("blocks saving when the configured Reactive Resume v5 API key is invalid", async () => {
+    vi.mocked(validateCredentials).mockResolvedValue({
+      ok: false,
+      mode: "v5",
+      status: 401,
+      message:
+        "Reactive Resume v5 API key is invalid. Update the API key and try again.",
+    });
+
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rxresumeMode: "v5",
+        rxresumeApiKey: "invalid-key",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UNAUTHORIZED");
+    expect(body.error.message).toContain("API key");
+
+    const settingsRes = await fetch(`${baseUrl}/api/settings`);
+    const settingsBody = await settingsRes.json();
+    expect(settingsBody.data.rxresumeApiKeyHint).toBeNull();
+  });
+
+  it("blocks saving when Reactive Resume returns another 4xx validation failure", async () => {
+    vi.mocked(validateCredentials).mockResolvedValue({
+      ok: false,
+      mode: "v5",
+      status: 404,
+      message:
+        "Reactive Resume returned HTTP 404 from https://resume.example.com. Check the configured URL and selected mode.",
+    });
+
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rxresumeUrl: "https://resume.example.com",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+
+    const settingsRes = await fetch(`${baseUrl}/api/settings`);
+    const settingsBody = await settingsRes.json();
+    expect(settingsBody.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
+  });
+
+  it("allows saving when Reactive Resume is temporarily unavailable", async () => {
+    vi.mocked(validateCredentials).mockResolvedValue({
+      ok: false,
+      mode: "v5",
+      status: 0,
+      message:
+        "JobOps could not verify Reactive Resume because the instance is unavailable.",
+    });
+
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rxresumeMode: "v5",
+        rxresumeApiKey: "rr-v5-warning-key",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.rxresumeApiKeyHint).toBe("rr-v");
+  });
+
+  it("does not run Reactive Resume validation for unrelated settings saves", async () => {
+    vi.mocked(validateCredentials).mockResolvedValue({
+      ok: false,
+      mode: "v5",
+      status: 401,
+      message: "should not run",
+    });
+
+    const res = await fetch(`${baseUrl}/api/settings`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(validateCredentials).not.toHaveBeenCalled();
   });
 
   it("validates basic auth requirements", async () => {

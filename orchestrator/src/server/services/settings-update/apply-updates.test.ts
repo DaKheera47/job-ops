@@ -67,6 +67,7 @@ describe("applySettingsUpdates", () => {
       "app-key",
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
+    expect(plan.shouldClearRxResumeCaches).toBe(false);
   });
 
   it("marks backup scheduler refresh when backup settings are changed", async () => {
@@ -84,6 +85,7 @@ describe("applySettingsUpdates", () => {
       ]),
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(true);
+    expect(plan.shouldClearRxResumeCaches).toBe(false);
   });
 
   it("resolves and persists normalized resumeProjects", async () => {
@@ -130,5 +132,26 @@ describe("applySettingsUpdates", () => {
       "resumeProjects",
       JSON.stringify(normalized),
     );
+  });
+
+  it("marks Reactive Resume cache clearing when RxResume settings change", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+
+    const plan = await applySettingsUpdates({
+      rxresumeMode: "v4",
+      rxresumeUrl: "https://resume.example.com",
+      rxresumeBaseResumeId: "resume-123",
+    });
+
+    expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
+      expect.arrayContaining([
+        ["rxresumeMode", "v4"],
+        ["rxresumeUrl", "https://resume.example.com"],
+        ["rxresumeBaseResumeId", "resume-123"],
+        ["rxresumeBaseResumeIdV4", "resume-123"],
+      ]),
+    );
+    expect(plan.shouldClearRxResumeCaches).toBe(true);
+    expect(plan.shouldRefreshBackupScheduler).toBe(false);
   });
 });

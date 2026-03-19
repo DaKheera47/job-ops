@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { getSetting } from "@server/repositories/settings";
 import { pickProjectIdsForJob } from "@server/services/projectSelection";
 import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
@@ -71,6 +72,7 @@ export class RxResumeRequestError extends Error {
 
 type ResolveModeOptions = {
   mode?: RxResumeMode;
+  forceRefresh?: boolean;
   v4?: {
     email?: string | null;
     password?: string | null;
@@ -81,6 +83,91 @@ type ResolveModeOptions = {
 
 type V4Credentials = Awaited<ReturnType<typeof readV4Credentials>>;
 type V5Credentials = Awaited<ReturnType<typeof readV5Credentials>>;
+type ResolvedOperationContext =
+  | { mode: "v4"; creds: V4Credentials }
+  | { mode: "v5"; creds: V5Credentials };
+
+const RXRESUME_RESUME_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type RxResumeResumeCacheEntry = {
+  expiresAt: number;
+  resume: RxResumeResume;
+};
+
+const rxResumeResumeCache = new Map<string, RxResumeResumeCacheEntry>();
+const inFlightResumeRequests = new Map<string, Promise<RxResumeResume>>();
+let rxResumeResumeCacheGeneration = 0;
+
+function hasOverrideKey<T extends object>(
+  value: T | undefined,
+  key: PropertyKey,
+): boolean {
+  return Boolean(value) && Object.hasOwn(value, key);
+}
+
+function resolveOverrideValue(args: {
+  overrideValue?: string | null;
+  hasOverride: boolean;
+  storedValue?: string | null;
+  envValue?: string | null;
+  fallback?: string;
+}): string {
+  if (args.hasOverride) {
+    const trimmed = args.overrideValue?.trim() ?? "";
+    return trimmed || args.envValue?.trim() || args.fallback || "";
+  }
+
+  return (
+    args.storedValue?.trim() || args.envValue?.trim() || args.fallback || ""
+  );
+}
+
+function cloneResume(resume: RxResumeResume): RxResumeResume {
+  return structuredClone(resume) as RxResumeResume;
+}
+
+function normalizeBaseUrlForCache(baseUrl: string): string {
+  const trimmed = baseUrl.trim();
+  try {
+    const url = new URL(trimmed);
+    url.hash = "";
+    url.search = "";
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return trimmed.replace(/\/+$/, "");
+  }
+}
+
+function buildCredentialFingerprint(context: ResolvedOperationContext): string {
+  const normalizedCredential =
+    context.mode === "v5"
+      ? context.creds.apiKey.trim()
+      : `${context.creds.email.trim().toLowerCase()}:${context.creds.password.trim()}`;
+
+  return createHash("sha256")
+    .update(normalizedCredential)
+    .digest("hex")
+    .slice(0, 12);
+}
+
+function buildResumeCacheKey(
+  resumeId: string,
+  context: ResolvedOperationContext,
+): string {
+  return [
+    context.mode,
+    normalizeBaseUrlForCache(context.creds.baseUrl),
+    resumeId.trim(),
+    buildCredentialFingerprint(context),
+  ].join("::");
+}
+
+export function clearRxResumeResumeCache(): void {
+  rxResumeResumeCacheGeneration += 1;
+  rxResumeResumeCache.clear();
+  inFlightResumeRequests.clear();
+}
 
 function toV4Override(
   input?: ResolveModeOptions["v4"],
@@ -177,21 +264,25 @@ async function readV4Credentials(overrides?: ResolveModeOptions["v4"]) {
     getSetting("rxresumePassword"),
     getSetting("rxresumeUrl"),
   ]);
-  const email =
-    overrides?.email?.trim() ||
-    storedEmail?.trim() ||
-    process.env.RXRESUME_EMAIL?.trim() ||
-    "";
-  const password =
-    overrides?.password?.trim() ||
-    storedPassword?.trim() ||
-    process.env.RXRESUME_PASSWORD?.trim() ||
-    "";
-  const baseUrl =
-    overrides?.baseUrl?.trim() ||
-    storedBaseUrl?.trim() ||
-    process.env.RXRESUME_URL?.trim() ||
-    "https://v4.rxresu.me";
+  const email = resolveOverrideValue({
+    overrideValue: overrides?.email,
+    hasOverride: hasOverrideKey(overrides, "email"),
+    storedValue: storedEmail,
+    envValue: process.env.RXRESUME_EMAIL,
+  });
+  const password = resolveOverrideValue({
+    overrideValue: overrides?.password,
+    hasOverride: hasOverrideKey(overrides, "password"),
+    storedValue: storedPassword,
+    envValue: process.env.RXRESUME_PASSWORD,
+  });
+  const baseUrl = resolveOverrideValue({
+    overrideValue: overrides?.baseUrl,
+    hasOverride: hasOverrideKey(overrides, "baseUrl"),
+    storedValue: storedBaseUrl,
+    envValue: process.env.RXRESUME_URL,
+    fallback: "https://v4.rxresu.me",
+  });
   return { email, password, baseUrl, available: Boolean(email && password) };
 }
 
@@ -200,60 +291,25 @@ async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
     getSetting("rxresumeApiKey"),
     getSetting("rxresumeUrl"),
   ]);
-  const apiKey =
-    overrides?.apiKey?.trim() ||
-    storedApiKey?.trim() ||
-    process.env.RXRESUME_API_KEY?.trim() ||
-    "";
-  const baseUrl =
-    overrides?.baseUrl?.trim() ||
-    storedBaseUrl?.trim() ||
-    process.env.RXRESUME_URL?.trim() ||
-    "https://rxresu.me";
+  const apiKey = resolveOverrideValue({
+    overrideValue: overrides?.apiKey,
+    hasOverride: hasOverrideKey(overrides, "apiKey"),
+    storedValue: storedApiKey,
+    envValue: process.env.RXRESUME_API_KEY,
+  });
+  const baseUrl = resolveOverrideValue({
+    overrideValue: overrides?.baseUrl,
+    hasOverride: hasOverrideKey(overrides, "baseUrl"),
+    storedValue: storedBaseUrl,
+    envValue: process.env.RXRESUME_URL,
+    fallback: "https://rxresu.me",
+  });
   return { apiKey, baseUrl, available: Boolean(apiKey) };
 }
 
-export async function resolveRxResumeMode(
+async function resolveOperationContext(
   options: ResolveModeOptions = {},
-): Promise<RxResumeResolvedMode> {
-  const mode = options.mode ?? (await readConfiguredMode());
-  const [v5Creds, v4Creds] = await Promise.all([
-    readV5Credentials(options.v5),
-    readV4Credentials(options.v4),
-  ]);
-
-  if (mode === "v5") {
-    if (!v5Creds.available) {
-      throw new RxResumeAuthConfigError(
-        "v5",
-        "Reactive Resume v5 API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
-      );
-    }
-    return "v5";
-  }
-
-  if (mode === "v4") {
-    if (!v4Creds.available) {
-      throw new RxResumeAuthConfigError(
-        "v4",
-        "Reactive Resume v4 credentials are not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD or configure them in Settings.",
-      );
-    }
-    return "v4";
-  }
-  throw new RxResumeAuthConfigError(
-    mode,
-    "Reactive Resume mode must be set to v4 or v5.",
-  );
-}
-
-async function runRxResumeOperation<T>(
-  options: ResolveModeOptions,
-  handlers: {
-    v4: (creds: V4Credentials) => Promise<T>;
-    v5: (creds: V5Credentials) => Promise<T>;
-  },
-): Promise<T> {
+): Promise<ResolvedOperationContext> {
   const requestedMode = options.mode ?? (await readConfiguredMode());
   const [v5Creds, v4Creds] = await Promise.all([
     readV5Credentials(options.v5),
@@ -267,11 +323,7 @@ async function runRxResumeOperation<T>(
         "Reactive Resume v5 API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
       );
     }
-    try {
-      return await handlers.v5(v5Creds);
-    } catch (error) {
-      throw normalizeError(error);
-    }
+    return { mode: "v5", creds: v5Creds };
   }
 
   if (!v4Creds.available) {
@@ -280,8 +332,65 @@ async function runRxResumeOperation<T>(
       "Reactive Resume v4 credentials are not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD or configure them in Settings.",
     );
   }
+
+  return { mode: "v4", creds: v4Creds };
+}
+
+export async function resolveRxResumeMode(
+  options: ResolveModeOptions = {},
+): Promise<RxResumeResolvedMode> {
+  const context = await resolveOperationContext(options);
+  return context.mode;
+}
+
+async function runRxResumeOperation<T>(
+  options: ResolveModeOptions,
+  handlers: {
+    v4: (creds: V4Credentials) => Promise<T>;
+    v5: (creds: V5Credentials) => Promise<T>;
+  },
+): Promise<T> {
+  const context = await resolveOperationContext(options);
   try {
-    return await handlers.v4(v4Creds);
+    if (context.mode === "v5") {
+      return await handlers.v5(context.creds);
+    }
+    return await handlers.v4(context.creds);
+  } catch (error) {
+    throw normalizeError(error);
+  }
+}
+
+async function fetchResumeFromUpstream(
+  resumeId: string,
+  context: ResolvedOperationContext,
+): Promise<RxResumeResume> {
+  try {
+    if (context.mode === "v5") {
+      const resume = normalizeV5ResumeResponse(
+        await v5.getResume(resumeId, {
+          apiKey: context.creds.apiKey,
+          baseUrl: context.creds.baseUrl,
+        }),
+      ) as RxResumeResume;
+      return {
+        ...resume,
+        mode: "v5",
+        title:
+          typeof resume.name === "string" && resume.name.trim()
+            ? resume.name
+            : (resume.slug ?? resume.id),
+        data: resume.data,
+      } as RxResumeResume;
+    }
+
+    return {
+      ...((await v4.getResume(
+        resumeId,
+        toV4Override(context.creds),
+      )) as RxResumeResume),
+      mode: "v4",
+    };
   } catch (error) {
     throw normalizeError(error);
   }
@@ -304,32 +413,46 @@ export async function getResume(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<RxResumeResume> {
-  return runRxResumeOperation(options, {
-    v5: async (creds) => {
-      const resume = normalizeV5ResumeResponse(
-        await v5.getResume(resumeId, {
-          apiKey: creds.apiKey,
-          baseUrl: creds.baseUrl,
-        }),
-      ) as RxResumeResume;
-      return {
-        ...resume,
-        mode: "v5",
-        title:
-          typeof resume.name === "string" && resume.name.trim()
-            ? resume.name
-            : (resume.slug ?? resume.id),
-        data: resume.data,
-      } as RxResumeResume;
-    },
-    v4: async (creds) => ({
-      ...((await v4.getResume(
-        resumeId,
-        toV4Override(creds),
-      )) as RxResumeResume),
-      mode: "v4",
-    }),
-  });
+  const context = await resolveOperationContext(options);
+  const cacheKey = buildResumeCacheKey(resumeId, context);
+  const now = Date.now();
+
+  if (!options.forceRefresh) {
+    const cached = rxResumeResumeCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cloneResume(cached.resume);
+    }
+    if (cached) {
+      rxResumeResumeCache.delete(cacheKey);
+    }
+
+    const inFlight = inFlightResumeRequests.get(cacheKey);
+    if (inFlight) {
+      return cloneResume(await inFlight);
+    }
+  }
+
+  const generation = rxResumeResumeCacheGeneration;
+  let request: Promise<RxResumeResume>;
+  request = fetchResumeFromUpstream(resumeId, context)
+    .then((resume) => {
+      const cachedResume = cloneResume(resume);
+      if (generation === rxResumeResumeCacheGeneration) {
+        rxResumeResumeCache.set(cacheKey, {
+          expiresAt: Date.now() + RXRESUME_RESUME_CACHE_TTL_MS,
+          resume: cachedResume,
+        });
+      }
+      return cloneResume(cachedResume);
+    })
+    .finally(() => {
+      if (inFlightResumeRequests.get(cacheKey) === request) {
+        inFlightResumeRequests.delete(cacheKey);
+      }
+    });
+
+  inFlightResumeRequests.set(cacheKey, request);
+  return request;
 }
 
 export async function validateResumeSchema(

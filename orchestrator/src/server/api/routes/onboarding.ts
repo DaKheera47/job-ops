@@ -17,6 +17,7 @@ export const onboardingRouter = Router();
 type ValidationResponse = {
   valid: boolean;
   message: string | null;
+  status?: number | null;
 };
 
 function getDefaultValidationBaseUrl(
@@ -141,6 +142,20 @@ async function validateRxresume(options?: {
 }): Promise<ValidationResponse> {
   const rawMode = options?.mode?.trim();
   const mode = rawMode === "v4" || rawMode === "v5" ? rawMode : undefined;
+  const storedModeRaw = (await getSetting("rxresumeMode"))?.trim();
+  const storedMode = storedModeRaw === "v4" || storedModeRaw === "v5"
+    ? storedModeRaw
+    : undefined;
+  const resolvedMode = mode ?? (storedMode === "v4" ? "v4" : "v5");
+  const storedBaseUrl = await getSetting("rxresumeUrl");
+  const resolvedBaseUrl =
+    options?.baseUrl !== undefined && options?.baseUrl !== null
+      ? options.baseUrl.trim() ||
+        process.env.RXRESUME_URL?.trim() ||
+        (resolvedMode === "v4" ? "https://v4.rxresu.me" : "https://rxresu.me")
+      : storedBaseUrl?.trim() ||
+        process.env.RXRESUME_URL?.trim() ||
+        (resolvedMode === "v4" ? "https://v4.rxresu.me" : "https://rxresu.me");
 
   const result = await validateRxResumeCredentials({
     mode,
@@ -155,7 +170,7 @@ async function validateRxresume(options?: {
     },
   });
 
-  if (result.ok) return { valid: true, message: null };
+  if (result.ok) return { valid: true, message: null, status: null };
 
   const normalizedMessage = result.message.toLowerCase();
   if (
@@ -164,12 +179,35 @@ async function validateRxresume(options?: {
   ) {
     return {
       valid: false,
+      status: result.status,
       message:
-        "Invalid RxResume credentials. Check your configured Reactive Resume mode credentials and try again.",
+        resolvedMode === "v4"
+          ? "Reactive Resume v4 email/password is invalid. Update the email/password and try again."
+          : "Reactive Resume v5 API key is invalid. Update the API key and try again.",
     };
   }
 
-  return { valid: false, message: result.message };
+  if (result.status === 0 || result.status >= 500) {
+    return {
+      valid: false,
+      status: result.status,
+      message: `JobOps could not verify Reactive Resume because the instance at ${resolvedBaseUrl} is unavailable right now.`,
+    };
+  }
+
+  if (result.status >= 400 && result.status < 500) {
+    return {
+      valid: false,
+      status: result.status,
+      message: `Reactive Resume returned HTTP ${result.status} from ${resolvedBaseUrl}. Check the configured URL and selected mode.`,
+    };
+  }
+
+  return {
+    valid: false,
+    message: result.message,
+    status: result.status,
+  };
 }
 
 onboardingRouter.post(

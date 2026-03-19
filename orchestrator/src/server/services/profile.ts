@@ -1,6 +1,9 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { getResume, RxResumeAuthConfigError } from "./rxresume";
+import {
+  getResume,
+  RxResumeAuthConfigError,
+} from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 let cachedProfile: ResumeProfile | null = null;
@@ -38,7 +41,10 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
     logger.info("Fetching profile from Reactive Resume", {
       resumeId: rxresumeBaseResumeId,
     });
-    const resume = await getResume(rxresumeBaseResumeId);
+    const resume = await getResume(
+      rxresumeBaseResumeId,
+      forceRefresh ? { forceRefresh: true } : undefined,
+    );
 
     if (!resume.data || typeof resume.data !== "object") {
       throw new Error("Resume data is empty or invalid");

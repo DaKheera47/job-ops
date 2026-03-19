@@ -4,7 +4,11 @@ import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
-import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
+import {
+  clearRxResumeResumeCache,
+  getResume,
+  RxResumeAuthConfigError,
+} from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { type Request, type Response, Router } from "express";
 
@@ -87,6 +91,7 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
 profileRouter.post("/refresh", async (_req: Request, res: Response) => {
   try {
     clearProfileCache();
+    clearRxResumeResumeCache();
     const profile = await getProfile(true);
     ok(res, profile);
   } catch (error) {

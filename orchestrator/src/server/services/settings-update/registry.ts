@@ -13,7 +13,9 @@ import {
 import { settingsRegistry } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 
-export type DeferredSideEffect = "refreshBackupScheduler";
+export type DeferredSideEffect =
+  | "refreshBackupScheduler"
+  | "clearRxResumeCaches";
 
 export type SettingsUpdateAction = {
   settingKey: SettingKey;
@@ -38,6 +40,7 @@ export type SettingUpdateHandler<K extends keyof UpdateSettingsInput> = (args: {
 
 export type SettingsUpdatePlan = {
   shouldRefreshBackupScheduler: boolean;
+  shouldClearRxResumeCaches: boolean;
 };
 
 function result(
@@ -68,6 +71,17 @@ function persistAction(
 export const settingsUpdateRegistry: Partial<{
   [K in keyof UpdateSettingsInput]: SettingUpdateHandler<K>;
 }> = {};
+
+const RXRESUME_CACHE_INVALIDATION_KEYS = new Set<
+  keyof UpdateSettingsInput
+>([
+  "rxresumeMode",
+  "rxresumeUrl",
+  "rxresumeApiKey",
+  "rxresumeEmail",
+  "rxresumePassword",
+  "rxresumeBaseResumeId",
+]);
 
 for (const [key, def] of Object.entries(settingsRegistry)) {
   if (def.kind === "virtual") continue;
@@ -120,6 +134,7 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
           persistAction("rxresumeBaseResumeId", serialized),
           persistAction(modeSpecificKey, serialized),
         ],
+        deferred: ["clearRxResumeCaches"],
       });
     };
     continue;
@@ -142,10 +157,17 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
           applyEnvValue((def as any).envKey, serialized);
         }
       : undefined;
+    const deferred: DeferredSideEffect[] = [];
+    if (isBackup) {
+      deferred.push("refreshBackupScheduler");
+    }
+    if (RXRESUME_CACHE_INVALIDATION_KEYS.has(key as keyof UpdateSettingsInput)) {
+      deferred.push("clearRxResumeCaches");
+    }
 
     return result({
       actions: [persistAction(targetKey, serialized, sideEffect)],
-      deferred: isBackup ? ["refreshBackupScheduler"] : [],
+      deferred,
     });
   };
 }

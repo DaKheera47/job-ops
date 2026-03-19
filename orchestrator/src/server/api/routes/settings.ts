@@ -3,26 +3,102 @@ import {
   badRequest,
   serviceUnavailable,
   statusToCode,
+  unauthorized,
   upstreamError,
 } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { getRequestId } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { setBackupSettings } from "@server/services/backup/index";
+import { clearProfileCache } from "@server/services/profile";
 import {
+  clearRxResumeResumeCache,
   extractProjectsFromResume,
   getResume,
   listResumes,
   RxResumeAuthConfigError,
   RxResumeRequestError,
   validateResumeSchema,
+  validateCredentials as validateRxResumeCredentials,
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
-import { updateSettingsSchema } from "@shared/settings-schema";
+import {
+  type UpdateSettingsInput,
+  updateSettingsSchema,
+} from "@shared/settings-schema";
 import { type Request, type Response, Router } from "express";
 
 export const settingsRouter = Router();
+
+const RXRESUME_SAVE_VALIDATION_KEYS: Array<keyof UpdateSettingsInput> = [
+  "rxresumeMode",
+  "rxresumeUrl",
+  "rxresumeApiKey",
+  "rxresumeEmail",
+  "rxresumePassword",
+];
+
+function hasInputKey<K extends keyof UpdateSettingsInput>(
+  input: UpdateSettingsInput,
+  key: K,
+): boolean {
+  return Object.hasOwn(input, key);
+}
+
+function shouldValidateRxResumeOnSave(input: UpdateSettingsInput): boolean {
+  return RXRESUME_SAVE_VALIDATION_KEYS.some((key) => hasInputKey(input, key));
+}
+
+function buildRxResumeValidationOptions(
+  input: UpdateSettingsInput,
+): Parameters<typeof validateRxResumeCredentials>[0] {
+  return {
+    mode:
+      input.rxresumeMode === "v4" || input.rxresumeMode === "v5"
+        ? input.rxresumeMode
+        : undefined,
+    v4: {
+      ...(hasInputKey(input, "rxresumeEmail")
+        ? { email: input.rxresumeEmail }
+        : {}),
+      ...(hasInputKey(input, "rxresumePassword")
+        ? { password: input.rxresumePassword }
+        : {}),
+      ...(hasInputKey(input, "rxresumeUrl")
+        ? { baseUrl: input.rxresumeUrl }
+        : {}),
+    },
+    v5: {
+      ...(hasInputKey(input, "rxresumeApiKey")
+        ? { apiKey: input.rxresumeApiKey }
+        : {}),
+      ...(hasInputKey(input, "rxresumeUrl")
+        ? { baseUrl: input.rxresumeUrl }
+        : {}),
+    },
+  };
+}
+
+function toRxResumeValidationAppError(
+  status: number,
+  message: string,
+): AppError {
+  if (status === 401) {
+    return unauthorized(message);
+  }
+
+  if (status === 400) {
+    return badRequest(message);
+  }
+
+  return new AppError({
+    status,
+    code: statusToCode(status),
+    message,
+  });
+}
 
 /**
  * GET /api/settings - Get app settings (effective + defaults)
@@ -50,7 +126,36 @@ settingsRouter.patch(
     }
 
     const input = updateSettingsSchema.parse(req.body);
+    if (shouldValidateRxResumeOnSave(input)) {
+      const validation = await validateRxResumeCredentials(
+        buildRxResumeValidationOptions(input),
+      );
+      if (!validation.ok) {
+        const status = validation.status ?? 0;
+        if (status >= 400 && status < 500) {
+          fail(res, toRxResumeValidationAppError(status, validation.message));
+          return;
+        }
+
+        if (status === 0 || status >= 500) {
+          logger.warn(
+            "Reactive Resume save-time validation could not verify upstream availability",
+            {
+              requestId: getRequestId() ?? null,
+              route: "PATCH /api/settings",
+              rxresumeMode: validation.mode ?? input.rxresumeMode ?? null,
+              status,
+            },
+          );
+        }
+      }
+    }
+
     const plan = await applySettingsUpdates(input);
+    if (plan.shouldClearRxResumeCaches) {
+      clearRxResumeResumeCache();
+      clearProfileCache();
+    }
 
     const data = await getEffectiveSettings();
 

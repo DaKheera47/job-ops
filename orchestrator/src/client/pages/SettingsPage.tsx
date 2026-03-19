@@ -712,7 +712,7 @@ export const SettingsPage: React.FC = () => {
         validateRxresumeMode(mode, { silent: true, persistOnSuccess: false }),
       ),
     );
-  }, [settings, validateRxresumeMode]);
+  }, [rxresumeValidationStatuses, settings, validateRxresumeMode]);
 
   const effectiveProfileProjects =
     rxResumeProjectsOverride ??
@@ -906,13 +906,14 @@ export const SettingsPage: React.FC = () => {
         setRxResumeValidationStatus(rxResumeValidationMode, validation);
 
         if (isRxResumeBlockingValidationFailure(validation)) {
-          clearErrors(getRxResumeValidationFieldsForMode(rxResumeValidationMode));
+          clearErrors(
+            getRxResumeValidationFieldsForMode(rxResumeValidationMode),
+          );
           if (rxResumeValidationMode === "v5") {
             setError("rxresumeApiKey", {
               type: "manual",
               message:
-                validation.message ??
-                "Reactive Resume v5 API key is invalid.",
+                validation.message ?? "Reactive Resume v5 API key is invalid.",
             });
           } else {
             setError("rxresumeEmail", {

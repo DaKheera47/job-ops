@@ -127,6 +127,7 @@ export interface ProfileStatusResponse {
 export interface ValidationResult {
   valid: boolean;
   message: string | null;
+  status?: number | null;
 }
 
 export interface DemoInfoResponse {

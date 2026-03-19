@@ -4,6 +4,7 @@ import { startServer, stopServer } from "./test-utils";
 
 // Mock the RxResume adapter service
 vi.mock("@server/services/rxresume", () => ({
+  clearRxResumeResumeCache: vi.fn(),
   getResume: vi.fn(),
   RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor() {

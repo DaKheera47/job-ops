@@ -78,6 +78,11 @@ describe("getProfile", () => {
     await getProfile(true);
 
     expect(getResume).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(getResume).mock.calls[0]).toEqual(["test-resume-id"]);
+    expect(vi.mocked(getResume).mock.calls[1]).toEqual([
+      "test-resume-id",
+      { forceRefresh: true },
+    ]);
   });
 
   it("should throw user-friendly error on credential issues", async () => {
