@@ -108,6 +108,14 @@ Or via environment variables:
 
 If you leave the URL blank in the dashboard, JobOps uses `RXRESUME_URL` when it is set; if not set, it falls back to the public cloud default for the selected mode.
 
+### Save-time validation
+
+When you save Reactive Resume credentials or the shared URL in Settings:
+
+1. JobOps validates only the credential-bearing Reactive Resume fields for the selected mode.
+2. Invalid credentials or other `4xx` configuration failures block the save and show a persistent inline error.
+3. Temporary network failures, timeouts, or upstream `5xx` errors show a persistent inline warning, but the save still succeeds.
+
 ### 2) Select base resume
 
 In **Settings → Reactive Resume**:
@@ -138,6 +146,12 @@ High-level flow:
 5. Create temporary resume in RxResume.
 6. Export PDF.
 7. Delete temporary resume.
+
+### Resume-data caching
+
+JobOps caches successful Reactive Resume resume fetches in memory for 5 minutes.
+
+This reduces repeated API calls from settings loads, profile checks, project lookups, and PDF generation while still refreshing often enough for normal editing workflows.
 
 ### Per-job tracer links
 
@@ -208,6 +222,8 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 - Ensure the selected mode has credentials configured.
 - `v5`: set a valid API key.
 - `v4`: set email + password.
+- Invalid credentials block save and remain visible as an inline error until you edit the selected mode's credentials or URL.
+- Temporary Reactive Resume downtime shows an inline warning, but other settings can still be saved.
 - Save settings, then refresh resumes in the Reactive Resume section.
 
 ### No resumes appear in dropdown

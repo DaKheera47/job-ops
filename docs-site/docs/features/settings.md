@@ -111,11 +111,14 @@ Defaults and constraints:
 
 - Configure a shared RxResume URL for cloud or self-hosted deployments
 - Configure v4 email/password or v5 API key in the same section
+- Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
+- Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
 - Select a template/base resume
 - Configure project selection behavior:
   - Max projects
   - Must-include projects
   - AI-selectable projects
+- JobOps briefly caches successful Reactive Resume resume data to reduce repeated API calls across settings, profile, and PDF flows
 
 ### Tracer Links
 
@@ -215,6 +218,8 @@ curl -X POST "http://localhost:3001/api/backups"
 - JobOps resolves the RxResume URL in this order: the value saved in **Settings → Reactive Resume**, then the `RXRESUME_URL` environment variable (if set), and finally the public cloud default.
 - Open **Settings → Reactive Resume** and configure the shared RxResume URL if you use a self-hosted instance.
 - If you leave the URL blank, JobOps will fall back to `RXRESUME_URL` when it is configured; otherwise it uses the public cloud default.
+- Invalid credentials block the save and remain visible inline until you edit the selected mode's credentials or URL.
+- Temporary instance downtime shows a warning inline, but does not block unrelated settings updates.
 - Then refresh available resumes from the Reactive Resume section.
 
 ### RxResume projects look empty in the RxResume UI
