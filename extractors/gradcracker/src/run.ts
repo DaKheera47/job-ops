@@ -30,6 +30,8 @@ export interface CrawlerResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  /** URL that needs a human to solve a Cloudflare challenge in a headed browser */
+  challengeRequired?: string;
 }
 
 export interface RunCrawlerOptions {
@@ -64,6 +66,8 @@ async function writeExistingJobUrlsFile(
 export async function runCrawler(
   options: RunCrawlerOptions = {},
 ): Promise<CrawlerResult> {
+  let challengeRequired: string | undefined;
+
   try {
     await clearStorageDataset();
     const existingJobUrlsFile = await writeExistingJobUrlsFile(
@@ -95,8 +99,13 @@ export async function runCrawler(
         if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) {
           const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
           try {
-            const parsed = JSON.parse(raw) as JobExtractorProgress;
-            options.onProgress?.(parsed);
+            const parsed = JSON.parse(raw) as Record<string, unknown>;
+            // Detect challenge_required signal from the child process
+            if (parsed.event === "challenge_required" && typeof parsed.url === "string") {
+              challengeRequired = parsed.url;
+              return;
+            }
+            options.onProgress?.(parsed as unknown as JobExtractorProgress);
           } catch {
             // ignore malformed progress lines
           }
@@ -129,10 +138,13 @@ export async function runCrawler(
     });
 
     const jobs = await readCrawledJobs();
+    if (challengeRequired && jobs.length === 0) {
+      return { success: false, jobs: [], challengeRequired };
+    }
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, jobs: [], error: message };
+    return { success: false, jobs: [], error: message, challengeRequired };
   }
 }
 

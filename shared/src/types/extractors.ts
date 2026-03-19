@@ -36,6 +36,10 @@ export interface ExtractorRunResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  /** When set, the extractor failed because a Cloudflare challenge couldn't be
+   *  solved headless. The value is the URL that needs a human to solve it in a
+   *  headed browser. The pipeline should pause and prompt the user. */
+  challengeRequired?: string;
 }
 
 export interface ExtractorManifest {

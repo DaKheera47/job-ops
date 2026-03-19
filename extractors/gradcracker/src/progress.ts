@@ -80,3 +80,10 @@ export function markJobPageDone(params: { currentUrl: string }): void {
   state.currentUrl = params.currentUrl;
   emit();
 }
+
+export function emitChallengeRequired(url: string): void {
+  if (!isEnabled()) return;
+  process.stdout.write(
+    `${PROGRESS_PREFIX}${JSON.stringify({ event: "challenge_required", url })}\n`,
+  );
+}

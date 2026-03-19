@@ -85,6 +85,7 @@ export const manifest: ExtractorManifest = {
         success: false,
         jobs: [],
         error: result.error,
+        challengeRequired: result.challengeRequired,
       };
     }
 

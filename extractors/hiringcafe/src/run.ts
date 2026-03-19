@@ -64,6 +64,8 @@ export interface HiringCafeResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  /** URL that needs a human to solve a Cloudflare challenge in a headed browser */
+  challengeRequired?: string;
 }
 
 function resolveTsxCliPath(): string | null {
@@ -200,6 +202,8 @@ export async function runHiringCafe(
     };
   }
 
+  let challengeRequired: string | undefined;
+
   try {
     const jobs: CreateJobInput[] = [];
     const seen = new Set<string>();
@@ -250,6 +254,20 @@ export async function runHiringCafe(
             })();
 
         const handleLine = (line: string, stream: NodeJS.WriteStream) => {
+          if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) {
+            const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
+            try {
+              const parsed = JSON.parse(raw) as Record<string, unknown>;
+              // Detect challenge_required signal from the child process
+              if (parsed.event === "challenge_required" && typeof parsed.url === "string") {
+                challengeRequired = parsed.url;
+                return;
+              }
+            } catch {
+              // ignore parse failures
+            }
+          }
+
           const progressEvent = parseProgressLine(line);
           if (progressEvent) {
             const termOffset = runIndex * searchTerms.length;
@@ -298,6 +316,6 @@ export async function runHiringCafe(
     return { success: true, jobs };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    return { success: false, jobs: [], error: message };
+    return { success: false, jobs: [], error: message, challengeRequired };
   }
 }
