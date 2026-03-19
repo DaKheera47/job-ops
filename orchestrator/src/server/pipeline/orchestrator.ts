@@ -26,7 +26,11 @@ import {
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
 import { generateTailoring } from "../services/summary";
-import { progressHelpers, resetProgress } from "./progress";
+import {
+  type PendingChallenge,
+  progressHelpers,
+  resetProgress,
+} from "./progress";
 import {
   buildPipelineRunSavedDetails,
   createPipelineRunResultSummary,
@@ -58,6 +62,13 @@ type TenantPipelineState = {
   isRunning: boolean;
   activePipelineRunId: string | null;
   cancelRequestedAt: string | null;
+  activeChallengeState: ChallengeState | null;
+};
+
+type ChallengeState = {
+  challenges: Map<string, PendingChallenge>;
+  /** Resolves the Promise that blocks the pipeline in `runPipeline`. */
+  resolve: () => void;
 };
 
 const pipelineStateByTenant = new Map<string, TenantPipelineState>();
@@ -69,6 +80,7 @@ function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
       isRunning: false,
       activePipelineRunId: null,
       cancelRequestedAt: null,
+      activeChallengeState: null,
     };
     pipelineStateByTenant.set(tenantId, state);
   }
@@ -107,6 +119,51 @@ async function resolveLocationIntent(
     matchStrictness: settings.locationMatchStrictness,
   });
 }
+
+// ---------- Challenge pause/resume state ----------
+
+// The pipeline async function stays alive in memory while paused — there's no
+// state serialization. A server restart kills a paused pipeline, same as it
+// kills a running one. This is intentional: challenges happen at most once
+// per day per extractor, and the user is actively present to solve them.
+
+/**
+ * Returns the list of challenges currently blocking the pipeline, or empty if
+ * the pipeline is not paused on challenges.
+ */
+export function getPendingChallenges(): PendingChallenge[] {
+  const challengeState = getPipelineState().activeChallengeState;
+  if (!challengeState) return [];
+  return Array.from(challengeState.challenges.values());
+}
+
+/**
+ * Mark a single challenge as resolved (called by the solve-challenge API after
+ * the headed browser session succeeds).  When no challenges remain the blocked
+ * pipeline Promise is resolved and discovery re-runs the affected extractors.
+ */
+export function resolvePipelineChallenge(extractorId: string): {
+  resolved: boolean;
+  remaining: number;
+} {
+  const state = getPipelineState();
+  const challengeState = state.activeChallengeState;
+  if (!challengeState) return { resolved: false, remaining: 0 };
+
+  const deleted = challengeState.challenges.delete(extractorId);
+  const remaining = challengeState.challenges.size;
+
+  // Update progress so the UI reflects the change immediately
+  progressHelpers.challengeResolved(Array.from(challengeState.challenges.values()));
+
+  if (remaining === 0) {
+    challengeState.resolve();
+  }
+
+  return { resolved: deleted, remaining };
+}
+
+// ---------- Cancellation ----------
 
 class PipelineCancelledError extends Error {
   constructor(message = "Pipeline cancellation requested") {
@@ -198,15 +255,80 @@ export async function runPipeline(
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "discovery" });
-      const { discoveredJobs, sourceErrors } = await discoverJobsStep({
-        mergedConfig,
-        shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
-      });
+      let { discoveredJobs, sourceErrors, pendingChallenges } =
+        await discoverJobsStep({
+          mergedConfig,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        });
       await persistResultSummary({
         stage: "discovery",
         sourceErrors,
       });
+
+      // ---------- Challenge pause/resume ----------
+      if (pendingChallenges.length > 0) {
+        pipelineLogger.info("Challenges detected, pausing pipeline", {
+          challenges: pendingChallenges.map((c) => ({
+            extractorId: c.extractorId,
+            url: c.url,
+          })),
+        });
+
+        progressHelpers.challengeRequired(pendingChallenges);
+
+        // Block until all challenges are resolved by the solve-challenge API.
+        // The Promise is resolved by `resolvePipelineChallenge()`, which is
+        // called from the POST /api/pipeline/solve-challenge endpoint (4d).
+        // Cancellation still works: the cancel endpoint sets cancelRequestedAt,
+        // and ensureNotCancelled() fires after the Promise resolves.
+        const challengedSources = pendingChallenges.flatMap((c) => c.sources);
+
+        await new Promise<void>((resolve) => {
+          tenantState.activeChallengeState = {
+            challenges: new Map(
+              pendingChallenges.map((c) => [c.extractorId, c]),
+            ),
+            resolve,
+          };
+        });
+        tenantState.activeChallengeState = null;
+
+        ensureNotCancelled(tenantId);
+
+        // Re-run only the extractors that had challenges
+        pipelineLogger.info("Challenges resolved, re-running extractors", {
+          sources: challengedSources,
+        });
+
+        const retryConfig = { ...mergedConfig, sources: challengedSources };
+        const retryResult = await discoverJobsStep({
+          mergedConfig: retryConfig,
+          shouldCancel: () =>
+            getPipelineState(tenantId).cancelRequestedAt !== null,
+        });
+
+        discoveredJobs = [...discoveredJobs, ...retryResult.discoveredJobs];
+        sourceErrors = [...sourceErrors, ...retryResult.sourceErrors];
+        pendingChallenges = retryResult.pendingChallenges;
+
+        // If the retry itself hits challenges again (e.g. cookie expired
+        // between solve and retry), we don't loop — just continue with whatever
+        // the first run discovered.  The user will see partial results and can
+        // re-run the pipeline.
+        if (retryResult.pendingChallenges.length > 0) {
+          pipelineLogger.warn(
+            "Retry after challenge still has challenges — continuing with partial results",
+            {
+              retryPendingChallenges: retryResult.pendingChallenges.map(
+                (c) => c.extractorId,
+              ),
+            },
+          );
+        }
+
+        progressHelpers.crawlingComplete(discoveredJobs.length);
+      }
 
       ensureNotCancelled(tenantId);
       const { created } = await importJobsStep({ discoveredJobs });
@@ -339,6 +461,7 @@ export async function runPipeline(
       tenantState.isRunning = false;
       tenantState.activePipelineRunId = null;
       tenantState.cancelRequestedAt = null;
+      tenantState.activeChallengeState = null;
     }
   });
 }
@@ -590,6 +713,14 @@ export function requestPipelineCancel(): {
   }
 
   state.cancelRequestedAt = new Date().toISOString();
+
+  // Unblock the challenge pause if the pipeline is waiting for human solving.
+  // ensureNotCancelled() runs immediately after the paused Promise resolves.
+  if (state.activeChallengeState) {
+    state.activeChallengeState.resolve();
+    state.activeChallengeState = null;
+  }
+
   return {
     accepted: true,
     pipelineRunId,

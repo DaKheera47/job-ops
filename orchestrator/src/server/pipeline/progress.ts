@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import { getActiveTenantId } from "@server/tenancy/context";
 import type {
+  PipelinePendingChallenge,
   PipelineProgressState,
   PipelineProgressStep,
 } from "@shared/types";
@@ -10,6 +11,8 @@ import type {
  */
 
 export type PipelineStep = PipelineProgressStep;
+
+export type PendingChallenge = PipelinePendingChallenge;
 
 export type CrawlSource = string;
 
@@ -479,5 +482,27 @@ export const progressHelpers = {
       detail: error,
       error,
       completedAt: new Date().toISOString(),
+    }),
+
+  challengeRequired: (challenges: PendingChallenge[]) =>
+    updateProgress({
+      step: "challenge_required",
+      message: `${challenges.length} extractor${challenges.length > 1 ? "s need" : " needs"} a Cloudflare challenge solved`,
+      detail: challenges.map((c) => c.extractorName).join(", "),
+      pendingChallenges: challenges,
+    }),
+
+  challengeResolved: (remaining: PendingChallenge[]) =>
+    updateProgress({
+      step: "challenge_required",
+      message:
+        remaining.length > 0
+          ? `${remaining.length} challenge${remaining.length > 1 ? "s" : ""} remaining`
+          : "All challenges solved, resuming...",
+      detail:
+        remaining.length > 0
+          ? remaining.map((c) => c.extractorName).join(", ")
+          : "Re-running extractors",
+      pendingChallenges: remaining,
     }),
 };

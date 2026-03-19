@@ -47,6 +47,7 @@ type PipelineTerminalSnapshot = {
 
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "crawling",
+  "challenge_required",
   "importing",
   "scoring",
   "processing",

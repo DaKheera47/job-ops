@@ -122,6 +122,7 @@ export interface PipelineStatusResponse {
 export type PipelineProgressStep =
   | "idle"
   | "crawling"
+  | "challenge_required"
   | "importing"
   | "scoring"
   | "processing"
@@ -135,10 +136,18 @@ export interface PipelineProgressCurrentJob {
   employer: string;
 }
 
+export interface PipelinePendingChallenge {
+  extractorId: string;
+  extractorName: string;
+  url: string;
+  sources: ExtractorSourceId[];
+}
+
 export interface PipelineProgressState {
   step: PipelineProgressStep;
   message: string;
   detail?: string;
+  pendingChallenges?: PipelinePendingChallenge[];
   crawlingSource: string | null;
   crawlingSourcesCompleted: number;
   crawlingSourcesTotal: number;
