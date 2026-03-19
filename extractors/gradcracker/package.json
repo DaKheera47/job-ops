@@ -4,7 +4,8 @@
   "type": "module",
   "description": "This is an example of a Crawlee project.",
   "dependencies": {
-    "camoufox-js": "^0.8.0",
+    "browser-utils": "^0.0.1",
+    "camoufox-js": "^0.9.2",
     "crawlee": "^3.0.0",
     "playwright": "*",
     "tsx": "^4.4.0"

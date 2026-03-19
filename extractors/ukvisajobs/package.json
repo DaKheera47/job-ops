@@ -5,10 +5,11 @@
   "description": "UK Visa Jobs extractor - fetches job listings that may sponsor work visas",
   "main": "src/main.ts",
   "dependencies": {
-    "camoufox-js": "^0.8.0",
+    "browser-utils": "^0.0.1",
+    "camoufox-js": "^0.9.2",
+    "job-ops-shared": "^1.0.0",
     "playwright": "^1.57.0",
-    "tsx": "^4.4.0",
-    "job-ops-shared": "^1.0.0"
+    "tsx": "^4.4.0"
   },
   "devDependencies": {
     "@apify/tsconfig": "^0.1.0",

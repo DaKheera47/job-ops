@@ -2,7 +2,14 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { JobLocationEvidence } from "@shared/types/jobs";
-import { launchOptions } from "camoufox-js";
+import {
+  createLaunchOptions,
+  invalidateCookies,
+  loadCookies,
+  navigateWithRetry,
+  readCookieJar,
+  saveCookies,
+} from "browser-utils";
 import { parseSearchTerms } from "job-ops-shared/utils/search-terms";
 import {
   toNumberOrNull,
@@ -622,26 +629,68 @@ async function run(): Promise<void> {
     process.env.HIRING_CAFE_WORKPLACE_TYPES,
   );
 
-  let browser = await firefox.launch(
-    await launchOptions({
-      headless,
-      humanize: true,
-      geoip: true,
-    }),
+  const EXTRACTOR_ID = "hiringcafe";
+  const STORAGE_DIR = join(__dirname, "../storage");
+
+  // Read saved UA before launching - CF ties cf_clearance to the UA that
+  // solved the challenge, so we must reuse it. Playwright requires UA at
+  // newContext() time (can't change after).
+  const cookieJar = await readCookieJar(EXTRACTOR_ID, STORAGE_DIR);
+
+  const { launchOptions, usedCamoufox } = await createLaunchOptions({
+    headless,
+  });
+  let browser = await firefox.launch(launchOptions);
+  let context = await browser.newContext(
+    cookieJar.userAgent ? { userAgent: cookieJar.userAgent } : undefined,
   );
-  let context = await browser.newContext();
   let page = await context.newPage();
 
   const allJobs: ExtractedJob[] = [];
   const seen = new Set<string>();
 
   try {
+    // Restore CF cookies from a previous run — may skip the challenge entirely
+    const loaded = await loadCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+    if (loaded > 0) {
+      console.log(`Loaded ${loaded} cached cookies for ${EXTRACTOR_ID}`);
+    }
+
     const initializePage = async () => {
-      await page.goto(BASE_URL, {
-        waitUntil: "domcontentloaded",
-        timeout: 60_000,
-      });
-      await page.waitForTimeout(2_000);
+      const { challengeResult, attempts } = await navigateWithRetry(
+        page,
+        BASE_URL,
+        {
+          waitUntil: "domcontentloaded",
+          navigationTimeoutMs: 60_000,
+          onRetry: ({ attempt, reason }) =>
+            console.warn(`Initial navigation retry ${attempt}: ${reason}`),
+        },
+      );
+
+      if (challengeResult.status === "timeout") {
+        // Stale cookies + UA won't help the solver - wipe them so the next
+        // run starts fresh with the solver's new UA/cookies.
+        await invalidateCookies(EXTRACTOR_ID, STORAGE_DIR);
+        // Signal the orchestrator that a human needs to solve this challenge.
+        // The JOBOPS_PROGRESS line is parsed by run.ts to set challengeRequired.
+        emitProgress({ event: "challenge_required", url: BASE_URL });
+        throw new Error("Cloudflare challenge timed out after all retries");
+      }
+
+      if (
+        challengeResult.status === "passed" ||
+        challengeResult.status === "not-a-challenge"
+      ) {
+        // Persist cookies so next run can skip the challenge
+        await saveCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+      }
+
+      if (attempts > 1 || challengeResult.status === "passed") {
+        console.log(
+          `Initial navigation: ${challengeResult.status} after ${attempts} attempt(s)`,
+        );
+      }
     };
 
     try {
@@ -649,11 +698,13 @@ async function run(): Promise<void> {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn(
-        `Camoufox browser startup was unstable, retrying with vanilla Firefox: ${message}`,
+        `${usedCamoufox ? "Camoufox" : "Firefox"} startup failed, retrying with vanilla Firefox: ${message}`,
       );
       await browser.close();
       browser = await firefox.launch({ headless });
-      context = await browser.newContext();
+      context = await browser.newContext(
+        cookieJar.userAgent ? { userAgent: cookieJar.userAgent } : undefined,
+      );
       page = await context.newPage();
       await initializePage();
     }

@@ -39,6 +39,7 @@ interface UkVisaJobsAuthSession {
   authToken?: string;
   csrfToken?: string;
   ciSession?: string;
+  userAgent?: string;
 }
 
 export interface RunUkVisaJobsOptions {
@@ -52,6 +53,8 @@ export interface UkVisaJobsResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  /** URL that needs a human to solve a Cloudflare challenge in a headed browser */
+  challengeRequired?: string;
 }
 
 type UkVisaJobsExtractorProgressEvent =
@@ -221,10 +224,10 @@ async function fetchJobDescription(url: string): Promise<string | null> {
     const token = authSession?.authToken || authSession?.token;
     if (token) cookieParts.push(`authToken=${token}`);
 
-    const headers: Record<string, string> = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    };
+    const headers: Record<string, string> = {};
+    if (authSession?.userAgent) {
+      headers["User-Agent"] = authSession.userAgent;
+    }
 
     if (cookieParts.length > 0) {
       headers.Cookie = cookieParts.join("; ");
@@ -286,6 +289,7 @@ export async function runUkVisaJobs(
     const allJobs: CreateJobInput[] = [];
     const seenIds = new Set<string>();
     const termTotal = terms.length;
+    let challengeRequired: string | undefined;
 
     for (let i = 0; i < terms.length; i += 1) {
       const term = terms[i];
@@ -308,6 +312,19 @@ export async function runUkVisaJobs(
           });
 
           const handleLine = (line: string, stream: NodeJS.WriteStream) => {
+            if (line.startsWith(JOBOPS_PROGRESS_PREFIX)) {
+              const raw = line.slice(JOBOPS_PROGRESS_PREFIX.length).trim();
+              try {
+                const parsed = JSON.parse(raw) as Record<string, unknown>;
+                if (parsed.event === "challenge_required" && typeof parsed.url === "string") {
+                  challengeRequired = parsed.url;
+                  return;
+                }
+              } catch {
+                // ignore parse failures
+              }
+            }
+
             const progressEvent = parseUkVisaJobsProgressLine(line);
             if (progressEvent) {
               options.onProgress?.({
@@ -394,6 +411,9 @@ export async function runUkVisaJobs(
       }
     }
 
+    if (challengeRequired && allJobs.length === 0) {
+      return { success: false, jobs: [], challengeRequired };
+    }
     return { success: true, jobs: allJobs };
   } finally {
     isUkVisaJobsRunning = false;

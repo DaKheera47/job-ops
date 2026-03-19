@@ -1,8 +1,15 @@
 // For more information, see https://crawlee.dev/
-import { launchOptions } from "camoufox-js";
-import { PlaywrightCrawler } from "crawlee";
+
+import {
+  createLaunchOptions,
+  isChallengePage,
+  loadCookies,
+  saveCookies,
+  waitForChallengeResolution,
+} from "browser-utils";
+import { log, PlaywrightCrawler } from "crawlee";
 import { firefox } from "playwright";
-import { initJobOpsProgress } from "./progress.js";
+import { emitChallengeRequired, initJobOpsProgress } from "./progress.js";
 import { router } from "./routes.js";
 
 // locations
@@ -57,29 +64,70 @@ const startUrls = gradcrackerUrls.map(({ url, role }) => ({
 
 initJobOpsProgress(startUrls.length);
 
+const EXTRACTOR_ID = "gradcracker";
+const STORAGE_DIR = "./storage";
+
+const { launchOptions } = await createLaunchOptions({ headless: true });
+
+// Track whether we've loaded cookies for the first request
+// Crawlee reuses the browser context across requests, so we only need to
+// inject cookies once. The flag prevents redundant disk reads on every request.
+let cookiesLoaded = false;
+
 const crawler = new PlaywrightCrawler({
-  // proxyConfiguration: new ProxyConfiguration({ proxyUrls: ['...'] }),
   requestHandler: router,
-  // Comment this option to scrape the full website.
-  // maxRequestsPerCrawl: 2000,
-  // Add delay between requests to slow down the process
   minConcurrency: 1,
   maxConcurrency: 2,
   navigationTimeoutSecs: 60,
-  // Add delay between requests (in milliseconds)
   requestHandlerTimeoutSecs: 100,
+  maxRequestRetries: 3,
   browserPoolOptions: {
     // Disable the default fingerprint spoofing to avoid conflicts with Camoufox.
     useFingerprints: false,
   },
   launchContext: {
     launcher: firefox,
-    launchOptions: await launchOptions({
-      headless: true,
-      humanize: true,
-      geoip: true,
-    }),
+    launchOptions,
   },
+
+  // Load saved CF cookies before navigation — may skip challenges entirely
+  preNavigationHooks: [
+    async ({ page }) => {
+      if (!cookiesLoaded) {
+        const context = page.context();
+        const loaded = await loadCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+        if (loaded > 0) {
+          log.info(`Loaded ${loaded} cached cookies for ${EXTRACTOR_ID}`);
+        }
+        cookiesLoaded = true;
+      }
+    },
+  ],
+
+  // After navigation: detect CF challenges, wait for resolution, save cookies
+  postNavigationHooks: [
+    async ({ page, request }) => {
+      if (!(await isChallengePage(page))) return;
+
+      log.warning(
+        `Cloudflare challenge detected on ${request.url}, waiting for resolution...`,
+      );
+      const result = await waitForChallengeResolution(page, 30_000);
+
+      if (result.status === "passed") {
+        log.info(`Challenge passed for ${request.url}`);
+        // Persist cookies so future requests (and runs) can skip the challenge
+        await saveCookies(page.context(), EXTRACTOR_ID, STORAGE_DIR);
+      } else {
+        // Signal the orchestrator that a human needs to solve this challenge
+        emitChallengeRequired(request.url);
+        // Throw to trigger Crawlee's built-in retry
+        throw new Error(
+          `Cloudflare challenge ${result.status} on ${request.url}`,
+        );
+      }
+    },
+  ],
 });
 
 await crawler.run(startUrls);

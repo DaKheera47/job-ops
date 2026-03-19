@@ -17,6 +17,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  createLaunchOptions,
+  loadCookies,
+  navigateWithChallenge,
+  saveCookies,
+} from "browser-utils";
+import {
   toNumberOrNull,
   toStringOrNull,
 } from "job-ops-shared/utils/type-conversion";
@@ -101,6 +107,7 @@ interface UkVisaJobsAuthSession {
   authToken: string;
   csrfToken: string;
   ciSession: string;
+  userAgent: string;
   fetchedAt: string;
   source: "cache" | "browser";
 }
@@ -142,8 +149,7 @@ async function fetchPage(
       cookie: cookies,
       origin: "https://my.ukvisajobs.com",
       referer: `https://my.ukvisajobs.com/open-jobs/1?is_global=0&sortBy=desc&pageNo=${pageNo}&visaAcceptance=false&applicants_outside_uk=false`,
-      "user-agent":
-        "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Mobile Safari/537.36",
+      "user-agent": session.userAgent,
     },
     body: formData,
   });
@@ -248,11 +254,13 @@ async function loadCachedAuthSession(): Promise<UkVisaJobsAuthSession | null> {
     const data = await readFile(AUTH_CACHE_PATH, "utf8");
     const parsed = JSON.parse(data) as UkVisaJobsAuthSession;
     if (!parsed?.token) return null;
+    if (!parsed.userAgent) return null; // stale cache without UA — force re-login
     return {
       token: parsed.token,
       authToken: parsed.authToken || parsed.token,
       csrfToken: parsed.csrfToken || "",
       ciSession: parsed.ciSession || "",
+      userAgent: parsed.userAgent,
       fetchedAt: parsed.fetchedAt || new Date().toISOString(),
       source: "cache",
     };
@@ -269,6 +277,7 @@ async function saveCachedAuthSession(
     authToken: session.authToken,
     csrfToken: session.csrfToken,
     ciSession: session.ciSession,
+    userAgent: session.userAgent,
     fetchedAt: session.fetchedAt,
     source: session.source,
   };
@@ -332,23 +341,36 @@ async function loginWithBrowser(
   email: string,
   password: string,
 ): Promise<UkVisaJobsAuthSession> {
-  const [{ launchOptions }, { firefox }] = await Promise.all([
-    import("camoufox-js"),
-    import("playwright"),
-  ]);
+  const { firefox } = await import("playwright");
   const headless = process.env.UKVISAJOBS_HEADLESS !== "false";
-  const browser = await firefox.launch(
-    await launchOptions({
-      headless,
-      humanize: true,
-      geoip: true,
-    }),
-  );
+  const { launchOptions } = await createLaunchOptions({ headless });
+  const browser = await firefox.launch(launchOptions);
   const context = await browser.newContext();
   const page = await context.newPage();
 
+  const EXTRACTOR_ID = "ukvisajobs";
+  const STORAGE_DIR = join(__dirname, "../storage");
+
   try {
-    await page.goto(SIGNIN_URL, { waitUntil: "domcontentloaded" });
+    // Restore CF cookies from a previous run — may skip the challenge
+    const loaded = await loadCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+    if (loaded > 0) {
+      console.log(`Loaded ${loaded} cached CF cookies for ${EXTRACTOR_ID}`);
+    }
+
+    const { challengeResult } = await navigateWithChallenge(page, SIGNIN_URL, {
+      waitUntil: "domcontentloaded",
+      challengeTimeoutMs: 30_000,
+    });
+    if (challengeResult.status === "timeout") {
+      emitProgress("challenge_required", { url: SIGNIN_URL });
+      throw new Error("Cloudflare challenge timed out on sign-in page");
+    }
+    if (challengeResult.status === "passed") {
+      console.log("Cloudflare challenge passed on sign-in page");
+      await saveCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+    }
+
     await page.waitForSelector("#email", { timeout: 15000 });
     await page.fill("#email", email);
     await page.fill("#password", password);
@@ -362,7 +384,19 @@ async function loginWithBrowser(
       { timeout: 30000 },
     );
 
-    await page.goto(OPEN_JOBS_URL, { waitUntil: "networkidle" });
+    const { challengeResult: jobsChallenge } = await navigateWithChallenge(
+      page,
+      OPEN_JOBS_URL,
+      { waitUntil: "networkidle", challengeTimeoutMs: 30_000 },
+    );
+    if (jobsChallenge.status === "timeout") {
+      emitProgress("challenge_required", { url: OPEN_JOBS_URL });
+      throw new Error("Cloudflare challenge timed out on open-jobs page");
+    }
+    if (jobsChallenge.status === "passed") {
+      console.log("Cloudflare challenge passed on open-jobs page");
+      await saveCookies(context, EXTRACTOR_ID, STORAGE_DIR);
+    }
     await page.waitForTimeout(5000);
 
     let fetchRequest: Request | null = null;
@@ -387,11 +421,17 @@ async function loginWithBrowser(
       throw new Error("Failed to locate auth token from browser session.");
     }
 
+    // Capture the UA that Camoufox generated for this session so subsequent
+    // fetch() calls use the same fingerprint. A mismatch (e.g. mobile Chrome UA
+    // from a desktop Firefox session) is a signal Cloudflare can flag.
+    const userAgent = await page.evaluate(() => navigator.userAgent);
+
     return {
       token,
       authToken: authToken || token,
       csrfToken,
       ciSession,
+      userAgent,
       fetchedAt: new Date().toISOString(),
       source: "browser",
     };
