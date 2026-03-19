@@ -671,6 +671,18 @@ export async function cancelJobChatRun(
   );
 }
 
+export async function resetJobGhostwriterConversation(
+  jobId: string,
+): Promise<{ deletedMessages: number; deletedRuns: number }> {
+  return fetchApi<{ deletedMessages: number; deletedRuns: number }>(
+    `/jobs/${jobId}/chat/reset`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
+}
+
 export async function cancelJobGhostwriterRun(
   jobId: string,
   runId: string,

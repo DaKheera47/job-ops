@@ -259,6 +259,21 @@ ghostwriterRouter.post(
   }),
 );
 
+ghostwriterRouter.post(
+  "/reset",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+
+    await runWithRequestContext({ jobId }, async () => {
+      const result = await ghostwriterService.resetConversationForJob({
+        jobId,
+      });
+
+      ok(res, result);
+    });
+  }),
+);
+
 ghostwriterRouter.get(
   "/threads",
   asyncRoute(async (req, res) => {

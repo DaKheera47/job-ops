@@ -342,6 +342,26 @@ export async function completeRun(
   return getRunById(runId);
 }
 
+export async function deleteAllMessagesForThread(
+  threadId: string,
+): Promise<number> {
+  const result = await db
+    .delete(jobChatMessages)
+    .where(eq(jobChatMessages.threadId, threadId));
+
+  return result.changes;
+}
+
+export async function deleteAllRunsForThread(
+  threadId: string,
+): Promise<number> {
+  const result = await db
+    .delete(jobChatRuns)
+    .where(eq(jobChatRuns.threadId, threadId));
+
+  return result.changes;
+}
+
 export async function completeRunIfRunning(
   runId: string,
   input: {

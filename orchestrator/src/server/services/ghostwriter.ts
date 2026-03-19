@@ -581,6 +581,39 @@ export async function cancelRun(input: {
   };
 }
 
+export async function resetConversationForJob(input: {
+  jobId: string;
+}): Promise<{ deletedMessages: number; deletedRuns: number }> {
+  const thread = await ensureJobThread(input.jobId);
+
+  const activeRun = await jobChatRepo.getActiveRunForThread(thread.id);
+  if (activeRun) {
+    const controller = abortControllers.get(activeRun.id);
+    if (controller) {
+      controller.abort();
+    }
+    await jobChatRepo.completeRunIfRunning(activeRun.id, {
+      status: "cancelled",
+      errorCode: "REQUEST_TIMEOUT",
+      errorMessage: "Conversation reset by user",
+    });
+  }
+
+  const deletedMessages = await jobChatRepo.deleteAllMessagesForThread(
+    thread.id,
+  );
+  const deletedRuns = await jobChatRepo.deleteAllRunsForThread(thread.id);
+
+  logger.info("Ghostwriter conversation reset", {
+    jobId: input.jobId,
+    threadId: thread.id,
+    deletedMessages,
+    deletedRuns,
+  });
+
+  return { deletedMessages, deletedRuns };
+}
+
 export async function cancelRunForJob(input: {
   jobId: string;
   runId: string;

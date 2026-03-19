@@ -1,5 +1,5 @@
 import { getMetaShortcutLabel, isMetaKeyPressed } from "@client/lib/meta-key";
-import { RefreshCcw, Send, Square } from "lucide-react";
+import { Eraser, RefreshCcw, Send, Square } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,18 +9,22 @@ type ComposerProps = {
   disabled?: boolean;
   isStreaming: boolean;
   canRegenerate: boolean;
+  canReset: boolean;
   onRegenerate: () => Promise<void>;
   onStop: () => Promise<void>;
   onSend: (content: string) => Promise<void>;
+  onReset: () => void;
 };
 
 export const Composer: React.FC<ComposerProps> = ({
   disabled,
   isStreaming,
   canRegenerate,
+  canReset,
   onRegenerate,
   onStop,
   onSend,
+  onReset,
 }) => {
   const [value, setValue] = useState("");
 
@@ -51,6 +55,18 @@ export const Composer: React.FC<ComposerProps> = ({
           {getMetaShortcutLabel("Enter")} to send
         </div>
         <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={onReset}
+            disabled={disabled || !canReset}
+            aria-label="Start over"
+            title="Start over"
+            className="text-destructive hover:text-destructive"
+          >
+            <Eraser className="h-3.5 w-3.5" />
+          </Button>
+
           {isStreaming ? (
             <Button
               size="icon"

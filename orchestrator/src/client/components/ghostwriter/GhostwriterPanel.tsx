@@ -3,6 +3,16 @@ import type { Job, JobChatMessage, JobChatStreamEvent } from "@shared/types";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
 
@@ -18,6 +28,8 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     null,
   );
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
+
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
@@ -235,6 +247,22 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     }
   }, [isStreaming, job.id, loadMessages, messages, onStreamEvent]);
 
+  const canReset = useMemo(() => {
+    return !isStreaming && messages.length > 0;
+  }, [isStreaming, messages]);
+
+  const resetConversation = useCallback(async () => {
+    try {
+      await api.resetJobGhostwriterConversation(job.id);
+      setMessages([]);
+      toast.success("Conversation cleared");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to reset conversation";
+      toast.error(message);
+    }
+  }, [job.id]);
+
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col">
       <div
@@ -266,11 +294,34 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
           disabled={isLoading || isStreaming}
           isStreaming={isStreaming}
           canRegenerate={canRegenerate}
+          canReset={canReset}
           onRegenerate={regenerate}
           onStop={stopStreaming}
           onSend={sendMessage}
+          onReset={() => setIsResetDialogOpen(true)}
         />
       </div>
+
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start over?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently erase the entire conversation. This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void resetConversation()}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Erase conversation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
