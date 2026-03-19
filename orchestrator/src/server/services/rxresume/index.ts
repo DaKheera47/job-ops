@@ -102,7 +102,7 @@ function hasOverrideKey<T extends object>(
   value: T | undefined,
   key: PropertyKey,
 ): boolean {
-  return Boolean(value) && Object.hasOwn(value, key);
+  return value !== undefined && Object.hasOwn(value, key);
 }
 
 function resolveOverrideValue(args: {
