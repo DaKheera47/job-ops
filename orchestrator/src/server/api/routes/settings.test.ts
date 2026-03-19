@@ -203,7 +203,9 @@ describe.sequential("Settings API routes", () => {
 
     const settingsRes = await fetch(`${baseUrl}/api/settings`);
     const settingsBody = await settingsRes.json();
-    expect(settingsBody.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
+    expect(settingsBody.data.rxresumeUrl).toBe(
+      "https://env.rxresume.example.com",
+    );
   });
 
   it("allows saving when Reactive Resume is temporarily unavailable", async () => {

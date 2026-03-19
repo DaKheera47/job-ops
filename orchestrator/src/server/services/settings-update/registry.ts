@@ -72,9 +72,7 @@ export const settingsUpdateRegistry: Partial<{
   [K in keyof UpdateSettingsInput]: SettingUpdateHandler<K>;
 }> = {};
 
-const RXRESUME_CACHE_INVALIDATION_KEYS = new Set<
-  keyof UpdateSettingsInput
->([
+const RXRESUME_CACHE_INVALIDATION_KEYS = new Set<keyof UpdateSettingsInput>([
   "rxresumeMode",
   "rxresumeUrl",
   "rxresumeApiKey",
@@ -161,7 +159,9 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
     if (isBackup) {
       deferred.push("refreshBackupScheduler");
     }
-    if (RXRESUME_CACHE_INVALIDATION_KEYS.has(key as keyof UpdateSettingsInput)) {
+    if (
+      RXRESUME_CACHE_INVALIDATION_KEYS.has(key as keyof UpdateSettingsInput)
+    ) {
       deferred.push("clearRxResumeCaches");
     }
 

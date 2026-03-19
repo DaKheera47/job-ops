@@ -125,16 +125,16 @@ export const toRxResumeValidationPayload = (
   return {
     email: preserveBlankFields.has("email")
       ? draft.email
-      : (draft.email || undefined),
+      : draft.email || undefined,
     baseUrl: preserveBlankFields.has("baseUrl")
       ? draft.baseUrl
-      : (draft.baseUrl || undefined),
+      : draft.baseUrl || undefined,
     password: preserveBlankFields.has("password")
       ? draft.password
-      : (draft.password || undefined),
+      : draft.password || undefined,
     apiKey: preserveBlankFields.has("apiKey")
       ? draft.apiKey
-      : (draft.apiKey || undefined),
+      : draft.apiKey || undefined,
   };
 };
 

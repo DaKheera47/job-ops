@@ -143,9 +143,10 @@ async function validateRxresume(options?: {
   const rawMode = options?.mode?.trim();
   const mode = rawMode === "v4" || rawMode === "v5" ? rawMode : undefined;
   const storedModeRaw = (await getSetting("rxresumeMode"))?.trim();
-  const storedMode = storedModeRaw === "v4" || storedModeRaw === "v5"
-    ? storedModeRaw
-    : undefined;
+  const storedMode =
+    storedModeRaw === "v4" || storedModeRaw === "v5"
+      ? storedModeRaw
+      : undefined;
   const resolvedMode = mode ?? (storedMode === "v4" ? "v4" : "v5");
   const storedBaseUrl = await getSetting("rxresumeUrl");
   const resolvedBaseUrl =

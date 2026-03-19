@@ -8,11 +8,7 @@ import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import type React from "react";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -144,7 +140,8 @@ export const ReactiveResumeConfigPanel: React.FC<
       selectedValidationStatus.message,
   );
   const selectedValidationIsWarning =
-    showInlineValidationAlert && isAvailabilityWarning(selectedValidationStatus);
+    showInlineValidationAlert &&
+    isAvailabilityWarning(selectedValidationStatus);
   const handleModeChange = (value: string) =>
     onModeChange(value === "v4" ? "v4" : "v5");
 
@@ -194,7 +191,9 @@ export const ReactiveResumeConfigPanel: React.FC<
             Reactive Resume {mode.toUpperCase()}{" "}
             {selectedValidationIsWarning ? "warning" : "error"}
           </AlertTitle>
-          <AlertDescription>{selectedValidationStatus.message}</AlertDescription>
+          <AlertDescription>
+            {selectedValidationStatus.message}
+          </AlertDescription>
         </Alert>
       ) : null}
 

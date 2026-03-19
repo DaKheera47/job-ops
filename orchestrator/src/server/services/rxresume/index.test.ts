@@ -289,9 +289,7 @@ describe("rxresume adapter", () => {
 
   it("coalesces in-flight resume fetches", async () => {
     mockSettings({ rxresumeMode: "v5", rxresumeApiKey: "v5-key" });
-    let resolveResume:
-      | ((value: Record<string, unknown>) => void)
-      | undefined;
+    let resolveResume: ((value: Record<string, unknown>) => void) | undefined;
     vi.mocked(v5.getResume).mockImplementation(
       () =>
         new Promise((resolve) => {
