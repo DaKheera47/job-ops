@@ -21,9 +21,20 @@ type ReactiveResumeSectionProps = {
   hasRxResumeAccess: boolean;
   rxresumeMode: RxResumeMode;
   onRxresumeModeChange?: (mode: RxResumeMode) => void;
+  onCredentialFieldEdit?: (mode: RxResumeMode) => void;
   validationStatuses?: {
-    v4: { checked: boolean; valid: boolean; message?: string | null };
-    v5: { checked: boolean; valid: boolean; message?: string | null };
+    v4: {
+      checked: boolean;
+      valid: boolean;
+      message?: string | null;
+      status?: number | null;
+    };
+    v5: {
+      checked: boolean;
+      valid: boolean;
+      message?: string | null;
+      status?: number | null;
+    };
   };
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -39,6 +50,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   hasRxResumeAccess,
   rxresumeMode,
   onRxresumeModeChange,
+  onCredentialFieldEdit,
   validationStatuses,
   profileProjects,
   lockedCount,
@@ -49,6 +61,7 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
 }) => {
   const {
     control,
+    clearErrors,
     setValue,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
@@ -70,6 +83,15 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
       shouldTouch: true,
     });
 
+  const clearRxResumeFeedback = (mode: RxResumeMode) => {
+    onCredentialFieldEdit?.(mode);
+    clearErrors(
+      mode === "v5"
+        ? ["rxresumeApiKey", "rxresumeUrl"]
+        : ["rxresumeEmail", "rxresumePassword", "rxresumeUrl"],
+    );
+  };
+
   return (
     <AccordionItem value="reactive-resume" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
@@ -88,24 +110,32 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           validationStatuses={validationStatuses}
           shared={{
             baseUrl: rxresumeUrlValue,
-            onBaseUrlChange: (value) =>
-              setDirtyTouchedValue("rxresumeUrl", value),
+            onBaseUrlChange: (value) => {
+              clearRxResumeFeedback(selectedMode);
+              setDirtyTouchedValue("rxresumeUrl", value);
+            },
             baseUrlError: errors.rxresumeUrl?.message as string | undefined,
           }}
           v5={{
             apiKey: rxresumeApiKeyValue,
-            onApiKeyChange: (value) =>
-              setDirtyTouchedValue("rxresumeApiKey", value),
+            onApiKeyChange: (value) => {
+              clearRxResumeFeedback("v5");
+              setDirtyTouchedValue("rxresumeApiKey", value);
+            },
             error: errors.rxresumeApiKey?.message as string | undefined,
           }}
           v4={{
             email: rxresumeEmailValue,
-            onEmailChange: (value) =>
-              setDirtyTouchedValue("rxresumeEmail", value),
+            onEmailChange: (value) => {
+              clearRxResumeFeedback("v4");
+              setDirtyTouchedValue("rxresumeEmail", value);
+            },
             emailError: errors.rxresumeEmail?.message as string | undefined,
             password: rxresumePasswordValue,
-            onPasswordChange: (value) =>
-              setDirtyTouchedValue("rxresumePassword", value),
+            onPasswordChange: (value) => {
+              clearRxResumeFeedback("v4");
+              setDirtyTouchedValue("rxresumePassword", value);
+            },
             passwordError: errors.rxresumePassword?.message as
               | string
               | undefined,
