@@ -18,6 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Separator } from "@/components/ui/separator";
 
 type ModelSettingsSectionProps = {
@@ -310,7 +310,8 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               )}
               <div className="text-xs text-muted-foreground">{modelHelper}</div>
               <div className="text-xs text-muted-foreground">
-                Current: <span className="font-mono">{previewDefaultModel}</span>
+                Current:{" "}
+                <span className="font-mono">{previewDefaultModel}</span>
               </div>
             </div>
           ) : (
@@ -334,7 +335,10 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               {supportsModelSuggestions ? (
                 <>
                   <div className="space-y-2">
-                    <label htmlFor="modelScorer" className="text-sm font-medium">
+                    <label
+                      htmlFor="modelScorer"
+                      className="text-sm font-medium"
+                    >
                       Scoring Model
                     </label>
                     <Controller
@@ -345,7 +349,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={scoringModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={previewDefaultModel || "Inherit default model"}
+                          placeholder={
+                            previewDefaultModel || "Inherit default model"
+                          }
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Scoring Model"
@@ -381,7 +387,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={tailoringModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={previewDefaultModel || "Inherit default model"}
+                          placeholder={
+                            previewDefaultModel || "Inherit default model"
+                          }
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Tailoring Model"
@@ -398,7 +406,8 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                       </p>
                     )}
                     <div className="text-xs text-muted-foreground">
-                      Current: <span className="font-mono">{tailoringModel}</span>
+                      Current:{" "}
+                      <span className="font-mono">{tailoringModel}</span>
                     </div>
                   </div>
 
@@ -417,7 +426,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={projectSelectionModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={previewDefaultModel || "Inherit default model"}
+                          placeholder={
+                            previewDefaultModel || "Inherit default model"
+                          }
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Project Selection Model"
@@ -465,7 +476,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                     placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={
-                      errors.modelProjectSelection?.message as string | undefined
+                      errors.modelProjectSelection?.message as
+                        | string
+                        | undefined
                     }
                     current={projectSelectionModel}
                   />

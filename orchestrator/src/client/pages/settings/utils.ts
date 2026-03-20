@@ -101,9 +101,9 @@ export function supportsLlmModelSuggestions(
   provider: string | null | undefined,
 ): boolean {
   const normalizedProvider = normalizeLlmProvider(provider);
-  return (
-    LLM_MODEL_SUGGESTION_PROVIDERS as readonly string[]
-  ).includes(normalizedProvider);
+  return (LLM_MODEL_SUGGESTION_PROVIDERS as readonly string[]).includes(
+    normalizedProvider,
+  );
 }
 
 export function getLlmProviderConfig(provider: string | null | undefined) {

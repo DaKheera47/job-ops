@@ -33,7 +33,11 @@ describe("Model Selection Logic", () => {
       modelScorer: { value: "env-model", override: null },
       modelTailoring: { value: "env-model", override: null },
       modelProjectSelection: { value: "env-model", override: null },
-      llmProvider: { value: "openrouter", default: "openrouter", override: null },
+      llmProvider: {
+        value: "openrouter",
+        default: "openrouter",
+        override: null,
+      },
       llmBaseUrl: {
         value: "https://openrouter.ai/api/v1",
         default: "https://openrouter.ai/api/v1",
@@ -74,11 +78,22 @@ describe("Model Selection Logic", () => {
   describe("Scoring Service", () => {
     it("should use scoring specific model when set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: null },
-        modelScorer: { value: "specific-scorer-model", override: "specific-scorer-model" },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: null,
+        },
+        modelScorer: {
+          value: "specific-scorer-model",
+          override: "specific-scorer-model",
+        },
         modelTailoring: { value: "global-model", override: null },
         modelProjectSelection: { value: "global-model", override: null },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",
@@ -101,11 +116,19 @@ describe("Model Selection Logic", () => {
 
     it("should fall back to global model for scoring when specific not set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: "global-model" },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: "global-model",
+        },
         modelScorer: { value: "global-model", override: null },
         modelTailoring: { value: "global-model", override: null },
         modelProjectSelection: { value: "global-model", override: null },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",
@@ -135,14 +158,22 @@ describe("Model Selection Logic", () => {
   describe("Tailoring Service", () => {
     it("should use tailoring specific model when set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: null },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: null,
+        },
         modelScorer: { value: "global-model", override: null },
         modelTailoring: {
           value: "specific-tailoring-model",
           override: "specific-tailoring-model",
         },
         modelProjectSelection: { value: "global-model", override: null },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",
@@ -159,11 +190,19 @@ describe("Model Selection Logic", () => {
 
     it("should fall back to global model when specific not set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: "global-model" },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: "global-model",
+        },
         modelScorer: { value: "global-model", override: null },
         modelTailoring: { value: "global-model", override: null },
         modelProjectSelection: { value: "global-model", override: null },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",
@@ -182,14 +221,22 @@ describe("Model Selection Logic", () => {
   describe("Project Selection Service", () => {
     it("should use project selection specific model when set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: null },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: null,
+        },
         modelScorer: { value: "global-model", override: null },
         modelTailoring: { value: "global-model", override: null },
         modelProjectSelection: {
           value: "specific-project-model",
           override: "specific-project-model",
         },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",
@@ -217,11 +264,19 @@ describe("Model Selection Logic", () => {
 
     it("should fall back to global model when specific not set", async () => {
       vi.mocked(getEffectiveSettings).mockResolvedValue({
-        model: { value: "global-model", default: "global-model", override: "global-model" },
+        model: {
+          value: "global-model",
+          default: "global-model",
+          override: "global-model",
+        },
         modelScorer: { value: "global-model", override: null },
         modelTailoring: { value: "global-model", override: null },
         modelProjectSelection: { value: "global-model", override: null },
-        llmProvider: { value: "openrouter", default: "openrouter", override: null },
+        llmProvider: {
+          value: "openrouter",
+          default: "openrouter",
+          override: null,
+        },
         llmBaseUrl: {
           value: "https://openrouter.ai/api/v1",
           default: "https://openrouter.ai/api/v1",

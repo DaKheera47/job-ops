@@ -434,7 +434,10 @@ function normalizeModelForProvider(
 }
 
 function normalizeGeminiModelName(value: string): string {
-  return value.trim().replace(/^models\//, "").replace(/^google\//, "");
+  return value
+    .trim()
+    .replace(/^models\//, "")
+    .replace(/^google\//, "");
 }
 
 function getPreferredModel(provider: LlmProvider): string | null {
@@ -483,13 +486,13 @@ function isGeminiTextGenerationModel(model: string): boolean {
 }
 
 function sortModels(models: string[], preferredModel: string | null): string[] {
-  const unique = Array.from(new Set(models.map((model) => model.trim()))).filter(
-    Boolean,
-  );
+  const unique = Array.from(
+    new Set(models.map((model) => model.trim())),
+  ).filter(Boolean);
   unique.sort((left, right) => left.localeCompare(right));
   if (!preferredModel) return unique;
 
-  const preferredIndex = unique.findIndex((model) => model === preferredModel);
+  const preferredIndex = unique.indexOf(preferredModel);
   if (preferredIndex <= 0) return unique;
 
   const [preferred] = unique.splice(preferredIndex, 1);
