@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
@@ -180,11 +181,22 @@ export async function runJobSpy(
         const outputJson = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.json`);
 
         await new Promise<void>((resolve, reject) => {
+          // Auto-detect venv if present, so contributors don't need to set
+          // PYTHON_PATH manually. The venv is created once with:
+          //   python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+          // In Docker, PYTHON_PATH is set explicitly to /usr/bin/python3.
+          const venvPython = join(
+            EXTRACTOR_DIR,
+            ".venv",
+            process.platform === "win32" ? "Scripts/python.exe" : "bin/python3",
+          );
           const pythonPath = process.env.PYTHON_PATH
             ? process.env.PYTHON_PATH
-            : process.platform === "win32"
-              ? "python"
-              : "python3";
+            : existsSync(venvPython)
+              ? venvPython
+              : process.platform === "win32"
+                ? "python"
+                : "python3";
 
           const child = spawn(pythonPath, [JOBSPY_SCRIPT], {
             cwd: EXTRACTOR_DIR,
