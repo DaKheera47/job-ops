@@ -113,9 +113,7 @@ describe("cookies", () => {
             value: c.value ?? "v",
             domain: c.domain ?? ".example.com",
             path: "/",
-            expires: c.expires
-              ? Number(c.expires)
-              : Date.now() / 1000 + 3600,
+            expires: c.expires ? Number(c.expires) : Date.now() / 1000 + 3600,
             httpOnly: true,
             secure: true,
             sameSite: "None" as const,
