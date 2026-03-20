@@ -442,7 +442,11 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
     // A top-level import would slow down every server startup even though
     // most pipeline runs never hit a challenge.
     const { solveChallenge } = await import("browser-utils");
-    const result = await solveChallenge(challengeUrl, body.extractorId, storageDir);
+    const result = await solveChallenge(
+      challengeUrl,
+      body.extractorId,
+      storageDir,
+    );
 
     if (result.status === "solved") {
       const { remaining } = resolvePipelineChallenge(body.extractorId);
