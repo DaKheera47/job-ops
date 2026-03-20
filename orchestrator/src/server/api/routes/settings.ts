@@ -10,7 +10,9 @@ import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
+import { getSetting } from "@server/repositories/settings";
 import { setBackupSettings } from "@server/services/backup/index";
+import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
   clearRxResumeResumeCache,
@@ -107,6 +109,59 @@ function toRxResumeValidationAppError(
   });
 }
 
+function normalizeLlmProviderValue(
+  provider: string | null | undefined,
+): string | undefined {
+  if (!provider) return undefined;
+  return provider.trim().toLowerCase().replace(/-/g, "_");
+}
+
+function getDefaultValidationBaseUrl(
+  provider: string | undefined,
+): string | undefined {
+  if (provider === "lmstudio") return "http://localhost:1234";
+  if (provider === "ollama") return "http://localhost:11434";
+  if (provider === "openai_compatible") return "https://api.openai.com";
+  return undefined;
+}
+
+async function resolveLlmConfig(input: {
+  provider?: string | null;
+  apiKey?: string | null;
+  baseUrl?: string | null;
+}): Promise<{
+  provider: string | undefined;
+  apiKey: string | null;
+  baseUrl: string | undefined;
+}> {
+  const [storedApiKey, storedProvider, storedBaseUrl] = await Promise.all([
+    getSetting("llmApiKey"),
+    getSetting("llmProvider"),
+    getSetting("llmBaseUrl"),
+  ]);
+
+  const provider = normalizeLlmProviderValue(
+    input.provider?.trim() || storedProvider?.trim() || undefined,
+  );
+  const usesBaseUrl =
+    provider === "lmstudio" ||
+    provider === "ollama" ||
+    provider === "openai_compatible";
+  const hasExplicitBaseUrlOverride =
+    input.baseUrl !== undefined && input.baseUrl !== null;
+  const baseUrl = usesBaseUrl
+    ? hasExplicitBaseUrlOverride
+      ? input.baseUrl?.trim() || getDefaultValidationBaseUrl(provider)
+      : storedBaseUrl?.trim() || getDefaultValidationBaseUrl(provider)
+    : undefined;
+
+  return {
+    provider,
+    apiKey: input.apiKey?.trim() || storedApiKey?.trim() || null,
+    baseUrl,
+  };
+}
+
 /**
  * GET /api/settings - Get app settings (effective + defaults)
  */
@@ -187,6 +242,54 @@ settingsRouter.patch(
       });
     }
     ok(res, data);
+  }),
+);
+
+settingsRouter.post(
+  "/llm-models",
+  asyncRoute(async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      ok(res, { models: [] });
+      return;
+    }
+
+    const provider =
+      typeof req.body?.provider === "string" ? req.body.provider : undefined;
+    const apiKey =
+      typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
+    const baseUrl =
+      typeof req.body?.baseUrl === "string" ? req.body.baseUrl : undefined;
+    const resolved = await resolveLlmConfig({ provider, apiKey, baseUrl });
+
+    const llm = new LlmService({
+      provider: resolved.provider,
+      apiKey: resolved.apiKey,
+      baseUrl: resolved.baseUrl,
+    });
+
+    try {
+      const models = await llm.listModels();
+      ok(res, { models });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch available LLM models.";
+      logger.warn("LLM model discovery failed", {
+        requestId: getRequestId() ?? null,
+        route: "POST /api/settings/llm-models",
+        provider: resolved.provider ?? null,
+        hasBaseUrl: Boolean(resolved.baseUrl),
+        hasApiKey: Boolean(resolved.apiKey),
+        message,
+      });
+      fail(
+        res,
+        /api key is missing/i.test(message)
+          ? badRequest(message)
+          : upstreamError(message),
+      );
+    }
   }),
 );
 

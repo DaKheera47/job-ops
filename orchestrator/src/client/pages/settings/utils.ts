@@ -29,6 +29,11 @@ export const LLM_PROVIDERS = [
 ] as const;
 
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
+export const LLM_MODEL_SUGGESTION_PROVIDERS = [
+  "openai",
+  "gemini",
+  "ollama",
+] as const;
 
 export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openrouter: "OpenRouter",
@@ -90,6 +95,15 @@ export function normalizeLlmProvider(
   return (LLM_PROVIDERS as readonly string[]).includes(normalized)
     ? (normalized as LlmProviderId)
     : "openrouter";
+}
+
+export function supportsLlmModelSuggestions(
+  provider: string | null | undefined,
+): boolean {
+  const normalizedProvider = normalizeLlmProvider(provider);
+  return (
+    LLM_MODEL_SUGGESTION_PROVIDERS as readonly string[]
+  ).includes(normalizedProvider);
 }
 
 export function getLlmProviderConfig(provider: string | null | undefined) {

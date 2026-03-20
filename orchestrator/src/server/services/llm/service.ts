@@ -17,7 +17,12 @@ import type {
   LlmValidationResult,
   ResponseMode,
 } from "./types";
-import { buildHeaders, getResponseDetail } from "./utils/http";
+import {
+  addQueryParam,
+  buildHeaders,
+  getResponseDetail,
+  joinUrl,
+} from "./utils/http";
 import { parseJsonContent } from "./utils/json";
 import { parseErrorMessage, truncate } from "./utils/string";
 
@@ -178,6 +183,32 @@ export class LlmService {
     };
   }
 
+  async listModels(): Promise<string[]> {
+    if (this.strategy.requiresApiKey && !this.apiKey) {
+      throw new Error("LLM API key is missing.");
+    }
+
+    if (
+      this.provider !== "openai" &&
+      this.provider !== "gemini" &&
+      this.provider !== "ollama"
+    ) {
+      return [];
+    }
+
+    const models = await (async () => {
+      if (this.provider === "openai") {
+        return this.listOpenAiModels();
+      }
+      if (this.provider === "gemini") {
+        return this.listGeminiModels();
+      }
+      return this.listOllamaModels();
+    })();
+
+    return sortModels(models, getPreferredModel(this.provider));
+  }
+
   private async tryMode<T>(args: {
     mode: ResponseMode;
     model: string;
@@ -190,7 +221,7 @@ export class LlmService {
   }): Promise<LlmResponse<T>> {
     const {
       mode,
-      model,
+      model: rawModel,
       messages,
       jsonSchema,
       maxRetries,
@@ -198,6 +229,7 @@ export class LlmService {
       signal,
     } = args;
     const jobId = args.jobId;
+    const model = normalizeModelForProvider(this.provider, rawModel);
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
@@ -279,6 +311,88 @@ export class LlmService {
 
     return { success: false, error: "All retry attempts failed" };
   }
+
+  private async listOpenAiModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/v1/models"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: this.apiKey,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `OpenAI returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      data?: Array<{ id?: string | null }>;
+    };
+    return (payload.data ?? [])
+      .map((entry) => entry.id?.trim() ?? "")
+      .filter(isOpenAiTextGenerationModel)
+      .filter(Boolean);
+  }
+
+  private async listGeminiModels(): Promise<string[]> {
+    const url = addQueryParam(
+      joinUrl(this.baseUrl, "/v1beta/models"),
+      "key",
+      this.apiKey ?? "",
+    );
+    const response = await fetch(url, {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: null,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Gemini returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      models?: Array<{
+        name?: string | null;
+        supportedGenerationMethods?: string[] | null;
+      }>;
+    };
+    return (payload.models ?? [])
+      .filter((entry) =>
+        entry.supportedGenerationMethods?.includes("generateContent"),
+      )
+      .map((entry) => {
+        const normalized = normalizeGeminiModelName(entry.name ?? "");
+        return normalized ? `google/${normalized}` : "";
+      })
+      .filter(isGeminiTextGenerationModel)
+      .filter(Boolean);
+  }
+
+  private async listOllamaModels(): Promise<string[]> {
+    const response = await fetch(joinUrl(this.baseUrl, "/api/tags"), {
+      method: "GET",
+      headers: buildHeaders({
+        apiKey: null,
+        provider: this.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const detail = await getResponseDetail(response);
+      throw new Error(detail || `Ollama returned ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as {
+      models?: Array<{ name?: string | null; model?: string | null }>;
+    };
+    return (payload.models ?? [])
+      .map((entry) => entry.name?.trim() || entry.model?.trim() || "")
+      .filter(Boolean);
+  }
 }
 
 function normalizeProvider(
@@ -309,4 +423,75 @@ function normalizeProvider(
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeModelForProvider(
+  provider: LlmProvider,
+  model: string,
+): string {
+  if (provider !== "gemini") return model;
+  return normalizeGeminiModelName(model) || model;
+}
+
+function normalizeGeminiModelName(value: string): string {
+  return value.trim().replace(/^models\//, "").replace(/^google\//, "");
+}
+
+function getPreferredModel(provider: LlmProvider): string | null {
+  if (provider === "openai") return "gpt-5.4-mini";
+  if (provider === "gemini") return "google/gemini-3-flash-preview";
+  return null;
+}
+
+function isOpenAiTextGenerationModel(model: string): boolean {
+  const normalized = model.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const blockedPatterns = [
+    "audio",
+    "embedding",
+    "image",
+    "moderation",
+    "realtime",
+    "search",
+    "similarity",
+    "transcribe",
+    "transcription",
+    "tts",
+    "vision",
+    "whisper",
+    "computer-use",
+    "dall-e",
+    "babbage",
+    "davinci",
+    "omni-moderation",
+  ];
+  if (blockedPatterns.some((pattern) => normalized.includes(pattern))) {
+    return false;
+  }
+
+  return /^(gpt|o1|o3|o4|chatgpt|codex)/.test(normalized);
+}
+
+function isGeminiTextGenerationModel(model: string): boolean {
+  const normalized = normalizeGeminiModelName(model).toLowerCase();
+  if (!normalized) return false;
+  if (!normalized.startsWith("gemini")) return false;
+
+  const blockedPatterns = ["embedding", "aqa", "vision", "image", "tts"];
+  return !blockedPatterns.some((pattern) => normalized.includes(pattern));
+}
+
+function sortModels(models: string[], preferredModel: string | null): string[] {
+  const unique = Array.from(new Set(models.map((model) => model.trim()))).filter(
+    Boolean,
+  );
+  unique.sort((left, right) => left.localeCompare(right));
+  if (!preferredModel) return unique;
+
+  const preferredIndex = unique.findIndex((model) => model === preferredModel);
+  if (preferredIndex <= 0) return unique;
+
+  const [preferred] = unique.splice(preferredIndex, 1);
+  return [preferred, ...unique];
 }

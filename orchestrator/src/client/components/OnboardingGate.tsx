@@ -434,8 +434,12 @@ export const OnboardingGate: React.FC = () => {
       await api.updateSettings(update);
       await refreshSettings();
       setValue("llmApiKey", "");
+      const defaultModel = getDefaultModelForProvider(normalizedProvider);
       toast.success("LLM provider connected", {
-        description: `Default for ${providerConfig.label}: ${getDefaultModelForProvider(normalizedProvider)}.`,
+        description:
+          normalizedProvider === "openai" || normalizedProvider === "gemini"
+            ? `Default for ${providerConfig.label}: ${defaultModel}.`
+            : "Select the model manually in Settings > Model.",
       });
       return true;
     } catch (error) {

@@ -15,6 +15,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
 
 vi.mock("../api", () => ({
   getSettings: vi.fn(),
+  getLlmModels: vi.fn().mockResolvedValue([]),
   updateSettings: vi.fn(),
   validateRxresume: vi.fn(),
   getRxResumeProjects: vi.fn(),

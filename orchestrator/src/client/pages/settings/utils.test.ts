@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getLlmProviderConfig, normalizeLlmProvider } from "./utils";
+import {
+  getLlmProviderConfig,
+  normalizeLlmProvider,
+  supportsLlmModelSuggestions,
+} from "./utils";
 
 describe("settings utils", () => {
   it("treats openai-compatible as a dedicated configurable provider", () => {
@@ -19,5 +23,12 @@ describe("settings utils", () => {
 
   it("defaults unknown providers to openrouter", () => {
     expect(normalizeLlmProvider("unknown-provider")).toBe("openrouter");
+  });
+
+  it("only enables model suggestions for supported providers", () => {
+    expect(supportsLlmModelSuggestions("openai")).toBe(true);
+    expect(supportsLlmModelSuggestions("gemini")).toBe(true);
+    expect(supportsLlmModelSuggestions("ollama")).toBe(true);
+    expect(supportsLlmModelSuggestions("openrouter")).toBe(false);
   });
 });

@@ -1336,6 +1336,18 @@ export async function validateLlm(input: {
   });
 }
 
+export async function getLlmModels(input?: {
+  provider?: string;
+  baseUrl?: string;
+  apiKey?: string;
+}): Promise<string[]> {
+  const data = await fetchApi<{ models: string[] }>("/settings/llm-models", {
+    method: "POST",
+    body: JSON.stringify(input ?? {}),
+  });
+  return data.models;
+}
+
 export async function validateRxresume(input?: {
   mode?: "v4" | "v5";
   email?: string;
