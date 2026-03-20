@@ -82,6 +82,7 @@ vi.mock("@server/services/visa-sponsors/index", () => ({
 }));
 
 const originalEnv = { ...process.env };
+const originalFetch = global.fetch;
 const isolatedEnvKeys = [
   "RXRESUME_API_KEY",
   "RXRESUME_EMAIL",
@@ -108,6 +109,8 @@ export async function startServer(options?: {
   closeDb: () => void;
   tempDir: string;
 }> {
+  vi.unstubAllGlobals();
+  global.fetch = originalFetch;
   vi.resetModules();
   const tempDir = await mkdtemp(join(tmpdir(), "job-ops-api-test-"));
   const envOverrides = options?.env ?? {};
@@ -168,5 +171,7 @@ export async function stopServer(args: {
     await rm(args.tempDir, { recursive: true, force: true });
   }
   process.env = { ...originalEnv };
+  vi.unstubAllGlobals();
+  global.fetch = originalFetch;
   vi.clearAllMocks();
 }

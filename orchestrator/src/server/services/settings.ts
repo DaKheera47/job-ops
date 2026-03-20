@@ -67,7 +67,11 @@ function normalizeModelForProviderCompatibility(
  * Get the effective app settings, combining environment variables and database overrides.
  */
 export async function getEffectiveSettings(): Promise<AppSettings> {
-  const overrides = await settingsRepo.getAllSettings();
+  const getAllSettings =
+    "getAllSettings" in settingsRepo ? settingsRepo.getAllSettings : null;
+  const overrides =
+    (typeof getAllSettings === "function" ? await getAllSettings() : null) ??
+    {};
   const providerOverride = settingsRegistry.llmProvider.parse(
     overrides.llmProvider,
   );

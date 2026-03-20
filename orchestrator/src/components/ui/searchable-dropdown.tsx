@@ -24,6 +24,7 @@ export interface SearchableDropdownOption {
 }
 
 interface SearchableDropdownProps {
+  inputId?: string;
   value: string;
   options: SearchableDropdownOption[];
   onValueChange: (value: string) => void;
@@ -38,6 +39,7 @@ interface SearchableDropdownProps {
 }
 
 export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
+  inputId,
   value,
   options,
   onValueChange,
@@ -51,18 +53,44 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   listClassName,
 }) => {
   const [open, setOpen] = React.useState(false);
+  const [query, setQuery] = React.useState("");
   const selectedOption = options.find((option) => option.value === value);
-  const triggerLabel = selectedOption?.label ?? placeholder;
+  const trimmedQuery = query.trim();
+  const hasCustomValue =
+    trimmedQuery.length > 0 &&
+    !options.some(
+      (option) =>
+        option.value === trimmedQuery || option.label.trim() === trimmedQuery,
+    );
+  const triggerLabel = selectedOption?.label ?? (value || placeholder);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) {
+          setQuery("");
+        }
+      }}
+    >
+      {inputId ? (
+        <input
+          id={inputId}
+          type="text"
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onValueChange(event.target.value)}
+          className="sr-only"
+        />
+      ) : null}
       <PopoverTrigger asChild>
         <Button
           type="button"
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          aria-label={ariaLabel ?? triggerLabel}
+          aria-label={inputId ? undefined : (ariaLabel ?? triggerLabel)}
           disabled={disabled}
           className={cn("justify-between", triggerClassName)}
         >
@@ -75,13 +103,29 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         className={cn("w-[320px] p-0", contentClassName)}
       >
         <Command loop>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={query}
+            onValueChange={setQuery}
+          />
           <CommandList
             className={cn("max-h-56", listClassName)}
             onWheelCapture={(event) => event.stopPropagation()}
           >
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
+              {hasCustomValue ? (
+                <CommandItem
+                  value={`Use ${trimmedQuery}`}
+                  onSelect={() => {
+                    onValueChange(trimmedQuery);
+                    setOpen(false);
+                    setQuery("");
+                  }}
+                >
+                  <span className="truncate">{`Use "${trimmedQuery}"`}</span>
+                </CommandItem>
+              ) : null}
               {options.map((option) => {
                 const selected = value === option.value;
                 const searchableValue = [
@@ -100,6 +144,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     onSelect={() => {
                       onValueChange(option.value);
                       setOpen(false);
+                      setQuery("");
                     }}
                   >
                     <span className="truncate">{option.label}</span>

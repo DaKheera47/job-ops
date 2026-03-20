@@ -289,6 +289,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                 control={control}
                 render={({ field }) => (
                   <SearchableDropdown
+                    inputId="model"
                     value={field.value ?? ""}
                     options={defaultModelOptions}
                     onValueChange={field.onChange}
@@ -346,6 +347,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                       control={control}
                       render={({ field }) => (
                         <SearchableDropdown
+                          inputId="modelScorer"
                           value={field.value ?? ""}
                           options={scoringModelOptions}
                           onValueChange={field.onChange}
@@ -384,6 +386,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                       control={control}
                       render={({ field }) => (
                         <SearchableDropdown
+                          inputId="modelTailoring"
                           value={field.value ?? ""}
                           options={tailoringModelOptions}
                           onValueChange={field.onChange}
@@ -423,6 +426,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                       control={control}
                       render={({ field }) => (
                         <SearchableDropdown
+                          inputId="modelProjectSelection"
                           value={field.value ?? ""}
                           options={projectSelectionModelOptions}
                           onValueChange={field.onChange}

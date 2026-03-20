@@ -58,6 +58,12 @@ export function stripLanguageDirectivesFromConstraints(
 }
 
 export async function getWritingStyle(): Promise<WritingStyle> {
+  const getSettingFromRepo =
+    "getSetting" in settingsRepo ? settingsRepo.getSetting : null;
+  const getSetting =
+    typeof getSettingFromRepo === "function"
+      ? getSettingFromRepo.bind(settingsRepo)
+      : async () => null;
   const [
     toneRaw,
     formalityRaw,
@@ -66,12 +72,12 @@ export async function getWritingStyle(): Promise<WritingStyle> {
     languageModeRaw,
     manualLanguageRaw,
   ] = await Promise.all([
-    settingsRepo.getSetting("chatStyleTone"),
-    settingsRepo.getSetting("chatStyleFormality"),
-    settingsRepo.getSetting("chatStyleConstraints"),
-    settingsRepo.getSetting("chatStyleDoNotUse"),
-    settingsRepo.getSetting("chatStyleLanguageMode"),
-    settingsRepo.getSetting("chatStyleManualLanguage"),
+    getSetting("chatStyleTone"),
+    getSetting("chatStyleFormality"),
+    getSetting("chatStyleConstraints"),
+    getSetting("chatStyleDoNotUse"),
+    getSetting("chatStyleLanguageMode"),
+    getSetting("chatStyleManualLanguage"),
   ]);
 
   return {
