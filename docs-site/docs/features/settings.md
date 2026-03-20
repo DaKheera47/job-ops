@@ -47,6 +47,16 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Scoring model
   - Tailoring model
   - Project-selection model
+- Provider defaults are applied automatically when the model fields are left blank:
+  - `openai` defaults to `gpt-5.4-mini`
+  - `gemini` defaults to `google/gemini-3-flash-preview`
+- The settings page shows provider-aware model pickers for:
+  - `openai`: available text-generation models only
+  - `gemini`: available Gemini text-generation models only
+  - `ollama`: locally installed Ollama models
+- `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
+- Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
+- The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save
 
 ### Webhooks
 
@@ -199,6 +209,13 @@ curl -X POST "http://localhost:3001/api/backups"
 
 - Some settings apply only to new runs/actions after save.
 - Re-run scoring/tailoring/pipeline to validate effect.
+- In the **Model** section, the field preview and **Resolved config** update immediately when you choose a model, but the change only applies to future actions after you click **Save**.
+
+### Tailoring or scoring says the selected model does not exist for the current provider
+
+- Open **Settings -> Model** and confirm the provider and model belong together.
+- If you switch providers, leave the model fields blank to use the provider default, or pick a new provider-compatible model from the dropdown.
+- JobOps ignores stale Gemini-style overrides under `openai`, and ignores stale OpenAI-style overrides under `gemini`, but you still need to save the current form selection for future runs.
 
 ### Resume tailoring used English instead of my resume language
 
