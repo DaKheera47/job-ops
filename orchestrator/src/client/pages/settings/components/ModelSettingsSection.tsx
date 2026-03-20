@@ -45,9 +45,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const {
     effective,
     default: defaultModel,
-    scorer,
-    tailoring,
-    projectSelection,
     llmProvider,
     llmBaseUrl,
     llmApiKeyHint,
@@ -161,16 +158,16 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const keyHint = formatSecretHint(llmApiKeyHint);
   const keyText = showApiKey ? keyHint || "Not set" : "Not required";
   const resolvedBaseUrl = llmBaseUrlValue?.trim() || llmBaseUrl || "-";
-  const effectiveDefaultModel =
-    modelValue.trim() || effective || providerDefaultModel || "-";
-  const scoringModel =
-    modelScorerValue.trim() || scorer || effectiveDefaultModel;
-  const tailoringModel =
-    modelTailoringValue.trim() || tailoring || effectiveDefaultModel;
+  const selectedDefaultModel = modelValue.trim();
+  const previewDefaultModel =
+    selectedDefaultModel || effective || providerDefaultModel || "-";
+  const selectedScoringModel = modelScorerValue.trim();
+  const selectedTailoringModel = modelTailoringValue.trim();
+  const selectedProjectSelectionModel = modelProjectSelectionValue.trim();
+  const scoringModel = selectedScoringModel || previewDefaultModel;
+  const tailoringModel = selectedTailoringModel || previewDefaultModel;
   const projectSelectionModel =
-    modelProjectSelectionValue.trim() ||
-    projectSelection ||
-    effectiveDefaultModel;
+    selectedProjectSelectionModel || previewDefaultModel;
   const modelHelper = supportsModelSuggestions
     ? !hasAvailableApiKey
       ? `Add or save a ${providerConfig.label} API key to load available models.`
@@ -313,7 +310,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               )}
               <div className="text-xs text-muted-foreground">{modelHelper}</div>
               <div className="text-xs text-muted-foreground">
-                Current: <span className="font-mono">{effectiveDefaultModel}</span>
+                Current: <span className="font-mono">{previewDefaultModel}</span>
               </div>
             </div>
           ) : (
@@ -324,7 +321,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               disabled={isLoading || isSaving}
               error={errors.model?.message as string | undefined}
               helper={modelHelper}
-              current={effectiveDefaultModel}
+              current={previewDefaultModel}
             />
           )}
 
@@ -348,7 +345,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={scoringModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={effectiveDefaultModel || "Inherit default model"}
+                          placeholder={previewDefaultModel || "Inherit default model"}
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Scoring Model"
@@ -384,7 +381,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={tailoringModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={effectiveDefaultModel || "Inherit default model"}
+                          placeholder={previewDefaultModel || "Inherit default model"}
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Tailoring Model"
@@ -420,7 +417,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                           value={field.value ?? ""}
                           options={projectSelectionModelOptions}
                           onValueChange={field.onChange}
-                          placeholder={effectiveDefaultModel || "Inherit default model"}
+                          placeholder={previewDefaultModel || "Inherit default model"}
                           searchPlaceholder="Search models..."
                           emptyText="No models found."
                           ariaLabel="Project Selection Model"
@@ -447,7 +444,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   <SettingsInput
                     label="Scoring Model"
                     inputProps={register("modelScorer")}
-                    placeholder={effectiveDefaultModel || "inherit"}
+                    placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={errors.modelScorer?.message as string | undefined}
                     current={scoringModel}
@@ -456,7 +453,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   <SettingsInput
                     label="Tailoring Model"
                     inputProps={register("modelTailoring")}
-                    placeholder={effectiveDefaultModel || "inherit"}
+                    placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={errors.modelTailoring?.message as string | undefined}
                     current={tailoringModel}
@@ -465,7 +462,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   <SettingsInput
                     label="Project Selection Model"
                     inputProps={register("modelProjectSelection")}
-                    placeholder={effectiveDefaultModel || "inherit"}
+                    placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={
                       errors.modelProjectSelection?.message as string | undefined
@@ -492,27 +489,23 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <div className="font-mono">{keyText}</div>
 
               <div className="text-muted-foreground">Default model</div>
-              <div className="font-mono">{effectiveDefaultModel}</div>
+              <div className="font-mono">{previewDefaultModel}</div>
 
               <div className="text-muted-foreground">Scoring model</div>
               <div className="font-mono">
-                {scoringModel === effectiveDefaultModel
-                  ? "inherits"
-                  : scoringModel}
+                {selectedScoringModel ? scoringModel : "inherits"}
               </div>
 
               <div className="text-muted-foreground">Tailoring model</div>
               <div className="font-mono">
-                {tailoringModel === effectiveDefaultModel
-                  ? "inherits"
-                  : tailoringModel}
+                {selectedTailoringModel ? tailoringModel : "inherits"}
               </div>
 
               <div className="text-muted-foreground">Project selection</div>
               <div className="font-mono">
-                {projectSelectionModel === effectiveDefaultModel
-                  ? "inherits"
-                  : projectSelectionModel}
+                {selectedProjectSelectionModel
+                  ? projectSelectionModel
+                  : "inherits"}
               </div>
             </div>
           </div>
