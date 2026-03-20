@@ -218,6 +218,50 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(saveButton).toBeEnabled());
   });
 
+  it("clears stale model overrides when the provider changes", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        model: {
+          value: "google/gemini-3-flash-preview",
+          default: "google/gemini-3-flash-preview",
+          override: "google/gemini-3-flash-preview",
+        },
+        modelScorer: { value: "google/gemini-3-flash-preview", override: null },
+        modelTailoring: {
+          value: "google/gemini-3-flash-preview",
+          override: "google/gemini-3-flash-preview",
+        },
+        modelProjectSelection: {
+          value: "google/gemini-3-flash-preview",
+          override: null,
+        },
+        llmProvider: { value: "gemini", default: "gemini", override: "gemini" },
+      }),
+    );
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
+
+    renderPage();
+    await openModelSection();
+
+    fireEvent.click(screen.getByRole("combobox", { name: /provider/i }));
+    fireEvent.click(await screen.findByText("OpenAI"));
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmProvider: "openai",
+        model: null,
+        modelScorer: null,
+        modelTailoring: null,
+        modelProjectSelection: null,
+      }),
+    );
+  });
+
   it("hides pipeline tuning sections that moved to run modal", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();

@@ -31,6 +31,38 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   return "https://openrouter.ai";
 }
 
+function normalizeModelForProviderCompatibility(
+  provider: string | null | undefined,
+  model: string | null | undefined,
+): string | null {
+  const trimmedModel = model?.trim();
+  if (!trimmedModel) return null;
+
+  const normalizedProvider = provider?.trim().toLowerCase().replace(/-/g, "_");
+  const normalizedModel = trimmedModel.toLowerCase();
+
+  if (normalizedProvider === "openai") {
+    if (
+      normalizedModel.startsWith("google/") ||
+      normalizedModel.startsWith("models/")
+    ) {
+      return null;
+    }
+  }
+
+  if (normalizedProvider === "gemini") {
+    const isGeminiModel =
+      normalizedModel.startsWith("google/") ||
+      normalizedModel.startsWith("models/") ||
+      normalizedModel.startsWith("gemini");
+    if (!isGeminiModel) {
+      return null;
+    }
+  }
+
+  return trimmedModel;
+}
+
 /**
  * Get the effective app settings, combining environment variables and database overrides.
  */
@@ -41,10 +73,11 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   );
   const effectiveLlmProvider =
     providerOverride ?? settingsRegistry.llmProvider.default();
-  const resolvedModelDefault = getDefaultModelForProvider(
-    effectiveLlmProvider,
-    process.env.MODEL,
-  );
+  const resolvedModelDefault =
+    normalizeModelForProviderCompatibility(
+      effectiveLlmProvider,
+      getDefaultModelForProvider(effectiveLlmProvider, process.env.MODEL),
+    ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
   const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
     rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
@@ -93,7 +126,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   const rawModel = overrides.model;
   const modelDef = settingsRegistry.model;
-  const overrideModel = modelDef.parse(rawModel);
+  const overrideModel = normalizeModelForProviderCompatibility(
+    effectiveLlmProvider,
+    modelDef.parse(rawModel),
+  );
   const modelValue = overrideModel ?? resolvedModelDefault;
 
   for (const [key, def] of Object.entries(settingsRegistry)) {
@@ -154,7 +190,11 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         override,
       };
     } else if (def.kind === "model") {
-      const override = overrides[key as settingsRepo.SettingKey] ?? null;
+      const override =
+        normalizeModelForProviderCompatibility(
+          effectiveLlmProvider,
+          overrides[key as settingsRepo.SettingKey] ?? null,
+        ) ?? null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
       (result as any)[key] = { value: override || modelValue, override };

@@ -824,10 +824,26 @@ export const SettingsPage: React.FC = () => {
       }
 
       const payload: Partial<UpdateSettingsInput> = {
-        model: normalizeString(data.model),
-        modelScorer: normalizeString(data.modelScorer),
-        modelTailoring: normalizeString(data.modelTailoring),
-        modelProjectSelection: normalizeString(data.modelProjectSelection),
+        model: dirtyFields.llmProvider
+          ? dirtyFields.model
+            ? normalizeString(data.model)
+            : null
+          : normalizeString(data.model),
+        modelScorer: dirtyFields.llmProvider
+          ? dirtyFields.modelScorer
+            ? normalizeString(data.modelScorer)
+            : null
+          : normalizeString(data.modelScorer),
+        modelTailoring: dirtyFields.llmProvider
+          ? dirtyFields.modelTailoring
+            ? normalizeString(data.modelTailoring)
+            : null
+          : normalizeString(data.modelTailoring),
+        modelProjectSelection: dirtyFields.llmProvider
+          ? dirtyFields.modelProjectSelection
+            ? normalizeString(data.modelProjectSelection)
+            : null
+          : normalizeString(data.modelProjectSelection),
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,

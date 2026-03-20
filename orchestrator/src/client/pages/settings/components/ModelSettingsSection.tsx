@@ -11,7 +11,7 @@ import {
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import {
   AccordionContent,
@@ -61,6 +61,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   } = useFormContext<UpdateSettingsInput>();
 
   const selectedProvider = watch("llmProvider") || llmProvider || "openrouter";
+  const previousProviderRef = useRef(selectedProvider);
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
 
@@ -89,6 +90,18 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
       setValue("llmBaseUrl", "", { shouldDirty: true });
     }
   }, [setValue, showBaseUrl, llmBaseUrlValue]);
+
+  useEffect(() => {
+    if (previousProviderRef.current === selectedProvider) {
+      return;
+    }
+
+    previousProviderRef.current = selectedProvider;
+    setValue("model", "", { shouldDirty: true });
+    setValue("modelScorer", "", { shouldDirty: true });
+    setValue("modelTailoring", "", { shouldDirty: true });
+    setValue("modelProjectSelection", "", { shouldDirty: true });
+  }, [selectedProvider, setValue]);
 
   useEffect(() => {
     if (!supportsModelSuggestions) {

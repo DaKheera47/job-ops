@@ -4,10 +4,10 @@
 
 import { logger } from "@infra/logger";
 import type { Job } from "@shared/types";
-import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
+import { resolveLlmModel } from "./modelSelection";
 import { getEffectiveSettings } from "./settings";
 
 interface SuitabilityResult {
@@ -88,17 +88,10 @@ export async function scoreJobSuitability(
   job: Job,
   profile: Record<string, unknown>,
 ): Promise<SuitabilityResult> {
-  const [overrideModel, overrideModelScorer, settings] = await Promise.all([
-    getSetting("model"),
-    getSetting("modelScorer"),
+  const [model, settings] = await Promise.all([
+    resolveLlmModel("scoring"),
     getEffectiveSettings(),
   ]);
-  // Precedence: Scorer-specific override > Global override > Env var > Default
-  const model =
-    overrideModelScorer ||
-    overrideModel ||
-    process.env.MODEL ||
-    "google/gemini-3-flash-preview";
 
   const prompt = buildScoringPrompt(job, sanitizeProfileForPrompt(profile), {
     instructions: settings.scoringInstructions?.value ?? "",

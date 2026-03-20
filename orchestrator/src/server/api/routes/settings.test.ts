@@ -174,6 +174,36 @@ describe.sequential("Settings API routes", () => {
     }
   });
 
+  it("ignores incompatible model overrides when the provider changes", async () => {
+    const providerAware = await startServer({
+      env: {
+        MODEL: undefined,
+        LLM_API_KEY: "secret-key",
+        RXRESUME_EMAIL: "resume@example.com",
+      },
+    });
+
+    try {
+      const patchRes = await fetch(`${providerAware.baseUrl}/api/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          llmProvider: "openai",
+          modelTailoring: "google/gemini-3-flash-preview",
+        }),
+      });
+      const patchBody = await patchRes.json();
+
+      expect(patchRes.status).toBe(200);
+      expect(patchBody.ok).toBe(true);
+      expect(patchBody.data.model.default).toBe("gpt-5.4-mini");
+      expect(patchBody.data.modelTailoring.value).toBe("gpt-5.4-mini");
+      expect(patchBody.data.modelTailoring.override).toBeNull();
+    } finally {
+      await stopServer(providerAware);
+    }
+  });
+
   it("rejects invalid settings updates and persists overrides", async () => {
     const badPatch = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",

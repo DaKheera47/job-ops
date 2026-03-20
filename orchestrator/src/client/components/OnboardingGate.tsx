@@ -424,6 +424,10 @@ export const OnboardingGate: React.FC = () => {
       const update: Partial<UpdateSettingsInput> = {
         llmProvider: normalizedProvider,
         llmBaseUrl: showBaseUrl ? baseUrlValue || null : null,
+        model: null,
+        modelScorer: null,
+        modelTailoring: null,
+        modelProjectSelection: null,
       };
 
       if (showApiKey && apiKeyValue) {

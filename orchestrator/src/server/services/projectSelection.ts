@@ -2,9 +2,9 @@
  * Service for AI-powered project selection for resumes.
  */
 
-import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import { resolveLlmModel } from "./modelSelection";
 import type { ResumeProjectSelectionItem } from "./resumeProjects";
 
 /** JSON schema for project selection response */
@@ -35,16 +35,7 @@ export async function pickProjectIdsForJob(args: {
   const eligibleIds = new Set(args.eligibleProjects.map((p) => p.id));
   if (eligibleIds.size === 0) return [];
 
-  const [overrideModel, overrideModelProjectSelection] = await Promise.all([
-    getSetting("model"),
-    getSetting("modelProjectSelection"),
-  ]);
-  // Precedence: Project-specific override > Global override > Env var > Default
-  const model =
-    overrideModelProjectSelection ||
-    overrideModel ||
-    process.env.MODEL ||
-    "google/gemini-3-flash-preview";
+  const model = await resolveLlmModel("projectSelection");
 
   const prompt = buildProjectSelectionPrompt({
     jobDescription: args.jobDescription,

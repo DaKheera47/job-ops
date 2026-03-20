@@ -9,10 +9,10 @@ import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
 import type { BranchInfo, JobChatMessage, JobChatRun } from "@shared/types";
 import * as jobChatRepo from "../repositories/ghostwriter";
-import * as settingsRepo from "../repositories/settings";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import { resolveLlmRuntimeSettings as resolveRuntimeLlmSettings } from "./modelSelection";
 
 type LlmRuntimeSettings = {
   model: string;
@@ -62,27 +62,7 @@ function isRunningRunUniqueConstraintError(error: unknown): boolean {
 }
 
 async function resolveLlmRuntimeSettings(): Promise<LlmRuntimeSettings> {
-  const overrides = await settingsRepo.getAllSettings();
-
-  const model =
-    overrides.modelTailoring ||
-    overrides.model ||
-    process.env.MODEL ||
-    "google/gemini-3-flash-preview";
-
-  const provider =
-    overrides.llmProvider || process.env.LLM_PROVIDER || "openrouter";
-
-  const baseUrl = overrides.llmBaseUrl || process.env.LLM_BASE_URL || null;
-
-  const apiKey = overrides.llmApiKey || process.env.LLM_API_KEY || null;
-
-  return {
-    model,
-    provider,
-    baseUrl,
-    apiKey,
-  };
+  return resolveRuntimeLlmSettings("tailoring");
 }
 
 async function buildConversationMessages(

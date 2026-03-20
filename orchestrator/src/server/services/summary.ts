@@ -4,9 +4,9 @@
 
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { getSetting } from "../repositories/settings";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
+import { resolveLlmModel } from "./modelSelection";
 import {
   getWritingLanguageLabel,
   resolveWritingOutputLanguage,
@@ -75,18 +75,10 @@ export async function generateTailoring(
   jobDescription: string,
   profile: ResumeProfile,
 ): Promise<TailoringResult> {
-  const [overrideModel, overrideModelTailoring, writingStyle] =
-    await Promise.all([
-      getSetting("model"),
-      getSetting("modelTailoring"),
-      getWritingStyle(),
-    ]);
-  // Precedence: Tailoring-specific override > Global override > Env var > Default
-  const model =
-    overrideModelTailoring ||
-    overrideModel ||
-    process.env.MODEL ||
-    "google/gemini-3-flash-preview";
+  const [model, writingStyle] = await Promise.all([
+    resolveLlmModel("tailoring"),
+    getWritingStyle(),
+  ]);
   const prompt = buildTailoringPrompt(profile, jobDescription, writingStyle);
 
   const llm = new LlmService();
