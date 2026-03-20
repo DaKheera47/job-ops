@@ -20,6 +20,10 @@ export async function withRetry<T>(
 ): Promise<T> {
   const { maxAttempts = 3, baseDelayMs = 2_000, shouldRetry } = options;
 
+  if (maxAttempts < 1) {
+    throw new Error(`withRetry: maxAttempts must be >= 1, got ${maxAttempts}`);
+  }
+
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {

@@ -154,7 +154,9 @@ export function resolvePipelineChallenge(extractorId: string): {
   const remaining = challengeState.challenges.size;
 
   // Update progress so the UI reflects the change immediately
-  progressHelpers.challengeResolved(Array.from(challengeState.challenges.values()));
+  progressHelpers.challengeResolved(
+    Array.from(challengeState.challenges.values()),
+  );
 
   if (remaining === 0) {
     challengeState.resolve();
@@ -715,6 +717,8 @@ export function requestPipelineCancel(): {
   state.cancelRequestedAt = new Date().toISOString();
 
   // Unblock the challenge pause if the pipeline is waiting for human solving.
+  // Without this, cancellation during challenge_required would leave the
+  // pipeline stuck until challenges are solved or the server restarts.
   // ensureNotCancelled() runs immediately after the paused Promise resolves.
   if (state.activeChallengeState) {
     state.activeChallengeState.resolve();

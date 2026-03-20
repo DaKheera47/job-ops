@@ -402,7 +402,6 @@ pipelineRouter.get("/challenges", (_req: Request, res: Response) => {
  */
 const solveChallengeSchema = z.object({
   extractorId: z.string().min(1),
-  url: z.string().url(),
 });
 
 pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
@@ -418,10 +417,16 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
       );
     }
 
+    // Use the server-side challenge URL, not the client-supplied one.
+    // The client sends url for display/convenience, but the server is the
+    // source of truth — prevents solving a different URL than the one that
+    // actually triggered the challenge.
+    const challengeUrl = match.url;
+
     logger.info("Launching challenge solver", {
       route: "/api/pipeline/solve-challenge",
       extractorId: body.extractorId,
-      url: body.url,
+      url: challengeUrl,
     });
 
     // Resolve the extractor's storage directory so cookies are saved where
@@ -437,7 +442,7 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
     // A top-level import would slow down every server startup even though
     // most pipeline runs never hit a challenge.
     const { solveChallenge } = await import("browser-utils");
-    const result = await solveChallenge(body.url, body.extractorId, storageDir);
+    const result = await solveChallenge(challengeUrl, body.extractorId, storageDir);
 
     if (result.status === "solved") {
       const { remaining } = resolvePipelineChallenge(body.extractorId);
@@ -454,18 +459,22 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
         challengesRemaining: remaining,
       });
     } else {
-      const message =
-        result.status === "timeout"
-          ? "Challenge timed out — browser was open for 5 minutes without the challenge being solved"
-          : `Solver error: ${result.message}`;
-
       logger.warn("Challenge solver did not succeed", {
         route: "/api/pipeline/solve-challenge",
         extractorId: body.extractorId,
         solverStatus: result.status,
       });
 
-      fail(res, requestTimeout(message));
+      if (result.status === "timeout") {
+        fail(
+          res,
+          requestTimeout(
+            "Challenge timed out — browser was open for 5 minutes without the challenge being solved",
+          ),
+        );
+      } else {
+        fail(res, serviceUnavailable(`Solver error: ${result.message}`));
+      }
     }
   } catch (error) {
     if (error instanceof z.ZodError) {

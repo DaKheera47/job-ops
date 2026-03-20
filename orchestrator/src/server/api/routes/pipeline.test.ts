@@ -417,6 +417,42 @@ describe.sequential("Pipeline API routes", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  // -- Challenge endpoints --
+  // Route-level tests only: validates wiring, request validation, and 404 on
+  // unknown extractor. The actual solver (browser-utils/solver.ts) launches a
+  // headed browser for human interaction — not feasible to unit test. Deferring
+  // solver-level tests until a real regression justifies the complexity.
+
+  it("returns empty challenges when no pipeline is paused", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/challenges`);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.challenges).toEqual([]);
+  });
+
+  it("rejects solve-challenge with invalid payload", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/solve-challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when solving a challenge for unknown extractor", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/solve-challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        extractorId: "nonexistent",
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
+  });
+
   it("streams pipeline progress over SSE", async () => {
     const controller = new AbortController();
     const res = await fetch(`${baseUrl}/api/pipeline/progress`, {

@@ -1,5 +1,5 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import type { BrowserContext, Cookie } from "playwright";
 
 /**
@@ -28,7 +28,7 @@ export interface CookieJarInfo {
 }
 
 function cookiePath(storageDir: string, extractorId: string): string {
-  return `${storageDir}/${extractorId}-cookies.json`;
+  return join(storageDir, `${extractorId}-cookies.json`);
 }
 
 function isExpired(cookie: Cookie): boolean {
@@ -63,10 +63,21 @@ export async function saveCookies(
 
   if (relevant.length === 0) return;
 
+  // Auto-capture the browser's User-Agent so headless retries can reuse it.
+  // CF ties cf_clearance to the UA + TLS fingerprint — without matching UA
+  // the cookie is useless. We grab it from the first open page; there's
+  // always at least one when saving cookies after navigation.
+  let userAgent: string | undefined;
+  const page = context.pages()[0];
+  if (page) {
+    userAgent = await page.evaluate(() => navigator.userAgent);
+  }
+
   const jar: PersistedCookieJar = {
     extractorId,
     savedAt: new Date().toISOString(),
     cookies: relevant,
+    userAgent,
   };
 
   const path = cookiePath(storageDir, extractorId);

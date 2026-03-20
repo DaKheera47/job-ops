@@ -1,9 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { invalidateCookies, readCookieJar } from "../src/cookies.js";
+import { describe, expect, it } from "vitest";
+import {
+  invalidateCookies,
+  readCookieJar,
+  saveCookies,
+} from "../src/cookies.js";
 
 // loadCookies / saveCookies need a real Playwright BrowserContext which is
 // heavy to set up.  We test the file-level functions that don't need one:
@@ -94,6 +98,83 @@ describe("cookies", () => {
       const result = await readCookieJar("gradcracker", dir);
       expect(result.hasCookies).toBe(true);
       expect(result.userAgent).toBeUndefined();
+    });
+  });
+
+  describe("saveCookies", () => {
+    function mockContext(
+      cookies: Record<string, string>[],
+      userAgent = "Mozilla/5.0 TestUA",
+    ) {
+      return {
+        cookies: async () =>
+          cookies.map((c) => ({
+            name: c.name,
+            value: c.value ?? "v",
+            domain: c.domain ?? ".example.com",
+            path: "/",
+            expires: c.expires
+              ? Number(c.expires)
+              : Date.now() / 1000 + 3600,
+            httpOnly: true,
+            secure: true,
+            sameSite: "None" as const,
+          })),
+        pages: () => [
+          {
+            evaluate: async () => userAgent,
+          },
+        ],
+      } as unknown as import("playwright").BrowserContext;
+    }
+
+    it("persists userAgent from the browser context", async () => {
+      const dir = storageDir();
+      const ctx = mockContext(
+        [{ name: "cf_clearance" }],
+        "Mozilla/5.0 Camoufox/123",
+      );
+
+      await saveCookies(ctx, "test-extractor", dir);
+
+      const jar = await readCookieJar("test-extractor", dir);
+      expect(jar.hasCookies).toBe(true);
+      expect(jar.userAgent).toBe("Mozilla/5.0 Camoufox/123");
+    });
+
+    it("writes undefined userAgent when no pages are open", async () => {
+      const dir = storageDir();
+      const ctx = {
+        cookies: async () => [
+          {
+            name: "cf_clearance",
+            value: "v",
+            domain: ".example.com",
+            path: "/",
+            expires: Date.now() / 1000 + 3600,
+            httpOnly: true,
+            secure: true,
+            sameSite: "None" as const,
+          },
+        ],
+        pages: () => [],
+      } as unknown as import("playwright").BrowserContext;
+
+      await saveCookies(ctx, "no-pages", dir);
+
+      const jar = await readCookieJar("no-pages", dir);
+      expect(jar.hasCookies).toBe(true);
+      expect(jar.userAgent).toBeUndefined();
+    });
+
+    it("does not write jar when no relevant cookies exist", async () => {
+      const dir = storageDir();
+      const ctx = mockContext([{ name: "irrelevant_cookie" }]);
+
+      await saveCookies(ctx, "empty", dir);
+
+      const jar = await readCookieJar("empty", dir);
+      expect(jar.hasCookies).toBe(false);
     });
   });
 
