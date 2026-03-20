@@ -38,6 +38,30 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   return normalized ? normalized : null;
 }
 
+export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
+export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+
+export function getDefaultModelForProvider(
+  provider: string | null | undefined,
+  fallbackModel?: string | null,
+): string {
+  const trimmedFallback = fallbackModel?.trim();
+  if (trimmedFallback) {
+    return trimmedFallback;
+  }
+
+  const normalizedProvider = normalizeLlmProviderOrNull(provider ?? undefined);
+
+  if (normalizedProvider === "openai") {
+    return DEFAULT_OPENAI_MODEL;
+  }
+
+  if (normalizedProvider === "gemini") {
+    return DEFAULT_GEMINI_MODEL;
+  }
+  return DEFAULT_GEMINI_MODEL;
+}
+
 function serializeNullableNumber(
   value: number | null | undefined,
 ): string | null {
@@ -87,8 +111,11 @@ export const settingsRegistry = {
     schema: z.string().trim().max(200),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.MODEL || "google/gemini-3-flash-preview"
-        : "google/gemini-3-flash-preview",
+        ? getDefaultModelForProvider(
+            process.env.LLM_PROVIDER,
+            process.env.MODEL,
+          )
+        : DEFAULT_GEMINI_MODEL,
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,

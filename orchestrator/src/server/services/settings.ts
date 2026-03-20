@@ -1,6 +1,9 @@
 import { logger } from "@infra/logger";
 import * as settingsRepo from "@server/repositories/settings";
-import { settingsRegistry } from "@shared/settings-registry";
+import {
+  getDefaultModelForProvider,
+  settingsRegistry,
+} from "@shared/settings-registry";
 import type { AppSettings } from "@shared/types";
 import { getEnvSettingsData } from "./envSettings";
 import { getProfile } from "./profile";
@@ -33,6 +36,15 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
  */
 export async function getEffectiveSettings(): Promise<AppSettings> {
   const overrides = await settingsRepo.getAllSettings();
+  const providerOverride = settingsRegistry.llmProvider.parse(
+    overrides.llmProvider,
+  );
+  const effectiveLlmProvider =
+    providerOverride ?? settingsRegistry.llmProvider.default();
+  const resolvedModelDefault = getDefaultModelForProvider(
+    effectiveLlmProvider,
+    process.env.MODEL,
+  );
 
   const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
     rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
@@ -82,7 +94,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const rawModel = overrides.model;
   const modelDef = settingsRegistry.model;
   const overrideModel = modelDef.parse(rawModel);
-  const modelValue = overrideModel ?? modelDef.default();
+  const modelValue = overrideModel ?? resolvedModelDefault;
 
   for (const [key, def] of Object.entries(settingsRegistry)) {
     if (def.kind === "typed") {
@@ -94,12 +106,13 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       const override = def.parse(rawOverride);
       let defaultValue = def.default();
 
+      if (key === "model") {
+        defaultValue = resolvedModelDefault;
+      }
+
       if (key === "llmBaseUrl") {
-        const providerOverride = settingsRegistry.llmProvider.parse(
-          overrides.llmProvider,
-        );
         const provider =
-          providerOverride ?? settingsRegistry.llmProvider.default();
+          effectiveLlmProvider ?? settingsRegistry.llmProvider.default();
         defaultValue =
           process.env.LLM_BASE_URL || resolveDefaultLlmBaseUrl(provider);
       }

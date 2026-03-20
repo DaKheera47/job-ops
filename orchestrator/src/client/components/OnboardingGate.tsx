@@ -17,6 +17,7 @@ import {
   LLM_PROVIDERS,
   normalizeLlmProvider,
 } from "@client/pages/settings/utils";
+import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type { RxResumeMode, ValidationResult } from "@shared/types.js";
 import { Check } from "lucide-react";
@@ -433,7 +434,9 @@ export const OnboardingGate: React.FC = () => {
       await api.updateSettings(update);
       await refreshSettings();
       setValue("llmApiKey", "");
-      toast.success("LLM provider connected");
+      toast.success("LLM provider connected", {
+        description: `Default for ${providerConfig.label}: ${getDefaultModelForProvider(normalizedProvider)}.`,
+      });
       return true;
     } catch (error) {
       const message =

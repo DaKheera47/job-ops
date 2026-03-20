@@ -6,6 +6,7 @@ import {
   LLM_PROVIDER_LABELS,
   LLM_PROVIDERS,
 } from "@client/pages/settings/utils";
+import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useEffect } from "react";
@@ -58,6 +59,14 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const { showApiKey, showBaseUrl } = providerConfig;
 
   const llmBaseUrlValue = watch("llmBaseUrl");
+  const modelValue = watch("model") ?? "";
+  const modelScorerValue = watch("modelScorer") ?? "";
+  const modelTailoringValue = watch("modelTailoring") ?? "";
+  const modelProjectSelectionValue = watch("modelProjectSelection") ?? "";
+  const providerDefaultModel = getDefaultModelForProvider(
+    selectedProvider,
+    selectedProvider === llmProvider ? defaultModel : undefined,
+  );
 
   useEffect(() => {
     if (showBaseUrl) return;
@@ -68,10 +77,18 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
 
   const keyHint = formatSecretHint(llmApiKeyHint);
   const keyText = showApiKey ? keyHint || "Not set" : "Not required";
-  const effectiveDefaultModel = effective || defaultModel || "—";
-  const scoringModel = scorer || effectiveDefaultModel;
-  const tailoringModel = tailoring || effectiveDefaultModel;
-  const projectSelectionModel = projectSelection || effectiveDefaultModel;
+  const resolvedBaseUrl = llmBaseUrlValue?.trim() || llmBaseUrl || "-";
+  const effectiveDefaultModel =
+    modelValue.trim() || effective || providerDefaultModel || "-";
+  const scoringModel =
+    modelScorerValue.trim() || scorer || effectiveDefaultModel;
+  const tailoringModel =
+    modelTailoringValue.trim() || tailoring || effectiveDefaultModel;
+  const projectSelectionModel =
+    modelProjectSelectionValue.trim() ||
+    projectSelection ||
+    effectiveDefaultModel;
+
   return (
     <AccordionItem value="model" className="border rounded-lg px-4">
       <AccordionTrigger className="hover:no-underline py-4">
@@ -128,7 +145,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   disabled={isLoading || isSaving}
                   error={errors.llmBaseUrl?.message as string | undefined}
                   helper={providerConfig.baseUrlHelper}
-                  current={llmBaseUrl || "—"}
+                  current={resolvedBaseUrl}
                 />
               )}
               {showApiKey && (
@@ -150,10 +167,10 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
           <SettingsInput
             label="Default model"
             inputProps={register("model")}
-            placeholder={defaultModel || "google/gemini-3-flash-preview"}
+            placeholder={providerDefaultModel}
             disabled={isLoading || isSaving}
             error={errors.model?.message as string | undefined}
-            helper="Leave blank to use the default from server env (`MODEL`)."
+            helper={`Leave blank to use the ${providerConfig.label} default model.`}
             current={effectiveDefaultModel}
           />
 
@@ -166,7 +183,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <SettingsInput
                 label="Scoring Model"
                 inputProps={register("modelScorer")}
-                placeholder={effective || "inherit"}
+                placeholder={effectiveDefaultModel || "inherit"}
                 disabled={isLoading || isSaving}
                 error={errors.modelScorer?.message as string | undefined}
                 current={scoringModel}
@@ -175,7 +192,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <SettingsInput
                 label="Tailoring Model"
                 inputProps={register("modelTailoring")}
-                placeholder={effective || "inherit"}
+                placeholder={effectiveDefaultModel || "inherit"}
                 disabled={isLoading || isSaving}
                 error={errors.modelTailoring?.message as string | undefined}
                 current={tailoringModel}
@@ -184,7 +201,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <SettingsInput
                 label="Project Selection Model"
                 inputProps={register("modelProjectSelection")}
-                placeholder={effective || "inherit"}
+                placeholder={effectiveDefaultModel || "inherit"}
                 disabled={isLoading || isSaving}
                 error={
                   errors.modelProjectSelection?.message as string | undefined
@@ -200,10 +217,10 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
             <div className="text-xs text-muted-foreground">Resolved config</div>
             <div className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-[160px_1fr]">
               <div className="text-muted-foreground">Provider</div>
-              <div className="font-mono">{selectedProvider || "—"}</div>
+              <div className="font-mono">{selectedProvider || "-"}</div>
 
               <div className="text-muted-foreground">Base URL</div>
-              <div className="font-mono">{llmBaseUrl || "—"}</div>
+              <div className="font-mono">{resolvedBaseUrl}</div>
 
               <div className="text-muted-foreground">API key</div>
               <div className="font-mono">{keyText}</div>

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { settingsRegistry } from "./settings-registry";
+import {
+  getDefaultModelForProvider,
+  settingsRegistry,
+} from "./settings-registry";
 
 describe("settingsRegistry helpers", () => {
   describe("string parsing (parseNonEmptyStringOrNull)", () => {
@@ -190,6 +193,16 @@ describe("settingsRegistry helpers", () => {
       );
       expect(settingsRegistry.llmProvider.parse("OPENAI-COMPATIBLE")).toBe(
         "openai_compatible",
+      );
+    });
+
+    it("uses provider-specific default models", () => {
+      expect(getDefaultModelForProvider("openai")).toBe("gpt-5.4-mini");
+      expect(getDefaultModelForProvider("gemini")).toBe(
+        "google/gemini-3-flash-preview",
+      );
+      expect(getDefaultModelForProvider("openrouter")).toBe(
+        "google/gemini-3-flash-preview",
       );
     });
   });

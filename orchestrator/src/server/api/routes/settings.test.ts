@@ -123,6 +123,57 @@ describe.sequential("Settings API routes", () => {
     }
   });
 
+  it("uses the provider default model when MODEL is unset", async () => {
+    const openAiDefaults = await startServer({
+      env: {
+        MODEL: undefined,
+        LLM_API_KEY: "secret-key",
+        LLM_PROVIDER: "openai",
+        RXRESUME_EMAIL: "resume@example.com",
+      },
+    });
+
+    try {
+      const res = await fetch(`${openAiDefaults.baseUrl}/api/settings`);
+      const body = await res.json();
+
+      expect(body.ok).toBe(true);
+      expect(body.data.model.default).toBe("gpt-5.4-mini");
+      expect(body.data.model.value).toBe("gpt-5.4-mini");
+    } finally {
+      await stopServer(openAiDefaults);
+    }
+  });
+
+  it("updates the effective default model when llmProvider changes", async () => {
+    const providerAware = await startServer({
+      env: {
+        MODEL: undefined,
+        LLM_API_KEY: "secret-key",
+        RXRESUME_EMAIL: "resume@example.com",
+      },
+    });
+
+    try {
+      const patchRes = await fetch(`${providerAware.baseUrl}/api/settings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          llmProvider: "openai",
+        }),
+      });
+      const patchBody = await patchRes.json();
+
+      expect(patchRes.status).toBe(200);
+      expect(patchBody.ok).toBe(true);
+      expect(patchBody.data.llmProvider.value).toBe("openai");
+      expect(patchBody.data.model.default).toBe("gpt-5.4-mini");
+      expect(patchBody.data.model.value).toBe("gpt-5.4-mini");
+    } finally {
+      await stopServer(providerAware);
+    }
+  });
+
   it("rejects invalid settings updates and persists overrides", async () => {
     const badPatch = await fetch(`${baseUrl}/api/settings`, {
       method: "PATCH",
