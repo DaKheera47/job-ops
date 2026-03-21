@@ -198,7 +198,7 @@ describe("gmail sync auto-log idempotency", () => {
     await runGmailIngestionSync({ accountKey: "default", maxMessages: 1 });
     await runGmailIngestionSync({ accountKey: "default", maxMessages: 1 });
 
-    expect(upsertPostApplicationMessage).toHaveBeenCalled();
+    expect(upsertPostApplicationMessage).toHaveBeenCalledTimes(2);
     expect(transitionStage).toHaveBeenCalledTimes(1);
   });
 });

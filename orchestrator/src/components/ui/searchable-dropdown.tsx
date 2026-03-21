@@ -82,6 +82,8 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
           disabled={disabled}
           onChange={(event) => onValueChange(event.target.value)}
           className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
         />
       ) : null}
       <PopoverTrigger asChild>

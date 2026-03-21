@@ -44,7 +44,8 @@ function normalizeModelForProviderCompatibility(
   if (normalizedProvider === "openai") {
     if (
       normalizedModel.startsWith("google/") ||
-      normalizedModel.startsWith("models/")
+      normalizedModel.startsWith("models/") ||
+      normalizedModel.startsWith("gemini")
     ) {
       return null;
     }
@@ -143,11 +144,12 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         rawOverride = overrides.jobspyLocation; // legacy fallback
       }
 
-      const override = def.parse(rawOverride);
+      let override = def.parse(rawOverride);
       let defaultValue = def.default();
 
       if (key === "model") {
         defaultValue = resolvedModelDefault;
+        override = overrideModel;
       }
 
       if (key === "llmBaseUrl") {
