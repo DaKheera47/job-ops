@@ -95,7 +95,7 @@ describe("settingsRegistry helpers", () => {
       expect(
         settingsRegistry.workplaceTypes.parse('["remote","satellite"]'),
       ).toBeNull();
-      expect(settingsRegistry.workplaceTypes.parse("[]")).toEqual([]);
+      expect(settingsRegistry.workplaceTypes.parse("[]")).toBeNull();
     });
   });
 

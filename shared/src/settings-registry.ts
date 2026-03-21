@@ -87,6 +87,7 @@ function createEnumArrayParser<
         seen.add(value);
         out.push(value as TValues[number]);
       }
+      if (out.length === 0) return null;
       return out;
     } catch {
       return null;
