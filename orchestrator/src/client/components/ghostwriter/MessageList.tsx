@@ -70,7 +70,6 @@ export const MessageList: React.FC<MessageListProps> = ({
       toast.error("Copy is not available in this browser context");
       return;
     }
-
     try {
       await navigator.clipboard.writeText(content);
       setCopiedMessageId(messageId);
