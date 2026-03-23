@@ -66,6 +66,11 @@ export const MessageList: React.FC<MessageListProps> = ({
   }, []);
 
   const copyMessage = async (messageId: string, content: string) => {
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      toast.error("Copy is not available in this browser context");
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(content);
       setCopiedMessageId(messageId);
@@ -93,6 +98,11 @@ export const MessageList: React.FC<MessageListProps> = ({
             message.role === "assistant" &&
             streamingMessageId === message.id;
           const isEditing = editingMessageId === message.id;
+          const canCopyResponse =
+            message.role === "assistant" &&
+            message.status === "complete" &&
+            !isStreaming &&
+            !isActiveStreaming;
           const branch = branchMap.get(message.id);
 
           return (
@@ -114,7 +124,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                     onSwitch={onSwitchBranch}
                   />
                 )}
-                <div className="ml-auto flex items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+                <div className="ml-auto flex items-center gap-1 opacity-100 transition-opacity sm:pointer-events-none sm:opacity-0 sm:group-hover:pointer-events-auto sm:group-hover:opacity-100 sm:group-focus-within:pointer-events-auto sm:group-focus-within:opacity-100">
                   {isUser && !isStreaming && !isEditing && (
                     <button
                       type="button"
@@ -128,24 +138,26 @@ export const MessageList: React.FC<MessageListProps> = ({
                   )}
                   {!isUser && !isStreaming && !isActiveStreaming && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          void copyMessage(message.id, message.content)
-                        }
-                        className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                        aria-label="Copy response"
-                        title="Copy response"
-                      >
-                        {copiedMessageId === message.id ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                        <span>
-                          {copiedMessageId === message.id ? "Copied" : "Copy"}
-                        </span>
-                      </button>
+                      {canCopyResponse ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void copyMessage(message.id, message.content)
+                          }
+                          className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          aria-label="Copy response"
+                          title="Copy response"
+                        >
+                          {copiedMessageId === message.id ? (
+                            <Check className="h-3 w-3" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                          <span>
+                            {copiedMessageId === message.id ? "Copied" : "Copy"}
+                          </span>
+                        </button>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => onRegenerate(message.id)}
