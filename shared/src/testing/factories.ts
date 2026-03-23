@@ -230,6 +230,8 @@ export const createAppSettings = (
     default: "english",
     override: null,
   },
+  chatStyleSummaryMaxWords: { value: null, default: null, override: null },
+  chatStyleMaxKeywordsPerSkill: { value: null, default: null, override: null },
   llmApiKeyHint: null,
   rxresumeApiKeyHint: null,
   rxresumeEmail: null,

@@ -619,6 +619,39 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("sends null for both numeric limit fields on reset-to-default", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        chatStyleSummaryMaxWords: {
+          value: 35,
+          default: null,
+          override: 35,
+        },
+        chatStyleMaxKeywordsPerSkill: {
+          value: 8,
+          default: null,
+          override: 8,
+        },
+      }),
+    );
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
+
+    renderPage();
+
+    const resetButton = await screen.findByRole("button", {
+      name: /reset to default/i,
+    });
+    fireEvent.click(resetButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatStyleSummaryMaxWords: null,
+        chatStyleMaxKeywordsPerSkill: null,
+      }),
+    );
+  });
+
   it("saves scoring instructions from scoring settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     vi.mocked(api.updateSettings).mockResolvedValue({

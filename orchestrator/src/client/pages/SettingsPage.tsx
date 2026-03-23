@@ -87,6 +87,8 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleFormality: "",
   chatStyleConstraints: "",
   chatStyleDoNotUse: "",
+  chatStyleSummaryMaxWords: null,
+  chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
   rxresumeEmail: "",
@@ -387,6 +389,8 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleFormality: null,
   chatStyleConstraints: null,
   chatStyleDoNotUse: null,
+  chatStyleSummaryMaxWords: null,
+  chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
   rxresumeEmail: null,
@@ -436,6 +440,9 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleFormality: data.chatStyleFormality.override ?? "",
   chatStyleConstraints: data.chatStyleConstraints.override ?? "",
   chatStyleDoNotUse: data.chatStyleDoNotUse.override ?? "",
+  chatStyleSummaryMaxWords: data.chatStyleSummaryMaxWords.override ?? null,
+  chatStyleMaxKeywordsPerSkill:
+    data.chatStyleMaxKeywordsPerSkill.override ?? null,
   chatStyleLanguageMode: data.chatStyleLanguageMode.override ?? null,
   chatStyleManualLanguage: data.chatStyleManualLanguage.override ?? null,
   rxresumeEmail: data.rxresumeEmail ?? "",
@@ -579,6 +586,14 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       manualLanguage: {
         effective: settings?.chatStyleManualLanguage?.value ?? "english",
         default: settings?.chatStyleManualLanguage?.default ?? "english",
+      },
+      summaryMaxWords: {
+        effective: settings?.chatStyleSummaryMaxWords?.value ?? null,
+        default: settings?.chatStyleSummaryMaxWords?.default ?? null,
+      },
+      maxKeywordsPerSkill: {
+        effective: settings?.chatStyleMaxKeywordsPerSkill?.value ?? null,
+        default: settings?.chatStyleMaxKeywordsPerSkill?.default ?? null,
       },
     },
     envSettings: {
@@ -1145,6 +1160,14 @@ export const SettingsPage: React.FC = () => {
         chatStyleFormality: normalizeString(data.chatStyleFormality),
         chatStyleConstraints: normalizeString(data.chatStyleConstraints),
         chatStyleDoNotUse: normalizeString(data.chatStyleDoNotUse),
+        chatStyleSummaryMaxWords: Number.isNaN(data.chatStyleSummaryMaxWords)
+          ? null
+          : (data.chatStyleSummaryMaxWords ?? null),
+        chatStyleMaxKeywordsPerSkill: Number.isNaN(
+          data.chatStyleMaxKeywordsPerSkill,
+        )
+          ? null
+          : (data.chatStyleMaxKeywordsPerSkill ?? null),
         chatStyleLanguageMode: data.chatStyleLanguageMode ?? null,
         chatStyleManualLanguage: data.chatStyleManualLanguage ?? null,
         backupEnabled: nullIfSame(

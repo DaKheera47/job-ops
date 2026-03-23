@@ -16,6 +16,7 @@ import {
 import type React from "react";
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -66,6 +67,8 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
     doNotUse,
     languageMode,
     manualLanguage,
+    summaryMaxWords,
+    maxKeywordsPerSkill,
   } = values;
 
   const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
@@ -393,6 +396,86 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
               {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
               Default:{" "}
               {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label
+              htmlFor="chatStyleSummaryMaxWords"
+              className="text-sm font-medium"
+            >
+              Summary max words
+            </label>
+            <Controller
+              name="chatStyleSummaryMaxWords"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="chatStyleSummaryMaxWords"
+                  type="number"
+                  min={1}
+                  max={500}
+                  placeholder="No limit"
+                  disabled={isLoading || isSaving}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    field.onChange(Number.isNaN(parsed) ? null : parsed);
+                  }}
+                />
+              )}
+            />
+            <div className="text-xs text-muted-foreground">
+              Limits words in the AI-generated summary. Overrides any word
+              limits in Constraints.
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Current:{" "}
+              <span className="font-mono">
+                {summaryMaxWords.effective ?? "—"}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              htmlFor="chatStyleMaxKeywordsPerSkill"
+              className="text-sm font-medium"
+            >
+              Max keywords per skill
+            </label>
+            <Controller
+              name="chatStyleMaxKeywordsPerSkill"
+              control={control}
+              render={({ field }) => (
+                <Input
+                  id="chatStyleMaxKeywordsPerSkill"
+                  type="number"
+                  min={1}
+                  max={50}
+                  placeholder="No limit"
+                  disabled={isLoading || isSaving}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const parsed = parseInt(e.target.value, 10);
+                    field.onChange(Number.isNaN(parsed) ? null : parsed);
+                  }}
+                />
+              )}
+            />
+            <div className="text-xs text-muted-foreground">
+              Caps keywords per skill category. Overrides any keyword limits in
+              Constraints.
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Current:{" "}
+              <span className="font-mono">
+                {maxKeywordsPerSkill.effective ?? "—"}
+              </span>
             </div>
           </div>
         </div>

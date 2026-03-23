@@ -184,6 +184,14 @@ async function buildTailoringPrompt(
     outputLanguage,
     tone: writingStyle.tone,
     formality: writingStyle.formality,
+    summaryMaxWordsLine:
+      writingStyle.summaryMaxWords != null
+        ? ` Maximum ${writingStyle.summaryMaxWords} ${writingStyle.summaryMaxWords === 1 ? "word" : "words"}.`
+        : "",
+    maxKeywordsPerSkillLine:
+      writingStyle.maxKeywordsPerSkill != null
+        ? `\n   - Maximum ${writingStyle.maxKeywordsPerSkill} ${writingStyle.maxKeywordsPerSkill === 1 ? "keyword" : "keywords"} per category. If a category has more, keep only the most JD-relevant ones.`
+        : "",
     constraintsBullet: effectiveConstraints
       ? `- Additional constraints: ${effectiveConstraints}`
       : "",

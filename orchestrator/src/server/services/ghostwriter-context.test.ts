@@ -40,6 +40,8 @@ describe("buildJobChatPromptContext", () => {
       doNotUse: "",
       languageMode: "manual",
       manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
   });
 
@@ -59,6 +61,8 @@ describe("buildJobChatPromptContext", () => {
       doNotUse: "synergy, leverage",
       languageMode: "manual",
       manualLanguage: "german",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
     vi.mocked(getProfile).mockResolvedValue({
       basics: {
@@ -94,6 +98,8 @@ describe("buildJobChatPromptContext", () => {
       doNotUse: "synergy, leverage",
       languageMode: "manual",
       manualLanguage: "german",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
     expect(context.systemPrompt).toContain("Writing style tone: direct.");
     expect(context.systemPrompt).toContain("Writing style formality: high.");
@@ -140,6 +146,8 @@ describe("buildJobChatPromptContext", () => {
       doNotUse: "",
       languageMode: "match-resume",
       manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
     vi.mocked(getProfile).mockResolvedValue({
       basics: {
@@ -172,6 +180,8 @@ describe("buildJobChatPromptContext", () => {
       doNotUse: "",
       languageMode: "manual",
       manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
     vi.mocked(getProfile).mockResolvedValue({});
 

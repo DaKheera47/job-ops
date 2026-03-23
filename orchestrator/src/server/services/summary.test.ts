@@ -51,6 +51,8 @@ describe("generateTailoring", () => {
       doNotUse: "synergy",
       languageMode: "manual",
       manualLanguage: "german",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
   });
 
@@ -98,6 +100,8 @@ describe("generateTailoring", () => {
       doNotUse: "synergy",
       languageMode: "manual",
       manualLanguage: "german",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
     });
 
     await generateTailoring("Build APIs", {
@@ -137,5 +141,127 @@ describe("generateTailoring", () => {
     expect(request?.messages?.[0]?.content).toContain(
       "Tailor friendly German {{unknownToken}}",
     );
+  });
+
+  it("includes word limit when summaryMaxWords is set", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: 35,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).toContain("Maximum 35 words.");
+  });
+
+  it("uses singular 'word' when summaryMaxWords is 1", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: 1,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).toContain("Maximum 1 word.");
+  });
+
+  it("omits word limit line when summaryMaxWords is null", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).not.toContain("Maximum");
+  });
+
+  it("includes keyword limit when maxKeywordsPerSkill is set", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: 8,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).toContain("Maximum 8 keywords per category");
+  });
+
+  it("omits keyword limit when maxKeywordsPerSkill is null", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: null,
+      maxKeywordsPerSkill: null,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).not.toContain("keywords per category");
+  });
+
+  it("includes both limits and constraints when all set", async () => {
+    vi.mocked(getWritingStyle).mockResolvedValue({
+      tone: "friendly",
+      formality: "low",
+      constraints: "keep under 90 words",
+      doNotUse: "",
+      languageMode: "manual",
+      manualLanguage: "english",
+      summaryMaxWords: 35,
+      maxKeywordsPerSkill: 8,
+    });
+
+    await generateTailoring("Build APIs", {
+      basics: { name: "Test User", label: "Engineer" },
+    });
+
+    const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
+    expect(prompt).toContain("Maximum 35 words.");
+    expect(prompt).toContain("Maximum 8 keywords per category");
+    expect(prompt).toContain("Additional constraints: keep under 90 words");
   });
 });

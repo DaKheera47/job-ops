@@ -35,6 +35,8 @@ Writing style formality: {{formality}}.
       "outputLanguage",
       "tone",
       "formality",
+      "summaryMaxWordsLine",
+      "maxKeywordsPerSkillLine",
       "constraintsBullet",
       "avoidTermsBullet",
     ] as const,
@@ -57,7 +59,7 @@ INSTRUCTIONS:
 
 2. "summary" (String):
    - The Hook. This needs to mirror the company's "About You" / "What we're looking for" section.
-   - Keep it concise, warm, and confident.
+   - Keep it concise, warm, and confident.{{summaryMaxWordsLine}}
    - Do NOT invent experience.
    - Use the profile to add context.
    - Write the summary in {{outputLanguage}}.
@@ -65,7 +67,7 @@ INSTRUCTIONS:
 3. "skills" (Array of Objects):
    - Review my existing skills section structure.
    - Keyword Stuffing: Swap synonyms to match the JD exactly (e.g. "TDD" -> "Unit Testing", "ReactJS" -> "React").
-   - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.
+   - Keep my original skill levels and categories, just rename/reorder keywords to prioritize JD terms.{{maxKeywordsPerSkillLine}}
    - Return the full "items" array for the skills section, preserving the structure: { "name": "Frontend", "keywords": [...] }.
    - Write user-visible skill text in {{outputLanguage}} when natural, but keep exact JD terms, acronyms, and technology names when that helps ATS matching.
 

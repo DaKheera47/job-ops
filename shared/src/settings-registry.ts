@@ -459,6 +459,20 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
+  chatStyleSummaryMaxWords: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(500).nullable(),
+    default: (): number | null => null,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  chatStyleMaxKeywordsPerSkill: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(50).nullable(),
+    default: (): number | null => null,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
   chatStyleLanguageMode: {
     kind: "typed" as const,
     schema: z.enum(CHAT_STYLE_LANGUAGE_MODE_VALUES),

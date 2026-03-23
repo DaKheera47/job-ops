@@ -12,6 +12,8 @@ export type WritingStyle = {
   doNotUse: string;
   languageMode: ChatStyleLanguageMode;
   manualLanguage: ChatStyleManualLanguage;
+  summaryMaxWords: number | null;
+  maxKeywordsPerSkill: number | null;
 };
 
 const LANGUAGE_NAMES_PATTERN = "english|german|french|spanish";
@@ -71,6 +73,8 @@ export async function getWritingStyle(): Promise<WritingStyle> {
     doNotUseRaw,
     languageModeRaw,
     manualLanguageRaw,
+    summaryMaxWordsRaw,
+    maxKeywordsPerSkillRaw,
   ] = await Promise.all([
     getSetting("chatStyleTone"),
     getSetting("chatStyleFormality"),
@@ -78,7 +82,18 @@ export async function getWritingStyle(): Promise<WritingStyle> {
     getSetting("chatStyleDoNotUse"),
     getSetting("chatStyleLanguageMode"),
     getSetting("chatStyleManualLanguage"),
+    getSetting("chatStyleSummaryMaxWords"),
+    getSetting("chatStyleMaxKeywordsPerSkill"),
   ]);
+
+  const parsedSummaryMaxWords =
+    settingsRegistry.chatStyleSummaryMaxWords.parse(
+      summaryMaxWordsRaw ?? undefined,
+    ) ?? settingsRegistry.chatStyleSummaryMaxWords.default();
+  const parsedMaxKeywordsPerSkill =
+    settingsRegistry.chatStyleMaxKeywordsPerSkill.parse(
+      maxKeywordsPerSkillRaw ?? undefined,
+    ) ?? settingsRegistry.chatStyleMaxKeywordsPerSkill.default();
 
   return {
     tone:
@@ -102,5 +117,13 @@ export async function getWritingStyle(): Promise<WritingStyle> {
       settingsRegistry.chatStyleManualLanguage.parse(
         manualLanguageRaw ?? undefined,
       ) ?? settingsRegistry.chatStyleManualLanguage.default(),
+    summaryMaxWords:
+      parsedSummaryMaxWords != null && parsedSummaryMaxWords > 0
+        ? parsedSummaryMaxWords
+        : null,
+    maxKeywordsPerSkill:
+      parsedMaxKeywordsPerSkill != null && parsedMaxKeywordsPerSkill > 0
+        ? parsedMaxKeywordsPerSkill
+        : null,
   };
 }

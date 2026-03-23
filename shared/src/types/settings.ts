@@ -179,6 +179,8 @@ export interface AppSettings {
   chatStyleDoNotUse: Resolved<string>;
   chatStyleLanguageMode: Resolved<ChatStyleLanguageMode>;
   chatStyleManualLanguage: Resolved<ChatStyleManualLanguage>;
+  chatStyleSummaryMaxWords: Resolved<number | null>;
+  chatStyleMaxKeywordsPerSkill: Resolved<number | null>;
   backupEnabled: Resolved<boolean>;
   backupHour: Resolved<number>;
   backupMaxCount: Resolved<number>;
