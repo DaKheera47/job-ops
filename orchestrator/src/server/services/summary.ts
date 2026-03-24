@@ -17,7 +17,9 @@ import {
 } from "./prompt-templates";
 import {
   getWritingStyle,
+  stripKeywordLimitFromConstraints,
   stripLanguageDirectivesFromConstraints,
+  stripWordLimitFromConstraints,
 } from "./writing-style";
 
 export interface TailoredData {
@@ -152,9 +154,16 @@ async function buildTailoringPrompt(
     profile,
   });
   const outputLanguage = getWritingLanguageLabel(resolvedLanguage.language);
-  const effectiveConstraints = stripLanguageDirectivesFromConstraints(
+  let effectiveConstraints = stripLanguageDirectivesFromConstraints(
     writingStyle.constraints,
   );
+  if (writingStyle.summaryMaxWords != null) {
+    effectiveConstraints = stripWordLimitFromConstraints(effectiveConstraints);
+  }
+  if (writingStyle.maxKeywordsPerSkill != null) {
+    effectiveConstraints =
+      stripKeywordLimitFromConstraints(effectiveConstraints);
+  }
 
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {

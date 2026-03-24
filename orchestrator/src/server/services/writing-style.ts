@@ -16,6 +16,22 @@ export type WritingStyle = {
   maxKeywordsPerSkill: number | null;
 };
 
+const WORD_LIMIT_PATTERNS = [
+  // "keep summary under 100 words", "max 80 words", "no more than 60 words in the summary"
+  /\b(?:keep|limit|max(?:imum)?|no more than|under|at most|up to)[\w\s]{0,20}\b\d+\s*words?\b[\w\s]{0,15}[.,;!?]?/gi,
+  // "50 words max", "80 words or less/fewer", "100 words limit"
+  /\b\d+\s*words?\s*(?:max(?:imum)?|limit|or (?:less|fewer))\b[.,;!?]?/gi,
+];
+
+const KEYWORD_LIMIT_PATTERNS = [
+  // "max 5 keywords per category", "at most 8 keywords per skill"
+  /\b(?:max(?:imum)?|no more than|at most|up to)\s+\d+\s*keywords?\b(?:\s+per\s+(?:category|skill|section))?[.,;!?]?/gi,
+  // "limit keywords to 10", "keep keywords under 5"
+  /\b(?:keep|limit)\s+keywords?\s+(?:to|under|at)\s+\d+\b(?:\s+per\s+(?:category|skill|section))?[.,;!?]?/gi,
+  // "5 keywords max", "10 keywords per category limit", "8 keywords or fewer"
+  /\b\d+\s*keywords?\s*(?:max(?:imum)?|limit|per (?:category|skill|section)|or (?:less|fewer))\b[.,;!?]?/gi,
+];
+
 const LANGUAGE_NAMES_PATTERN = "english|german|french|spanish";
 
 const LANGUAGE_DIRECTIVE_PATTERNS = [
@@ -33,8 +49,9 @@ const LANGUAGE_DIRECTIVE_PATTERNS = [
   ),
 ];
 
-export function stripLanguageDirectivesFromConstraints(
+function stripDirectivesFromConstraints(
   constraints: string,
+  patterns: RegExp[],
 ): string {
   if (!constraints.trim()) {
     return "";
@@ -45,7 +62,7 @@ export function stripLanguageDirectivesFromConstraints(
     .map((line) => {
       let nextLine = line;
 
-      for (const pattern of LANGUAGE_DIRECTIVE_PATTERNS) {
+      for (const pattern of patterns) {
         nextLine = nextLine.replace(pattern, "");
       }
 
@@ -57,6 +74,20 @@ export function stripLanguageDirectivesFromConstraints(
     })
     .filter(Boolean)
     .join("\n");
+}
+
+export function stripLanguageDirectivesFromConstraints(
+  constraints: string,
+): string {
+  return stripDirectivesFromConstraints(constraints, LANGUAGE_DIRECTIVE_PATTERNS);
+}
+
+export function stripWordLimitFromConstraints(constraints: string): string {
+  return stripDirectivesFromConstraints(constraints, WORD_LIMIT_PATTERNS);
+}
+
+export function stripKeywordLimitFromConstraints(constraints: string): string {
+  return stripDirectivesFromConstraints(constraints, KEYWORD_LIMIT_PATTERNS);
 }
 
 export async function getWritingStyle(): Promise<WritingStyle> {
@@ -86,14 +117,22 @@ export async function getWritingStyle(): Promise<WritingStyle> {
     getSetting("chatStyleMaxKeywordsPerSkill"),
   ]);
 
-  const parsedSummaryMaxWords =
+  const rawSummaryMaxWords =
     settingsRegistry.chatStyleSummaryMaxWords.parse(
       summaryMaxWordsRaw ?? undefined,
     ) ?? settingsRegistry.chatStyleSummaryMaxWords.default();
-  const parsedMaxKeywordsPerSkill =
+  const parsedSummaryMaxWords =
+    rawSummaryMaxWords != null && rawSummaryMaxWords > 0
+      ? Math.max(1, Math.min(500, rawSummaryMaxWords))
+      : null;
+  const rawMaxKeywordsPerSkill =
     settingsRegistry.chatStyleMaxKeywordsPerSkill.parse(
       maxKeywordsPerSkillRaw ?? undefined,
     ) ?? settingsRegistry.chatStyleMaxKeywordsPerSkill.default();
+  const parsedMaxKeywordsPerSkill =
+    rawMaxKeywordsPerSkill != null && rawMaxKeywordsPerSkill > 0
+      ? Math.max(1, Math.min(50, rawMaxKeywordsPerSkill))
+      : null;
 
   return {
     tone:

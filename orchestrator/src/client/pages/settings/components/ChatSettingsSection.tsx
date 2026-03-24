@@ -431,12 +431,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                   type="number"
                   min={1}
                   max={500}
+                  step={1}
                   placeholder="No limit"
                   disabled={isLoading || isSaving}
                   value={field.value ?? ""}
                   onChange={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
-                    field.onChange(Number.isNaN(parsed) ? null : parsed);
+                    const value = e.target.valueAsNumber;
+                    field.onChange(Number.isFinite(value) ? value : null);
                   }}
                 />
               )}
@@ -481,12 +482,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                   type="number"
                   min={1}
                   max={50}
+                  step={1}
                   placeholder="No limit"
                   disabled={isLoading || isSaving}
                   value={field.value ?? ""}
                   onChange={(e) => {
-                    const parsed = parseInt(e.target.value, 10);
-                    field.onChange(Number.isNaN(parsed) ? null : parsed);
+                    const value = e.target.valueAsNumber;
+                    field.onChange(Number.isFinite(value) ? value : null);
                   }}
                 />
               )}
