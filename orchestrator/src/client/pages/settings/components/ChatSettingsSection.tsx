@@ -71,7 +71,12 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
     maxKeywordsPerSkill,
   } = values;
 
-  const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
+  const {
+    control,
+    register,
+    setValue,
+    formState: { errors },
+  } = useFormContext<UpdateSettingsInput>();
   const [doNotUseDraft, setDoNotUseDraft] = useState("");
   const [
     toneValue,
@@ -413,6 +418,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             <Controller
               name="chatStyleSummaryMaxWords"
               control={control}
+              rules={{
+                validate: (v) =>
+                  v === null ||
+                  v === undefined ||
+                  (Number.isInteger(v) && v >= 1 && v <= 500) ||
+                  "Must be between 1 and 500",
+              }}
               render={({ field }) => (
                 <Input
                   id="chatStyleSummaryMaxWords"
@@ -429,6 +441,11 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 />
               )}
             />
+            {errors.chatStyleSummaryMaxWords && (
+              <div className="text-xs text-destructive">
+                {errors.chatStyleSummaryMaxWords.message as string}
+              </div>
+            )}
             <div className="text-xs text-muted-foreground">
               Limits words in the AI-generated summary. Overrides any word
               limits in Constraints.
@@ -451,6 +468,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
             <Controller
               name="chatStyleMaxKeywordsPerSkill"
               control={control}
+              rules={{
+                validate: (v) =>
+                  v === null ||
+                  v === undefined ||
+                  (Number.isInteger(v) && v >= 1 && v <= 50) ||
+                  "Must be between 1 and 50",
+              }}
               render={({ field }) => (
                 <Input
                   id="chatStyleMaxKeywordsPerSkill"
@@ -467,6 +491,11 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 />
               )}
             />
+            {errors.chatStyleMaxKeywordsPerSkill && (
+              <div className="text-xs text-destructive">
+                {errors.chatStyleMaxKeywordsPerSkill.message as string}
+              </div>
+            )}
             <div className="text-xs text-muted-foreground">
               Caps keywords per skill category. Overrides any keyword limits in
               Constraints.
