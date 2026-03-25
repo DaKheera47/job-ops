@@ -21,6 +21,10 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(createAppSettings())).toContain("startupjobs");
   });
 
+  it("enables workingnomads without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("workingnomads");
+  });
+
   it("counts processing jobs in ready and discovered tabs", () => {
     const jobs = [
       createJob({ id: "ready", status: "ready", closedAt: null }),

@@ -182,11 +182,16 @@ export function usePipelineControls(
       const hasAdzuna = compatibleSources.includes("adzuna");
       const hasHiringCafe = compatibleSources.includes("hiringcafe");
       const hasStartupJobs = compatibleSources.includes("startupjobs");
+      const hasWorkingNomads = compatibleSources.includes("workingnomads");
       const serializedCities = serializeCityLocationsSetting(
         values.cityLocations,
       );
       const searchCities =
-        (hasJobSpySite || hasAdzuna || hasHiringCafe || hasStartupJobs) &&
+        (hasJobSpySite ||
+          hasAdzuna ||
+          hasHiringCafe ||
+          hasStartupJobs ||
+          hasWorkingNomads) &&
         serializedCities
           ? serializedCities
           : formatCountryLabel(values.country);

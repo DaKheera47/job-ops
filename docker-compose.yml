@@ -56,6 +56,9 @@ services:
         - path: ./extractors/ukvisajobs/src
           target: /app/extractors/ukvisajobs/src
           action: sync+restart
+        - path: ./extractors/workingnomads/src
+          target: /app/extractors/workingnomads/src
+          action: sync+restart
         - path: ./extractors/jobspy
           target: /app/extractors/jobspy
           action: sync+restart

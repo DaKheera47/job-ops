@@ -7,7 +7,7 @@
 [![GHCR](https://img.shields.io/badge/docker-ghcr.io-blue?logo=docker&logoColor=white)](https://github.com/DaKheera47/job-ops/pkgs/container/job-ops)
 [![Release](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml/badge.svg)](https://github.com/DaKheera47/job-ops/actions/workflows/ghcr.yml)
 [![Contributors](https://img.shields.io/github/contributors-anon/dakheera47/job-ops)](Contributors)
-[![Cloud Waitlist](https://img.shields.io/badge/☁️_Cloud-Join_Waitlist-orange?style=flat-square)](https://try.jobops.app?utm_source=github&utm_medium=badge&utm_campaign=waitlist)
+[![Cloud Waitlist](https://img.shields.io/badge/Cloud-Join_Waitlist-orange?style=flat-square)](https://try.jobops.app?utm_source=github&utm_medium=badge&utm_campaign=waitlist)
 
 <img width="1200" height="600" alt="2k" src="https://github.com/user-attachments/assets/14fdc392-0e96-43be-bc1f-cf819ab2afc4" />
 
@@ -19,7 +19,7 @@ You still apply to every job yourself. JobOps just finds jobs, makes sure you're
 
 Self-hosted. Docker-based.
 
-## 40s Demo: Crawl → Score → PDF → Track
+## 40s Demo: Crawl -> Score -> PDF -> Track
 
 <details>
 <summary>
@@ -70,7 +70,7 @@ docker compose up -d
 
 ## Why JobOps?
 
-* **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor, Adzuna, Hiring Café, Gradcracker, UK Visa Jobs**.
+* **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor, Adzuna, Hiring Cafe, startup.jobs, Working Nomads, Gradcracker, UK Visa Jobs**.
 * **AI Scoring**: Ranks jobs by fit against *your* profile using your preferred LLM (OpenAI, OpenRouter, `openai-compatible` endpoints such as LM Studio/Ollama, Gemini).
 * **Auto-Tailoring**: Generates custom resumes (PDFs) for every application using RxResume v4.
 * **Email Tracking**: Connect Gmail to auto-detect interviews, offers, and rejections.
@@ -92,7 +92,9 @@ docker compose up -d
 | **Indeed** | Global / General |
 | **Glassdoor** | Global / General |
 | **Adzuna** | Multi-country API source |
-| **Hiring Café** | Global / General |
+| **Hiring Cafe** | Global / General |
+| **startup.jobs** | Startup-focused remote roles |
+| **Working Nomads** | Remote-only curated jobs |
 | **Gradcracker** | STEM / Grads (UK) |
 | **UK Visa Jobs** | Sponsorship (UK) |
 
@@ -100,16 +102,16 @@ docker compose up -d
 
 ## Post-App Tracking (Killer Feature)
 
-Connect Gmail → AI routes emails to your applied jobs.
+Connect Gmail -> AI routes emails to your applied jobs.
 
-* "We'd like to interview you..." → **Status: Interviewing** (Auto-updated)
-* "Unfortunately..." → **Status: Rejected** (Auto-updated)
+* "We'd like to interview you..." -> **Status: Interviewing** (Auto-updated)
+* "Unfortunately..." -> **Status: Rejected** (Auto-updated)
 
 See [post-application tracking docs](https://jobops.dakheera47.com/docs/features/post-application-tracking) for setup.
 
 **Note on Analytics**: The alpha version includes anonymous analytics (Umami) to help debug performance. To opt-out, block `umami.dakheera47.com` in your firewall/DNS.
 
-## ☁️ Cloud Version (Coming Soon)
+## Cloud Version (Coming Soon)
 
 Self-hosting not your thing? A hosted version of JobOps is coming.
 
@@ -118,7 +120,7 @@ Self-hosting not your thing? A hosted version of JobOps is coming.
 - Managed updates
 - Self-hosted will always be free and open source
 
-👉 Join the waitlist at [https://try.jobops.app](https://try.jobops.app?utm_source=github&utm_medium=readme&utm_campaign=waitlist)
+Join the waitlist at [https://try.jobops.app](https://try.jobops.app?utm_source=github&utm_medium=readme&utm_campaign=waitlist)
 <br>
 Support me on [kofi](https://ko-fi.com/shaheersarfaraz)
 
