@@ -8,6 +8,7 @@ import type { CreateJobInput } from "@shared/types/jobs";
 
 const WORKING_NOMADS_SEARCH_URL =
   "https://www.workingnomads.com/jobsapi/_search";
+const WORKING_NOMADS_MAX_SEARCH_PAGE_SIZE = 100;
 
 export type WorkingNomadsWorkplaceType = "remote" | "hybrid" | "onsite";
 
@@ -391,9 +392,10 @@ function buildSearchRequest(args: {
   maxJobsPerTerm: number;
 }): Record<string, unknown> {
   const request: Record<string, unknown> = {
-    track_total_hits: true,
-    from: 0,
-    size: Math.max(args.maxJobsPerTerm, 50),
+    size: Math.min(
+      Math.max(args.maxJobsPerTerm, 50),
+      WORKING_NOMADS_MAX_SEARCH_PAGE_SIZE,
+    ),
     _source: [
       "id",
       "slug",
