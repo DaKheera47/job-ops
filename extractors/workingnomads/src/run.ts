@@ -152,7 +152,9 @@ function matchesSearchTerm(
           .filter(Boolean)
       : [];
   const locations = Array.isArray(job.locations)
-    ? job.locations.filter((value): value is string => typeof value === "string")
+    ? job.locations.filter(
+        (value): value is string => typeof value === "string",
+      )
     : typeof job.location === "string"
       ? [job.location]
       : [];
