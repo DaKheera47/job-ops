@@ -69,7 +69,9 @@ vi.mock("@/components/ui/select", () => {
 
 const ChatSettingsHarness = ({
   mode = "onSubmit" as const,
-}: { mode?: "onSubmit" | "onChange" } = {}) => {
+}: {
+  mode?: "onSubmit" | "onChange";
+} = {}) => {
   const methods = useForm<UpdateSettingsInput>({
     mode,
     defaultValues: {
@@ -148,7 +150,9 @@ describe("ChatSettingsSection", () => {
   it("shows validation error when summary word limit is out of range", async () => {
     const { container } = render(<ChatSettingsHarness mode="onChange" />);
 
-    const input = container.querySelector("#chatStyleSummaryMaxWords")!;
+    const input = container.querySelector(
+      "#chatStyleSummaryMaxWords",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "999", valueAsNumber: 999 } });
 
     await waitFor(() => {
@@ -159,7 +163,9 @@ describe("ChatSettingsSection", () => {
   it("shows validation error when max keywords per skill is out of range", async () => {
     const { container } = render(<ChatSettingsHarness mode="onChange" />);
 
-    const input = container.querySelector("#chatStyleMaxKeywordsPerSkill")!;
+    const input = container.querySelector(
+      "#chatStyleMaxKeywordsPerSkill",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "0", valueAsNumber: 0 } });
 
     await waitFor(() => {
@@ -170,11 +176,15 @@ describe("ChatSettingsSection", () => {
   it("does not show validation error for valid summary word limit", async () => {
     const { container } = render(<ChatSettingsHarness mode="onChange" />);
 
-    const input = container.querySelector("#chatStyleSummaryMaxWords")!;
+    const input = container.querySelector(
+      "#chatStyleSummaryMaxWords",
+    ) as HTMLInputElement;
     fireEvent.change(input, { target: { value: "50", valueAsNumber: 50 } });
 
     await waitFor(() => {
-      expect(screen.queryByText("Must be between 1 and 500")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Must be between 1 and 500"),
+      ).not.toBeInTheDocument();
     });
   });
 });

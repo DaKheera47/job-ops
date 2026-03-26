@@ -262,6 +262,7 @@ describe("generateTailoring", () => {
     const prompt = callJsonMock.mock.calls.at(-1)?.[0]?.messages?.[0]?.content;
     expect(prompt).toContain("Maximum 35 words.");
     expect(prompt).toContain("Maximum 8 keywords per category");
-    expect(prompt).toContain("Additional constraints: keep under 90 words");
+    // "keep under 90 words" is stripped from constraints because summaryMaxWords (35) takes precedence
+    expect(prompt).not.toContain("keep under 90 words");
   });
 });
