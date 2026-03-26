@@ -9,7 +9,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
-    "types": ["vitest/globals", "@testing-library/jest-dom"],
+    "types": ["vitest/globals", "@testing-library/jest-dom", "vite/client"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

@@ -52,12 +52,42 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     process.env = { ...originalEnv };
   });
 
-  it("allows read-only GETs without auth when Basic Auth is enabled", () => {
+  it("allows non-API GETs without auth when Basic Auth is enabled", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
     const { middleware } = createBasicAuthGuard();
     const req = createMockRequest({ method: "GET", path: "/health" });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("blocks GET /api/* without auth when Basic Auth is enabled", () => {
+    process.env.BASIC_AUTH_USER = "user";
+    process.env.BASIC_AUTH_PASSWORD = "pass";
+
+    const { middleware } = createBasicAuthGuard();
+    const req = createMockRequest({ method: "GET", path: "/api/jobs" });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("allows OPTIONS preflight without auth even for API routes", () => {
+    process.env.BASIC_AUTH_USER = "user";
+    process.env.BASIC_AUTH_PASSWORD = "pass";
+
+    const { middleware } = createBasicAuthGuard();
+    const req = createMockRequest({ method: "OPTIONS", path: "/api/jobs" });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
@@ -95,14 +125,14 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     }
   });
 
-  it("allows writes with valid Basic Auth when enabled", () => {
+  it("allows API GETs with valid Basic Auth when enabled", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
     const { middleware } = createBasicAuthGuard();
     const req = createMockRequest({
-      method: "POST",
-      path: "/api/jobs/actions",
+      method: "GET",
+      path: "/api/jobs",
       authorization: buildAuthHeader("user", "pass"),
     });
     const res = createMockResponse();
