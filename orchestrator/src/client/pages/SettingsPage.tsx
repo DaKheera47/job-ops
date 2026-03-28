@@ -64,13 +64,6 @@ import {
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 
@@ -160,7 +153,6 @@ type SettingsSectionDescriptor = {
 };
 
 type SettingsNavGroup = {
-  description: string;
   id: SettingsGroupId;
   items: SettingsSectionDescriptor[];
   label: string;
@@ -170,7 +162,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "ai",
     label: "AI",
-    description: "Models and writing defaults",
     items: [
       {
         id: "model",
@@ -189,7 +180,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "scoring",
     label: "Scoring",
-    description: "How jobs are evaluated and filtered",
     items: [
       {
         id: "scoring",
@@ -203,7 +193,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "integrations",
     label: "Integrations",
-    description: "Connected services and delivery hooks",
     items: [
       {
         id: "reactive-resume",
@@ -228,7 +217,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "accounts",
     label: "Accounts & Security",
-    description: "Connected accounts and access controls",
     items: [
       {
         id: "environment",
@@ -241,7 +229,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "display",
     label: "Display",
-    description: "How information is shown in the app",
     items: [
       {
         id: "display",
@@ -254,7 +241,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "backups",
     label: "Backups",
-    description: "Recovery schedules and backup history",
     items: [
       {
         id: "backup",
@@ -267,7 +253,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   {
     id: "danger",
     label: "Danger Zone",
-    description: "Destructive cleanup actions",
     items: [
       {
         id: "danger-zone",
@@ -1590,14 +1575,8 @@ export const SettingsPage: React.FC = () => {
       <main className="container mx-auto max-w-7xl px-4 py-6 pb-12">
         <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <Card className="overflow-hidden border-border/70 shadow-sm">
-              <CardHeader className="space-y-3 border-b bg-muted/20">
-                <div className="space-y-1">
-                  <CardTitle className="text-base">Workspace</CardTitle>
-                  <CardDescription>
-                    Search settings or browse by area.
-                  </CardDescription>
-                </div>
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/95">
+              <div className="border-b px-4 py-4">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -1608,8 +1587,8 @@ export const SettingsPage: React.FC = () => {
                     aria-label="Search settings"
                   />
                 </div>
-              </CardHeader>
-              <CardContent className="p-3">
+              </div>
+              <div className="p-2">
                 {filteredNavGroups.length > 0 ? (
                   <Accordion
                     type="multiple"
@@ -1621,56 +1600,30 @@ export const SettingsPage: React.FC = () => {
                     onValueChange={(value) =>
                       setOpenGroups(value as SettingsGroupId[])
                     }
-                    className="space-y-2"
+                    className="space-y-1"
                   >
                     {filteredNavGroups.map((group) => (
                       <AccordionItem
                         key={group.id}
                         value={group.id}
-                        className="rounded-xl border border-border/70 px-3"
+                        className="border-b border-border/60 px-2 last:border-b-0"
                       >
-                        <AccordionTrigger className="py-3 hover:no-underline">
-                          <div className="flex flex-col items-start gap-1 text-left">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium">
-                                {group.label}
-                              </span>
-                              <Badge variant="outline" className="text-[10px]">
-                                {group.items.length}
-                              </Badge>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {group.description}
-                            </span>
-                          </div>
+                        <AccordionTrigger className="py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground hover:no-underline">
+                          {group.label}
                         </AccordionTrigger>
                         <AccordionContent className="pb-3">
                           <div className="space-y-1">
                             {group.items.map((item) => {
-                              const badge = getSectionBadge(item.id);
                               const isActive = item.id === activeSection;
                               return (
                                 <Button
                                   key={item.id}
                                   type="button"
                                   variant={isActive ? "secondary" : "ghost"}
-                                  className="h-auto w-full justify-between rounded-lg px-3 py-2 text-left"
+                                  className="h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium"
                                   onClick={() => setActiveSection(item.id)}
                                 >
-                                  <div className="min-w-0 space-y-1">
-                                    <div className="text-sm font-medium">
-                                      {item.label}
-                                    </div>
-                                    <div className="truncate text-xs text-muted-foreground">
-                                      {item.description}
-                                    </div>
-                                  </div>
-                                  <Badge
-                                    variant={badge.variant}
-                                    className="ml-3 shrink-0 text-[10px]"
-                                  >
-                                    {badge.label}
-                                  </Badge>
+                                  {item.label}
                                 </Button>
                               );
                             })}
@@ -1684,37 +1637,49 @@ export const SettingsPage: React.FC = () => {
                     No settings matched “{settingsSearch.trim()}”.
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </aside>
 
           <section className="space-y-4">
-            <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
-              <CardHeader className="gap-4 border-b bg-muted/20 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                    <span>{activeGroup.label}</span>
-                    <span>/</span>
-                    <span>{activeSectionMeta.label}</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CardTitle className="text-2xl">
-                        {activeSectionMeta.label}
-                      </CardTitle>
-                      <Badge variant={selectedSectionBadge.variant}>
-                        {selectedSectionBadge.label}
+            <header className="space-y-4 border-b border-border/70 pb-5">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                <span>{activeGroup.label}</span>
+                <span>/</span>
+                <span>{activeSectionMeta.label}</span>
+              </div>
+
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                      {activeSectionMeta.label}
+                    </h2>
+                    <Badge variant={selectedSectionBadge.variant}>
+                      {selectedSectionBadge.label}
+                    </Badge>
+                    {dirtySectionCount > 0 ? (
+                      <Badge variant="secondary">
+                        {dirtySectionCount} unsaved section
+                        {dirtySectionCount !== 1 ? "s" : ""}
                       </Badge>
-                      {dirtySectionCount > 0 ? (
-                        <Badge variant="secondary">
-                          {dirtySectionCount} unsaved section
-                          {dirtySectionCount !== 1 ? "s" : ""}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    <CardDescription className="max-w-2xl text-sm leading-6">
-                      {activeSectionMeta.description}
-                    </CardDescription>
+                    ) : null}
+                  </div>
+                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+                    {activeSectionMeta.description}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <span>Changes apply to future runs after saving.</span>
+                    <Separator
+                      orientation="vertical"
+                      className="hidden h-4 sm:block"
+                    />
+                    <span>
+                      Selected section:{" "}
+                      <span className="font-medium text-foreground">
+                        {activeSectionMeta.label}
+                      </span>
+                    </span>
                   </div>
                 </div>
 
@@ -1743,32 +1708,15 @@ export const SettingsPage: React.FC = () => {
                     {isSaving ? "Saving..." : "Save changes"}
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6">
-                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                  <span>Changes apply to future runs after saving.</span>
-                  <Separator
-                    orientation="vertical"
-                    className="hidden h-4 sm:block"
-                  />
-                  <span>
-                    Selected section:{" "}
-                    <span className="font-medium text-foreground">
-                      {activeSectionMeta.label}
-                    </span>
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </header>
 
             {activeSectionContent}
 
             {Object.keys(errors).length > 0 && (
-              <Card className="border-destructive/30 bg-destructive/[0.03] shadow-sm">
-                <CardContent className="p-4 text-sm text-destructive">
-                  Please fix the highlighted errors before saving.
-                </CardContent>
-              </Card>
+              <div className="rounded-xl border border-destructive/30 bg-destructive/[0.03] px-4 py-3 text-sm text-destructive">
+                Please fix the highlighted errors before saving.
+              </div>
             )}
           </section>
         </div>

@@ -28,11 +28,7 @@ export const SettingsSectionFrame: React.FC<SettingsSectionFrameProps> = ({
   if (mode === "panel") {
     return (
       <section
-        className={cn(
-          "rounded-2xl border bg-card/95 px-6 py-6 shadow-sm",
-          tone === "danger" && "border-destructive/30 bg-destructive/[0.03]",
-          className,
-        )}
+        className={cn("space-y-4", tone === "danger" && "pt-2", className)}
       >
         <div className={cn("space-y-4", contentClassName)}>{children}</div>
       </section>
