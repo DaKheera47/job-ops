@@ -60,7 +60,7 @@ The **Response Rate by Source** chart shows, for each job board (LinkedIn, Indee
 
 **What counts as a response:** the application reached at least one of these stages — recruiter screen, assessment, hiring manager screen, technical interview, onsite, or offer. Ghosted applications (no stage events) and rejected outcomes are both excluded from the numerator.
 
-On larger screens, each bar is labelled with its response percentage and sample size so you can quickly spot whether a high rate comes from meaningful volume or a tiny sample. On phones, the same data is shown as stacked source rows with the percentage and `responded / applied` counts inline, since hover tooltips are not available.
+Each bar is labelled `X% (n=Y)` where `n` is the number of applications from that source, so you can immediately tell whether a high rate comes from a meaningful sample or a single lucky application. The full breakdown (response rate, responded, applied) is also shown in the tooltip.
 
 Sources are sorted by response rate descending. Sources with fewer than 5 applications are hidden by default to avoid misleading percentages from tiny samples. Check **Include small samples** to show them.
 

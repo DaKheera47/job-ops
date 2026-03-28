@@ -40,7 +40,6 @@ type JobForSourceChart = {
 
 type SourceRateDataPoint = {
   source: string;
-  sourceLabel: string;
   applied: number;
   responded: number;
   rate: number;
@@ -101,8 +100,7 @@ const buildResponseRateBySource = (
 
   return Array.from(bySource.entries())
     .map(([source, { applied, responded }]) => ({
-      source: isExtractorSourceId(source) ? sourceLabel(source) : source,
-      sourceLabel: `${isExtractorSourceId(source) ? sourceLabel(source) : source} (${applied})`,
+      source: `${isExtractorSourceId(source) ? sourceLabel(source) : source} (${applied})`,
       applied,
       responded,
       rate: applied > 0 ? (responded / applied) * 100 : 0,
@@ -145,6 +143,10 @@ export function ResponseRateBySourceChart({
     totalApplied > 0 ? (totalResponded / totalApplied) * 100 : 0;
 
   const chartHeight = Math.max(80, data.length * 52);
+  const xAxisMax = Math.max(
+    10,
+    Math.ceil(Math.max(...data.map((entry) => entry.rate)) + 10),
+  );
 
   return (
     <Card className="py-0">
@@ -203,127 +205,80 @@ export function ResponseRateBySourceChart({
                 Enable the toggle above to show them.
               </div>
             ) : (
-              <>
-                <div className="space-y-3 sm:hidden">
-                  {data.map((entry, index) => {
-                    const color = BAR_COLORS[index % BAR_COLORS.length];
-
-                    return (
-                      <div
-                        key={entry.source}
-                        className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-medium">
-                              {entry.source}
+              <ChartContainer
+                config={chartConfig}
+                className="w-full"
+                style={{ height: chartHeight }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={data}
+                    layout="vertical"
+                    margin={{ left: 4, right: 36, top: 4, bottom: 4 }}
+                  >
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                      type="number"
+                      domain={[0, xAxisMax]}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `${v}%`}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <YAxis
+                      dataKey="source"
+                      type="category"
+                      tickLine={false}
+                      axisLine={false}
+                      width={108}
+                      tick={{ fontSize: 11 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "var(--chart-2)", opacity: 0.15 }}
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload as SourceRateDataPoint;
+                        return (
+                          <div className="rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-sm">
+                            <div className="mb-1.5 font-medium">{d.source}</div>
+                            <div className="space-y-1 text-muted-foreground">
+                              <div className="flex items-center justify-between gap-4">
+                                <span>Response rate</span>
+                                <span className="font-semibold text-foreground">
+                                  {d.rate.toFixed(1)}%
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-4">
+                                <span>Responded</span>
+                                <span className="font-semibold text-foreground">
+                                  {d.responded}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {entry.responded} responded out of {entry.applied}{" "}
-                              applications
+                            <div className="mt-2 border-t pt-1.5 text-[10px] text-muted-foreground/70">
+                              Screening, interview, or offer only
                             </div>
                           </div>
-                          <div className="shrink-0 text-sm font-semibold tabular-nums">
-                            {entry.rate.toFixed(0)}%
-                          </div>
-                        </div>
-                        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full transition-[width]"
-                            style={{
-                              width: `${entry.rate}%`,
-                              backgroundColor: color,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <ChartContainer
-                  config={chartConfig}
-                  className="hidden w-full sm:block"
-                  style={{ height: chartHeight }}
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={data}
-                      layout="vertical"
-                      margin={{ left: 4, right: 36, top: 4, bottom: 4 }}
-                    >
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        type="number"
-                        domain={[0, 100]}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(v) => `${v}%`}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <YAxis
-                        dataKey="sourceLabel"
-                        type="category"
-                        tickLine={false}
-                        axisLine={false}
-                        width={108}
-                        tick={{ fontSize: 11 }}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "var(--chart-2)", opacity: 0.15 }}
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          const d = payload[0].payload as SourceRateDataPoint;
-                          return (
-                            <div className="rounded-lg border border-border/60 bg-background px-3 py-2 text-xs shadow-sm">
-                              <div className="mb-1.5 font-medium">
-                                {d.source}
-                              </div>
-                              <div className="space-y-1 text-muted-foreground">
-                                <div className="flex items-center justify-between gap-4">
-                                  <span>Response rate</span>
-                                  <span className="font-semibold text-foreground">
-                                    {d.rate.toFixed(1)}%
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4">
-                                  <span>Responded</span>
-                                  <span className="font-semibold text-foreground">
-                                    {d.responded}
-                                  </span>
-                                </div>
-                                <div className="flex items-center justify-between gap-4">
-                                  <span>Applied</span>
-                                  <span className="font-semibold text-foreground">
-                                    {d.applied}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="mt-2 border-t pt-1.5 text-[10px] text-muted-foreground/70">
-                                Screening, interview, or offer only
-                              </div>
-                            </div>
-                          );
-                        }}
-                      />
-                      <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
-                        {data.map((entry, index) => (
-                          <Cell
-                            key={entry.source}
-                            fill={BAR_COLORS[index % BAR_COLORS.length]}
-                          />
-                        ))}
-                        <LabelList
-                          dataKey="rate"
-                          position="right"
-                          formatter={(v: number) => `${v.toFixed(0)}%`}
-                          className="text-xs fill-foreground"
+                        );
+                      }}
+                    />
+                    <Bar dataKey="rate" radius={[0, 4, 4, 0]}>
+                      {data.map((entry, index) => (
+                        <Cell
+                          key={entry.source}
+                          fill={BAR_COLORS[index % BAR_COLORS.length]}
                         />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </>
+                      ))}
+                      <LabelList
+                        dataKey="rate"
+                        position="right"
+                        formatter={(v: number) => `${v.toFixed(0)}%`}
+                        className="text-xs fill-foreground"
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
             )}
           </div>
         )}
