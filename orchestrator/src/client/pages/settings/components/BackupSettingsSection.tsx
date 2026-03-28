@@ -66,7 +66,11 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
   const currentBackupEnabled = watch("backupEnabled") ?? backupEnabled.default;
 
   return (
-    <AccordionItem value="backup" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-backup"
+      value="backup"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Backup</span>
       </AccordionTrigger>
@@ -130,8 +134,7 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
                       },
                     }}
                     disabled={isLoading || isSaving}
-                    helper={`Hour of the day (0-23) in UTC when automatic backups should run. Default: ${backupHour.default}:00 UTC.`}
-                    current={`Effective: ${backupHour.effective}:00 UTC | Default: ${backupHour.default}:00 UTC`}
+                    helper="Hour of the day in UTC when automatic backups should run."
                   />
                 )}
               />
@@ -159,8 +162,7 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
                       },
                     }}
                     disabled={isLoading || isSaving}
-                    helper={`Maximum number of automatic backups to retain (1-5). Older backups are deleted automatically. Default: ${backupMaxCount.default}.`}
-                    current={`Effective: ${backupMaxCount.effective} | Default: ${backupMaxCount.default}`}
+                    helper="Maximum number of automatic backups to retain. Older backups are deleted automatically."
                   />
                 )}
               />
@@ -251,31 +253,6 @@ export const BackupSettingsSection: React.FC<BackupSettingsSectionProps> = ({
           </div>
 
           <Separator />
-
-          {/* Effective/Default values display */}
-          <div className="grid gap-2 text-sm sm:grid-cols-3">
-            <div>
-              <div className="text-xs text-muted-foreground">Enabled</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {backupEnabled.effective ? "Yes" : "No"} | Default:{" "}
-                {backupEnabled.default ? "Yes" : "No"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Hour</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {backupHour.effective}:00 UTC | Default:{" "}
-                {backupHour.default}:00 UTC
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Max Count</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {backupMaxCount.effective} | Default:{" "}
-                {backupMaxCount.default}
-              </div>
-            </div>
-          </div>
         </div>
       </AccordionContent>
     </AccordionItem>

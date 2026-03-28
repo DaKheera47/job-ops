@@ -27,18 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 type ChatSettingsSectionProps = {
   values: ChatValues;
   isLoading: boolean;
   isSaving: boolean;
-};
-
-const LANGUAGE_MODE_LABELS: Record<ChatStyleLanguageMode, string> = {
-  manual: "Choose specific language",
-  "match-resume": "Match current resume language",
 };
 
 function parseTokenizedTerms(input: string): string[] {
@@ -61,14 +55,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   isLoading,
   isSaving,
 }) => {
-  const {
-    tone,
-    formality,
-    constraints,
-    doNotUse,
-    languageMode,
-    manualLanguage,
-  } = values;
+  const { tone, formality, doNotUse, languageMode, manualLanguage } = values;
 
   const { control, register, setValue } = useFormContext<UpdateSettingsInput>();
   const [doNotUseDraft, setDoNotUseDraft] = useState("");
@@ -111,7 +98,11 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
   );
 
   return (
-    <AccordionItem value="chat" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-chat"
+      value="chat"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">
           Writing Style &amp; Language
@@ -340,10 +331,6 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
               Optional global writing constraints applied to Ghostwriter replies
               and resume tailoring.
             </div>
-            <div className="text-xs text-muted-foreground">
-              Current:{" "}
-              <span className="font-mono">{constraints.effective || "—"}</span>
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -366,45 +353,6 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
               removeLabelPrefix="Remove do-not-use term"
               disabled={isLoading || isSaving}
             />
-            <div className="text-xs text-muted-foreground">
-              Current:{" "}
-              <span className="font-mono">{doNotUse.effective || "—"}</span>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <div className="text-xs text-muted-foreground">Tone</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {tone.effective} | Default: {tone.default}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Formality</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {formality.effective} | Default: {formality.default}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">Language mode</div>
-              <div className="break-words font-mono text-xs">
-                Effective: {LANGUAGE_MODE_LABELS[languageMode.effective]} |
-                Default: {LANGUAGE_MODE_LABELS[languageMode.default]}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Specific language
-              </div>
-              <div className="break-words font-mono text-xs">
-                Effective:{" "}
-                {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
-                Default:{" "}
-                {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
-              </div>
-            </div>
           </div>
         </div>
       </AccordionContent>

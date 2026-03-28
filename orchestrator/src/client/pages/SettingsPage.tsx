@@ -60,6 +60,20 @@ import { queryKeys } from "@/client/lib/queryKeys";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 
+const SETTINGS_SECTIONS = [
+  { id: "settings-section-model", label: "Model" },
+  { id: "settings-section-webhooks", label: "Webhooks" },
+  { id: "settings-section-reactive-resume", label: "Reactive Resume" },
+  { id: "settings-section-tracer-links", label: "Tracer Links" },
+  { id: "settings-section-display", label: "Display" },
+  { id: "settings-section-chat", label: "Writing Style" },
+  { id: "settings-section-prompt-templates", label: "Prompt Templates" },
+  { id: "settings-section-scoring", label: "Scoring" },
+  { id: "settings-section-environment", label: "Environment" },
+  { id: "settings-section-backup", label: "Backup" },
+  { id: "settings-section-danger-zone", label: "Danger Zone" },
+] as const;
+
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
   modelScorer: "",
@@ -760,6 +774,10 @@ export const SettingsPage: React.FC = () => {
   const lockedCount = resumeProjectsValue?.lockedProjectIds.length ?? 0;
 
   const canSave = isDirty && isValid;
+  const handleDiscardChanges = () => {
+    if (!settings) return;
+    reset(mapSettingsToForm(settings));
+  };
 
   const onSave = async (data: UpdateSettingsInput) => {
     if (!settings) return;
@@ -1149,119 +1167,156 @@ export const SettingsPage: React.FC = () => {
         subtitle="Configure runtime behavior for this app."
       />
 
-      <main className="container mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12">
-        <Accordion type="multiple" className="w-full space-y-4">
-          <ModelSettingsSection
-            values={model}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <WebhooksSection
-            pipelineWebhook={pipelineWebhook}
-            jobCompleteWebhook={jobCompleteWebhook}
-            webhookSecretHint={envSettings.private.webhookSecretHint}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ReactiveResumeSection
-            rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
-            onRxresumeModeChange={(mode) => {
-              const nextId = getBaseResumeIdForMode(mode);
-              setRxResumeBaseResumeIdDraft(nextId);
-              setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
-              setRxResumeProjectsOverride(null);
-            }}
-            setRxResumeBaseResumeIdDraft={(value) => {
-              const mode = (getValues("rxresumeMode") ??
-                rxresumeMode) as RxResumeMode;
-              setBaseResumeIdForMode(mode, value);
-              setRxResumeBaseResumeIdDraft(value);
-              setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
-            }}
-            hasRxResumeAccess={hasRxResumeAccess}
-            rxresumeMode={rxresumeMode}
-            onCredentialFieldEdit={clearRxResumeValidationFeedback}
-            validationStatuses={rxresumeValidationStatuses}
-            profileProjects={effectiveProfileProjects}
-            lockedCount={lockedCount}
-            maxProjectsTotal={effectiveMaxProjectsTotal}
-            isProjectsLoading={isFetchingRxResumeProjects}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <TracerLinksSettingsSection
-            readiness={tracerReadiness}
-            isLoading={isLoading || isTracerReadinessLoading}
-            isChecking={isTracerReadinessChecking}
-            onVerifyNow={handleVerifyTracerReadiness}
-          />
-          <DisplaySettingsSection
-            values={display}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ChatSettingsSection
-            values={chat}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <PromptTemplatesSection
-            values={promptTemplates}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ScoringSettingsSection
-            values={scoring}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <EnvironmentSettingsSection
-            values={envSettings}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <BackupSettingsSection
-            values={backup}
-            backups={backups}
-            nextScheduled={nextScheduled}
-            isLoading={isLoading || isLoadingBackups}
-            isSaving={isSaving}
-            onCreateBackup={handleCreateBackup}
-            onDeleteBackup={handleDeleteBackup}
-            isCreatingBackup={isCreatingBackup}
-            isDeletingBackup={isDeletingBackup}
-          />
-          <DangerZoneSection
-            statusesToClear={statusesToClear}
-            toggleStatusToClear={toggleStatusToClear}
-            handleClearByStatuses={handleClearByStatuses}
-            handleClearDatabase={handleClearDatabase}
-            handleClearByScore={handleClearByScore}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-        </Accordion>
+      <main className="container mx-auto max-w-6xl px-4 py-6 pb-12">
+        <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 rounded-2xl border border-border/80 bg-zinc-950/70 p-4 shadow-xl shadow-black/20 backdrop-blur">
+              <div className="space-y-1">
+                {SETTINGS_SECTIONS.map((section) => (
+                  <a
+                    key={section.id}
+                    href={`#${section.id}`}
+                    className="block rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+                  >
+                    {section.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          </aside>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={handleSubmit(onSave)}
-            disabled={isLoading || isSaving || !canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            disabled={isLoading || isSaving || !settings}
-          >
-            Reset to default
-          </Button>
-        </div>
-        {Object.keys(errors).length > 0 && (
-          <div className="text-destructive text-sm mt-2">
-            Please fix the errors before saving.
+          <div className="space-y-6">
+            <div className="sticky top-20 z-10 rounded-xl border border-border/80 bg-card/95 px-4 py-3 shadow-sm backdrop-blur">
+              <div className="flex justify-end">
+                <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+                  <Button
+                    variant="outline"
+                    onClick={handleDiscardChanges}
+                    disabled={isLoading || isSaving || !isDirty || !settings}
+                    className="shrink-0 whitespace-nowrap"
+                  >
+                    Discard changes
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleReset}
+                    disabled={isLoading || isSaving || !settings}
+                    className="shrink-0 whitespace-nowrap"
+                  >
+                    Reset to defaults
+                  </Button>
+                  <Button
+                    onClick={handleSubmit(onSave)}
+                    disabled={isLoading || isSaving || !canSave}
+                    className="shrink-0 whitespace-nowrap"
+                  >
+                    {isSaving ? "Saving..." : "Save changes"}
+                  </Button>
+                </div>
+              </div>
+              {Object.keys(errors).length > 0 && (
+                <div className="mt-3 text-sm text-destructive">
+                  Please fix the errors before saving.
+                </div>
+              )}
+            </div>
+
+            <Accordion type="multiple" className="w-full space-y-4">
+              <ModelSettingsSection
+                values={model}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <WebhooksSection
+                pipelineWebhook={pipelineWebhook}
+                jobCompleteWebhook={jobCompleteWebhook}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <ReactiveResumeSection
+                rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
+                onRxresumeModeChange={(mode) => {
+                  const nextId = getBaseResumeIdForMode(mode);
+                  setRxResumeBaseResumeIdDraft(nextId);
+                  setValue("rxresumeBaseResumeId", nextId, {
+                    shouldDirty: true,
+                  });
+                  setRxResumeProjectsOverride(null);
+                }}
+                setRxResumeBaseResumeIdDraft={(value) => {
+                  const mode = (getValues("rxresumeMode") ??
+                    rxresumeMode) as RxResumeMode;
+                  setBaseResumeIdForMode(mode, value);
+                  setRxResumeBaseResumeIdDraft(value);
+                  setValue("rxresumeBaseResumeId", value, {
+                    shouldDirty: true,
+                  });
+                }}
+                hasRxResumeAccess={hasRxResumeAccess}
+                rxresumeMode={rxresumeMode}
+                onCredentialFieldEdit={clearRxResumeValidationFeedback}
+                validationStatuses={rxresumeValidationStatuses}
+                profileProjects={effectiveProfileProjects}
+                lockedCount={lockedCount}
+                maxProjectsTotal={effectiveMaxProjectsTotal}
+                isProjectsLoading={isFetchingRxResumeProjects}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <TracerLinksSettingsSection
+                readiness={tracerReadiness}
+                isLoading={isLoading || isTracerReadinessLoading}
+                isChecking={isTracerReadinessChecking}
+                onVerifyNow={handleVerifyTracerReadiness}
+              />
+              <DisplaySettingsSection
+                values={display}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <ChatSettingsSection
+                values={chat}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <PromptTemplatesSection
+                values={promptTemplates}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <ScoringSettingsSection
+                values={scoring}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <EnvironmentSettingsSection
+                values={envSettings}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+              <BackupSettingsSection
+                values={backup}
+                backups={backups}
+                nextScheduled={nextScheduled}
+                isLoading={isLoading || isLoadingBackups}
+                isSaving={isSaving}
+                onCreateBackup={handleCreateBackup}
+                onDeleteBackup={handleDeleteBackup}
+                isCreatingBackup={isCreatingBackup}
+                isDeletingBackup={isDeletingBackup}
+              />
+              <DangerZoneSection
+                statusesToClear={statusesToClear}
+                toggleStatusToClear={toggleStatusToClear}
+                handleClearByStatuses={handleClearByStatuses}
+                handleClearDatabase={handleClearDatabase}
+                handleClearByScore={handleClearByScore}
+                isLoading={isLoading}
+                isSaving={isSaving}
+              />
+            </Accordion>
           </div>
-        )}
+        </div>
       </main>
     </FormProvider>
   );

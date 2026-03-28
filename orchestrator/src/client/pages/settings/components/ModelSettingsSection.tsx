@@ -46,7 +46,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
     effective,
     default: defaultModel,
     llmProvider,
-    llmBaseUrl,
     llmApiKeyHint,
   } = values;
   const {
@@ -156,18 +155,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   ]);
 
   const keyHint = formatSecretHint(llmApiKeyHint);
-  const keyText = showApiKey ? keyHint || "Not set" : "Not required";
-  const resolvedBaseUrl = llmBaseUrlValue?.trim() || llmBaseUrl || "-";
   const selectedDefaultModel = modelValue.trim();
   const previewDefaultModel =
     selectedDefaultModel || effective || providerDefaultModel || "-";
-  const selectedScoringModel = modelScorerValue.trim();
-  const selectedTailoringModel = modelTailoringValue.trim();
-  const selectedProjectSelectionModel = modelProjectSelectionValue.trim();
-  const scoringModel = selectedScoringModel || previewDefaultModel;
-  const tailoringModel = selectedTailoringModel || previewDefaultModel;
-  const projectSelectionModel =
-    selectedProjectSelectionModel || previewDefaultModel;
   const modelHelper = supportsModelSuggestions
     ? !hasAvailableApiKey
       ? `Add or save a ${providerConfig.label} API key to load available models.`
@@ -205,7 +195,11 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   });
 
   return (
-    <AccordionItem value="model" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-model"
+      value="model"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Model</span>
       </AccordionTrigger>
@@ -260,7 +254,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   disabled={isLoading || isSaving}
                   error={errors.llmBaseUrl?.message as string | undefined}
                   helper={providerConfig.baseUrlHelper}
-                  current={resolvedBaseUrl}
                 />
               )}
               {showApiKey && (
@@ -271,7 +264,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                   placeholder="Enter new key"
                   disabled={isLoading || isSaving}
                   error={errors.llmApiKey?.message as string | undefined}
-                  current={keyHint}
+                  helper={keyHint ? `Saved key: ${keyHint}` : undefined}
                 />
               )}
             </div>
@@ -310,10 +303,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                 </p>
               )}
               <div className="text-xs text-muted-foreground">{modelHelper}</div>
-              <div className="text-xs text-muted-foreground">
-                Current:{" "}
-                <span className="font-mono">{previewDefaultModel}</span>
-              </div>
             </div>
           ) : (
             <SettingsInput
@@ -323,7 +312,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               disabled={isLoading || isSaving}
               error={errors.model?.message as string | undefined}
               helper={modelHelper}
-              current={previewDefaultModel}
             />
           )}
 
@@ -369,9 +357,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                         {errors.modelScorer.message as string}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      Current: <span className="font-mono">{scoringModel}</span>
-                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -408,10 +393,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                         {errors.modelTailoring.message as string}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      Current:{" "}
-                      <span className="font-mono">{tailoringModel}</span>
-                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -448,10 +429,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                         {errors.modelProjectSelection.message as string}
                       </p>
                     )}
-                    <div className="text-xs text-muted-foreground">
-                      Current:{" "}
-                      <span className="font-mono">{projectSelectionModel}</span>
-                    </div>
                   </div>
                 </>
               ) : (
@@ -462,7 +439,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                     placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={errors.modelScorer?.message as string | undefined}
-                    current={scoringModel}
                   />
 
                   <SettingsInput
@@ -471,7 +447,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                     placeholder={previewDefaultModel || "inherit"}
                     disabled={isLoading || isSaving}
                     error={errors.modelTailoring?.message as string | undefined}
-                    current={tailoringModel}
                   />
 
                   <SettingsInput
@@ -484,46 +459,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                         | string
                         | undefined
                     }
-                    current={projectSelectionModel}
                   />
                 </>
               )}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3 text-sm">
-            <div className="text-xs text-muted-foreground">Resolved config</div>
-            <div className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-[160px_1fr]">
-              <div className="text-muted-foreground">Provider</div>
-              <div className="font-mono">{selectedProvider || "-"}</div>
-
-              <div className="text-muted-foreground">Base URL</div>
-              <div className="font-mono">{resolvedBaseUrl}</div>
-
-              <div className="text-muted-foreground">API key</div>
-              <div className="font-mono">{keyText}</div>
-
-              <div className="text-muted-foreground">Default model</div>
-              <div className="font-mono">{previewDefaultModel}</div>
-
-              <div className="text-muted-foreground">Scoring model</div>
-              <div className="font-mono">
-                {selectedScoringModel ? scoringModel : "inherits"}
-              </div>
-
-              <div className="text-muted-foreground">Tailoring model</div>
-              <div className="font-mono">
-                {selectedTailoringModel ? tailoringModel : "inherits"}
-              </div>
-
-              <div className="text-muted-foreground">Project selection</div>
-              <div className="font-mono">
-                {selectedProjectSelectionModel
-                  ? projectSelectionModel
-                  : "inherits"}
-              </div>
             </div>
           </div>
         </div>

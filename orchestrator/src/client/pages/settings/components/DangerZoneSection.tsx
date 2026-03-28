@@ -55,8 +55,9 @@ export const DangerZoneSection: React.FC<DangerZoneSectionProps> = ({
     parsedThreshold <= 100;
   return (
     <AccordionItem
+      id="settings-section-danger-zone"
       value="danger-zone"
-      className="border rounded-lg px-4 border-destructive/30 mt-4"
+      className="mt-4 rounded-xl border border-destructive/30 bg-card/80 px-4 shadow-sm"
     >
       <AccordionTrigger className="hover:no-underline py-4">
         <div className="flex items-center gap-2 text-destructive">

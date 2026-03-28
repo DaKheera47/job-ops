@@ -93,7 +93,11 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   };
 
   return (
-    <AccordionItem value="reactive-resume" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-reactive-resume"
+      value="reactive-resume"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Reactive Resume</span>
       </AccordionTrigger>

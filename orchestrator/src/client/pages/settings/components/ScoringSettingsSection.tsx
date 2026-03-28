@@ -35,7 +35,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   const {
     penalizeMissingSalary,
     missingSalaryPenalty,
-    autoSkipScoreThreshold,
     blockedCompanyKeywords,
     scoringInstructions,
   } = values;
@@ -47,13 +46,15 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
   const currentPenalizeEnabled =
     watch("penalizeMissingSalary") ?? penalizeMissingSalary.default;
 
-  // Watch auto-skip threshold to show current value
-  const currentAutoSkipThreshold = watch("autoSkipScoreThreshold");
   const blockedCompanyKeywordValues =
     watch("blockedCompanyKeywords") ?? blockedCompanyKeywords.default;
 
   return (
-    <AccordionItem value="scoring" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-scoring"
+      value="scoring"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Scoring Settings</span>
       </AccordionTrigger>
@@ -119,8 +120,7 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                       },
                     }}
                     disabled={isLoading || isSaving}
-                    helper={`Points to subtract from suitability score (0-100). Default: ${missingSalaryPenalty.default}.`}
-                    current={`Effective: ${missingSalaryPenalty.effective} | Default: ${missingSalaryPenalty.default}`}
+                    helper="Points to subtract from the suitability score when a job does not include salary information."
                   />
                 )}
               />
@@ -161,8 +161,7 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                     placeholder: "Disabled",
                   }}
                   disabled={isLoading || isSaving}
-                  helper="Jobs scoring below this threshold will be automatically skipped during scoring. Leave empty to disable auto-skip. (0-100)"
-                  current={`Effective: ${currentAutoSkipThreshold === null || currentAutoSkipThreshold === undefined ? "Disabled" : currentAutoSkipThreshold} | Default: ${autoSkipScoreThreshold.default ?? "Disabled"}`}
+                  helper="Jobs scoring below this threshold are automatically skipped during scoring. Leave empty to disable it."
                 />
               )}
             />
@@ -195,12 +194,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
                     or less. This only changes scoring, not Ghostwriter or
                     tailoring.
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Current:{" "}
-                    <span className="font-mono">
-                      {scoringInstructions.effective || "—"}
-                    </span>
-                  </div>
                 </div>
               )}
             />
@@ -229,58 +222,6 @@ export const ScoringSettingsSection: React.FC<ScoringSettingsSectionProps> = ({
               removeLabelPrefix="Remove blocked keyword"
               disabled={isLoading || isSaving}
             />
-            <div className="break-words font-mono text-xs text-muted-foreground">
-              Effective:{" "}
-              {blockedCompanyKeywordValues.length > 0
-                ? blockedCompanyKeywordValues.join(", ")
-                : "None"}{" "}
-              | Default:{" "}
-              {blockedCompanyKeywords.default.length > 0
-                ? blockedCompanyKeywords.default.join(", ")
-                : "None"}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Effective/Default values display */}
-          <div className="grid gap-2 text-sm sm:grid-cols-2">
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Penalty Enabled
-              </div>
-              <div className="break-words font-mono text-xs">
-                Effective: {penalizeMissingSalary.effective ? "Yes" : "No"} |
-                Default: {penalizeMissingSalary.default ? "Yes" : "No"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Penalty Amount
-              </div>
-              <div className="break-words font-mono text-xs">
-                Effective: {missingSalaryPenalty.effective} | Default:{" "}
-                {missingSalaryPenalty.default}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Auto-skip Threshold
-              </div>
-              <div className="break-words font-mono text-xs">
-                Effective: {autoSkipScoreThreshold.effective ?? "Disabled"} |
-                Default: {autoSkipScoreThreshold.default ?? "Disabled"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Scoring Instructions
-              </div>
-              <div className="break-words font-mono text-xs">
-                Effective: {scoringInstructions.effective || "—"} | Default:{" "}
-                {scoringInstructions.default || "—"}
-              </div>
-            </div>
           </div>
         </div>
       </AccordionContent>

@@ -7,7 +7,7 @@ import {
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import { AlertTriangle, RotateCcw } from "lucide-react";
 import type React from "react";
-import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Controller, useFormContext } from "react-hook-form";
 import {
   AccordionContent,
   AccordionItem,
@@ -32,18 +32,6 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
   isSaving,
 }) => {
   const { control, setValue } = useFormContext<UpdateSettingsInput>();
-  const fieldValues = useWatch({
-    control,
-    name: TEMPLATE_FIELD_NAMES,
-  });
-
-  const resolvedFieldValues = TEMPLATE_FIELD_NAMES.reduce(
-    (acc, key, index) => {
-      acc[key] = fieldValues[index] ?? values[key].effective;
-      return acc;
-    },
-    {} as Record<PromptTemplateSettingKey, string>,
-  );
 
   const handleResetOne = (key: PromptTemplateSettingKey) => {
     setValue(key, values[key].default, { shouldDirty: true });
@@ -56,7 +44,11 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
   };
 
   return (
-    <AccordionItem value="prompt-templates" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-prompt-templates"
+      value="prompt-templates"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Prompt Templates</span>
       </AccordionTrigger>
@@ -92,7 +84,6 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
 
           {TEMPLATE_FIELD_NAMES.map((key) => {
             const definition = PROMPT_TEMPLATE_DEFINITIONS[key];
-            const currentValue = resolvedFieldValues[key];
 
             return (
               <div key={key} className="space-y-3 rounded-lg border p-4">
@@ -146,10 +137,6 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
                       </span>
                     ))}
                   </div>
-                </div>
-
-                <div className="text-xs text-muted-foreground">
-                  Current effective template length: {currentValue.length}
                 </div>
               </div>
             );

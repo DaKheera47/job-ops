@@ -25,7 +25,11 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
   const { control } = useFormContext<UpdateSettingsInput>();
 
   return (
-    <AccordionItem value="display" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-display"
+      value="display"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Display Settings</span>
       </AccordionTrigger>
@@ -100,45 +104,6 @@ export const DisplaySettingsSection: React.FC<DisplaySettingsSectionProps> = ({
           </div>
 
           <Separator />
-
-          <div className="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Sponsor info effective
-              </div>
-              <div className="break-words font-mono text-xs">
-                {showSponsorInfo.effective ? "Enabled" : "Disabled"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Sponsor info default
-              </div>
-              <div className="break-words font-mono text-xs font-semibold">
-                {showSponsorInfo.default ? "Enabled" : "Disabled"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Markdown rendering effective
-              </div>
-              <div className="break-words font-mono text-xs">
-                {renderMarkdownInJobDescriptions.effective
-                  ? "Enabled"
-                  : "Disabled"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">
-                Markdown rendering default
-              </div>
-              <div className="break-words font-mono text-xs font-semibold">
-                {renderMarkdownInJobDescriptions.default
-                  ? "Enabled"
-                  : "Disabled"}
-              </div>
-            </div>
-          </div>
         </div>
       </AccordionContent>
     </AccordionItem>

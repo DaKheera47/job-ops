@@ -88,7 +88,11 @@ export const TracerLinksSettingsSection: React.FC<
   const checkTimestamp = readiness?.checkedAt ?? null;
 
   return (
-    <AccordionItem value="tracer-links" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-tracer-links"
+      value="tracer-links"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Tracer Links</span>
       </AccordionTrigger>

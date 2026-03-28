@@ -1,6 +1,5 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import type { WebhookValues } from "@client/pages/settings/types";
-import { formatSecretHint } from "@client/pages/settings/utils";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useFormContext } from "react-hook-form";
@@ -14,7 +13,6 @@ import { Separator } from "@/components/ui/separator";
 type WebhooksSectionProps = {
   pipelineWebhook: WebhookValues;
   jobCompleteWebhook: WebhookValues;
-  webhookSecretHint: string | null;
   isLoading: boolean;
   isSaving: boolean;
 };
@@ -22,7 +20,6 @@ type WebhooksSectionProps = {
 export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   pipelineWebhook,
   jobCompleteWebhook,
-  webhookSecretHint,
   isLoading,
   isSaving,
 }) => {
@@ -32,7 +29,11 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
   } = useFormContext<UpdateSettingsInput>();
 
   return (
-    <AccordionItem value="webhooks" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-webhooks"
+      value="webhooks"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Webhooks</span>
       </AccordionTrigger>
@@ -46,8 +47,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
               placeholder={pipelineWebhook.default || "https://..."}
               disabled={isLoading || isSaving}
               error={errors.pipelineWebhookUrl?.message as string | undefined}
-              helper={`When set, the server sends a POST on pipeline completion/failure. Default: ${pipelineWebhook.default || "—"}.`}
-              current={pipelineWebhook.effective || "—"}
+              helper="When set, the server sends a POST on pipeline completion or failure."
             />
           </div>
 
@@ -64,8 +64,7 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
                 error={
                   errors.jobCompleteWebhookUrl?.message as string | undefined
                 }
-                helper={`When set, the server sends a POST when you mark a job as applied (includes the job description). Default: ${jobCompleteWebhook.default || "—"}.`}
-                current={jobCompleteWebhook.effective || "—"}
+                helper="When set, the server sends a POST when you mark a job as applied, including the job description."
               />
 
               <SettingsInput
@@ -76,7 +75,6 @@ export const WebhooksSection: React.FC<WebhooksSectionProps> = ({
                 disabled={isLoading || isSaving}
                 error={errors.webhookSecret?.message as string | undefined}
                 helper="Secret sent to webhook (Bearer token)"
-                current={formatSecretHint(webhookSecretHint)}
               />
             </div>
           </div>

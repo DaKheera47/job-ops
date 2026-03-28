@@ -724,7 +724,6 @@ export const OnboardingGate: React.FC = () => {
                         }}
                         placeholder={providerConfig.baseUrlPlaceholder}
                         helper={providerConfig.baseUrlHelper}
-                        current={settings?.llmBaseUrl?.value || "—"}
                         disabled={isSavingEnv}
                       />
                     )}

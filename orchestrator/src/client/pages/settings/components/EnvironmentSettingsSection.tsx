@@ -32,7 +32,11 @@ export const EnvironmentSettingsSection: React.FC<
   const isBasicAuthEnabled = watch("enableBasicAuth");
 
   return (
-    <AccordionItem value="environment" className="border rounded-lg px-4">
+    <AccordionItem
+      id="settings-section-environment"
+      value="environment"
+      className="rounded-xl border border-border/80 bg-card/80 px-4 shadow-sm"
+    >
       <AccordionTrigger className="hover:no-underline py-4">
         <span className="text-base font-semibold">Environment & Accounts</span>
       </AccordionTrigger>
@@ -63,9 +67,11 @@ export const EnvironmentSettingsSection: React.FC<
                   error={
                     errors.ukvisajobsPassword?.message as string | undefined
                   }
-                  current={formatSecretHint(
-                    privateValues.ukvisajobsPasswordHint,
-                  )}
+                  helper={
+                    privateValues.ukvisajobsPasswordHint
+                      ? `Saved password: ${formatSecretHint(privateValues.ukvisajobsPasswordHint)}`
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -87,7 +93,11 @@ export const EnvironmentSettingsSection: React.FC<
                   placeholder="Enter new app key"
                   disabled={isLoading || isSaving}
                   error={errors.adzunaAppKey?.message as string | undefined}
-                  current={formatSecretHint(privateValues.adzunaAppKeyHint)}
+                  helper={
+                    privateValues.adzunaAppKeyHint
+                      ? `Saved key: ${formatSecretHint(privateValues.adzunaAppKeyHint)}`
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -145,9 +155,11 @@ export const EnvironmentSettingsSection: React.FC<
                   error={
                     errors.basicAuthPassword?.message as string | undefined
                   }
-                  current={formatSecretHint(
-                    privateValues.basicAuthPasswordHint,
-                  )}
+                  helper={
+                    privateValues.basicAuthPasswordHint
+                      ? `Saved password: ${formatSecretHint(privateValues.basicAuthPasswordHint)}`
+                      : undefined
+                  }
                 />
               </div>
             )}
