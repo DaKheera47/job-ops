@@ -175,8 +175,8 @@ export const createAppSettings = (
     override: null,
   },
   searchCities: {
-    value: "United Kingdom",
-    default: "United Kingdom",
+    value: "",
+    default: "",
     override: null,
   },
   jobspyResultsWanted: { value: 20, default: 20, override: null },

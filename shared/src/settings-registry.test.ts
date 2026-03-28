@@ -5,6 +5,58 @@ import {
 } from "./settings-registry";
 
 describe("settingsRegistry helpers", () => {
+  describe("searchCities defaults", () => {
+    it("defaults to empty when no location env is configured", () => {
+      const previousSearchCities = process.env.SEARCH_CITIES;
+      const previousJobspyLocation = process.env.JOBSPY_LOCATION;
+
+      delete process.env.SEARCH_CITIES;
+      delete process.env.JOBSPY_LOCATION;
+
+      try {
+        expect(settingsRegistry.searchCities.default()).toBe("");
+      } finally {
+        if (previousSearchCities === undefined) {
+          delete process.env.SEARCH_CITIES;
+        } else {
+          process.env.SEARCH_CITIES = previousSearchCities;
+        }
+
+        if (previousJobspyLocation === undefined) {
+          delete process.env.JOBSPY_LOCATION;
+        } else {
+          process.env.JOBSPY_LOCATION = previousJobspyLocation;
+        }
+      }
+    });
+
+    it("uses explicit SEARCH_CITIES or legacy JOBSPY_LOCATION env values", () => {
+      const previousSearchCities = process.env.SEARCH_CITIES;
+      const previousJobspyLocation = process.env.JOBSPY_LOCATION;
+
+      process.env.SEARCH_CITIES = "Leeds|London";
+      process.env.JOBSPY_LOCATION = "Manchester";
+
+      try {
+        expect(settingsRegistry.searchCities.default()).toBe("Leeds|London");
+        delete process.env.SEARCH_CITIES;
+        expect(settingsRegistry.searchCities.default()).toBe("Manchester");
+      } finally {
+        if (previousSearchCities === undefined) {
+          delete process.env.SEARCH_CITIES;
+        } else {
+          process.env.SEARCH_CITIES = previousSearchCities;
+        }
+
+        if (previousJobspyLocation === undefined) {
+          delete process.env.JOBSPY_LOCATION;
+        } else {
+          process.env.JOBSPY_LOCATION = previousJobspyLocation;
+        }
+      }
+    });
+  });
+
   describe("string parsing (parseNonEmptyStringOrNull)", () => {
     it("returns null for undefined", () => {
       expect(settingsRegistry.model.parse(undefined)).toBeNull();

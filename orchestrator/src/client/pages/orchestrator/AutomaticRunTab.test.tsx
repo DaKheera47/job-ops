@@ -265,6 +265,39 @@ describe("AutomaticRunTab", () => {
     );
   });
 
+  it("does not show legacy country-only city defaults as selected cities", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "united kingdom",
+            default: "united kingdom",
+            override: "united kingdom",
+          },
+          searchCities: {
+            value: "UK",
+            default: "UK",
+            override: "UK",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
+    fireEvent.focus(screen.getByLabelText("Cities"));
+
+    expect(
+      screen.queryByRole("button", { name: /Remove city/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not remove existing search terms when Backspace is pressed on an empty input", () => {
     render(
       <AutomaticRunTab
