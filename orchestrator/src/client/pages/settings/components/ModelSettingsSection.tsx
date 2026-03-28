@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { ModelValues } from "@client/pages/settings/types";
 import {
   formatSecretHint,
@@ -13,11 +14,6 @@ import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
@@ -32,12 +28,14 @@ type ModelSettingsSectionProps = {
   values: ModelValues;
   isLoading: boolean;
   isSaving: boolean;
+  layoutMode?: "accordion" | "panel";
 };
 
 export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   values,
   isLoading,
   isSaving,
+  layoutMode,
 }) => {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -205,330 +203,318 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   });
 
   return (
-    <AccordionItem value="model" className="border rounded-lg px-4">
-      <AccordionTrigger className="hover:no-underline py-4">
-        <span className="text-base font-semibold">Model</span>
-      </AccordionTrigger>
-      <AccordionContent className="pb-4">
+    <SettingsSectionFrame mode={layoutMode} title="Model" value="model">
+      <div className="space-y-4">
         <div className="space-y-4">
-          <div className="space-y-4">
-            <div className="text-sm font-medium">LLM Provider</div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <label htmlFor="llmProvider" className="text-sm font-medium">
-                  Provider
-                </label>
-                <Controller
-                  name="llmProvider"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value ?? ""}
-                      onValueChange={(value) => field.onChange(value)}
-                      disabled={isLoading || isSaving}
-                    >
-                      <SelectTrigger id="llmProvider">
-                        <SelectValue placeholder="Select provider" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {LLM_PROVIDERS.map((provider) => (
-                          <SelectItem key={provider} value={provider}>
-                            {LLM_PROVIDER_LABELS[provider]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.llmProvider?.message && (
-                  <p className="text-xs text-destructive">
-                    {errors.llmProvider.message as string}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Used for scoring, tailoring, and extraction.
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {providerConfig.providerHint}
-                </p>
-              </div>
-              {showBaseUrl && (
-                <SettingsInput
-                  label="LLM base URL"
-                  inputProps={register("llmBaseUrl")}
-                  placeholder={providerConfig.baseUrlPlaceholder}
-                  disabled={isLoading || isSaving}
-                  error={errors.llmBaseUrl?.message as string | undefined}
-                  helper={providerConfig.baseUrlHelper}
-                  current={resolvedBaseUrl}
-                />
-              )}
-              {showApiKey && (
-                <SettingsInput
-                  label="LLM API key"
-                  inputProps={register("llmApiKey")}
-                  type="password"
-                  placeholder="Enter new key"
-                  disabled={isLoading || isSaving}
-                  error={errors.llmApiKey?.message as string | undefined}
-                  current={keyHint}
-                />
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {supportsModelSuggestions ? (
+          <div className="text-sm font-medium">LLM Provider</div>
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="model" className="text-sm font-medium">
-                Default model
+              <label htmlFor="llmProvider" className="text-sm font-medium">
+                Provider
               </label>
               <Controller
-                name="model"
+                name="llmProvider"
                 control={control}
                 render={({ field }) => (
-                  <SearchableDropdown
-                    inputId="model"
+                  <Select
                     value={field.value ?? ""}
-                    options={defaultModelOptions}
-                    onValueChange={field.onChange}
-                    placeholder={providerDefaultModel || "Select a model"}
-                    searchPlaceholder="Search models..."
-                    emptyText="No models found."
-                    ariaLabel="Default model"
-                    disabled={isLoading || isSaving || isLoadingModels}
-                    triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
-                    contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
-                    listClassName="max-h-64"
-                  />
+                    onValueChange={(value) => field.onChange(value)}
+                    disabled={isLoading || isSaving}
+                  >
+                    <SelectTrigger id="llmProvider">
+                      <SelectValue placeholder="Select provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LLM_PROVIDERS.map((provider) => (
+                        <SelectItem key={provider} value={provider}>
+                          {LLM_PROVIDER_LABELS[provider]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               />
-              {errors.model?.message && (
+              {errors.llmProvider?.message && (
                 <p className="text-xs text-destructive">
-                  {errors.model.message as string}
+                  {errors.llmProvider.message as string}
                 </p>
               )}
-              <div className="text-xs text-muted-foreground">{modelHelper}</div>
-              <div className="text-xs text-muted-foreground">
-                Current:{" "}
-                <span className="font-mono">{previewDefaultModel}</span>
-              </div>
+              <p className="text-xs text-muted-foreground">
+                Used for scoring, tailoring, and extraction.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {providerConfig.providerHint}
+              </p>
             </div>
-          ) : (
-            <SettingsInput
-              label="Default model"
-              inputProps={register("model")}
-              placeholder={providerDefaultModel}
-              disabled={isLoading || isSaving}
-              error={errors.model?.message as string | undefined}
-              helper={modelHelper}
-              current={previewDefaultModel}
-            />
-          )}
+            {showBaseUrl && (
+              <SettingsInput
+                label="LLM base URL"
+                inputProps={register("llmBaseUrl")}
+                placeholder={providerConfig.baseUrlPlaceholder}
+                disabled={isLoading || isSaving}
+                error={errors.llmBaseUrl?.message as string | undefined}
+                helper={providerConfig.baseUrlHelper}
+                current={resolvedBaseUrl}
+              />
+            )}
+            {showApiKey && (
+              <SettingsInput
+                label="LLM API key"
+                inputProps={register("llmApiKey")}
+                type="password"
+                placeholder="Enter new key"
+                disabled={isLoading || isSaving}
+                error={errors.llmApiKey?.message as string | undefined}
+                current={keyHint}
+              />
+            )}
+          </div>
+        </div>
 
-          <Separator />
+        <Separator />
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium">Task-Specific Overrides</div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {supportsModelSuggestions ? (
-                <>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="modelScorer"
-                      className="text-sm font-medium"
-                    >
-                      Scoring Model
-                    </label>
-                    <Controller
-                      name="modelScorer"
-                      control={control}
-                      render={({ field }) => (
-                        <SearchableDropdown
-                          inputId="modelScorer"
-                          value={field.value ?? ""}
-                          options={scoringModelOptions}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            previewDefaultModel || "Inherit default model"
-                          }
-                          searchPlaceholder="Search models..."
-                          emptyText="No models found."
-                          ariaLabel="Scoring Model"
-                          disabled={isLoading || isSaving || isLoadingModels}
-                          triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
-                          contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
-                          listClassName="max-h-64"
-                        />
-                      )}
-                    />
-                    {errors.modelScorer?.message && (
-                      <p className="text-xs text-destructive">
-                        {errors.modelScorer.message as string}
-                      </p>
-                    )}
-                    <div className="text-xs text-muted-foreground">
-                      Current: <span className="font-mono">{scoringModel}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="modelTailoring"
-                      className="text-sm font-medium"
-                    >
-                      Tailoring Model
-                    </label>
-                    <Controller
-                      name="modelTailoring"
-                      control={control}
-                      render={({ field }) => (
-                        <SearchableDropdown
-                          inputId="modelTailoring"
-                          value={field.value ?? ""}
-                          options={tailoringModelOptions}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            previewDefaultModel || "Inherit default model"
-                          }
-                          searchPlaceholder="Search models..."
-                          emptyText="No models found."
-                          ariaLabel="Tailoring Model"
-                          disabled={isLoading || isSaving || isLoadingModels}
-                          triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
-                          contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
-                          listClassName="max-h-64"
-                        />
-                      )}
-                    />
-                    {errors.modelTailoring?.message && (
-                      <p className="text-xs text-destructive">
-                        {errors.modelTailoring.message as string}
-                      </p>
-                    )}
-                    <div className="text-xs text-muted-foreground">
-                      Current:{" "}
-                      <span className="font-mono">{tailoringModel}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="modelProjectSelection"
-                      className="text-sm font-medium"
-                    >
-                      Project Selection Model
-                    </label>
-                    <Controller
-                      name="modelProjectSelection"
-                      control={control}
-                      render={({ field }) => (
-                        <SearchableDropdown
-                          inputId="modelProjectSelection"
-                          value={field.value ?? ""}
-                          options={projectSelectionModelOptions}
-                          onValueChange={field.onChange}
-                          placeholder={
-                            previewDefaultModel || "Inherit default model"
-                          }
-                          searchPlaceholder="Search models..."
-                          emptyText="No models found."
-                          ariaLabel="Project Selection Model"
-                          disabled={isLoading || isSaving || isLoadingModels}
-                          triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
-                          contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
-                          listClassName="max-h-64"
-                        />
-                      )}
-                    />
-                    {errors.modelProjectSelection?.message && (
-                      <p className="text-xs text-destructive">
-                        {errors.modelProjectSelection.message as string}
-                      </p>
-                    )}
-                    <div className="text-xs text-muted-foreground">
-                      Current:{" "}
-                      <span className="font-mono">{projectSelectionModel}</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <SettingsInput
-                    label="Scoring Model"
-                    inputProps={register("modelScorer")}
-                    placeholder={previewDefaultModel || "inherit"}
-                    disabled={isLoading || isSaving}
-                    error={errors.modelScorer?.message as string | undefined}
-                    current={scoringModel}
-                  />
-
-                  <SettingsInput
-                    label="Tailoring Model"
-                    inputProps={register("modelTailoring")}
-                    placeholder={previewDefaultModel || "inherit"}
-                    disabled={isLoading || isSaving}
-                    error={errors.modelTailoring?.message as string | undefined}
-                    current={tailoringModel}
-                  />
-
-                  <SettingsInput
-                    label="Project Selection Model"
-                    inputProps={register("modelProjectSelection")}
-                    placeholder={previewDefaultModel || "inherit"}
-                    disabled={isLoading || isSaving}
-                    error={
-                      errors.modelProjectSelection?.message as
-                        | string
-                        | undefined
-                    }
-                    current={projectSelectionModel}
-                  />
-                </>
+        {supportsModelSuggestions ? (
+          <div className="space-y-2">
+            <label htmlFor="model" className="text-sm font-medium">
+              Default model
+            </label>
+            <Controller
+              name="model"
+              control={control}
+              render={({ field }) => (
+                <SearchableDropdown
+                  inputId="model"
+                  value={field.value ?? ""}
+                  options={defaultModelOptions}
+                  onValueChange={field.onChange}
+                  placeholder={providerDefaultModel || "Select a model"}
+                  searchPlaceholder="Search models..."
+                  emptyText="No models found."
+                  ariaLabel="Default model"
+                  disabled={isLoading || isSaving || isLoadingModels}
+                  triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
+                  contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
+                  listClassName="max-h-64"
+                />
               )}
+            />
+            {errors.model?.message && (
+              <p className="text-xs text-destructive">
+                {errors.model.message as string}
+              </p>
+            )}
+            <div className="text-xs text-muted-foreground">{modelHelper}</div>
+            <div className="text-xs text-muted-foreground">
+              Current: <span className="font-mono">{previewDefaultModel}</span>
             </div>
           </div>
+        ) : (
+          <SettingsInput
+            label="Default model"
+            inputProps={register("model")}
+            placeholder={providerDefaultModel}
+            disabled={isLoading || isSaving}
+            error={errors.model?.message as string | undefined}
+            helper={modelHelper}
+            current={previewDefaultModel}
+          />
+        )}
 
-          <Separator />
+        <Separator />
 
-          <div className="space-y-3 text-sm">
-            <div className="text-xs text-muted-foreground">Resolved config</div>
-            <div className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-[160px_1fr]">
-              <div className="text-muted-foreground">Provider</div>
-              <div className="font-mono">{selectedProvider || "-"}</div>
+        <div className="space-y-4">
+          <div className="text-sm font-medium">Task-Specific Overrides</div>
 
-              <div className="text-muted-foreground">Base URL</div>
-              <div className="font-mono">{resolvedBaseUrl}</div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {supportsModelSuggestions ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="modelScorer" className="text-sm font-medium">
+                    Scoring Model
+                  </label>
+                  <Controller
+                    name="modelScorer"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableDropdown
+                        inputId="modelScorer"
+                        value={field.value ?? ""}
+                        options={scoringModelOptions}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        searchPlaceholder="Search models..."
+                        emptyText="No models found."
+                        ariaLabel="Scoring Model"
+                        disabled={isLoading || isSaving || isLoadingModels}
+                        triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
+                        contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
+                        listClassName="max-h-64"
+                      />
+                    )}
+                  />
+                  {errors.modelScorer?.message && (
+                    <p className="text-xs text-destructive">
+                      {errors.modelScorer.message as string}
+                    </p>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    Current: <span className="font-mono">{scoringModel}</span>
+                  </div>
+                </div>
 
-              <div className="text-muted-foreground">API key</div>
-              <div className="font-mono">{keyText}</div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="modelTailoring"
+                    className="text-sm font-medium"
+                  >
+                    Tailoring Model
+                  </label>
+                  <Controller
+                    name="modelTailoring"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableDropdown
+                        inputId="modelTailoring"
+                        value={field.value ?? ""}
+                        options={tailoringModelOptions}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        searchPlaceholder="Search models..."
+                        emptyText="No models found."
+                        ariaLabel="Tailoring Model"
+                        disabled={isLoading || isSaving || isLoadingModels}
+                        triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
+                        contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
+                        listClassName="max-h-64"
+                      />
+                    )}
+                  />
+                  {errors.modelTailoring?.message && (
+                    <p className="text-xs text-destructive">
+                      {errors.modelTailoring.message as string}
+                    </p>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    Current: <span className="font-mono">{tailoringModel}</span>
+                  </div>
+                </div>
 
-              <div className="text-muted-foreground">Default model</div>
-              <div className="font-mono">{previewDefaultModel}</div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="modelProjectSelection"
+                    className="text-sm font-medium"
+                  >
+                    Project Selection Model
+                  </label>
+                  <Controller
+                    name="modelProjectSelection"
+                    control={control}
+                    render={({ field }) => (
+                      <SearchableDropdown
+                        inputId="modelProjectSelection"
+                        value={field.value ?? ""}
+                        options={projectSelectionModelOptions}
+                        onValueChange={field.onChange}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        searchPlaceholder="Search models..."
+                        emptyText="No models found."
+                        ariaLabel="Project Selection Model"
+                        disabled={isLoading || isSaving || isLoadingModels}
+                        triggerClassName="h-9 w-full justify-between rounded-md border border-input bg-transparent px-3 text-sm font-normal shadow-sm"
+                        contentClassName="w-[var(--radix-popover-trigger-width)] border-border bg-popover p-0"
+                        listClassName="max-h-64"
+                      />
+                    )}
+                  />
+                  {errors.modelProjectSelection?.message && (
+                    <p className="text-xs text-destructive">
+                      {errors.modelProjectSelection.message as string}
+                    </p>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    Current:{" "}
+                    <span className="font-mono">{projectSelectionModel}</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SettingsInput
+                  label="Scoring Model"
+                  inputProps={register("modelScorer")}
+                  placeholder={previewDefaultModel || "inherit"}
+                  disabled={isLoading || isSaving}
+                  error={errors.modelScorer?.message as string | undefined}
+                  current={scoringModel}
+                />
 
-              <div className="text-muted-foreground">Scoring model</div>
-              <div className="font-mono">
-                {selectedScoringModel ? scoringModel : "inherits"}
-              </div>
+                <SettingsInput
+                  label="Tailoring Model"
+                  inputProps={register("modelTailoring")}
+                  placeholder={previewDefaultModel || "inherit"}
+                  disabled={isLoading || isSaving}
+                  error={errors.modelTailoring?.message as string | undefined}
+                  current={tailoringModel}
+                />
 
-              <div className="text-muted-foreground">Tailoring model</div>
-              <div className="font-mono">
-                {selectedTailoringModel ? tailoringModel : "inherits"}
-              </div>
+                <SettingsInput
+                  label="Project Selection Model"
+                  inputProps={register("modelProjectSelection")}
+                  placeholder={previewDefaultModel || "inherit"}
+                  disabled={isLoading || isSaving}
+                  error={
+                    errors.modelProjectSelection?.message as string | undefined
+                  }
+                  current={projectSelectionModel}
+                />
+              </>
+            )}
+          </div>
+        </div>
 
-              <div className="text-muted-foreground">Project selection</div>
-              <div className="font-mono">
-                {selectedProjectSelectionModel
-                  ? projectSelectionModel
-                  : "inherits"}
-              </div>
+        <Separator />
+
+        <div className="space-y-3 text-sm">
+          <div className="text-xs text-muted-foreground">Resolved config</div>
+          <div className="grid gap-x-4 gap-y-2 text-xs sm:grid-cols-[160px_1fr]">
+            <div className="text-muted-foreground">Provider</div>
+            <div className="font-mono">{selectedProvider || "-"}</div>
+
+            <div className="text-muted-foreground">Base URL</div>
+            <div className="font-mono">{resolvedBaseUrl}</div>
+
+            <div className="text-muted-foreground">API key</div>
+            <div className="font-mono">{keyText}</div>
+
+            <div className="text-muted-foreground">Default model</div>
+            <div className="font-mono">{previewDefaultModel}</div>
+
+            <div className="text-muted-foreground">Scoring model</div>
+            <div className="font-mono">
+              {selectedScoringModel ? scoringModel : "inherits"}
+            </div>
+
+            <div className="text-muted-foreground">Tailoring model</div>
+            <div className="font-mono">
+              {selectedTailoringModel ? tailoringModel : "inherits"}
+            </div>
+
+            <div className="text-muted-foreground">Project selection</div>
+            <div className="font-mono">
+              {selectedProjectSelectionModel
+                ? projectSelectionModel
+                : "inherits"}
             </div>
           </div>
         </div>
-      </AccordionContent>
-    </AccordionItem>
+      </div>
+    </SettingsSectionFrame>
   );
 };
 

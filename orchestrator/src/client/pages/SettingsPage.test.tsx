@@ -62,23 +62,42 @@ const renderPage = () => {
   );
 };
 
+const getSaveButton = () =>
+  screen.getByRole("button", { name: /save changes/i });
+
+const clickLastButtonByName = async (name: RegExp) => {
+  const buttons = await screen.findAllByRole("button", { name });
+  const target = buttons.at(-1);
+  expect(target).toBeDefined();
+  fireEvent.click(target as HTMLElement);
+};
+
 const openModelSection = async () => {
-  const modelTrigger = await screen.findByRole("button", { name: /^model$/i });
-  fireEvent.click(modelTrigger);
+  await clickLastButtonByName(/models/i);
 };
 
 const openWritingStyleSection = async () => {
-  const chatTrigger = await screen.findByRole("button", {
-    name: /writing style & language/i,
-  });
-  fireEvent.click(chatTrigger);
+  await clickLastButtonByName(/writing style/i);
 };
 
 const openReactiveResumeSection = async () => {
-  const trigger = await screen.findByRole("button", {
-    name: /reactive resume/i,
-  });
-  fireEvent.click(trigger);
+  await clickLastButtonByName(/reactive resume/i);
+};
+
+const openDisplaySection = async () => {
+  await clickLastButtonByName(/display preferences/i);
+};
+
+const openEnvironmentSection = async () => {
+  await clickLastButtonByName(/accounts & access/i);
+};
+
+const openScoringSection = async () => {
+  await clickLastButtonByName(/rules.*filters/i);
+};
+
+const openDangerZoneSection = async () => {
+  await clickLastButtonByName(/danger zone/i);
 };
 
 describe("SettingsPage", () => {
@@ -130,7 +149,7 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(modelInput).toBeEnabled());
     fireEvent.change(modelInput, { target: { value: "  gpt-4  " } });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
 
     fireEvent.click(saveButton);
@@ -164,7 +183,7 @@ describe("SettingsPage", () => {
     ).toBeInTheDocument();
 
     // Save button should be disabled due to validation error (isValid will be false)
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     expect(saveButton).toBeDisabled();
   });
 
@@ -177,10 +196,7 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const dangerTrigger = await screen.findByRole("button", {
-      name: /danger zone/i,
-    });
-    fireEvent.click(dangerTrigger);
+    await openDangerZoneSection();
 
     const clearSelectedButton = await screen.findByRole("button", {
       name: /clear selected/i,
@@ -206,7 +222,7 @@ describe("SettingsPage", () => {
   it("enables save button when model is changed", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     expect(saveButton).toBeDisabled();
     await openModelSection();
 
@@ -246,7 +262,7 @@ describe("SettingsPage", () => {
     fireEvent.click(screen.getByRole("combobox", { name: /provider/i }));
     fireEvent.click(await screen.findByText("OpenAI"));
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -266,7 +282,7 @@ describe("SettingsPage", () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
 
-    await screen.findByRole("button", { name: /model/i });
+    await openModelSection();
     expect(
       screen.queryByRole("button", { name: /ukvisajobs extractor/i }),
     ).not.toBeInTheDocument();
@@ -284,12 +300,9 @@ describe("SettingsPage", () => {
   it("enables save button when display setting is changed", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
 
-    const displayTrigger = await screen.findByRole("button", {
-      name: /display settings/i,
-    });
-    fireEvent.click(displayTrigger);
+    await openDisplaySection();
     const sponsorCheckbox = screen.getByLabelText(
       /show visa sponsor information/i,
     );
@@ -310,16 +323,13 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const displayTrigger = await screen.findByRole("button", {
-      name: /display settings/i,
-    });
-    fireEvent.click(displayTrigger);
+    await openDisplaySection();
     const sponsorCheckbox = screen.getByLabelText(
       /show visa sponsor information/i,
     );
     fireEvent.click(sponsorCheckbox);
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -339,18 +349,14 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const reactiveResumeTrigger = await screen.findByRole("button", {
-      name: /reactive resume/i,
-    });
-    fireEvent.click(reactiveResumeTrigger);
-
+    await openReactiveResumeSection();
     const urlInput = screen.getByLabelText(/rxresume url/i);
     await waitFor(() => expect(urlInput).toBeEnabled());
     fireEvent.change(urlInput, {
       target: { value: "https://resume.example.com" },
     });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -381,7 +387,7 @@ describe("SettingsPage", () => {
       target: { value: "invalid-v5-key" },
     });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -414,7 +420,7 @@ describe("SettingsPage", () => {
       target: { value: "rr-v5-warning-key" },
     });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -448,7 +454,7 @@ describe("SettingsPage", () => {
       target: { value: "new-model" },
     });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -505,7 +511,7 @@ describe("SettingsPage", () => {
       screen.queryByRole("combobox", { name: /specific language/i }),
     ).not.toBeInTheDocument();
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -521,12 +527,9 @@ describe("SettingsPage", () => {
   it("enables save button when basic auth toggle is changed", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
 
-    const envTrigger = await screen.findByRole("button", {
-      name: /environment & accounts/i,
-    });
-    fireEvent.click(envTrigger);
+    await openEnvironmentSection();
     const authCheckbox = screen.getByLabelText(/enable basic authentication/i);
     fireEvent.click(authCheckbox);
     expect(saveButton).toBeEnabled();
@@ -545,10 +548,7 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const envTrigger = await screen.findByRole("button", {
-      name: /environment & accounts/i,
-    });
-    fireEvent.click(envTrigger);
+    await openEnvironmentSection();
 
     const authCheckbox = screen.getByLabelText(/enable basic authentication/i);
     expect(authCheckbox).toBeChecked();
@@ -557,7 +557,7 @@ describe("SettingsPage", () => {
     fireEvent.click(authCheckbox);
     expect(authCheckbox).not.toBeChecked();
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     expect(saveButton).toBeEnabled();
     fireEvent.click(saveButton);
 
@@ -583,16 +583,13 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const scoringTrigger = await screen.findByRole("button", {
-      name: /scoring settings/i,
-    });
-    fireEvent.click(scoringTrigger);
+    await openScoringSection();
 
     const input = screen.getByPlaceholderText('e.g. "recruitment", "staffing"');
     fireEvent.change(input, { target: { value: "staffing" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 
@@ -619,10 +616,7 @@ describe("SettingsPage", () => {
 
     renderPage();
 
-    const scoringTrigger = await screen.findByRole("button", {
-      name: /scoring settings/i,
-    });
-    fireEvent.click(scoringTrigger);
+    await openScoringSection();
 
     const textarea = screen.getByLabelText(/scoring instructions/i);
     fireEvent.change(textarea, {
@@ -632,7 +626,7 @@ describe("SettingsPage", () => {
       },
     });
 
-    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeEnabled());
     fireEvent.click(saveButton);
 

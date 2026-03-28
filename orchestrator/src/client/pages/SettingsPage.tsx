@@ -44,7 +44,7 @@ import type {
   ValidationResult,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Settings } from "lucide-react";
+import { Search, Settings } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -56,8 +56,23 @@ import {
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
-import { Accordion } from "@/components/ui/accordion";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -115,6 +130,221 @@ const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
   message: null,
   status: null,
 };
+
+type SettingsSectionId =
+  | "model"
+  | "chat"
+  | "scoring"
+  | "reactive-resume"
+  | "webhooks"
+  | "tracer-links"
+  | "environment"
+  | "display"
+  | "backup"
+  | "danger-zone";
+
+type SettingsGroupId =
+  | "ai"
+  | "scoring"
+  | "integrations"
+  | "accounts"
+  | "display"
+  | "backups"
+  | "danger";
+
+type SettingsSectionDescriptor = {
+  id: SettingsSectionId;
+  label: string;
+  description: string;
+  searchTerms: string[];
+};
+
+type SettingsNavGroup = {
+  description: string;
+  id: SettingsGroupId;
+  items: SettingsSectionDescriptor[];
+  label: string;
+};
+
+const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
+  {
+    id: "ai",
+    label: "AI",
+    description: "Models and writing defaults",
+    items: [
+      {
+        id: "model",
+        label: "Models",
+        description: "Provider, API credentials, and task-specific overrides.",
+        searchTerms: ["llm", "provider", "openai", "gemini", "ollama"],
+      },
+      {
+        id: "chat",
+        label: "Writing Style",
+        description: "Tone, language, presets, and writing constraints.",
+        searchTerms: ["ghostwriter", "language", "tone", "formality"],
+      },
+    ],
+  },
+  {
+    id: "scoring",
+    label: "Scoring",
+    description: "How jobs are evaluated and filtered",
+    items: [
+      {
+        id: "scoring",
+        label: "Rules & Filters",
+        description:
+          "Salary penalties, thresholds, keywords, and scorer hints.",
+        searchTerms: ["threshold", "salary", "keywords", "instructions"],
+      },
+    ],
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    description: "Connected services and delivery hooks",
+    items: [
+      {
+        id: "reactive-resume",
+        label: "Reactive Resume",
+        description: "Resume sync, templates, and project selection.",
+        searchTerms: ["rxresume", "resume", "projects", "template"],
+      },
+      {
+        id: "webhooks",
+        label: "Webhooks",
+        description: "Pipeline and job completion event destinations.",
+        searchTerms: ["hooks", "notifications", "pipeline", "applied"],
+      },
+      {
+        id: "tracer-links",
+        label: "Tracer Links",
+        description: "Public URL readiness and verification state.",
+        searchTerms: ["public url", "verify", "readiness", "health"],
+      },
+    ],
+  },
+  {
+    id: "accounts",
+    label: "Accounts & Security",
+    description: "Connected accounts and access controls",
+    items: [
+      {
+        id: "environment",
+        label: "Accounts & Access",
+        description: "Service credentials and basic auth protection.",
+        searchTerms: ["security", "auth", "adzuna", "ukvisajobs"],
+      },
+    ],
+  },
+  {
+    id: "display",
+    label: "Display",
+    description: "How information is shown in the app",
+    items: [
+      {
+        id: "display",
+        label: "Display Preferences",
+        description: "Sponsor badges and markdown rendering behavior.",
+        searchTerms: ["markdown", "sponsor", "rendering", "appearance"],
+      },
+    ],
+  },
+  {
+    id: "backups",
+    label: "Backups",
+    description: "Recovery schedules and backup history",
+    items: [
+      {
+        id: "backup",
+        label: "Backups",
+        description: "Automatic schedules, retention, and manual snapshots.",
+        searchTerms: ["recovery", "database", "restore", "schedule"],
+      },
+    ],
+  },
+  {
+    id: "danger",
+    label: "Danger Zone",
+    description: "Destructive cleanup actions",
+    items: [
+      {
+        id: "danger-zone",
+        label: "Danger Zone",
+        description: "Delete jobs, runs, or the full local database.",
+        searchTerms: ["delete", "clear", "cleanup", "destructive"],
+      },
+    ],
+  },
+];
+
+const SETTINGS_GROUP_IDS = SETTINGS_NAV_GROUPS.map((group) => group.id);
+
+const SECTION_FIELD_MAP: Record<
+  SettingsSectionId,
+  Array<keyof UpdateSettingsInput>
+> = {
+  model: [
+    "llmProvider",
+    "llmBaseUrl",
+    "llmApiKey",
+    "model",
+    "modelScorer",
+    "modelTailoring",
+    "modelProjectSelection",
+  ],
+  chat: [
+    "chatStyleTone",
+    "chatStyleFormality",
+    "chatStyleConstraints",
+    "chatStyleDoNotUse",
+    "chatStyleLanguageMode",
+    "chatStyleManualLanguage",
+  ],
+  scoring: [
+    "penalizeMissingSalary",
+    "missingSalaryPenalty",
+    "autoSkipScoreThreshold",
+    "blockedCompanyKeywords",
+    "scoringInstructions",
+  ],
+  "reactive-resume": [
+    "rxresumeMode",
+    "rxresumeBaseResumeId",
+    "rxresumeApiKey",
+    "rxresumeEmail",
+    "rxresumePassword",
+    "rxresumeUrl",
+    "resumeProjects",
+  ],
+  webhooks: ["pipelineWebhookUrl", "jobCompleteWebhookUrl", "webhookSecret"],
+  "tracer-links": [],
+  environment: [
+    "ukvisajobsEmail",
+    "ukvisajobsPassword",
+    "adzunaAppId",
+    "adzunaAppKey",
+    "enableBasicAuth",
+    "basicAuthUser",
+    "basicAuthPassword",
+  ],
+  display: ["showSponsorInfo", "renderMarkdownInJobDescriptions"],
+  backup: ["backupEnabled", "backupHour", "backupMaxCount"],
+  "danger-zone": [],
+};
+
+function matchesSettingsSearch(
+  searchTerm: string,
+  item: SettingsSectionDescriptor,
+): boolean {
+  if (!searchTerm) return true;
+  const normalized = searchTerm.toLowerCase();
+  const haystack = [item.label, item.description, ...item.searchTerms].join(
+    " ",
+  );
+  return haystack.toLowerCase().includes(normalized);
+}
 
 const getRxResumeValidationFieldsForMode = (
   mode: RxResumeMode,
@@ -398,6 +628,12 @@ const getDerivedSettings = (settings: AppSettings | null) => {
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [activeSection, setActiveSection] =
+    useState<SettingsSectionId>("model");
+  const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([
+    ...SETTINGS_GROUP_IDS,
+  ]);
+  const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [rxresumeValidationStatuses, setRxresumeValidationStatuses] = useState<{
     v4: RxResumeValidationBadgeState;
@@ -1103,122 +1339,439 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const handleDiscardChanges = () => {
+    if (!settings) return;
+    reset(mapSettingsToForm(settings));
+    toast.success("Discarded unsaved changes");
+  };
+
+  const filteredNavGroups = SETTINGS_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      matchesSettingsSearch(settingsSearch, item),
+    ),
+  })).filter((group) => group.items.length > 0);
+
+  const visibleSectionIds = filteredNavGroups.flatMap((group) =>
+    group.items.map((item) => item.id),
+  );
+
+  useEffect(() => {
+    if (visibleSectionIds.length === 0) return;
+    if (!visibleSectionIds.includes(activeSection)) {
+      setActiveSection(visibleSectionIds[0]);
+    }
+  }, [activeSection, visibleSectionIds]);
+
+  const activeSectionMeta =
+    SETTINGS_NAV_GROUPS.flatMap((group) => group.items).find(
+      (item) => item.id === activeSection,
+    ) ?? SETTINGS_NAV_GROUPS[0].items[0];
+  const activeGroup =
+    SETTINGS_NAV_GROUPS.find((group) =>
+      group.items.some((item) => item.id === activeSection),
+    ) ?? SETTINGS_NAV_GROUPS[0];
+
+  const sectionHasDirtyState = (sectionId: SettingsSectionId) =>
+    SECTION_FIELD_MAP[sectionId].some((field) => Boolean(dirtyFields[field]));
+  const sectionHasErrors = (sectionId: SettingsSectionId) =>
+    SECTION_FIELD_MAP[sectionId].some((field) => Boolean(errors[field]));
+
+  const getSectionBadge = (sectionId: SettingsSectionId) => {
+    if (sectionId === "danger-zone") {
+      return { label: "Sensitive", variant: "destructive" as const };
+    }
+    if (sectionHasErrors(sectionId)) {
+      return { label: "Needs attention", variant: "destructive" as const };
+    }
+    if (sectionHasDirtyState(sectionId)) {
+      return { label: "Unsaved", variant: "secondary" as const };
+    }
+
+    switch (sectionId) {
+      case "model":
+        return model.llmProvider
+          ? { label: "Configured", variant: "outline" as const }
+          : { label: "Using defaults", variant: "secondary" as const };
+      case "chat":
+        return chat.tone.effective || chat.constraints.effective
+          ? { label: "Ready", variant: "outline" as const }
+          : { label: "Using defaults", variant: "secondary" as const };
+      case "scoring":
+        return scoring.autoSkipScoreThreshold.effective != null ||
+          scoring.blockedCompanyKeywords.effective.length > 0 ||
+          scoring.scoringInstructions.effective
+          ? { label: "Customized", variant: "outline" as const }
+          : { label: "Default rules", variant: "secondary" as const };
+      case "reactive-resume":
+        return hasRxResumeAccess
+          ? { label: "Connected", variant: "outline" as const }
+          : { label: "Needs setup", variant: "secondary" as const };
+      case "webhooks":
+        return pipelineWebhook.effective || jobCompleteWebhook.effective
+          ? { label: "Configured", variant: "outline" as const }
+          : { label: "Optional", variant: "secondary" as const };
+      case "tracer-links":
+        return tracerReadiness?.status === "ready"
+          ? { label: "Ready", variant: "outline" as const }
+          : tracerReadiness
+            ? { label: "Check required", variant: "secondary" as const }
+            : { label: "Not configured", variant: "secondary" as const };
+      case "environment":
+        return envSettings.readable.ukvisajobsEmail ||
+          envSettings.readable.adzunaAppId ||
+          envSettings.basicAuthActive
+          ? { label: "Configured", variant: "outline" as const }
+          : { label: "Needs setup", variant: "secondary" as const };
+      case "display":
+        return { label: "Active", variant: "secondary" as const };
+      case "backup":
+        return backup.backupEnabled.effective
+          ? { label: "Scheduled", variant: "outline" as const }
+          : { label: "Manual only", variant: "secondary" as const };
+      default:
+        return { label: "Ready", variant: "outline" as const };
+    }
+  };
+
+  const selectedSectionBadge = getSectionBadge(activeSection);
+  const dirtySectionCount = SETTINGS_NAV_GROUPS.flatMap(
+    (group) => group.items,
+  ).filter((item) => sectionHasDirtyState(item.id)).length;
+
+  let activeSectionContent: React.ReactNode;
+  switch (activeSection) {
+    case "model":
+      activeSectionContent = (
+        <ModelSettingsSection
+          values={model}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "chat":
+      activeSectionContent = (
+        <ChatSettingsSection
+          values={chat}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "scoring":
+      activeSectionContent = (
+        <ScoringSettingsSection
+          values={scoring}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "reactive-resume":
+      activeSectionContent = (
+        <ReactiveResumeSection
+          rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
+          onRxresumeModeChange={(mode) => {
+            const nextId = getBaseResumeIdForMode(mode);
+            setRxResumeBaseResumeIdDraft(nextId);
+            setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
+            setRxResumeProjectsOverride(null);
+          }}
+          setRxResumeBaseResumeIdDraft={(value) => {
+            const mode = (getValues("rxresumeMode") ??
+              rxresumeMode) as RxResumeMode;
+            setBaseResumeIdForMode(mode, value);
+            setRxResumeBaseResumeIdDraft(value);
+            setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
+          }}
+          hasRxResumeAccess={hasRxResumeAccess}
+          rxresumeMode={rxresumeMode}
+          onCredentialFieldEdit={clearRxResumeValidationFeedback}
+          validationStatuses={rxresumeValidationStatuses}
+          profileProjects={effectiveProfileProjects}
+          lockedCount={lockedCount}
+          maxProjectsTotal={effectiveMaxProjectsTotal}
+          isProjectsLoading={isFetchingRxResumeProjects}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "webhooks":
+      activeSectionContent = (
+        <WebhooksSection
+          pipelineWebhook={pipelineWebhook}
+          jobCompleteWebhook={jobCompleteWebhook}
+          webhookSecretHint={envSettings.private.webhookSecretHint}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "tracer-links":
+      activeSectionContent = (
+        <TracerLinksSettingsSection
+          readiness={tracerReadiness}
+          isLoading={isLoading || isTracerReadinessLoading}
+          isChecking={isTracerReadinessChecking}
+          onVerifyNow={handleVerifyTracerReadiness}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "environment":
+      activeSectionContent = (
+        <EnvironmentSettingsSection
+          values={envSettings}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "display":
+      activeSectionContent = (
+        <DisplaySettingsSection
+          values={display}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "backup":
+      activeSectionContent = (
+        <BackupSettingsSection
+          values={backup}
+          backups={backups}
+          nextScheduled={nextScheduled}
+          isLoading={isLoading || isLoadingBackups}
+          isSaving={isSaving}
+          onCreateBackup={handleCreateBackup}
+          onDeleteBackup={handleDeleteBackup}
+          isCreatingBackup={isCreatingBackup}
+          isDeletingBackup={isDeletingBackup}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "danger-zone":
+      activeSectionContent = (
+        <DangerZoneSection
+          statusesToClear={statusesToClear}
+          toggleStatusToClear={toggleStatusToClear}
+          handleClearByStatuses={handleClearByStatuses}
+          handleClearDatabase={handleClearDatabase}
+          handleClearByScore={handleClearByScore}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    default:
+      activeSectionContent = null;
+  }
+
   return (
     <FormProvider {...methods}>
       <PageHeader
         icon={Settings}
         title="Settings"
-        subtitle="Configure runtime behavior for this app."
+        subtitle="Configure AI, scoring, integrations, and recovery from one focused workspace."
       />
 
-      <main className="container mx-auto max-w-3xl space-y-6 px-4 py-6 pb-12">
-        <Accordion type="multiple" className="w-full space-y-4">
-          <ModelSettingsSection
-            values={model}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <WebhooksSection
-            pipelineWebhook={pipelineWebhook}
-            jobCompleteWebhook={jobCompleteWebhook}
-            webhookSecretHint={envSettings.private.webhookSecretHint}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ReactiveResumeSection
-            rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
-            onRxresumeModeChange={(mode) => {
-              const nextId = getBaseResumeIdForMode(mode);
-              setRxResumeBaseResumeIdDraft(nextId);
-              setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
-              setRxResumeProjectsOverride(null);
-            }}
-            setRxResumeBaseResumeIdDraft={(value) => {
-              const mode = (getValues("rxresumeMode") ??
-                rxresumeMode) as RxResumeMode;
-              setBaseResumeIdForMode(mode, value);
-              setRxResumeBaseResumeIdDraft(value);
-              setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
-            }}
-            hasRxResumeAccess={hasRxResumeAccess}
-            rxresumeMode={rxresumeMode}
-            onCredentialFieldEdit={clearRxResumeValidationFeedback}
-            validationStatuses={rxresumeValidationStatuses}
-            profileProjects={effectiveProfileProjects}
-            lockedCount={lockedCount}
-            maxProjectsTotal={effectiveMaxProjectsTotal}
-            isProjectsLoading={isFetchingRxResumeProjects}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <TracerLinksSettingsSection
-            readiness={tracerReadiness}
-            isLoading={isLoading || isTracerReadinessLoading}
-            isChecking={isTracerReadinessChecking}
-            onVerifyNow={handleVerifyTracerReadiness}
-          />
-          <DisplaySettingsSection
-            values={display}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ChatSettingsSection
-            values={chat}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <ScoringSettingsSection
-            values={scoring}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <EnvironmentSettingsSection
-            values={envSettings}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-          <BackupSettingsSection
-            values={backup}
-            backups={backups}
-            nextScheduled={nextScheduled}
-            isLoading={isLoading || isLoadingBackups}
-            isSaving={isSaving}
-            onCreateBackup={handleCreateBackup}
-            onDeleteBackup={handleDeleteBackup}
-            isCreatingBackup={isCreatingBackup}
-            isDeletingBackup={isDeletingBackup}
-          />
-          <DangerZoneSection
-            statusesToClear={statusesToClear}
-            toggleStatusToClear={toggleStatusToClear}
-            handleClearByStatuses={handleClearByStatuses}
-            handleClearDatabase={handleClearDatabase}
-            handleClearByScore={handleClearByScore}
-            isLoading={isLoading}
-            isSaving={isSaving}
-          />
-        </Accordion>
+      <main className="container mx-auto max-w-7xl px-4 py-6 pb-12">
+        <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="lg:sticky lg:top-6 lg:self-start">
+            <Card className="overflow-hidden border-border/70 shadow-sm">
+              <CardHeader className="space-y-3 border-b bg-muted/20">
+                <div className="space-y-1">
+                  <CardTitle className="text-base">Workspace</CardTitle>
+                  <CardDescription>
+                    Search settings or browse by area.
+                  </CardDescription>
+                </div>
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    value={settingsSearch}
+                    onChange={(event) => setSettingsSearch(event.target.value)}
+                    placeholder="Search settings"
+                    className="pl-9"
+                    aria-label="Search settings"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="p-3">
+                {filteredNavGroups.length > 0 ? (
+                  <Accordion
+                    type="multiple"
+                    value={
+                      settingsSearch.trim()
+                        ? filteredNavGroups.map((group) => group.id)
+                        : openGroups
+                    }
+                    onValueChange={(value) =>
+                      setOpenGroups(value as SettingsGroupId[])
+                    }
+                    className="space-y-2"
+                  >
+                    {filteredNavGroups.map((group) => (
+                      <AccordionItem
+                        key={group.id}
+                        value={group.id}
+                        className="rounded-xl border border-border/70 px-3"
+                      >
+                        <AccordionTrigger className="py-3 hover:no-underline">
+                          <div className="flex flex-col items-start gap-1 text-left">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                {group.label}
+                              </span>
+                              <Badge variant="outline" className="text-[10px]">
+                                {group.items.length}
+                              </Badge>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {group.description}
+                            </span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pb-3">
+                          <div className="space-y-1">
+                            {group.items.map((item) => {
+                              const badge = getSectionBadge(item.id);
+                              const isActive = item.id === activeSection;
+                              return (
+                                <Button
+                                  key={item.id}
+                                  type="button"
+                                  variant={isActive ? "secondary" : "ghost"}
+                                  className="h-auto w-full justify-between rounded-lg px-3 py-2 text-left"
+                                  onClick={() => setActiveSection(item.id)}
+                                >
+                                  <div className="min-w-0 space-y-1">
+                                    <div className="text-sm font-medium">
+                                      {item.label}
+                                    </div>
+                                    <div className="truncate text-xs text-muted-foreground">
+                                      {item.description}
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    variant={badge.variant}
+                                    className="ml-3 shrink-0 text-[10px]"
+                                  >
+                                    {badge.label}
+                                  </Badge>
+                                </Button>
+                              );
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                ) : (
+                  <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                    No settings matched “{settingsSearch.trim()}”.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </aside>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={handleSubmit(onSave)}
-            disabled={isLoading || isSaving || !canSave}
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleReset}
-            disabled={isLoading || isSaving || !settings}
-          >
-            Reset to default
-          </Button>
+          <section className="space-y-4">
+            <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/80">
+              <CardHeader className="gap-4 border-b bg-muted/20 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                    <span>{activeGroup.label}</span>
+                    <span>/</span>
+                    <span>{activeSectionMeta.label}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <CardTitle className="text-2xl">
+                        {activeSectionMeta.label}
+                      </CardTitle>
+                      <Badge variant={selectedSectionBadge.variant}>
+                        {selectedSectionBadge.label}
+                      </Badge>
+                      {dirtySectionCount > 0 ? (
+                        <Badge variant="secondary">
+                          {dirtySectionCount} unsaved section
+                          {dirtySectionCount !== 1 ? "s" : ""}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <CardDescription className="max-w-2xl text-sm leading-6">
+                      {activeSectionMeta.description}
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDiscardChanges}
+                    disabled={isLoading || isSaving || !isDirty}
+                  >
+                    Discard changes
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleReset}
+                    disabled={isLoading || isSaving || !settings}
+                  >
+                    Reset to defaults
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSubmit(onSave)}
+                    disabled={isLoading || isSaving || !canSave}
+                  >
+                    {isSaving ? "Saving..." : "Save changes"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 p-6">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                  <span>Changes apply to future runs after saving.</span>
+                  <Separator
+                    orientation="vertical"
+                    className="hidden h-4 sm:block"
+                  />
+                  <span>
+                    Selected section:{" "}
+                    <span className="font-medium text-foreground">
+                      {activeSectionMeta.label}
+                    </span>
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {activeSectionContent}
+
+            {Object.keys(errors).length > 0 && (
+              <Card className="border-destructive/30 bg-destructive/[0.03] shadow-sm">
+                <CardContent className="p-4 text-sm text-destructive">
+                  Please fix the highlighted errors before saving.
+                </CardContent>
+              </Card>
+            )}
+          </section>
         </div>
-        {Object.keys(errors).length > 0 && (
-          <div className="text-destructive text-sm mt-2">
-            Please fix the errors before saving.
-          </div>
-        )}
       </main>
     </FormProvider>
   );
