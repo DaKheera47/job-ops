@@ -67,7 +67,7 @@ export const PromptTemplatesSection: React.FC<PromptTemplatesSectionProps> = ({
             and scoring.
           </p>
 
-          <Alert className="border-amber-200 bg-amber-50 text-amber-950 [&>svg]:text-amber-700">
+          <Alert variant="warning">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Advanced setting</AlertTitle>
             <AlertDescription>
