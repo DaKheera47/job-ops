@@ -65,6 +65,11 @@ const renderPage = () => {
 const getSaveButton = () =>
   screen.getByRole("button", { name: /save changes/i });
 
+const openNavGroup = async (name: RegExp) => {
+  const groupButton = await screen.findByRole("button", { name });
+  fireEvent.click(groupButton);
+};
+
 const clickLastButtonByName = async (name: RegExp) => {
   const buttons = await screen.findAllByRole("button", { name });
   const target = buttons.at(-1);
@@ -73,30 +78,37 @@ const clickLastButtonByName = async (name: RegExp) => {
 };
 
 const openModelSection = async () => {
+  await openNavGroup(/^ai$/i);
   await clickLastButtonByName(/models/i);
 };
 
 const openWritingStyleSection = async () => {
+  await openNavGroup(/^ai$/i);
   await clickLastButtonByName(/writing style/i);
 };
 
 const openReactiveResumeSection = async () => {
+  await openNavGroup(/^integrations$/i);
   await clickLastButtonByName(/reactive resume/i);
 };
 
 const openDisplaySection = async () => {
+  await openNavGroup(/^display$/i);
   await clickLastButtonByName(/display preferences/i);
 };
 
 const openEnvironmentSection = async () => {
+  await openNavGroup(/^accounts & security$/i);
   await clickLastButtonByName(/accounts & access/i);
 };
 
 const openScoringSection = async () => {
+  await openNavGroup(/^scoring$/i);
   await clickLastButtonByName(/rules.*filters/i);
 };
 
 const openDangerZoneSection = async () => {
+  await openNavGroup(/^danger zone$/i);
   await clickLastButtonByName(/danger zone/i);
 };
 

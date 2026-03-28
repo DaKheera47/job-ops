@@ -264,8 +264,6 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
   },
 ];
 
-const SETTINGS_GROUP_IDS = SETTINGS_NAV_GROUPS.map((group) => group.id);
-
 const SECTION_FIELD_MAP: Record<
   SettingsSectionId,
   Array<keyof UpdateSettingsInput>
@@ -615,9 +613,7 @@ export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("model");
-  const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([
-    ...SETTINGS_GROUP_IDS,
-  ]);
+  const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([]);
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [rxresumeValidationStatuses, setRxresumeValidationStatuses] = useState<{
