@@ -143,9 +143,9 @@ export function ResponseRateBySourceChart({
     totalApplied > 0 ? (totalResponded / totalApplied) * 100 : 0;
 
   const chartHeight = Math.max(80, data.length * 52);
-  const xAxisMax = Math.max(
-    10,
-    Math.ceil(Math.max(...data.map((entry) => entry.rate)) + 10),
+  const xAxisMax = Math.min(
+    100,
+    Math.max(10, Math.ceil(Math.max(...data.map((entry) => entry.rate)) + 10)),
   );
 
   return (
