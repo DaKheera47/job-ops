@@ -7,6 +7,10 @@ vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
 }));
 
+vi.mock("../repositories/settings", () => ({
+  getSetting: vi.fn(),
+}));
+
 vi.mock("./profile", () => ({
   getProfile: vi.fn(),
 }));
@@ -21,12 +25,14 @@ vi.mock("./writing-style", async (importOriginal) => {
 });
 
 import { getJobById } from "../repositories/jobs";
+import { getSetting } from "../repositories/settings";
 import { getProfile } from "./profile";
 import { getWritingStyle } from "./writing-style";
 
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
       tone: "professional",
       formality: "medium",
@@ -178,6 +184,22 @@ describe("buildJobChatPromptContext", () => {
       "Writing constraints: Keep responses under 120 words",
     );
     expect(context.systemPrompt).not.toContain("Always respond in French");
+  });
+
+  it("uses a stored Ghostwriter prompt template override", async () => {
+    const job = createJob({ id: "job-ctx-5" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "ghostwriterSystemPromptTemplate"
+        ? "Custom Ghostwriter {{tone}} {{unknownToken}}"
+        : null,
+    );
+
+    const context = await buildJobChatPromptContext(job.id);
+
+    expect(context.systemPrompt).toContain("Custom Ghostwriter professional");
+    expect(context.systemPrompt).toContain("{{unknownToken}}");
   });
 
   it("throws not found for unknown job", async () => {

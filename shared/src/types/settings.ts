@@ -158,6 +158,9 @@ export interface AppSettings {
   workplaceTypes: Resolved<Array<"remote" | "hybrid" | "onsite">>;
   blockedCompanyKeywords: Resolved<string[]>;
   scoringInstructions: Resolved<string>;
+  ghostwriterSystemPromptTemplate: Resolved<string>;
+  tailoringPromptTemplate: Resolved<string>;
+  scoringPromptTemplate: Resolved<string>;
   searchCities: Resolved<string>;
   jobspyResultsWanted: Resolved<number>;
   jobspyCountryIndeed: Resolved<string>;

@@ -1,3 +1,4 @@
+import { getDefaultPromptTemplate } from "../prompt-template-definitions";
 import type {
   ApplicationTask,
   AppSettings,
@@ -172,6 +173,21 @@ export const createAppSettings = (
   scoringInstructions: {
     value: "",
     default: "",
+    override: null,
+  },
+  ghostwriterSystemPromptTemplate: {
+    value: getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+    default: getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+    override: null,
+  },
+  tailoringPromptTemplate: {
+    value: getDefaultPromptTemplate("tailoringPromptTemplate"),
+    default: getDefaultPromptTemplate("tailoringPromptTemplate"),
+    override: null,
+  },
+  scoringPromptTemplate: {
+    value: getDefaultPromptTemplate("scoringPromptTemplate"),
+    default: getDefaultPromptTemplate("scoringPromptTemplate"),
     override: null,
   },
   searchCities: {

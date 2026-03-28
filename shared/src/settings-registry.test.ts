@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getDefaultPromptTemplate } from "./prompt-template-definitions";
 import {
   getDefaultModelForProvider,
   settingsRegistry,
@@ -16,6 +17,18 @@ describe("settingsRegistry helpers", () => {
 
     it("returns the string for non-empty string", () => {
       expect(settingsRegistry.searchCities.parse("London")).toBe("London");
+    });
+
+    it("uses shared default prompt templates for prompt settings", () => {
+      expect(settingsRegistry.ghostwriterSystemPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+      );
+      expect(settingsRegistry.tailoringPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("tailoringPromptTemplate"),
+      );
+      expect(settingsRegistry.scoringPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("scoringPromptTemplate"),
+      );
     });
   });
 

@@ -1,3 +1,4 @@
+import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import { createAppSettings } from "@shared/testing/factories.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -77,6 +78,13 @@ const openWritingStyleSection = async () => {
 const openReactiveResumeSection = async () => {
   const trigger = await screen.findByRole("button", {
     name: /reactive resume/i,
+  });
+  fireEvent.click(trigger);
+};
+
+const openPromptTemplatesSection = async () => {
+  const trigger = await screen.findByRole("button", {
+    name: /prompt templates/i,
   });
   fireEvent.click(trigger);
 };
@@ -514,6 +522,34 @@ describe("SettingsPage", () => {
       expect.objectContaining({
         chatStyleLanguageMode: "match-resume",
         chatStyleManualLanguage: null,
+      }),
+    );
+  });
+
+  it("serializes prompt templates back to null when reset to defaults", async () => {
+    const settingsWithPromptOverride = createAppSettings({
+      ghostwriterSystemPromptTemplate: {
+        value: "Custom Ghostwriter Template",
+        default: getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+        override: "Custom Ghostwriter Template",
+      },
+    });
+    vi.mocked(api.getSettings).mockResolvedValue(settingsWithPromptOverride);
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
+
+    renderPage();
+    await openPromptTemplatesSection();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^reset$/i })[0]);
+
+    const saveButton = screen.getByRole("button", { name: /^save$/i });
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ghostwriterSystemPromptTemplate: null,
       }),
     );
   });

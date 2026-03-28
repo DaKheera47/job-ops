@@ -9,6 +9,10 @@ import {
 } from "./output-language";
 import { getProfile } from "./profile";
 import {
+  getEffectivePromptTemplate,
+  renderPromptTemplate,
+} from "./prompt-templates";
+import {
   getWritingStyle,
   stripLanguageDirectivesFromConstraints,
   type WritingStyle,
@@ -104,10 +108,10 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
   ]);
 }
 
-function buildSystemPrompt(
+async function buildSystemPrompt(
   style: WritingStyle,
   profile: ResumeProfile,
-): string {
+): Promise<string> {
   const resolvedLanguage = resolveWritingOutputLanguage({
     style,
     profile,
@@ -116,23 +120,21 @@ function buildSystemPrompt(
   const effectiveConstraints = stripLanguageDirectivesFromConstraints(
     style.constraints,
   );
+  const template = await getEffectivePromptTemplate(
+    "ghostwriterSystemPromptTemplate",
+  );
 
-  return compactJoin([
-    "You are Ghostwriter, a job-application writing assistant for a single job.",
-    "Use only the provided job and profile context unless the user gives extra details.",
-    "Do not claim actions were executed. You are read-only and advisory.",
-    "If details are missing, say what is missing before making assumptions.",
-    "Avoid exposing private profile details that are unrelated to the user request.",
-    "Follow the user's requested output language exactly when they specify one.",
-    `When the user does not request a language, default to writing user-visible resume or application content in ${outputLanguage}.`,
-    `When suggesting a headline or job title, preserve the original wording instead of translating it.`,
-    `Writing style tone: ${style.tone}.`,
-    `Writing style formality: ${style.formality}.`,
-    effectiveConstraints
+  return renderPromptTemplate(template, {
+    outputLanguage,
+    tone: style.tone,
+    formality: style.formality,
+    constraintsSentence: effectiveConstraints
       ? `Writing constraints: ${effectiveConstraints}`
-      : null,
-    style.doNotUse ? `Avoid these terms: ${style.doNotUse}` : null,
-  ]);
+      : "",
+    avoidTermsSentence: style.doNotUse
+      ? `Avoid these terms: ${style.doNotUse}`
+      : "",
+  });
 }
 
 export async function buildJobChatPromptContext(
@@ -156,7 +158,7 @@ export async function buildJobChatPromptContext(
   }
 
   const profileSnapshot = buildProfileSnapshot(profile);
-  const systemPrompt = buildSystemPrompt(style, profile);
+  const systemPrompt = await buildSystemPrompt(style, profile);
   const jobSnapshot = buildJobSnapshot(job);
 
   if (!jobSnapshot.trim()) {
