@@ -29,7 +29,7 @@ describe("Model Selection Logic", () => {
     };
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
-    vi.mocked(settingsRepo.getSetting).mockResolvedValue(undefined);
+    vi.mocked(settingsRepo.getSetting).mockResolvedValue(null);
     vi.mocked(getEffectiveSettings).mockResolvedValue({
       model: { value: "env-model", default: "env-model", override: null },
       modelScorer: { value: "env-model", override: null },
