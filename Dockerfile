@@ -39,6 +39,7 @@ COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
+COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
 # Install Node dependencies with npm cache (dev deps needed for build)
@@ -61,6 +62,7 @@ COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/startupjobs ./extractors/startupjobs
+COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 
 # Build documentation site bundle
@@ -108,6 +110,7 @@ COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
+COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 
 # Install production Node dependencies only
@@ -126,6 +129,7 @@ COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/startupjobs ./extractors/startupjobs
+COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 
 # Reuse Camoufox binaries from builder instead of fetching again

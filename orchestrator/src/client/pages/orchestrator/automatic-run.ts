@@ -90,6 +90,7 @@ export interface ExtractorLimits {
   ukvisajobsMaxJobs: number;
   adzunaMaxJobsPerTerm: number;
   startupjobsMaxJobsPerTerm: number;
+  workingnomadsMaxJobsPerTerm: number;
 }
 
 export function deriveExtractorLimits(args: {
@@ -107,6 +108,7 @@ export function deriveExtractorLimits(args: {
   const includesAdzuna = args.sources.includes("adzuna");
   const includesHiringCafe = args.sources.includes("hiringcafe");
   const includesStartupJobs = args.sources.includes("startupjobs");
+  const includesWorkingNomads = args.sources.includes("workingnomads");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
@@ -116,7 +118,8 @@ export function deriveExtractorLimits(args: {
     (includesUkVisaJobs ? 1 : 0) +
     (includesAdzuna ? termCount : 0) +
     (includesHiringCafe ? termCount : 0) +
-    (includesStartupJobs ? termCount : 0);
+    (includesStartupJobs ? termCount : 0) +
+    (includesWorkingNomads ? termCount : 0);
 
   if (weightedContributors <= 0) {
     return {
@@ -125,6 +128,7 @@ export function deriveExtractorLimits(args: {
       ukvisajobsMaxJobs: budget,
       adzunaMaxJobsPerTerm: budget,
       startupjobsMaxJobsPerTerm: budget,
+      workingnomadsMaxJobsPerTerm: budget,
     };
   }
 
@@ -137,6 +141,7 @@ export function deriveExtractorLimits(args: {
     ukvisajobsMaxJobs: Math.min(budget, perUnit + remainder),
     adzunaMaxJobsPerTerm: perUnit,
     startupjobsMaxJobsPerTerm: perUnit,
+    workingnomadsMaxJobsPerTerm: perUnit,
   };
 }
 
@@ -202,6 +207,7 @@ export function calculateAutomaticEstimate(args: {
   const hasAdzuna = sources.includes("adzuna");
   const hasHiringCafe = sources.includes("hiringcafe");
   const hasStartupJobs = sources.includes("startupjobs");
+  const hasWorkingNomads = sources.includes("workingnomads");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
@@ -223,6 +229,9 @@ export function calculateAutomaticEstimate(args: {
   const startupJobsCap = hasStartupJobs
     ? limits.startupjobsMaxJobsPerTerm * termCount
     : 0;
+  const workingNomadsCap = hasWorkingNomads
+    ? limits.workingnomadsMaxJobsPerTerm * termCount
+    : 0;
 
   const discoveredCap =
     jobspyCap +
@@ -230,7 +239,8 @@ export function calculateAutomaticEstimate(args: {
     ukvisaCap +
     adzunaCap +
     hiringCafeCap +
-    startupJobsCap;
+    startupJobsCap +
+    workingNomadsCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);
   const discoveredMax = Math.round(discoveredCap * 0.75);
   const processedMin = Math.min(values.topN, discoveredMin);

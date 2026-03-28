@@ -164,21 +164,29 @@ export function createBasicAuthGuard() {
   function isPublicReadOnlyRoute(method: string, path: string): boolean {
     const normalizedMethod = method.toUpperCase();
     const normalizedPath = path.split("?")[0] || path;
+
+    // Explicitly allowed public API routes
+    if (normalizedPath === "/api/profile/status") return true;
     if (
       normalizedMethod === "POST" &&
       normalizedPath === "/api/visa-sponsors/search"
     )
       return true;
+
     return false;
   }
 
   function requiresAuth(method: string, path: string): boolean {
     if (isPublicReadOnlyRoute(method, path)) return false;
     if (isStatsRoute(path)) return false;
-    if (path.startsWith("/api/tracer-links")) {
-      return method.toUpperCase() !== "OPTIONS";
-    }
-    return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+    // OPTIONS is always exempt for CORS preflight.
+    if (method.toUpperCase() === "OPTIONS") return false;
+
+    // All /api/* paths require auth regardless of HTTP method.
+    if (path.startsWith("/api/")) return true;
+
+    // Non-API routes (SPA, /health, /pdfs, static) remain publicly readable.
+    return !["GET", "HEAD"].includes(method.toUpperCase());
   }
 
   const middleware = (
