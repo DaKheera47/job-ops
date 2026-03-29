@@ -1484,6 +1484,7 @@ export const SettingsPage: React.FC = () => {
   const dirtySectionCount = SETTINGS_NAV_GROUPS.flatMap(
     (group) => group.items,
   ).filter((item) => sectionHasDirtyState(item.id)).length;
+  const activeSectionIsDirty = sectionHasDirtyState(activeSection);
 
   let activeSectionContent: React.ReactNode;
   switch (activeSection) {
@@ -1748,15 +1749,17 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="flex shrink-0 flex-nowrap gap-2 self-start">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="whitespace-nowrap"
-                    onClick={handleDiscardChanges}
-                    disabled={isLoading || isSaving || !isDirty}
-                  >
-                    Discard changes
-                  </Button>
+                  {activeSectionIsDirty ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="whitespace-nowrap"
+                      onClick={handleDiscardChanges}
+                      disabled={isLoading || isSaving || !isDirty}
+                    >
+                      Discard changes
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
