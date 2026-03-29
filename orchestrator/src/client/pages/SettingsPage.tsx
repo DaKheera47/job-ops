@@ -65,7 +65,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -1387,7 +1386,7 @@ export const SettingsPage: React.FC = () => {
       case "reactive-resume":
         return hasRxResumeAccess
           ? { label: "Connected", variant: "outline" as const }
-          : { label: "Needs setup", variant: "secondary" as const };
+          : null;
       case "webhooks":
         return pipelineWebhook.effective || jobCompleteWebhook.effective
           ? { label: "Configured", variant: "outline" as const }
@@ -1403,7 +1402,7 @@ export const SettingsPage: React.FC = () => {
           envSettings.readable.adzunaAppId ||
           envSettings.basicAuthActive
           ? { label: "Configured", variant: "outline" as const }
-          : { label: "Needs setup", variant: "secondary" as const };
+          : null;
       case "display":
         return { label: "Active", variant: "secondary" as const };
       case "backup":
@@ -1645,15 +1644,17 @@ export const SettingsPage: React.FC = () => {
                 <span>{activeSectionMeta.label}</span>
               </div>
 
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-2xl font-semibold tracking-tight">
                       {activeSectionMeta.label}
                     </h2>
-                    <Badge variant={selectedSectionBadge.variant}>
-                      {selectedSectionBadge.label}
-                    </Badge>
+                    {selectedSectionBadge ? (
+                      <Badge variant={selectedSectionBadge.variant}>
+                        {selectedSectionBadge.label}
+                      </Badge>
+                    ) : null}
                     {dirtySectionCount > 0 ? (
                       <Badge variant="secondary">
                         {dirtySectionCount} unsaved section
@@ -1664,25 +1665,13 @@ export const SettingsPage: React.FC = () => {
                   <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
                     {activeSectionMeta.description}
                   </p>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                    <span>Changes apply to future runs after saving.</span>
-                    <Separator
-                      orientation="vertical"
-                      className="hidden h-4 sm:block"
-                    />
-                    <span>
-                      Selected section:{" "}
-                      <span className="font-medium text-foreground">
-                        {activeSectionMeta.label}
-                      </span>
-                    </span>
-                  </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex shrink-0 flex-nowrap gap-2 self-start">
                   <Button
                     type="button"
                     variant="outline"
+                    className="whitespace-nowrap"
                     onClick={handleDiscardChanges}
                     disabled={isLoading || isSaving || !isDirty}
                   >
@@ -1691,6 +1680,7 @@ export const SettingsPage: React.FC = () => {
                   <Button
                     type="button"
                     variant="outline"
+                    className="whitespace-nowrap"
                     onClick={handleReset}
                     disabled={isLoading || isSaving || !settings}
                   >
@@ -1698,6 +1688,7 @@ export const SettingsPage: React.FC = () => {
                   </Button>
                   <Button
                     type="button"
+                    className="whitespace-nowrap"
                     onClick={handleSubmit(onSave)}
                     disabled={isLoading || isSaving || !canSave}
                   >
