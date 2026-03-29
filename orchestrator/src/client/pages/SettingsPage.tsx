@@ -47,7 +47,7 @@ import type {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Settings } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FormProvider,
   type Resolver,
@@ -1376,15 +1376,21 @@ export const SettingsPage: React.FC = () => {
     toast.success("Discarded unsaved changes");
   };
 
-  const filteredNavGroups = SETTINGS_NAV_GROUPS.map((group) => ({
-    ...group,
-    items: group.items.filter((item) =>
-      matchesSettingsSearch(settingsSearch, item),
-    ),
-  })).filter((group) => group.items.length > 0);
+  const filteredNavGroups = useMemo(
+    () =>
+      SETTINGS_NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) =>
+          matchesSettingsSearch(settingsSearch, item),
+        ),
+      })).filter((group) => group.items.length > 0),
+    [settingsSearch],
+  );
 
-  const visibleSectionIds = filteredNavGroups.flatMap((group) =>
-    group.items.map((item) => item.id),
+  const visibleSectionIds = useMemo(
+    () =>
+      filteredNavGroups.flatMap((group) => group.items.map((item) => item.id)),
+    [filteredNavGroups],
   );
 
   useEffect(() => {
@@ -1684,8 +1690,12 @@ export const SettingsPage: React.FC = () => {
                                 <Button
                                   key={item.id}
                                   type="button"
-                                  variant={isActive ? "secondary" : "ghost"}
-                                  className="h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium"
+                                  variant="ghost"
+                                  className={`h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium ${
+                                    isActive
+                                      ? "border border-orange-400/40 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18 hover:text-orange-50"
+                                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                  }`}
                                   onClick={() => setActiveSection(item.id)}
                                 >
                                   {item.label}
