@@ -118,4 +118,24 @@ describe("generateTailoring", () => {
       "Output language for summary and skills: German",
     );
   });
+
+  it("uses a stored tailoring prompt template override", async () => {
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "tailoringPromptTemplate"
+        ? "Tailor {{tone}} {{outputLanguage}} {{unknownToken}}"
+        : null,
+    );
+
+    await generateTailoring("Build APIs", {
+      basics: {
+        name: "Test User",
+        label: "Engineer",
+      },
+    });
+
+    const request = callJsonMock.mock.calls.at(-1)?.[0];
+    expect(request?.messages?.[0]?.content).toContain(
+      "Tailor friendly German {{unknownToken}}",
+    );
+  });
 });

@@ -16,6 +16,7 @@ It lets you configure:
 - LLM provider and models
 - Webhook destinations and secret
 - Display and writing-style defaults
+- Editable prompt templates for core AI workflows
 - Service credentials and basic auth
 - Reactive Resume project selection
 - Tracer Links readiness verification
@@ -117,6 +118,21 @@ Defaults and constraints:
 - If JobOps cannot determine a reliable resume/profile language, it safely uses English.
 - The generated resume content follows the resolved language, but ATS-sensitive headline and job-title wording stays exact so matching and parsing remain safer.
 
+### Prompt Templates
+
+- Edit the base templates for:
+  - Ghostwriter system prompt
+  - Resume tailoring prompt
+  - Job scoring prompt
+- Each editor starts from the current effective template, not a blank override
+- Supported placeholders are shown inline for each template
+- Use **Reset** to restore a single template, or **Reset all prompts** to restore all three
+- Template editing is intentionally advanced:
+  - removing key instructions can degrade output quality
+  - removing placeholders can strip important runtime data from the prompt
+  - resetting restores the shared default templates
+- Existing writing-style, language, and scoring-instructions settings still matter because the default templates consume those values through placeholders
+
 ### Reactive Resume
 
 ![Reactive Resume settings section](/img/features/settings-reactive-resume-section.png)
@@ -200,6 +216,15 @@ curl -X PATCH "http://localhost:3001/api/settings" \
 ```
 
 ```bash
+# Override the Ghostwriter base prompt template
+curl -X PATCH "http://localhost:3001/api/settings" \
+  -H "content-type: application/json" \
+  -d '{
+    "ghostwriterSystemPromptTemplate": "You are Ghostwriter. Tone: {{tone}}. Output language: {{outputLanguage}}. {{constraintsSentence}}"
+  }'
+```
+
+```bash
 # List and create backups (used by the Backup section)
 curl "http://localhost:3001/api/backups"
 curl -X POST "http://localhost:3001/api/backups"
@@ -212,6 +237,14 @@ curl -X POST "http://localhost:3001/api/backups"
 - Some settings apply only to new runs/actions after save.
 - Re-run scoring/tailoring/pipeline to validate effect.
 - In the **Model** section, the field preview and **Resolved config** update immediately when you choose a model, but the change only applies to future actions after you click **Save**.
+- Prompt-template changes only affect new Ghostwriter runs, new tailoring generations, and new scoring runs after you save.
+
+### AI behavior got worse after editing a prompt template
+
+- Open **Settings → Prompt Templates**.
+- Reset the individual template you changed, or use **Reset all prompts**.
+- Save settings and rerun the affected workflow.
+- If you keep a custom template, make sure required placeholders still exist where you need runtime data such as `{{jobDescription}}`, `{{profileJson}}`, or `{{outputLanguage}}`.
 
 ### Tailoring or scoring says the selected model does not exist for the current provider
 

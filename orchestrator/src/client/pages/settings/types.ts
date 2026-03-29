@@ -61,3 +61,9 @@ export type ScoringValues = {
   blockedCompanyKeywords: EffectiveDefault<string[]>;
   scoringInstructions: EffectiveDefault<string>;
 };
+
+export type PromptTemplatesValues = {
+  ghostwriterSystemPromptTemplate: EffectiveDefault<string>;
+  tailoringPromptTemplate: EffectiveDefault<string>;
+  scoringPromptTemplate: EffectiveDefault<string>;
+};

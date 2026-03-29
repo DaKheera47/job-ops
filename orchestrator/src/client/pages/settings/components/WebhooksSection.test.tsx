@@ -25,7 +25,7 @@ const WebhooksHarness = () => {
             default: "https://default-j.com",
             effective: "https://job.com",
           }}
-          webhookSecretHint="sec-"
+          webhookSecretHint={null}
           isLoading={false}
           isSaving={false}
         />
@@ -35,7 +35,7 @@ const WebhooksHarness = () => {
 };
 
 describe("WebhooksSection", () => {
-  it("renders both webhook sections and the secret", () => {
+  it("renders both webhook sections and the secret field", () => {
     render(<WebhooksHarness />);
 
     expect(screen.getByText("Pipeline Status")).toBeInTheDocument();
@@ -45,7 +45,6 @@ describe("WebhooksSection", () => {
       screen.getByDisplayValue("https://pipeline.com"),
     ).toBeInTheDocument();
     expect(screen.getByDisplayValue("https://job.com")).toBeInTheDocument();
-
-    expect(screen.getByText("sec-********")).toBeInTheDocument();
+    expect(screen.getByLabelText("Webhook Secret")).toBeInTheDocument();
   });
 });

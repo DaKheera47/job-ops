@@ -1,3 +1,4 @@
+import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import { createAppSettings } from "@shared/testing/factories.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -85,6 +86,11 @@ const openModelSection = async () => {
 const openWritingStyleSection = async () => {
   await openNavGroup(/^ai$/i);
   await clickLastButtonByName(/writing style/i);
+};
+
+const openPromptTemplatesSection = async () => {
+  await openNavGroup(/^ai$/i);
+  await clickLastButtonByName(/prompt templates/i);
 };
 
 const openReactiveResumeSection = async () => {
@@ -647,6 +653,36 @@ describe("SettingsPage", () => {
       expect.objectContaining({
         scoringInstructions:
           "Open to relocating, so do not mark down for location discrepancies.",
+      }),
+    );
+  });
+
+  it("serializes prompt templates back to null when reset to defaults", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        ghostwriterSystemPromptTemplate: {
+          value: "Custom Ghostwriter",
+          default: getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+          override: "Custom Ghostwriter",
+        },
+      }),
+    );
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
+
+    renderPage();
+
+    await openPromptTemplatesSection();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^reset$/i })[0]);
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ghostwriterSystemPromptTemplate: null,
       }),
     );
   });

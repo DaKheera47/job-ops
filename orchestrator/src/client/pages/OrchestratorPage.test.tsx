@@ -758,7 +758,7 @@ describe("OrchestratorPage", () => {
         adzunaMaxJobsPerTerm: 150,
         startupjobsMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
-        searchCities: "United Kingdom",
+        searchCities: null,
       });
     });
     expect(api.runPipeline).toHaveBeenCalledWith({

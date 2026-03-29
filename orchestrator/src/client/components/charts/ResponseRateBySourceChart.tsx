@@ -143,6 +143,10 @@ export function ResponseRateBySourceChart({
     totalApplied > 0 ? (totalResponded / totalApplied) * 100 : 0;
 
   const chartHeight = Math.max(80, data.length * 52);
+  const xAxisMax = Math.min(
+    100,
+    Math.max(10, Math.ceil(Math.max(...data.map((entry) => entry.rate)) + 10)),
+  );
 
   return (
     <Card className="py-0">
@@ -215,7 +219,7 @@ export function ResponseRateBySourceChart({
                     <CartesianGrid vertical={false} />
                     <XAxis
                       type="number"
-                      domain={[0, 100]}
+                      domain={[0, xAxisMax]}
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(v) => `${v}%`}

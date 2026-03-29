@@ -62,6 +62,7 @@ import {
   getResume,
   validateCredentials,
 } from "@server/services/rxresume";
+import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import { startServer, stopServer } from "./test-utils";
 
 describe.sequential("Settings API routes", () => {
@@ -99,6 +100,15 @@ describe.sequential("Settings API routes", () => {
     expect(body.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
     expect(body.data.llmApiKeyHint).toBe("secr");
     expect(body.data.basicAuthActive).toBe(false);
+    expect(body.data.ghostwriterSystemPromptTemplate.value).toBe(
+      getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+    );
+    expect(body.data.tailoringPromptTemplate.value).toBe(
+      getDefaultPromptTemplate("tailoringPromptTemplate"),
+    );
+    expect(body.data.scoringPromptTemplate.value).toBe(
+      getDefaultPromptTemplate("scoringPromptTemplate"),
+    );
   });
 
   it("normalizes hyphenated openai-compatible env defaults", async () => {
@@ -220,6 +230,7 @@ describe.sequential("Settings API routes", () => {
         rxresumeEmail: "updated@example.com",
         rxresumeUrl: "https://resume.example.com",
         llmApiKey: "updated-secret",
+        ghostwriterSystemPromptTemplate: "Custom Ghostwriter {{tone}}",
       }),
     });
     const patchBody = await patchRes.json();
@@ -229,6 +240,9 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
     expect(patchBody.data.rxresumeUrl).toBe("https://resume.example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
+    expect(patchBody.data.ghostwriterSystemPromptTemplate.override).toBe(
+      "Custom Ghostwriter {{tone}}",
+    );
   });
 
   it("blocks saving when the configured Reactive Resume v5 API key is invalid", async () => {

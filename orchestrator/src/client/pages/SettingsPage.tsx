@@ -20,6 +20,7 @@ import { DangerZoneSection } from "@client/pages/settings/components/DangerZoneS
 import { DisplaySettingsSection } from "@client/pages/settings/components/DisplaySettingsSection";
 import { EnvironmentSettingsSection } from "@client/pages/settings/components/EnvironmentSettingsSection";
 import { ModelSettingsSection } from "@client/pages/settings/components/ModelSettingsSection";
+import { PromptTemplatesSection } from "@client/pages/settings/components/PromptTemplatesSection";
 import { ReactiveResumeSection } from "@client/pages/settings/components/ReactiveResumeSection";
 import { ScoringSettingsSection } from "@client/pages/settings/components/ScoringSettingsSection";
 import { TracerLinksSettingsSection } from "@client/pages/settings/components/TracerLinksSettingsSection";
@@ -107,6 +108,9 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: [],
   scoringInstructions: "",
+  ghostwriterSystemPromptTemplate: "",
+  tailoringPromptTemplate: "",
+  scoringPromptTemplate: "",
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -126,6 +130,7 @@ const EMPTY_RXRESUME_VALIDATION_BADGE_STATE: RxResumeValidationBadgeState = {
 type SettingsSectionId =
   | "model"
   | "chat"
+  | "prompt-templates"
   | "scoring"
   | "reactive-resume"
   | "webhooks"
@@ -173,6 +178,13 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
         label: "Writing Style",
         description: "Tone, language, presets, and writing constraints.",
         searchTerms: ["ghostwriter", "language", "tone", "formality"],
+      },
+      {
+        id: "prompt-templates",
+        label: "Prompt Templates",
+        description:
+          "Base AI instructions for Ghostwriter, tailoring, and scoring.",
+        searchTerms: ["prompt", "templates", "system prompt", "instructions"],
       },
     ],
   },
@@ -284,6 +296,11 @@ const SECTION_FIELD_MAP: Record<
     "chatStyleLanguageMode",
     "chatStyleManualLanguage",
   ],
+  "prompt-templates": [
+    "ghostwriterSystemPromptTemplate",
+    "tailoringPromptTemplate",
+    "scoringPromptTemplate",
+  ],
   scoring: [
     "penalizeMissingSalary",
     "missingSalaryPenalty",
@@ -390,6 +407,9 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   autoSkipScoreThreshold: null,
   blockedCompanyKeywords: null,
   scoringInstructions: null,
+  ghostwriterSystemPromptTemplate: null,
+  tailoringPromptTemplate: null,
+  scoringPromptTemplate: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -434,6 +454,10 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   autoSkipScoreThreshold: data.autoSkipScoreThreshold.override,
   blockedCompanyKeywords: data.blockedCompanyKeywords.override ?? [],
   scoringInstructions: data.scoringInstructions.override ?? "",
+  ghostwriterSystemPromptTemplate:
+    data.ghostwriterSystemPromptTemplate.value ?? "",
+  tailoringPromptTemplate: data.tailoringPromptTemplate.value ?? "",
+  scoringPromptTemplate: data.scoringPromptTemplate.value ?? "",
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -602,6 +626,20 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       scoringInstructions: {
         effective: settings?.scoringInstructions?.value ?? "",
         default: settings?.scoringInstructions?.default ?? "",
+      },
+    },
+    promptTemplates: {
+      ghostwriterSystemPromptTemplate: {
+        effective: settings?.ghostwriterSystemPromptTemplate?.value ?? "",
+        default: settings?.ghostwriterSystemPromptTemplate?.default ?? "",
+      },
+      tailoringPromptTemplate: {
+        effective: settings?.tailoringPromptTemplate?.value ?? "",
+        default: settings?.tailoringPromptTemplate?.default ?? "",
+      },
+      scoringPromptTemplate: {
+        effective: settings?.scoringPromptTemplate?.value ?? "",
+        default: settings?.scoringPromptTemplate?.default ?? "",
       },
     },
   };
@@ -788,6 +826,7 @@ export const SettingsPage: React.FC = () => {
     profileProjects,
     backup,
     scoring,
+    promptTemplates,
   } = derived;
 
   const handleCreateBackup = async () => {
@@ -1123,6 +1162,18 @@ export const SettingsPage: React.FC = () => {
           normalizeString(data.scoringInstructions),
           scoring.scoringInstructions.default,
         ),
+        ghostwriterSystemPromptTemplate: nullIfSame(
+          normalizeString(data.ghostwriterSystemPromptTemplate),
+          promptTemplates.ghostwriterSystemPromptTemplate.default,
+        ),
+        tailoringPromptTemplate: nullIfSame(
+          normalizeString(data.tailoringPromptTemplate),
+          promptTemplates.tailoringPromptTemplate.default,
+        ),
+        scoringPromptTemplate: nullIfSame(
+          normalizeString(data.scoringPromptTemplate),
+          promptTemplates.scoringPromptTemplate.default,
+        ),
         ...envPayload,
       };
 
@@ -1377,6 +1428,15 @@ export const SettingsPage: React.FC = () => {
         return chat.tone.effective || chat.constraints.effective
           ? { label: "Ready", variant: "outline" as const }
           : { label: "Using defaults", variant: "secondary" as const };
+      case "prompt-templates":
+        return promptTemplates.ghostwriterSystemPromptTemplate.effective !==
+          promptTemplates.ghostwriterSystemPromptTemplate.default ||
+          promptTemplates.tailoringPromptTemplate.effective !==
+            promptTemplates.tailoringPromptTemplate.default ||
+          promptTemplates.scoringPromptTemplate.effective !==
+            promptTemplates.scoringPromptTemplate.default
+          ? { label: "Customized", variant: "outline" as const }
+          : { label: "Using defaults", variant: "secondary" as const };
       case "scoring":
         return scoring.autoSkipScoreThreshold.effective != null ||
           scoring.blockedCompanyKeywords.effective.length > 0 ||
@@ -1435,6 +1495,16 @@ export const SettingsPage: React.FC = () => {
       activeSectionContent = (
         <ChatSettingsSection
           values={chat}
+          isLoading={isLoading}
+          isSaving={isSaving}
+          layoutMode="panel"
+        />
+      );
+      break;
+    case "prompt-templates":
+      activeSectionContent = (
+        <PromptTemplatesSection
+          values={promptTemplates}
           isLoading={isLoading}
           isSaving={isSaving}
           layoutMode="panel"

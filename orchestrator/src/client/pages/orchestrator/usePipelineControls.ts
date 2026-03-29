@@ -1,9 +1,6 @@
 import * as api from "@client/api";
 import { useSettings } from "@client/hooks/useSettings";
-import {
-  formatCountryLabel,
-  getCompatibleSourcesForCountry,
-} from "@shared/location-support.js";
+import { getCompatibleSourcesForCountry } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -173,28 +170,7 @@ export function usePipelineControls(
         searchTerms: values.searchTerms,
         sources: compatibleSources,
       });
-      const hasJobSpySite = compatibleSources.some(
-        (source) =>
-          source === "indeed" ||
-          source === "linkedin" ||
-          source === "glassdoor",
-      );
-      const hasAdzuna = compatibleSources.includes("adzuna");
-      const hasHiringCafe = compatibleSources.includes("hiringcafe");
-      const hasStartupJobs = compatibleSources.includes("startupjobs");
-      const hasWorkingNomads = compatibleSources.includes("workingnomads");
-      const serializedCities = serializeCityLocationsSetting(
-        values.cityLocations,
-      );
-      const searchCities =
-        (hasJobSpySite ||
-          hasAdzuna ||
-          hasHiringCafe ||
-          hasStartupJobs ||
-          hasWorkingNomads) &&
-        serializedCities
-          ? serializedCities
-          : formatCountryLabel(values.country);
+      const searchCities = serializeCityLocationsSetting(values.cityLocations);
       await api.updateSettings({
         searchTerms: values.searchTerms,
         workplaceTypes: values.workplaceTypes,

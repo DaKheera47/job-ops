@@ -14,6 +14,7 @@ Ghostwriter uses:
 - current job description and metadata
 - reduced profile snapshot
 - global writing style settings
+- the configurable Ghostwriter system prompt template from Settings
 
 The UI behavior is one persistent conversation per job, shown in the right-side drawer from job details.
 
@@ -50,6 +51,11 @@ Ghostwriter follows the output language you request in your prompt. For example,
 
 If you want a persistent default language, set it in **Settings → Writing Style & Language**.
 
+If you need to change Ghostwriter's base behavior more deeply, edit the
+Ghostwriter prompt template in **Settings → Prompt Templates**. That editor is
+advanced on purpose: removing instructions or placeholders can make responses
+less reliable, but reset restores the default template quickly.
+
 `Do-not-use terms` are passed as guidance in the prompt. They are not enforced by a hard post-generation filter, so the model should avoid them but may still use them occasionally.
 
 Defaults:
@@ -81,6 +87,8 @@ Compatibility thread endpoints remain, but UI behavior is one thread per job.
 
 - Verify the job description is complete and current.
 - Confirm style constraints in Settings are specific enough.
+- If you customized the Ghostwriter prompt template, compare it with the default
+  or reset it to confirm the regression comes from the template.
 
 ### Generation quality is lower than expected
 

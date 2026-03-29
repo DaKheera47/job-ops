@@ -463,6 +463,56 @@ describe("salary penalty", () => {
       );
     });
 
+    it("uses a custom scoring prompt template override", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      const { LlmService } = await import("./llm/service");
+
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: {
+          value: "Prioritize backend work.",
+          default: "",
+          override: "Prioritize backend work.",
+        },
+        scoringPromptTemplate: {
+          value:
+            "Custom scoring {{jobTitle}} {{scoringInstructionsText}} {{unknownToken}}",
+          default: "",
+          override:
+            "Custom scoring {{jobTitle}} {{scoringInstructionsText}} {{unknownToken}}",
+        },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      const callJsonMock = vi
+        .spyOn(LlmService.prototype, "callJson")
+        .mockResolvedValue({
+          success: true,
+          data: { score: 80, reason: "Good match" },
+        });
+
+      await scoreJobSuitability(
+        createJob({
+          id: "test-job-custom-template",
+          title: "Backend Engineer",
+        }),
+        {},
+      );
+
+      expect(callJsonMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messages: [
+            expect.objectContaining({
+              content: expect.stringContaining(
+                "Custom scoring Backend Engineer Prioritize backend work. {{unknownToken}}",
+              ),
+            }),
+          ],
+        }),
+      );
+    });
+
     it("should not apply penalty when disabled", async () => {
       const { scoreJobSuitability } = await import("./scorer");
       const { LlmService } = await import("./llm/service");

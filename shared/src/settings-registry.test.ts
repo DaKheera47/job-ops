@@ -1,10 +1,63 @@
 import { describe, expect, it } from "vitest";
+import { getDefaultPromptTemplate } from "./prompt-template-definitions";
 import {
   getDefaultModelForProvider,
   settingsRegistry,
 } from "./settings-registry";
 
 describe("settingsRegistry helpers", () => {
+  describe("searchCities defaults", () => {
+    it("defaults to empty when no location env is configured", () => {
+      const previousSearchCities = process.env.SEARCH_CITIES;
+      const previousJobspyLocation = process.env.JOBSPY_LOCATION;
+
+      delete process.env.SEARCH_CITIES;
+      delete process.env.JOBSPY_LOCATION;
+
+      try {
+        expect(settingsRegistry.searchCities.default()).toBe("");
+      } finally {
+        if (previousSearchCities === undefined) {
+          delete process.env.SEARCH_CITIES;
+        } else {
+          process.env.SEARCH_CITIES = previousSearchCities;
+        }
+
+        if (previousJobspyLocation === undefined) {
+          delete process.env.JOBSPY_LOCATION;
+        } else {
+          process.env.JOBSPY_LOCATION = previousJobspyLocation;
+        }
+      }
+    });
+
+    it("uses explicit SEARCH_CITIES or legacy JOBSPY_LOCATION env values", () => {
+      const previousSearchCities = process.env.SEARCH_CITIES;
+      const previousJobspyLocation = process.env.JOBSPY_LOCATION;
+
+      process.env.SEARCH_CITIES = "Leeds|London";
+      process.env.JOBSPY_LOCATION = "Manchester";
+
+      try {
+        expect(settingsRegistry.searchCities.default()).toBe("Leeds|London");
+        delete process.env.SEARCH_CITIES;
+        expect(settingsRegistry.searchCities.default()).toBe("Manchester");
+      } finally {
+        if (previousSearchCities === undefined) {
+          delete process.env.SEARCH_CITIES;
+        } else {
+          process.env.SEARCH_CITIES = previousSearchCities;
+        }
+
+        if (previousJobspyLocation === undefined) {
+          delete process.env.JOBSPY_LOCATION;
+        } else {
+          process.env.JOBSPY_LOCATION = previousJobspyLocation;
+        }
+      }
+    });
+  });
+
   describe("string parsing (parseNonEmptyStringOrNull)", () => {
     it("returns null for undefined", () => {
       expect(settingsRegistry.model.parse(undefined)).toBeNull();
@@ -16,6 +69,18 @@ describe("settingsRegistry helpers", () => {
 
     it("returns the string for non-empty string", () => {
       expect(settingsRegistry.searchCities.parse("London")).toBe("London");
+    });
+
+    it("uses shared default prompt templates for prompt settings", () => {
+      expect(settingsRegistry.ghostwriterSystemPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
+      );
+      expect(settingsRegistry.tailoringPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("tailoringPromptTemplate"),
+      );
+      expect(settingsRegistry.scoringPromptTemplate.default()).toBe(
+        getDefaultPromptTemplate("scoringPromptTemplate"),
+      );
     });
   });
 

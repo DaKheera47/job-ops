@@ -175,12 +175,7 @@ export const ReactiveResumeConfigPanel: React.FC<
 
       {showInlineValidationAlert && selectedValidationStatus?.message ? (
         <Alert
-          variant={selectedValidationIsWarning ? "default" : "destructive"}
-          className={
-            selectedValidationIsWarning
-              ? "border-amber-200 bg-amber-50 text-amber-950 [&>svg]:text-amber-700"
-              : undefined
-          }
+          variant={selectedValidationIsWarning ? "warning" : "destructive"}
         >
           {selectedValidationIsWarning ? (
             <AlertTriangle className="h-4 w-4" />

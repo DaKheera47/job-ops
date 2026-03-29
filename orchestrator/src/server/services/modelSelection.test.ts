@@ -9,6 +9,7 @@ import { generateTailoring } from "./summary";
 // Mock the settings repository
 vi.mock("../repositories/settings", () => ({
   getAllSettings: vi.fn(),
+  getSetting: vi.fn(),
 }));
 
 vi.mock("./settings", () => ({
@@ -28,6 +29,7 @@ describe("Model Selection Logic", () => {
     };
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
+    vi.mocked(settingsRepo.getSetting).mockResolvedValue(null);
     vi.mocked(getEffectiveSettings).mockResolvedValue({
       model: { value: "env-model", default: "env-model", override: null },
       modelScorer: { value: "env-model", override: null },
