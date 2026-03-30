@@ -60,7 +60,9 @@ function escapeLatexUrl(value: string): string {
   return value
     .trim()
     .replace(/\\/g, "\\textbackslash{}")
-    .replace(/([%#{}])/g, "\\$1");
+    .replace(/([#$%&_{}])/g, "\\$1")
+    .replace(/~/g, "\\textasciitilde{}")
+    .replace(/\^/g, "\\textasciicircum{}");
 }
 
 function escapeForCommand(value: string): string {
