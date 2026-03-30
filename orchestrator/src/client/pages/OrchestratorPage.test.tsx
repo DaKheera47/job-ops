@@ -1166,9 +1166,9 @@ describe("OrchestratorPage", () => {
       Navigator.prototype,
       "maxTouchPoints",
     );
-    Object.defineProperty(window.navigator, "maxTouchPoints", {
+    Object.defineProperty(Navigator.prototype, "maxTouchPoints", {
       configurable: true,
-      value: 5,
+      get: () => 5,
     });
 
     try {
@@ -1190,7 +1190,7 @@ describe("OrchestratorPage", () => {
           maxTouchPointsDescriptor,
         );
       } else {
-        Reflect.deleteProperty(window.navigator, "maxTouchPoints");
+        Reflect.deleteProperty(Navigator.prototype, "maxTouchPoints");
       }
     }
   });

@@ -23,9 +23,9 @@ const maxTouchPointsDescriptor = Object.getOwnPropertyDescriptor(
 );
 
 function setMaxTouchPoints(value: number) {
-  Object.defineProperty(window.navigator, "maxTouchPoints", {
+  Object.defineProperty(Navigator.prototype, "maxTouchPoints", {
     configurable: true,
-    value,
+    get: () => value,
   });
 }
 
@@ -38,7 +38,7 @@ afterEach(() => {
       maxTouchPointsDescriptor,
     );
   } else {
-    Reflect.deleteProperty(window.navigator, "maxTouchPoints");
+    Reflect.deleteProperty(Navigator.prototype, "maxTouchPoints");
   }
 });
 
@@ -58,6 +58,21 @@ describe("useKeyboardAvailability", () => {
       "(any-hover: hover)": false,
       "(any-pointer: fine)": false,
     }) as unknown as typeof window.matchMedia;
+    setMaxTouchPoints(5);
+
+    const { result } = renderHook(() => useKeyboardAvailability());
+
+    expect(result.current).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Control" }));
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  it("switches on after the user presses a key when matchMedia is unavailable", () => {
+    window.matchMedia = undefined as unknown as typeof window.matchMedia;
     setMaxTouchPoints(5);
 
     const { result } = renderHook(() => useKeyboardAvailability());

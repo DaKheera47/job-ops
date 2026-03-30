@@ -29,12 +29,7 @@ export function useKeyboardAvailability(): boolean {
   const [hasKeyboard, setHasKeyboard] = useState(detectKeyboardAvailability);
 
   useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      typeof window.matchMedia !== "function"
-    ) {
-      return;
-    }
+    if (typeof window === "undefined") return;
 
     const updateAvailability = () => {
       setHasKeyboard((previous) => previous || detectKeyboardAvailability());
@@ -44,10 +39,13 @@ export function useKeyboardAvailability(): boolean {
       setHasKeyboard(true);
     };
 
-    const mediaQueries = [
-      window.matchMedia("(any-hover: hover)"),
-      window.matchMedia("(any-pointer: fine)"),
-    ];
+    const mediaQueries =
+      typeof window.matchMedia === "function"
+        ? [
+            window.matchMedia("(any-hover: hover)"),
+            window.matchMedia("(any-pointer: fine)"),
+          ]
+        : [];
 
     updateAvailability();
     window.addEventListener("keydown", handleKeyDown);
