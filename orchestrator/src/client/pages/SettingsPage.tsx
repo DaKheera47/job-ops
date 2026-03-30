@@ -78,6 +78,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
+  pdfRenderer: "rxresume",
   rxresumeMode: "v5",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
@@ -309,6 +310,7 @@ const SECTION_FIELD_MAP: Record<
     "scoringInstructions",
   ],
   "reactive-resume": [
+    "pdfRenderer",
     "rxresumeMode",
     "rxresumeBaseResumeId",
     "rxresumeApiKey",
@@ -376,6 +378,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
+  pdfRenderer: null,
   rxresumeMode: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
@@ -423,6 +426,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
+  pdfRenderer: data.pdfRenderer.override ?? data.pdfRenderer.value,
   rxresumeMode: data.rxresumeMode.override ?? data.rxresumeMode.value,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
@@ -534,6 +538,12 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     jobCompleteWebhook: {
       effective: settings?.jobCompleteWebhookUrl?.value ?? "",
       default: settings?.jobCompleteWebhookUrl?.default ?? "",
+    },
+    reactiveResume: {
+      pdfRenderer: {
+        effective: settings?.pdfRenderer?.value ?? "rxresume",
+        default: settings?.pdfRenderer?.default ?? "rxresume",
+      },
     },
     display: {
       showSponsorInfo: {
@@ -819,6 +829,7 @@ export const SettingsPage: React.FC = () => {
     model,
     pipelineWebhook,
     jobCompleteWebhook,
+    reactiveResume,
     display,
     chat,
     envSettings,
@@ -1112,6 +1123,10 @@ export const SettingsPage: React.FC = () => {
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,
+        pdfRenderer: nullIfSame(
+          data.pdfRenderer,
+          reactiveResume.pdfRenderer.default,
+        ),
         ...(dirtyFields.rxresumeMode
           ? { rxresumeMode: data.rxresumeMode ?? "v5" }
           : {}),

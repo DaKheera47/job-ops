@@ -148,6 +148,11 @@ export const createAppSettings = (
     },
     override: null,
   },
+  pdfRenderer: {
+    value: "rxresume",
+    default: "rxresume",
+    override: null,
+  },
   rxresumeBaseResumeId: null,
   rxresumeBaseResumeIdV4: null,
   rxresumeBaseResumeIdV5: null,

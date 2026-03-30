@@ -2,6 +2,35 @@ import { describe, expect, it } from "vitest";
 import { updateSettingsSchema } from "./settings-schema";
 
 describe("updateSettingsSchema", () => {
+  it("accepts supported PDF renderer values and rejects unsupported ones", () => {
+    expect(
+      updateSettingsSchema.parse({
+        pdfRenderer: "latex",
+      }),
+    ).toEqual({
+      pdfRenderer: "latex",
+    });
+
+    expect(
+      updateSettingsSchema.parse({
+        pdfRenderer: null,
+      }),
+    ).toEqual({
+      pdfRenderer: null,
+    });
+
+    const result = updateSettingsSchema.safeParse({
+      pdfRenderer: "custom",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.flatten().fieldErrors.pdfRenderer).toBeDefined();
+  });
+
   it("accepts supported language mode and manual language values", () => {
     expect(
       updateSettingsSchema.parse({

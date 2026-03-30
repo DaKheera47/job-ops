@@ -5,50 +5,52 @@ import { getProfile } from "./profile";
 process.env.DATA_DIR = "/tmp";
 
 // Define mock data in hoisted block
-const { mocks, mockProfile, mockResumeRenderer } = vi.hoisted(() => {
-  const profile = {
-    sections: {
-      summary: { content: "Original Summary" },
-      skills: {
-        items: [
-          {
-            id: "s1",
-            name: "Existing Skill",
-            visible: true,
-            description: "Existing Desc",
-            level: 3,
-            keywords: ["k1"],
-          },
-        ],
+const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
+  vi.hoisted(() => {
+    const profile = {
+      sections: {
+        summary: { content: "Original Summary" },
+        skills: {
+          items: [
+            {
+              id: "s1",
+              name: "Existing Skill",
+              visible: true,
+              description: "Existing Desc",
+              level: 3,
+              keywords: ["k1"],
+            },
+          ],
+        },
+        projects: { items: [] },
       },
-      projects: { items: [] },
-    },
-    basics: { headline: "Original Headline" },
-  };
+      basics: { headline: "Original Headline" },
+    };
 
-  let lastPreparedResume: any = null;
-  const renderer = {
-    renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
-      lastPreparedResume = JSON.parse(JSON.stringify(args.preparedResume));
-    }),
-    getLastPreparedResume: () => lastPreparedResume,
-    clearLastPreparedResume: () => {
-      lastPreparedResume = null;
-    },
-  };
+    let lastPreparedResume: any = null;
+    const renderer = {
+      renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
+        lastPreparedResume = JSON.parse(JSON.stringify(args.preparedResume));
+      }),
+      getLastPreparedResume: () => lastPreparedResume,
+      clearLastPreparedResume: () => {
+        lastPreparedResume = null;
+      },
+    };
 
-  return {
-    mockProfile: profile,
-    mocks: {
-      readFile: vi.fn(),
-      writeFile: vi.fn(),
-      mkdir: vi.fn().mockResolvedValue(undefined),
-      access: vi.fn().mockResolvedValue(undefined),
-      unlink: vi.fn().mockResolvedValue(undefined),
-    },
-    mockResumeRenderer: renderer,
-  };
-});
+    return {
+      currentPdfRenderer: { value: "latex" as "latex" | "rxresume" },
+      mockProfile: profile,
+      mocks: {
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        access: vi.fn().mockResolvedValue(undefined),
+        unlink: vi.fn().mockResolvedValue(undefined),
+      },
+      mockResumeRenderer: renderer,
+    };
+  });
 
 // Configure base mock implementations
 mocks.readFile.mockResolvedValue(JSON.stringify(mockProfile));
@@ -108,6 +110,7 @@ vi.mock("node:fs", () => ({
 
 vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockImplementation((key: string) => {
+    if (key === "pdfRenderer") return Promise.resolve(currentPdfRenderer.value);
     if (key === "rxresumeEmail") return Promise.resolve("test@example.com");
     if (key === "rxresumePassword") return Promise.resolve("testpassword");
     return Promise.resolve(null);
@@ -160,6 +163,11 @@ vi.mock("./rxresume", async () => {
   const { createId } = await import("@paralleldrive/cuid2");
   const profileModule = await import("./profile");
   return {
+    importResume: vi.fn().mockResolvedValue("temp-resume-id"),
+    exportResumePdf: vi
+      .fn()
+      .mockResolvedValue("https://pdf.rxresume.test/print/123"),
+    deleteResume: vi.fn().mockResolvedValue(undefined),
     getResume: vi.fn().mockImplementation(async () => ({
       id: "base-resume-id",
       name: "Base Resume",
@@ -219,6 +227,7 @@ vi.mock("./rxresume", async () => {
 describe("PDF Service Skills Validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    currentPdfRenderer.value = "latex";
     vi.mocked(getProfile).mockResolvedValue(mockProfile);
     mockResumeRenderer.clearLastPreparedResume();
   });

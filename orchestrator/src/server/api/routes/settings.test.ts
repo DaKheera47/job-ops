@@ -98,6 +98,8 @@ describe.sequential("Settings API routes", () => {
     expect(Array.isArray(body.data.searchTerms.value)).toBe(true);
     expect(body.data.rxresumeEmail).toBe("resume@example.com");
     expect(body.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
+    expect(body.data.pdfRenderer.value).toBe("rxresume");
+    expect(body.data.pdfRenderer.default).toBe("rxresume");
     expect(body.data.llmApiKeyHint).toBe("secr");
     expect(body.data.basicAuthActive).toBe(false);
     expect(body.data.ghostwriterSystemPromptTemplate.value).toBe(
@@ -226,6 +228,7 @@ describe.sequential("Settings API routes", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        pdfRenderer: "latex",
         searchTerms: ["engineer"],
         rxresumeEmail: "updated@example.com",
         rxresumeUrl: "https://resume.example.com",
@@ -235,6 +238,8 @@ describe.sequential("Settings API routes", () => {
     });
     const patchBody = await patchRes.json();
     expect(patchBody.ok).toBe(true);
+    expect(patchBody.data.pdfRenderer.value).toBe("latex");
+    expect(patchBody.data.pdfRenderer.override).toBe("latex");
     expect(patchBody.data.searchTerms.value).toEqual(["engineer"]);
     expect(patchBody.data.searchTerms.override).toEqual(["engineer"]);
     expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");

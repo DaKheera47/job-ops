@@ -5,12 +5,24 @@ import {
   toggleMustInclude,
 } from "@client/pages/settings/resume-projects-state";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
-import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
+import {
+  PDF_RENDERER_LABELS,
+  type PdfRenderer,
+  type ResumeProjectCatalogItem,
+  type RxResumeMode,
+} from "@shared/types.js";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import type React from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
   Table,
@@ -47,6 +59,9 @@ type ProjectSelectionConfig = {
 type ReactiveResumeConfigPanelProps = {
   mode: RxResumeMode;
   onModeChange: (mode: RxResumeMode) => void;
+  pdfRenderer: PdfRenderer;
+  onPdfRendererChange: (renderer: PdfRenderer) => void;
+  pdfRendererError?: string;
   disabled?: boolean;
   hasRxResumeAccess?: boolean;
   showValidationStatus?: boolean;
@@ -120,6 +135,9 @@ export const ReactiveResumeConfigPanel: React.FC<
 > = ({
   mode,
   onModeChange,
+  pdfRenderer,
+  onPdfRendererChange,
+  pdfRendererError,
   disabled = false,
   hasRxResumeAccess = false,
   showValidationStatus = false,
@@ -144,6 +162,7 @@ export const ReactiveResumeConfigPanel: React.FC<
     isAvailabilityWarning(selectedValidationStatus);
   const handleModeChange = (value: string) =>
     onModeChange(value === "v4" ? "v4" : "v5");
+  const latexSelected = pdfRenderer === "latex";
 
   return (
     <div className="space-y-4">
@@ -155,6 +174,37 @@ export const ReactiveResumeConfigPanel: React.FC<
           ) : null}
         </div>
       ) : null}
+
+      <div className="space-y-2">
+        <label htmlFor="pdfRenderer" className="text-sm font-medium">
+          PDF renderer
+        </label>
+        <Select
+          value={pdfRenderer}
+          onValueChange={(value) =>
+            onPdfRendererChange(value === "latex" ? "latex" : "rxresume")
+          }
+          disabled={disabled}
+        >
+          <SelectTrigger id="pdfRenderer">
+            <SelectValue placeholder="Choose PDF renderer" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="rxresume">
+              {PDF_RENDERER_LABELS.rxresume}
+            </SelectItem>
+            <SelectItem value="latex">{PDF_RENDERER_LABELS.latex}</SelectItem>
+          </SelectContent>
+        </Select>
+        {pdfRendererError ? (
+          <p className="text-xs text-destructive">{pdfRendererError}</p>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          {latexSelected
+            ? "LaTeX renders PDFs locally with Jake's template and requires tectonic on the JobOps host."
+            : "RxResume export uses the upstream print/export endpoint for the final PDF."}
+        </p>
+      </div>
 
       <Tabs value={mode} onValueChange={handleModeChange}>
         <TabsList className="grid h-auto w-full grid-cols-2">

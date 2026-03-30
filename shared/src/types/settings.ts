@@ -13,6 +13,12 @@ export interface ResumeProjectsSettings {
 }
 
 export type RxResumeMode = "v4" | "v5";
+export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
+export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
+export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
+  rxresume: "RxResume export",
+  latex: "Local LaTeX (Jake template)",
+};
 
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
   "manual",
@@ -150,6 +156,7 @@ export interface AppSettings {
   pipelineWebhookUrl: Resolved<string>;
   jobCompleteWebhookUrl: Resolved<string>;
   resumeProjects: Resolved<ResumeProjectsSettings>;
+  pdfRenderer: Resolved<PdfRenderer>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;

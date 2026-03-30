@@ -1,7 +1,11 @@
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
+import type {
+  PdfRenderer,
+  ResumeProjectCatalogItem,
+  RxResumeMode,
+} from "@shared/types.js";
 import type React from "react";
 import {
   type Path,
@@ -65,6 +69,10 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   } = useFormContext<UpdateSettingsInput>();
   const selectedMode =
     useWatch({ control, name: "rxresumeMode" }) ?? rxresumeMode ?? "v5";
+  const pdfRendererValue = (useWatch({
+    control,
+    name: "pdfRenderer",
+  }) ?? "rxresume") as PdfRenderer;
   const rxresumeApiKeyValue =
     useWatch({ control, name: "rxresumeApiKey" }) ?? "";
   const rxresumeEmailValue = useWatch({ control, name: "rxresumeEmail" }) ?? "";
@@ -102,6 +110,11 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           onRxresumeModeChange?.(mode);
           setDirtyTouchedValue("rxresumeMode", mode);
         }}
+        pdfRenderer={pdfRendererValue}
+        onPdfRendererChange={(value) =>
+          setDirtyTouchedValue("pdfRenderer", value)
+        }
+        pdfRendererError={errors.pdfRenderer?.message as string | undefined}
         disabled={isLoading || isSaving}
         hasRxResumeAccess={hasRxResumeAccess}
         showValidationStatus={Boolean(validationStatuses)}

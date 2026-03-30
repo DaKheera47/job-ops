@@ -9,7 +9,7 @@ sidebar_position: 4
 
 Reactive Resume provides the structured base resume that JobOps uses for PDF generation.
 
-JobOps uses a selected RxResume base resume as the source of truth, applies job-specific tailoring (summary, headline, skills, project visibility), then renders the final PDF locally with a LaTeX template based on Jake Gutierrez's resume layout.
+JobOps uses a selected RxResume base resume as the source of truth, applies job-specific tailoring (summary, headline, skills, project visibility), then renders the final PDF using the renderer selected in Settings.
 
 ## Why it exists
 
@@ -143,7 +143,9 @@ High-level flow:
 3. Compute final visible projects from your selection rules.
 4. Optionally rewrite outbound links to tracer links (per-job toggle).
 5. Normalize the tailored resume data into JobOps' renderer document model.
-6. Render the PDF locally with LaTeX and `tectonic`.
+6. Render the PDF with the configured renderer:
+   - RxResume export
+   - Local LaTeX with `tectonic`
 
 ### Resume-data caching
 
@@ -179,12 +181,16 @@ Current AI-driven edits are intentionally scoped:
 
 ### Local renderer dependency
 
-JobOps no longer asks RxResume to export the final PDF.
+JobOps can generate the final PDF in 2 ways:
 
-- RxResume still supplies the structured base resume and project data.
-- JobOps renders the final PDF locally using LaTeX.
-- In Docker deployments, `tectonic` is bundled into the image.
-- In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed.
+- `rxresume`: use the upstream RxResume print/export endpoint
+- `latex`: render locally with the Jake Gutierrez-based LaTeX template
+
+Notes:
+
+- RxResume still supplies the structured base resume and project data in both modes.
+- In Docker deployments, `tectonic` is bundled into the image for the LaTeX option.
+- In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed when using the LaTeX option.
 
 ## API reference
 

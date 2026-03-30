@@ -19,7 +19,11 @@ import {
 } from "@client/pages/settings/utils";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { RxResumeMode, ValidationResult } from "@shared/types.js";
+import type {
+  PdfRenderer,
+  RxResumeMode,
+  ValidationResult,
+} from "@shared/types.js";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -58,6 +62,7 @@ type OnboardingFormData = {
   llmProvider: string;
   llmBaseUrl: string;
   llmApiKey: string;
+  pdfRenderer: PdfRenderer;
   rxresumeMode: RxResumeMode;
   rxresumeEmail: string;
   rxresumeUrl: string;
@@ -135,6 +140,7 @@ export const OnboardingGate: React.FC = () => {
         llmProvider: "",
         llmBaseUrl: "",
         llmApiKey: "",
+        pdfRenderer: "rxresume",
         rxresumeMode: "v5",
         rxresumeEmail: "",
         rxresumeUrl: "",
@@ -288,6 +294,7 @@ export const OnboardingGate: React.FC = () => {
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
         llmApiKey: "",
+        pdfRenderer: settings.pdfRenderer?.value ?? "rxresume",
         rxresumeMode: initialMode,
         rxresumeEmail: "",
         rxresumeUrl: settings.rxresumeUrl ?? "",
@@ -483,7 +490,10 @@ export const OnboardingGate: React.FC = () => {
         persist: async (update) => {
           setIsSavingEnv(true);
           try {
-            await api.updateSettings(update);
+            await api.updateSettings({
+              ...update,
+              pdfRenderer: values.pdfRenderer,
+            });
             await refreshSettings();
           } finally {
             setIsSavingEnv(false);
@@ -545,6 +555,7 @@ export const OnboardingGate: React.FC = () => {
     try {
       setIsSavingEnv(true);
       await api.updateSettings({
+        pdfRenderer: values.pdfRenderer,
         rxresumeMode: values.rxresumeMode,
         rxresumeBaseResumeId: values.rxresumeBaseResumeId,
       });
@@ -770,6 +781,10 @@ export const OnboardingGate: React.FC = () => {
                     checked: previous.checked,
                   }));
                 }}
+                pdfRenderer={watch("pdfRenderer")}
+                onPdfRendererChange={(renderer) =>
+                  setValue("pdfRenderer", renderer)
+                }
                 disabled={isSavingEnv}
                 showValidationStatus
                 validationStatuses={rxresumeVersionValidations}

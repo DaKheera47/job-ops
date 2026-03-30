@@ -3,13 +3,19 @@
  */
 
 import { existsSync } from "node:fs";
-import { access, mkdir } from "node:fs/promises";
+import { access, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { logger } from "@infra/logger";
+import { getSetting } from "@server/repositories/settings";
+import { settingsRegistry } from "@shared/settings-registry";
+import type { PdfRenderer } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import { renderResumePdf } from "./resume-renderer";
 import {
+  deleteResume as deleteRxResume,
+  exportResumePdf as exportRxResumePdf,
   getResume as getRxResume,
+  importResume as importRxResume,
   prepareTailoredResumeForPdf,
 } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
@@ -34,13 +40,72 @@ export interface GeneratePdfOptions {
   tracerCompanyName?: string | null;
 }
 
+async function resolvePdfRenderer(): Promise<PdfRenderer> {
+  const storedValue = await getSetting("pdfRenderer");
+  return (
+    settingsRegistry.pdfRenderer.parse(storedValue ?? undefined) ??
+    settingsRegistry.pdfRenderer.default()
+  );
+}
+
+async function downloadRxResumePdf(
+  url: string,
+  outputPath: string,
+): Promise<void> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(
+      `Reactive Resume PDF download failed with HTTP ${response.status}.`,
+    );
+  }
+
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  await writeFile(outputPath, bytes);
+}
+
+async function renderRxResumePdf(args: {
+  preparedResume: Awaited<ReturnType<typeof prepareTailoredResumeForPdf>>;
+  outputPath: string;
+  jobId: string;
+}): Promise<void> {
+  const { preparedResume, outputPath, jobId } = args;
+  let importedResumeId: string | null = null;
+
+  try {
+    importedResumeId = await importRxResume(
+      {
+        name: `JobOps Tailored Resume ${jobId}`,
+        data: preparedResume.data,
+      },
+      { mode: preparedResume.mode },
+    );
+
+    const downloadUrl = await exportRxResumePdf(importedResumeId, {
+      mode: preparedResume.mode,
+    });
+    await downloadRxResumePdf(downloadUrl, outputPath);
+  } finally {
+    if (importedResumeId) {
+      try {
+        await deleteRxResume(importedResumeId, { mode: preparedResume.mode });
+      } catch (error) {
+        logger.warn("Failed to clean up temporary Reactive Resume PDF export", {
+          jobId,
+          importedResumeId,
+          error,
+        });
+      }
+    }
+  }
+}
+
 /**
  * Generate a tailored PDF resume for a job using the configured resume source.
  *
  * Flow:
  * 1. Prepare resume data with tailored content and project selection
  * 2. Normalize the tailored resume into the renderer document model
- * 3. Render a PDF locally with the active renderer
+ * 3. Render a PDF with the active renderer
  */
 export async function generatePdf(
   jobId: string,
@@ -50,9 +115,12 @@ export async function generatePdf(
   selectedProjectIds?: string | null,
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
-  logger.info("Generating PDF resume", { jobId });
+  let renderer: PdfRenderer | null = null;
 
   try {
+    renderer = await resolvePdfRenderer();
+    logger.info("Generating PDF resume", { jobId, renderer });
+
     // Ensure output directory exists
     if (!existsSync(OUTPUT_DIR)) {
       await mkdir(OUTPUT_DIR, { recursive: true });
@@ -96,17 +164,25 @@ export async function generatePdf(
     }
 
     const outputPath = join(OUTPUT_DIR, `resume_${jobId}.pdf`);
-    await renderResumePdf({
-      preparedResume,
-      outputPath,
-      jobId,
-    });
+    if (renderer === "latex") {
+      await renderResumePdf({
+        preparedResume,
+        outputPath,
+        jobId,
+      });
+    } else {
+      await renderRxResumePdf({
+        preparedResume,
+        outputPath,
+        jobId,
+      });
+    }
 
-    logger.info("PDF generated successfully", { jobId, outputPath });
+    logger.info("PDF generated successfully", { jobId, outputPath, renderer });
     return { success: true, pdfPath: outputPath };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error("PDF generation failed", { jobId, error });
+    logger.error("PDF generation failed", { jobId, renderer, error });
     return { success: false, error: message };
   }
 }
