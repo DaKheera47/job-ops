@@ -2,9 +2,11 @@
  * KeyboardShortcutBar - Superhuman-style bottom hint bar showing available
  * keyboard shortcuts for the current tab context.
  *
- * Only visible on desktop (lg+) when the Control key is held down.
+ * Only visible when a keyboard is available, on desktop layouts, and while
+ * the Control key is held down.
  */
 
+import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import { useModifierPressed } from "@client/hooks/useModifierPressed";
 import {
   dedupeShortcuts,
@@ -31,9 +33,10 @@ interface KeyboardShortcutBarProps {
 export const KeyboardShortcutBar: React.FC<KeyboardShortcutBarProps> = ({
   activeTab,
 }) => {
+  const hasKeyboard = useKeyboardAvailability();
   const isControlPressed = useModifierPressed("Control");
 
-  if (!isControlPressed) return null;
+  if (!hasKeyboard || !isControlPressed) return null;
 
   const all = getShortcutsForTab(activeTab);
   const grouped = groupShortcuts(all);

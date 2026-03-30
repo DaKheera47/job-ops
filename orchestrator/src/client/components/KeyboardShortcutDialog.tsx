@@ -5,6 +5,7 @@
  * rendered as a clean three-column layout.
  */
 
+import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import {
   dedupeShortcuts,
   getShortcutsForTab,
@@ -41,6 +42,10 @@ export const KeyboardShortcutDialog: React.FC<KeyboardShortcutDialogProps> = ({
   onOpenChange,
   activeTab,
 }) => {
+  const hasKeyboard = useKeyboardAvailability();
+
+  if (!hasKeyboard) return null;
+
   const all = getShortcutsForTab(activeTab);
   const grouped = groupShortcuts(all);
 

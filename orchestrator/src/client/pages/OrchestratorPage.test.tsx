@@ -99,9 +99,9 @@ const processingJob = createJob({
 let mockJobs = [jobFixture, job2, processingJob];
 let mockSelectedJob: Job | null = jobFixture;
 
-const createMatchMedia = (matches: boolean) =>
+const createMatchMedia = (matches: boolean | Record<string, boolean>) =>
   vi.fn().mockImplementation((query: string) => ({
-    matches,
+    matches: typeof matches === "boolean" ? matches : (matches[query] ?? false),
     media: query,
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -1152,6 +1152,47 @@ describe("OrchestratorPage", () => {
     );
 
     expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
+  });
+
+  it("does not auto-open the keyboard shortcut dialog on touch-only devices", () => {
+    localStorage.removeItem("has-seen-keyboard-shortcuts");
+    window.matchMedia = createMatchMedia({
+      "(min-width: 1024px)": true,
+      "(any-hover: hover)": false,
+      "(any-pointer: fine)": false,
+    }) as unknown as typeof window.matchMedia;
+
+    const maxTouchPointsDescriptor = Object.getOwnPropertyDescriptor(
+      Navigator.prototype,
+      "maxTouchPoints",
+    );
+    Object.defineProperty(window.navigator, "maxTouchPoints", {
+      configurable: true,
+      value: 5,
+    });
+
+    try {
+      render(
+        <MemoryRouter initialEntries={["/jobs/ready"]}>
+          <Routes>
+            <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+            <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByTestId("help-dialog")).toHaveTextContent("closed");
+    } finally {
+      if (maxTouchPointsDescriptor) {
+        Object.defineProperty(
+          Navigator.prototype,
+          "maxTouchPoints",
+          maxTouchPointsDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(window.navigator, "maxTouchPoints");
+      }
+    }
   });
 
   it("disables other shortcuts while help dialog is open", async () => {

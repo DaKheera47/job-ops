@@ -1,3 +1,4 @@
+import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import { useSettings } from "@client/hooks/useSettings";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -86,6 +87,7 @@ export const OrchestratorPage: React.FC = () => {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [isHelpDialogOpen, setIsHelpDialogOpen] = useState(false);
   const [isDetailDrawerOpen, setIsDetailDrawerOpen] = useState(false);
+  const hasKeyboard = useKeyboardAvailability();
 
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== "undefined"
@@ -330,11 +332,12 @@ export const OrchestratorPage: React.FC = () => {
 
   useEffect(() => {
     if (demoInfo?.demoMode) return;
+    if (!hasKeyboard) return;
     const hasSeen = localStorage.getItem("has-seen-keyboard-shortcuts");
     if (!hasSeen) {
       setIsHelpDialogOpen(true);
     }
-  }, [demoInfo?.demoMode]);
+  }, [demoInfo?.demoMode, hasKeyboard]);
 
   const onDrawerOpenChange = (open: boolean) => {
     setIsDetailDrawerOpen(open);
