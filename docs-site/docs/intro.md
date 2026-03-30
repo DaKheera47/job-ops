@@ -69,7 +69,7 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
 - **[Reactive Resume](/docs/next/features/reactive-resume)**
   - Base resume selection and RxResume integration
   - Project inclusion controls (must-include, AI-selectable, max)
-  - PDF generation behavior and troubleshooting
+  - Local LaTeX PDF generation behavior and troubleshooting
 
 - **[Applications Overview](/docs/next/features/overview)**
   - Applications-per-day trend
@@ -120,7 +120,7 @@ Welcome to the JobOps documentation. This site contains guides for setup, config
 1. **Job Discovery**: Automatically find jobs from multiple sources.
 2. **AI Scoring**: Rank jobs by suitability for your profile.
 3. **Resume Tailoring**: Generate custom resumes for each job.
-4. **PDF Export**: Create tailored PDFs via RxResume integration.
+4. **PDF Export**: Create tailored PDFs from RxResume-backed resume data using the local LaTeX renderer.
 5. **Application Tracking**: Monitor your applied jobs.
 6. **Email Tracking**: Auto-track post-application responses.
 

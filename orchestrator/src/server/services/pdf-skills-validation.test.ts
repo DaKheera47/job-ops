@@ -5,7 +5,7 @@ import { getProfile } from "./profile";
 process.env.DATA_DIR = "/tmp";
 
 // Define mock data in hoisted block
-const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
+const { mocks, mockProfile, mockResumeRenderer } = vi.hoisted(() => {
   const profile = {
     sections: {
       summary: { content: "Original Summary" },
@@ -26,22 +26,14 @@ const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
     basics: { headline: "Original Headline" },
   };
 
-  // Capture what's passed to create()
-  let lastCreateData: any = null;
-
-  const mockRxResumeApi = {
-    importResume: vi.fn().mockImplementation((payload: any) => {
-      const data = payload?.data;
-      lastCreateData = JSON.parse(JSON.stringify(data)); // Deep clone
-      return Promise.resolve("mock-resume-id");
+  let lastPreparedResume: any = null;
+  const renderer = {
+    renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
+      lastPreparedResume = JSON.parse(JSON.stringify(args.preparedResume));
     }),
-    exportResumePdf: vi
-      .fn()
-      .mockResolvedValue("https://example.com/pdf/mock.pdf"),
-    deleteResume: vi.fn().mockResolvedValue(undefined),
-    getLastCreateData: () => lastCreateData,
-    clearLastCreateData: () => {
-      lastCreateData = null;
+    getLastPreparedResume: () => lastPreparedResume,
+    clearLastPreparedResume: () => {
+      lastPreparedResume = null;
     },
   };
 
@@ -54,7 +46,7 @@ const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
       access: vi.fn().mockResolvedValue(undefined),
       unlink: vi.fn().mockResolvedValue(undefined),
     },
-    mockRxResume: mockRxResumeApi,
+    mockResumeRenderer: renderer,
   };
 });
 
@@ -152,6 +144,10 @@ vi.mock("./resumeProjects", () => ({
   }),
 }));
 
+vi.mock("./resume-renderer", () => ({
+  renderResumePdf: mockResumeRenderer.renderResumePdf,
+}));
+
 vi.mock("./rxresume/baseResumeId", () => ({
   getConfiguredRxResumeBaseResumeId: vi.fn().mockResolvedValue({
     mode: "v4",
@@ -217,72 +213,14 @@ vi.mock("./rxresume", async () => {
           selectedProjectIds: [],
         };
       }),
-    importResume: mockRxResume.importResume,
-    exportResumePdf: mockRxResume.exportResumePdf,
-    deleteResume: mockRxResume.deleteResume,
   };
 });
-
-// Mock stream pipeline for downloading PDF
-vi.mock("stream/promises", () => ({
-  pipeline: vi.fn().mockResolvedValue(undefined),
-  default: {
-    pipeline: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-vi.mock("node:stream/promises", () => ({
-  pipeline: vi.fn().mockResolvedValue(undefined),
-  default: {
-    pipeline: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock stream Readable
-vi.mock("stream", () => ({
-  Readable: {
-    fromWeb: vi.fn().mockReturnValue({
-      pipe: vi.fn(),
-    }),
-  },
-  default: {
-    Readable: {
-      fromWeb: vi.fn().mockReturnValue({
-        pipe: vi.fn(),
-      }),
-    },
-  },
-}));
-
-vi.mock("node:stream", () => ({
-  Readable: {
-    fromWeb: vi.fn().mockReturnValue({
-      pipe: vi.fn(),
-    }),
-  },
-  default: {
-    Readable: {
-      fromWeb: vi.fn().mockReturnValue({
-        pipe: vi.fn(),
-      }),
-    },
-  },
-}));
-
-// Mock global fetch for PDF download
-vi.stubGlobal(
-  "fetch",
-  vi.fn().mockResolvedValue({
-    ok: true,
-    body: {},
-  }),
-);
 
 describe("PDF Service Skills Validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getProfile).mockResolvedValue(mockProfile);
-    mockRxResume.clearLastCreateData();
+    mockResumeRenderer.clearLastPreparedResume();
   });
 
   it("should add required schema fields (visible, description) to new skills", async () => {
@@ -296,8 +234,8 @@ describe("PDF Service Skills Validation", () => {
 
     await generatePdf("job-skills-1", tailoredContent, "Job Desc");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const skillItems = savedResumeJson.sections.skills.items;
 
@@ -352,8 +290,8 @@ describe("PDF Service Skills Validation", () => {
     // No tailoring, pass dummy path to bypass getProfile cache and use readFile mock
     await generatePdf("job-no-tailor", {}, "Job Desc", "dummy.json");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const item = savedResumeJson.sections.skills.items[0];
 
@@ -404,8 +342,8 @@ describe("PDF Service Skills Validation", () => {
 
     await generatePdf("job-cuid2-test", {}, "Job Desc", "dummy.json");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const skillItems = savedResumeJson.sections.skills.items;
 
@@ -449,8 +387,8 @@ describe("PDF Service Skills Validation", () => {
 
     await generatePdf("job-no-skill-prefix", {}, "Job Desc", "dummy.json");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const skill = savedResumeJson.sections.skills.items[0];
 
@@ -485,8 +423,8 @@ describe("PDF Service Skills Validation", () => {
 
     await generatePdf("job-preserve-id", {}, "Job Desc", "dummy.json");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const skill = savedResumeJson.sections.skills.items[0];
 

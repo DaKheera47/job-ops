@@ -139,6 +139,7 @@ Defaults and constraints:
 
 - Configure a shared RxResume URL for cloud or self-hosted deployments
 - Configure v4 email/password or v5 API key in the same section
+- JobOps uses the selected RxResume resume as the source of truth, then renders PDFs locally with the LaTeX renderer
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
 - Select a template/base resume

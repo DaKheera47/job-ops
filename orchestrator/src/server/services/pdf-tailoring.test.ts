@@ -3,7 +3,7 @@ import { generatePdf } from "./pdf";
 import * as projectSelection from "./projectSelection";
 
 // Define mock data in hoisted block
-const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
+const { mocks, mockProfile, mockResumeRenderer } = vi.hoisted(() => {
   const profile = {
     sections: {
       summary: { content: "Original Summary" },
@@ -19,22 +19,14 @@ const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
     basics: { headline: "Original Headline" },
   };
 
-  // Capture what's passed to create()
-  let lastCreateData: any = null;
-
-  const mockRxResumeApi = {
-    importResume: vi.fn().mockImplementation((payload: any) => {
-      const data = payload?.data;
-      lastCreateData = JSON.parse(JSON.stringify(data)); // Deep clone
-      return Promise.resolve("mock-resume-id");
+  let lastPreparedResume: any = null;
+  const renderer = {
+    renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
+      lastPreparedResume = JSON.parse(JSON.stringify(args.preparedResume));
     }),
-    exportResumePdf: vi
-      .fn()
-      .mockResolvedValue("https://example.com/pdf/mock.pdf"),
-    deleteResume: vi.fn().mockResolvedValue(undefined),
-    getLastCreateData: () => lastCreateData,
-    clearLastCreateData: () => {
-      lastCreateData = null;
+    getLastPreparedResume: () => lastPreparedResume,
+    clearLastPreparedResume: () => {
+      lastPreparedResume = null;
     },
   };
 
@@ -47,7 +39,7 @@ const { mocks, mockProfile, mockRxResume } = vi.hoisted(() => {
       access: vi.fn().mockResolvedValue(undefined),
       unlink: vi.fn().mockResolvedValue(undefined),
     },
-    mockRxResume: mockRxResumeApi,
+    mockResumeRenderer: renderer,
   };
 });
 
@@ -138,6 +130,10 @@ vi.mock("./resumeProjects", () => ({
   }),
 }));
 
+vi.mock("./resume-renderer", () => ({
+  renderResumePdf: mockResumeRenderer.renderResumePdf,
+}));
+
 const mockTracerLinks = vi.hoisted(() => ({
   resolveTracerPublicBaseUrl: vi.fn().mockReturnValue("https://jobops.example"),
   rewriteResumeLinksWithTracer: vi
@@ -218,72 +214,14 @@ vi.mock("./rxresume", async () => {
           selectedProjectIds: [...selectedSet],
         };
       }),
-    importResume: mockRxResume.importResume,
-    exportResumePdf: mockRxResume.exportResumePdf,
-    deleteResume: mockRxResume.deleteResume,
   };
 });
-
-// Mock stream pipeline for downloading PDF
-vi.mock("stream/promises", () => ({
-  pipeline: vi.fn().mockResolvedValue(undefined),
-  default: {
-    pipeline: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-vi.mock("node:stream/promises", () => ({
-  pipeline: vi.fn().mockResolvedValue(undefined),
-  default: {
-    pipeline: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock stream Readable
-vi.mock("stream", () => ({
-  Readable: {
-    fromWeb: vi.fn().mockReturnValue({
-      pipe: vi.fn(),
-    }),
-  },
-  default: {
-    Readable: {
-      fromWeb: vi.fn().mockReturnValue({
-        pipe: vi.fn(),
-      }),
-    },
-  },
-}));
-
-vi.mock("node:stream", () => ({
-  Readable: {
-    fromWeb: vi.fn().mockReturnValue({
-      pipe: vi.fn(),
-    }),
-  },
-  default: {
-    Readable: {
-      fromWeb: vi.fn().mockReturnValue({
-        pipe: vi.fn(),
-      }),
-    },
-  },
-}));
-
-// Mock global fetch
-vi.stubGlobal(
-  "fetch",
-  vi.fn().mockResolvedValue({
-    ok: true,
-    body: {},
-  }),
-);
 
 describe("PDF Service Tailoring Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.readFile.mockResolvedValue(JSON.stringify(mockProfile));
-    mockRxResume.clearLastCreateData();
+    mockResumeRenderer.clearLastPreparedResume();
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
       "https://jobops.example",
     );
@@ -304,9 +242,9 @@ describe("PDF Service Tailoring Logic", () => {
     // 1. pickProjectIdsForJob should NOT be called
     expect(projectSelection.pickProjectIdsForJob).not.toHaveBeenCalled();
 
-    // 2. Verify create data content
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    // 2. Verify prepared resume content
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const projects = savedResumeJson.sections.projects.items;
     const p1 = projects.find((p: any) => p.id === "p1");
@@ -323,8 +261,8 @@ describe("PDF Service Tailoring Logic", () => {
   it("should handle comma-separated project IDs correctly", async () => {
     await generatePdf("job-2", {}, "desc", "base.json", "p1, p2 ");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
     const projects = savedResumeJson.sections.projects.items;
 
     expect(projects.find((p: any) => p.id === "p1").visible).toBe(true);
@@ -334,8 +272,8 @@ describe("PDF Service Tailoring Logic", () => {
   it("keeps projects section visible when selected project list is explicitly empty", async () => {
     await generatePdf("job-empty-projects", {}, "desc", "base.json", "");
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
     const projects = savedResumeJson.sections.projects.items;
 
     expect(projects.find((p: any) => p.id === "p1").visible).toBe(false);
@@ -351,8 +289,8 @@ describe("PDF Service Tailoring Logic", () => {
 
     expect(projectSelection.pickProjectIdsForJob).toHaveBeenCalled();
 
-    expect(mockRxResume.importResume).toHaveBeenCalled();
-    const savedResumeJson = mockRxResume.getLastCreateData();
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
 
     const p1 = savedResumeJson.sections.projects.items.find(
       (p: any) => p.id === "p1",

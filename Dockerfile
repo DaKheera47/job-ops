@@ -78,12 +78,16 @@ RUN npm run build:client
 # ============================================================================
 FROM node:22-slim AS production
 
+ARG TARGETARCH
+
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
 ENV PORT=3001
 ENV PYTHON_PATH=/usr/bin/python3
 ENV DATA_DIR=/app/data
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PATH=/root/.local/bin:${PATH}
+ENV TECTONIC_VERSION=0.15.0
 
 # Install only runtime dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -94,6 +98,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 \
     curl && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install Tectonic for local LaTeX resume rendering.
+# Upstream publishes a musl Linux ARM build but not a glibc one, so map
+# Docker's target architecture to the matching release asset explicitly.
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) tectonic_arch="x86_64-unknown-linux-gnu" ;; \
+        arm64) tectonic_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "Unsupported TARGETARCH for Tectonic: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    tectonic_asset="tectonic-${TECTONIC_VERSION}-${tectonic_arch}.tar.gz"; \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/${tectonic_asset}" \
+        -o /tmp/tectonic.tar.gz; \
+    tar -xzf /tmp/tectonic.tar.gz -C /tmp; \
+    install -m 0755 "/tmp/tectonic" /usr/local/bin/tectonic; \
+    rm -f /tmp/tectonic.tar.gz /tmp/tectonic
 
 WORKDIR /app
 

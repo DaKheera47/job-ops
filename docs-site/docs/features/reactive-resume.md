@@ -7,9 +7,9 @@ sidebar_position: 4
 
 ## What it is
 
-Reactive Resume integration powers JobOps PDF generation.
+Reactive Resume provides the structured base resume that JobOps uses for PDF generation.
 
-JobOps uses a selected RxResume base resume as the source of truth, then applies job-specific tailoring (summary, headline, skills, project visibility) before exporting a PDF.
+JobOps uses a selected RxResume base resume as the source of truth, applies job-specific tailoring (summary, headline, skills, project visibility), then renders the final PDF locally with a LaTeX template based on Jake Gutierrez's resume layout.
 
 ## Why it exists
 
@@ -19,20 +19,19 @@ Most users need a repeatable resume pipeline:
 - controlled project inclusion rules
 - per-job tailored output without manual copy/paste
 
-Reactive Resume integration provides that workflow end-to-end.
+Reactive Resume integration provides the editable, structured resume source that makes that workflow reliable.
 
 ### Why JobOps uses RxResume (instead of building a new editor)
 
-RxResume is a mature, established resume product with strong PDF output quality.
+RxResume is a mature, established resume product with a strong editing experience and a JSON-native data model.
 
 Key reasons:
 
-- ATS-friendly PDF generation is already excellent and battle-tested.
 - The editor UX is strong and supports extensive user customization.
 - It supports many themes out of the box.
 - It has a JSON-native model (import/export), which is critical for JobOps automation.
 
-Because RxResume uses structured JSON, JobOps can safely apply LLM-driven updates to specific sections before generating PDFs.
+Because RxResume uses structured JSON, JobOps can safely apply LLM-driven updates to specific sections before rendering PDFs locally.
 
 ## Core concepts
 
@@ -143,9 +142,8 @@ High-level flow:
 2. Apply tailored summary/headline/skills.
 3. Compute final visible projects from your selection rules.
 4. Optionally rewrite outbound links to tracer links (per-job toggle).
-5. Create temporary resume in RxResume.
-6. Export PDF.
-7. Delete temporary resume.
+5. Normalize the tailored resume data into JobOps' renderer document model.
+6. Render the PDF locally with LaTeX and `tectonic`.
 
 ### Resume-data caching
 
@@ -178,6 +176,15 @@ Current AI-driven edits are intentionally scoped:
 - `headline/title`
 - `skills` and keywords
 - project **visibility** (enable/disable per project)
+
+### Local renderer dependency
+
+JobOps no longer asks RxResume to export the final PDF.
+
+- RxResume still supplies the structured base resume and project data.
+- JobOps renders the final PDF locally using LaTeX.
+- In Docker deployments, `tectonic` is bundled into the image.
+- In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed.
 
 ## API reference
 
@@ -249,6 +256,12 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 - Settings changes apply to new generation runs.
 - Regenerate PDFs for already-ready jobs.
+
+### PDF generation fails because the renderer is unavailable
+
+- Ensure `tectonic` is installed on the machine running JobOps.
+- If the binary is installed outside your normal shell `PATH`, set `TECTONIC_BIN` to the executable path.
+- Re-run PDF generation after fixing the local renderer dependency.
 
 ## Best practices
 

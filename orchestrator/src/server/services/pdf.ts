@@ -1,19 +1,15 @@
 /**
- * Service for generating PDF resumes using Reactive Resume.
+ * Service for generating PDF resumes from tailored Reactive Resume data.
  */
 
-import { createWriteStream, existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { access, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { logger } from "@infra/logger";
 import { getDataDir } from "../config/dataDir";
+import { renderResumePdf } from "./resume-renderer";
 import {
-  deleteResume as deleteRemoteResume,
-  exportResumePdf,
   getResume as getRxResume,
-  importResume as importRemoteResume,
   prepareTailoredResumeForPdf,
 } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
@@ -39,37 +35,12 @@ export interface GeneratePdfOptions {
 }
 
 /**
- * Download a file from a URL and save it to a local path.
- */
-async function downloadFile(url: string, outputPath: string): Promise<void> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download PDF: HTTP ${response.status} ${response.statusText}`,
-    );
-  }
-
-  if (!response.body) {
-    throw new Error("No response body from PDF download");
-  }
-
-  // Convert Web ReadableStream to Node readable
-  // biome-ignore lint/suspicious/noExplicitAny: response.body is a ReadableStream in the browser environment, but Node.js fetch implementation might have slight differences in types.
-  const nodeReadable = Readable.fromWeb(response.body as any);
-  const fileStream = createWriteStream(outputPath);
-
-  await pipeline(nodeReadable, fileStream);
-}
-
-/**
- * Generate a tailored PDF resume for a job using Reactive Resume.
+ * Generate a tailored PDF resume for a job using the configured resume source.
  *
  * Flow:
  * 1. Prepare resume data with tailored content and project selection
- * 2. Import/create resume on Reactive Resume
- * 3. Request print to get PDF URL
- * 4. Download PDF locally
- * 5. Delete temporary resume from Reactive Resume
+ * 2. Normalize the tailored resume into the renderer document model
+ * 3. Render a PDF locally with the active renderer
  */
 export async function generatePdf(
   jobId: string,
@@ -99,9 +70,11 @@ export async function generatePdf(
       throw new Error("Reactive Resume base resume is empty or invalid.");
     }
 
-    let preparedResumeData: Record<string, unknown>;
+    let preparedResume: Awaited<
+      ReturnType<typeof prepareTailoredResumeForPdf>
+    > | null = null;
     try {
-      const prepared = await prepareTailoredResumeForPdf({
+      preparedResume = await prepareTailoredResumeForPdf({
         resumeData: baseResume.data,
         mode: baseResume.mode,
         tailoredContent,
@@ -114,7 +87,6 @@ export async function generatePdf(
           companyName: options?.tracerCompanyName ?? null,
         },
       });
-      preparedResumeData = prepared.data;
     } catch (err) {
       logger.warn("Resume tailoring step failed during PDF generation", {
         jobId,
@@ -124,38 +96,11 @@ export async function generatePdf(
     }
 
     const outputPath = join(OUTPUT_DIR, `resume_${jobId}.pdf`);
-    let resumeId: string | null = null;
-    try {
-      logger.debug("Uploading temporary resume for PDF generation", { jobId });
-      resumeId = await importRemoteResume({
-        data: preparedResumeData,
-        name: `JobOps Tailored Resume ${jobId}`,
-        slug: "",
-      });
-
-      logger.debug("Requesting PDF export for temporary resume", {
-        jobId,
-        resumeId,
-      });
-      const pdfUrl = await exportResumePdf(resumeId);
-
-      logger.debug("Downloading generated PDF", { jobId, resumeId });
-      await downloadFile(pdfUrl, outputPath);
-      await deleteRemoteResume(resumeId);
-      resumeId = null;
-    } finally {
-      if (resumeId) {
-        try {
-          await deleteRemoteResume(resumeId);
-        } catch (cleanupError) {
-          logger.warn("Failed to cleanup temporary Reactive Resume record", {
-            jobId,
-            resumeId,
-            error: cleanupError,
-          });
-        }
-      }
-    }
+    await renderResumePdf({
+      preparedResume,
+      outputPath,
+      jobId,
+    });
 
     logger.info("PDF generated successfully", { jobId, outputPath });
     return { success: true, pdfPath: outputPath };
