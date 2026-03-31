@@ -42,6 +42,9 @@ That keeps runtime wiring dynamic while preserving compile-time safety in API an
    - add an entry in `EXTRACTOR_SOURCE_METADATA`
 5. Ensure your extractor maps output to `CreateJobInput[]`.
 6. Run the full CI checks.
+7. Confirm the runtime health endpoint succeeds for your source after startup:
+   - `GET /api/<source>/health`
+   - Example: `GET /api/gradcracker/health`
 
 Example manifest:
 

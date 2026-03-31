@@ -120,3 +120,19 @@ export interface TracerReadinessResponse {
   lastSuccessAt: number | null;
   reason: string | null;
 }
+
+export type ExtractorHealthStatus = "healthy" | "unhealthy";
+
+export interface ExtractorHealthResponse {
+  source: import("../extractors").ExtractorSourceId;
+  manifestId: string;
+  status: ExtractorHealthStatus;
+  checkedAt: string;
+  durationMs: number;
+  cacheAgeMs: number;
+  jobsValidated: number;
+  jobsReturned: number;
+  searchTerm: string;
+  cached: boolean;
+  message: string;
+}

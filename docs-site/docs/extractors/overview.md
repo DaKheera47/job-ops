@@ -35,6 +35,17 @@ Extractor integrations are now registered through manifests and loaded automatic
 
 Many runs combine sources: broad discovery first, then manual import for high-priority jobs that scraping misses.
 
+## Common problems
+
+### How do I health-check an extractor?
+
+- Every runtime-registered extractor source exposes `GET /api/:source/health`.
+- Use the source id from the shared extractor catalog, for example `/api/linkedin/health` or `/api/gradcracker/health`.
+- The health check runs a minimal live probe for that source with a fixed search term and a result limit of `1`.
+- A `200` response means the extractor returned at least one valid normalized job for that source.
+- A `503` response means the extractor could not run successfully, returned no jobs, or returned invalid jobs.
+- A `404` response means the source id is unknown or not registered at runtime on that instance.
+
 ## Related extractor docs
 
 - [Gradcracker](/docs/next/extractors/gradcracker)
