@@ -269,7 +269,7 @@ onboardingRouter.post(
     const apiKey =
       typeof req.body?.apiKey === "string" ? req.body.apiKey : undefined;
     const result = await validateLlm({ apiKey, provider: "openrouter" });
-    res.json({ success: true, data: result });
+    ok(res, result);
   },
 );
 
@@ -292,7 +292,7 @@ onboardingRouter.post("/validate/llm", async (req: Request, res: Response) => {
   const baseUrl =
     typeof req.body?.baseUrl === "string" ? req.body.baseUrl : undefined;
   const result = await validateLlm({ apiKey, provider, baseUrl });
-  res.json({ success: true, data: result });
+  ok(res, result);
 });
 
 onboardingRouter.post(

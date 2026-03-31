@@ -21,16 +21,27 @@ describe.sequential("Webhook API routes", () => {
   it("rejects invalid webhook credentials and accepts valid ones", async () => {
     const badRes = await fetch(`${baseUrl}/api/webhook/trigger`, {
       method: "POST",
+      headers: { "x-request-id": "req-webhook-bad" },
     });
+    const badBody = await badRes.json();
     expect(badRes.status).toBe(401);
+    expect(badRes.headers.get("x-request-id")).toBe("req-webhook-bad");
+    expect(badBody.ok).toBe(false);
+    expect(badBody.error.code).toBe("UNAUTHORIZED");
+    expect(badBody.meta.requestId).toBe("req-webhook-bad");
 
     const goodRes = await fetch(`${baseUrl}/api/webhook/trigger`, {
       method: "POST",
-      headers: { Authorization: "Bearer secret" },
+      headers: {
+        Authorization: "Bearer secret",
+        "x-request-id": "req-webhook-good",
+      },
     });
     const goodBody = await goodRes.json();
     expect(goodBody.ok).toBe(true);
     expect(goodBody.data.message).toBe("Pipeline triggered");
+    expect(goodRes.headers.get("x-request-id")).toBe("req-webhook-good");
+    expect(goodBody.meta.requestId).toBe("req-webhook-good");
   });
 
   it("enforces webhook auth in demo mode when a secret is configured", async () => {

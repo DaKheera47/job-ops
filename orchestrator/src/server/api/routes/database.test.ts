@@ -30,5 +30,6 @@ describe.sequential("Database API routes", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.jobsDeleted).toBe(1);
+    expect(typeof body.meta.requestId).toBe("string");
   });
 });

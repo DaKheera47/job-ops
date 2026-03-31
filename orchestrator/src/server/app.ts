@@ -13,7 +13,6 @@ import { unauthorized } from "@infra/errors";
 import {
   apiErrorHandler,
   fail,
-  legacyApiResponseShim,
   notFoundApiHandler,
   requestContextMiddleware,
 } from "@infra/http";
@@ -266,7 +265,6 @@ export function createApp() {
   app.use(requestContextMiddleware());
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
   app.use(express.json({ limit: "5mb" }));
-  app.use(legacyApiResponseShim());
 
   // Logging middleware
   app.use((req, res, next) => {
