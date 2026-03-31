@@ -55,7 +55,7 @@ describe("API contract guardrails", () => {
 
     for (const file of routeFiles) {
       const source = await readFile(file, "utf8");
-      if (/res(?:\.status\([^)]*\))?\.json\(/.test(source)) {
+      if (/res\s*(?:\.\s*status\s*\([^)]*\))?\s*\.\s*json\s*\(/.test(source)) {
         directJsonOffenders.push(file);
       }
       if (/\bsuccess\s*:/.test(source)) {

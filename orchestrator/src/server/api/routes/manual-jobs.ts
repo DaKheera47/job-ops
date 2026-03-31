@@ -56,11 +56,11 @@ const cleanOptional = (value?: string | null) => {
  * POST /api/manual-jobs/fetch - Fetch and extract job content from a URL
  */
 manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
   try {
     const input = manualJobFetchSchema.parse(req.body ?? {});
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch(input.url, {
       signal: controller.signal,
@@ -71,7 +71,6 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
     });
-    clearTimeout(timeout);
 
     if (!response.ok) {
       return fail(
@@ -174,6 +173,8 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
       return fail(res, requestTimeout());
     }
     fail(res, toAppError(error));
+  } finally {
+    clearTimeout(timeout);
   }
 });
 
