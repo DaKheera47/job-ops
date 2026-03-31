@@ -57,6 +57,54 @@ describe("API client basic auth prompt flow", () => {
     expect(retryHeaders.Authorization).toMatch(/^Basic /);
   });
 
+  it("retries read requests with prompted credentials after unauthorized", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    fetchSpy
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          ok: false,
+          error: { code: "UNAUTHORIZED", message: "Authentication required" },
+          meta: { requestId: "req-1" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          ok: true,
+          data: {
+            jobs: [],
+            total: 0,
+            page: 1,
+            pageSize: 0,
+            totalPages: 1,
+          },
+          meta: { requestId: "req-2" },
+        }),
+      );
+
+    const promptHandler = vi
+      .fn()
+      .mockResolvedValue({ username: "user", password: "pass" });
+    api.setBasicAuthPromptHandler(promptHandler);
+
+    await expect(api.getJobs({ view: "list" })).resolves.toMatchObject({
+      jobs: [],
+      total: 0,
+    });
+    expect(promptHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: "/jobs?view=list",
+        method: "GET",
+        attempt: 1,
+      }),
+    );
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const retryHeaders = fetchSpy.mock.calls[1]?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(retryHeaders.Authorization).toMatch(/^Basic /);
+  });
+
   it("reuses cached credentials for later write requests", async () => {
     const fetchSpy = vi.spyOn(global, "fetch");
     fetchSpy
@@ -89,6 +137,65 @@ describe("API client basic auth prompt flow", () => {
 
     await expect(api.runPipeline()).resolves.toEqual({ message: "first" });
     await expect(api.runPipeline()).resolves.toEqual({ message: "second" });
+
+    expect(promptHandler).toHaveBeenCalledTimes(1);
+    const secondRequestHeaders = fetchSpy.mock.calls[2]?.[1]?.headers as Record<
+      string,
+      string
+    >;
+    expect(secondRequestHeaders.Authorization).toMatch(/^Basic /);
+  });
+
+  it("reuses cached credentials for later read requests", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    fetchSpy
+      .mockResolvedValueOnce(
+        createJsonResponse(401, {
+          ok: false,
+          error: { code: "UNAUTHORIZED", message: "Authentication required" },
+          meta: { requestId: "req-1" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          ok: true,
+          data: {
+            jobs: [],
+            total: 0,
+            page: 1,
+            pageSize: 0,
+            totalPages: 1,
+          },
+          meta: { requestId: "req-2" },
+        }),
+      )
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          ok: true,
+          data: {
+            jobs: [],
+            total: 0,
+            page: 1,
+            pageSize: 0,
+            totalPages: 1,
+          },
+          meta: { requestId: "req-3" },
+        }),
+      );
+
+    const promptHandler = vi
+      .fn()
+      .mockResolvedValue({ username: "user", password: "pass" });
+    api.setBasicAuthPromptHandler(promptHandler);
+
+    await expect(api.getJobs({ view: "list" })).resolves.toMatchObject({
+      jobs: [],
+      total: 0,
+    });
+    await expect(api.getJobs({ view: "list" })).resolves.toMatchObject({
+      jobs: [],
+      total: 0,
+    });
 
     expect(promptHandler).toHaveBeenCalledTimes(1);
     const secondRequestHeaders = fetchSpy.mock.calls[2]?.[1]?.headers as Record<

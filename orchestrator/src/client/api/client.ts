@@ -189,10 +189,6 @@ function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
   return { ...headers };
 }
 
-function isWriteMethod(method: string): boolean {
-  return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
-}
-
 function isUnauthorizedResponse<T>(
   response: Response,
   parsed: ApiResponse<T> | LegacyApiResponse<T>,
@@ -299,7 +295,6 @@ async function fetchApi<T>(
     );
 
     if (
-      isWriteMethod(method) &&
       isUnauthorizedResponse(response, parsed) &&
       basicAuthPromptHandler &&
       authAttempt < 2

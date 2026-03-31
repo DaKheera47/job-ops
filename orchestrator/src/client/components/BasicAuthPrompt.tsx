@@ -42,7 +42,7 @@ export const BasicAuthPrompt: React.FC = () => {
     [],
   );
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     setBasicAuthPromptHandler((request) => {
       return new Promise<BasicAuthCredentials | null>((resolve) => {
         if (pendingRequestRef.current) {
