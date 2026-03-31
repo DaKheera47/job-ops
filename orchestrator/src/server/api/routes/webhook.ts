@@ -1,5 +1,5 @@
-import { unauthorized } from "@infra/errors";
-import { fail, okWithMeta } from "@infra/http";
+import { toAppError, unauthorized } from "@infra/errors";
+import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { isDemoMode } from "@server/config/demo";
@@ -41,17 +41,11 @@ webhookRouter.post("/trigger", async (req: Request, res: Response) => {
       });
     });
 
-    res.json({
-      ok: true,
-      data: {
-        message: "Pipeline triggered",
-        triggeredAt: new Date().toISOString(),
-      },
+    ok(res, {
+      message: "Pipeline triggered",
+      triggeredAt: new Date().toISOString(),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res
-      .status(500)
-      .json({ ok: false, error: { code: "INTERNAL_ERROR", message } });
+    fail(res, toAppError(error));
   }
 });

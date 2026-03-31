@@ -1,17 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { notFound } from "@infra/errors";
-import { fail } from "@infra/http";
+import {
+  AppError,
+  badRequest,
+  notFound,
+  requestTimeout,
+  toAppError,
+} from "@infra/errors";
+import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { processJob } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import { inferManualJobDetails } from "@server/services/manualJob";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
-import type {
-  ApiResponse,
-  ManualJobFetchResponse,
-  ManualJobInferenceResponse,
-} from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
@@ -55,11 +56,11 @@ const cleanOptional = (value?: string | null) => {
  * POST /api/manual-jobs/fetch - Fetch and extract job content from a URL
  */
 manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
+
   try {
     const input = manualJobFetchSchema.parse(req.body ?? {});
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch(input.url, {
       signal: controller.signal,
@@ -70,13 +71,16 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
           "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       },
     });
-    clearTimeout(timeout);
 
     if (!response.ok) {
-      return res.status(400).json({
-        success: false,
-        error: `Failed to fetch URL: ${response.status} ${response.statusText}`,
-      });
+      return fail(
+        res,
+        new AppError({
+          status: 502,
+          code: "UPSTREAM_ERROR",
+          message: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+        }),
+      );
     }
 
     const html = await response.text();
@@ -157,26 +161,20 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
       enrichedContent = enrichedContent.substring(0, 50000);
     }
 
-    const result: ApiResponse<ManualJobFetchResponse> = {
-      ok: true,
-      data: {
-        content: enrichedContent,
-        url: input.url,
-      },
-    };
-
-    res.json(result);
+    ok(res, {
+      content: enrichedContent,
+      url: input.url,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
     if (error instanceof Error && error.name === "AbortError") {
-      return res
-        .status(408)
-        .json({ success: false, error: "Request timed out" });
+      return fail(res, requestTimeout());
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
+  } finally {
+    clearTimeout(timeout);
   }
 });
 
@@ -188,21 +186,15 @@ manualJobsRouter.post("/infer", async (req: Request, res: Response) => {
     const input = manualJobInferenceSchema.parse(req.body ?? {});
     const result = await inferManualJobDetails(input.jobDescription);
 
-    const response: ApiResponse<ManualJobInferenceResponse> = {
-      ok: true,
-      data: {
-        job: result.job,
-        warning: result.warning ?? null,
-      },
-    };
-
-    res.json(response);
+    ok(res, {
+      job: result.job,
+      warning: result.warning ?? null,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -243,13 +235,17 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
         jobId: createdJob.id,
         error: processResult.error ?? "Unknown error",
       });
-      return res.status(502).json({
-        success: false,
-        error:
-          processResult.error ||
-          "Imported job but failed to move it to ready automatically",
-        details: { jobId: createdJob.id },
-      });
+      return fail(
+        res,
+        new AppError({
+          status: 502,
+          code: "UPSTREAM_ERROR",
+          message:
+            processResult.error ||
+            "Imported job but failed to move it to ready automatically",
+          details: { jobId: createdJob.id },
+        }),
+      );
     }
 
     const processedJob = await jobsRepo.getJobById(createdJob.id);
@@ -290,12 +286,11 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
       });
     });
 
-    res.json({ success: true, data: processedJob });
+    ok(res, processedJob);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });

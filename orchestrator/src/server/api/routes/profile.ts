@@ -20,7 +20,7 @@ export const profileRouter = Router();
 profileRouter.get("/projects", async (_req: Request, res: Response) => {
   try {
     if (isDemoMode()) {
-      res.json({ success: true, data: DEMO_PROJECT_CATALOG });
+      ok(res, DEMO_PROJECT_CATALOG);
       return;
     }
     const profile = await getProfile();

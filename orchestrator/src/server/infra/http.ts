@@ -8,7 +8,7 @@ import type {
   Response,
 } from "express";
 import type { AppError } from "./errors";
-import { notFound, statusToCode, toAppError } from "./errors";
+import { notFound, toAppError } from "./errors";
 import { logger } from "./logger";
 import { getRequestId, runWithRequestContext } from "./request-context";
 import { sanitizeUnknown } from "./sanitize";
@@ -85,71 +85,6 @@ export function requestContextMiddleware(): RequestHandler {
 
     res.setHeader("x-request-id", requestId);
     runWithRequestContext({ requestId }, () => next());
-  };
-}
-
-export function legacyApiResponseShim(): RequestHandler {
-  return (req, res, next) => {
-    if (!req.path.startsWith("/api")) return next();
-
-    const originalJson = res.json.bind(res);
-    res.json = ((body: unknown) => {
-      if (!body || typeof body !== "object") return originalJson(body);
-      const payload = body as Record<string, unknown>;
-      if ("ok" in payload) {
-        if (!("meta" in payload)) {
-          return originalJson({
-            ...payload,
-            meta: { requestId: getResponseRequestId(res) },
-          });
-        }
-        return originalJson(body);
-      }
-
-      if (typeof payload.success === "boolean") {
-        const requestId = getResponseRequestId(res);
-        if (payload.success) {
-          let data: unknown = payload.data;
-          if (data === undefined && payload.message !== undefined) {
-            data = { message: payload.message };
-          }
-          return originalJson({
-            ok: true,
-            data: data ?? null,
-            meta: { requestId },
-          } satisfies ApiResponse<unknown>);
-        }
-
-        const status = res.statusCode >= 400 ? res.statusCode : 500;
-        const rawError = payload.error;
-        const message =
-          typeof rawError === "string"
-            ? rawError
-            : typeof payload.message === "string"
-              ? payload.message
-              : "Request failed";
-        const details =
-          rawError && typeof rawError === "object"
-            ? (rawError as { details?: unknown }).details
-            : payload.details;
-
-        return originalJson({
-          ok: false,
-          error: {
-            code: statusToCode(status),
-            message,
-            ...(details !== undefined
-              ? { details: sanitizeUnknown(details) }
-              : {}),
-          },
-          meta: { requestId },
-        } satisfies ApiResponse<never>);
-      }
-
-      return originalJson(body);
-    }) as Response["json"];
-
-    next();
   };
 }
 

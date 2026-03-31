@@ -1,3 +1,5 @@
+import { toAppError } from "@infra/errors";
+import { fail, ok } from "@infra/http";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { clearDatabase } from "@server/db/clear";
 import { type Request, type Response, Router } from "express";
@@ -19,16 +21,12 @@ databaseRouter.delete("/", async (_req: Request, res: Response) => {
 
     const result = clearDatabase();
 
-    res.json({
-      success: true,
-      data: {
-        message: "Database cleared",
-        jobsDeleted: result.jobsDeleted,
-        runsDeleted: result.runsDeleted,
-      },
+    ok(res, {
+      message: "Database cleared",
+      jobsDeleted: result.jobsDeleted,
+      runsDeleted: result.runsDeleted,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });

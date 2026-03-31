@@ -4,6 +4,7 @@ import {
   badRequest,
   conflict,
   notFound,
+  toAppError,
 } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
@@ -887,10 +888,9 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
     if (!job) {
       return fail(res, notFound("Job not found"));
     }
-    res.json({ success: true, data: job });
+    ok(res, job);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -900,10 +900,9 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
 jobsRouter.get("/:id/events", async (req: Request, res: Response) => {
   try {
     const events = await getStageEvents(req.params.id);
-    res.json({ success: true, data: events });
+    ok(res, events);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -916,10 +915,9 @@ jobsRouter.get("/:id/tasks", async (req: Request, res: Response) => {
       req.query.includeCompleted === "1" ||
       req.query.includeCompleted === "true";
     const tasks = await getTasks(req.params.id, includeCompleted);
-    res.json({ success: true, data: tasks });
+    ok(res, tasks);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -936,13 +934,12 @@ jobsRouter.post("/:id/stages", async (req: Request, res: Response) => {
       input.metadata ?? null,
       input.outcome ?? null,
     );
-    res.json({ success: true, data: event });
+    ok(res, event);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -955,13 +952,12 @@ jobsRouter.patch(
     try {
       const input = updateStageEventSchema.parse(req.body);
       updateStageEvent(req.params.eventId, input);
-      res.json({ success: true });
+      ok(res, null);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ success: false, error: error.message });
+        return fail(res, badRequest(error.message, error.flatten()));
       }
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ success: false, error: message });
+      fail(res, toAppError(error));
     }
   },
 );
@@ -974,10 +970,9 @@ jobsRouter.delete(
   async (req: Request, res: Response) => {
     try {
       deleteStageEvent(req.params.eventId);
-      res.json({ success: true });
+      ok(res, null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error";
-      res.status(500).json({ success: false, error: message });
+      fail(res, toAppError(error));
     }
   },
 );
@@ -1000,13 +995,12 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
 
-    res.json({ success: true, data: job });
+    ok(res, job);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, error: error.message });
+      return fail(res, badRequest(error.message, error.flatten()));
     }
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1123,7 +1117,10 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
     if (isDemoMode()) {
       const result = await simulateSummarizeJob(req.params.id, { force });
       if (!result.success) {
-        return res.status(400).json({ success: false, error: result.error });
+        return fail(
+          res,
+          badRequest(result.error ?? "Failed to summarize the job"),
+        );
       }
       const job = await jobsRepo.getJobById(req.params.id);
       if (!job) {
@@ -1135,14 +1132,19 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
     const result = await summarizeJob(req.params.id, { force });
 
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error });
+      return fail(
+        res,
+        badRequest(result.error ?? "Failed to summarize the job"),
+      );
     }
 
     const job = await jobsRepo.getJobById(req.params.id);
-    res.json({ success: true, data: job });
+    if (!job) {
+      return fail(res, notFound("Job not found"));
+    }
+    ok(res, job);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1158,9 +1160,7 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
     }
 
     if (!job.employer) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Job has no employer name" });
+      return fail(res, badRequest("Job has no employer name"));
     }
 
     // Search for sponsor matches
@@ -1178,17 +1178,19 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
       sponsorMatchNames: sponsorMatchNames ?? undefined,
     });
 
-    res.json({
-      success: true,
-      data: updatedJob,
+    if (!updatedJob) {
+      return fail(res, notFound("Job not found"));
+    }
+
+    ok(res, {
+      ...updatedJob,
       matchResults: sponsorResults.slice(0, 5).map((r) => ({
         name: r.sponsor.organisationName,
         score: r.score,
       })),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1200,7 +1202,10 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
     if (isDemoMode()) {
       const result = await simulateGeneratePdf(req.params.id);
       if (!result.success) {
-        return res.status(400).json({ success: false, error: result.error });
+        return fail(
+          res,
+          badRequest(result.error ?? "Failed to generate a resume PDF"),
+        );
       }
       const job = await jobsRepo.getJobById(req.params.id);
       if (!job) {
@@ -1214,14 +1219,19 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
     });
 
     if (!result.success) {
-      return res.status(400).json({ success: false, error: result.error });
+      return fail(
+        res,
+        badRequest(result.error ?? "Failed to generate a resume PDF"),
+      );
     }
 
     const job = await jobsRepo.getJobById(req.params.id);
-    res.json({ success: true, data: job });
+    if (!job) {
+      return fail(res, notFound("Job not found"));
+    }
+    ok(res, job);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1270,10 +1280,9 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
 
-    res.json({ success: true, data: updatedJob });
+    ok(res, updatedJob);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1293,16 +1302,12 @@ jobsRouter.delete("/status/:status", async (req: Request, res: Response) => {
     const status = req.params.status as JobStatus;
     const count = await jobsRepo.deleteJobsByStatus(status);
 
-    res.json({
-      success: true,
-      data: {
-        message: `Cleared ${count} ${status} jobs`,
-        count,
-      },
+    ok(res, {
+      message: `Cleared ${count} ${status} jobs`,
+      count,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({ success: false, error: message });
+    fail(res, toAppError(error));
   }
 });
 
@@ -1324,38 +1329,20 @@ jobsRouter.delete("/score/:threshold", async (req: Request, res: Response) => {
 
     const threshold = parseInt(req.params.threshold, 10);
     if (Number.isNaN(threshold) || threshold < 0 || threshold > 100) {
-      return res.status(400).json({
-        ok: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Threshold must be a number between 0 and 100",
-        },
-        meta: {
-          requestId: (req.headers["x-request-id"] as string) || "unknown",
-        },
-      });
+      return fail(
+        res,
+        badRequest("Threshold must be a number between 0 and 100"),
+      );
     }
 
     const count = await jobsRepo.deleteJobsBelowScore(threshold);
 
-    res.json({
-      ok: true,
-      data: {
-        message: `Cleared ${count} jobs with score below ${threshold}`,
-        count,
-        threshold,
-      },
-      meta: { requestId: (req.headers["x-request-id"] as string) || "unknown" },
+    ok(res, {
+      message: `Cleared ${count} jobs with score below ${threshold}`,
+      count,
+      threshold,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({
-      ok: false,
-      error: {
-        code: "INTERNAL_ERROR",
-        message,
-      },
-      meta: { requestId: (req.headers["x-request-id"] as string) || "unknown" },
-    });
+    fail(res, toAppError(error));
   }
 });
