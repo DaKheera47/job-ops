@@ -52,7 +52,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     process.env = { ...originalEnv };
   });
 
-  it("allows non-API GETs without auth when Basic Auth is enabled", () => {
+  it("allows non-API GETs without auth when Basic Auth is enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
@@ -61,13 +61,13 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("blocks GET /api/* without auth when Basic Auth is enabled", () => {
+  it("blocks GET /api/* without auth when Basic Auth is enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
@@ -76,13 +76,13 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(401);
   });
 
-  it("allows OPTIONS preflight without auth even for API routes", () => {
+  it("allows OPTIONS preflight without auth even for API routes", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
@@ -91,13 +91,13 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("blocks POST/PATCH/DELETE without auth when Basic Auth is enabled", () => {
+  it("blocks POST/PATCH/DELETE without auth when Basic Auth is enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
@@ -111,7 +111,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
       const res = createMockResponse();
       const next = vi.fn() as NextFunction;
 
-      middleware(request, res, next);
+      await middleware(request, res, next);
 
       expect(next).not.toHaveBeenCalled();
       expect(res.statusCode).toBe(401);
@@ -125,7 +125,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     }
   });
 
-  it("allows API GETs with valid Basic Auth when enabled", () => {
+  it("allows API GETs with valid Basic Auth when enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
@@ -138,13 +138,13 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("does not require auth when Basic Auth is disabled", () => {
+  it("does not require auth when Basic Auth is disabled", async () => {
     delete process.env.BASIC_AUTH_USER;
     delete process.env.BASIC_AUTH_PASSWORD;
 
@@ -156,7 +156,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
-    middleware(req, res, next);
+    await middleware(req, res, next);
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();

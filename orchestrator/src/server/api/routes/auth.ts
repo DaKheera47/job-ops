@@ -1,9 +1,9 @@
-import type { Request, Response } from "express";
-import { Router } from "express";
-import { z } from "zod";
 import { badRequest, unauthorized } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
+import type { Request, Response } from "express";
+import { Router } from "express";
+import { z } from "zod";
 
 const loginSchema = z.object({
   username: z.string().min(1),

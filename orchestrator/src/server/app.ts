@@ -9,7 +9,6 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
-import { verifyToken } from "@server/auth/jwt";
 import { unauthorized } from "@infra/errors";
 import {
   apiErrorHandler,
@@ -19,6 +18,7 @@ import {
 } from "@infra/http";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { verifyToken } from "@server/auth/jwt";
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";

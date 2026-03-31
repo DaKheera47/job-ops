@@ -1,15 +1,16 @@
-import { createHmac, randomUUID } from "node:crypto";
-import { SignJWT, jwtVerify } from "jose";
+import { createHmac, createSecretKey, randomUUID } from "node:crypto";
+import type { KeyObject } from "node:crypto";
+import { jwtVerify, SignJWT } from "jose";
 
 const DEFAULT_EXPIRY_SECONDS = 86400; // 24 hours
 
 /** In-memory set of revoked token IDs (JTI). Auto-prunes on expiry. */
 const blacklist = new Set<string>();
 
-function getJwtSecret(): Uint8Array {
+function getJwtSecret(): KeyObject {
   const explicit = process.env.JWT_SECRET;
   if (explicit && explicit.length >= 32) {
-    return new TextEncoder().encode(explicit);
+    return createSecretKey(Buffer.from(explicit, "utf-8"));
   }
 
   // Derive from Basic Auth credentials if available.
@@ -19,7 +20,7 @@ function getJwtSecret(): Uint8Array {
     const derived = createHmac("sha256", "jobops-jwt-secret")
       .update(`${user}:${pass}`)
       .digest();
-    return new Uint8Array(derived);
+    return createSecretKey(derived);
   }
 
   throw new Error(
