@@ -9,6 +9,7 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { fileURLToPath } from "node:url";
+import { verifyToken } from "@server/auth/jwt";
 import { unauthorized } from "@infra/errors";
 import {
   apiErrorHandler,
@@ -160,6 +161,18 @@ export function createBasicAuthGuard() {
     return user === authUser && pass === authPass;
   }
 
+  async function isJwtAuthorized(req: express.Request): Promise<boolean> {
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Bearer ")) return false;
+    const token = authHeader.slice("Bearer ".length).trim();
+    try {
+      await verifyToken(token);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function isPublicReadOnlyRoute(method: string, path: string): boolean {
     const normalizedMethod = method.toUpperCase();
     const normalizedPath = path.split("?")[0] || path;
@@ -170,6 +183,10 @@ export function createBasicAuthGuard() {
       normalizedMethod === "POST" &&
       normalizedPath === "/api/visa-sponsors/search"
     )
+      return true;
+
+    // Login endpoint must be accessible without auth.
+    if (normalizedMethod === "POST" && normalizedPath === "/api/auth/login")
       return true;
 
     return false;
@@ -195,14 +212,14 @@ export function createBasicAuthGuard() {
     return !["GET", "HEAD"].includes(method.toUpperCase());
   }
 
-  const middleware = (
+  const middleware = async (
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
   ) => {
     const { enabled } = getAuthConfig();
     if (!enabled || !requiresAuth(req.method, req.path)) return next();
-    if (isAuthorized(req)) return next();
+    if (isAuthorized(req) || (await isJwtAuthorized(req))) return next();
     fail(res, unauthorized("Authentication required"));
   };
 

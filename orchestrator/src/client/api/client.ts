@@ -108,6 +108,7 @@ type BasicAuthPromptHandler = (
 ) => Promise<BasicAuthCredentials | null>;
 
 const SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
+const SESSION_JWT_KEY = "jobops.jwtToken";
 
 function loadStoredCredentials(): BasicAuthCredentials | null {
   try {
@@ -131,10 +132,31 @@ function storeCredentials(credentials: BasicAuthCredentials | null): void {
   }
 }
 
+function loadStoredJwt(): string | null {
+  try {
+    return sessionStorage.getItem(SESSION_JWT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function storeJwt(token: string | null): void {
+  try {
+    if (token) {
+      sessionStorage.setItem(SESSION_JWT_KEY, token);
+    } else {
+      sessionStorage.removeItem(SESSION_JWT_KEY);
+    }
+  } catch {
+    // Ignore storage errors in restricted browser contexts.
+  }
+}
+
 let basicAuthPromptHandler: BasicAuthPromptHandler | null = null;
 let basicAuthPromptInFlight: Promise<BasicAuthCredentials | null> | null = null;
 let cachedBasicAuthCredentials: BasicAuthCredentials | null =
   loadStoredCredentials();
+let cachedJwtToken: string | null = loadStoredJwt();
 
 export function setBasicAuthPromptHandler(
   handler: BasicAuthPromptHandler | null,
@@ -144,14 +166,56 @@ export function setBasicAuthPromptHandler(
 
 export function clearBasicAuthCredentials(): void {
   cachedBasicAuthCredentials = null;
+  cachedJwtToken = null;
   storeCredentials(null);
+  storeJwt(null);
+}
+
+export async function loginWithCredentials(
+  username: string,
+  password: string,
+): Promise<void> {
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) {
+    throw new Error("Invalid credentials");
+  }
+  const body = await res.json();
+  const token = body.data?.token ?? body.token;
+  if (!token) {
+    throw new Error("No token returned");
+  }
+  cachedJwtToken = token;
+  storeJwt(token);
+  // Clear legacy Basic Auth credentials.
+  cachedBasicAuthCredentials = null;
+  storeCredentials(null);
+}
+
+export async function logout(): Promise<void> {
+  if (cachedJwtToken) {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${cachedJwtToken}` },
+      });
+    } catch {
+      // Best-effort server-side invalidation.
+    }
+  }
+  clearBasicAuthCredentials();
 }
 
 export function __resetApiClientAuthForTests(): void {
   basicAuthPromptHandler = null;
   basicAuthPromptInFlight = null;
   cachedBasicAuthCredentials = null;
+  cachedJwtToken = null;
   storeCredentials(null);
+  storeJwt(null);
 }
 
 function normalizeApiResponse<T>(
@@ -303,14 +367,19 @@ async function fetchAndParse<T>(
   return { response, parsed };
 }
 
+function getAuthHeader(): string | undefined {
+  if (cachedJwtToken) return `Bearer ${cachedJwtToken}`;
+  if (cachedBasicAuthCredentials)
+    return encodeBasicAuth(cachedBasicAuthCredentials);
+  return undefined;
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
   const method = (options?.method || "GET").toUpperCase();
-  let authHeader = cachedBasicAuthCredentials
-    ? encodeBasicAuth(cachedBasicAuthCredentials)
-    : undefined;
+  let authHeader = getAuthHeader();
   let authAttempt = 0;
   let usernameHint = cachedBasicAuthCredentials?.username;
 
@@ -326,6 +395,12 @@ async function fetchApi<T>(
       basicAuthPromptHandler &&
       authAttempt < 2
     ) {
+      // If a JWT was used, it may be expired — clear it before prompting.
+      if (cachedJwtToken) {
+        cachedJwtToken = null;
+        storeJwt(null);
+      }
+
       const credentials = await requestBasicAuthCredentials({
         endpoint,
         method,
@@ -339,10 +414,18 @@ async function fetchApi<T>(
       if (!credentials) {
         throw toApiError(response, parsed);
       }
-      cachedBasicAuthCredentials = credentials;
-      storeCredentials(credentials);
+
+      // Try JWT login first, fall back to Basic Auth.
+      try {
+        await loginWithCredentials(credentials.username, credentials.password);
+        authHeader = `Bearer ${cachedJwtToken}`;
+      } catch {
+        cachedBasicAuthCredentials = credentials;
+        storeCredentials(credentials);
+        authHeader = encodeBasicAuth(credentials);
+      }
+
       usernameHint = credentials.username;
-      authHeader = encodeBasicAuth(credentials);
       authAttempt += 1;
       continue;
     }
@@ -501,8 +584,9 @@ async function streamSseEvents<TEvent>(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
-  if (cachedBasicAuthCredentials) {
-    headers.Authorization = encodeBasicAuth(cachedBasicAuthCredentials);
+  const streamAuth = getAuthHeader();
+  if (streamAuth) {
+    headers.Authorization = streamAuth;
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
