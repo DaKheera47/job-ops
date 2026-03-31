@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  _resetKeyboardAvailabilityForTests,
   detectKeyboardAvailability,
   useKeyboardAvailability,
 } from "./useKeyboardAvailability";
@@ -30,6 +31,7 @@ function setMaxTouchPoints(value: number) {
 }
 
 afterEach(() => {
+  _resetKeyboardAvailabilityForTests();
   window.matchMedia = originalMatchMedia;
   if (maxTouchPointsDescriptor) {
     Object.defineProperty(
@@ -84,5 +86,26 @@ describe("useKeyboardAvailability", () => {
     });
 
     expect(result.current).toBe(true);
+  });
+
+  it("preserves observed keyboard evidence across remounts", () => {
+    window.matchMedia = createMatchMedia({
+      "(any-hover: hover)": false,
+      "(any-pointer: fine)": false,
+    }) as unknown as typeof window.matchMedia;
+    setMaxTouchPoints(5);
+
+    const first = renderHook(() => useKeyboardAvailability());
+    expect(first.result.current).toBe(false);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Control" }));
+    });
+
+    expect(first.result.current).toBe(true);
+    first.unmount();
+
+    const second = renderHook(() => useKeyboardAvailability());
+    expect(second.result.current).toBe(true);
   });
 });

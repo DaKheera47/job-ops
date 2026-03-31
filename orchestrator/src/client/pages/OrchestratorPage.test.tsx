@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as api from "../api";
+import { _resetKeyboardAvailabilityForTests } from "../hooks/useKeyboardAvailability";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OrchestratorPage } from "./OrchestratorPage";
 import type { AutomaticRunValues } from "./orchestrator/automatic-run";
@@ -388,6 +389,7 @@ const pressKeyOn = (
 describe("OrchestratorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    _resetKeyboardAvailabilityForTests();
     localStorage.clear();
     localStorage.setItem("has-seen-keyboard-shortcuts", "true");
     mockDemoMode = false;
