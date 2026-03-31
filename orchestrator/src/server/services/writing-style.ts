@@ -79,7 +79,10 @@ function stripDirectivesFromConstraints(
 export function stripLanguageDirectivesFromConstraints(
   constraints: string,
 ): string {
-  return stripDirectivesFromConstraints(constraints, LANGUAGE_DIRECTIVE_PATTERNS);
+  return stripDirectivesFromConstraints(
+    constraints,
+    LANGUAGE_DIRECTIVE_PATTERNS,
+  );
 }
 
 export function stripWordLimitFromConstraints(constraints: string): string {

@@ -115,7 +115,9 @@ describe("getWritingStyle", () => {
 describe("stripWordLimitFromConstraints", () => {
   it("strips 'keep summary under N words' patterns", () => {
     expect(
-      stripWordLimitFromConstraints("Keep summary under 100 words. Be concise."),
+      stripWordLimitFromConstraints(
+        "Keep summary under 100 words. Be concise.",
+      ),
     ).toBe("Be concise");
   });
 
@@ -151,7 +153,9 @@ describe("stripWordLimitFromConstraints", () => {
 describe("stripKeywordLimitFromConstraints", () => {
   it("strips 'max N keywords per category' patterns", () => {
     expect(
-      stripKeywordLimitFromConstraints("Max 5 keywords per category. Be specific."),
+      stripKeywordLimitFromConstraints(
+        "Max 5 keywords per category. Be specific.",
+      ),
     ).toBe("Be specific");
   });
 
@@ -163,7 +167,9 @@ describe("stripKeywordLimitFromConstraints", () => {
 
   it("strips 'N keywords max' patterns", () => {
     expect(
-      stripKeywordLimitFromConstraints("10 keywords max. Prioritize hard skills."),
+      stripKeywordLimitFromConstraints(
+        "10 keywords max. Prioritize hard skills.",
+      ),
     ).toBe("Prioritize hard skills");
   });
 
