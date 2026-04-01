@@ -35,7 +35,7 @@ authRouter.post(
       return;
     }
 
-    const { token, expiresIn } = await signToken(username);
+    const { token, expiresIn } = signToken(username);
     ok(res, { token, expiresIn });
   }),
 );
@@ -47,7 +47,7 @@ authRouter.post(
     if (authHeader.startsWith("Bearer ")) {
       const token = authHeader.slice("Bearer ".length).trim();
       try {
-        const { jti, exp } = await verifyToken(token);
+        const { jti, exp } = verifyToken(token);
         blacklistToken(jti, exp);
       } catch {
         // Token already invalid — logout is idempotent.

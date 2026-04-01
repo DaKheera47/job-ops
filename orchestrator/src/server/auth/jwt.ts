@@ -1,26 +1,24 @@
-import type { KeyObject } from "node:crypto";
-import { createHmac, createSecretKey, randomUUID } from "node:crypto";
-import { SignJWT, jwtVerify } from "jose";
+import { createHmac, randomUUID } from "node:crypto";
+import jwt from "jsonwebtoken";
 
 const DEFAULT_EXPIRY_SECONDS = 86400; // 24 hours
 
 /** In-memory set of revoked token IDs (JTI). Auto-prunes on expiry. */
 const blacklist = new Set<string>();
 
-function getJwtSecret(): KeyObject {
+function getJwtSecret(): string {
   const explicit = process.env.JWT_SECRET;
   if (explicit && explicit.length >= 32) {
-    return createSecretKey(Buffer.from(explicit, "utf-8"));
+    return explicit;
   }
 
   // Derive from Basic Auth credentials if available.
   const user = process.env.BASIC_AUTH_USER || "";
   const pass = process.env.BASIC_AUTH_PASSWORD || "";
   if (user && pass) {
-    const derived = createHmac("sha256", "jobops-jwt-secret")
+    return createHmac("sha256", "jobops-jwt-secret")
       .update(`${user}:${pass}`)
-      .digest();
-    return createSecretKey(derived);
+      .digest("hex");
   }
 
   throw new Error(
@@ -37,31 +35,30 @@ function getJwtExpirySeconds(): number {
     : DEFAULT_EXPIRY_SECONDS;
 }
 
-export async function signToken(sub: string): Promise<{
+export function signToken(sub: string): {
   token: string;
   expiresIn: number;
-}> {
+} {
   const secret = getJwtSecret();
   const expiresIn = getJwtExpirySeconds();
   const jti = randomUUID();
 
-  const token = await new SignJWT({ sub })
-    .setProtectedHeader({ alg: "HS256" })
-    .setJti(jti)
-    .setIssuedAt()
-    .setExpirationTime(`${expiresIn}s`)
-    .sign(secret);
+  const token = jwt.sign({ sub }, secret, {
+    algorithm: "HS256",
+    expiresIn,
+    jwtid: jti,
+  });
 
   return { token, expiresIn };
 }
 
-export async function verifyToken(
+export function verifyToken(
   token: string,
-): Promise<{ sub: string; jti: string; exp: number }> {
+): { sub: string; jti: string; exp: number } {
   const secret = getJwtSecret();
-  const { payload } = await jwtVerify(token, secret, {
+  const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
-  });
+  }) as jwt.JwtPayload;
 
   if (!payload.sub || !payload.jti || !payload.exp) {
     throw new Error("Token missing required claims");

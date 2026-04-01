@@ -23,58 +23,58 @@ describe("JWT utilities", () => {
     __resetBlacklistForTests();
   });
 
-  it("signs and verifies a token", async () => {
-    const { token, expiresIn } = await signToken("admin");
+  it("signs and verifies a token", () => {
+    const { token, expiresIn } = signToken("admin");
     expect(token).toBeTruthy();
     expect(expiresIn).toBe(86400);
 
-    const payload = await verifyToken(token);
+    const payload = verifyToken(token);
     expect(payload.sub).toBe("admin");
     expect(payload.jti).toBeTruthy();
     expect(payload.exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
-  it("rejects a tampered token", async () => {
-    const { token } = await signToken("admin");
+  it("rejects a tampered token", () => {
+    const { token } = signToken("admin");
     const tampered = `${token}x`;
-    await expect(verifyToken(tampered)).rejects.toThrow();
+    expect(() => verifyToken(tampered)).toThrow();
   });
 
-  it("rejects a blacklisted token", async () => {
-    const { token } = await signToken("admin");
-    const payload = await verifyToken(token);
+  it("rejects a blacklisted token", () => {
+    const { token } = signToken("admin");
+    const payload = verifyToken(token);
     blacklistToken(payload.jti, payload.exp);
 
-    await expect(verifyToken(token)).rejects.toThrow("Token has been revoked");
+    expect(() => verifyToken(token)).toThrow("Token has been revoked");
   });
 
-  it("isBlacklisted returns correct state", async () => {
-    const { token } = await signToken("admin");
-    const payload = await verifyToken(token);
+  it("isBlacklisted returns correct state", () => {
+    const { token } = signToken("admin");
+    const payload = verifyToken(token);
 
     expect(isBlacklisted(payload.jti)).toBe(false);
     blacklistToken(payload.jti, payload.exp);
     expect(isBlacklisted(payload.jti)).toBe(true);
   });
 
-  it("uses explicit JWT_SECRET when provided", async () => {
+  it("uses explicit JWT_SECRET when provided", () => {
     process.env.JWT_SECRET = "a-very-long-secret-that-is-at-least-32-chars!";
-    const { token } = await signToken("admin");
-    const payload = await verifyToken(token);
+    const { token } = signToken("admin");
+    const payload = verifyToken(token);
     expect(payload.sub).toBe("admin");
   });
 
-  it("respects JWT_EXPIRY_SECONDS", async () => {
+  it("respects JWT_EXPIRY_SECONDS", () => {
     process.env.JWT_EXPIRY_SECONDS = "60";
-    const { expiresIn } = await signToken("admin");
+    const { expiresIn } = signToken("admin");
     expect(expiresIn).toBe(60);
   });
 
-  it("throws when no secret source is available", async () => {
+  it("throws when no secret source is available", () => {
     delete process.env.BASIC_AUTH_USER;
     delete process.env.BASIC_AUTH_PASSWORD;
     delete process.env.JWT_SECRET;
-    await expect(signToken("admin")).rejects.toThrow(
+    expect(() => signToken("admin")).toThrow(
       "JWT_SECRET or BASIC_AUTH_USER/BASIC_AUTH_PASSWORD must be set",
     );
   });

@@ -161,12 +161,12 @@ export function createBasicAuthGuard() {
     return user === authUser && pass === authPass;
   }
 
-  async function isJwtAuthorized(req: express.Request): Promise<boolean> {
+  function isJwtAuthorized(req: express.Request): boolean {
     const authHeader = req.headers.authorization || "";
     if (!authHeader.startsWith("Bearer ")) return false;
     const token = authHeader.slice("Bearer ".length).trim();
     try {
-      await verifyToken(token);
+      verifyToken(token);
       return true;
     } catch {
       return false;
@@ -212,14 +212,14 @@ export function createBasicAuthGuard() {
     return !["GET", "HEAD"].includes(method.toUpperCase());
   }
 
-  const middleware = async (
+  const middleware = (
     req: express.Request,
     res: express.Response,
     next: express.NextFunction,
   ) => {
     const { enabled } = getAuthConfig();
     if (!enabled || !requiresAuth(req.method, req.path)) return next();
-    if (isAuthorized(req) || (await isJwtAuthorized(req))) return next();
+    if (isAuthorized(req) || isJwtAuthorized(req)) return next();
     fail(res, unauthorized("Authentication required"));
   };
 
