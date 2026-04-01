@@ -52,9 +52,11 @@ export function signToken(sub: string): {
   return { token, expiresIn };
 }
 
-export function verifyToken(
-  token: string,
-): { sub: string; jti: string; exp: number } {
+export function verifyToken(token: string): {
+  sub: string;
+  jti: string;
+  exp: number;
+} {
   const secret = getJwtSecret();
   const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],

@@ -185,8 +185,12 @@ export function createBasicAuthGuard() {
     )
       return true;
 
-    // Login endpoint must be accessible without auth.
-    if (normalizedMethod === "POST" && normalizedPath === "/api/auth/login")
+    // Auth endpoints must be accessible without existing auth.
+    if (
+      normalizedMethod === "POST" &&
+      (normalizedPath === "/api/auth/login" ||
+        normalizedPath === "/api/auth/logout")
+    )
       return true;
 
     return false;
