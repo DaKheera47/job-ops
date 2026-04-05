@@ -1,11 +1,17 @@
 import type { JobListItem } from "@shared/types.js";
 import { Loader2 } from "lucide-react";
 import type React from "react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { FilterTab } from "./constants";
 import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
 import { JobRowContent } from "./JobRowContent";
+
+interface EmptyStateAction {
+  label: string;
+  onClick: () => void;
+}
 
 interface JobListPanelProps {
   isLoading: boolean;
@@ -17,6 +23,8 @@ interface JobListPanelProps {
   onSelectJob: (jobId: string) => void;
   onToggleSelectJob: (jobId: string) => void;
   onToggleSelectAll: (checked: boolean) => void;
+  primaryEmptyStateAction?: EmptyStateAction;
+  secondaryEmptyStateAction?: EmptyStateAction;
 }
 
 export const JobListPanel: React.FC<JobListPanelProps> = ({
@@ -29,6 +37,8 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
   onSelectJob,
   onToggleSelectJob,
   onToggleSelectAll,
+  primaryEmptyStateAction,
+  secondaryEmptyStateAction,
 }) => (
   <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
     {isLoading && jobs.length === 0 ? (
@@ -37,11 +47,29 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
         <div className="text-sm text-muted-foreground">Loading jobs...</div>
       </div>
     ) : activeJobs.length === 0 ? (
-      <div className="flex flex-col items-center justify-center gap-2 px-6 py-12 text-center">
+      <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
         <div className="text-base font-semibold">No jobs found</div>
         <p className="max-w-md text-sm text-muted-foreground">
           {emptyStateCopy[activeTab]}
         </p>
+        {(primaryEmptyStateAction || secondaryEmptyStateAction) && (
+          <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
+            {primaryEmptyStateAction && (
+              <Button size="sm" onClick={primaryEmptyStateAction.onClick}>
+                {primaryEmptyStateAction.label}
+              </Button>
+            )}
+            {secondaryEmptyStateAction && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={secondaryEmptyStateAction.onClick}
+              >
+                {secondaryEmptyStateAction.label}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     ) : (
       <div className="divide-y divide-border/40">

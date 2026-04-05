@@ -347,6 +347,35 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
+  const primaryEmptyStateAction = useMemo(() => {
+    if (activeTab === "ready" && counts.discovered > 0) {
+      return {
+        label: "Tailor discovered jobs",
+        onClick: () => setActiveTab("discovered"),
+      };
+    }
+
+    if (activeTab === "discovered" || activeTab === "all") {
+      return {
+        label: "Run pipeline",
+        onClick: () => openRunMode("automatic"),
+      };
+    }
+
+    return undefined;
+  }, [activeTab, counts.discovered, openRunMode, setActiveTab]);
+
+  const secondaryEmptyStateAction = useMemo(() => {
+    if (activeTab === "ready") {
+      return {
+        label: "Run pipeline",
+        onClick: () => openRunMode("automatic"),
+      };
+    }
+
+    return undefined;
+  }, [activeTab, openRunMode]);
+
   return (
     <>
       <OrchestratorHeader
@@ -411,6 +440,8 @@ export const OrchestratorPage: React.FC = () => {
               onSelectJob={handleSelectJob}
               onToggleSelectJob={toggleSelectJob}
               onToggleSelectAll={toggleSelectAll}
+              primaryEmptyStateAction={primaryEmptyStateAction}
+              secondaryEmptyStateAction={secondaryEmptyStateAction}
             />
 
             {/* Inspector panel: visually subordinate to list */}
