@@ -75,6 +75,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.12",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.1.18",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",

@@ -7,6 +7,8 @@ import {
 import type { CreateJobInput } from "job-ops-shared/types/jobs";
 
 const GOLANG_JOBS_SUPABASE_URL = "https://mvjyjzestmcxxmmmakec.supabase.co";
+const GOLANG_JOBS_DEFAULT_SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im12anlqemVzdG1jeHhtbW1ha2VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM2NDMyNzksImV4cCI6MjA1OTIxOTI3OX0.AEucvhTZofaPFnPmnCMM2ptuE3Iy06_uao4n-6AmEgM";
 const GOLANG_JOBS_PAGE_SIZE = 200;
 const GOLANG_JOBS_MAX_PAGES = 10;
 const GOLANG_JOBS_SUPABASE_ANON_KEY_ENV = "GOLANG_JOBS_SUPABASE_ANON_KEY";
@@ -361,7 +363,8 @@ export async function runGolangJobs(
   const fetchImpl = options.fetchImpl ?? fetch;
   const supabaseAnonKey =
     options.supabaseAnonKey ??
-    process.env[GOLANG_JOBS_SUPABASE_ANON_KEY_ENV]?.trim();
+    process.env[GOLANG_JOBS_SUPABASE_ANON_KEY_ENV]?.trim() ??
+    GOLANG_JOBS_DEFAULT_SUPABASE_ANON_KEY;
   const searchTerms =
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
@@ -371,14 +374,6 @@ export async function runGolangJobs(
     options.locations,
     options.selectedCountry,
   );
-
-  if (!supabaseAnonKey) {
-    return {
-      success: false,
-      jobs: [],
-      error: `Missing required environment variable: ${GOLANG_JOBS_SUPABASE_ANON_KEY_ENV}`,
-    };
-  }
 
   try {
     const sourceRows = await fetchAllGolangJobs({

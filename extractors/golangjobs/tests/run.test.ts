@@ -267,18 +267,19 @@ describe("runGolangJobs", () => {
     expect(result.jobs).toHaveLength(1);
   });
 
-  it("returns a clear error when the Supabase anon key is missing", async () => {
+  it("uses the built-in Supabase anon key when no override is provided", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(createResponse([]));
+
     const result = await runGolangJobs({
       searchTerms: ["go engineer"],
-      fetchImpl: vi.fn(),
+      fetchImpl: fetchMock,
     });
 
     expect(result).toEqual({
-      success: false,
+      success: true,
       jobs: [],
-      error:
-        "Missing required environment variable: GOLANG_JOBS_SUPABASE_ANON_KEY",
     });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("stops pagination when cancellation is requested before the next page", async () => {

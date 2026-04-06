@@ -35,7 +35,8 @@ Using the same public feed the site already serves in the browser keeps the inte
 
 Defaults and constraints:
 
-- Set `GOLANG_JOBS_SUPABASE_ANON_KEY` in the runtime environment before using this extractor.
+- The extractor includes a built-in browser-facing anon key for the upstream public feed.
+- You can override that default with `GOLANG_JOBS_SUPABASE_ANON_KEY` if the upstream rotates the key.
 - The upstream feed is already Go-specific, but it is still broader than most job-ops searches, so local filtering remains important.
 - The extractor currently relies on the public `jobs` and `cities` relationship exposed by the site; if the site changes that schema, the extractor will need updating.
 - Remote roles are inferred from `cities.name === "Remote"`.
@@ -45,11 +46,10 @@ Defaults and constraints:
 ### Golang Jobs does not appear in sources
 
 - Check that the app is running a build that includes the new extractor manifest and shared source metadata.
-- Check that `GOLANG_JOBS_SUPABASE_ANON_KEY` is configured in the runtime environment.
 
 ### Golang Jobs health checks or runs fail immediately
 
-- Confirm `GOLANG_JOBS_SUPABASE_ANON_KEY` is present in the server/container environment.
+- If the upstream rotates its public browser key, set `GOLANG_JOBS_SUPABASE_ANON_KEY` in the server/container environment to override the built-in default.
 - Rebuild the container after adding new environment variables if you run job-ops through Docker.
 
 ### Results are broader than expected

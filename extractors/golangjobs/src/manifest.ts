@@ -37,7 +37,6 @@ export const manifest: ExtractorManifest = {
   id: "golangjobs",
   displayName: "Golang Jobs",
   providesSources: ["golangjobs"],
-  requiredEnvVars: ["GOLANG_JOBS_SUPABASE_ANON_KEY"],
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };
