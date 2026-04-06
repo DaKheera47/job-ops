@@ -1,10 +1,10 @@
-import { normalizeCountryKey } from "@shared/location-support.js";
+import { normalizeCountryKey } from "job-ops-shared/location-support";
 import {
   matchesRequestedCity,
   normalizeLocationToken,
   resolveSearchCities,
-} from "@shared/search-cities.js";
-import type { CreateJobInput } from "@shared/types/jobs";
+} from "job-ops-shared/search-cities";
+import type { CreateJobInput } from "job-ops-shared/types/jobs";
 
 const GOLANG_JOBS_SUPABASE_URL = "https://mvjyjzestmcxxmmmakec.supabase.co";
 const GOLANG_JOBS_SUPABASE_ANON_KEY =

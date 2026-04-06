@@ -59,6 +59,9 @@ services:
         - path: ./extractors/workingnomads/src
           target: /app/extractors/workingnomads/src
           action: sync+restart
+        - path: ./extractors/golangjobs/src
+          target: /app/extractors/golangjobs/src
+          action: sync+restart
         - path: ./extractors/jobspy
           target: /app/extractors/jobspy
           action: sync+restart

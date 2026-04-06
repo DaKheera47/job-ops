@@ -1,8 +1,8 @@
-import { resolveSearchCities } from "@shared/search-cities.js";
+import { resolveSearchCities } from "job-ops-shared/search-cities";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
-} from "@shared/types/extractors";
+} from "job-ops-shared/types/extractors";
 import { runGolangJobs } from "./run";
 
 function toProgress(event: {

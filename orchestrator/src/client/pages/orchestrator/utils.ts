@@ -203,6 +203,10 @@ export const getEnabledSources = (
       enabled.push(source);
       continue;
     }
+    if (source === "golangjobs") {
+      enabled.push(source);
+      continue;
+    }
     if (
       source === "indeed" ||
       source === "linkedin" ||
