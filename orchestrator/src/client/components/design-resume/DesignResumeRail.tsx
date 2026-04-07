@@ -138,7 +138,7 @@ export function DesignResumeRail({
   return (
     <Accordion
       type="multiple"
-      defaultValue={accordionValues}
+      defaultValue={[]}
       className="space-y-3"
     >
       <DesignResumeSection

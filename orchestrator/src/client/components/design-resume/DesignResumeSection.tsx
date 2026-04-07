@@ -26,7 +26,7 @@ export function DesignResumeSection({
       className="overflow-hidden rounded-xl border border-border/60 bg-card/40 px-0"
     >
       <AccordionTrigger className="px-4 py-3 text-left hover:no-underline">
-        <div className="flex min-w-0 flex-1 items-start justify-between gap-3 pr-4">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-4">
           <div className="min-w-0 space-y-1">
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
             <p className="text-xs leading-5 text-muted-foreground">
@@ -34,7 +34,7 @@ export function DesignResumeSection({
             </p>
           </div>
           {badge ? (
-            <div className="shrink-0 rounded-full border border-border/60 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="shrink-0 rounded-full border border-border/60 px-2 py-0.5 text-[11px] uppercase text-muted-foreground h-full">
               {badge}
             </div>
           ) : null}
