@@ -145,8 +145,8 @@ export function PictureSection({
           </div>
         </div>
         <Switch
-          checked={toBoolean(picture.show, true)}
-          onCheckedChange={(checked) => onUpdatePicture("show", checked)}
+          checked={!toBoolean(picture.hidden, false)}
+          onCheckedChange={(checked) => onUpdatePicture("hidden", !checked)}
         />
       </div>
 
@@ -271,14 +271,6 @@ export function BasicsCustomFieldsSection({
                     nextFields[index] = {
                       ...nextFields[index],
                       [key]: event.currentTarget.value,
-                      name:
-                        key === "text"
-                          ? event.currentTarget.value
-                          : toText(nextFields[index].name),
-                      value:
-                        key === "text"
-                          ? event.currentTarget.value
-                          : toText(nextFields[index].value),
                     };
                     onChange(nextFields);
                   }}
@@ -331,8 +323,6 @@ export function BasicsCustomFieldsSection({
               icon: "",
               text: "",
               link: "",
-              name: "",
-              value: "",
             },
           ])
         }

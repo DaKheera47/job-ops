@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { buildDefaultReactiveResumeDocument } from "./rxresume/document";
 
 const repo = vi.hoisted(() => ({
   getLatestDesignResumeDocument: vi.fn(),
@@ -37,6 +38,9 @@ vi.mock("@server/services/rxresume/schema/v4", () => ({
 vi.mock("@server/services/rxresume/schema/v5", () => ({
   parseV5ResumeData: vi.fn((input: unknown) => input),
 }));
+vi.mock("@server/services/tracer-links", () => ({
+  resolveTracerPublicBaseUrl: vi.fn(() => null),
+}));
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
   default: {
@@ -51,89 +55,20 @@ vi.mock("node:fs/promises", () => ({
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import {
+  getCurrentDesignResume,
   importDesignResumeFromReactiveResume,
   updateCurrentDesignResume,
   uploadDesignResumePicture,
 } from "./design-resume";
 
 function makeDocumentRow(overrides?: Partial<Record<string, unknown>>) {
+  const defaultResume = buildDefaultReactiveResumeDocument();
+  (defaultResume.basics as Record<string, unknown>).name = "Test User";
+
   return {
     id: "primary",
     title: "Test Resume",
-    resumeJson: {
-      picture: { url: "", show: true },
-      basics: {
-        name: "Test User",
-        headline: "",
-        email: "",
-        phone: "",
-        location: "",
-        website: { label: "", url: "" },
-        customFields: [],
-      },
-      summary: {
-        title: "Summary",
-        columns: 1,
-        hidden: false,
-        content: "",
-      },
-      sections: {
-        profiles: { title: "Profiles", columns: 1, hidden: false, items: [] },
-        experience: {
-          title: "Experience",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        education: {
-          title: "Education",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        projects: { title: "Projects", columns: 1, hidden: false, items: [] },
-        skills: { title: "Skills", columns: 1, hidden: false, items: [] },
-        languages: {
-          title: "Languages",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        interests: {
-          title: "Interests",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        awards: { title: "Awards", columns: 1, hidden: false, items: [] },
-        certifications: {
-          title: "Certifications",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        publications: {
-          title: "Publications",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        volunteer: {
-          title: "Volunteer",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        references: {
-          title: "References",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-      },
-      customSections: [],
-      metadata: {},
-    },
+    resumeJson: defaultResume,
     revision: 1,
     sourceResumeId: null,
     sourceMode: "v5",
@@ -183,12 +118,12 @@ describe("design resume service", () => {
     ).rejects.toThrow("Invalid array patch path");
   });
 
-  it("preserves an explicit picture show flag during normalization", async () => {
+  it("preserves an explicit picture hidden flag during normalization", async () => {
     repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
       makeDocumentRow({
         resumeJson: {
           ...makeDocumentRow().resumeJson,
-          picture: { url: "", show: false, hidden: false },
+          picture: { url: "", hidden: true },
         },
       }),
     );
@@ -197,17 +132,17 @@ describe("design resume service", () => {
       baseRevision: 1,
       document: {
         ...makeDocumentRow().resumeJson,
-        picture: { url: "", show: false, hidden: false },
+        picture: { url: "", hidden: true },
       },
     });
 
     expect(
       (
         updated.resumeJson.picture as {
-          show?: boolean;
+          hidden?: boolean;
         }
-      ).show,
-    ).toBe(false);
+      ).hidden,
+    ).toBe(true);
   });
 
   it("uses structural equality for patch test operations", async () => {
@@ -217,12 +152,117 @@ describe("design resume service", () => {
         operations: [
           {
             op: "test",
-            path: "/metadata",
-            value: {},
+            path: "/basics/website",
+            value: { label: "", url: "" },
           },
         ],
       }),
     ).resolves.toBeTruthy();
+  });
+
+  it("hydrates legacy local documents into canonical reactive resume v5 shape", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
+      makeDocumentRow({
+        resumeJson: {
+          basics: {
+            name: "Legacy User",
+            headline: "",
+            email: "",
+            phone: "",
+            location: "",
+            website: { label: "", url: "" },
+            customFields: [],
+          },
+          picture: { url: "", show: false },
+          summary: {
+            title: "Summary",
+            columns: 1,
+            hidden: false,
+            content: "",
+          },
+          sections: {
+            profiles: {
+              title: "Profiles",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            experience: {
+              title: "Experience",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            education: {
+              title: "Education",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            projects: {
+              title: "Projects",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            skills: { title: "Skills", columns: 1, hidden: false, items: [] },
+            languages: {
+              title: "Languages",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            interests: {
+              title: "Interests",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            awards: { title: "Awards", columns: 1, hidden: false, items: [] },
+            certifications: {
+              title: "Certifications",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            publications: {
+              title: "Publications",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            volunteer: {
+              title: "Volunteer",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+            references: {
+              title: "References",
+              columns: 1,
+              hidden: false,
+              items: [],
+            },
+          },
+          customSections: [],
+          metadata: {
+            layout: [[["summary"], ["skills"]]],
+          },
+        },
+      }),
+    );
+
+    const hydrated = await getCurrentDesignResume();
+
+    expect((hydrated?.resumeJson.picture as { hidden?: boolean }).hidden).toBe(
+      true,
+    );
+    expect(
+      (
+        (hydrated?.resumeJson.metadata as Record<string, unknown>)
+          .layout as Record<string, unknown>
+      ).pages,
+    ).toBeInstanceOf(Array);
   });
 
   it("cleans up the uploaded file when picture asset insertion fails", async () => {

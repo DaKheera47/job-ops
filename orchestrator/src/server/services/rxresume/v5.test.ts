@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sampleResume } from "./schema/v4";
+import { buildDefaultReactiveResumeDocument } from "./document";
 import {
   deleteResume,
   exportResumePdf,
@@ -8,6 +8,9 @@ import {
   importResume,
   listResumes,
 } from "./v5";
+
+const sampleResume = buildDefaultReactiveResumeDocument();
+(sampleResume.basics as Record<string, unknown>).name = "Imported Resume";
 
 vi.mock("@infra/logger", () => ({
   logger: {

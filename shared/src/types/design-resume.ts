@@ -1,6 +1,8 @@
 import type { RxResumeMode } from "./settings";
 
-export type DesignResumeJson = Record<string, unknown>;
+export type ReactiveResumeV5Document = Record<string, unknown>;
+
+export type DesignResumeJson = ReactiveResumeV5Document;
 
 export interface DesignResumeAsset {
   id: string;

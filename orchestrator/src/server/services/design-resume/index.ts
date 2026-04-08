@@ -10,8 +10,10 @@ import { getDataDir } from "@server/config/dataDir";
 import * as designResumeRepo from "@server/repositories/design-resume";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
-import { parseV4ResumeData } from "@server/services/rxresume/schema/v4";
-import { parseV5ResumeData } from "@server/services/rxresume/schema/v5";
+import {
+  convertV4ResumeToReactiveResumeV5Document,
+  normalizeReactiveResumeV5Document,
+} from "@server/services/rxresume/document";
 import type {
   DesignResumeAsset,
   DesignResumeDocument,
@@ -31,68 +33,6 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
 >[number];
-
-function defaultWebsite() {
-  return { label: "", url: "" };
-}
-
-function defaultPicture() {
-  return {
-    url: "",
-    show: true,
-    size: 96,
-    rotation: 0,
-    aspectRatio: 1,
-    borderRadius: 0,
-    borderColor: "#d6d3d1",
-    borderWidth: 0,
-    shadowColor: "rgba(28,25,23,0.16)",
-    shadowWidth: 0,
-  };
-}
-
-function defaultSectionBase(title: string) {
-  return {
-    title,
-    columns: 1,
-    hidden: false,
-  };
-}
-
-function buildDefaultDesignResume(): DesignResumeJson {
-  return {
-    picture: defaultPicture(),
-    basics: {
-      name: "",
-      headline: "",
-      email: "",
-      phone: "",
-      location: "",
-      website: defaultWebsite(),
-      customFields: [],
-    },
-    summary: {
-      ...defaultSectionBase("Summary"),
-      content: "",
-    },
-    sections: {
-      profiles: { ...defaultSectionBase("Profiles"), items: [] },
-      experience: { ...defaultSectionBase("Experience"), items: [] },
-      education: { ...defaultSectionBase("Education"), items: [] },
-      projects: { ...defaultSectionBase("Projects"), items: [] },
-      skills: { ...defaultSectionBase("Skills"), items: [] },
-      languages: { ...defaultSectionBase("Languages"), items: [] },
-      interests: { ...defaultSectionBase("Interests"), items: [] },
-      awards: { ...defaultSectionBase("Awards"), items: [] },
-      certifications: { ...defaultSectionBase("Certifications"), items: [] },
-      publications: { ...defaultSectionBase("Publications"), items: [] },
-      volunteer: { ...defaultSectionBase("Volunteer"), items: [] },
-      references: { ...defaultSectionBase("References"), items: [] },
-    },
-    customSections: [],
-    metadata: {},
-  };
-}
 
 function toBoolean(value: unknown, fallback = false): boolean {
   return typeof value === "boolean" ? value : fallback;
@@ -116,311 +56,15 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function makeWebsite(value: unknown) {
-  const url = asRecord(value);
-  return {
-    label: toText(url?.label),
-    url: toText(url?.url ?? url?.href),
-  };
-}
-
-function mapV4ItemWebsite(value: unknown) {
-  const url = asRecord(value);
-  return {
-    label: toText(url?.label),
-    url: toText(url?.href),
-  };
-}
-
-function mapV4SectionBase(
-  section: Record<string, unknown> | null,
-  title: string,
-) {
-  return {
-    title: toText(section?.name, title),
-    columns: toNumber(section?.columns, 1),
-    hidden: !toBoolean(section?.visible, true),
-  };
-}
-
-function normalizeV5Document(input: unknown): DesignResumeJson {
-  const parsed = parseV5ResumeData(input) as Record<string, unknown>;
-  const defaults = buildDefaultDesignResume();
-  const basics = asRecord(parsed.basics) ?? {};
-  const summary = asRecord(parsed.summary) ?? {};
-  const sections = asRecord(parsed.sections) ?? {};
-  const picture = asRecord(parsed.picture) ?? {};
-  const { hidden: _hidden, ...pictureWithoutHidden } = picture;
-  const show =
-    typeof picture.show === "boolean"
-      ? picture.show
-      : !toBoolean(picture.hidden, false);
-
-  return {
-    ...defaults,
-    ...parsed,
-    picture: {
-      ...defaultPicture(),
-      ...pictureWithoutHidden,
-      show,
-    },
-    basics: {
-      ...(defaults.basics as Record<string, unknown>),
-      ...basics,
-      website: makeWebsite(basics.website),
-      customFields: asArray(basics.customFields).map((field) => {
-        const next = asRecord(field) ?? {};
-        return {
-          id: toText(next.id, createId()),
-          icon: toText(next.icon),
-          name: toText(next.name ?? next.text),
-          value: toText(next.value ?? next.link ?? next.text),
-          text: toText(next.text ?? next.name ?? next.value),
-          link: toText(next.link ?? next.value),
-        };
-      }),
-    },
-    summary: {
-      ...(defaults.summary as Record<string, unknown>),
-      ...summary,
-      title: toText(summary.title, "Summary"),
-      columns: toNumber(summary.columns, 1),
-      hidden: toBoolean(summary.hidden, false),
-      content: toText(summary.content),
-    },
-    sections: Object.fromEntries(
-      Object.entries({
-        ...(defaults.sections as Record<string, unknown>),
-        ...sections,
-      }).map(([key, sectionValue]) => {
-        const section = asRecord(sectionValue) ?? {};
-        return [
-          key,
-          {
-            ...defaultSectionBase(key.charAt(0).toUpperCase() + key.slice(1)),
-            ...section,
-            title: toText(
-              section.title,
-              key.charAt(0).toUpperCase() + key.slice(1),
-            ),
-            columns: toNumber(section.columns, 1),
-            hidden: toBoolean(section.hidden, false),
-            items: asArray(section.items),
-          },
-        ];
-      }),
-    ),
-    customSections: asArray(parsed.customSections),
-    metadata: asRecord(parsed.metadata) ?? {},
-  };
-}
-
-function normalizeV4Document(input: unknown): DesignResumeJson {
-  const parsed = parseV4ResumeData(input);
-  const defaults = buildDefaultDesignResume();
-
-  return {
-    ...defaults,
-    picture: {
-      ...defaultPicture(),
-      url: toText(parsed.basics.picture.url),
-      show: !parsed.basics.picture.effects.hidden,
-      size: parsed.basics.picture.size,
-      aspectRatio: parsed.basics.picture.aspectRatio,
-      borderRadius: parsed.basics.picture.borderRadius,
-      borderWidth: parsed.basics.picture.effects.border ? 1 : 0,
-    },
-    basics: {
-      name: parsed.basics.name,
-      headline: parsed.basics.headline,
-      email: parsed.basics.email,
-      phone: parsed.basics.phone,
-      location: parsed.basics.location,
-      website: {
-        label: parsed.basics.url.label,
-        url: parsed.basics.url.href,
-      },
-      customFields: parsed.basics.customFields.map((field) => ({
-        id: field.id,
-        icon: field.icon,
-        name: field.name,
-        value: field.value,
-        text: field.value,
-        link: "",
-      })),
-    },
-    summary: {
-      ...mapV4SectionBase(parsed.sections.summary, "Summary"),
-      content: parsed.sections.summary.content,
-    },
-    sections: {
-      profiles: {
-        ...mapV4SectionBase(parsed.sections.profiles, "Profiles"),
-        items: parsed.sections.profiles.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          icon: item.icon,
-          network: item.network,
-          username: item.username,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-        })),
-      },
-      experience: {
-        ...mapV4SectionBase(parsed.sections.experience, "Experience"),
-        items: parsed.sections.experience.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          company: item.company,
-          location: item.location,
-          position: item.position,
-          period: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-          roles: [],
-        })),
-      },
-      education: {
-        ...mapV4SectionBase(parsed.sections.education, "Education"),
-        items: parsed.sections.education.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          school: item.institution,
-          area: item.area,
-          degree: item.studyType,
-          grade: item.score,
-          location: "",
-          period: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-      projects: {
-        ...mapV4SectionBase(parsed.sections.projects, "Projects"),
-        items: parsed.sections.projects.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          name: item.name,
-          period: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-          technologies: item.keywords,
-        })),
-      },
-      skills: {
-        ...mapV4SectionBase(parsed.sections.skills, "Skills"),
-        items: parsed.sections.skills.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          icon: "",
-          name: item.name,
-          proficiency: item.description,
-          level: item.level,
-          keywords: item.keywords,
-        })),
-      },
-      languages: {
-        ...mapV4SectionBase(parsed.sections.languages, "Languages"),
-        items: parsed.sections.languages.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          language: item.name,
-          fluency: item.description,
-          level: item.level,
-        })),
-      },
-      interests: {
-        ...mapV4SectionBase(parsed.sections.interests, "Interests"),
-        items: parsed.sections.interests.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          icon: "",
-          name: item.name,
-          keywords: item.keywords,
-        })),
-      },
-      awards: {
-        ...mapV4SectionBase(parsed.sections.awards, "Awards"),
-        items: parsed.sections.awards.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          title: item.title,
-          awarder: item.awarder,
-          date: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-      certifications: {
-        ...mapV4SectionBase(parsed.sections.certifications, "Certifications"),
-        items: parsed.sections.certifications.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          title: item.name,
-          issuer: item.issuer,
-          date: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-      publications: {
-        ...mapV4SectionBase(parsed.sections.publications, "Publications"),
-        items: parsed.sections.publications.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          title: item.name,
-          publisher: item.publisher,
-          date: item.date,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-      volunteer: {
-        ...mapV4SectionBase(parsed.sections.volunteer, "Volunteer"),
-        items: parsed.sections.volunteer.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          organization: item.organization,
-          location: item.location,
-          period: item.date,
-          position: item.position,
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-      references: {
-        ...mapV4SectionBase(parsed.sections.references, "References"),
-        items: parsed.sections.references.items.map((item) => ({
-          id: item.id,
-          hidden: !item.visible,
-          name: item.name,
-          position: item.description,
-          phone: "",
-          website: mapV4ItemWebsite(item.url),
-          options: { showLinkInTitle: false },
-          description: item.summary,
-        })),
-      },
-    },
-    customSections: [],
-    metadata: parsed.metadata as Record<string, unknown>,
-  };
-}
-
 function normalizeImportedResume(
   input: unknown,
   mode: "v4" | "v5",
 ): DesignResumeJson {
-  return mode === "v4"
-    ? normalizeV4Document(input)
-    : normalizeV5Document(input);
+  return (
+    mode === "v4"
+      ? convertV4ResumeToReactiveResumeV5Document(input)
+      : normalizeReactiveResumeV5Document(input)
+  ) as DesignResumeJson;
 }
 
 function buildDocumentTitle(document: DesignResumeJson): string {
@@ -464,7 +108,9 @@ async function hydrateDocument(
   return {
     id: row.id,
     title: row.title,
-    resumeJson: (row.resumeJson ?? {}) as DesignResumeJson,
+    resumeJson: normalizeReactiveResumeV5Document(
+      row.resumeJson ?? {},
+    ) as DesignResumeJson,
     revision: row.revision,
     sourceResumeId: row.sourceResumeId ?? null,
     sourceMode: row.sourceMode ?? null,
@@ -649,7 +295,7 @@ function applyPatchOperation(
 function normalizePatchedDocument(
   document: Record<string, unknown>,
 ): DesignResumeJson {
-  return normalizeV5Document(document);
+  return normalizeReactiveResumeV5Document(document) as DesignResumeJson;
 }
 
 function isMissingDesignResumeTableError(error: unknown): boolean {
@@ -846,10 +492,9 @@ export async function uploadDesignResumePicture(input: {
   >;
   const picture = asRecord(nextDocument.picture) ?? {};
   nextDocument.picture = {
-    ...defaultPicture(),
     ...picture,
     url: contentUrlForAsset(assetId),
-    show: true,
+    hidden: false,
   };
 
   try {
@@ -888,7 +533,6 @@ export async function deleteDesignResumePicture(): Promise<DesignResumeDocument>
   >;
   const picture = asRecord(nextDocument.picture) ?? {};
   nextDocument.picture = {
-    ...defaultPicture(),
     ...picture,
     url: "",
   };

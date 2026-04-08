@@ -13,7 +13,6 @@ import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import { getCurrentDesignResume } from "./design-resume";
-import { convertDesignResumeToReactiveResumeV5Document } from "./design-resume/reactive-resume-export";
 import { renderResumePdf } from "./resume-renderer";
 import {
   deleteResume as deleteRxResume,
@@ -24,6 +23,7 @@ import {
   prepareTailoredResumeForPdf,
 } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
+import { normalizeReactiveResumeV5Document } from "./rxresume/document";
 
 const OUTPUT_DIR = join(getDataDir(), "pdfs");
 
@@ -94,7 +94,7 @@ async function renderRxResumePdf(args: {
   let importedResumeId: string | null = null;
   const importData =
     preparedResume.mode === "v5"
-      ? convertDesignResumeToReactiveResumeV5Document(preparedResume.data, {
+      ? normalizeReactiveResumeV5Document(preparedResume.data, {
           requestOrigin: args.requestOrigin ?? null,
         })
       : preparedResume.data;

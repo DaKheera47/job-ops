@@ -136,7 +136,6 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         type: "toggle",
       },
       { key: "description", label: "Description", type: "richtext" },
-      { key: "technologies", label: "Keywords", type: "tags" },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -146,7 +145,6 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       website: { label: "", url: "" },
       options: { showLinkInTitle: false },
       description: "",
-      technologies: [],
     }),
   },
   {
