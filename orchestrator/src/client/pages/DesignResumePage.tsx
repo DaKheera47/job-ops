@@ -383,6 +383,8 @@ export const DesignResumePage: React.FC = () => {
               draft={draft}
               pdfRenderer={pdfRenderer}
               isUpdatingRenderer={rendererUpdating || settingsLoading}
+              isDirty={dirty}
+              saveState={saveState}
               onPdfRendererChange={handlePdfRendererChange}
             />
           </div>
