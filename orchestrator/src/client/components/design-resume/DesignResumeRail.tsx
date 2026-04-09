@@ -1,4 +1,4 @@
-import type { DesignResumeDocument } from "@shared/types";
+import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { Accordion } from "@/components/ui/accordion";
 import {
   BasicsCustomFieldsSection,
@@ -14,7 +14,7 @@ import { asArray, asRecord, setByPath } from "./utils";
 type DesignResumeRailProps = {
   draft: DesignResumeDocument;
   onUpdateResumeJson: (
-    updater: (resumeJson: Record<string, unknown>) => Record<string, unknown>,
+    updater: (resumeJson: DesignResumeJson) => DesignResumeJson,
   ) => void;
   onOpenDialog: (definition: ItemDefinition, index: number | null) => void;
   onUploadPicture: () => void;
@@ -56,7 +56,11 @@ export function DesignResumeRail({
         string,
         unknown
       >;
-      next.basics = setByPath(currentBasics, path, value);
+      next.basics = setByPath(
+        currentBasics,
+        path,
+        value,
+      ) as DesignResumeJson["basics"];
       return next;
     });
   };
@@ -71,7 +75,7 @@ export function DesignResumeRail({
       next.picture = {
         ...currentPicture,
         [key]: value,
-      };
+      } as DesignResumeJson["picture"];
       return next;
     });
   };
@@ -86,7 +90,7 @@ export function DesignResumeRail({
       next.summary = {
         ...currentSummary,
         [key]: value,
-      };
+      } as DesignResumeJson["summary"];
       return next;
     });
   };
@@ -101,7 +105,7 @@ export function DesignResumeRail({
       next.basics = {
         ...currentBasics,
         customFields: nextFields,
-      };
+      } as DesignResumeJson["basics"];
       return next;
     });
   };
@@ -122,7 +126,7 @@ export function DesignResumeRail({
           ...(asRecord(currentSections[sectionKey]) ?? {}),
           items: nextItems,
         },
-      };
+      } as DesignResumeJson["sections"];
       return next;
     });
   };

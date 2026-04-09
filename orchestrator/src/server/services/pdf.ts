@@ -26,8 +26,9 @@ import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 import {
   convertV4ResumeToReactiveResumeV5Document,
   mergeReactiveResumeV5Content,
-  normalizeReactiveResumeV5Document,
+  prepareReactiveResumeV5DocumentForExternalUse,
 } from "./rxresume/document";
+import { parseV5ResumeData } from "./rxresume/schema/v5";
 
 const OUTPUT_DIR = join(getDataDir(), "pdfs");
 
@@ -98,7 +99,7 @@ async function renderRxResumePdf(args: {
   let importedResumeId: string | null = null;
   const importData =
     preparedResume.mode === "v5"
-      ? normalizeReactiveResumeV5Document(preparedResume.data, {
+      ? prepareReactiveResumeV5DocumentForExternalUse(preparedResume.data, {
           requestOrigin: args.requestOrigin ?? null,
         })
       : preparedResume.data;
@@ -141,9 +142,7 @@ function normalizeResumeForReactiveResumeV5(args: {
       ? convertV4ResumeToReactiveResumeV5Document(args.resumeData, {
           requestOrigin: args.requestOrigin ?? null,
         })
-      : normalizeReactiveResumeV5Document(args.resumeData, {
-          requestOrigin: args.requestOrigin ?? null,
-        })
+      : (parseV5ResumeData(args.resumeData) as Record<string, unknown>)
   ) as Record<string, unknown>;
 }
 
@@ -161,9 +160,8 @@ async function resolveDesignResumeForRenderer(args: {
     throw notFound("Design Resume has not been imported yet.");
   }
 
-  const localDocument = normalizeReactiveResumeV5Document(
+  const localDocument = parseV5ResumeData(
     designResume.resumeJson as Record<string, unknown>,
-    { requestOrigin: args.requestOrigin ?? null },
   ) as Record<string, unknown>;
 
   if (
@@ -249,9 +247,8 @@ async function loadBaseResumeSource(args: {
     }
 
     return {
-      data: normalizeReactiveResumeV5Document(
+      data: parseV5ResumeData(
         designResume.resumeJson as Record<string, unknown>,
-        { requestOrigin: args.requestOrigin ?? null },
       ) as Record<string, unknown>,
       mode: "v5",
     };

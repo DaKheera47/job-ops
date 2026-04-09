@@ -7,6 +7,13 @@ import {
 } from "./document";
 import { sampleResume } from "./schema/v4";
 
+function makeFullV5Document(overrides?: Partial<Record<string, unknown>>) {
+  return {
+    ...buildDefaultReactiveResumeDocument(),
+    ...overrides,
+  };
+}
+
 describe("rxresume document normalization", () => {
   it("normalizes legacy local drafts into canonical v5 documents", () => {
     const normalized = normalizeReactiveResumeV5Document({
@@ -123,12 +130,11 @@ describe("rxresume document normalization", () => {
     ).toBe(false);
   });
 
-  it("converts v4 resumes into canonical v5 documents", () => {
+  it("converts v4 resumes into exact v5 documents", () => {
     const normalized = convertV4ResumeToReactiveResumeV5Document(sampleResume);
-    const defaults = buildDefaultReactiveResumeDocument();
 
-    expect(normalized.$schema).toBe("https://rxresu.me/schema.json");
-    expect(normalized.version).toBe("5.0.0");
+    expect(normalized).not.toHaveProperty("$schema");
+    expect(normalized).not.toHaveProperty("version");
     expect((normalized.picture as Record<string, unknown>).hidden).toBe(false);
     expect(
       (
@@ -137,19 +143,12 @@ describe("rxresume document normalization", () => {
           unknown
         >
       ).format,
-    ).toBe(
-      (
-        (defaults.metadata as Record<string, unknown>).page as Record<
-          string,
-          unknown
-        >
-      ).format,
-    );
+    ).toBe("a4");
   });
 
   it("preserves template metadata while overlaying local editable content", () => {
     const merged = mergeReactiveResumeV5Content(
-      {
+      makeFullV5Document({
         metadata: {
           template: "onyx",
           layout: {
@@ -196,8 +195,8 @@ describe("rxresume document normalization", () => {
           },
           notes: "",
         },
-      },
-      {
+      }),
+      makeFullV5Document({
         basics: {
           name: "Shaheer",
           headline: "Software Engineer",
@@ -213,7 +212,7 @@ describe("rxresume document normalization", () => {
           hidden: false,
           content: "<p>Hello</p>",
         },
-      },
+      }),
     );
 
     expect((merged.basics as Record<string, unknown>).name).toBe("Shaheer");

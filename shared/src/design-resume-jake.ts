@@ -171,8 +171,8 @@ function toExperienceEntries(resumeJson: RecordLike): DesignResumeJakeEntry[] {
       title: toText(item.company, "Untitled"),
       subtitle: toText(item.position) || null,
       meta: toText(item.location) || null,
-      date: toText(item.period || item.date) || null,
-      bullets: extractBullets(item.description || item.summary),
+      date: toText(item.period) || null,
+      bullets: extractBullets(item.description),
       url: toText(getByPath(item, "website.url")) || undefined,
     }),
   );
@@ -188,15 +188,15 @@ function toEducationEntries(resumeJson: RecordLike): DesignResumeJakeEntry[] {
     meta:
       [toText(item.location), toText(item.grade)].filter(Boolean).join(" | ") ||
       null,
-    date: toText(item.period || item.date) || null,
-    bullets: extractBullets(item.description || item.summary),
+    date: toText(item.period) || null,
+    bullets: extractBullets(item.description),
     url: toText(getByPath(item, "website.url")) || undefined,
   }));
 }
 
 function toProjectEntries(resumeJson: RecordLike): DesignResumeJakeEntry[] {
   return getVisibleSectionItems(resumeJson, "projects").map((item, index) => {
-    const technologies = asArray(item.technologies ?? item.keywords)
+    const technologies = asArray(item.keywords)
       .map((value) => toText(value))
       .filter(Boolean)
       .join(", ");
@@ -205,8 +205,8 @@ function toProjectEntries(resumeJson: RecordLike): DesignResumeJakeEntry[] {
       id: toText(item.id, `project-${index}`),
       title: toText(item.name, "Untitled"),
       subtitle: technologies || null,
-      date: toText(item.period || item.date) || null,
-      bullets: extractBullets(item.description || item.summary),
+      date: toText(item.period) || null,
+      bullets: extractBullets(item.description),
       url: toText(getByPath(item, "website.url")) || undefined,
     };
   });

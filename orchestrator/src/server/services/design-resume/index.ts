@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { badRequest, conflict, notFound } from "@infra/errors";
+import { AppError, badRequest, conflict, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { createId } from "@paralleldrive/cuid2";
@@ -10,10 +10,11 @@ import { getDataDir } from "@server/config/dataDir";
 import * as designResumeRepo from "@server/repositories/design-resume";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
+import { getResumeSchemaValidationMessage } from "@server/services/rxresume/schema";
 import {
-  convertV4ResumeToReactiveResumeV5Document,
-  normalizeReactiveResumeV5Document,
-} from "@server/services/rxresume/document";
+  parseV5ResumeData,
+  safeParseV5ResumeData,
+} from "@server/services/rxresume/schema/v5";
 import type {
   DesignResumeAsset,
   DesignResumeDocument,
@@ -29,6 +30,10 @@ const DESIGN_RESUME_ASSET_DIR = join(DESIGN_RESUME_DIR, "assets");
 const DESIGN_RESUME_DEFAULT_ID = "primary";
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const LEGACY_REIMPORT_MESSAGE =
+  "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
+const INVALID_V5_PREFIX =
+  "Design Resume must be a valid Reactive Resume v5 document.";
 
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
@@ -56,15 +61,34 @@ function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
 }
 
-function normalizeImportedResume(
+function formatValidationMessage(prefix: string, error: unknown): string {
+  const detail = getResumeSchemaValidationMessage(error);
+  if (!detail || detail === "Resume schema validation failed.") {
+    return prefix;
+  }
+  return `${prefix} ${detail}`;
+}
+
+function validateIncomingDesignResumeDocument(
   input: unknown,
-  mode: "v4" | "v5",
 ): DesignResumeJson {
-  return (
-    mode === "v4"
-      ? convertV4ResumeToReactiveResumeV5Document(input)
-      : normalizeReactiveResumeV5Document(input)
-  ) as DesignResumeJson;
+  try {
+    return parseV5ResumeData(input) as DesignResumeJson;
+  } catch (error) {
+    throw badRequest(formatValidationMessage(INVALID_V5_PREFIX, error));
+  }
+}
+
+function validateStoredDesignResumeDocument(input: unknown): DesignResumeJson {
+  const parsed = safeParseV5ResumeData(input);
+  if (parsed.success) {
+    return parsed.data as DesignResumeJson;
+  }
+  throw badRequest(LEGACY_REIMPORT_MESSAGE);
+}
+
+function isLegacyDesignResumeError(error: unknown): boolean {
+  return error instanceof AppError && error.message === LEGACY_REIMPORT_MESSAGE;
 }
 
 function buildDocumentTitle(document: DesignResumeJson): string {
@@ -108,9 +132,7 @@ async function hydrateDocument(
   return {
     id: row.id,
     title: row.title,
-    resumeJson: normalizeReactiveResumeV5Document(
-      row.resumeJson ?? {},
-    ) as DesignResumeJson,
+    resumeJson: validateStoredDesignResumeDocument(row.resumeJson ?? {}),
     revision: row.revision,
     sourceResumeId: row.sourceResumeId ?? null,
     sourceMode: row.sourceMode ?? null,
@@ -292,10 +314,10 @@ function applyPatchOperation(
   }
 }
 
-function normalizePatchedDocument(
+function validatePatchedDocument(
   document: Record<string, unknown>,
 ): DesignResumeJson {
-  return normalizeReactiveResumeV5Document(document) as DesignResumeJson;
+  return validateIncomingDesignResumeDocument(document);
 }
 
 function isMissingDesignResumeTableError(error: unknown): boolean {
@@ -359,12 +381,23 @@ export async function requireCurrentDesignResume(): Promise<DesignResumeDocument
 }
 
 export async function getDesignResumeStatus(): Promise<DesignResumeStatusResponse> {
-  const document = await getCurrentDesignResume();
-  return {
-    exists: Boolean(document),
-    documentId: document?.id ?? null,
-    updatedAt: document?.updatedAt ?? null,
-  };
+  try {
+    const document = await getCurrentDesignResume();
+    return {
+      exists: Boolean(document),
+      documentId: document?.id ?? null,
+      updatedAt: document?.updatedAt ?? null,
+    };
+  } catch (error) {
+    if (isLegacyDesignResumeError(error)) {
+      return {
+        exists: false,
+        documentId: null,
+        updatedAt: null,
+      };
+    }
+    throw error;
+  }
 }
 
 export async function importDesignResumeFromReactiveResume(): Promise<DesignResumeDocument> {
@@ -387,12 +420,12 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
       "Design Resume import now requires a Reactive Resume v5 source. Reconnect Reactive Resume with v5 and try again.",
     );
   }
-  const normalized = normalizeImportedResume(upstreamResume.data, sourceMode);
+  const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
   const now = new Date().toISOString();
   const saved = await designResumeRepo.upsertDesignResumeDocument({
     id: DESIGN_RESUME_DEFAULT_ID,
-    title: buildDocumentTitle(normalized),
-    resumeJson: normalized,
+    title: buildDocumentTitle(validated),
+    resumeJson: validated,
     revision: 1,
     sourceResumeId: resumeId,
     sourceMode,
@@ -415,20 +448,20 @@ export async function updateCurrentDesignResume(
     throw conflict("Design Resume has changed. Refresh and try again.");
   }
 
-  let nextDocument: Record<string, unknown>;
+  let nextDocument: DesignResumeJson;
   if (input.document) {
-    nextDocument = normalizePatchedDocument(
+    nextDocument = validatePatchedDocument(
       structuredClone(input.document) as Record<string, unknown>,
     );
   } else if (input.operations && input.operations.length > 0) {
-    nextDocument = structuredClone(current.resumeJson) as Record<
+    let nextDocumentRecord = structuredClone(current.resumeJson) as Record<
       string,
       unknown
     >;
     for (const operation of input.operations) {
-      nextDocument = applyPatchOperation(nextDocument, operation);
+      nextDocumentRecord = applyPatchOperation(nextDocumentRecord, operation);
     }
-    nextDocument = normalizePatchedDocument(nextDocument);
+    nextDocument = validatePatchedDocument(nextDocumentRecord);
   } else {
     throw badRequest(
       "Design Resume update requires a document or patch operations.",
@@ -491,16 +524,13 @@ export async function uploadDesignResumePicture(input: {
     throw error;
   }
 
-  const nextDocument = structuredClone(current.resumeJson) as Record<
-    string,
-    unknown
-  >;
+  const nextDocument = structuredClone(current.resumeJson) as DesignResumeJson;
   const picture = asRecord(nextDocument.picture) ?? {};
   nextDocument.picture = {
     ...picture,
     url: contentUrlForAsset(assetId),
     hidden: false,
-  };
+  } as DesignResumeJson["picture"];
 
   try {
     const updated = await updateCurrentDesignResume({
@@ -532,15 +562,12 @@ export async function deleteDesignResumePicture(): Promise<DesignResumeDocument>
     await deleteAssetFile(asset.storagePath);
   }
 
-  const nextDocument = structuredClone(current.resumeJson) as Record<
-    string,
-    unknown
-  >;
+  const nextDocument = structuredClone(current.resumeJson) as DesignResumeJson;
   const picture = asRecord(nextDocument.picture) ?? {};
   nextDocument.picture = {
     ...picture,
     url: "",
-  };
+  } as DesignResumeJson["picture"];
 
   return updateCurrentDesignResume({
     baseRevision: current.revision,
@@ -648,9 +675,7 @@ export async function designResumeToProfile(
             date: toText(record.period),
             summary: toText(record.description),
             visible: !toBoolean(record.hidden, false),
-            keywords: asArray(record.technologies ?? record.keywords).map(
-              (value) => toText(value),
-            ),
+            keywords: asArray(record.keywords).map((value) => toText(value)),
             url: toText(asRecord(record.website)?.url),
           };
         }),

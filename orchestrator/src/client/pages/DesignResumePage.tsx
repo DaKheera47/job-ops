@@ -5,7 +5,11 @@ import { ItemDialog } from "@client/components/design-resume/ItemDialog";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useSettings } from "@client/hooks/useSettings";
-import type { DesignResumeDocument, PdfRenderer } from "@shared/types";
+import type {
+  DesignResumeDocument,
+  DesignResumeJson,
+  PdfRenderer,
+} from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, FileDown, Import, PanelLeft, PenSquare } from "lucide-react";
 import type React from "react";
@@ -99,13 +103,13 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const updateResumeJson = (
-    updater: (resumeJson: Record<string, unknown>) => Record<string, unknown>,
+    updater: (resumeJson: DesignResumeJson) => DesignResumeJson,
   ) => {
     setDraft((current) => {
       if (!current) return current;
       return {
         ...current,
-        resumeJson: updater(current.resumeJson as Record<string, unknown>),
+        resumeJson: updater(current.resumeJson),
       };
     });
     setDirty(true);
@@ -425,7 +429,7 @@ export const DesignResumePage: React.FC = () => {
                   ...section,
                   items: nextItems,
                 },
-              };
+              } as DesignResumeJson["sections"];
               return next;
             });
           }}
@@ -451,7 +455,7 @@ export const DesignResumePage: React.FC = () => {
                         ...section,
                         items,
                       },
-                    };
+                    } as DesignResumeJson["sections"];
                     return next;
                   });
                   setDialogState(null);

@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { resolveTracerPublicBaseUrl } from "@server/services/tracer-links";
 import { parseV4ResumeData } from "./schema/v4";
+import { defaultV5ResumeData, parseV5ResumeData } from "./schema/v5";
 
 type RecordLike = Record<string, unknown>;
 
@@ -32,21 +33,21 @@ const VALID_LEVEL_TYPES = new Set([
 ]);
 
 const DEFAULT_MAIN_SECTIONS = [
+  "profiles",
   "summary",
-  "experience",
   "education",
+  "experience",
   "projects",
+  "volunteer",
   "references",
 ];
 
 const DEFAULT_SIDEBAR_SECTIONS = [
-  "profiles",
   "skills",
   "certifications",
-  "interests",
-  "languages",
   "awards",
-  "volunteer",
+  "languages",
+  "interests",
   "publications",
 ];
 
@@ -76,10 +77,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function defaultWebsite() {
-  return { url: "", label: "" };
-}
-
 function defaultOptions() {
   return { showLinkInTitle: false };
 }
@@ -92,13 +89,13 @@ function defaultPicture() {
   return {
     hidden: false,
     url: "",
-    size: 96,
+    size: 80,
     rotation: 0,
     aspectRatio: 1,
     borderRadius: 0,
-    borderColor: "rgba(214, 211, 209, 1)",
+    borderColor: "rgba(0, 0, 0, 0.5)",
     borderWidth: 0,
-    shadowColor: "rgba(28, 25, 23, 0.16)",
+    shadowColor: "rgba(0, 0, 0, 0.5)",
     shadowWidth: 0,
   };
 }
@@ -119,7 +116,7 @@ function buildDefaultPageLayout(customSections: unknown) {
 
 function pickTemplate(value: unknown): string {
   const template = toText(value).trim().toLowerCase();
-  return VALID_TEMPLATES.has(template) ? template : "gengar";
+  return VALID_TEMPLATES.has(template) ? template : "onyx";
 }
 
 function normalizeFontWeights(value: unknown): string[] {
@@ -211,6 +208,53 @@ function normalizeUrl(
   };
 }
 
+function absolutizeUrlString(
+  value: string,
+  publicBaseUrl: string | null,
+): string {
+  return value.startsWith("/") && publicBaseUrl
+    ? `${publicBaseUrl}${value}`
+    : value;
+}
+
+function absolutizeV5UrlNode(
+  value: unknown,
+  publicBaseUrl: string | null,
+): unknown {
+  const record = asRecord(value);
+  if (!record) return value;
+
+  const url = toText(record.url).trim();
+  if (!url || !publicBaseUrl || !url.startsWith("/")) {
+    return structuredClone(record);
+  }
+
+  return {
+    ...record,
+    url: `${publicBaseUrl}${url}`,
+  };
+}
+
+function absolutizeSectionWebsites(
+  section: unknown,
+  publicBaseUrl: string | null,
+): unknown {
+  const record = asRecord(section);
+  if (!record) return section;
+
+  return {
+    ...record,
+    items: asArray(record.items).map((item) => {
+      const itemRecord = asRecord(item);
+      if (!itemRecord) return item;
+      return {
+        ...itemRecord,
+        website: absolutizeV5UrlNode(itemRecord.website, publicBaseUrl),
+      };
+    }),
+  };
+}
+
 function normalizeOptions(value: unknown) {
   const record = asRecord(value);
   return {
@@ -265,7 +309,6 @@ function buildMetadata(
   source: RecordLike,
   publicBaseUrl: string | null,
 ): RecordLike {
-  console.log("Building metadata with source:", source, "and publicBaseUrl:", publicBaseUrl);
   const metadata = asRecord(source.metadata) ?? {};
   const layout = asRecord(metadata.layout);
   const css = asRecord(metadata.css);
@@ -277,9 +320,9 @@ function buildMetadata(
   const bodyTypography = asRecord(legacyTypography?.body);
   const headingTypography = asRecord(legacyTypography?.heading);
   const fallbackTypography = {
-    fontFamily: toText(legacyFont?.family, "Merriweather"),
-    fontWeights: normalizeFontWeights(legacyFont?.variants),
-    fontSize: clamp(toNumber(legacyFont?.size, 11), 6, 24),
+    fontFamily: toText(legacyFont?.family, "IBM Plex Serif"),
+    fontWeights: normalizeFontWeights(legacyFont?.variants ?? ["400", "500"]),
+    fontSize: clamp(toNumber(legacyFont?.size, 10), 6, 24),
     lineHeight: clamp(toNumber(legacyTypography?.lineHeight, 1.5), 0.5, 4),
   };
   const defaultPage = buildDefaultPageLayout(source.customSections);
@@ -302,11 +345,11 @@ function buildMetadata(
     page: {
       gapX: toNumber(page?.gapX, 4),
       gapY: toNumber(page?.gapY, 6),
-      marginX: toNumber(page?.marginX, toNumber(page?.margin, 20)),
-      marginY: toNumber(page?.marginY, toNumber(page?.margin, 20)),
+      marginX: toNumber(page?.marginX, toNumber(page?.margin, 14)),
+      marginY: toNumber(page?.marginY, toNumber(page?.margin, 12)),
       format: VALID_PAGE_FORMATS.has(toText(page?.format))
         ? toText(page?.format)
-        : "free-form",
+        : "a4",
       locale: toText(page?.locale, "en-US"),
       hideIcons: toBoolean(
         page?.hideIcons,
@@ -315,15 +358,15 @@ function buildMetadata(
     },
     design: {
       level: {
-        icon: toText(asRecord(design?.level)?.icon),
+        icon: toText(asRecord(design?.level)?.icon, "star"),
         type: VALID_LEVEL_TYPES.has(toText(asRecord(design?.level)?.type))
           ? toText(asRecord(design?.level)?.type)
-          : "hidden",
+          : "circle",
       },
       colors: {
         primary: toText(
           asRecord(design?.colors)?.primary ?? legacyTheme?.primary,
-          "rgba(202, 138, 4, 1)",
+          "rgba(220, 38, 38, 1)",
         ),
         text: toText(
           asRecord(design?.colors)?.text ?? legacyTheme?.text,
@@ -338,8 +381,10 @@ function buildMetadata(
     typography: {
       body: normalizeTypographyBlock(bodyTypography, fallbackTypography),
       heading: normalizeTypographyBlock(headingTypography, {
-        ...fallbackTypography,
-        fontSize: clamp(fallbackTypography.fontSize + 1, 6, 24),
+        fontFamily: fallbackTypography.fontFamily,
+        fontWeights: ["600"],
+        fontSize: 14,
+        lineHeight: fallbackTypography.lineHeight,
       }),
     },
     notes: toText(metadata.notes),
@@ -347,48 +392,13 @@ function buildMetadata(
 }
 
 export function buildDefaultReactiveResumeDocument(): RecordLike {
-  const source = { customSections: [] } satisfies RecordLike;
-  return {
-    $schema: "https://rxresu.me/schema.json",
-    version: "5.0.0",
-    picture: defaultPicture(),
-    basics: {
-      name: "",
-      headline: "",
-      email: "",
-      phone: "",
-      location: "",
-      website: defaultWebsite(),
-      customFields: [],
-    },
-    summary: {
-      ...defaultSectionBase("Summary"),
-      content: "",
-    },
-    sections: {
-      profiles: { ...defaultSectionBase("Profiles"), items: [] },
-      experience: { ...defaultSectionBase("Experience"), items: [] },
-      education: { ...defaultSectionBase("Education"), items: [] },
-      projects: { ...defaultSectionBase("Projects"), items: [] },
-      skills: { ...defaultSectionBase("Skills"), items: [] },
-      languages: { ...defaultSectionBase("Languages"), items: [] },
-      interests: { ...defaultSectionBase("Interests"), items: [] },
-      awards: { ...defaultSectionBase("Awards"), items: [] },
-      certifications: { ...defaultSectionBase("Certifications"), items: [] },
-      publications: { ...defaultSectionBase("Publications"), items: [] },
-      volunteer: { ...defaultSectionBase("Volunteer"), items: [] },
-      references: { ...defaultSectionBase("References"), items: [] },
-    },
-    customSections: [],
-    metadata: buildMetadata(source, null),
-  };
+  return structuredClone(defaultV5ResumeData) as RecordLike;
 }
 
 export function normalizeReactiveResumeV5Document(
   input: unknown,
   options: { requestOrigin?: string | null } = {},
 ): RecordLike {
-  console.log("Normalizing Reactive Resume V5 Document with input:", input, "and options:", options);
   const source = asRecord(input) ?? {};
   const basics = asRecord(source.basics) ?? {};
   const picture = asRecord(source.picture) ?? {};
@@ -401,13 +411,11 @@ export function normalizeReactiveResumeV5Document(
   });
 
   return {
-    $schema: toText(source.$schema, "https://rxresu.me/schema.json"),
-    version: toText(source.version, "5.0.0"),
     picture: {
       ...defaultPicture(),
       hidden: resolveHidden(picture, true),
       url: normalizeUrl(picture.url, publicBaseUrl).url,
-      size: clamp(toNumber(picture.size, 96), 32, 512),
+      size: clamp(toNumber(picture.size, 80), 32, 512),
       rotation: clamp(toNumber(picture.rotation, 0), 0, 360),
       aspectRatio: clamp(toNumber(picture.aspectRatio, 1), 0.5, 2.5),
       borderRadius: clamp(toNumber(picture.borderRadius, 0), 0, 100),
@@ -432,14 +440,14 @@ export function normalizeReactiveResumeV5Document(
       customFields: normalizeCustomFields(basics.customFields),
     },
     summary: {
-      ...defaultSectionBase("Summary"),
-      ...normalizeSectionBase(summary, "Summary"),
+      ...defaultSectionBase(""),
+      ...normalizeSectionBase(summary, ""),
       content: toText(summary.content),
     },
     sections: {
       profiles: {
-        ...defaultSectionBase("Profiles"),
-        ...normalizeSectionBase(asRecord(sections.profiles), "Profiles"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.profiles), ""),
         items: asArray(asRecord(sections.profiles)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -454,8 +462,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       experience: {
-        ...defaultSectionBase("Experience"),
-        ...normalizeSectionBase(asRecord(sections.experience), "Experience"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.experience), ""),
         items: asArray(asRecord(sections.experience)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -473,8 +481,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       education: {
-        ...defaultSectionBase("Education"),
-        ...normalizeSectionBase(asRecord(sections.education), "Education"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.education), ""),
         items: asArray(asRecord(sections.education)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -493,8 +501,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       projects: {
-        ...defaultSectionBase("Projects"),
-        ...normalizeSectionBase(asRecord(sections.projects), "Projects"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.projects), ""),
         items: asArray(asRecord(sections.projects)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -509,8 +517,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       skills: {
-        ...defaultSectionBase("Skills"),
-        ...normalizeSectionBase(asRecord(sections.skills), "Skills"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.skills), ""),
         items: asArray(asRecord(sections.skills)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -525,8 +533,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       languages: {
-        ...defaultSectionBase("Languages"),
-        ...normalizeSectionBase(asRecord(sections.languages), "Languages"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.languages), ""),
         items: asArray(asRecord(sections.languages)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -539,8 +547,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       interests: {
-        ...defaultSectionBase("Interests"),
-        ...normalizeSectionBase(asRecord(sections.interests), "Interests"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.interests), ""),
         items: asArray(asRecord(sections.interests)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -553,8 +561,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       awards: {
-        ...defaultSectionBase("Awards"),
-        ...normalizeSectionBase(asRecord(sections.awards), "Awards"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.awards), ""),
         items: asArray(asRecord(sections.awards)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -570,11 +578,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       certifications: {
-        ...defaultSectionBase("Certifications"),
-        ...normalizeSectionBase(
-          asRecord(sections.certifications),
-          "Certifications",
-        ),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.certifications), ""),
         items: asArray(asRecord(sections.certifications)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -590,11 +595,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       publications: {
-        ...defaultSectionBase("Publications"),
-        ...normalizeSectionBase(
-          asRecord(sections.publications),
-          "Publications",
-        ),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.publications), ""),
         items: asArray(asRecord(sections.publications)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -610,8 +612,8 @@ export function normalizeReactiveResumeV5Document(
         }),
       },
       volunteer: {
-        ...defaultSectionBase("Volunteer"),
-        ...normalizeSectionBase(asRecord(sections.volunteer), "Volunteer"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.volunteer), ""),
         items: asArray(asRecord(sections.volunteer)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -622,14 +624,13 @@ export function normalizeReactiveResumeV5Document(
             period: toText(record.period ?? record.date),
             website: normalizeUrl(record.website ?? record.url, publicBaseUrl),
             description: toText(record.description ?? record.summary),
-            position: toText(record.position),
             options: normalizeOptions(record.options),
           };
         }),
       },
       references: {
-        ...defaultSectionBase("References"),
-        ...normalizeSectionBase(asRecord(sections.references), "References"),
+        ...defaultSectionBase(""),
+        ...normalizeSectionBase(asRecord(sections.references), ""),
         items: asArray(asRecord(sections.references)?.items).map((item) => {
           const record = asRecord(item) ?? {};
           return {
@@ -652,13 +653,57 @@ export function normalizeReactiveResumeV5Document(
   };
 }
 
+export function prepareReactiveResumeV5DocumentForExternalUse(
+  input: unknown,
+  options: { requestOrigin?: string | null } = {},
+): RecordLike {
+  const publicBaseUrl = resolveTracerPublicBaseUrl({
+    requestOrigin: options.requestOrigin ?? null,
+  });
+  const parsed = parseV5ResumeData(input) as RecordLike;
+  const picture = asRecord(parsed.picture) ?? {};
+  const basics = asRecord(parsed.basics) ?? {};
+  const sections = asRecord(parsed.sections) ?? {};
+
+  return {
+    ...parsed,
+    picture: {
+      ...picture,
+      url: absolutizeUrlString(toText(picture.url), publicBaseUrl),
+    },
+    basics: {
+      ...basics,
+      website: absolutizeV5UrlNode(basics.website, publicBaseUrl),
+    },
+    sections: {
+      ...sections,
+      profiles: absolutizeSectionWebsites(sections.profiles, publicBaseUrl),
+      experience: absolutizeSectionWebsites(sections.experience, publicBaseUrl),
+      education: absolutizeSectionWebsites(sections.education, publicBaseUrl),
+      projects: absolutizeSectionWebsites(sections.projects, publicBaseUrl),
+      awards: absolutizeSectionWebsites(sections.awards, publicBaseUrl),
+      certifications: absolutizeSectionWebsites(
+        sections.certifications,
+        publicBaseUrl,
+      ),
+      publications: absolutizeSectionWebsites(
+        sections.publications,
+        publicBaseUrl,
+      ),
+      volunteer: absolutizeSectionWebsites(sections.volunteer, publicBaseUrl),
+      references: absolutizeSectionWebsites(sections.references, publicBaseUrl),
+    },
+  };
+}
+
 export function mergeReactiveResumeV5Content(
   templateInput: unknown,
   contentInput: unknown,
   options: { requestOrigin?: string | null } = {},
 ): RecordLike {
-  const template = normalizeReactiveResumeV5Document(templateInput, options);
-  const content = normalizeReactiveResumeV5Document(contentInput, options);
+  void options;
+  const template = parseV5ResumeData(templateInput) as RecordLike;
+  const content = parseV5ResumeData(contentInput) as RecordLike;
 
   return {
     ...template,

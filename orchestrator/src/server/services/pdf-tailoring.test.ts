@@ -6,18 +6,188 @@ import * as projectSelection from "./projectSelection";
 const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
   vi.hoisted(() => {
     const profile = {
+      $schema: "https://rxresu.me/schema.json",
+      version: "5.0.0",
+      picture: {
+        hidden: true,
+        url: "",
+        size: 96,
+        rotation: 0,
+        aspectRatio: 1,
+        borderRadius: 0,
+        borderColor: "#000000",
+        borderWidth: 0,
+        shadowColor: "#000000",
+        shadowWidth: 0,
+      },
+      basics: {
+        name: "",
+        headline: "Original Headline",
+        email: "",
+        phone: "",
+        location: "",
+        website: {
+          url: "",
+          label: "",
+        },
+        customFields: [],
+      },
+      summary: {
+        title: "Summary",
+        columns: 1,
+        hidden: false,
+        content: "Original Summary",
+      },
       sections: {
-        summary: { content: "Original Summary" },
-        skills: { items: ["Original Skill"] },
+        profiles: { title: "Profiles", columns: 1, hidden: false, items: [] },
+        experience: {
+          title: "Experience",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        education: {
+          title: "Education",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
         projects: {
+          title: "Projects",
+          columns: 1,
+          hidden: false,
           items: [
-            // Start with visible=true to test if they get hidden
-            { id: "p1", name: "Project 1", visible: true },
-            { id: "p2", name: "Project 2", visible: true },
+            {
+              id: "p1",
+              hidden: false,
+              name: "Project 1",
+              period: "",
+              website: { url: "", label: "" },
+              description: "",
+              options: { showLinkInTitle: false },
+            },
+            {
+              id: "p2",
+              hidden: false,
+              name: "Project 2",
+              period: "",
+              website: { url: "", label: "" },
+              description: "",
+              options: { showLinkInTitle: false },
+            },
           ],
         },
+        skills: {
+          title: "Skills",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "skill-1",
+              hidden: false,
+              icon: "",
+              name: "Original Skill",
+              proficiency: "",
+              level: 0,
+              keywords: [],
+            },
+          ],
+        },
+        languages: {
+          title: "Languages",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        interests: {
+          title: "Interests",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        awards: { title: "Awards", columns: 1, hidden: false, items: [] },
+        certifications: {
+          title: "Certifications",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        publications: {
+          title: "Publications",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        volunteer: {
+          title: "Volunteer",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
+        references: {
+          title: "References",
+          columns: 1,
+          hidden: false,
+          items: [],
+        },
       },
-      basics: { headline: "Original Headline" },
+      customSections: [],
+      metadata: {
+        template: "rhyhorn",
+        layout: {
+          sidebarWidth: 220,
+          pages: [
+            {
+              fullWidth: false,
+              main: ["summary", "experience", "education", "projects"],
+              sidebar: ["profiles", "skills", "languages"],
+            },
+          ],
+        },
+        css: {
+          enabled: false,
+          value: "",
+        },
+        page: {
+          gapX: 18,
+          gapY: 18,
+          marginX: 18,
+          marginY: 18,
+          format: "a4",
+          locale: "en",
+          hideIcons: false,
+          options: {
+            breakLine: true,
+            pageNumbers: true,
+          },
+        },
+        design: {
+          level: {
+            icon: "circle",
+            type: "hidden",
+          },
+          colors: {
+            background: "#ffffff",
+            text: "#000000",
+            primary: "#2563eb",
+          },
+        },
+        typography: {
+          body: {
+            fontFamily: "Inter",
+            fontWeights: ["regular"],
+            fontSize: 14,
+            lineHeight: 1.5,
+          },
+          heading: {
+            fontFamily: "Inter",
+            fontWeights: ["600"],
+            fontSize: 14,
+            lineHeight: 1.25,
+          },
+        },
+        notes: "",
+      },
     };
 
     let lastResumeJson: any = null;
@@ -181,7 +351,7 @@ vi.mock("./rxresume", async () => {
         const data = clone(args.resumeData);
         if (args.tailedContent?.summary || args.tailoredContent?.summary) {
           const summary = args.tailoredContent?.summary;
-          if (data.sections?.summary) data.sections.summary.content = summary;
+          if (data.summary) data.summary.content = summary;
         }
         if (args.tailoredContent?.headline && data.basics) {
           data.basics.headline = args.tailoredContent.headline;
@@ -203,9 +373,9 @@ vi.mock("./rxresume", async () => {
         }
         const selectedSet = new Set(selected);
         for (const item of data.sections?.projects?.items ?? []) {
-          item.visible = selectedSet.has(item.id);
+          item.hidden = !selectedSet.has(item.id);
         }
-        if (data.sections?.projects) data.sections.projects.visible = true;
+        if (data.sections?.projects) data.sections.projects.hidden = false;
 
         if (args.tracerLinks?.enabled) {
           mockTracerLinks.resolveTracerPublicBaseUrl({
@@ -263,11 +433,11 @@ describe("PDF Service Tailoring Logic", () => {
     const p1 = projects.find((p: any) => p.id === "p1");
     const p2 = projects.find((p: any) => p.id === "p2");
 
-    expect(p2.visible).toBe(true);
-    expect(p1.visible).toBe(false);
+    expect(p2.hidden).toBe(false);
+    expect(p1.hidden).toBe(true);
 
     // 3. Verify Summary Update
-    const summary = savedResumeJson.sections.summary.content;
+    const summary = savedResumeJson.summary.content;
     expect(summary).toBe("New Sum");
   });
 
@@ -278,8 +448,8 @@ describe("PDF Service Tailoring Logic", () => {
     const savedResumeJson = mockResumeRenderer.getLastResumeJson();
     const projects = savedResumeJson.sections.projects.items;
 
-    expect(projects.find((p: any) => p.id === "p1").visible).toBe(true);
-    expect(projects.find((p: any) => p.id === "p2").visible).toBe(true);
+    expect(projects.find((p: any) => p.id === "p1").hidden).toBe(false);
+    expect(projects.find((p: any) => p.id === "p2").hidden).toBe(false);
   });
 
   it("keeps projects section visible when selected project list is explicitly empty", async () => {
@@ -289,9 +459,9 @@ describe("PDF Service Tailoring Logic", () => {
     const savedResumeJson = mockResumeRenderer.getLastResumeJson();
     const projects = savedResumeJson.sections.projects.items;
 
-    expect(projects.find((p: any) => p.id === "p1").visible).toBe(false);
-    expect(projects.find((p: any) => p.id === "p2").visible).toBe(false);
-    expect(savedResumeJson.sections.projects.visible).toBe(true);
+    expect(projects.find((p: any) => p.id === "p1").hidden).toBe(true);
+    expect(projects.find((p: any) => p.id === "p2").hidden).toBe(true);
+    expect(savedResumeJson.sections.projects.hidden).toBe(false);
   });
 
   it("should fall back to AI selection if selectedProjectIds is null/undefined", async () => {
@@ -312,11 +482,11 @@ describe("PDF Service Tailoring Logic", () => {
       (p: any) => p.id === "p2",
     );
 
-    expect(p1.visible).toBe(true);
-    expect(p2.visible).toBe(false);
+    expect(p1.hidden).toBe(false);
+    expect(p2.hidden).toBe(true);
 
     const visibleCount = savedResumeJson.sections.projects.items.filter(
-      (p: any) => p.visible,
+      (p: any) => !p.hidden,
     ).length;
     expect(visibleCount).toBe(1);
   });

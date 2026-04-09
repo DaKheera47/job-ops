@@ -9,7 +9,7 @@ sidebar_position: 4
 
 Design Resume is JobOps' local-first resume editor.
 
-It stores a structured resume document inside JobOps, using the same v5-compatible JSON shape as Reactive Resume. JobOps uses this local document as the primary source of truth for:
+It stores an exact Reactive Resume v5 document inside JobOps. JobOps does not convert that document into a separate internal resume format. JobOps uses this local RR v5 document as the primary source of truth for:
 
 - profile context
 - project catalogs
@@ -25,7 +25,7 @@ Design Resume reduces that dependency by letting you:
 
 - import from Reactive Resume once
 - keep editing locally inside JobOps
-- preserve a structured JSON resume model
+- preserve the original Reactive Resume v5 structure
 - export back out when needed
 
 ## How to use it
@@ -34,18 +34,21 @@ Design Resume reduces that dependency by letting you:
 2. If this is your first time, click **Import from Reactive Resume**.
 3. Edit the left-panel fields directly.
 4. Watch for the local save indicator in the header.
-5. Use **Export** when you want a JSON snapshot of the current document.
+5. Use **Export** when you want the current Reactive Resume v5 JSON.
 
 Current v1 scope:
 
 - left-panel editing only
-- no live resume preview yet
-- the center artboard already supports zoom and pan for the future preview surface
+- local editing of the stored RR v5 document
+- export of the stored RR v5 document
+- PDF preview and PDF download using the selected renderer
 
 ## Common problems
 
 - Import button fails:
   Verify your Reactive Resume mode, URL, credentials, and selected base resume in **Settings**.
+- You already had a local Design Resume from an older JobOps build:
+  Re-import from a Reactive Resume v5 base resume. Older local documents are no longer auto-converted.
 - Changes do not appear in a generated PDF:
   Re-run tailoring or PDF generation after the local save finishes.
 - Picture upload fails:

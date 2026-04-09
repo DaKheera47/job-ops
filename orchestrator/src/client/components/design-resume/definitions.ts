@@ -307,12 +307,11 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     singularTitle: "Volunteer entry",
     description: "Volunteer work and community contributions.",
     primaryField: "organization",
-    secondaryField: "position",
+    secondaryField: "period",
     fields: [
       { key: "organization", label: "Organization", type: "text" },
       { key: "location", label: "Location", type: "text" },
       { key: "period", label: "Period", type: "text" },
-      { key: "position", label: "Position", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
       {
         key: "options.showLinkInTitle",
@@ -327,7 +326,6 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
       organization: "",
       location: "",
       period: "",
-      position: "",
       website: { label: "", url: "" },
       options: { showLinkInTitle: false },
       description: "",

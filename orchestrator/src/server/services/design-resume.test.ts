@@ -1,3 +1,4 @@
+import type { DesignResumeJson } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildDefaultReactiveResumeDocument } from "./rxresume/document";
 
@@ -34,9 +35,6 @@ vi.mock("@server/services/rxresume", () => ({
 }));
 vi.mock("@server/services/rxresume/schema/v4", () => ({
   parseV4ResumeData: vi.fn((input: unknown) => input),
-}));
-vi.mock("@server/services/rxresume/schema/v5", () => ({
-  parseV5ResumeData: vi.fn((input: unknown) => input),
 }));
 vi.mock("@server/services/tracer-links", () => ({
   resolveTracerPublicBaseUrl: vi.fn(() => null),
@@ -79,6 +77,15 @@ function makeDocumentRow(overrides?: Partial<Record<string, unknown>>) {
   };
 }
 
+function makeValidResumeJson(
+  overrides?: Partial<Record<string, unknown>>,
+): DesignResumeJson {
+  return {
+    ...buildDefaultReactiveResumeDocument(),
+    ...overrides,
+  } as DesignResumeJson;
+}
+
 describe("design resume service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -118,12 +125,16 @@ describe("design resume service", () => {
     ).rejects.toThrow("Invalid array patch path");
   });
 
-  it("preserves an explicit picture hidden flag during normalization", async () => {
+  it("preserves an explicit picture hidden flag during updates", async () => {
+    const resumeJson = makeValidResumeJson();
     repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
       makeDocumentRow({
         resumeJson: {
-          ...makeDocumentRow().resumeJson,
-          picture: { url: "", hidden: true },
+          ...resumeJson,
+          picture: {
+            ...(resumeJson.picture as Record<string, unknown>),
+            hidden: true,
+          },
         },
       }),
     );
@@ -131,8 +142,11 @@ describe("design resume service", () => {
     const updated = await updateCurrentDesignResume({
       baseRevision: 1,
       document: {
-        ...makeDocumentRow().resumeJson,
-        picture: { url: "", hidden: true },
+        ...resumeJson,
+        picture: {
+          ...(resumeJson.picture as Record<string, unknown>),
+          hidden: true,
+        } as (typeof resumeJson)["picture"],
       },
     });
 
@@ -160,7 +174,65 @@ describe("design resume service", () => {
     ).resolves.toBeTruthy();
   });
 
-  it("hydrates legacy local documents into canonical reactive resume v5 shape", async () => {
+  it("accepts upstream v5 resumes without wrapper fields or item options", async () => {
+    const upstreamResume = makeValidResumeJson({
+      sections: {
+        ...(buildDefaultReactiveResumeDocument().sections as Record<
+          string,
+          unknown
+        >),
+        profiles: {
+          title: "",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "profile-1",
+              hidden: false,
+              icon: "github-logo",
+              network: "GitHub",
+              username: "user",
+              website: { url: "https://github.com/user", label: "" },
+            },
+          ],
+        },
+        projects: {
+          title: "",
+          columns: 1,
+          hidden: false,
+          items: [
+            {
+              id: "project-1",
+              hidden: false,
+              name: "Project",
+              period: "2026",
+              website: { url: "", label: "" },
+              description: "<p>Example</p>",
+            },
+          ],
+        },
+      },
+    });
+
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+
+    expect(result.resumeJson).not.toHaveProperty("$schema");
+    expect(result.resumeJson).not.toHaveProperty("version");
+    expect(result.resumeJson.sections.projects.items[0]).not.toHaveProperty(
+      "options",
+    );
+    expect(result.resumeJson.sections.profiles.items[0]).not.toHaveProperty(
+      "options",
+    );
+  });
+
+  it("rejects legacy local documents and requires re-import", async () => {
     repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
       makeDocumentRow({
         resumeJson: {
@@ -252,17 +324,9 @@ describe("design resume service", () => {
       }),
     );
 
-    const hydrated = await getCurrentDesignResume();
-
-    expect((hydrated?.resumeJson.picture as { hidden?: boolean }).hidden).toBe(
-      true,
+    await expect(getCurrentDesignResume()).rejects.toThrow(
+      "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.",
     );
-    expect(
-      (
-        (hydrated?.resumeJson.metadata as Record<string, unknown>)
-          .layout as Record<string, unknown>
-      ).pages,
-    ).toBeInstanceOf(Array);
   });
 
   it("cleans up the uploaded file when picture asset insertion fails", async () => {

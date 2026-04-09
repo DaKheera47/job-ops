@@ -12,6 +12,7 @@ import {
 } from "@server/services/design-resume";
 import { generateDesignResumePdf } from "@server/services/pdf";
 import { clearProfileCache } from "@server/services/profile";
+import type { DesignResumePatchRequest } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -49,7 +50,7 @@ function resolveRequestOrigin(req: Request): string | null {
 
 const patchSchema = z.object({
   baseRevision: z.number().int().min(1),
-  document: z.record(z.string(), z.unknown()).optional(),
+  document: z.unknown().optional(),
   operations: z
     .array(
       z.object({
@@ -98,7 +99,7 @@ designResumeRouter.post(
 designResumeRouter.patch(
   "/",
   asyncRoute(async (req: Request, res: Response) => {
-    const input = patchSchema.parse(req.body);
+    const input = patchSchema.parse(req.body) as DesignResumePatchRequest;
     const document = await updateCurrentDesignResume(input);
     clearProfileCache();
     ok(res, document);
