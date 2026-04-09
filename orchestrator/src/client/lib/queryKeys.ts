@@ -1,6 +1,11 @@
 import type { JobStatus, PostApplicationProvider } from "@shared/types";
 
 export const queryKeys = {
+  designResume: {
+    all: ["design-resume"] as const,
+    current: () => [...queryKeys.designResume.all, "current"] as const,
+    status: () => [...queryKeys.designResume.all, "status"] as const,
+  },
   settings: {
     all: ["settings"] as const,
     current: () => [...queryKeys.settings.all, "current"] as const,

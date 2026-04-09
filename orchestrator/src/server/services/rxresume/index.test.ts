@@ -30,6 +30,7 @@ vi.mock("./client", () => ({
 
 import { getSetting } from "@server/repositories/settings";
 import { RxResumeClient } from "./client";
+import { buildDefaultReactiveResumeDocument } from "./document";
 import {
   clearRxResumeResumeCache,
   extractProjectsFromResume,
@@ -49,6 +50,13 @@ function mockSettings(map: SettingMap): void {
   vi.mocked(getSetting).mockImplementation(
     async (key: string) => map[key] ?? null,
   );
+}
+
+function makeFullV5Document(overrides?: Partial<Record<string, unknown>>) {
+  return {
+    ...buildDefaultReactiveResumeDocument(),
+    ...overrides,
+  };
 }
 
 describe("rxresume adapter", () => {
@@ -329,7 +337,7 @@ describe("rxresume adapter", () => {
   });
 
   it("prepares tailored v5 resume payload without relying on v4 fields", async () => {
-    const v5ResumeData = {
+    const v5ResumeData = makeFullV5Document({
       basics: {
         name: "Test User",
         headline: "Old headline",
@@ -339,7 +347,12 @@ describe("rxresume adapter", () => {
         website: { url: "https://example.com", label: "Portfolio" },
         customFields: [],
       },
-      picture: {},
+      picture: {
+        ...(buildDefaultReactiveResumeDocument().picture as Record<
+          string,
+          unknown
+        >),
+      },
       summary: {
         title: "Summary",
         columns: 1,
@@ -347,6 +360,10 @@ describe("rxresume adapter", () => {
         content: "Old summary",
       },
       sections: {
+        ...(buildDefaultReactiveResumeDocument().sections as Record<
+          string,
+          unknown
+        >),
         projects: {
           title: "Projects",
           columns: 1,
@@ -359,6 +376,7 @@ describe("rxresume adapter", () => {
               period: "2024",
               website: { url: "https://p1.example.com", label: "P1" },
               description: "Alpha",
+              options: { showLinkInTitle: false },
             },
             {
               id: "p2",
@@ -367,6 +385,7 @@ describe("rxresume adapter", () => {
               period: "2023",
               website: { url: "https://p2.example.com", label: "P2" },
               description: "Beta",
+              options: { showLinkInTitle: false },
             },
           ],
         },
@@ -387,9 +406,7 @@ describe("rxresume adapter", () => {
           ],
         },
       },
-      customSections: [],
-      metadata: {},
-    };
+    });
 
     const prepared = await prepareTailoredResumeForPdf({
       mode: "v5",
@@ -421,59 +438,69 @@ describe("rxresume adapter", () => {
   });
 
   it("extracts project catalog from v5 payloads", () => {
-    const result = extractProjectsFromResume({
-      basics: {
-        name: "",
-        headline: "",
-        email: "",
-        phone: "",
-        location: "",
-        website: { url: "", label: "" },
-        customFields: [],
-      },
-      picture: {},
-      summary: {
-        title: "Summary",
-        columns: 1,
-        hidden: false,
-        content: "",
-      },
-      sections: {
-        projects: {
-          title: "Projects",
+    const result = extractProjectsFromResume(
+      makeFullV5Document({
+        basics: {
+          name: "",
+          headline: "",
+          email: "",
+          phone: "",
+          location: "",
+          website: { url: "", label: "" },
+          customFields: [],
+        },
+        picture: {
+          ...(buildDefaultReactiveResumeDocument().picture as Record<
+            string,
+            unknown
+          >),
+        },
+        summary: {
+          title: "Summary",
           columns: 1,
           hidden: false,
-          items: [
-            {
-              id: "proj-1",
-              hidden: true,
-              name: "API",
-              period: "2025",
-              website: { url: "https://example.com", label: "Site" },
-              description: "Built API",
-            },
-          ],
+          content: "",
         },
-        skills: {
-          title: "Skills",
-          columns: 1,
-          hidden: false,
-          items: [
-            {
-              id: "skill-1",
-              hidden: false,
-              icon: "",
-              name: "Frontend",
-              proficiency: "",
-              level: 0,
-              keywords: ["React"],
-            },
-          ],
+        sections: {
+          ...(buildDefaultReactiveResumeDocument().sections as Record<
+            string,
+            unknown
+          >),
+          projects: {
+            title: "Projects",
+            columns: 1,
+            hidden: false,
+            items: [
+              {
+                id: "proj-1",
+                hidden: true,
+                name: "API",
+                period: "2025",
+                website: { url: "https://example.com", label: "Site" },
+                description: "Built API",
+                options: { showLinkInTitle: false },
+              },
+            ],
+          },
+          skills: {
+            title: "Skills",
+            columns: 1,
+            hidden: false,
+            items: [
+              {
+                id: "skill-1",
+                hidden: false,
+                icon: "",
+                name: "Frontend",
+                proficiency: "",
+                level: 0,
+                keywords: ["React"],
+              },
+            ],
+          },
         },
-      },
-      customSections: [],
-      metadata: {},
-    });
+      }),
+    );
 
     expect(result.mode).toBe("v5");
     expect(result.catalog).toEqual([

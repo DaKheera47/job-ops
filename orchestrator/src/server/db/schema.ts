@@ -256,6 +256,42 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const designResumeDocuments = sqliteTable("design_resume_documents", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  resumeJson: text("resume_json", { mode: "json" }).notNull(),
+  revision: integer("revision").notNull().default(1),
+  sourceResumeId: text("source_resume_id"),
+  sourceMode: text("source_mode", { enum: ["v4", "v5"] }),
+  importedAt: text("imported_at"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const designResumeAssets = sqliteTable(
+  "design_resume_assets",
+  {
+    id: text("id").primaryKey(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => designResumeDocuments.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["picture"] })
+      .notNull()
+      .default("picture"),
+    originalName: text("original_name").notNull(),
+    mimeType: text("mime_type").notNull(),
+    byteSize: integer("byte_size").notNull(),
+    storagePath: text("storage_path").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    documentIndex: index("idx_design_resume_assets_document_id").on(
+      table.documentId,
+    ),
+  }),
+);
+
 export const postApplicationIntegrations = sqliteTable(
   "post_application_integrations",
   {
@@ -456,6 +492,11 @@ export type JobChatRunRow = typeof jobChatRuns.$inferSelect;
 export type NewJobChatRunRow = typeof jobChatRuns.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;
 export type NewSettingsRow = typeof settings.$inferInsert;
+export type DesignResumeDocumentRow = typeof designResumeDocuments.$inferSelect;
+export type NewDesignResumeDocumentRow =
+  typeof designResumeDocuments.$inferInsert;
+export type DesignResumeAssetRow = typeof designResumeAssets.$inferSelect;
+export type NewDesignResumeAssetRow = typeof designResumeAssets.$inferInsert;
 export type PostApplicationIntegrationRow =
   typeof postApplicationIntegrations.$inferSelect;
 export type NewPostApplicationIntegrationRow =

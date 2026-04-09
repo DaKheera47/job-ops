@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sampleResume } from "./schema/v4";
+import { buildDefaultReactiveResumeDocument } from "./document";
 import {
   deleteResume,
   exportResumePdf,
@@ -8,6 +8,19 @@ import {
   importResume,
   listResumes,
 } from "./v5";
+
+const sampleResume = buildDefaultReactiveResumeDocument();
+(sampleResume.basics as Record<string, unknown>).name = "Imported Resume";
+
+vi.mock("@infra/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn(),
+  },
+}));
 
 function jsonResponse(data: unknown, ok = true, status = 200) {
   return {
@@ -95,6 +108,38 @@ describe("rxresume v5 endpoints", () => {
       5,
       "https://rxresu.me/api/openapi/resumes/resume-123/pdf",
       expect.any(Object),
+    );
+  });
+
+  it("logs sanitized upstream validation details when a request fails", async () => {
+    const { logger } = await import("@infra/logger");
+    const errorPayload = {
+      formErrors: [],
+      fieldErrors: {
+        picture: ["Invalid input: expected boolean, received undefined"],
+      },
+    };
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(errorPayload, false, 400));
+    vi.stubGlobal("fetch", mockFetch);
+    vi.stubEnv("RXRESUME_API_KEY", "test-key");
+
+    await expect(
+      importResume(
+        { data: sampleResume, name: "Imported Resume" },
+        { baseUrl: "https://rxresu.me" },
+      ),
+    ).rejects.toThrow("Reactive Resume API error (400)");
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Reactive Resume upstream request failed",
+      expect.objectContaining({
+        endpoint: "/api/openapi/resumes/import",
+        method: "POST",
+        status: 400,
+        upstreamError: errorPayload,
+      }),
     );
   });
 });

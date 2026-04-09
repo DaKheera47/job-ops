@@ -11,6 +11,12 @@ import type {
   BackupInfo,
   BranchInfo,
   DemoInfoResponse,
+  DesignResumeDocument,
+  DesignResumeExportResponse,
+  DesignResumeJson,
+  DesignResumePatchRequest,
+  DesignResumePdfResponse,
+  DesignResumeStatusResponse,
   Job,
   JobActionRequest,
   JobActionResponse,
@@ -1331,6 +1337,61 @@ export async function getResumeProjectsCatalog(): Promise<
 
 export async function getProfile(): Promise<ResumeProfile> {
   return fetchApi<ResumeProfile>("/profile");
+}
+
+export async function getDesignResume(): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume");
+}
+
+export async function getDesignResumeStatus(): Promise<DesignResumeStatusResponse> {
+  return fetchApi<DesignResumeStatusResponse>("/design-resume/status");
+}
+
+export async function importDesignResumeFromRxResume(): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/import/rxresume", {
+    method: "POST",
+  });
+}
+
+export async function updateDesignResume(
+  input: DesignResumePatchRequest,
+): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function uploadDesignResumePicture(input: {
+  fileName: string;
+  dataUrl: string;
+  baseRevision?: number;
+  document?: DesignResumeJson;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteDesignResumePicture(input?: {
+  baseRevision?: number;
+  document?: DesignResumeJson;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets/picture", {
+    method: "DELETE",
+    body: JSON.stringify(input ?? {}),
+  });
+}
+
+export async function exportDesignResume(): Promise<DesignResumeExportResponse> {
+  return fetchApi<DesignResumeExportResponse>("/design-resume/export");
+}
+
+export async function generateDesignResumePdf(): Promise<DesignResumePdfResponse> {
+  return fetchApi<DesignResumePdfResponse>("/design-resume/generate-pdf", {
+    method: "POST",
+  });
 }
 
 export async function getProfileStatus(): Promise<ProfileStatusResponse> {

@@ -96,6 +96,34 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS design_resume_documents (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    resume_json TEXT NOT NULL,
+    revision INTEGER NOT NULL DEFAULT 1,
+    source_resume_id TEXT,
+    source_mode TEXT CHECK(source_mode IN ('v4', 'v5')),
+    imported_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS design_resume_assets (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'picture' CHECK(kind IN ('picture')),
+    original_name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    byte_size INTEGER NOT NULL,
+    storage_path TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (document_id) REFERENCES design_resume_documents(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_design_resume_assets_document_id
+    ON design_resume_assets(document_id)`,
+
   `CREATE TABLE IF NOT EXISTS job_chat_threads (
     id TEXT PRIMARY KEY,
     job_id TEXT NOT NULL,

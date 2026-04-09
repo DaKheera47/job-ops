@@ -2,6 +2,7 @@ import { ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
+import { getDesignResumeStatus } from "@server/services/design-resume";
 import { LlmService } from "@server/services/llm/service";
 import {
   getResume,
@@ -84,6 +85,11 @@ function normalizeLlmProviderValue(
  */
 async function validateResumeConfig(): Promise<ValidationResponse> {
   try {
+    const localStatus = await getDesignResumeStatus();
+    if (localStatus.exists) {
+      return { valid: true, message: null };
+    }
+
     // Check if rxresumeBaseResumeId is configured
     const { resumeId: rxresumeBaseResumeId } =
       await getConfiguredRxResumeBaseResumeId();
@@ -140,6 +146,11 @@ async function validateRxresume(options?: {
   apiKey?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
+  const localStatus = await getDesignResumeStatus();
+  if (localStatus.exists) {
+    return { valid: true, message: null, status: null };
+  }
+
   const rawMode = options?.mode?.trim();
   const explicitMode = rawMode === "v4" || rawMode === "v5" ? rawMode : null;
   const requestEmail = options?.email?.trim() ?? "";

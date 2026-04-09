@@ -1,10 +1,15 @@
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
+import {
+  designResumeToProfile,
+  isLegacyDesignResumeError,
+} from "./design-resume";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;
+let cachedLocalProfile: ResumeProfile | null = null;
 
 /**
  * Get the base resume profile from RxResume.
@@ -16,6 +21,28 @@ let cachedResumeId: string | null = null;
  * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
 export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
+  if (cachedLocalProfile && !forceRefresh) {
+    return cachedLocalProfile;
+  }
+
+  try {
+    const localProfile = await designResumeToProfile();
+    if (localProfile) {
+      cachedLocalProfile = localProfile;
+      return localProfile;
+    }
+  } catch (error) {
+    if (!isLegacyDesignResumeError(error)) {
+      throw error;
+    }
+    logger.warn(
+      "Ignoring legacy local Design Resume while loading profile fallback",
+      {
+        error,
+      },
+    );
+  }
+
   const { resumeId: rxresumeBaseResumeId } =
     await getConfiguredRxResumeBaseResumeId();
 
@@ -78,4 +105,5 @@ export async function getPersonName(): Promise<string> {
 export function clearProfileCache(): void {
   cachedProfile = null;
   cachedResumeId = null;
+  cachedLocalProfile = null;
 }

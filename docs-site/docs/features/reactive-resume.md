@@ -1,53 +1,61 @@
 ---
 id: reactive-resume
 title: Reactive Resume
-description: Configure RxResume integration, base resume selection, and project inclusion behavior for PDF generation.
+description: Configure Reactive Resume as an optional import/export and PDF backend for JobOps.
 sidebar_position: 4
 ---
 
 ## What it is
 
-Reactive Resume provides the structured base resume that JobOps uses for PDF generation.
+Reactive Resume is now an optional integration in JobOps.
 
-JobOps uses a selected RxResume base resume as the source of truth, applies job-specific tailoring (summary, headline, skills, project visibility), then renders the final PDF using the renderer selected in Settings.
+The primary editing surface is **Design Resume**, which stores a local resume document inside JobOps. Reactive Resume is used for:
+
+- importing an existing resume into Design Resume
+- exporting JobOps resume JSON back out
+- optional upstream PDF export when the `rxresume` PDF renderer is selected
 
 ## Why it exists
 
 Most users need a repeatable resume pipeline:
 
-- one canonical resume source
+- one canonical structured resume source
 - controlled project inclusion rules
 - per-job tailored output without manual copy/paste
 
-Reactive Resume integration provides the editable, structured resume source that makes that workflow reliable.
+Reactive Resume still matters because many users already maintain a strong resume there, and its JSON model is compatible with JobOps. Importing that data into Design Resume avoids re-entry while reducing day-to-day dependence on the upstream service.
 
-### Why JobOps uses RxResume (instead of building a new editor)
+### Where it fits now
 
-RxResume is a mature, established resume product with a strong editing experience and a JSON-native data model.
+Reactive Resume remains useful because it has a mature editor, established templates, and a JSON-native data model.
 
 Key reasons:
 
-- The editor UX is strong and supports extensive user customization.
-- It supports many themes out of the box.
-- It has a JSON-native model (import/export), which is critical for JobOps automation.
+- It is a convenient migration/import source.
+- It can still power PDF export if you prefer the upstream renderer.
+- Its JSON schema remains a stable interchange format for JobOps.
 
-Because RxResume uses structured JSON, JobOps can safely apply LLM-driven updates to specific sections before rendering PDFs locally.
+For everyday editing inside JobOps, use [Design Resume](./design-resume).
 
 ## Core concepts
 
-### Base resume
+### Import source
 
-Your **base resume** is selected in Settings and used for:
+Your configured **base resume** in Reactive Resume is used as the import source for Design Resume when you choose **Import from Reactive Resume**.
+
+After import, JobOps uses the local Design Resume for:
 
 - profile extraction
 - project catalog extraction
-- PDF generation
+- tailoring and scoring context
+- local PDF generation
+- future in-app resume design work
 
-If no base resume is selected, profile-dependent features and PDF generation cannot run.
+If you use the `rxresume` PDF renderer, JobOps can still send the tailored JSON through Reactive Resume at export time.
 
 ### Project catalog
 
-JobOps reads projects from `sections.projects.items` in the selected RxResume resume.
+JobOps reads projects from `sections.projects.items` in the local Design Resume document.
 
 Each project is identified by:
 
@@ -123,9 +131,17 @@ In **Settings → Reactive Resume**:
 2. Select the template/base resume.
 3. Save settings.
 
-### 3) Configure project behavior
+### 3) Import into Design Resume
 
-In the same section:
+1. Open **Design Resume** in the left navigation.
+2. Click **Import from Reactive Resume**.
+3. Wait for JobOps to create the local Design Resume document.
+
+After that import, JobOps reads resume context locally by default.
+
+### 4) Configure project behavior
+
+In **Settings → Reactive Resume**:
 
 1. Set `Max projects`.
 2. Mark projects as **Must Include** where needed.
@@ -138,7 +154,7 @@ In the same section:
 
 High-level flow:
 
-1. Load selected base resume from RxResume.
+1. Load the local Design Resume document.
 2. Apply tailored summary/headline/skills.
 3. Compute final visible projects from your selection rules.
 4. Optionally rewrite outbound links to tracer links (per-job toggle).
@@ -149,9 +165,9 @@ High-level flow:
 
 ### Resume-data caching
 
-JobOps caches successful Reactive Resume resume fetches in memory for 5 minutes.
+JobOps caches successful Reactive Resume resume fetches in memory for 5 minutes when upstream access is needed.
 
-This reduces repeated API calls from settings loads, profile checks, project lookups, and PDF generation while still refreshing often enough for normal editing workflows.
+This now mainly affects import/export operations, settings resume lookup, and the optional upstream PDF renderer.
 
 ### Per-job tracer links
 
@@ -188,9 +204,27 @@ JobOps can generate the final PDF in 2 ways:
 
 Notes:
 
-- RxResume still supplies the structured base resume and project data in both modes.
+- Design Resume supplies the structured base resume and project data by default.
+- Reactive Resume is only required at render time when you choose the `rxresume` PDF renderer.
 - In Docker deployments, `tectonic` is bundled into the image for the LaTeX option.
 - In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed when using the LaTeX option.
+
+## Common problems
+
+- Import fails:
+  Check that Reactive Resume credentials, mode, URL, and selected base resume are valid in **Settings**.
+- Design Resume is empty:
+  Open **Design Resume** and run **Import from Reactive Resume** once.
+- PDF export still calls Reactive Resume:
+  Switch the PDF renderer to `latex` if you want the full flow to stay local.
+- Project lists look stale:
+  Re-import from Reactive Resume if you intentionally changed the upstream base resume and want those changes copied into JobOps.
+
+## Related pages
+
+- [Design Resume](./design-resume)
+- [Settings](./settings)
+- [Tracer Links](./tracer-links)
 
 ## API reference
 

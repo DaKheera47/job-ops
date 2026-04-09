@@ -36,7 +36,9 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume (`v5` or `v4`), and select a template resume.
+   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume (`v5` or `v4`) if you want import support, and select a template resume.
+
+   Then open **Design Resume** in the app and import your base resume once. JobOps will use that local Design Resume document as the primary resume context for tailoring, scoring, and PDF generation.
 
    `v5` (API key) is recommended for self-hosted/latest Reactive Resume. Use `v4` when connecting to the legacy email/password flow.
 

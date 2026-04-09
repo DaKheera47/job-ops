@@ -27,14 +27,14 @@ const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
       basics: { headline: "Original Headline" },
     };
 
-    let lastPreparedResume: any = null;
+    let lastResumeJson: any = null;
     const renderer = {
       renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
-        lastPreparedResume = JSON.parse(JSON.stringify(args.preparedResume));
+        lastResumeJson = JSON.parse(JSON.stringify(args.resumeJson));
       }),
-      getLastPreparedResume: () => lastPreparedResume,
-      clearLastPreparedResume: () => {
-        lastPreparedResume = null;
+      getLastResumeJson: () => lastResumeJson,
+      clearLastResumeJson: () => {
+        lastResumeJson = null;
       },
     };
 
@@ -158,6 +158,10 @@ vi.mock("./rxresume/baseResumeId", () => ({
   }),
 }));
 
+vi.mock("./design-resume", () => ({
+  getCurrentDesignResume: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("./rxresume", async () => {
   const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
   const { createId } = await import("@paralleldrive/cuid2");
@@ -229,7 +233,7 @@ describe("PDF Service Skills Validation", () => {
     vi.clearAllMocks();
     currentPdfRenderer.value = "latex";
     vi.mocked(getProfile).mockResolvedValue(mockProfile);
-    mockResumeRenderer.clearLastPreparedResume();
+    mockResumeRenderer.clearLastResumeJson();
   });
 
   it("should add required schema fields (visible, description) to new skills", async () => {
@@ -244,7 +248,7 @@ describe("PDF Service Skills Validation", () => {
     await generatePdf("job-skills-1", tailoredContent, "Job Desc");
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
-    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
 
     const skillItems = savedResumeJson.sections.skills.items;
 
@@ -300,7 +304,7 @@ describe("PDF Service Skills Validation", () => {
     await generatePdf("job-no-tailor", {}, "Job Desc", "dummy.json");
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
-    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
 
     const item = savedResumeJson.sections.skills.items[0];
 
@@ -352,7 +356,7 @@ describe("PDF Service Skills Validation", () => {
     await generatePdf("job-cuid2-test", {}, "Job Desc", "dummy.json");
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
-    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
 
     const skillItems = savedResumeJson.sections.skills.items;
 
@@ -397,7 +401,7 @@ describe("PDF Service Skills Validation", () => {
     await generatePdf("job-no-skill-prefix", {}, "Job Desc", "dummy.json");
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
-    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
 
     const skill = savedResumeJson.sections.skills.items[0];
 
@@ -433,7 +437,7 @@ describe("PDF Service Skills Validation", () => {
     await generatePdf("job-preserve-id", {}, "Job Desc", "dummy.json");
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
-    const savedResumeJson = mockResumeRenderer.getLastPreparedResume().data;
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
 
     const skill = savedResumeJson.sections.skills.items[0];
 
