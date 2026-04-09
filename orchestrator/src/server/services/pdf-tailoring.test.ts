@@ -190,14 +190,15 @@ const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
       },
     };
 
-    let lastResumeJson: any = null;
+    let lastResumeArgs: any = null;
     const renderer = {
       renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
-        lastResumeJson = JSON.parse(JSON.stringify(args.resumeJson));
+        lastResumeArgs = JSON.parse(JSON.stringify(args));
       }),
-      getLastResumeJson: () => lastResumeJson,
+      getLastResumeJson: () => lastResumeArgs?.resumeJson ?? null,
+      getLastResumeArgs: () => lastResumeArgs,
       clearLastResumeJson: () => {
-        lastResumeJson = null;
+        lastResumeArgs = null;
       },
     };
 
@@ -390,7 +391,7 @@ vi.mock("./rxresume", async () => {
         }
 
         return {
-          mode: "v5",
+          mode: args.mode,
           data,
           projectCatalog: [],
           selectedProjectIds: [...selectedSet],
@@ -512,6 +513,54 @@ describe("PDF Service Tailoring Logic", () => {
     expect(mockTracerLinks.rewriteResumeLinksWithTracer).toHaveBeenCalledTimes(
       1,
     );
+  });
+
+  it("passes v4 mode through to the LaTeX renderer when falling back to a v4 base resume", async () => {
+    const rxresume = await import("./rxresume");
+    vi.mocked(rxresume.getResume).mockResolvedValueOnce({
+      id: "base-resume-id",
+      name: "Base Resume",
+      mode: "v4",
+      data: {
+        basics: {
+          name: "Jane Doe",
+          headline: "Platform Engineer",
+          email: "jane@example.com",
+          phone: "",
+          url: {
+            href: "https://jane.dev",
+            label: "Portfolio",
+          },
+        },
+        sections: {
+          summary: {
+            id: "summary",
+            visible: true,
+            content: "<p>Summary</p>",
+          },
+          projects: {
+            id: "projects",
+            visible: true,
+            items: [],
+          },
+          skills: {
+            id: "skills",
+            visible: true,
+            items: [],
+          },
+        },
+      },
+    } as any);
+
+    await generatePdf("job-v4-latex", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-v4-latex",
+        mode: "v4",
+      }),
+    );
+    expect(mockResumeRenderer.getLastResumeArgs()?.mode).toBe("v4");
   });
 
   it("uses the RxResume export flow when the renderer setting is rxresume", async () => {

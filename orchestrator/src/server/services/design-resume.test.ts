@@ -4,6 +4,7 @@ import { buildDefaultReactiveResumeDocument } from "./rxresume/document";
 
 const repo = vi.hoisted(() => ({
   getLatestDesignResumeDocument: vi.fn(),
+  getDesignResumeAssetById: vi.fn(),
   listDesignResumeAssets: vi.fn(),
   upsertDesignResumeDocument: vi.fn(),
   insertDesignResumeAsset: vi.fn(),
@@ -55,6 +56,7 @@ import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/bas
 import {
   getCurrentDesignResume,
   importDesignResumeFromReactiveResume,
+  readDesignResumeAssetContent,
   updateCurrentDesignResume,
   uploadDesignResumePicture,
 } from "./design-resume";
@@ -91,6 +93,7 @@ describe("design resume service", () => {
     vi.clearAllMocks();
     repo.getLatestDesignResumeDocument.mockResolvedValue(makeDocumentRow());
     repo.listDesignResumeAssets.mockResolvedValue([]);
+    repo.getDesignResumeAssetById.mockResolvedValue(null);
     repo.upsertDesignResumeDocument.mockImplementation(async (input) =>
       makeDocumentRow({
         ...input,
@@ -172,6 +175,21 @@ describe("design resume service", () => {
         ],
       }),
     ).resolves.toBeTruthy();
+  });
+
+  it("rejects reading from the JSON Patch array append position", async () => {
+    await expect(
+      updateCurrentDesignResume({
+        baseRevision: 1,
+        operations: [
+          {
+            op: "test",
+            path: "/sections/projects/items/-",
+            value: undefined,
+          },
+        ],
+      }),
+    ).rejects.toThrow("Patch path not found: /sections/projects/items/-");
   });
 
   it("accepts upstream v5 resumes without wrapper fields or item options", async () => {
@@ -344,6 +362,26 @@ describe("design resume service", () => {
     expect(fsMocks.unlink).toHaveBeenCalledWith(
       "/tmp/job-ops-test/design-resume/assets/asset-1.png",
     );
+  });
+
+  it("does not expose asset storage paths in hydrated responses", async () => {
+    repo.getDesignResumeAssetById.mockResolvedValueOnce({
+      id: "asset-1",
+      documentId: "primary",
+      kind: "picture",
+      originalName: "photo.png",
+      mimeType: "image/png",
+      byteSize: 123,
+      storagePath: "/tmp/job-ops-test/design-resume/assets/photo.png",
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    });
+    fsMocks.readFile.mockResolvedValueOnce(Buffer.from("hello"));
+
+    const { asset } = await readDesignResumeAssetContent("asset-1");
+
+    expect(asset).not.toHaveProperty("storagePath");
+    expect(asset.contentUrl).toBe("/api/design-resume/assets/asset-1/content");
   });
 
   it("removes existing assets when re-importing from Reactive Resume", async () => {

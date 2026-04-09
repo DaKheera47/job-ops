@@ -117,7 +117,6 @@ function toDesignResumeAsset(
     originalName: row.originalName,
     mimeType: row.mimeType,
     byteSize: row.byteSize,
-    storagePath: row.storagePath,
     contentUrl: contentUrlForAsset(row.id),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -228,7 +227,10 @@ function readPointerValue(
   if (path === "") return root;
   const { parent, key } = getPointerParent(root, path);
   if (Array.isArray(parent)) {
-    const index = key === "-" ? parent.length : Number.parseInt(key, 10);
+    if (key === "-") {
+      throw badRequest(`Patch path not found: ${path}`);
+    }
+    const index = Number.parseInt(key, 10);
     return parent[index];
   }
   return parent[key];

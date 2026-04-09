@@ -18,6 +18,12 @@ import { z } from "zod";
 
 export const designResumeRouter = Router();
 
+const jsonPointerSchema = z
+  .string()
+  .refine((value) => value === "" || value.startsWith("/"), {
+    message: "Patch paths must be valid JSON Pointers.",
+  });
+
 function resolveRequestOrigin(req: Request): string | null {
   const configuredBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL?.trim();
   if (configuredBaseUrl) {
@@ -48,19 +54,102 @@ function resolveRequestOrigin(req: Request): string | null {
   return `${protocol}://${host}`;
 }
 
-const patchSchema = z.object({
+const addOperationSchema = z
+  .object({
+    op: z.literal("add"),
+    path: jsonPointerSchema,
+    value: z.unknown().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!("value" in value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "Patch add operations require a value.",
+      });
+    }
+  });
+
+const replaceOperationSchema = z
+  .object({
+    op: z.literal("replace"),
+    path: jsonPointerSchema,
+    value: z.unknown().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!("value" in value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "Patch replace operations require a value.",
+      });
+    }
+  });
+
+const testOperationSchema = z
+  .object({
+    op: z.literal("test"),
+    path: jsonPointerSchema,
+    value: z.unknown().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!("value" in value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["value"],
+        message: "Patch test operations require a value.",
+      });
+    }
+  });
+
+const moveOperationSchema = z
+  .object({
+    op: z.literal("move"),
+    path: jsonPointerSchema,
+    from: jsonPointerSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!("from" in value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["from"],
+        message: "Patch move operations require a from path.",
+      });
+    }
+  });
+
+const copyOperationSchema = z
+  .object({
+    op: z.literal("copy"),
+    path: jsonPointerSchema,
+    from: jsonPointerSchema.optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (!("from" in value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["from"],
+        message: "Patch copy operations require a from path.",
+      });
+    }
+  });
+
+const patchOperationSchema = z.union([
+  addOperationSchema,
+  z.object({
+    op: z.literal("remove"),
+    path: jsonPointerSchema,
+  }),
+  replaceOperationSchema,
+  moveOperationSchema,
+  copyOperationSchema,
+  testOperationSchema,
+]);
+
+export const designResumePatchSchema = z.object({
   baseRevision: z.number().int().min(1),
   document: z.unknown().optional(),
-  operations: z
-    .array(
-      z.object({
-        op: z.enum(["add", "remove", "replace", "move", "copy", "test"]),
-        path: z.string(),
-        from: z.string().optional(),
-        value: z.unknown().optional(),
-      }),
-    )
-    .optional(),
+  operations: z.array(patchOperationSchema).optional(),
 });
 
 const uploadSchema = z.object({
@@ -99,7 +188,9 @@ designResumeRouter.post(
 designResumeRouter.patch(
   "/",
   asyncRoute(async (req: Request, res: Response) => {
-    const input = patchSchema.parse(req.body) as DesignResumePatchRequest;
+    const input = designResumePatchSchema.parse(
+      req.body,
+    ) as DesignResumePatchRequest;
     const document = await updateCurrentDesignResume(input);
     clearProfileCache();
     ok(res, document);

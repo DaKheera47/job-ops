@@ -339,7 +339,6 @@ export interface DesignResumeAsset {
   originalName: string;
   mimeType: string;
   byteSize: number;
-  storagePath: string;
   contentUrl: string;
   createdAt: string;
   updatedAt: string;

@@ -47,6 +47,7 @@ export const DesignResumePage: React.FC = () => {
   const [dialogState, setDialogState] = useState<{
     definition: ItemDefinition;
     index: number | null;
+    seed: Record<string, unknown> | null;
   } | null>(null);
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [pictureUploading, setPictureUploading] = useState(false);
@@ -54,6 +55,7 @@ export const DesignResumePage: React.FC = () => {
   const [rendererUpdating, setRendererUpdating] = useState(false);
   const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const editVersionRef = useRef(0);
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
   const rxresumeMode = settings?.rxresumeMode?.value ?? "v5";
@@ -73,23 +75,51 @@ export const DesignResumePage: React.FC = () => {
   }, [document]);
 
   useEffect(() => {
-    if (!draft || !document || !dirty) return;
+    if (
+      !draft ||
+      !document ||
+      !dirty ||
+      saveState === "saving" ||
+      saveState === "error"
+    ) {
+      return;
+    }
+
     const timer = window.setTimeout(async () => {
+      const editVersionAtStart = editVersionRef.current;
+      const baseRevision = draft.revision;
+      const documentSnapshot = structuredClone(draft.resumeJson);
+
       try {
         setSaveState("saving");
         const updated = await api.updateDesignResume({
-          baseRevision: draft.revision,
-          document: draft.resumeJson,
+          baseRevision,
+          document: documentSnapshot,
         });
-        queryClient.setQueryData(queryKeys.designResume.current(), updated);
-        queryClient.setQueryData(queryKeys.designResume.status(), {
-          exists: true,
-          documentId: updated.id,
-          updatedAt: updated.updatedAt,
-        });
-        setDraft(updated);
-        setDirty(false);
-        setSaveState("saved");
+        if (editVersionRef.current === editVersionAtStart) {
+          queryClient.setQueryData(queryKeys.designResume.current(), updated);
+          queryClient.setQueryData(queryKeys.designResume.status(), {
+            exists: true,
+            documentId: updated.id,
+            updatedAt: updated.updatedAt,
+          });
+          setDraft(updated);
+          setDirty(false);
+          setSaveState("saved");
+          return;
+        }
+
+        // Keep any newer local edits, but advance the base revision for the
+        // next autosave cycle so stale responses never clobber in-flight work.
+        setDraft((current) =>
+          current
+            ? {
+                ...updated,
+                resumeJson: current.resumeJson,
+              }
+            : updated,
+        );
+        setSaveState("idle");
       } catch (saveError) {
         setSaveState("error");
         toast.error(
@@ -101,7 +131,7 @@ export const DesignResumePage: React.FC = () => {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, draft, document, queryClient]);
+  }, [dirty, draft, document, queryClient, saveState]);
 
   const setDesignResume = (next: DesignResumeDocument) => {
     queryClient.setQueryData(queryKeys.designResume.current(), next);
@@ -117,6 +147,7 @@ export const DesignResumePage: React.FC = () => {
   const updateResumeJson = (
     updater: (resumeJson: DesignResumeJson) => DesignResumeJson,
   ) => {
+    editVersionRef.current += 1;
     setDraft((current) => {
       if (!current) return current;
       return {
@@ -125,17 +156,20 @@ export const DesignResumePage: React.FC = () => {
       };
     });
     setDirty(true);
-    if (saveState === "saved") setSaveState("idle");
+    if (saveState === "saved" || saveState === "error") setSaveState("idle");
   };
 
   const activeDialogItem = useMemo(() => {
     if (!dialogState) return null;
     return (
-      getDesignResumeDialogItem(
-        draft,
-        dialogState.definition,
-        dialogState.index,
-      ) ?? dialogState.definition.createItem()
+      dialogState.seed ??
+      (dialogState.index == null
+        ? dialogState.definition.createItem()
+        : getDesignResumeDialogItem(
+            draft,
+            dialogState.definition,
+            dialogState.index,
+          ))
     );
   }, [dialogState, draft]);
 
@@ -286,7 +320,14 @@ export const DesignResumePage: React.FC = () => {
       draft={draft}
       onUpdateResumeJson={updateResumeJson}
       onOpenDialog={(definition, index) =>
-        setDialogState({ definition, index })
+        setDialogState({
+          definition,
+          index,
+          seed:
+            index == null
+              ? definition.createItem()
+              : getDesignResumeDialogItem(draft, definition, index),
+        })
       }
       onUploadPicture={() => fileInputRef.current?.click()}
       onDeletePicture={handleDeletePicture}

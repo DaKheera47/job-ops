@@ -347,6 +347,7 @@ export async function generatePdf(
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
+        mode: preparedResume.mode,
       });
     } else {
       await renderRxResumePdf({
@@ -396,6 +397,7 @@ export async function generateDesignResumePdf(options?: {
       resumeJson: designResume.data,
       outputPath,
       jobId: "design-resume",
+      mode: designResume.mode,
     });
   } else {
     await renderRxResumePdf({
