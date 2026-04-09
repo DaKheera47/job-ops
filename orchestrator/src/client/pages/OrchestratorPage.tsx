@@ -42,6 +42,8 @@ export const OrchestratorPage: React.FC = () => {
     setSponsorFilter,
     salaryFilter,
     setSalaryFilter,
+    dateFilter,
+    setDateFilter,
     sort,
     setSort,
     resetFilters,
@@ -144,6 +146,7 @@ export const OrchestratorPage: React.FC = () => {
   const activeJobs = useFilteredJobs(
     jobs,
     activeTab,
+    dateFilter,
     sourceFilter,
     sponsorFilter,
     salaryFilter,
@@ -179,6 +182,7 @@ export const OrchestratorPage: React.FC = () => {
   }, [selectedJob, activeTab]);
 
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
+  const displayedCounts = useMemo(() => counts, [counts]);
   const sourcesWithJobs = useMemo(() => getSourcesWithJobs(jobs), [jobs]);
   const {
     selectedJobIds,
@@ -271,6 +275,10 @@ export const OrchestratorPage: React.FC = () => {
         "salaryMin",
         "salaryMax",
         "minSalary",
+        "date",
+        "appliedRange",
+        "appliedStart",
+        "appliedEnd",
       ]) {
         nextParams.delete(key);
       }
@@ -376,6 +384,14 @@ export const OrchestratorPage: React.FC = () => {
     return undefined;
   }, [activeTab, openRunMode]);
 
+  const emptyStateMessage = useMemo(() => {
+    if (dateFilter.dimensions.length === 0) {
+      return undefined;
+    }
+
+    return "No jobs match the selected date filters.";
+  }, [dateFilter.dimensions.length]);
+
   return (
     <>
       <OrchestratorHeader
@@ -410,7 +426,7 @@ export const OrchestratorPage: React.FC = () => {
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={counts}
+            counts={displayedCounts}
             onOpenCommandBar={() => setIsCommandBarOpen(true)}
             isFiltersOpen={isFiltersOpen}
             onFiltersOpenChange={setIsFiltersOpen}
@@ -420,6 +436,8 @@ export const OrchestratorPage: React.FC = () => {
             onSponsorFilterChange={setSponsorFilter}
             salaryFilter={salaryFilter}
             onSalaryFilterChange={setSalaryFilter}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}
@@ -442,6 +460,7 @@ export const OrchestratorPage: React.FC = () => {
               onToggleSelectAll={toggleSelectAll}
               primaryEmptyStateAction={primaryEmptyStateAction}
               secondaryEmptyStateAction={secondaryEmptyStateAction}
+              emptyStateMessage={emptyStateMessage}
             />
 
             {/* Inspector panel: visually subordinate to list */}

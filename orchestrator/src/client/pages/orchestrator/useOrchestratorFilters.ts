@@ -2,12 +2,15 @@ import type { JobSource } from "@shared/types.js";
 import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import type {
+  DateFilterDimension,
+  DateFilterPreset,
+  JobDateFilter,
   JobSort,
   SalaryFilter,
   SalaryFilterMode,
   SponsorFilter,
 } from "./constants";
-import { DEFAULT_SORT } from "./constants";
+import { DEFAULT_SORT, dateFilterDimensionOrder } from "./constants";
 
 const allowedSponsorFilters: SponsorFilter[] = [
   "all",
@@ -22,6 +25,7 @@ const allowedSalaryModes: SalaryFilterMode[] = [
   "between",
 ];
 const allowedSortKeys: JobSort["key"][] = [
+  "date",
   "discoveredAt",
   "score",
   "salary",
@@ -29,6 +33,31 @@ const allowedSortKeys: JobSort["key"][] = [
   "employer",
 ];
 const allowedSortDirections: JobSort["direction"][] = ["asc", "desc"];
+const allowedDateFilterPresets: DateFilterPreset[] = [
+  "7",
+  "14",
+  "30",
+  "90",
+  "custom",
+];
+
+const isValidDateInput = (value: string | null): value is string =>
+  value != null && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+const parseDateDimensions = (value: string | null): DateFilterDimension[] => {
+  if (!value) return [];
+
+  const seen = new Set<DateFilterDimension>();
+
+  for (const token of value.split(",")) {
+    if (!dateFilterDimensionOrder.includes(token as DateFilterDimension)) {
+      continue;
+    }
+    seen.add(token as DateFilterDimension);
+  }
+
+  return dateFilterDimensionOrder.filter((dimension) => seen.has(dimension));
+};
 
 export const useOrchestratorFilters = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -139,6 +168,29 @@ export const useOrchestratorFilters = () => {
     };
   }, [searchParams]);
 
+  const dateFilter = useMemo((): JobDateFilter => {
+    const startDateRaw = searchParams.get("appliedStart");
+    const endDateRaw = searchParams.get("appliedEnd");
+    const startDate = isValidDateInput(startDateRaw) ? startDateRaw : null;
+    const endDate = isValidDateInput(endDateRaw) ? endDateRaw : null;
+
+    const presetRaw = searchParams.get("appliedRange");
+    const preset = allowedDateFilterPresets.includes(
+      presetRaw as DateFilterPreset,
+    )
+      ? (presetRaw as DateFilterPreset)
+      : null;
+
+    const dimensions = parseDateDimensions(searchParams.get("date"));
+
+    return {
+      dimensions,
+      startDate,
+      endDate,
+      preset,
+    };
+  }, [searchParams]);
+
   const setSort = useCallback(
     (newSort: JobSort) => {
       setSearchParams(
@@ -159,6 +211,30 @@ export const useOrchestratorFilters = () => {
     [setSearchParams],
   );
 
+  const setDateFilter = useCallback(
+    (value: JobDateFilter) => {
+      setSearchParams(
+        (prev) => {
+          if (value.dimensions.length === 0) prev.delete("date");
+          else prev.set("date", value.dimensions.join(","));
+
+          if (value.startDate == null) prev.delete("appliedStart");
+          else prev.set("appliedStart", value.startDate);
+
+          if (value.endDate == null) prev.delete("appliedEnd");
+          else prev.set("appliedEnd", value.endDate);
+
+          if (value.preset == null) prev.delete("appliedRange");
+          else prev.set("appliedRange", value.preset);
+
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
   const resetFilters = useCallback(() => {
     setSearchParams(
       (prev) => {
@@ -169,6 +245,10 @@ export const useOrchestratorFilters = () => {
         prev.delete("salaryMax");
         prev.delete("minSalary");
         prev.delete("sort");
+        prev.delete("date");
+        prev.delete("appliedStart");
+        prev.delete("appliedEnd");
+        prev.delete("appliedRange");
         return prev;
       },
       { replace: true },
@@ -183,6 +263,8 @@ export const useOrchestratorFilters = () => {
     setSponsorFilter,
     salaryFilter,
     setSalaryFilter,
+    dateFilter,
+    setDateFilter,
     sort,
     setSort,
     resetFilters,

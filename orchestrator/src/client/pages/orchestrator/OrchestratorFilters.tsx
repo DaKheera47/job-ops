@@ -27,13 +27,22 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { sourceLabel } from "@/lib/utils";
 import type {
+  DateFilterDimension,
+  DateFilterPreset,
   FilterTab,
+  JobDateFilter,
   JobSort,
   SalaryFilter,
   SalaryFilterMode,
   SponsorFilter,
 } from "./constants";
-import { defaultSortDirection, orderedFilterSources, tabs } from "./constants";
+import {
+  dateFilterDimensionLabels,
+  dateFilterDimensionOrder,
+  defaultSortDirection,
+  orderedFilterSources,
+  tabs,
+} from "./constants";
 
 interface OrchestratorFiltersProps {
   activeTab: FilterTab;
@@ -46,6 +55,8 @@ interface OrchestratorFiltersProps {
   onSponsorFilterChange: (value: SponsorFilter) => void;
   salaryFilter: SalaryFilter;
   onSalaryFilterChange: (value: SalaryFilter) => void;
+  dateFilter: JobDateFilter;
+  onDateFilterChange: (value: JobDateFilter) => void;
   sourcesWithJobs: JobSource[];
   sort: JobSort;
   onSortChange: (sort: JobSort) => void;
@@ -77,6 +88,7 @@ const salaryModeOptions: Array<{
 
 const sortFieldOrder: JobSort["key"][] = [
   "score",
+  "date",
   "discoveredAt",
   "salary",
   "title",
@@ -85,31 +97,80 @@ const sortFieldOrder: JobSort["key"][] = [
 
 const sortFieldLabels: Record<JobSort["key"], string> = {
   score: "Score",
+  date: "Date",
   discoveredAt: "Discovered",
   salary: "Salary",
   title: "Title",
   employer: "Company",
 };
 
+const datePresetOptions: Array<{
+  value: Exclude<DateFilterPreset, "custom">;
+  label: string;
+}> = [
+  { value: "7", label: "7 days" },
+  { value: "14", label: "14 days" },
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+];
+
+const toDateInputValue = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getDateRangeForPreset = (preset: Exclude<DateFilterPreset, "custom">) => {
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+
+  const start = new Date(end);
+  start.setDate(start.getDate() - (Number.parseInt(preset, 10) - 1));
+
+  return {
+    startDate: toDateInputValue(start),
+    endDate: toDateInputValue(end),
+  };
+};
+
 const getDirectionOptions = (
   key: JobSort["key"],
 ): Array<{ value: JobSort["direction"]; label: string }> => {
-  if (key === "discoveredAt") {
+  if (key === "date" || key === "discoveredAt") {
     return [
-      { value: "desc", label: "newest first" },
-      { value: "asc", label: "oldest first" },
+      { value: "desc", label: "Most recent" },
+      { value: "asc", label: "Least recent" },
     ];
   }
   if (key === "score" || key === "salary") {
     return [
-      { value: "desc", label: "largest first" },
-      { value: "asc", label: "smallest first" },
+      { value: "desc", label: "Largest first" },
+      { value: "asc", label: "Smallest first" },
     ];
   }
   return [
     { value: "asc", label: "A to Z" },
     { value: "desc", label: "Z to A" },
   ];
+};
+
+const toggleDimension = (
+  filter: JobDateFilter,
+  dimension: DateFilterDimension,
+): JobDateFilter => {
+  const nextDimensions = filter.dimensions.includes(dimension)
+    ? filter.dimensions.filter((value) => value !== dimension)
+    : [...filter.dimensions, dimension].sort(
+        (left, right) =>
+          dateFilterDimensionOrder.indexOf(left) -
+          dateFilterDimensionOrder.indexOf(right),
+      );
+
+  return {
+    ...filter,
+    dimensions: nextDimensions,
+  };
 };
 
 export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
@@ -123,6 +184,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   onSponsorFilterChange,
   salaryFilter,
   onSalaryFilterChange,
+  dateFilter,
+  onDateFilterChange,
   sourcesWithJobs,
   sort,
   onSortChange,
@@ -143,12 +206,20 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
     () =>
       Number(sourceFilter !== "all") +
       Number(sponsorFilter !== "all") +
+      Number(dateFilter.dimensions.length > 0) +
       Number(
         (typeof salaryFilter.min === "number" && salaryFilter.min > 0) ||
           (typeof salaryFilter.max === "number" && salaryFilter.max > 0),
       ),
-    [sourceFilter, sponsorFilter, salaryFilter.min, salaryFilter.max],
+    [
+      sourceFilter,
+      sponsorFilter,
+      dateFilter.dimensions.length,
+      salaryFilter.min,
+      salaryFilter.max,
+    ],
   );
+
   const showSalaryMin =
     salaryFilter.mode === "at_least" || salaryFilter.mode === "between";
   const showSalaryMax =
@@ -224,7 +295,8 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                     )}
                   </SheetTitle>
                   <SheetDescription>
-                    Refine sources, sponsor status, salary, and sorting.
+                    Use the right-side filter panel to refine jobs across every
+                    tab.
                   </SheetDescription>
                 </SheetHeader>
 
@@ -257,6 +329,117 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
                           {sourceLabel[source]}
                         </Button>
                       ))}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle>Dates</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {dateFilterDimensionOrder.map((dimension) => (
+                          <Button
+                            key={dimension}
+                            type="button"
+                            size="sm"
+                            variant={
+                              dateFilter.dimensions.includes(dimension)
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() =>
+                              onDateFilterChange(
+                                toggleDimension(dateFilter, dimension),
+                              )
+                            }
+                          >
+                            {dateFilterDimensionLabels[dimension]}
+                          </Button>
+                        ))}
+                      </div>
+
+                      {dateFilter.dimensions.length > 0 && (
+                        <>
+                          <div className="flex flex-wrap gap-2">
+                            {datePresetOptions.map((option) => (
+                              <Button
+                                key={option.value}
+                                type="button"
+                                size="sm"
+                                variant={
+                                  dateFilter.preset === option.value
+                                    ? "default"
+                                    : "outline"
+                                }
+                                onClick={() =>
+                                  onDateFilterChange({
+                                    ...dateFilter,
+                                    preset: option.value,
+                                    ...getDateRangeForPreset(option.value),
+                                  })
+                                }
+                              >
+                                Last {option.label}
+                              </Button>
+                            ))}
+                          </div>
+
+                          <div className="grid gap-3 md:grid-cols-2">
+                            <div className="space-y-1">
+                              <Label htmlFor="date-start-filter">
+                                Start date
+                              </Label>
+                              <Input
+                                id="date-start-filter"
+                                type="date"
+                                value={dateFilter.startDate ?? ""}
+                                onChange={(event) =>
+                                  onDateFilterChange({
+                                    ...dateFilter,
+                                    startDate: event.target.value || null,
+                                    preset: "custom",
+                                  })
+                                }
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label htmlFor="date-end-filter">End date</Label>
+                              <Input
+                                id="date-end-filter"
+                                type="date"
+                                value={dateFilter.endDate ?? ""}
+                                onChange={(event) =>
+                                  onDateFilterChange({
+                                    ...dateFilter,
+                                    endDate: event.target.value || null,
+                                    preset: "custom",
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                onDateFilterChange({
+                                  dimensions: [],
+                                  startDate: null,
+                                  endDate: null,
+                                  preset: null,
+                                })
+                              }
+                            >
+                              Clear date filters
+                            </Button>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
 

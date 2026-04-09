@@ -74,6 +74,7 @@ const migrations = [
     tracer_links_enabled INTEGER NOT NULL DEFAULT 0,
     discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
     processed_at TEXT,
+    ready_at TEXT,
     applied_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -367,9 +368,13 @@ const migrations = [
   // Add application tracking columns
   `ALTER TABLE jobs ADD COLUMN outcome TEXT`,
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,
+  `ALTER TABLE jobs ADD COLUMN ready_at TEXT`,
   `ALTER TABLE stage_events ADD COLUMN outcome TEXT`,
   `ALTER TABLE stage_events ADD COLUMN title TEXT NOT NULL DEFAULT ''`,
   `ALTER TABLE stage_events ADD COLUMN group_id TEXT`,
+  `UPDATE jobs
+   SET ready_at = COALESCE(ready_at, updated_at)
+   WHERE status = 'ready' AND ready_at IS NULL`,
 
   // Smart-router columns for existing databases.
   `ALTER TABLE post_application_messages ADD COLUMN match_confidence INTEGER`,
@@ -474,6 +479,7 @@ const migrations = [
     sponsor_match_names TEXT,
     discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
     processed_at TEXT,
+    ready_at TEXT,
     applied_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -487,6 +493,7 @@ const migrations = [
     deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
     selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    ready_at,
     applied_at, created_at, updated_at
   )
   SELECT
@@ -498,6 +505,7 @@ const migrations = [
     deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
     selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    ready_at,
     applied_at, created_at, updated_at
   FROM jobs`,
   `DROP TABLE IF EXISTS jobs`,

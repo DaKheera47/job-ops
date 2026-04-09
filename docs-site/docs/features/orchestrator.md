@@ -37,6 +37,7 @@ It exists to ensure:
 - clear status transitions across manual and automated workflows
 - predictable regeneration behavior when job data changes
 - faster external research from the Ready tab with prebuilt search links for LinkedIn, GitHub, and broader web results
+- one place to filter and sort jobs across every orchestrator tab
 
 ## How to use it
 
@@ -51,6 +52,59 @@ It exists to ensure:
    1. Pipeline scores discovered jobs.
    2. Top jobs above threshold are auto-processed.
    3. Jobs move directly to `ready` with generated PDFs.
+
+### Using the Filters panel
+
+The main jobs page has a `Filters` button on the top-right next to `Search`.
+
+Use it when you need to narrow the current tab without changing tabs.
+
+What the panel includes:
+
+- source filters
+- sponsor status filters
+- salary filters
+- date filters
+- sorting controls
+
+Date filters work on every jobs tab:
+
+- `Ready`
+- `Discovered`
+- `Applied`
+- `All Jobs`
+
+Available date dimensions:
+
+- `Ready`
+- `Applied`
+- `Closed`
+- `Discovered`
+
+Each selected date dimension uses the same range:
+
+- quick presets: `7`, `14`, `30`, `90` days
+- custom `Start date` and `End date`
+
+Jobs match when they fit the current tab and at least one selected date dimension falls in range.
+
+### Sorting by date
+
+The sort section includes `Sort by Date`.
+
+Use it with:
+
+- `Most recent`
+- `Least recent`
+
+Date sorting follows the active date-filter context. If multiple date dimensions are enabled, JobOps uses this priority:
+
+1. `Ready`
+2. `Applied`
+3. `Closed`
+4. `Discovered`
+
+If a job does not have the first selected timestamp, JobOps falls back to the next available date in that order.
 
 ### Ghostwriter availability
 
@@ -133,9 +187,16 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 - Patch `status` back to `discovered` to return the job to the active queue.
 
+### Date filter returns no jobs
+
+- Open `Filters` and confirm at least one date dimension is selected.
+- Check that your date range matches the lifecycle timestamp you care about.
+- Remember that `Applied` still means jobs currently in the `applied` status, while `All Jobs` can be used for broader historical browsing.
+
 ## Related pages
 
 - [Pipeline Run](/docs/next/features/pipeline-run)
 - [Ghostwriter](/docs/next/features/ghostwriter)
 - [Reactive Resume](/docs/next/features/reactive-resume)
 - [Post-Application Tracking](/docs/next/features/post-application-tracking)
+- [Job Search Bar](/docs/next/features/job-search-bar)

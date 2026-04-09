@@ -186,6 +186,7 @@ export interface Job {
   // Timestamps
   discoveredAt: string;
   processedAt: string | null;
+  readyAt: string | null;
   appliedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -214,6 +215,7 @@ export type JobListItem = Pick<
   | "salaryMaxAmount"
   | "salaryCurrency"
   | "discoveredAt"
+  | "readyAt"
   | "appliedAt"
   | "updatedAt"
 >;
@@ -310,6 +312,7 @@ export interface UpdateJobInput {
   selectedProjectIds?: string;
   pdfPath?: string;
   tracerLinksEnabled?: boolean;
+  readyAt?: string;
   appliedAt?: string;
   sponsorMatchScore?: number;
   sponsorMatchNames?: string;

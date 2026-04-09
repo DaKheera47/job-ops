@@ -1,5 +1,5 @@
 import type { AppSettings, JobListItem, JobSource } from "@shared/types";
-import type { FilterTab, JobSort } from "./constants";
+import type { DateFilterDimension, FilterTab, JobSort } from "./constants";
 import {
   DEFAULT_PIPELINE_SOURCES,
   orderedFilterSources,
@@ -109,12 +109,49 @@ export const compareJobs = (a: JobListItem, b: JobListItem, sort: JobSort) => {
       value = compareNumber(aDate, bDate);
       break;
     }
+    case "date": {
+      const aDate = getSortDateValue(a, sort);
+      const bDate = getSortDateValue(b, sort);
+      if (aDate == null && bDate == null) {
+        value = 0;
+        break;
+      }
+      if (aDate == null) return 1;
+      if (bDate == null) return -1;
+      value = compareNumber(aDate, bDate);
+      break;
+    }
     default:
       value = 0;
   }
 
   if (value !== 0) return sort.direction === "asc" ? value : -value;
   return a.id.localeCompare(b.id);
+};
+
+export const getJobDateValue = (
+  job: JobListItem,
+  dimension: DateFilterDimension,
+): number | null => {
+  switch (dimension) {
+    case "ready":
+      return dateValue(job.readyAt);
+    case "applied":
+      return dateValue(job.appliedAt);
+    case "closed":
+      return typeof job.closedAt === "number" ? job.closedAt * 1000 : null;
+    case "discovered":
+      return dateValue(job.discoveredAt);
+  }
+};
+
+const getSortDateValue = (job: JobListItem, sort: JobSort): number | null => {
+  for (const dimension of sort.datePriority ?? []) {
+    const value = getJobDateValue(job, dimension);
+    if (value != null) return value;
+  }
+
+  return dateValue(job.discoveredAt);
 };
 
 export const jobMatchesQuery = (job: JobListItem, query: string) => {

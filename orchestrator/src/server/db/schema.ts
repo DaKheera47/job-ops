@@ -107,6 +107,7 @@ export const jobs = sqliteTable("jobs", {
   // Timestamps
   discoveredAt: text("discovered_at").notNull().default(sql`(datetime('now'))`),
   processedAt: text("processed_at"),
+  readyAt: text("ready_at"),
   appliedAt: text("applied_at"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),

@@ -66,6 +66,7 @@ export async function getJobListItems(
     salaryMaxAmount: jobs.salaryMaxAmount,
     salaryCurrency: jobs.salaryCurrency,
     discoveredAt: jobs.discoveredAt,
+    readyAt: jobs.readyAt,
     appliedAt: jobs.appliedAt,
     updatedAt: jobs.updatedAt,
   } as const;
@@ -320,6 +321,18 @@ export async function updateJob(
   input: UpdateJobInput,
 ): Promise<Job | null> {
   const now = new Date().toISOString();
+  const readyAtUpdate =
+    input.readyAt !== undefined
+      ? { readyAt: input.readyAt }
+      : input.status === "ready"
+        ? { readyAt: sql`coalesce(${jobs.readyAt}, ${now})` }
+        : {};
+  const appliedAtUpdate =
+    input.appliedAt !== undefined
+      ? { appliedAt: input.appliedAt }
+      : input.status === "applied"
+        ? { appliedAt: sql`coalesce(${jobs.appliedAt}, ${now})` }
+        : {};
 
   await db
     .update(jobs)
@@ -327,9 +340,8 @@ export async function updateJob(
       ...input,
       updatedAt: now,
       ...(input.status === "processing" ? { processedAt: now } : {}),
-      ...(input.status === "applied" && !input.appliedAt
-        ? { appliedAt: now }
-        : {}),
+      ...readyAtUpdate,
+      ...appliedAtUpdate,
     })
     .where(eq(jobs.id, id));
 
@@ -485,6 +497,7 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     workFromHomeType: row.workFromHomeType ?? null,
     discoveredAt: row.discoveredAt,
     processedAt: row.processedAt,
+    readyAt: row.readyAt,
     appliedAt: row.appliedAt,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

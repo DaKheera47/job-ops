@@ -92,6 +92,27 @@ describe("JobListPanel", () => {
     expect(onSecondary).toHaveBeenCalledTimes(1);
   });
 
+  it("prefers a custom empty state message when provided", () => {
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={[]}
+        activeJobs={[]}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="all"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+        emptyStateMessage="No applied jobs found for this date range."
+      />,
+    );
+
+    expect(
+      screen.getByText("No applied jobs found for this date range."),
+    ).toBeInTheDocument();
+  });
+
   it("renders jobs and notifies when a job is selected", () => {
     const onSelectJob = vi.fn();
     const onToggleSelectJob = vi.fn();

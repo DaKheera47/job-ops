@@ -65,6 +65,7 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   workFromHomeType: null,
   discoveredAt: "2025-01-01T00:00:00Z",
   processedAt: null,
+  readyAt: "2025-01-01T00:00:00Z",
   appliedAt: null,
   createdAt: "2025-01-01T00:00:00Z",
   updatedAt: "2025-01-01T00:00:00Z",

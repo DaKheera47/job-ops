@@ -25,6 +25,7 @@ interface JobListPanelProps {
   onToggleSelectAll: (checked: boolean) => void;
   primaryEmptyStateAction?: EmptyStateAction;
   secondaryEmptyStateAction?: EmptyStateAction;
+  emptyStateMessage?: string;
 }
 
 export const JobListPanel: React.FC<JobListPanelProps> = ({
@@ -39,6 +40,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
   onToggleSelectAll,
   primaryEmptyStateAction,
   secondaryEmptyStateAction,
+  emptyStateMessage,
 }) => (
   <div className="min-w-0 rounded-xl border border-border bg-card shadow-sm">
     {isLoading && jobs.length === 0 ? (
@@ -50,7 +52,7 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
       <div className="flex flex-col items-center justify-center gap-4 px-6 py-12 text-center">
         <div className="text-base font-semibold">No jobs found</div>
         <p className="max-w-md text-sm text-muted-foreground">
-          {emptyStateCopy[activeTab]}
+          {emptyStateMessage ?? emptyStateCopy[activeTab]}
         </p>
         {(primaryEmptyStateAction || secondaryEmptyStateAction) && (
           <div className="flex flex-col items-center justify-center gap-2 sm:flex-row">
