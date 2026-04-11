@@ -126,7 +126,7 @@ If you self-host Reactive Resume, set:
 - `RXRESUME_URL=http://rxresume.local.net`
 - `RXRESUME_API_KEY=...` (or configure `rxresumeApiKey` in JobOps Settings)
 
-`auto` mode is the default and prefers v5 when an API key is configured, then falls back to v4 credentials.
+
 
 ## Local LaTeX PDF rendering
 
