@@ -279,7 +279,7 @@ describe("OnboardingPage", () => {
 
     expect(screen.getByLabelText(/lock it down/i)).toBeChecked();
     expect(
-      screen.getByRole("button", { name: /enable basic auth/i }),
+      screen.getByRole("button", { name: /enable authentication/i }),
     ).toBeInTheDocument();
   });
 
