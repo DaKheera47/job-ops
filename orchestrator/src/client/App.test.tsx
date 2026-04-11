@@ -42,6 +42,10 @@ vi.mock("./pages/JobPage", () => ({
   JobPage: () => null,
 }));
 
+vi.mock("./pages/OnboardingPage", () => ({
+  OnboardingPage: () => <div>onboarding</div>,
+}));
+
 vi.mock("./pages/OrchestratorPage", () => ({
   OrchestratorPage: () => null,
 }));

@@ -31,6 +31,30 @@ type ModelSettingsSectionProps = {
   layoutMode?: "accordion" | "panel";
 };
 
+function renderKeyHelper(
+  helperText: string,
+  helperHref: string | null,
+  keepSavedKey: boolean,
+) {
+  return (
+    <>
+      {helperHref ? (
+        <a
+          href={helperHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+        >
+          {helperText}
+        </a>
+      ) : (
+        helperText
+      )}
+      {keepSavedKey ? ". Leave blank to keep the saved key." : null}
+    </>
+  );
+}
+
 export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   values,
   isLoading,
@@ -269,6 +293,11 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
                 placeholder="Enter new key"
                 disabled={isLoading || isSaving}
                 error={errors.llmApiKey?.message as string | undefined}
+                helper={renderKeyHelper(
+                  providerConfig.keyHelperText,
+                  providerConfig.keyHelperHref,
+                  Boolean(keyHint),
+                )}
                 current={keyHint}
               />
             )}

@@ -17,6 +17,19 @@ describe("settings utils", () => {
     );
   });
 
+  it("exposes provider key links for hosted providers", () => {
+    expect(getLlmProviderConfig("openrouter").keyHelperHref).toBe(
+      "https://openrouter.ai/keys",
+    );
+    expect(getLlmProviderConfig("openai").keyHelperHref).toBe(
+      "https://platform.openai.com/api-keys",
+    );
+    expect(getLlmProviderConfig("gemini").keyHelperHref).toBe(
+      "https://aistudio.google.com/app/apikey",
+    );
+    expect(getLlmProviderConfig("ollama").keyHelperHref).toBeNull();
+  });
+
   it("normalizes the hyphenated openai-compatible alias", () => {
     expect(normalizeLlmProvider("openai-compatible")).toBe("openai_compatible");
   });
