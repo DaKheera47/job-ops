@@ -98,7 +98,7 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
       return {
         valid: false,
         message:
-          "No base resume selected. Please select a resume from your RxResume account in Settings.",
+          "No local resume is ready yet. Upload a PDF or DOCX resume, or connect Reactive Resume and select a template resume.",
       };
     }
 
@@ -143,11 +143,6 @@ async function validateRxresume(options?: {
   apiKey?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
-  const localStatus = await getDesignResumeStatus();
-  if (localStatus.exists) {
-    return { valid: true, message: null, status: null };
-  }
-
   const requestApiKey = options?.apiKey?.trim() ?? "";
   const hasExplicitV5Input = options?.apiKey !== undefined;
 

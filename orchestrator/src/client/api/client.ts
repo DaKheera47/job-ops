@@ -1351,6 +1351,17 @@ export async function importDesignResumeFromRxResume(): Promise<DesignResumeDocu
   });
 }
 
+export async function importDesignResumeFromFile(input: {
+  fileName: string;
+  mediaType?: string;
+  dataBase64: string;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/import/file", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function updateDesignResume(
   input: DesignResumePatchRequest,
 ): Promise<DesignResumeDocument> {

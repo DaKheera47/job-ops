@@ -37,6 +37,8 @@ Key reasons:
 
 For everyday editing inside JobOps, use [Design Resume](./design-resume).
 
+During onboarding, Reactive Resume is optional. You can upload a `pdf` or `docx` resume to create a local Design Resume first, then connect Reactive Resume later if you want upstream PDF export or template sync.
+
 ## Core concepts
 
 ### Import source

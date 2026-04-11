@@ -25,6 +25,7 @@ export function useOnboardingRequirement() {
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
+  const requiresRxResume = settings?.pdfRenderer?.value === "rxresume";
 
   const runValidations = useCallback(async () => {
     if (!settings) return;
@@ -126,14 +127,15 @@ export function useOnboardingRequirement() {
 
     return (
       llmComplete &&
-      rxresumeValidation.valid &&
       baseResumeValidation.valid &&
+      (!requiresRxResume || rxresumeValidation.valid) &&
       basicAuthComplete
     );
   }, [
     baseResumeValidation.valid,
     demoMode,
     llmValidation.valid,
+    requiresRxResume,
     rxresumeValidation.valid,
     settings,
   ]);

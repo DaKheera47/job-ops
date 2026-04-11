@@ -10,6 +10,7 @@ import {
   updateCurrentDesignResume,
   uploadDesignResumePicture,
 } from "@server/services/design-resume";
+import { importDesignResumeFromFile } from "@server/services/design-resume/import-file";
 import { generateDesignResumePdf } from "@server/services/pdf";
 import { clearProfileCache } from "@server/services/profile";
 import type { DesignResumeJson, DesignResumePatchRequest } from "@shared/types";
@@ -162,6 +163,12 @@ const uploadSchema = pictureMutationSchema.extend({
   dataUrl: z.string().trim().min(1),
 });
 
+const importFileSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  mediaType: z.string().trim().min(1).max(200).optional(),
+  dataBase64: z.string().trim().min(1),
+});
+
 function asDesignResumeJson(value: unknown): DesignResumeJson | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as DesignResumeJson)
@@ -191,6 +198,16 @@ designResumeRouter.post(
   "/import/rxresume",
   asyncRoute(async (_req: Request, res: Response) => {
     const document = await importDesignResumeFromReactiveResume();
+    clearProfileCache();
+    ok(res, document, 201);
+  }),
+);
+
+designResumeRouter.post(
+  "/import/file",
+  asyncRoute(async (req: Request, res: Response) => {
+    const input = importFileSchema.parse(req.body);
+    const document = await importDesignResumeFromFile(input);
     clearProfileCache();
     ok(res, document, 201);
   }),

@@ -20,17 +20,17 @@ export const STEP_COPY: Record<
     description:
       "Pick the provider, confirm the endpoint, and validate the credentials this workspace will use for scoring and tailoring.",
   },
-  rxresume: {
-    eyebrow: "Step 2",
-    title: "Connect the resume engine that will export tailored PDFs.",
-    description:
-      "Point Job Ops at your Reactive Resume instance so tailoring can render a final document without extra setup later.",
-  },
   baseresume: {
-    eyebrow: "Step 3",
-    title: "Pick the template resume the pipeline will start from.",
+    eyebrow: "Step 2",
+    title: "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
     description:
-      "This becomes the source document for tailoring, so choose the version you want every application to inherit from.",
+      "Upload a PDF or DOCX resume to create a local Design Resume right away. If you already keep a resume in Reactive Resume, continue to the next step and connect it there instead.",
+  },
+  rxresume: {
+    eyebrow: "Step 3",
+    title: "Optional: connect Reactive Resume for export and template sync.",
+    description:
+      "Reactive Resume remains optional. Connect it only if you want upstream PDF export or want Job Ops to start from a template resume in your Reactive Resume account.",
   },
   basicauth: {
     eyebrow: "Step 4",

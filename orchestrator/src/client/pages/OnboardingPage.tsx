@@ -82,12 +82,15 @@ export const OnboardingPage: React.FC = () => {
                 <CardContent className="flex flex-1 flex-col gap-6 pt-6">
                   <OnboardingStepContent
                     baseResumeValidation={flow.baseResumeValidation}
+                    baseResumeValue={flow.baseResumeValue}
                     basicAuthChoice={flow.basicAuthChoice}
                     basicAuthPassword={flow.watch("basicAuthPassword")}
                     basicAuthUser={flow.watch("basicAuthUser")}
                     control={flow.control}
                     currentStep={flow.currentStep}
                     isBusy={flow.isBusy}
+                    isImportingResume={flow.isImportingResume}
+                    isResumeReady={flow.baseResumeValidation.valid}
                     isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
@@ -97,7 +100,6 @@ export const OnboardingPage: React.FC = () => {
                     rxresumeUrl={flow.watch("rxresumeUrl")}
                     rxresumeValidation={flow.rxresumeValidation}
                     selectedProvider={flow.selectedProvider}
-                    templateResumeId={flow.watch("rxresumeBaseResumeId")}
                     onBasicAuthChoiceChange={flow.setBasicAuthChoice}
                     onBasicAuthPasswordChange={(value) =>
                       flow.setValue("basicAuthPassword", value)
@@ -105,6 +107,7 @@ export const OnboardingPage: React.FC = () => {
                     onBasicAuthUserChange={(value) =>
                       flow.setValue("basicAuthUser", value)
                     }
+                    onImportResumeFile={flow.handleImportResumeFile}
                     onPdfRendererChange={(renderer) =>
                       flow.setValue("pdfRenderer", renderer)
                     }
@@ -143,11 +146,7 @@ export const OnboardingPage: React.FC = () => {
                     </p>
                     <Button
                       type="submit"
-                      disabled={
-                        flow.isBusy ||
-                        (flow.currentStep === "baseresume" &&
-                          !flow.rxresumeValidation.valid)
-                      }
+                      disabled={flow.isBusy}
                     >
                       {flow.primaryLabel}
                       <ArrowRight className="h-4 w-4" />

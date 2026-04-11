@@ -364,6 +364,32 @@ async function clearDesignResumeAssetsForDocument(
   );
 }
 
+export async function replaceCurrentDesignResumeDocument(input: {
+  importedAt?: string | null;
+  resumeJson: DesignResumeJson;
+  sourceResumeId: string | null;
+  sourceMode: "v4" | "v5" | null;
+}): Promise<DesignResumeDocument> {
+  const existingDocument = await getCurrentDesignResumeOrNullOnLegacy();
+  const importedAt = input.importedAt ?? new Date().toISOString();
+  const saved = await designResumeRepo.upsertDesignResumeDocument({
+    id: DESIGN_RESUME_DEFAULT_ID,
+    title: buildDocumentTitle(input.resumeJson),
+    resumeJson: input.resumeJson,
+    revision: 1,
+    sourceResumeId: input.sourceResumeId,
+    sourceMode: input.sourceMode,
+    importedAt,
+    updatedAt: importedAt,
+  });
+
+  if (existingDocument?.id) {
+    await clearDesignResumeAssetsForDocument(existingDocument.id);
+  }
+
+  return (await hydrateDocument(saved)) as DesignResumeDocument;
+}
+
 export async function getCurrentDesignResume(): Promise<DesignResumeDocument | null> {
   try {
     return hydrateDocument(
@@ -417,7 +443,6 @@ export async function getDesignResumeStatus(): Promise<DesignResumeStatusRespons
 }
 
 export async function importDesignResumeFromReactiveResume(): Promise<DesignResumeDocument> {
-  const existingDocument = await getCurrentDesignResume();
   const { resumeId } = await getConfiguredRxResumeBaseResumeId();
   if (!resumeId) {
     throw badRequest(
@@ -431,23 +456,12 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
   }
 
   const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
-  const now = new Date().toISOString();
-  const saved = await designResumeRepo.upsertDesignResumeDocument({
-    id: DESIGN_RESUME_DEFAULT_ID,
-    title: buildDocumentTitle(validated),
+  return replaceCurrentDesignResumeDocument({
     resumeJson: validated,
-    revision: 1,
     sourceResumeId: resumeId,
     sourceMode: "v5",
-    importedAt: now,
-    updatedAt: now,
+    importedAt: new Date().toISOString(),
   });
-
-  if (existingDocument?.id) {
-    await clearDesignResumeAssetsForDocument(existingDocument.id);
-  }
-
-  return (await hydrateDocument(saved)) as DesignResumeDocument;
 }
 
 export async function updateCurrentDesignResume(

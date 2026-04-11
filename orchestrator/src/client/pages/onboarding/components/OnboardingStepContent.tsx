@@ -15,12 +15,15 @@ import { RxResumeStep } from "./RxResumeStep";
 
 export const OnboardingStepContent: React.FC<{
   baseResumeValidation: ValidationState;
+  baseResumeValue: string | null;
   basicAuthChoice: BasicAuthChoice;
   basicAuthPassword: string;
   basicAuthUser: string;
   control: Control<OnboardingFormData>;
   currentStep: StepId;
   isBusy: boolean;
+  isImportingResume: boolean;
+  isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
   llmKeyHint: string | null;
   llmValidation: ValidationState;
@@ -30,10 +33,10 @@ export const OnboardingStepContent: React.FC<{
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
   selectedProvider: LlmProviderId;
-  templateResumeId: string | null;
   onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
   onBasicAuthPasswordChange: (value: string) => void;
   onBasicAuthUserChange: (value: string) => void;
+  onImportResumeFile: (file: File) => Promise<void>;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
@@ -55,6 +58,8 @@ export const OnboardingStepContent: React.FC<{
   if (props.currentStep === "rxresume") {
     return (
       <RxResumeStep
+        baseResumeValue={props.baseResumeValue}
+        isResumeReady={props.isResumeReady}
         isBusy={props.isBusy}
         isSelfHosted={props.isRxResumeSelfHosted}
         pdfRenderer={props.pdfRenderer}
@@ -66,6 +71,7 @@ export const OnboardingStepContent: React.FC<{
         onPdfRendererChange={props.onPdfRendererChange}
         onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
         onRxresumeUrlChange={props.onRxresumeUrlChange}
+        onTemplateResumeChange={props.onTemplateResumeChange}
       />
     );
   }
@@ -76,8 +82,8 @@ export const OnboardingStepContent: React.FC<{
         baseResumeValidation={props.baseResumeValidation}
         hasRxResumeAccess={props.rxresumeValidation.valid}
         isBusy={props.isBusy}
-        value={props.templateResumeId}
-        onValueChange={props.onTemplateResumeChange}
+        isImportingResume={props.isImportingResume}
+        onImportResumeFile={props.onImportResumeFile}
       />
     );
   }

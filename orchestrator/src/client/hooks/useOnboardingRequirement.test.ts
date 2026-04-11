@@ -133,4 +133,51 @@ describe("useOnboardingRequirement", () => {
 
     expect(result.current.complete).toBe(false);
   });
+
+  it("does not require Reactive Resume when LaTeX rendering and a local resume are ready", async () => {
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Reactive Resume is not configured",
+    });
+
+    const currentSettings: any = {
+      llmProvider: {
+        value: "openrouter",
+        default: "openrouter",
+        override: null,
+      },
+      llmBaseUrl: {
+        value: "",
+        default: "",
+        override: null,
+      },
+      pdfRenderer: {
+        value: "latex",
+        default: "rxresume",
+        override: null,
+      },
+      rxresumeUrl: null,
+      basicAuthActive: false,
+      onboardingBasicAuthDecision: "skipped",
+    };
+
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+    }));
+
+    const { result } = renderHookWithQueryClient(() =>
+      useOnboardingRequirement(),
+    );
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+
+    expect(result.current.complete).toBe(true);
+  });
 });

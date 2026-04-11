@@ -20,6 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { fileToDataUrl } from "../../components/design-resume/utils";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
   BasicAuthChoice,
@@ -42,6 +43,7 @@ export function useOnboardingFlow() {
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
   const [isValidatingBaseResume, setIsValidatingBaseResume] = useState(false);
+  const [isImportingResume, setIsImportingResume] = useState(false);
   const [llmValidation, setLlmValidation] = useState<ValidationState>(
     EMPTY_VALIDATION_STATE,
   );
@@ -119,6 +121,8 @@ export function useOnboardingFlow() {
   const basicAuthComplete = Boolean(
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
+  const pdfRenderer = watch("pdfRenderer");
+  const requiresRxResume = pdfRenderer === "rxresume";
 
   const validateLlm = useCallback(async () => {
     const values = getValues();
@@ -244,18 +248,18 @@ export function useOnboardingFlow() {
         disabled: false,
       },
       {
-        id: "rxresume",
-        label: "RxResume",
-        subtitle: "Resume export connection",
-        complete: rxresumeValidation.valid,
+        id: "baseresume",
+        label: "Resume",
+        subtitle: "Upload a file or continue to Reactive Resume",
+        complete: baseResumeValidation.valid,
         disabled: false,
       },
       {
-        id: "baseresume",
-        label: "Template",
-        subtitle: "Choose the source resume",
-        complete: baseResumeValidation.valid,
-        disabled: !rxresumeValidation.valid,
+        id: "rxresume",
+        label: "Reactive Resume",
+        subtitle: "Optional export and template sync",
+        complete: rxresumeValidation.valid || baseResumeValidation.valid,
+        disabled: false,
       },
       {
         id: "basicauth",
@@ -293,8 +297,8 @@ export function useOnboardingFlow() {
 
   const complete =
     llmValidated &&
-    rxresumeValidation.valid &&
     baseResumeValidation.valid &&
+    (!requiresRxResume || rxresumeValidation.valid) &&
     basicAuthComplete;
 
   useEffect(() => {
@@ -401,6 +405,7 @@ export function useOnboardingFlow() {
             const nextSettings = await api.updateSettings({
               ...update,
               pdfRenderer: values.pdfRenderer,
+              rxresumeBaseResumeId: values.rxresumeBaseResumeId,
             });
             syncSettingsCache(nextSettings);
           } finally {
@@ -425,6 +430,7 @@ export function useOnboardingFlow() {
       }
 
       setValue("rxresumeApiKey", "");
+      await validateBaseResume();
       toast.success("Reactive Resume connected");
       return true;
     } catch (error) {
@@ -444,6 +450,7 @@ export function useOnboardingFlow() {
     setValue,
     storedRxResume,
     syncSettingsCache,
+    validateBaseResume,
   ]);
 
   const handleRxresumeSelfHostedChange = useCallback(
@@ -457,37 +464,85 @@ export function useOnboardingFlow() {
   );
 
   const handleSaveBaseResume = useCallback(async () => {
-    const values = getValues();
-
-    if (!values.rxresumeBaseResumeId) {
-      toast.info("Select a template resume to continue");
-      return false;
-    }
-
     try {
-      setIsSaving(true);
-      const nextSettings = await api.updateSettings({
-        pdfRenderer: values.pdfRenderer,
-        rxresumeBaseResumeId: values.rxresumeBaseResumeId,
-      });
-      syncSettingsCache(nextSettings);
       const validation = await validateBaseResume();
       if (!validation.valid) {
         toast.error(validation.message || "Base resume validation failed");
         return false;
       }
 
-      toast.success("Template resume locked in");
+      toast.success("Resume source is ready");
       return true;
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save base resume",
+        error instanceof Error ? error.message : "Failed to validate resume",
       );
       return false;
-    } finally {
-      setIsSaving(false);
     }
-  }, [getValues, syncSettingsCache, validateBaseResume]);
+  }, [validateBaseResume]);
+
+  const handleImportResumeFile = useCallback(
+    async (file: File) => {
+      try {
+        setIsImportingResume(true);
+        const dataUrl = await fileToDataUrl(file);
+        const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl.trim());
+
+        if (!match) {
+          throw new Error("Resume file could not be encoded for upload.");
+        }
+
+        const document = await api.importDesignResumeFromFile({
+          fileName: file.name,
+          mediaType: file.type || match[1],
+          dataBase64: match[2],
+        });
+
+        queryClient.setQueryData(queryKeys.designResume.current(), document);
+        queryClient.setQueryData(queryKeys.designResume.status(), {
+          exists: true,
+          documentId: document.id,
+          updatedAt: document.updatedAt,
+        });
+
+        if (!rxresumeValidation.valid && pdfRenderer !== "latex") {
+          const nextSettings = await api.updateSettings({
+            pdfRenderer: "latex",
+          });
+          syncSettingsCache(nextSettings);
+          setValue("pdfRenderer", "latex");
+        }
+
+        const validation = await validateBaseResume();
+        if (!validation.valid) {
+          throw new Error(validation.message || "Resume validation failed.");
+        }
+
+        toast.success("Resume uploaded", {
+          description:
+            pdfRenderer === "latex" || rxresumeValidation.valid
+              ? "Your local Design Resume is ready."
+              : "Your local Design Resume is ready and PDF rendering was switched to LaTeX.",
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to import resume file",
+        );
+      } finally {
+        setIsImportingResume(false);
+      }
+    },
+    [
+      pdfRenderer,
+      queryClient,
+      rxresumeValidation.valid,
+      setValue,
+      syncSettingsCache,
+      validateBaseResume,
+    ],
+  );
 
   const handleCompleteBasicAuth = useCallback(async () => {
     if (basicAuthChoice === "skip") {
@@ -579,6 +634,7 @@ export function useOnboardingFlow() {
   const isBusy =
     isSaving ||
     settingsLoading ||
+    isImportingResume ||
     isValidatingLlm ||
     isValidatingRxresume ||
     isValidatingBaseResume;
@@ -596,8 +652,8 @@ export function useOnboardingFlow() {
           : "Save connection"
         : currentStep === "baseresume"
           ? baseResumeValidation.valid
-            ? "Recheck selection"
-            : "Save selection"
+            ? "Recheck resume"
+            : "Check resume"
           : basicAuthChoice === "enable"
             ? "Enable basic auth"
             : basicAuthChoice === "skip"
@@ -606,6 +662,7 @@ export function useOnboardingFlow() {
 
   return {
     baseResumeValidation,
+    baseResumeValue: watch("rxresumeBaseResumeId"),
     basicAuthChoice,
     canGoBack,
     complete,
@@ -614,7 +671,9 @@ export function useOnboardingFlow() {
     currentStep,
     demoMode,
     handleRxresumeSelfHostedChange,
+    handleImportResumeFile,
     isBusy,
+    isImportingResume,
     isRxResumeSelfHosted,
     llmKeyHint,
     llmValidation,

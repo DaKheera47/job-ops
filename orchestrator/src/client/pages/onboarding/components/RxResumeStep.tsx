@@ -1,4 +1,5 @@
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
 import { PDF_RENDERER_LABELS, type PdfRenderer } from "@shared/types.js";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,20 +14,26 @@ import type { ValidationState } from "../types";
 import { InlineValidation } from "./InlineValidation";
 
 export const RxResumeStep: React.FC<{
+  baseResumeValue: string | null;
   isBusy: boolean;
+  isResumeReady: boolean;
   isSelfHosted: boolean;
   pdfRenderer: PdfRenderer;
   rxresumeApiKey: string;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
   rxresumeApiKeyHint: string | null | undefined;
+  onTemplateResumeChange: (value: string | null) => void;
   onSelfHostedChange: (next: boolean) => void;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeUrlChange: (value: string) => void;
 }> = ({
+  baseResumeValue,
   isBusy,
+  isResumeReady,
   isSelfHosted,
+  onTemplateResumeChange,
   onPdfRendererChange,
   onRxresumeApiKeyChange,
   onRxresumeUrlChange,
@@ -40,6 +47,12 @@ export const RxResumeStep: React.FC<{
   <div className="space-y-6">
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-5">
+        <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
+          Reactive Resume is optional. Connect it only if you want upstream PDF
+          export or want to start from a template resume in your Reactive
+          Resume account.
+        </div>
+
         <SettingsInput
           label="v5 API key"
           inputProps={{
@@ -98,6 +111,33 @@ export const RxResumeStep: React.FC<{
             disabled={isBusy}
           />
         ) : null}
+
+        <div className="space-y-3 rounded-lg border border-border/60 bg-background/70 p-4">
+          <div className="space-y-1">
+            <div className="text-sm font-medium">Template resume</div>
+            <p className="text-xs text-muted-foreground">
+              Select this if you want Job Ops to use Reactive Resume as your
+              resume source instead of an uploaded local file.
+            </p>
+          </div>
+          <BaseResumeSelection
+            value={baseResumeValue}
+            onValueChange={onTemplateResumeChange}
+            hasRxResumeAccess={rxresumeValidation.valid}
+            disabled={isBusy}
+          />
+          {!rxresumeValidation.valid ? (
+            <div className="text-xs text-muted-foreground">
+              Validate Reactive Resume first to load your available resumes.
+            </div>
+          ) : null}
+          {isResumeReady ? (
+            <div className="text-xs text-muted-foreground">
+              You already have a usable resume source, so this selection stays
+              optional.
+            </div>
+          ) : null}
+        </div>
       </div>
 
       <div className="space-y-4 rounded-lg border border-border/60 bg-muted/10 p-4">

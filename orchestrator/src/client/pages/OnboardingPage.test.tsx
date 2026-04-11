@@ -10,6 +10,7 @@ import { renderWithQueryClient } from "../test/renderWithQueryClient";
 import { OnboardingPage } from "./OnboardingPage";
 
 vi.mock("@client/api", () => ({
+  importDesignResumeFromFile: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -360,7 +361,7 @@ describe("OnboardingPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText(
-        "Connect the resume engine that will export tailored PDFs.",
+        "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
       ),
     ).not.toBeInTheDocument();
   });
@@ -400,7 +401,7 @@ describe("OnboardingPage", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Connect the resume engine that will export tailored PDFs.",
+          "Optional: connect Reactive Resume for export and template sync.",
         ),
       ).toBeInTheDocument();
     });
@@ -412,6 +413,96 @@ describe("OnboardingPage", () => {
     );
 
     expect(screen.getByLabelText(/custom url/i)).toBeInTheDocument();
+  });
+
+  it("lets upload-only onboarding switch PDF rendering to LaTeX when RxResume is unavailable", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Reactive Resume is not configured",
+    });
+    vi.mocked(api.validateResumeConfig)
+      .mockResolvedValueOnce({
+        valid: false,
+        message: "No resume yet",
+      })
+      .mockResolvedValueOnce({
+        valid: true,
+        message: null,
+      });
+    vi.mocked(api.importDesignResumeFromFile).mockResolvedValue({
+      id: "primary",
+      title: "Taylor Resume",
+      resumeJson: {} as any,
+      revision: 1,
+      sourceResumeId: null,
+      sourceMode: null,
+      importedAt: "2026-04-11T00:00:00.000Z",
+      createdAt: "2026-04-11T00:00:00.000Z",
+      updatedAt: "2026-04-11T00:00:00.000Z",
+      assets: [],
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("pdfRenderer" in update
+          ? {
+              pdfRenderer: {
+                value: update.pdfRenderer,
+                default: "rxresume",
+                override: null,
+              },
+            }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    const { container } = renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /^resume$/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    const input = container.querySelector(
+      'input[type="file"][accept*=".pdf"]',
+    ) as HTMLInputElement | null;
+    if (!input) {
+      throw new Error("Expected resume upload input");
+    }
+
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["resume"], "resume.pdf", {
+            type: "application/pdf",
+          }),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(api.importDesignResumeFromFile).toHaveBeenCalledWith({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: expect.any(String),
+      });
+    });
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        pdfRenderer: "latex",
+      });
+    });
   });
 
   it("lets the full basic-auth option card change the selection", async () => {
