@@ -1,10 +1,6 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
-import {
-  BASIC_AUTH_DECISION_EVENT,
-  readBasicAuthDecision,
-} from "@client/lib/onboarding";
 import { normalizeLlmProvider } from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,9 +22,6 @@ export function useOnboardingRequirement() {
   );
   const [baseResumeValidation, setBaseResumeValidation] = useState(
     EMPTY_VALIDATION_STATE,
-  );
-  const [basicAuthDecision, setBasicAuthDecision] = useState(
-    readBasicAuthDecision,
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
@@ -115,25 +108,6 @@ export function useOnboardingRequirement() {
   }, [requiresLlmKey, selectedProvider, settings]);
 
   useEffect(() => {
-    const syncBasicAuthDecision = () => {
-      setBasicAuthDecision(readBasicAuthDecision());
-    };
-
-    syncBasicAuthDecision();
-
-    window.addEventListener(BASIC_AUTH_DECISION_EVENT, syncBasicAuthDecision);
-    window.addEventListener("storage", syncBasicAuthDecision);
-
-    return () => {
-      window.removeEventListener(
-        BASIC_AUTH_DECISION_EVENT,
-        syncBasicAuthDecision,
-      );
-      window.removeEventListener("storage", syncBasicAuthDecision);
-    };
-  }, []);
-
-  useEffect(() => {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
@@ -160,7 +134,7 @@ export function useOnboardingRequirement() {
 
     const llmComplete = requiresLlmKey ? llmValidation.valid : true;
     const basicAuthComplete =
-      settings.basicAuthActive || basicAuthDecision !== null;
+      settings.basicAuthActive || settings.onboardingBasicAuthDecision !== null;
 
     return (
       llmComplete &&
@@ -170,7 +144,6 @@ export function useOnboardingRequirement() {
     );
   }, [
     baseResumeValidation.valid,
-    basicAuthDecision,
     demoMode,
     llmValidation.valid,
     requiresLlmKey,

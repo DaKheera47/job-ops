@@ -194,6 +194,7 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
+  onboardingBasicAuthDecision: "enabled" | "skipped" | null;
   rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;

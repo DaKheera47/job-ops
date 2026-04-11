@@ -55,6 +55,7 @@ const baseSettings = {
   llmBaseUrl: { value: "", default: "", override: null },
   llmApiKeyHint: "sk-t",
   pdfRenderer: { value: "rxresume", default: "rxresume", override: null },
+  onboardingBasicAuthDecision: null,
   rxresumeUrl: "https://resume.example.com",
   rxresumeApiKeyHint: "rx-k",
   rxresumeBaseResumeId: "resume-1",
@@ -193,6 +194,10 @@ describe("OnboardingPage", () => {
       valid: true,
       message: null,
     });
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...baseSettings,
+      onboardingBasicAuthDecision: "skipped",
+    } as any);
 
     renderPage();
 
@@ -216,9 +221,9 @@ describe("OnboardingPage", () => {
     await waitFor(() => {
       expect(screen.getByText("ready page")).toBeInTheDocument();
     });
-    expect(localStorage.getItem("jobops.onboarding.basicAuthDecision")).toBe(
-      "skipped",
-    );
+    expect(api.updateSettings).toHaveBeenCalledWith({
+      onboardingBasicAuthDecision: "skipped",
+    });
   });
 
   it("does not auto-advance after saving the LLM step", async () => {

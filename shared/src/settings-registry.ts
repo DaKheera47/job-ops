@@ -574,6 +574,10 @@ export const settingsRegistry = {
     kind: "string" as const,
     schema: z.string().trim().max(200),
   },
+  onboardingBasicAuthDecision: {
+    kind: "string" as const,
+    schema: z.enum(["enabled", "skipped"]),
+  },
   rxresumeUrl: {
     kind: "string" as const,
     envKey: "RXRESUME_URL",

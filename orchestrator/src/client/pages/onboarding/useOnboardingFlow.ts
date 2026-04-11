@@ -2,10 +2,6 @@ import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
-import {
-  readBasicAuthDecision,
-  writeBasicAuthDecision,
-} from "@client/lib/onboarding";
 import { queryKeys } from "@client/lib/queryKeys";
 import {
   getRxResumeCredentialDrafts,
@@ -54,9 +50,6 @@ export function useOnboardingFlow() {
   );
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
-  const [basicAuthDecision, setBasicAuthDecision] = useState(
-    readBasicAuthDecision,
-  );
   const [basicAuthChoice, setBasicAuthChoice] = useState<BasicAuthChoice>(null);
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
@@ -98,11 +91,10 @@ export function useOnboardingFlow() {
       basicAuthUser: settings.basicAuthUser ?? "",
       basicAuthPassword: "",
     });
-    setBasicAuthDecision(readBasicAuthDecision());
     setBasicAuthChoice(
       settings.basicAuthActive
         ? "enable"
-        : readBasicAuthDecision() === "skipped"
+        : settings.onboardingBasicAuthDecision === "skipped"
           ? "skip"
           : null,
     );
@@ -125,7 +117,7 @@ export function useOnboardingFlow() {
   const hasLlmKey = Boolean(llmKeyHint);
   const llmValidated = requiresLlmKey ? llmValidation.valid : true;
   const basicAuthComplete = Boolean(
-    settings?.basicAuthActive || basicAuthDecision !== null,
+    settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
 
   const validateLlm = useCallback(async () => {
@@ -512,11 +504,25 @@ export function useOnboardingFlow() {
 
   const handleCompleteBasicAuth = useCallback(async () => {
     if (basicAuthChoice === "skip") {
-      writeBasicAuthDecision("skipped");
-      setBasicAuthDecision("skipped");
-      toast.success("Basic auth skipped for now");
-      navigate("/jobs/ready", { replace: true });
-      return true;
+      try {
+        setIsSaving(true);
+        const nextSettings = await api.updateSettings({
+          onboardingBasicAuthDecision: "skipped",
+        });
+        syncSettingsCache(nextSettings);
+        toast.success("Basic auth skipped for now");
+        navigate("/jobs/ready", { replace: true });
+        return true;
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to save onboarding progress",
+        );
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
     }
 
     if (basicAuthChoice !== "enable") {
@@ -539,10 +545,9 @@ export function useOnboardingFlow() {
         enableBasicAuth: true,
         basicAuthUser: normalizedUser,
         basicAuthPassword: normalizedPassword,
+        onboardingBasicAuthDecision: "enabled",
       });
       syncSettingsCache(nextSettings);
-      writeBasicAuthDecision("enabled");
-      setBasicAuthDecision("enabled");
       setValue("basicAuthPassword", "");
       toast.success("Basic auth enabled");
       navigate("/jobs/ready", { replace: true });
