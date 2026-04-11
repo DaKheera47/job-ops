@@ -126,6 +126,47 @@ describe("importDesignResumeFromFile", () => {
     expect(result.title).toBe("Taylor Resume");
   });
 
+  it("accepts supported media types even when the file name has no extension", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: `{"basics":{"name":"Taylor Quinn"}}`,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const result = await importDesignResumeFromFile({
+      fileName: "resume",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(result.title).toBe("Taylor Resume");
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("rejects invalid base64 payloads before sending them upstream", async () => {
+    await expect(
+      importDesignResumeFromFile({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: "not-valid-base64!!!",
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "Resume file data must be valid base64.",
+    });
+
+    expect(fetch).not.toHaveBeenCalled();
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).not.toHaveBeenCalled();
+  });
+
   it("returns a capability error when the configured provider does not support direct file import", async () => {
     modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
       provider: "ollama",
@@ -182,5 +223,32 @@ describe("importDesignResumeFromFile", () => {
     expect(
       designResumeService.replaceCurrentDesignResumeDocument,
     ).not.toHaveBeenCalled();
+  });
+
+  it("does not misclassify unrelated upstream errors as file capability failures", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Unable to load profile for this request.",
+          },
+        }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(
+      importDesignResumeFromFile({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: Buffer.from("pdf-data").toString("base64"),
+      }),
+    ).rejects.toMatchObject({
+      status: 502,
+      message: "Unable to load profile for this request.",
+    });
   });
 });

@@ -112,21 +112,14 @@ function normalizeImportMediaType(input: {
   const extension = extensionFromFileName(input.fileName);
   const fromExtension = SUPPORTED_EXTENSION_TO_MEDIA_TYPE[extension];
   const normalizedMediaType = input.mediaType?.trim().toLowerCase() ?? "";
-  const canInferFromExtension =
-    !normalizedMediaType || normalizedMediaType === "application/octet-stream";
+  if (normalizedMediaType === "application/pdf") return "application/pdf";
+  if (normalizedMediaType === DOCX_MIME) return DOCX_MIME;
 
   if (
-    normalizedMediaType === "application/pdf" &&
-    fromExtension === "application/pdf"
+    (!normalizedMediaType ||
+      normalizedMediaType === "application/octet-stream") &&
+    fromExtension
   ) {
-    return "application/pdf";
-  }
-
-  if (normalizedMediaType === DOCX_MIME && fromExtension === DOCX_MIME) {
-    return DOCX_MIME;
-  }
-
-  if (canInferFromExtension && fromExtension) {
     return fromExtension;
   }
 
@@ -139,15 +132,24 @@ function decodeBase64Payload(dataBase64: string): Buffer {
     throw badRequest("Resume import requires file data.");
   }
 
-  const estimatedByteLength = Math.floor((trimmed.length * 3) / 4);
+  const normalized = trimmed.replace(/\s+/g, "");
+  if (!normalized) {
+    throw badRequest("Resume import requires file data.");
+  }
+  if (
+    normalized.length % 4 !== 0 ||
+    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
+  ) {
+    throw badRequest("Resume file data must be valid base64.");
+  }
+
+  const estimatedByteLength = Math.floor((normalized.length * 3) / 4);
   if (estimatedByteLength > MAX_IMPORT_FILE_BYTES) {
     throw badRequest("Resume files must be 10 MB or smaller.");
   }
 
-  let decoded: Buffer;
-  try {
-    decoded = Buffer.from(trimmed, "base64");
-  } catch {
+  const decoded = Buffer.from(normalized, "base64");
+  if (decoded.toString("base64") !== normalized) {
     throw badRequest("Resume file data must be valid base64.");
   }
 
@@ -651,12 +653,15 @@ function buildCapabilityErrorMessage(provider: string): string {
 function isFileCapabilityError(message: string): boolean {
   const normalized = message.toLowerCase();
   return [
-    "file",
+    "input file",
+    "input-file",
     "pdf",
     "document",
     "inline_data",
     "inline data",
     "input_file",
+    "file_data",
+    "file data",
     "unsupported",
     "vision",
     "native",
