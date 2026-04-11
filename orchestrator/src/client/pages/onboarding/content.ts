@@ -4,6 +4,7 @@ export const EMPTY_VALIDATION_STATE: ValidationState = {
   valid: false,
   message: null,
   checked: false,
+  hydrated: false,
 };
 
 export const STEP_COPY: Record<

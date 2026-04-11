@@ -421,6 +421,47 @@ describe("OnboardingPage", () => {
     expect(screen.getByLabelText(/custom url/i)).toBeInTheDocument();
   });
 
+  it("does not show resume errors before the user tries to validate the step", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(validateAndMaybePersistRxResumeMode).mockResolvedValue({
+      validation: {
+        valid: false,
+        message: "Reactive Resume is not configured",
+      },
+    } as any);
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message: "Reactive Resume is not configured",
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: false,
+      message:
+        "No local resume is ready yet. Upload a PDF or DOCX resume, or connect Reactive Resume and select a template resume.",
+    });
+
+    renderPage();
+
+    fireEvent.click(getStepButton(/^Resume$/i));
+
+    await waitFor(() => {
+      expect(api.validateResumeConfig).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.queryByText(
+        /no local resume is ready yet\. upload a pdf or docx resume, or connect reactive resume and select a template resume\./i,
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /upload a resume here, or switch to the reactive resume option if you want to import from an existing template resume instead\./i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("lets upload-only onboarding switch PDF rendering to LaTeX when RxResume is unavailable", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,

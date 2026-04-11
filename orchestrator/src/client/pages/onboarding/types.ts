@@ -1,6 +1,9 @@
 import type { PdfRenderer, ValidationResult } from "@shared/types.js";
 
-export type ValidationState = ValidationResult & { checked: boolean };
+export type ValidationState = ValidationResult & {
+  checked: boolean;
+  hydrated: boolean;
+};
 
 export type OnboardingFormData = {
   llmProvider: string;

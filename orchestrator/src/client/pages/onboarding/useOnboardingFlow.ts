@@ -85,6 +85,9 @@ export function useOnboardingFlow() {
     if (!settings) return;
 
     const selectedId = syncBaseResumeId();
+    setLlmValidation(EMPTY_VALIDATION_STATE);
+    setRxresumeValidation(EMPTY_VALIDATION_STATE);
+    setBaseResumeValidation(EMPTY_VALIDATION_STATE);
     reset({
       llmProvider: settings.llmProvider?.value || "",
       llmBaseUrl: settings.llmBaseUrl?.value || "",
@@ -127,77 +130,108 @@ export function useOnboardingFlow() {
   );
   const pdfRenderer = watch("pdfRenderer");
 
-  const validateLlm = useCallback(async () => {
-    const values = getValues();
+  const toValidationState = useCallback(
+    (
+      result: ValidationResult,
+      options?: {
+        markChecked?: boolean;
+      },
+    ): ValidationState => ({
+      ...result,
+      checked: options?.markChecked ?? true,
+      hydrated: true,
+    }),
+    [],
+  );
 
-    setIsValidatingLlm(true);
-    try {
-      const result = await api.validateLlm({
-        provider: selectedProvider,
-        baseUrl: showBaseUrl
-          ? values.llmBaseUrl.trim() || undefined
-          : undefined,
-        apiKey: requiresLlmKey
-          ? values.llmApiKey.trim() || undefined
-          : undefined,
-      });
-      setLlmValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const result = {
-        valid: false,
-        message:
-          error instanceof Error ? error.message : "LLM validation failed",
-      };
-      setLlmValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingLlm(false);
-    }
-  }, [getValues, requiresLlmKey, selectedProvider, showBaseUrl]);
+  const validateLlm = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      const values = getValues();
 
-  const validateBaseResume = useCallback(async () => {
-    setIsValidatingBaseResume(true);
-    try {
-      const result = await api.validateResumeConfig();
-      setBaseResumeValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const result = {
-        valid: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Base resume validation failed",
-      };
-      setBaseResumeValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingBaseResume(false);
-    }
-  }, []);
+      setIsValidatingLlm(true);
+      try {
+        const result = await api.validateLlm({
+          provider: selectedProvider,
+          baseUrl: showBaseUrl
+            ? values.llmBaseUrl.trim() || undefined
+            : undefined,
+          apiKey: requiresLlmKey
+            ? values.llmApiKey.trim() || undefined
+            : undefined,
+        });
+        setLlmValidation(toValidationState(result, options));
+        return result;
+      } catch (error) {
+        const result = {
+          valid: false,
+          message:
+            error instanceof Error ? error.message : "LLM validation failed",
+        };
+        setLlmValidation(toValidationState(result, options));
+        return result;
+      } finally {
+        setIsValidatingLlm(false);
+      }
+    },
+    [
+      getValues,
+      requiresLlmKey,
+      selectedProvider,
+      showBaseUrl,
+      toValidationState,
+    ],
+  );
 
-  const validateRxresume = useCallback(async () => {
-    setIsValidatingRxresume(true);
-    try {
-      const result = await validateAndMaybePersistRxResumeMode({
-        stored: storedRxResume,
-        draft: getRxResumeCredentialDrafts({
-          ...getValues(),
-          rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
-        }),
-        validate: api.validateRxresume,
-        getPrecheckMessage: () =>
-          "v5 API key required. Add a v5 API key, then test again.",
-        getValidationErrorMessage: (error: unknown) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
-      });
-      setRxresumeValidation({ ...result.validation, checked: true });
-      return result.validation;
-    } finally {
-      setIsValidatingRxresume(false);
-    }
-  }, [getValues, isRxResumeSelfHosted, storedRxResume]);
+  const validateBaseResume = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      setIsValidatingBaseResume(true);
+      try {
+        const result = await api.validateResumeConfig();
+        setBaseResumeValidation(toValidationState(result, options));
+        return result;
+      } catch (error) {
+        const result = {
+          valid: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Base resume validation failed",
+        };
+        setBaseResumeValidation(toValidationState(result, options));
+        return result;
+      } finally {
+        setIsValidatingBaseResume(false);
+      }
+    },
+    [toValidationState],
+  );
+
+  const validateRxresume = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      setIsValidatingRxresume(true);
+      try {
+        const result = await validateAndMaybePersistRxResumeMode({
+          stored: storedRxResume,
+          draft: getRxResumeCredentialDrafts({
+            ...getValues(),
+            rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
+          }),
+          validate: api.validateRxresume,
+          getPrecheckMessage: () =>
+            "v5 API key required. Add a v5 API key, then test again.",
+          getValidationErrorMessage: (error: unknown) =>
+            error instanceof Error
+              ? error.message
+              : "RxResume validation failed",
+        });
+        setRxresumeValidation(toValidationState(result.validation, options));
+        return result.validation;
+      } finally {
+        setIsValidatingRxresume(false);
+      }
+    },
+    [getValues, isRxResumeSelfHosted, storedRxResume, toValidationState],
+  );
 
   useEffect(() => {
     if (!showBaseUrl) {
@@ -207,16 +241,16 @@ export function useOnboardingFlow() {
 
   useEffect(() => {
     if (!selectedProvider) return;
-    setLlmValidation({ valid: false, message: null, checked: false });
+    setLlmValidation(EMPTY_VALIDATION_STATE);
   }, [selectedProvider]);
 
   const runAllValidations = useCallback(async () => {
     if (!settings || demoMode) return;
 
     const validations: Promise<ValidationResult>[] = [
-      validateLlm(),
-      validateRxresume(),
-      validateBaseResume(),
+      validateLlm({ markChecked: false }),
+      validateRxresume({ markChecked: false }),
+      validateBaseResume({ markChecked: false }),
     ];
     await Promise.allSettled(validations);
   }, [demoMode, settings, validateBaseResume, validateLlm, validateRxresume]);
@@ -225,18 +259,18 @@ export function useOnboardingFlow() {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
-      !llmValidation.checked ||
-      !rxresumeValidation.checked ||
-      !baseResumeValidation.checked;
+      !llmValidation.hydrated ||
+      !rxresumeValidation.hydrated ||
+      !baseResumeValidation.hydrated;
     if (!needsValidation) return;
 
     void runAllValidations();
   }, [
-    baseResumeValidation.checked,
+    baseResumeValidation.hydrated,
     demoMode,
-    llmValidation.checked,
+    llmValidation.hydrated,
     runAllValidations,
-    rxresumeValidation.checked,
+    rxresumeValidation.hydrated,
     settings,
     settingsLoading,
   ]);

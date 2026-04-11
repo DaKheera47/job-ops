@@ -31,10 +31,10 @@ export const OnboardingPage: React.FC = () => {
       />
 
       <PageMain className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <Card className="border-border/60 bg-card/40 shadow-none">
             <CardHeader className="space-y-3">
-              <CardTitle>Let&apos;s get you a job</CardTitle>
+              <CardTitle>Getting started</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <OnboardingStepRail

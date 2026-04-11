@@ -69,12 +69,6 @@ export const BaseResumeStep: React.FC<{
         }}
       />
 
-      <div className="max-w-3xl text-sm leading-6 text-muted-foreground">
-        Choose one way to bring your current resume into Job Ops. Uploading a
-        file creates a local Design Resume right away, while Reactive Resume
-        lets you import from an existing template using your API key.
-      </div>
-
       <RadioGroup
         value={resumeSetupMode}
         onValueChange={(value) =>
@@ -158,7 +152,9 @@ export const BaseResumeStep: React.FC<{
             </div>
           </div>
 
-          {!hasRxResumeAccess && !baseResumeValidation.valid ? (
+          {(baseResumeValidation.checked || rxresumeValidation.checked) &&
+          !hasRxResumeAccess &&
+          !baseResumeValidation.valid ? (
             <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
               Upload a resume here, or switch to the Reactive Resume option if
               you want to import from an existing template resume instead.
