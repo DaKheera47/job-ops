@@ -1426,9 +1426,6 @@ export async function getLlmModels(input?: {
 }
 
 export async function validateRxresume(input?: {
-  mode?: "v4" | "v5";
-  email?: string;
-  password?: string;
   apiKey?: string;
   baseUrl?: string;
 }): Promise<ValidationResult> {

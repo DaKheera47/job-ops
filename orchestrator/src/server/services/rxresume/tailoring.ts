@@ -168,14 +168,6 @@ export function applyTailoredSkills(
             ? match.hidden
             : next.hidden;
     }
-    if ("visible" in next) {
-      next.visible =
-        typeof newSkill.visible === "boolean"
-          ? newSkill.visible
-          : typeof match.visible === "boolean"
-            ? match.visible
-            : next.visible;
-    }
 
     return next;
   });
@@ -245,16 +237,12 @@ export function applyProjectVisibility(args: {
 
     if ("hidden" in item) {
       item.hidden = !args.selectedProjectIds.has(id);
-    } else if ("visible" in item) {
-      item.visible = args.selectedProjectIds.has(id);
     }
   }
 
   if (args.forceVisibleProjectsSection !== false) {
     if ("hidden" in projectsSection) {
       projectsSection.hidden = false;
-    } else if ("visible" in projectsSection) {
-      projectsSection.visible = true;
     }
   }
 }

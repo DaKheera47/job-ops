@@ -431,13 +431,13 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(saveButton).toBeEnabled());
   });
 
-  it("allows saving when both Reactive Resume v4 and v5 credentials are present", async () => {
-    const settingsWithBothRxResumeAuth = createAppSettings({
+  it("allows saving when Reactive Resume credentials are present", async () => {
+    const settingsWithRxResumeAuth = createAppSettings({
       rxresumeApiKeyHint: "api_",
     });
-    vi.mocked(api.getSettings).mockResolvedValue(settingsWithBothRxResumeAuth);
+    vi.mocked(api.getSettings).mockResolvedValue(settingsWithRxResumeAuth);
     vi.mocked(api.updateSettings).mockResolvedValue(
-      settingsWithBothRxResumeAuth,
+      settingsWithRxResumeAuth,
     );
 
     renderPage();
