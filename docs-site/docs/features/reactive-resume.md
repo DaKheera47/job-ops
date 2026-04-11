@@ -101,7 +101,7 @@ Or via environment variables:
 - `RXRESUME_API_KEY`
 - optional `RXRESUME_URL`
 
-If you leave the URL blank in the dashboard, JobOps uses `RXRESUME_URL` when it is set; if not set, it falls back to the public cloud default (https://api.rxresu.me).
+If you leave the URL blank in the dashboard, JobOps uses `RXRESUME_URL` when it is set; if not set, it falls back to the public cloud default (https://rxresu.me).
 
 ### Save-time validation
 

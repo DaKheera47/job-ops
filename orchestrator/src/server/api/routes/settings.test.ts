@@ -285,7 +285,6 @@ describe.sequential("Settings API routes", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rxresumeMode: "v5",
         rxresumeApiKey: "invalid-key",
       }),
     });
@@ -343,7 +342,6 @@ describe.sequential("Settings API routes", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rxresumeMode: "v5",
         rxresumeApiKey: "rr-v5-warning-key",
       }),
     });

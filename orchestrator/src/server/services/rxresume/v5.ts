@@ -22,7 +22,7 @@ export type RxResumeGetByIdResponse = {
   name: string;
   slug: string;
   tags: string[];
-  data: unknown | Record<string, unknown>;
+  data: unknown;
   isPublic: boolean;
   isLocked: boolean;
   hasPassword: boolean;
@@ -30,7 +30,7 @@ export type RxResumeGetByIdResponse = {
 };
 
 export type RxResumeImportRequest = {
-  data: unknown | unknown;
+  data: unknown;
   name?: string;
   slug?: string;
 };

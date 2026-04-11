@@ -152,7 +152,7 @@ async function resolveDesignResumeForRenderer(args: {
   if (
     args.renderer !== "rxresume" ||
     !designResume.sourceResumeId ||
-    !designResume.sourceMode
+    designResume.sourceMode !== "v5"
   ) {
     return {
       documentId: designResume.id,
