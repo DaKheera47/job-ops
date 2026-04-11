@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
+import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
 import { validateAndMaybePersistRxResumeMode } from "@client/lib/rxresume-config";
@@ -28,6 +29,10 @@ vi.mock("@client/hooks/useSettings", () => ({
 
 vi.mock("@client/hooks/useRxResumeConfigState", () => ({
   useRxResumeConfigState: vi.fn(),
+}));
+
+vi.mock("@client/hooks/useOnboardingRequirement", () => ({
+  useOnboardingRequirement: vi.fn(),
 }));
 
 vi.mock("@client/lib/rxresume-config", () => ({
@@ -131,6 +136,15 @@ describe("OnboardingPage", () => {
       getBaseResumeId: () => "resume-1",
       setBaseResumeId: vi.fn(),
     } as any);
+    vi.mocked(useOnboardingRequirement).mockImplementation(() => ({
+      checking: false,
+      complete: Boolean(
+        (currentSettings.basicAuthActive ||
+          currentSettings.onboardingBasicAuthDecision !== null) &&
+          Array.isArray(currentSettings.searchTerms?.override) &&
+          currentSettings.searchTerms.override.length > 0,
+      ),
+    }));
     vi.mocked(validateAndMaybePersistRxResumeMode).mockResolvedValue({
       validation: {
         valid: true,

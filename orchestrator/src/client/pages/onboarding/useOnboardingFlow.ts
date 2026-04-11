@@ -3,6 +3,10 @@ import { fileToDataUrl } from "@client/components/design-resume/utils";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
+import {
+  hasCompletedBasicAuthOnboarding,
+  isOnboardingComplete,
+} from "@client/lib/onboarding";
 import { queryKeys } from "@client/lib/queryKeys";
 import {
   getRxResumeCredentialDrafts,
@@ -24,7 +28,6 @@ import { normalizeSearchTerms } from "@shared/utils/search-terms";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
@@ -37,7 +40,6 @@ import type {
 } from "./types";
 
 export function useOnboardingFlow() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { storedRxResume, setBaseResumeId, syncBaseResumeId } =
@@ -162,9 +164,7 @@ export function useOnboardingFlow() {
     Array.isArray(searchTermsOverride) && searchTermsOverride.length > 0,
   );
   const searchTermsComplete = searchTermsSaved && !searchTermsStale;
-  const basicAuthComplete = Boolean(
-    settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
-  );
+  const basicAuthComplete = hasCompletedBasicAuthOnboarding(settings);
 
   const toValidationState = useCallback(
     (
@@ -368,21 +368,13 @@ export function useOnboardingFlow() {
         )
       : 0;
 
-  const complete =
-    llmValidated &&
-    baseResumeValidation.valid &&
-    searchTermsComplete &&
-    basicAuthComplete;
-
-  useEffect(() => {
-    if (demoMode) {
-      navigate("/jobs/ready", { replace: true });
-      return;
-    }
-    if (!settingsLoading && complete) {
-      navigate("/jobs/ready", { replace: true });
-    }
-  }, [complete, demoMode, navigate, settingsLoading]);
+  const complete = isOnboardingComplete({
+    demoMode,
+    settings,
+    llmValid: llmValidated,
+    baseResumeValid: baseResumeValidation.valid,
+    searchTermsValid: searchTermsComplete,
+  });
 
   const handleSaveLlm = useCallback(async () => {
     const values = getValues();
