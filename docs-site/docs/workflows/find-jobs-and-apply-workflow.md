@@ -58,9 +58,10 @@ At this stage:
 
 1. Open job details.
 2. Open the **search links** row when you want quick external research on LinkedIn, GitHub, or the wider web.
-3. Optionally enable tracer links for that specific job.
-4. Download the tailored PDF.
-5. Submit your application externally.
+3. If you wrote a resume outside JobOps, use **Upload PDF** in the job detail view to attach that file to the application instead of using the generated version.
+4. Optionally enable tracer links for that specific job.
+5. Download the PDF you want to submit.
+6. Submit your application externally.
 
 ### 5) Mark jobs as applied in JobOps
 

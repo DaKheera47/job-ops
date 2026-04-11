@@ -427,6 +427,20 @@ export async function updateJob(
   });
 }
 
+export async function uploadJobPdf(
+  id: string,
+  input: {
+    fileName: string;
+    mediaType?: string;
+    dataBase64: string;
+  },
+): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/pdf`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
 export async function getTracerAnalytics(options?: {
   jobId?: string;
   from?: number;

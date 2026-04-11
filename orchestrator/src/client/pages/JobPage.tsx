@@ -22,6 +22,7 @@ import {
   PlusCircle,
   RefreshCcw,
   Sparkles,
+  Upload,
   XCircle,
 } from "lucide-react";
 import React from "react";
@@ -37,6 +38,7 @@ import {
   useUpdateJobMutation,
 } from "@/client/hooks/queries/useJobMutations";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -72,12 +74,14 @@ export const JobPage: React.FC = () => {
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = React.useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = React.useState(false);
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
   const [eventToDelete, setEventToDelete] = React.useState<string | null>(null);
   const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
     null,
   );
   const pendingEventRef = React.useRef<StageEvent | null>(null);
+  const uploadPdfInputRef = React.useRef<HTMLInputElement | null>(null);
   const openEditDetails = React.useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
@@ -335,6 +339,28 @@ export const JobPage: React.FC = () => {
     }
   };
 
+  const handleUploadPdf = async (file: File) => {
+    if (!job) return;
+
+    try {
+      setIsUploadingPdf(true);
+      await uploadJobPdfFromFile(job.id, file);
+      await loadData();
+      toast.success(
+        job.pdfPath ? "Resume PDF replaced" : "Resume PDF attached",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to upload resume PDF";
+      toast.error(message);
+    } finally {
+      setIsUploadingPdf(false);
+      if (uploadPdfInputRef.current) {
+        uploadPdfInputRef.current.value = "";
+      }
+    }
+  };
+
   const currentStage = job
     ? (events.at(-1)?.toStage ??
       (job.status === "applied" || job.status === "in_progress"
@@ -497,6 +523,21 @@ export const JobPage: React.FC = () => {
                   </a>
                 </Button>
               )}
+
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 border-border/60 bg-background/30"
+                onClick={() => uploadPdfInputRef.current?.click()}
+                disabled={isUploadingPdf}
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                {isUploadingPdf
+                  ? "Uploading PDF"
+                  : job?.pdfPath
+                    ? "Replace PDF"
+                    : "Upload PDF"}
+              </Button>
 
               {isReady && (
                 <Button
@@ -705,6 +746,19 @@ export const JobPage: React.FC = () => {
         onOpenChange={setIsEditDetailsOpen}
         job={job}
         onJobUpdated={loadData}
+      />
+
+      <input
+        ref={uploadPdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            void handleUploadPdf(file);
+          }
+        }}
       />
     </main>
   );

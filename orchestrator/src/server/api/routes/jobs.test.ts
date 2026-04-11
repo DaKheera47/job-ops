@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import type { Server } from "node:http";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -130,6 +132,66 @@ describe.sequential("Jobs API routes", () => {
   it("returns 404 for missing jobs", async () => {
     const res = await fetch(`${baseUrl}/api/jobs/missing-id`);
     expect(res.status).toBe(404);
+  });
+
+  it("uploads a PDF resume for a job and stores it in data/pdfs", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Upload PDF Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/upload-pdf",
+      jobDescription: "Test description",
+    });
+    const pdfContent = Buffer.from("%PDF-1.7\nUploaded resume\n");
+
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: "external-resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: pdfContent.toString("base64"),
+      }),
+    });
+    const body = await res.json();
+    const storedPath = join(tempDir, "pdfs", `resume_${job.id}.pdf`);
+
+    expect(res.status).toBe(201);
+    expect(body.ok).toBe(true);
+    expect(body.data.pdfPath).toBe(storedPath);
+    expect(typeof body.meta.requestId).toBe("string");
+    await expect(readFile(storedPath, "utf8")).resolves.toContain(
+      "Uploaded resume",
+    );
+  });
+
+  it("rejects uploaded files that are not valid PDFs", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Upload Bad PDF Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/upload-bad-pdf",
+      jobDescription: "Test description",
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/pdf`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: "external-resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: Buffer.from("not-a-pdf").toString("base64"),
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("INVALID_REQUEST");
+    expect(body.error.message).toMatch(/valid pdf/i);
+    expect(typeof body.meta.requestId).toBe("string");
   });
 
   it("updates core job detail fields", async () => {
