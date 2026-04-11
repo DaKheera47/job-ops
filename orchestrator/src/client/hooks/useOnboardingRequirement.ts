@@ -25,8 +25,6 @@ export function useOnboardingRequirement() {
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
-  const requiresRxResume = settings?.pdfRenderer?.value === "rxresume";
-
   const runValidations = useCallback(async () => {
     if (!settings) return;
 
@@ -125,27 +123,14 @@ export function useOnboardingRequirement() {
     const basicAuthComplete =
       settings.basicAuthActive || settings.onboardingBasicAuthDecision !== null;
 
-    return (
-      llmComplete &&
-      baseResumeValidation.valid &&
-      (!requiresRxResume || rxresumeValidation.valid) &&
-      basicAuthComplete
-    );
-  }, [
-    baseResumeValidation.valid,
-    demoMode,
-    llmValidation.valid,
-    requiresRxResume,
-    rxresumeValidation.valid,
-    settings,
-  ]);
+    return llmComplete && baseResumeValidation.valid && basicAuthComplete;
+  }, [baseResumeValidation.valid, demoMode, llmValidation.valid, settings]);
 
   const checking =
     !demoMode &&
     (settingsLoading ||
       !settings ||
       !llmValidation.checked ||
-      !rxresumeValidation.checked ||
       !baseResumeValidation.checked);
 
   return {

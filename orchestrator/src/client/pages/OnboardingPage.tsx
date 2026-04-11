@@ -144,10 +144,7 @@ export const OnboardingPage: React.FC = () => {
                         ? "Finish by enabling basic auth or explicitly skipping it for now."
                         : null}
                     </p>
-                    <Button
-                      type="submit"
-                      disabled={flow.isBusy}
-                    >
+                    <Button type="submit" disabled={flow.isBusy}>
                       {flow.primaryLabel}
                       <ArrowRight className="h-4 w-4" />
                     </Button>

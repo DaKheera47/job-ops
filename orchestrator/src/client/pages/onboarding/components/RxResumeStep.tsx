@@ -1,5 +1,5 @@
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { BaseResumeSelection } from "@client/pages/settings/components/BaseResumeSelection";
+import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { PDF_RENDERER_LABELS, type PdfRenderer } from "@shared/types.js";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -49,8 +49,8 @@ export const RxResumeStep: React.FC<{
       <div className="space-y-5">
         <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
           Reactive Resume is optional. Connect it only if you want upstream PDF
-          export or want to start from a template resume in your Reactive
-          Resume account.
+          export or want to start from a template resume in your Reactive Resume
+          account.
         </div>
 
         <SettingsInput

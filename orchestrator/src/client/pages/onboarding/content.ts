@@ -22,7 +22,8 @@ export const STEP_COPY: Record<
   },
   baseresume: {
     eyebrow: "Step 2",
-    title: "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
+    title:
+      "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
     description:
       "Upload a PDF or DOCX resume to create a local Design Resume right away. If you already keep a resume in Reactive Resume, continue to the next step and connect it there instead.",
   },

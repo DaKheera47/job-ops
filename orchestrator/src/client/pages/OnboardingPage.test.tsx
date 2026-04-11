@@ -68,6 +68,15 @@ const baseSettings = {
 
 let currentSettings: any;
 
+function getStepButton(label: RegExp) {
+  const element = screen.getByText(label);
+  const button = element.closest("button");
+  if (!button) {
+    throw new Error(`Expected ${label.toString()} to be inside a step button`);
+  }
+  return button;
+}
+
 function renderPage() {
   return renderWithQueryClient(
     <MemoryRouter initialEntries={["/onboarding"]}>
@@ -396,7 +405,7 @@ describe("OnboardingPage", () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: /rxresume/i }));
+    fireEvent.click(getStepButton(/^Reactive Resume$/i));
 
     await waitFor(() => {
       expect(
@@ -420,6 +429,12 @@ describe("OnboardingPage", () => {
       valid: true,
       message: null,
     });
+    vi.mocked(validateAndMaybePersistRxResumeMode).mockResolvedValue({
+      validation: {
+        valid: false,
+        message: "Reactive Resume is not configured",
+      },
+    } as any);
     vi.mocked(api.validateRxresume).mockResolvedValue({
       valid: false,
       message: "Reactive Resume is not configured",
@@ -463,7 +478,7 @@ describe("OnboardingPage", () => {
 
     const { container } = renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: /^resume$/i }));
+    fireEvent.click(getStepButton(/^Resume$/i));
 
     await waitFor(() => {
       expect(

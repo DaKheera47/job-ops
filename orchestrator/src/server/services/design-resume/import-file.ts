@@ -1,10 +1,18 @@
-import { AppError, badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
+import {
+  AppError,
+  badRequest,
+  serviceUnavailable,
+  upstreamError,
+} from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getRequestId } from "@server/infra/request-context";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
 import { normalizeReactiveResumeV5Document } from "@server/services/rxresume/document";
-import { getResumeSchemaValidationMessage, safeParseV5ResumeData } from "@server/services/rxresume/schema";
+import {
+  getResumeSchemaValidationMessage,
+  safeParseV5ResumeData,
+} from "@server/services/rxresume/schema";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
 import { parseErrorMessage, truncate } from "../llm/utils/string";
@@ -29,11 +37,13 @@ const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<string, SupportedImportMediaType> =
-  {
-    pdf: "application/pdf",
-    docx: DOCX_MIME,
-  };
+const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
+  string,
+  SupportedImportMediaType
+> = {
+  pdf: "application/pdf",
+  docx: DOCX_MIME,
+};
 
 const SYSTEM_PROMPT = `
 You extract a resume into a single JSON object.
@@ -105,7 +115,10 @@ function normalizeImportMediaType(input: {
   const canInferFromExtension =
     !normalizedMediaType || normalizedMediaType === "application/octet-stream";
 
-  if (normalizedMediaType === "application/pdf" && fromExtension === "application/pdf") {
+  if (
+    normalizedMediaType === "application/pdf" &&
+    fromExtension === "application/pdf"
+  ) {
     return "application/pdf";
   }
 
@@ -149,7 +162,10 @@ function decodeBase64Payload(dataBase64: string): Buffer {
   return decoded;
 }
 
-function buildDataUrl(mediaType: SupportedImportMediaType, dataBase64: string): string {
+function buildDataUrl(
+  mediaType: SupportedImportMediaType,
+  dataBase64: string,
+): string {
   return `data:${mediaType};base64,${dataBase64}`;
 }
 
@@ -524,7 +540,7 @@ function repairLikelyJson(candidate: string): string {
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
     .replace(/,\s*([}\]])/g, "$1")
-    .replace(/\u0000/g, "")
+    .replaceAll("\u0000", "")
     .trim();
 }
 
@@ -541,16 +557,13 @@ function parseImportedResumeJson(content: string): unknown {
   }
 }
 
-function filterRequiredItems(
-  items: unknown,
-  requiredField: string,
-): unknown[] {
-  return asArray(items).filter((item) => trimText(asRecord(item)?.[requiredField]));
+function filterRequiredItems(items: unknown, requiredField: string): unknown[] {
+  return asArray(items).filter((item) =>
+    trimText(asRecord(item)?.[requiredField]),
+  );
 }
 
-function sanitizeNormalizedResume(
-  input: unknown,
-): DesignResumeJson {
+function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
   const normalized = normalizeReactiveResumeV5Document(input) as RecordLike;
   const sections = asRecord(normalized.sections) ?? {};
 
@@ -660,7 +673,10 @@ async function extractWithOpenAi(args: {
   dataBase64: string;
   requestId: string | undefined;
 }): Promise<string> {
-  const url = joinUrl(args.baseUrl || "https://api.openai.com", "/v1/responses");
+  const url = joinUrl(
+    args.baseUrl || "https://api.openai.com",
+    "/v1/responses",
+  );
   const response = await fetch(url, {
     method: "POST",
     headers: buildHeaders({
@@ -913,7 +929,9 @@ export async function importDesignResumeFromFile(
   });
 
   if (!provider) {
-    throw serviceUnavailable(buildCapabilityErrorMessage(runtime.provider ?? "unknown"));
+    throw serviceUnavailable(
+      buildCapabilityErrorMessage(runtime.provider ?? "unknown"),
+    );
   }
 
   if (!runtime.apiKey) {

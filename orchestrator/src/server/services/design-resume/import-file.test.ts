@@ -12,6 +12,7 @@ const designResumeService = vi.hoisted(() => ({
 }));
 
 const requestContext = vi.hoisted(() => ({
+  getRequestContext: vi.fn(() => ({ requestId: "req-123" })),
   getRequestId: vi.fn(() => "req-123"),
 }));
 

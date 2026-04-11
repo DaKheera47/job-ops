@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { fileToDataUrl } from "@client/components/design-resume/utils";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
@@ -20,7 +21,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { fileToDataUrl } from "../../components/design-resume/utils";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
   BasicAuthChoice,
@@ -122,7 +122,6 @@ export function useOnboardingFlow() {
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
   const pdfRenderer = watch("pdfRenderer");
-  const requiresRxResume = pdfRenderer === "rxresume";
 
   const validateLlm = useCallback(async () => {
     const values = getValues();
@@ -296,10 +295,7 @@ export function useOnboardingFlow() {
       : 0;
 
   const complete =
-    llmValidated &&
-    baseResumeValidation.valid &&
-    (!requiresRxResume || rxresumeValidation.valid) &&
-    basicAuthComplete;
+    llmValidated && baseResumeValidation.valid && basicAuthComplete;
 
   useEffect(() => {
     if (demoMode) {
