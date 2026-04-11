@@ -16,14 +16,12 @@ export const BaseResumeStep: React.FC<{
   isImportingResume: boolean;
   isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
-  pdfRenderer: "latex" | "rxresume";
   resumeSetupMode: ResumeSetupMode;
   rxresumeApiKey: string;
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
   onImportResumeFile: (file: File) => Promise<void>;
-  onPdfRendererChange: (renderer: "latex" | "rxresume") => void;
   onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
@@ -37,14 +35,12 @@ export const BaseResumeStep: React.FC<{
   isImportingResume,
   isResumeReady,
   isRxResumeSelfHosted,
-  pdfRenderer,
   resumeSetupMode,
   rxresumeApiKey,
   rxresumeApiKeyHint,
   rxresumeUrl,
   rxresumeValidation,
   onImportResumeFile,
-  onPdfRendererChange,
   onResumeSetupModeChange,
   onRxresumeApiKeyChange,
   onRxresumeSelfHostedChange,
@@ -161,7 +157,10 @@ export const BaseResumeStep: React.FC<{
             </div>
           ) : null}
 
-          <InlineValidation state={baseResumeValidation} />
+          <InlineValidation
+            state={baseResumeValidation}
+            successMessage="Your base resume is loaded and ready."
+          />
         </>
       ) : (
         <>
@@ -170,18 +169,19 @@ export const BaseResumeStep: React.FC<{
             isBusy={isBusy}
             isResumeReady={isResumeReady}
             isSelfHosted={isRxResumeSelfHosted}
-            pdfRenderer={pdfRenderer}
             rxresumeApiKey={rxresumeApiKey}
             rxresumeApiKeyHint={rxresumeApiKeyHint}
             rxresumeUrl={rxresumeUrl}
             rxresumeValidation={rxresumeValidation}
-            onPdfRendererChange={onPdfRendererChange}
             onRxresumeApiKeyChange={onRxresumeApiKeyChange}
             onRxresumeUrlChange={onRxresumeUrlChange}
             onSelfHostedChange={onRxresumeSelfHostedChange}
             onTemplateResumeChange={onTemplateResumeChange}
           />
-          <InlineValidation state={baseResumeValidation} />
+          <InlineValidation
+            state={baseResumeValidation}
+            successMessage="Your base resume is loaded and ready."
+          />
         </>
       )}
     </div>

@@ -1,5 +1,4 @@
 import type { LlmProviderId } from "@client/pages/settings/utils";
-import type { PdfRenderer } from "@shared/types.js";
 import type React from "react";
 import type { Control } from "react-hook-form";
 import type {
@@ -27,7 +26,6 @@ export const OnboardingStepContent: React.FC<{
   isRxResumeSelfHosted: boolean;
   llmKeyHint: string | null;
   llmValidation: ValidationState;
-  pdfRenderer: PdfRenderer;
   resumeSetupMode: ResumeSetupMode;
   rxresumeApiKey: string;
   rxresumeApiKeyHint: string | null | undefined;
@@ -38,7 +36,6 @@ export const OnboardingStepContent: React.FC<{
   onBasicAuthPasswordChange: (value: string) => void;
   onBasicAuthUserChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
-  onPdfRendererChange: (renderer: PdfRenderer) => void;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
@@ -67,14 +64,12 @@ export const OnboardingStepContent: React.FC<{
         isImportingResume={props.isImportingResume}
         isResumeReady={props.isResumeReady}
         isRxResumeSelfHosted={props.isRxResumeSelfHosted}
-        pdfRenderer={props.pdfRenderer}
         resumeSetupMode={props.resumeSetupMode}
         rxresumeApiKey={props.rxresumeApiKey}
         rxresumeApiKeyHint={props.rxresumeApiKeyHint}
         rxresumeUrl={props.rxresumeUrl}
         rxresumeValidation={props.rxresumeValidation}
         onImportResumeFile={props.onImportResumeFile}
-        onPdfRendererChange={props.onPdfRendererChange}
         onResumeSetupModeChange={props.onResumeSetupModeChange}
         onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
         onRxresumeSelfHostedChange={props.onRxresumeSelfHostedChange}

@@ -94,7 +94,6 @@ export const OnboardingPage: React.FC = () => {
                     isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
-                    pdfRenderer={flow.watch("pdfRenderer")}
                     resumeSetupMode={flow.resumeSetupMode}
                     rxresumeApiKey={flow.watch("rxresumeApiKey")}
                     rxresumeApiKeyHint={flow.settings?.rxresumeApiKeyHint}
@@ -109,9 +108,6 @@ export const OnboardingPage: React.FC = () => {
                       flow.setValue("basicAuthUser", value)
                     }
                     onImportResumeFile={flow.handleImportResumeFile}
-                    onPdfRendererChange={(renderer) =>
-                      flow.setValue("pdfRenderer", renderer)
-                    }
                     onResumeSetupModeChange={flow.setResumeSetupMode}
                     onRxresumeApiKeyChange={(value) =>
                       flow.setValue("rxresumeApiKey", value)
@@ -141,11 +137,6 @@ export const OnboardingPage: React.FC = () => {
                   </Button>
 
                   <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <p className="text-sm text-muted-foreground">
-                      {flow.currentStep === "basicauth"
-                        ? "Finish by enabling basic auth or explicitly skipping it for now."
-                        : null}
-                    </p>
                     <Button type="submit" disabled={flow.isBusy}>
                       {flow.primaryLabel}
                       <ArrowRight className="h-4 w-4" />

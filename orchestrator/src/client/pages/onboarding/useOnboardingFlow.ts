@@ -53,7 +53,8 @@ export function useOnboardingFlow() {
   );
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
-  const [basicAuthChoice, setBasicAuthChoice] = useState<BasicAuthChoice>(null);
+  const [basicAuthChoice, setBasicAuthChoice] =
+    useState<BasicAuthChoice>("enable");
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [resumeSetupMode, setResumeSetupMode] =
     useState<ResumeSetupMode>("upload");
@@ -65,7 +66,7 @@ export function useOnboardingFlow() {
         llmProvider: "",
         llmBaseUrl: "",
         llmApiKey: "",
-        pdfRenderer: "rxresume",
+        pdfRenderer: "latex",
         rxresumeUrl: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: null,
@@ -92,7 +93,7 @@ export function useOnboardingFlow() {
       llmProvider: settings.llmProvider?.value || "",
       llmBaseUrl: settings.llmBaseUrl?.value || "",
       llmApiKey: "",
-      pdfRenderer: settings.pdfRenderer?.value ?? "rxresume",
+      pdfRenderer: selectedId ? "rxresume" : "latex",
       rxresumeUrl: settings.rxresumeUrl ?? "",
       rxresumeApiKey: "",
       rxresumeBaseResumeId: selectedId,
@@ -104,7 +105,7 @@ export function useOnboardingFlow() {
         ? "enable"
         : settings.onboardingBasicAuthDecision === "skipped"
           ? "skip"
-          : null,
+          : "enable",
     );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
     setResumeSetupMode(selectedId ? "rxresume" : "upload");
@@ -128,7 +129,6 @@ export function useOnboardingFlow() {
   const basicAuthComplete = Boolean(
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
-  const pdfRenderer = watch("pdfRenderer");
 
   const toValidationState = useCallback(
     (
@@ -426,7 +426,7 @@ export function useOnboardingFlow() {
           try {
             const nextSettings = await api.updateSettings({
               ...update,
-              pdfRenderer: values.pdfRenderer,
+              pdfRenderer: "rxresume",
               rxresumeBaseResumeId: values.rxresumeBaseResumeId,
             });
             syncSettingsCache(nextSettings);
@@ -445,7 +445,7 @@ export function useOnboardingFlow() {
             : "Failed to save RxResume credentials",
       });
 
-      setRxresumeValidation({ ...result.validation, checked: true });
+      setRxresumeValidation(toValidationState(result.validation));
       if (!result.validation.valid) {
         toast.error(result.validation.message || "RxResume validation failed");
         return false;
@@ -481,6 +481,7 @@ export function useOnboardingFlow() {
     setValue,
     storedRxResume,
     syncSettingsCache,
+    toValidationState,
     validateBaseResume,
   ]);
 
@@ -536,7 +537,7 @@ export function useOnboardingFlow() {
           updatedAt: document.updatedAt,
         });
 
-        if (!rxresumeValidation.valid && pdfRenderer !== "latex") {
+        if (settings?.pdfRenderer?.value !== "latex") {
           const nextSettings = await api.updateSettings({
             pdfRenderer: "latex",
           });
@@ -551,7 +552,7 @@ export function useOnboardingFlow() {
 
         toast.success("Resume uploaded", {
           description:
-            pdfRenderer === "latex" || rxresumeValidation.valid
+            settings?.pdfRenderer?.value === "latex"
               ? "Your local Design Resume is ready."
               : "Your local Design Resume is ready and PDF rendering was switched to LaTeX.",
         });
@@ -566,9 +567,8 @@ export function useOnboardingFlow() {
       }
     },
     [
-      pdfRenderer,
       queryClient,
-      rxresumeValidation.valid,
+      settings?.pdfRenderer?.value,
       setValue,
       syncSettingsCache,
       validateBaseResume,

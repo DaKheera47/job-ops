@@ -138,7 +138,10 @@ export const LlmConnectionStep: React.FC<{
         )}
       </div>
 
-      <InlineValidation state={validation} />
+      <InlineValidation
+        state={validation}
+        successMessage={`${providerConfig.label} connection verified.`}
+      />
     </div>
   );
 };

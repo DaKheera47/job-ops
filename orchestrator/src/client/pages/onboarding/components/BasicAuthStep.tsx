@@ -34,15 +34,14 @@ export const BasicAuthStep: React.FC<{
       {[
         {
           value: "enable",
-          title: "Enable basic auth",
+          title: "Lock it down",
           description:
-            "Require a username and password before write actions run in this workspace.",
+            "Require a password before any changes are made to your data.",
         },
         {
           value: "skip",
           title: "Skip for now",
-          description:
-            "Finish onboarding now and come back in Settings if you decide to lock the app down later.",
+          description: "You can add protection later from Settings.",
         },
       ].map((option) => {
         const checked = basicAuthChoice === option.value;

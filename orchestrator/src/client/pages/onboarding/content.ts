@@ -17,7 +17,7 @@ export const STEP_COPY: Record<
 > = {
   llm: {
     eyebrow: "Step 1",
-    title: "Choose the LLM connection Job Ops should trust.",
+    title: "Choose the LLM connection Job Ops should use.",
     description:
       "Pick the provider, confirm the endpoint, and validate the credentials this workspace will use for scoring and tailoring.",
   },
@@ -29,8 +29,8 @@ export const STEP_COPY: Record<
   },
   basicauth: {
     eyebrow: "Step 3",
-    title: "Decide whether write actions should be protected.",
+    title: "Secure your workspace",
     description:
-      "You can enable basic auth now for a safer local setup, or explicitly skip it for now and come back later in Settings.",
+      "Add a username and password so only you can make changes. You can always set this up later in Settings.",
   },
 };
