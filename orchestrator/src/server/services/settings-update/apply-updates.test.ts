@@ -138,7 +138,7 @@ describe("applySettingsUpdates", () => {
     const settingsRepo = await import("@server/repositories/settings");
 
     const plan = await applySettingsUpdates({
-            rxresumeUrl: "https://resume.example.com",
+      rxresumeUrl: "https://resume.example.com",
       rxresumeBaseResumeId: "resume-123",
     });
 

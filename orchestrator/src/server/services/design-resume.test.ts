@@ -499,7 +499,6 @@ describe("design resume service", () => {
     );
   });
 
-
   it("keeps the existing picture asset when removing it hits a revision conflict", async () => {
     const resumeJson = makeValidResumeJson({
       picture: {

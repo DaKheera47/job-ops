@@ -171,9 +171,7 @@ export async function getResume(
     config,
   )) as RxResumeGetByIdResponse;
   if (payload.data !== undefined) {
-    payload.data = parseV5ResumeData(payload.data) as
-      | any
-      | Record<string, unknown>;
+    payload.data = parseV5ResumeData(payload.data) as Record<string, unknown>;
   }
   return payload;
 }

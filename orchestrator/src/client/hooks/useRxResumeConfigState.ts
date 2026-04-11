@@ -18,10 +18,7 @@ export function useRxResumeConfigState(settings: RxResumeSettingsLike) {
     return selectedId;
   }, [settings]);
 
-  const getBaseResumeId = useCallback(
-    () => baseResumeId,
-    [baseResumeId],
-  );
+  const getBaseResumeId = useCallback(() => baseResumeId, [baseResumeId]);
 
   return {
     storedRxResume,

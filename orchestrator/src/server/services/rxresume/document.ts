@@ -76,7 +76,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function defaultOptions() {
+function _defaultOptions() {
   return { showLinkInTitle: false };
 }
 
@@ -713,4 +713,3 @@ export function mergeReactiveResumeV5Content(
     customSections: structuredClone(content.customSections),
   };
 }
-

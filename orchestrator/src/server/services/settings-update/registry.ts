@@ -106,15 +106,11 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
   }
 
   if (key === "rxresumeBaseResumeId") {
-    settingsUpdateRegistry.rxresumeBaseResumeId = async ({
-      value,
-    }) => {
+    settingsUpdateRegistry.rxresumeBaseResumeId = async ({ value }) => {
       const serialized = normalizeEnvInput(value as string | null | undefined);
 
       return result({
-        actions: [
-          persistAction("rxresumeBaseResumeId", serialized),
-        ],
+        actions: [persistAction("rxresumeBaseResumeId", serialized)],
         deferred: ["clearRxResumeCaches"],
       });
     };

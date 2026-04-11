@@ -433,7 +433,6 @@ describe("SettingsPage", () => {
 
   it("allows saving when both Reactive Resume v4 and v5 credentials are present", async () => {
     const settingsWithBothRxResumeAuth = createAppSettings({
-      
       rxresumeApiKeyHint: "api_",
     });
     vi.mocked(api.getSettings).mockResolvedValue(settingsWithBothRxResumeAuth);

@@ -1,10 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
-import {
-  getResumeSchemaValidationMessage,
-  safeParseV5ResumeData,
-} from "./schema";
 
 type RecordLike = Record<string, unknown>;
 

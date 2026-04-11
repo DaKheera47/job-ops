@@ -325,7 +325,7 @@ function failRxResume(res: Response, error: unknown): void {
 
 settingsRouter.get(
   "/rx-resumes",
-  asyncRoute(async (req: Request, res: Response) => {
+  asyncRoute(async (_req: Request, res: Response) => {
     try {
       const resumes = await listResumes();
 

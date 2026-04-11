@@ -515,7 +515,6 @@ describe("PDF Service Tailoring Logic", () => {
     );
   });
 
-
   it("uses the RxResume export flow when the renderer setting is rxresume", async () => {
     currentPdfRenderer.value = "rxresume";
     const fetchMock = vi.fn().mockResolvedValue({
@@ -530,12 +529,10 @@ describe("PDF Service Tailoring Logic", () => {
       await generatePdf("job-rxresume", {}, "desc");
 
       expect(mockResumeRenderer.renderResumePdf).not.toHaveBeenCalled();
-      expect(rxresume.importResume).toHaveBeenCalledWith(
-        {
-          name: "JobOps Tailored Resume job-rxresume",
-          data: expect.any(Object),
-        }
-      );
+      expect(rxresume.importResume).toHaveBeenCalledWith({
+        name: "JobOps Tailored Resume job-rxresume",
+        data: expect.any(Object),
+      });
       expect(rxresume.exportResumePdf).toHaveBeenCalledWith("temp-resume-id");
       expect(fetchMock).toHaveBeenCalledWith(
         "https://pdf.rxresume.test/print/123",

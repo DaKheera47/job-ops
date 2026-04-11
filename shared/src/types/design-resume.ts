@@ -1,4 +1,3 @@
-
 export type ReactiveResumeV5LooseObject = Record<string, unknown>;
 
 export interface ReactiveResumeV5Url extends ReactiveResumeV5LooseObject {

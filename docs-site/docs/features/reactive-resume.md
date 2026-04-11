@@ -85,41 +85,29 @@ At generation time:
 
 Before connecting Reactive Resume to JobOps:
 
-1. Choose a mode in **Settings → Reactive Resume**:
-   - `v5` (API key)
-   - `v4` (email/password)
-2. For **v5** (recommended for self-hosted/latest), generate an API key and configure `rxresumeApiKey` or `RXRESUME_API_KEY`.
-3. For **v4**, create a native email/password account at [v4.rxresu.me/auth/register](https://v4.rxresu.me/auth/register) and configure `rxresumeEmail` + `rxresumePassword`.
+1. Generate an API key in your Reactive Resume account.
+2. Configure `rxresumeApiKey` in **Settings → Reactive Resume** (or set `RXRESUME_API_KEY` in your environment).
 
-Important:
-
-- Explicit `v4` and `v5` modes do not silently fall back.
-- OAuth-only logins are not supported for the v4 email/password integration.
 
 ### 1) Configure Reactive Resume access
 
 Configure in **Settings → Reactive Resume**:
 
-- `rxresumeMode` (`v5` or `v4`)
 - `rxresumeUrl` (optional shared URL for cloud or self-hosted deployments)
-- `rxresumeApiKey` (for v5)
-- `rxresumeEmail` + `rxresumePassword` (for v4)
+- `rxresumeApiKey`
 
 Or via environment variables:
 
-- `RXRESUME_MODE` (`v5` or `v4`)
-- `RXRESUME_API_KEY` (for v5)
-- `RXRESUME_EMAIL`
-- `RXRESUME_PASSWORD`
-- optional `RXRESUME_URL` (works for both modes; v5 OpenAPI path is added automatically)
+- `RXRESUME_API_KEY`
+- optional `RXRESUME_URL`
 
-If you leave the URL blank in the dashboard, JobOps uses `RXRESUME_URL` when it is set; if not set, it falls back to the public cloud default for the selected mode.
+If you leave the URL blank in the dashboard, JobOps uses `RXRESUME_URL` when it is set; if not set, it falls back to the public cloud default (https://api.rxresu.me).
 
 ### Save-time validation
 
 When you save Reactive Resume credentials or the shared URL in Settings:
 
-1. JobOps validates only the credential-bearing Reactive Resume fields for the selected mode.
+1. JobOps validates your API key.
 2. Invalid credentials or other `4xx` configuration failures block the save and show a persistent inline error.
 3. Temporary network failures, timeouts, or upstream `5xx` errors show a persistent inline warning, but the save still succeeds.
 
@@ -266,18 +254,14 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 ### RxResume controls are disabled
 
-- Ensure the selected mode has credentials configured.
-- `v5`: set a valid API key.
-- `v4`: set email + password.
-- Invalid credentials block save and remain visible as an inline error until you edit the selected mode's credentials or URL.
+- Ensure you have set a valid API key.
+- Invalid credentials block save and remain visible as an inline error until you edit your API key or URL.
 - Temporary Reactive Resume downtime shows an inline warning, but other settings can still be saved.
 - Save settings, then refresh resumes in the Reactive Resume section.
 
 ### No resumes appear in dropdown
 
-- Confirm the selected mode matches your Reactive Resume deployment.
-- For `v5`, confirm `RXRESUME_API_KEY` / `rxresumeApiKey` is valid for your self-hosted instance.
-- For `v4`, confirm credentials are valid for [v4.rxresu.me](https://v4.rxresu.me) (or your configured v4 URL) and are not OAuth-only.
+- Confirm `RXRESUME_API_KEY` / `rxresumeApiKey` is valid for your Reactive Resume instance.
 - Confirm the selected Reactive Resume account actually has resumes.
 
 ### Project list is empty in settings

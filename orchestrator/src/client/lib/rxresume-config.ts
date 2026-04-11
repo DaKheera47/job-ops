@@ -59,10 +59,7 @@ export type RxResumeCredentialPrecheckFailure = ReturnType<
 export const getRxResumeMissingCredentialLabels = (input: {
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
-}) =>
-  input.stored.apiKey || input.draft.apiKey
-    ? []
-    : ["RxResume API key"];
+}) => (input.stored.apiKey || input.draft.apiKey ? [] : ["RxResume API key"]);
 
 export const toRxResumeValidationPayload = (
   draft: RxResumeCredentialDrafts,
@@ -193,9 +190,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   }
 
   try {
-    const updatedSettings = await persist(
-      buildRxResumeSettingsUpdate(draft),
-    );
+    const updatedSettings = await persist(buildRxResumeSettingsUpdate(draft));
     return {
       validation: {
         valid: true,

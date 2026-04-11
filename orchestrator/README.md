@@ -36,11 +36,10 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume (`v5` or `v4`) if you want import support, and select a template resume.
+   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume if you want import support, and select a template resume.
 
    Then open **Design Resume** in the app and import your base resume once. JobOps will use that local Design Resume document as the primary resume context for tailoring, scoring, and PDF generation.
 
-   `v5` (API key) is recommended for self-hosted/latest Reactive Resume. Use `v4` when connecting to the legacy email/password flow.
 
    OpenRouter is the default LLM provider, but OpenAI, LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.
 
@@ -148,5 +147,5 @@ npm start
 - **Backend:** Express, TypeScript, Drizzle ORM, SQLite
 - **Frontend:** React, Vite, CSS (custom design system)
 - **AI:** Configurable LLM provider (OpenRouter default; also supports OpenAI via the dedicated `openai` provider, `openai-compatible` endpoints, Gemini, LM Studio, and Ollama)
-- **PDF Generation:** Reactive Resume v4/v5 API export (configured via Settings)
+- **PDF Generation:** Reactive Resume v5 API export (configured via Settings)
 - **Job Crawling:** Wraps existing TypeScript Crawlee crawler
