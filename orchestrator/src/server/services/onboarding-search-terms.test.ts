@@ -9,7 +9,7 @@ vi.mock("./llm/service", () => ({
   },
 }));
 
-vi.mock("./modelSelection", () => ({
+vi.mock("@server/services/modelSelection", () => ({
   resolveLlmModel: vi.fn().mockResolvedValue("test-model"),
 }));
 

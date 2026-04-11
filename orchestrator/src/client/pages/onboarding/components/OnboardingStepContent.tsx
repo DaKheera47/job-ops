@@ -1,4 +1,5 @@
 import type { LlmProviderId } from "@client/pages/settings/utils";
+import type { SearchTermsSuggestionResponse } from "@shared/types.js";
 import type React from "react";
 import type { Control } from "react-hook-form";
 import type {
@@ -36,7 +37,7 @@ export const OnboardingStepContent: React.FC<{
   rxresumeValidation: ValidationState;
   searchTermDraft: string;
   searchTerms: string[];
-  searchTermsSource: "ai" | "fallback" | null;
+  searchTermsSource: SearchTermsSuggestionResponse["source"] | null;
   searchTermsStale: boolean;
   selectedProvider: LlmProviderId;
   onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
