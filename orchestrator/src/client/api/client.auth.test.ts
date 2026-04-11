@@ -70,6 +70,22 @@ describe("API client auth flow", () => {
     expect(redirectToSignIn).not.toHaveBeenCalled();
   });
 
+  it("clears legacy stored credentials before attempting migration", async () => {
+    api.__setLegacyAuthCredentialsForTests({
+      username: "user",
+      password: "pass",
+    });
+
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(jwtLoginSuccess());
+
+    const storedBefore = sessionStorage.getItem("jobops.basicAuthCredentials");
+    expect(storedBefore).toContain('"password"');
+
+    const promise = api.restoreAuthSessionFromLegacyCredentials();
+    expect(sessionStorage.getItem("jobops.basicAuthCredentials")).toBeNull();
+    await expect(promise).resolves.toBe(true);
+  });
+
   it("reuses the upgraded bearer token on later requests", async () => {
     api.__setLegacyAuthCredentialsForTests({
       username: "user",

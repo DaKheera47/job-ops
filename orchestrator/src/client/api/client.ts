@@ -101,15 +101,44 @@ export type AuthCredentials = {
   password: string;
 };
 
+type StoredLegacyAuthCredentials = AuthCredentials & {
+  storedAt?: number;
+};
+
 const LEGACY_SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
 const LEGACY_SESSION_JWT_KEY = "jobops.jwtToken";
 const SESSION_AUTH_TOKEN_KEY = "jobops.authToken";
+const LEGACY_SESSION_AUTH_TTL_MS = 5 * 60 * 1000;
 
 function loadStoredLegacyCredentials(): AuthCredentials | null {
   try {
     const stored = sessionStorage.getItem(LEGACY_SESSION_AUTH_KEY);
     if (!stored) return null;
-    return JSON.parse(stored) as AuthCredentials;
+    // Migration credentials are one-shot: remove them from storage as soon as
+    // we read them, then keep them only in memory for the upgrade attempt.
+    sessionStorage.removeItem(LEGACY_SESSION_AUTH_KEY);
+
+    const parsed = JSON.parse(stored) as StoredLegacyAuthCredentials;
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      typeof parsed.username !== "string" ||
+      typeof parsed.password !== "string"
+    ) {
+      return null;
+    }
+
+    if (
+      typeof parsed.storedAt === "number" &&
+      Date.now() - parsed.storedAt > LEGACY_SESSION_AUTH_TTL_MS
+    ) {
+      return null;
+    }
+
+    return {
+      username: parsed.username,
+      password: parsed.password,
+    };
   } catch {
     return null;
   }
@@ -120,7 +149,10 @@ function storeLegacyCredentials(credentials: AuthCredentials | null): void {
     if (credentials) {
       sessionStorage.setItem(
         LEGACY_SESSION_AUTH_KEY,
-        JSON.stringify(credentials),
+        JSON.stringify({
+          ...credentials,
+          storedAt: Date.now(),
+        } satisfies StoredLegacyAuthCredentials),
       );
     } else {
       sessionStorage.removeItem(LEGACY_SESSION_AUTH_KEY);
@@ -225,13 +257,13 @@ export async function restoreAuthSessionFromLegacyCredentials(): Promise<boolean
   if (!cachedLegacyCredentials) return false;
   if (!authMigrationInFlight) {
     const credentials = cachedLegacyCredentials;
+    cachedLegacyCredentials = null;
+    storeLegacyCredentials(null);
     authMigrationInFlight = (async () => {
       try {
         await signInWithCredentials(credentials.username, credentials.password);
         return true;
       } catch {
-        cachedLegacyCredentials = null;
-        storeLegacyCredentials(null);
         return false;
       } finally {
         authMigrationInFlight = null;

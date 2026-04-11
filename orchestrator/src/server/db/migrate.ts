@@ -109,6 +109,9 @@ const migrations = [
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at
     ON auth_sessions(expires_at)`,
 
+  `CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
+    ON auth_sessions(revoked_at)`,
+
   `CREATE TABLE IF NOT EXISTS design_resume_documents (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,

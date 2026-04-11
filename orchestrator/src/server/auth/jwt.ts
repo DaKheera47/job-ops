@@ -1,16 +1,88 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { logger } from "@infra/logger";
+import { getDataDir } from "@server/config/dataDir";
 import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import jwt from "jsonwebtoken";
 
 const DEFAULT_EXPIRY_SECONDS = 86400; // 24 hours
+const MIN_JWT_SECRET_LENGTH = 32;
+const LOCAL_JWT_SECRET_FILENAME = "jwt-secret";
+let cachedJwtSecret: string | null = null;
 
-function getJwtSecret(): string {
+async function readPersistedJwtSecret(
+  secretPath: string,
+): Promise<string | null> {
+  try {
+    const stored = (await readFile(secretPath, "utf8")).trim();
+    return stored || null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function ensurePersistedJwtSecret(): Promise<string> {
+  const dataDir = getDataDir();
+  const secretPath = join(dataDir, LOCAL_JWT_SECRET_FILENAME);
+
+  await mkdir(dataDir, { recursive: true });
+
+  const existing = await readPersistedJwtSecret(secretPath);
+  if (existing) {
+    if (existing.length < MIN_JWT_SECRET_LENGTH) {
+      throw new Error(
+        `Persisted JWT secret at ${secretPath} must be at least ${MIN_JWT_SECRET_LENGTH} characters long`,
+      );
+    }
+    return existing;
+  }
+
+  const generated = randomBytes(48).toString("base64url");
+  try {
+    await writeFile(secretPath, `${generated}\n`, {
+      encoding: "utf8",
+      flag: "wx",
+      mode: 0o600,
+    });
+    logger.info("Generated local JWT secret", {
+      path: secretPath,
+    });
+    return generated;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+      throw error;
+    }
+    const raced = await readPersistedJwtSecret(secretPath);
+    if (!raced || raced.length < MIN_JWT_SECRET_LENGTH) {
+      throw new Error(
+        `Persisted JWT secret at ${secretPath} must be at least ${MIN_JWT_SECRET_LENGTH} characters long`,
+      );
+    }
+    return raced;
+  }
+}
+
+async function getJwtSecret(): Promise<string> {
+  if (cachedJwtSecret) return cachedJwtSecret;
+
   const explicit = process.env.JWT_SECRET;
-  if (explicit && explicit.length >= 32) {
+  if (explicit) {
+    if (explicit.length < MIN_JWT_SECRET_LENGTH) {
+      throw new Error(
+        `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters long`,
+      );
+    }
+    cachedJwtSecret = explicit;
     return explicit;
   }
 
-  throw new Error("JWT_SECRET must be set and at least 32 characters long");
+  const persisted = await ensurePersistedJwtSecret();
+  cachedJwtSecret = persisted;
+  return persisted;
 }
 
 function getJwtExpirySeconds(): number {
@@ -26,7 +98,7 @@ export async function signToken(sub: string): Promise<{
   token: string;
   expiresIn: number;
 }> {
-  const secret = getJwtSecret();
+  const secret = await getJwtSecret();
   const expiresIn = getJwtExpirySeconds();
   const jti = randomUUID();
   const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
@@ -51,7 +123,7 @@ export async function verifyToken(token: string): Promise<{
   jti: string;
   exp: number;
 }> {
-  const secret = getJwtSecret();
+  const secret = await getJwtSecret();
   const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
   }) as jwt.JwtPayload;
@@ -84,5 +156,6 @@ export async function blacklistToken(jti: string): Promise<void> {
 
 /** Test-only: clear persisted auth sessions. */
 export async function __resetBlacklistForTests(): Promise<void> {
+  cachedJwtSecret = null;
   await authSessionsRepo.deleteAllAuthSessions();
 }

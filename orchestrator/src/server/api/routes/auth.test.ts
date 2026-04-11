@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises";
 import type { Server } from "node:http";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -70,6 +72,28 @@ describe.sequential("Auth routes", () => {
       });
 
       expect(res.status).toBe(400);
+    });
+
+    it("generates and persists a local JWT secret when none is configured", async () => {
+      await stopServer({ server, closeDb, tempDir });
+      ({ server, baseUrl, closeDb, tempDir } = await startServer({
+        env: {
+          BASIC_AUTH_USER: "admin",
+          BASIC_AUTH_PASSWORD: "secret",
+        },
+      }));
+
+      const res = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret" }),
+      });
+
+      expect(res.status).toBe(200);
+      const persistedSecret = (
+        await readFile(join(tempDir, "jwt-secret"), "utf8")
+      ).trim();
+      expect(persistedSecret.length).toBeGreaterThanOrEqual(32);
     });
   });
 

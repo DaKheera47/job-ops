@@ -269,6 +269,7 @@ export const authSessions = sqliteTable(
   },
   (table) => ({
     expiresAtIndex: index("idx_auth_sessions_expires_at").on(table.expiresAt),
+    revokedAtIndex: index("idx_auth_sessions_revoked_at").on(table.revokedAt),
   }),
 );
 

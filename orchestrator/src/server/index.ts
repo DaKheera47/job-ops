@@ -7,6 +7,7 @@ import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { createApp } from "./app";
 import { initializeExtractorRegistry } from "./extractors/registry";
+import { deleteExpiredOrRevokedAuthSessions } from "./repositories/auth-sessions";
 import * as settingsRepo from "./repositories/settings";
 import {
   getBackupSettings,
@@ -16,6 +17,20 @@ import {
 import { initializeDemoModeServices } from "./services/demo-mode";
 import { applyStoredEnvOverrides } from "./services/envSettings";
 import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
+
+const AUTH_SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
+async function cleanupAuthSessions(trigger: "startup" | "interval") {
+  try {
+    await deleteExpiredOrRevokedAuthSessions();
+    logger.debug("Auth session cleanup completed", { trigger });
+  } catch (error) {
+    logger.warn("Auth session cleanup failed", {
+      trigger,
+      error: sanitizeUnknown(error),
+    });
+  }
+}
 
 async function startServer() {
   await applyStoredEnvOverrides();
@@ -110,6 +125,17 @@ async function startServer() {
       }
     } catch (error) {
       logger.warn("Failed to initialize backup service", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    try {
+      await cleanupAuthSessions("startup");
+      setInterval(() => {
+        void cleanupAuthSessions("interval");
+      }, AUTH_SESSION_CLEANUP_INTERVAL_MS);
+    } catch (error) {
+      logger.warn("Failed to initialize auth session cleanup", {
         error: sanitizeUnknown(error),
       });
     }
