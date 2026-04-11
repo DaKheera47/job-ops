@@ -436,9 +436,7 @@ describe("SettingsPage", () => {
       rxresumeApiKeyHint: "api_",
     });
     vi.mocked(api.getSettings).mockResolvedValue(settingsWithRxResumeAuth);
-    vi.mocked(api.updateSettings).mockResolvedValue(
-      settingsWithRxResumeAuth,
-    );
+    vi.mocked(api.updateSettings).mockResolvedValue(settingsWithRxResumeAuth);
 
     renderPage();
 
