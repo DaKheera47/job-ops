@@ -25,6 +25,10 @@ export function useOnboardingRequirement() {
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
+  const shouldValidateRxresume = Boolean(
+    settings?.pdfRenderer?.value === "rxresume" ||
+      settings?.rxresumeBaseResumeId,
+  );
   const runValidations = useCallback(async () => {
     if (!settings) return;
 
@@ -50,27 +54,31 @@ export function useOnboardingRequirement() {
         }),
     );
 
-    validations.push(
-      api
-        .validateRxresume({
-          baseUrl: settings.rxresumeUrl ?? undefined,
-        })
-        .then((result) => {
-          setRxresumeValidation({ ...result, checked: true });
-          return result;
-        })
-        .catch((error: unknown) => {
-          const result = {
-            valid: false,
-            message:
-              error instanceof Error
-                ? error.message
-                : "RxResume validation failed",
-          };
-          setRxresumeValidation({ ...result, checked: true });
-          return result;
-        }),
-    );
+    if (shouldValidateRxresume) {
+      validations.push(
+        api
+          .validateRxresume({
+            baseUrl: settings.rxresumeUrl ?? undefined,
+          })
+          .then((result) => {
+            setRxresumeValidation({ ...result, checked: true });
+            return result;
+          })
+          .catch((error: unknown) => {
+            const result = {
+              valid: false,
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "RxResume validation failed",
+            };
+            setRxresumeValidation({ ...result, checked: true });
+            return result;
+          }),
+      );
+    } else {
+      setRxresumeValidation(EMPTY_VALIDATION_STATE);
+    }
 
     validations.push(
       api
@@ -93,14 +101,14 @@ export function useOnboardingRequirement() {
     );
 
     await Promise.allSettled(validations);
-  }, [selectedProvider, settings]);
+  }, [selectedProvider, settings, shouldValidateRxresume]);
 
   useEffect(() => {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
       !llmValidation.checked ||
-      !rxresumeValidation.checked ||
+      (shouldValidateRxresume && !rxresumeValidation.checked) ||
       !baseResumeValidation.checked;
 
     if (!needsValidation) return;
@@ -113,6 +121,7 @@ export function useOnboardingRequirement() {
     rxresumeValidation.checked,
     settings,
     settingsLoading,
+    shouldValidateRxresume,
   ]);
 
   const complete = useMemo(() => {

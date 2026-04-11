@@ -84,7 +84,9 @@ function normalizeRuntimeProvider(
 ): SupportedRuntimeProvider | null {
   const normalized = provider?.trim().toLowerCase().replace(/-/g, "_");
   if (normalized === "openai") return "openai";
-  if (normalized === "openrouter") return "openrouter";
+  if (normalized === "openrouter" || normalized === "open_router") {
+    return "openrouter";
+  }
   if (normalized === "gemini") return "gemini";
   return null;
 }
@@ -126,7 +128,7 @@ function normalizeImportMediaType(input: {
   throw badRequest("Only PDF and DOCX resumes are supported.");
 }
 
-function decodeBase64Payload(dataBase64: string): Buffer {
+function normalizeBase64Payload(dataBase64: string): string {
   const trimmed = dataBase64.trim();
   if (!trimmed) {
     throw badRequest("Resume import requires file data.");
@@ -143,11 +145,24 @@ function decodeBase64Payload(dataBase64: string): Buffer {
     throw badRequest("Resume file data must be valid base64.");
   }
 
-  const estimatedByteLength = Math.floor((normalized.length * 3) / 4);
+  const paddingLength = normalized.endsWith("==")
+    ? 2
+    : normalized.endsWith("=")
+      ? 1
+      : 0;
+  const estimatedByteLength = (normalized.length / 4) * 3 - paddingLength;
   if (estimatedByteLength > MAX_IMPORT_FILE_BYTES) {
     throw badRequest("Resume files must be 10 MB or smaller.");
   }
 
+  return normalized;
+}
+
+function decodeBase64Payload(dataBase64: string): {
+  decoded: Buffer;
+  normalizedBase64: string;
+} {
+  const normalized = normalizeBase64Payload(dataBase64);
   const decoded = Buffer.from(normalized, "base64");
   if (decoded.toString("base64") !== normalized) {
     throw badRequest("Resume file data must be valid base64.");
@@ -161,7 +176,7 @@ function decodeBase64Payload(dataBase64: string): Buffer {
     throw badRequest("Resume files must be 10 MB or smaller.");
   }
 
-  return decoded;
+  return { decoded, normalizedBase64: normalized };
 }
 
 function buildDataUrl(
@@ -918,7 +933,7 @@ export async function importDesignResumeFromFile(
     fileName,
     mediaType: input.mediaType,
   });
-  const decoded = decodeBase64Payload(input.dataBase64);
+  const { decoded, normalizedBase64 } = decodeBase64Payload(input.dataBase64);
   const requestId = getRequestId();
 
   const runtime = await resolveLlmRuntimeSettings();
@@ -953,7 +968,7 @@ export async function importDesignResumeFromFile(
       model: runtime.model,
       mediaType,
       fileName,
-      dataBase64: input.dataBase64.trim(),
+      dataBase64: normalizedBase64,
       requestId,
     });
     const parsed = parseImportedResumeJson(rawText);

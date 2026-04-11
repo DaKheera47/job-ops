@@ -149,6 +149,69 @@ describe("importDesignResumeFromFile", () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
+  it("accepts hyphenated OpenRouter provider names", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "open-router",
+      model: "openai/gpt-4.1",
+      baseUrl: null,
+      apiKey: "or-test",
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/chat/completions",
+      expect.any(Object),
+    );
+  });
+
+  it("allows a base64 payload exactly at the 10 MB limit", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: `{"basics":{"name":"Taylor Quinn"}}`,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const exactLimitPayload = Buffer.alloc(10 * 1024 * 1024, 0);
+
+    await expect(
+      importDesignResumeFromFile({
+        fileName: "resume.pdf",
+        mediaType: "application/pdf",
+        dataBase64: exactLimitPayload.toString("base64"),
+      }),
+    ).resolves.toMatchObject({
+      id: "primary",
+    });
+  });
+
   it("rejects invalid base64 payloads before sending them upstream", async () => {
     await expect(
       importDesignResumeFromFile({
@@ -165,6 +228,36 @@ describe("importDesignResumeFromFile", () => {
     expect(
       designResumeService.replaceCurrentDesignResumeDocument,
     ).not.toHaveBeenCalled();
+  });
+
+  it("sends normalized base64 upstream after stripping whitespace", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          output_text: `{"basics":{"name":"Taylor Quinn"}}`,
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    const compactBase64 = Buffer.from("pdf-data").toString("base64");
+    const spacedBase64 = `${compactBase64.slice(0, 4)}\n${compactBase64.slice(4)}  `;
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: spacedBase64,
+    });
+
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    expect(fetchCall).toBeDefined();
+    const body =
+      fetchCall?.[1] && "body" in fetchCall[1] ? fetchCall[1].body : "";
+    expect(String(body)).toContain(compactBase64);
+    expect(String(body)).not.toContain(spacedBase64.trim());
   });
 
   it("returns a capability error when the configured provider does not support direct file import", async () => {

@@ -178,6 +178,7 @@ describe("useOnboardingRequirement", () => {
       expect(result.current.checking).toBe(false);
     });
 
+    expect(api.validateRxresume).not.toHaveBeenCalled();
     expect(result.current.complete).toBe(true);
   });
 
@@ -225,6 +226,51 @@ describe("useOnboardingRequirement", () => {
       expect(result.current.checking).toBe(false);
     });
 
+    expect(api.validateRxresume).toHaveBeenCalledTimes(1);
+    expect(result.current.complete).toBe(true);
+  });
+
+  it("validates Reactive Resume when an RxResume base resume is configured", async () => {
+    const currentSettings: any = {
+      llmProvider: {
+        value: "openrouter",
+        default: "openrouter",
+        override: null,
+      },
+      llmBaseUrl: {
+        value: "",
+        default: "",
+        override: null,
+      },
+      pdfRenderer: {
+        value: "latex",
+        default: "rxresume",
+        override: null,
+      },
+      rxresumeBaseResumeId: "resume-1",
+      rxresumeUrl: null,
+      basicAuthActive: false,
+      onboardingBasicAuthDecision: "skipped",
+    };
+
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+    }));
+
+    const { result } = renderHookWithQueryClient(() =>
+      useOnboardingRequirement(),
+    );
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+
+    expect(api.validateRxresume).toHaveBeenCalledTimes(1);
     expect(result.current.complete).toBe(true);
   });
 });
