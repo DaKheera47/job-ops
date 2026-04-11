@@ -36,7 +36,7 @@ orchestrator/
     # The app is self-configuring. You can add keys via the UI Onboarding.
     ```
 
-   After the server starts, use the onboarding modal to connect your LLM provider, configure Reactive Resume if you want import support, and select a template resume.
+   After the server starts, use the onboarding page to connect your LLM provider, configure Reactive Resume if you want import support, select a template resume, and decide whether to enable basic auth.
 
    Then open **Design Resume** in the app and import your base resume once. JobOps will use that local Design Resume document as the primary resume context for tailoring, scoring, and PDF generation.
 
