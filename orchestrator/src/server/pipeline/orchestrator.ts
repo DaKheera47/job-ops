@@ -9,6 +9,7 @@
 
 import { join } from "node:path";
 import { logger } from "@infra/logger";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import type { PipelineConfig } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
@@ -224,6 +225,11 @@ export async function runPipeline(
 export type ProcessJobOptions = {
   force?: boolean;
   requestOrigin?: string | null;
+  analyticsOrigin?:
+    | "move_to_ready"
+    | "generate_pdf"
+    | "pipeline"
+    | "manual_job_create";
 };
 
 /**
@@ -366,6 +372,37 @@ export async function generateFinalPdf(
         status: "ready",
         pdfPath: pdfResult.pdfPath,
       });
+
+      const analyticsOrigin = options?.analyticsOrigin ?? "move_to_ready";
+      const generationKind = job.status === "ready" ? "regenerate" : "initial";
+      void trackServerProductEvent(
+        "resume_generated",
+        {
+          origin: analyticsOrigin,
+          generation_kind: generationKind,
+          tracer_links_enabled: job.tracerLinksEnabled,
+          has_tailored_summary: Boolean(job.tailoredSummary),
+          has_tailored_skills: Boolean(job.tailoredSkills),
+        },
+        {
+          requestOrigin: options?.requestOrigin ?? null,
+          urlPath: "/jobs",
+        },
+      );
+
+      if (job.status !== "ready") {
+        void trackServerProductEvent(
+          "job_moved_to_ready",
+          {
+            origin: analyticsOrigin,
+            tracer_links_enabled: job.tracerLinksEnabled,
+          },
+          {
+            requestOrigin: options?.requestOrigin ?? null,
+            urlPath: "/jobs",
+          },
+        );
+      }
 
       return { success: true };
     } catch (error) {

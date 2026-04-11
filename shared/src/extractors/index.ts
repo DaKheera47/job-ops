@@ -10,6 +10,7 @@ export const EXTRACTOR_SOURCE_IDS = [
   "hiringcafe",
   "startupjobs",
   "workingnomads",
+  "golangjobs",
   "manual",
 ] as const;
 
@@ -56,7 +57,12 @@ export const EXTRACTOR_SOURCE_METADATA: Record<
     order: 90,
     category: "pipeline",
   },
-  manual: { label: "Manual", order: 100, category: "manual" },
+  golangjobs: {
+    label: "Golang Jobs",
+    order: 100,
+    category: "pipeline",
+  },
+  manual: { label: "Manual", order: 110, category: "manual" },
 };
 
 export const PIPELINE_EXTRACTOR_SOURCE_IDS = EXTRACTOR_SOURCE_IDS.filter(

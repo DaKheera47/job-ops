@@ -34,6 +34,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --workspaces --include-workspace-root
 
       - name: Validate release version
         id: validate
@@ -54,13 +59,32 @@ jobs:
           fi
 
           if git rev-parse "v$RELEASE_VERSION" >/dev/null 2>&1; then
-            echo "Tag v$RELEASE_VERSION already exists locally" >&2
-            exit 1
+            echo "Tag v$RELEASE_VERSION already exists locally"
+            TAG_EXISTS_LOCALLY=true
+          else
+            TAG_EXISTS_LOCALLY=false
           fi
 
           if git ls-remote --tags origin "refs/tags/v$RELEASE_VERSION" | grep -q .; then
-            echo "Tag v$RELEASE_VERSION already exists on origin" >&2
-            exit 1
+            echo "Tag v$RELEASE_VERSION already exists on origin"
+            TAG_EXISTS_ON_ORIGIN=true
+          else
+            TAG_EXISTS_ON_ORIGIN=false
+          fi
+
+          if [ "$TAG_EXISTS_LOCALLY" = true ] || [ "$TAG_EXISTS_ON_ORIGIN" = true ]; then
+            echo "tag_already_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_already_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ "$TAG_EXISTS_LOCALLY" = true ] || [ "$TAG_EXISTS_ON_ORIGIN" = true ]; then
+            if [ "$CURRENT_VERSION" = "$RELEASE_VERSION" ]; then
+              echo "Release tag v$RELEASE_VERSION already exists; skipping version bump and tag creation."
+            else
+              echo "Tag v$RELEASE_VERSION already exists, but orchestrator/package.json is still at $CURRENT_VERSION" >&2
+              exit 1
+            fi
           fi
 
       - name: Bump orchestrator version files
@@ -68,6 +92,20 @@ jobs:
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: node ./scripts/set-orchestrator-version.mjs "$RELEASE_VERSION"
+
+      - name: Generate docs version
+        if: steps.validate.outputs.version_already_set != 'true'
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: npm run docs:version -- "$RELEASE_VERSION"
+
+      - name: Format generated docs files
+        if: steps.validate.outputs.version_already_set != 'true'
+        run: |
+          ./orchestrator/node_modules/.bin/biome check --write \
+            docs-site/versions.json \
+            docs-site/versioned_docs \
+            docs-site/versioned_sidebars
 
       - name: Commit and push version bump
         if: steps.validate.outputs.version_already_set != 'true'
@@ -77,11 +115,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add orchestrator/package.json package-lock.json
+          git add \
+            orchestrator/package.json \
+            package-lock.json \
+            docs-site/versions.json \
+            docs-site/versioned_docs \
+            docs-site/versioned_sidebars
           git commit -m "chore: release $RELEASE_VERSION"
           git push origin HEAD:main
 
       - name: Create and push release tag
+        if: steps.validate.outputs.tag_already_exists != 'true'
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
@@ -134,4 +178,8 @@ jobs:
             RELEASE_TITLE="v$RELEASE_VERSION"
           fi
 
-          gh release create "v$RELEASE_VERSION" --title "$RELEASE_TITLE" --generate-notes
+          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "GitHub release v$RELEASE_VERSION already exists; skipping release creation."
+          else
+            gh release create "v$RELEASE_VERSION" --title "$RELEASE_TITLE" --generate-notes
+          fi

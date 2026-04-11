@@ -1,11 +1,7 @@
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type {
-  PdfRenderer,
-  ResumeProjectCatalogItem,
-  RxResumeMode,
-} from "@shared/types.js";
+import type { PdfRenderer, ResumeProjectCatalogItem } from "@shared/types.js";
 import type React from "react";
 import {
   type Path,
@@ -17,24 +13,14 @@ import {
 type ReactiveResumeSectionProps = {
   rxResumeBaseResumeIdDraft: string | null;
   setRxResumeBaseResumeIdDraft: (value: string | null) => void;
-  // True when v4 credentials or v5 API key are configured.
+  // True when v5 API key is configured.
   hasRxResumeAccess: boolean;
-  rxresumeMode: RxResumeMode;
-  onRxresumeModeChange?: (mode: RxResumeMode) => void;
-  onCredentialFieldEdit?: (mode: RxResumeMode) => void;
-  validationStatuses?: {
-    v4: {
-      checked: boolean;
-      valid: boolean;
-      message?: string | null;
-      status?: number | null;
-    };
-    v5: {
-      checked: boolean;
-      valid: boolean;
-      message?: string | null;
-      status?: number | null;
-    };
+  onCredentialFieldEdit?: () => void;
+  validationStatus?: {
+    checked: boolean;
+    valid: boolean;
+    message?: string | null;
+    status?: number | null;
   };
   profileProjects: ResumeProjectCatalogItem[];
   lockedCount: number;
@@ -49,10 +35,8 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
   rxResumeBaseResumeIdDraft,
   setRxResumeBaseResumeIdDraft,
   hasRxResumeAccess,
-  rxresumeMode,
-  onRxresumeModeChange,
   onCredentialFieldEdit,
-  validationStatuses,
+  validationStatus,
   profileProjects,
   lockedCount,
   maxProjectsTotal,
@@ -67,18 +51,14 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
     setValue,
     formState: { errors },
   } = useFormContext<UpdateSettingsInput>();
-  const selectedMode =
-    useWatch({ control, name: "rxresumeMode" }) ?? rxresumeMode ?? "v5";
+
   const pdfRendererValue = (useWatch({
     control,
     name: "pdfRenderer",
   }) ?? "rxresume") as PdfRenderer;
   const rxresumeApiKeyValue =
     useWatch({ control, name: "rxresumeApiKey" }) ?? "";
-  const rxresumeEmailValue = useWatch({ control, name: "rxresumeEmail" }) ?? "";
   const rxresumeUrlValue = useWatch({ control, name: "rxresumeUrl" }) ?? "";
-  const rxresumePasswordValue =
-    useWatch({ control, name: "rxresumePassword" }) ?? "";
   const resumeProjectsValue = useWatch({ control, name: "resumeProjects" });
   const setDirtyTouchedValue = <TField extends Path<UpdateSettingsInput>>(
     field: TField,
@@ -89,13 +69,9 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
       shouldTouch: true,
     });
 
-  const clearRxResumeFeedback = (mode: RxResumeMode) => {
-    onCredentialFieldEdit?.(mode);
-    clearErrors(
-      mode === "v5"
-        ? ["rxresumeApiKey", "rxresumeUrl"]
-        : ["rxresumeEmail", "rxresumePassword", "rxresumeUrl"],
-    );
+  const clearRxResumeFeedback = () => {
+    onCredentialFieldEdit?.();
+    clearErrors(["rxresumeApiKey", "rxresumeUrl"]);
   };
 
   return (
@@ -105,11 +81,6 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
       value="reactive-resume"
     >
       <ReactiveResumeConfigPanel
-        mode={selectedMode}
-        onModeChange={(mode) => {
-          onRxresumeModeChange?.(mode);
-          setDirtyTouchedValue("rxresumeMode", mode);
-        }}
         pdfRenderer={pdfRendererValue}
         onPdfRendererChange={(value) =>
           setDirtyTouchedValue("pdfRenderer", value)
@@ -117,12 +88,12 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
         pdfRendererError={errors.pdfRenderer?.message as string | undefined}
         disabled={isLoading || isSaving}
         hasRxResumeAccess={hasRxResumeAccess}
-        showValidationStatus={Boolean(validationStatuses)}
-        validationStatuses={validationStatuses}
+        showValidationStatus={Boolean(validationStatus)}
+        validationStatus={validationStatus}
         shared={{
           baseUrl: rxresumeUrlValue,
           onBaseUrlChange: (value) => {
-            clearRxResumeFeedback(selectedMode);
+            clearRxResumeFeedback();
             setDirtyTouchedValue("rxresumeUrl", value);
           },
           baseUrlError: errors.rxresumeUrl?.message as string | undefined,
@@ -130,24 +101,10 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
         v5={{
           apiKey: rxresumeApiKeyValue,
           onApiKeyChange: (value) => {
-            clearRxResumeFeedback("v5");
+            clearRxResumeFeedback();
             setDirtyTouchedValue("rxresumeApiKey", value);
           },
           error: errors.rxresumeApiKey?.message as string | undefined,
-        }}
-        v4={{
-          email: rxresumeEmailValue,
-          onEmailChange: (value) => {
-            clearRxResumeFeedback("v4");
-            setDirtyTouchedValue("rxresumeEmail", value);
-          },
-          emailError: errors.rxresumeEmail?.message as string | undefined,
-          password: rxresumePasswordValue,
-          onPasswordChange: (value) => {
-            clearRxResumeFeedback("v4");
-            setDirtyTouchedValue("rxresumePassword", value);
-          },
-          passwordError: errors.rxresumePassword?.message as string | undefined,
         }}
         projectSelection={{
           baseResumeId: rxResumeBaseResumeIdDraft,

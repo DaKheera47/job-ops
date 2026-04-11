@@ -138,17 +138,14 @@ describe("applySettingsUpdates", () => {
     const settingsRepo = await import("@server/repositories/settings");
 
     const plan = await applySettingsUpdates({
-      rxresumeMode: "v4",
       rxresumeUrl: "https://resume.example.com",
       rxresumeBaseResumeId: "resume-123",
     });
 
     expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
       expect.arrayContaining([
-        ["rxresumeMode", "v4"],
         ["rxresumeUrl", "https://resume.example.com"],
         ["rxresumeBaseResumeId", "resume-123"],
-        ["rxresumeBaseResumeIdV4", "resume-123"],
       ]),
     );
     expect(plan.shouldClearRxResumeCaches).toBe(true);

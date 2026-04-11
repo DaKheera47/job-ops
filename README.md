@@ -72,7 +72,7 @@ docker compose up -d
 
 * **Universal Scraping**: Supports **LinkedIn, Indeed, Glassdoor, Adzuna, Hiring Cafe, startup.jobs, Working Nomads, Gradcracker, UK Visa Jobs**.
 * **AI Scoring**: Ranks jobs by fit against *your* profile using your preferred LLM (OpenAI, OpenRouter, `openai-compatible` endpoints such as LM Studio/Ollama, Gemini).
-* **Auto-Tailoring**: Generates custom resumes (PDFs) for every application using RxResume v4.
+* **Auto-Tailoring**: Generates custom resumes (PDFs) for every application using RxResume.
 * **Email Tracking**: Connect Gmail to auto-detect interviews, offers, and rejections.
 * **Self-Hosted**: Your data stays with you. SQLite database. No SaaS fees.
 
@@ -81,7 +81,7 @@ docker compose up -d
 1. **Search**: Scrapes job boards for roles matching your criteria.
 2. **Score**: AI ranks jobs (0-100) based on your resume/profile.
 3. **Tailor**: Generates a custom resume summary & keyword optimization for top matches.
-4. **Export**: Uses [RxResume v4](https://v4.rxresu.me) to create tailored PDFs.
+4. **Export**: Uses [RxResume](https://rxresu.me) to create tailored PDFs.
 5. **Track**: "Smart Router" AI watches your inbox for recruiter replies.
 
 ## Supported Extractors

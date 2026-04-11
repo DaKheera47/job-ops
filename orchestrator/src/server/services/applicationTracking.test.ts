@@ -75,6 +75,30 @@ describe.sequential("Application Tracking Service", () => {
     expect(jobAfter2?.status).toBe("in_progress");
   });
 
+  it("sets readyAt the first time a job moves to ready and does not overwrite it", async () => {
+    const job = await jobsRepo.createJob({
+      source: "manual",
+      title: "Full Stack Engineer",
+      employer: "Ready Corp",
+      jobUrl: "https://example.com/job/ready",
+    });
+
+    const firstReady = await jobsRepo.updateJob(job.id, { status: "ready" });
+    expect(firstReady?.readyAt).toBeTruthy();
+
+    const originalReadyAt = firstReady?.readyAt ?? null;
+
+    const movedApplied = await jobsRepo.updateJob(job.id, {
+      status: "applied",
+    });
+    expect(movedApplied?.readyAt).toBe(originalReadyAt);
+
+    const movedReadyAgain = await jobsRepo.updateJob(job.id, {
+      status: "ready",
+    });
+    expect(movedReadyAgain?.readyAt).toBe(originalReadyAt);
+  });
+
   it("updates stage event and reflects in job status if latest", async () => {
     const job = await jobsRepo.createJob({
       source: "manual",

@@ -18,7 +18,6 @@ async function makeTempRepoRoot(): Promise<string> {
 }
 
 afterEach(async () => {
-  process.chdir(originalCwd);
   for (const root of tempRoots.splice(0)) {
     await rm(root, { recursive: true, force: true });
   }
@@ -44,11 +43,9 @@ describe("visa sponsor provider discovery", () => {
       "utf8",
     );
 
-    process.chdir(repoRoot);
-
-    await expect(discoverProviderManifestPaths()).resolves.toEqual([
-      join(providersRoot, "uk", "manifest.ts"),
-    ]);
+    await expect(discoverProviderManifestPaths(providersRoot)).resolves.toEqual(
+      [join(providersRoot, "uk", "manifest.ts")],
+    );
   });
 
   it("loads provider manifests from named exports", async () => {

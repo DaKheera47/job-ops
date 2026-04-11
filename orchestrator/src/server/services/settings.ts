@@ -4,16 +4,23 @@ import {
   getDefaultModelForProvider,
   settingsRegistry,
 } from "@shared/settings-registry";
-import type { AppSettings } from "@shared/types";
+import type { AppSettings, ResumeProfile } from "@shared/types";
+import {
+  designResumeToProfile,
+  getCurrentDesignResumeOrNullOnLegacy,
+} from "./design-resume";
 import { getEnvSettingsData } from "./envSettings";
 import { getProfile } from "./profile";
-import { resolveResumeProjectsSettings } from "./resumeProjects";
+import {
+  extractProjectsFromProfile,
+  resolveResumeProjectsSettings,
+} from "./resumeProjects";
 import {
   extractProjectsFromResume,
   getResume,
   RxResumeAuthConfigError,
 } from "./rxresume";
-import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
+import { resolveRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
@@ -84,15 +91,19 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       getDefaultModelForProvider(effectiveLlmProvider, process.env.MODEL),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
-  const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
-    rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
+  const rxresumeBaseResumeId = resolveRxResumeBaseResumeId({
     rxresumeBaseResumeId: overrides.rxresumeBaseResumeId ?? null,
-    rxresumeBaseResumeIdV4: overrides.rxresumeBaseResumeIdV4 ?? null,
-    rxresumeBaseResumeIdV5: overrides.rxresumeBaseResumeIdV5 ?? null,
   });
   let profile: Record<string, unknown> = {};
+  let localProfile: ResumeProfile | null = null;
 
-  if (rxresumeBaseResumeId) {
+  const localDesignResume = await getCurrentDesignResumeOrNullOnLegacy();
+  if (localDesignResume?.resumeJson) {
+    localProfile = await designResumeToProfile(localDesignResume.resumeJson);
+    profile = (localProfile as Record<string, unknown> | null) ?? {};
+  }
+
+  if (Object.keys(profile).length === 0 && rxresumeBaseResumeId) {
     try {
       const resume = await getResume(rxresumeBaseResumeId);
       if (resume.data && typeof resume.data === "object") {
@@ -163,14 +174,13 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         let catalog: AppSettings["profileProjects"] = [];
         if (Object.keys(profile).length > 0) {
           try {
-            catalog = extractProjectsFromResume(profile).catalog;
+            catalog = localProfile
+              ? extractProjectsFromProfile(localProfile).catalog
+              : extractProjectsFromResume(profile).catalog;
           } catch (error) {
-            logger.warn(
-              "Failed to extract projects from Reactive Resume data",
-              {
-                error,
-              },
-            );
+            logger.warn("Failed to extract projects from resume data", {
+              error,
+            });
           }
         }
         const resolved = resolveResumeProjectsSettings({

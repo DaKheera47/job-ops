@@ -1,23 +1,6 @@
 import { ZodError } from "zod";
-import type { RxResumeResolvedMode } from "../index";
-import { parseV4ResumeData, safeParseV4ResumeData } from "./v4";
-import { parseV5ResumeData, safeParseV5ResumeData } from "./v5";
 
-export function parseResumeDataForMode(
-  mode: RxResumeResolvedMode,
-  data: unknown,
-) {
-  return mode === "v5" ? parseV5ResumeData(data) : parseV4ResumeData(data);
-}
-
-export function safeParseResumeDataForMode(
-  mode: RxResumeResolvedMode,
-  data: unknown,
-) {
-  return mode === "v5"
-    ? safeParseV5ResumeData(data)
-    : safeParseV4ResumeData(data);
-}
+export { parseV5ResumeData, safeParseV5ResumeData } from "./v5";
 
 export function getResumeSchemaValidationMessage(error: unknown): string {
   if (error instanceof ZodError) {

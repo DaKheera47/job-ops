@@ -6,33 +6,26 @@ import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
-import { settingsRegistry } from "@shared/settings-registry";
-import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types";
-import { RxResumeClient } from "./client";
+import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
   getResumeSchemaValidationMessage,
-  safeParseResumeDataForMode,
+  safeParseV5ResumeData,
 } from "./schema";
 import {
   applyProjectVisibility,
   applyTailoredChunks,
   cloneResumeData,
-  extractProjectsFromResume as extractProjectsFromResumeByMode,
-  inferRxResumeModeFromData,
+  extractProjectsFromResume as extractProjectsFromResumeV5,
   type TailoredSkillsInput,
-  validateAndParseResumeDataForMode,
 } from "./tailoring";
-import * as v4 from "./v4";
 import * as v5 from "./v5";
-
-export type RxResumeResolvedMode = "v4" | "v5";
 
 export type RxResumeResume = {
   id: string;
   name: string;
   title?: string;
   slug?: string;
-  mode?: RxResumeResolvedMode;
+  mode?: "v5";
   data?: unknown;
   [key: string]: unknown;
 };
@@ -44,17 +37,14 @@ export type RxResumeImportPayload = {
 };
 
 export type PreparedRxResumePdfPayload = {
-  mode: RxResumeResolvedMode;
+  mode: "v5";
   data: Record<string, unknown>;
   projectCatalog: ResumeProjectCatalogItem[];
   selectedProjectIds: string[];
 };
 
 export class RxResumeAuthConfigError extends Error {
-  constructor(
-    public readonly mode: RxResumeMode | RxResumeResolvedMode,
-    message: string,
-  ) {
+  constructor(message: string) {
     super(message);
     this.name = "RxResumeAuthConfigError";
   }
@@ -71,21 +61,11 @@ export class RxResumeRequestError extends Error {
 }
 
 type ResolveModeOptions = {
-  mode?: RxResumeMode;
   forceRefresh?: boolean;
-  v4?: {
-    email?: string | null;
-    password?: string | null;
-    baseUrl?: string | null;
-  };
   v5?: { apiKey?: string | null; baseUrl?: string | null };
 };
 
-type V4Credentials = Awaited<ReturnType<typeof readV4Credentials>>;
 type V5Credentials = Awaited<ReturnType<typeof readV5Credentials>>;
-type ResolvedOperationContext =
-  | { mode: "v4"; creds: V4Credentials }
-  | { mode: "v5"; creds: V5Credentials };
 
 const RXRESUME_RESUME_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -139,27 +119,19 @@ function normalizeBaseUrlForCache(baseUrl: string): string {
   }
 }
 
-function buildCredentialFingerprint(context: ResolvedOperationContext): string {
-  const normalizedCredential =
-    context.mode === "v5"
-      ? context.creds.apiKey.trim()
-      : `${context.creds.email.trim().toLowerCase()}:${context.creds.password.trim()}`;
-
+function buildCredentialFingerprint(creds: V5Credentials): string {
   return createHash("sha256")
-    .update(normalizedCredential)
+    .update(creds.apiKey.trim())
     .digest("hex")
     .slice(0, 12);
 }
 
-function buildResumeCacheKey(
-  resumeId: string,
-  context: ResolvedOperationContext,
-): string {
+function buildResumeCacheKey(resumeId: string, creds: V5Credentials): string {
   return [
-    context.mode,
-    normalizeBaseUrlForCache(context.creds.baseUrl),
+    "v5",
+    normalizeBaseUrlForCache(creds.baseUrl),
     resumeId.trim(),
-    buildCredentialFingerprint(context),
+    buildCredentialFingerprint(creds),
   ].join("::");
 }
 
@@ -169,34 +141,12 @@ export function clearRxResumeResumeCache(): void {
   inFlightResumeRequests.clear();
 }
 
-function toV4Override(
-  input?: ResolveModeOptions["v4"],
-): Partial<v4.RxResumeCredentials> | undefined {
-  if (!input) return undefined;
-  return {
-    ...(typeof input.email === "string" ? { email: input.email } : {}),
-    ...(typeof input.password === "string" ? { password: input.password } : {}),
-    ...(typeof input.baseUrl === "string" ? { baseUrl: input.baseUrl } : {}),
-  };
-}
-
-function normalizeMode(raw: string | null | undefined): RxResumeMode {
-  const parsed = settingsRegistry.rxresumeMode.parse(raw ?? undefined);
-  return parsed ?? "v5";
-}
-
 function normalizeError(error: unknown): Error {
   if (
     error instanceof RxResumeAuthConfigError ||
     error instanceof RxResumeRequestError
   ) {
     return error;
-  }
-  if (error instanceof v4.RxResumeCredentialsError) {
-    return new RxResumeAuthConfigError(
-      "v4",
-      "Reactive Resume v4 credentials are not configured.",
-    );
   }
   if (error instanceof Error) {
     const match = /Reactive Resume API error \((\d+)\)/i.exec(error.message);
@@ -253,39 +203,6 @@ function normalizeV5ResumeResponse(payload: unknown): Record<string, unknown> {
   return payload as Record<string, unknown>;
 }
 
-async function readConfiguredMode(): Promise<RxResumeMode> {
-  const [storedMode] = await Promise.all([getSetting("rxresumeMode")]);
-  return normalizeMode(storedMode ?? process.env.RXRESUME_MODE ?? null);
-}
-
-async function readV4Credentials(overrides?: ResolveModeOptions["v4"]) {
-  const [storedEmail, storedPassword, storedBaseUrl] = await Promise.all([
-    getSetting("rxresumeEmail"),
-    getSetting("rxresumePassword"),
-    getSetting("rxresumeUrl"),
-  ]);
-  const email = resolveOverrideValue({
-    overrideValue: overrides?.email,
-    hasOverride: hasOverrideKey(overrides, "email"),
-    storedValue: storedEmail,
-    envValue: process.env.RXRESUME_EMAIL,
-  });
-  const password = resolveOverrideValue({
-    overrideValue: overrides?.password,
-    hasOverride: hasOverrideKey(overrides, "password"),
-    storedValue: storedPassword,
-    envValue: process.env.RXRESUME_PASSWORD,
-  });
-  const baseUrl = resolveOverrideValue({
-    overrideValue: overrides?.baseUrl,
-    hasOverride: hasOverrideKey(overrides, "baseUrl"),
-    storedValue: storedBaseUrl,
-    envValue: process.env.RXRESUME_URL,
-    fallback: "https://v4.rxresu.me",
-  });
-  return { email, password, baseUrl, available: Boolean(email && password) };
-}
-
 async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
   const [storedApiKey, storedBaseUrl] = await Promise.all([
     getSetting("rxresumeApiKey"),
@@ -304,93 +221,36 @@ async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
     envValue: process.env.RXRESUME_URL,
     fallback: "https://rxresu.me",
   });
-  return { apiKey, baseUrl, available: Boolean(apiKey) };
-}
 
-async function resolveOperationContext(
-  options: ResolveModeOptions = {},
-): Promise<ResolvedOperationContext> {
-  const requestedMode = options.mode ?? (await readConfiguredMode());
-  const [v5Creds, v4Creds] = await Promise.all([
-    readV5Credentials(options.v5),
-    readV4Credentials(options.v4),
-  ]);
-
-  if (requestedMode === "v5") {
-    if (!v5Creds.available) {
-      throw new RxResumeAuthConfigError(
-        "v5",
-        "Reactive Resume v5 API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
-      );
-    }
-    return { mode: "v5", creds: v5Creds };
-  }
-
-  if (!v4Creds.available) {
+  if (!apiKey) {
     throw new RxResumeAuthConfigError(
-      "v4",
-      "Reactive Resume v4 credentials are not configured. Set RXRESUME_EMAIL and RXRESUME_PASSWORD or configure them in Settings.",
+      "Reactive Resume API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
     );
   }
 
-  return { mode: "v4", creds: v4Creds };
-}
-
-export async function resolveRxResumeMode(
-  options: ResolveModeOptions = {},
-): Promise<RxResumeResolvedMode> {
-  const context = await resolveOperationContext(options);
-  return context.mode;
-}
-
-async function runRxResumeOperation<T>(
-  options: ResolveModeOptions,
-  handlers: {
-    v4: (creds: V4Credentials) => Promise<T>;
-    v5: (creds: V5Credentials) => Promise<T>;
-  },
-): Promise<T> {
-  const context = await resolveOperationContext(options);
-  try {
-    if (context.mode === "v5") {
-      return await handlers.v5(context.creds);
-    }
-    return await handlers.v4(context.creds);
-  } catch (error) {
-    throw normalizeError(error);
-  }
+  return { apiKey, baseUrl, available: Boolean(apiKey) };
 }
 
 async function fetchResumeFromUpstream(
   resumeId: string,
-  context: ResolvedOperationContext,
+  creds: V5Credentials,
 ): Promise<RxResumeResume> {
   try {
-    if (context.mode === "v5") {
-      const resume = normalizeV5ResumeResponse(
-        await v5.getResume(resumeId, {
-          apiKey: context.creds.apiKey,
-          baseUrl: context.creds.baseUrl,
-        }),
-      ) as RxResumeResume;
-      return {
-        ...resume,
-        mode: "v5",
-        title:
-          typeof resume.name === "string" && resume.name.trim()
-            ? resume.name
-            : (resume.slug ?? resume.id),
-        data: resume.data,
-      } as RxResumeResume;
-    }
-
+    const resume = normalizeV5ResumeResponse(
+      await v5.getResume(resumeId, {
+        apiKey: creds.apiKey,
+        baseUrl: creds.baseUrl,
+      }),
+    ) as RxResumeResume;
     return {
-      ...((await v4.getResume(
-        resumeId,
-        toV4Override(context.creds),
-      )) as RxResumeResume),
-      mode: "v4",
-    };
+      ...resume,
+      mode: "v5",
+      title:
+        typeof resume.name === "string" && resume.name.trim()
+          ? resume.name
+          : (resume.slug ?? resume.id),
+      data: resume.data,
+    } as RxResumeResume;
   } catch (error) {
     throw normalizeError(error);
   }
@@ -399,22 +259,22 @@ async function fetchResumeFromUpstream(
 export async function listResumes(
   options: ResolveModeOptions = {},
 ): Promise<RxResumeResume[]> {
-  return runRxResumeOperation(options, {
-    v5: async (creds) =>
-      normalizeV5ResumeListResponse(
-        await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl }),
-      ),
-    v4: async (creds) =>
-      (await v4.listResumes(toV4Override(creds))) as RxResumeResume[],
-  });
+  try {
+    const creds = await readV5Credentials(options.v5);
+    return normalizeV5ResumeListResponse(
+      await v5.listResumes({ apiKey: creds.apiKey, baseUrl: creds.baseUrl }),
+    );
+  } catch (error) {
+    throw normalizeError(error);
+  }
 }
 
 export async function getResume(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<RxResumeResume> {
-  const context = await resolveOperationContext(options);
-  const cacheKey = buildResumeCacheKey(resumeId, context);
+  const creds = await readV5Credentials(options.v5);
+  const cacheKey = buildResumeCacheKey(resumeId, creds);
   const now = Date.now();
 
   if (!options.forceRefresh) {
@@ -434,7 +294,7 @@ export async function getResume(
 
   const generation = rxResumeResumeCacheGeneration;
   let request: Promise<RxResumeResume>;
-  request = fetchResumeFromUpstream(resumeId, context)
+  request = fetchResumeFromUpstream(resumeId, creds)
     .then((resume) => {
       const cachedResume = cloneResume(resume);
       if (generation === rxResumeResumeCacheGeneration) {
@@ -457,17 +317,15 @@ export async function getResume(
 
 export async function validateResumeSchema(
   resumeData: unknown,
-  options: ResolveModeOptions = {},
 ): Promise<
-  | { ok: true; mode: RxResumeResolvedMode; data: Record<string, unknown> }
-  | { ok: false; mode: RxResumeResolvedMode; message: string }
+  | { ok: true; mode: "v5"; data: Record<string, unknown> }
+  | { ok: false; mode: "v5"; message: string }
 > {
-  const mode = await resolveRxResumeMode(options);
-  const result = safeParseResumeDataForMode(mode, resumeData);
+  const result = safeParseV5ResumeData(resumeData);
   if (!result.success) {
     return {
       ok: false,
-      mode,
+      mode: "v5",
       message: getResumeSchemaValidationMessage(result.error),
     };
   }
@@ -479,7 +337,7 @@ export async function validateResumeSchema(
   ) {
     return {
       ok: false,
-      mode,
+      mode: "v5",
       message:
         "Resume schema validation failed: root payload must be an object.",
     };
@@ -487,7 +345,7 @@ export async function validateResumeSchema(
 
   return {
     ok: true,
-    mode,
+    mode: "v5",
     data: result.data as Record<string, unknown>,
   };
 }
@@ -501,24 +359,22 @@ function parseSelectedProjectIds(selectedProjectIds?: string | null): string[] {
     .filter(Boolean);
 }
 
-export function extractProjectsFromResume(
-  resumeData: unknown,
-  options: { mode?: RxResumeMode } = {},
-): { mode: RxResumeResolvedMode; catalog: ResumeProjectCatalogItem[] } {
-  const mode = (options.mode ??
-    inferRxResumeModeFromData(resumeData) ??
-    "v5") as RxResumeResolvedMode;
-  const parsed = validateAndParseResumeDataForMode(mode, resumeData);
-  if (!parsed.ok) {
-    throw new Error(parsed.message);
+export function extractProjectsFromResume(resumeData: unknown): {
+  mode: "v5";
+  catalog: ResumeProjectCatalogItem[];
+} {
+  const parsed = safeParseV5ResumeData(resumeData);
+  if (!parsed.success) {
+    throw new Error(getResumeSchemaValidationMessage(parsed.error));
   }
-  const { catalog } = extractProjectsFromResumeByMode(mode, parsed.data);
-  return { mode, catalog };
+  const { catalog } = extractProjectsFromResumeV5(
+    parsed.data as Record<string, unknown>,
+  );
+  return { mode: "v5", catalog };
 }
 
 export async function prepareTailoredResumeForPdf(args: {
   resumeData: unknown;
-  mode?: RxResumeMode;
   tailoredContent: {
     summary?: string | null;
     headline?: string | null;
@@ -534,24 +390,18 @@ export async function prepareTailoredResumeForPdf(args: {
   forceVisibleProjectsSection?: boolean;
   jobId?: string;
 }): Promise<PreparedRxResumePdfPayload> {
-  const mode = (args.mode ??
-    (await readConfiguredMode())) as RxResumeResolvedMode;
-  const parsed = validateAndParseResumeDataForMode(mode, args.resumeData);
-  if (!parsed.ok) {
-    throw new Error(parsed.message);
+  const parsed = safeParseV5ResumeData(args.resumeData);
+  if (!parsed.success) {
+    throw new Error(getResumeSchemaValidationMessage(parsed.error));
   }
 
-  const workingCopy = cloneResumeData(parsed.data);
+  const workingCopy = cloneResumeData(parsed.data as Record<string, unknown>);
   applyTailoredChunks({
-    mode,
     resumeData: workingCopy,
     tailoredContent: args.tailoredContent,
   });
 
-  const { catalog, selectionItems } = extractProjectsFromResumeByMode(
-    mode,
-    workingCopy,
-  );
+  const { catalog, selectionItems } = extractProjectsFromResumeV5(workingCopy);
 
   let selectedIds = parseSelectedProjectIds(args.selectedProjectIds);
 
@@ -583,7 +433,6 @@ export async function prepareTailoredResumeForPdf(args: {
   }
 
   applyProjectVisibility({
-    mode,
     resumeData: workingCopy,
     selectedProjectIds: new Set(selectedIds),
     forceVisibleProjectsSection: args.forceVisibleProjectsSection,
@@ -613,7 +462,7 @@ export async function prepareTailoredResumeForPdf(args: {
   }
 
   return {
-    mode,
+    mode: "v5",
     data: workingCopy,
     projectCatalog: catalog,
     selectedProjectIds: selectedIds,
@@ -624,107 +473,76 @@ export async function importResume(
   payload: RxResumeImportPayload,
   options: ResolveModeOptions = {},
 ): Promise<string> {
-  return runRxResumeOperation(options, {
-    v5: async (creds) =>
-      await v5.importResume(
-        {
-          name: payload.name?.trim() || "JobOps Tailored Resume",
-          slug: payload.slug?.trim() || "",
-          data: payload.data,
-        },
-        {
-          apiKey: creds.apiKey,
-          baseUrl: creds.baseUrl,
-        },
-      ),
-    v4: async (creds) =>
-      await v4.importResume(
-        payload as v4.RxResumeImportPayload,
-        toV4Override(creds),
-      ),
-  });
+  try {
+    const creds = await readV5Credentials(options.v5);
+    return await v5.importResume(
+      {
+        name: payload.name?.trim() || "JobOps Tailored Resume",
+        slug: payload.slug?.trim() || "",
+        data: payload.data,
+      },
+      {
+        apiKey: creds.apiKey,
+        baseUrl: creds.baseUrl,
+      },
+    );
+  } catch (error) {
+    throw normalizeError(error);
+  }
 }
 
 export async function deleteResume(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<void> {
-  await runRxResumeOperation(options, {
-    v5: async (creds) => {
-      await v5.deleteResume(resumeId, {
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
-      });
-    },
-    v4: async (creds) => await v4.deleteResume(resumeId, toV4Override(creds)),
-  });
+  try {
+    const creds = await readV5Credentials(options.v5);
+    await v5.deleteResume(resumeId, {
+      apiKey: creds.apiKey,
+      baseUrl: creds.baseUrl,
+    });
+  } catch (error) {
+    throw normalizeError(error);
+  }
 }
 
 export async function exportResumePdf(
   resumeId: string,
   options: ResolveModeOptions = {},
 ): Promise<string> {
-  return runRxResumeOperation(options, {
-    v5: async (creds) =>
-      await v5.exportResumePdf(resumeId, {
-        apiKey: creds.apiKey,
-        baseUrl: creds.baseUrl,
-      }),
-    v4: async (creds) =>
-      await v4.exportResumePdf(resumeId, toV4Override(creds)),
-  });
+  try {
+    const creds = await readV5Credentials(options.v5);
+    return await v5.exportResumePdf(resumeId, {
+      apiKey: creds.apiKey,
+      baseUrl: creds.baseUrl,
+    });
+  } catch (error) {
+    throw normalizeError(error);
+  }
 }
 
 export async function validateCredentials(
   options: ResolveModeOptions = {},
 ): Promise<
-  | { ok: true; mode: RxResumeResolvedMode }
-  | { ok: false; mode?: RxResumeMode; status: number; message: string }
+  | { ok: true; mode: "v5" }
+  | { ok: false; mode: "v5"; status: number; message: string }
 > {
-  const requestedMode = options.mode ?? (await readConfiguredMode());
-  const [v5Creds, v4Creds] = await Promise.all([
-    readV5Credentials(options.v5),
-    readV4Credentials(options.v4),
-  ]);
-
-  const validateV4 = async () => {
-    const result = await RxResumeClient.verifyCredentials(
-      v4Creds.email,
-      v4Creds.password,
-      v4Creds.baseUrl,
-    );
-    if (result.ok) return { ok: true as const, mode: "v4" as const };
-    return {
-      ok: false as const,
-      mode: requestedMode,
-      status: result.status,
-      message: result.message || "Reactive Resume v4 validation failed.",
-    };
-  };
-
-  const validateV5 = async () => {
+  try {
+    const v5Creds = await readV5Credentials(options.v5);
     const result = await v5.verifyApiKey(v5Creds.apiKey, v5Creds.baseUrl);
     if (result.ok) return { ok: true as const, mode: "v5" as const };
     return {
       ok: false as const,
-      mode: requestedMode,
+      mode: "v5",
       status: result.status,
-      message: result.message || "Reactive Resume v5 validation failed.",
+      message: result.message || "Reactive Resume validation failed.",
     };
-  };
-
-  try {
-    const mode = await resolveRxResumeMode(options);
-    if (mode === "v5") {
-      return await validateV5();
-    }
-    return await validateV4();
   } catch (error) {
     const normalized = normalizeError(error);
     if (normalized instanceof RxResumeAuthConfigError) {
       return {
         ok: false,
-        mode: requestedMode,
+        mode: "v5",
         status: 400,
         message: normalized.message,
       };
@@ -733,7 +551,7 @@ export async function validateCredentials(
       normalized instanceof RxResumeRequestError ? (normalized.status ?? 0) : 0;
     return {
       ok: false,
-      mode: requestedMode,
+      mode: "v5",
       status,
       message: normalized.message,
     };

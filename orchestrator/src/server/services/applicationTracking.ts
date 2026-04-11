@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import type {
   ApplicationStage,
   ApplicationTask,
@@ -10,7 +11,6 @@ import type {
 } from "@shared/types";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-
 import { db, schema } from "../db/index";
 
 const { jobs, stageEvents, tasks } = schema;
@@ -25,6 +25,21 @@ const STAGE_TO_STATUS: Record<ApplicationStage, JobStatus> = {
   offer: "in_progress",
   closed: "in_progress",
 };
+
+const POSITIVE_RESPONSE_STAGES = new Set<ApplicationStage>([
+  "recruiter_screen",
+  "assessment",
+  "hiring_manager_screen",
+  "technical_interview",
+  "onsite",
+  "offer",
+]);
+
+const INTERVIEW_STAGES = new Set<ApplicationStage>([
+  "hiring_manager_screen",
+  "technical_interview",
+  "onsite",
+]);
 
 export const stageEventMetadataSchema = z
   .object({
@@ -106,7 +121,7 @@ export function transitionStage(
   const now = Math.floor(Date.now() / 1000);
   const timestamp = occurredAt ?? now;
 
-  return db.transaction((tx) => {
+  const event = db.transaction((tx) => {
     const job = tx.select().from(jobs).where(eq(jobs.id, applicationId)).get();
     if (!job) {
       throw new Error("Job not found");
@@ -176,6 +191,9 @@ export function transitionStage(
       outcome: outcome ?? null,
     };
   });
+
+  maybeTrackStageAnalytics(event, parsedMetadata);
+  return event;
 }
 
 export function updateStageEvent(
@@ -336,6 +354,92 @@ function parseMetadata(raw: unknown): StageEventMetadata | null {
     }
   }
   return raw as StageEventMetadata;
+}
+
+function classifyStageAnalyticsSource(
+  metadata: StageEventMetadata | null,
+  toStage: ApplicationStage,
+): string {
+  if (metadata?.reasonCode === "in_progress_board_drag") {
+    return "in_progress_board";
+  }
+  if (metadata?.reasonCode === "job_page_manual_stage") {
+    return "job_page";
+  }
+  if (metadata?.reasonCode === "post_application_auto_linked") {
+    return "tracking_inbox_auto";
+  }
+  if (metadata?.reasonCode === "post_application_manual_linked") {
+    return "tracking_inbox_review";
+  }
+  if (metadata?.actor === "system" && toStage === "applied") {
+    return "mark_applied";
+  }
+  if (metadata?.actor === "user") {
+    return "manual";
+  }
+  return "system";
+}
+
+function maybeTrackStageAnalytics(
+  event: StageEvent,
+  metadata: StageEventMetadata | null,
+): void {
+  const stageChanged = event.fromStage !== event.toStage;
+  const isNoteEvent = metadata?.eventType === "note";
+  if (!stageChanged || isNoteEvent || event.toStage === "applied") {
+    return;
+  }
+
+  const source = classifyStageAnalyticsSource(metadata, event.toStage);
+  const enteredPositiveResponse =
+    POSITIVE_RESPONSE_STAGES.has(event.toStage) &&
+    (event.fromStage === null || event.fromStage === "applied");
+  const enteredInterview =
+    INTERVIEW_STAGES.has(event.toStage) &&
+    !INTERVIEW_STAGES.has(event.fromStage ?? "applied");
+
+  void trackServerProductEvent(
+    "application_stage_reached",
+    {
+      stage: event.toStage,
+      source,
+      actor: metadata?.actor ?? null,
+    },
+    { urlPath: "/applications/in-progress" },
+  );
+
+  if (enteredPositiveResponse) {
+    void trackServerProductEvent(
+      "application_positive_response_detected",
+      {
+        stage: event.toStage,
+        source,
+      },
+      { urlPath: "/applications/in-progress" },
+    );
+  }
+
+  if (enteredInterview) {
+    void trackServerProductEvent(
+      "application_interview_stage_reached",
+      {
+        stage: event.toStage,
+        source,
+      },
+      { urlPath: "/applications/in-progress" },
+    );
+  }
+
+  if (event.toStage === "offer") {
+    void trackServerProductEvent(
+      "application_offer_detected",
+      {
+        source,
+      },
+      { urlPath: "/applications/in-progress" },
+    );
+  }
 }
 
 function inferOutcome(

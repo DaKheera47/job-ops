@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { trackProductEvent } from "@/lib/analytics";
 import { cn, formatTimestamp } from "@/lib/utils";
 import * as api from "../api";
 
@@ -136,6 +137,7 @@ export const InProgressBoardPage: React.FC = () => {
           actor: "user",
           eventType: "status_update",
           eventLabel: `Moved to ${STAGE_LABELS[toStage]}`,
+          reasonCode: "in_progress_board_drag",
         },
       }),
   });
@@ -201,6 +203,10 @@ export const InProgressBoardPage: React.FC = () => {
 
       try {
         await transitionMutation.mutateAsync({ jobId, toStage });
+        trackProductEvent("manual_stage_transition_logged", {
+          source: "in_progress_board",
+          to_stage: toStage,
+        });
         toast.success(`Moved to ${STAGE_LABELS[toStage]}`);
         await queryClient.invalidateQueries({
           queryKey: queryKeys.jobs.inProgressBoard(),

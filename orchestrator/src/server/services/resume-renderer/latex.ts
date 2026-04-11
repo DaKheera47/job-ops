@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,9 +16,16 @@ import type {
 function resolveTemplatePath(): string {
   try {
     if (import.meta.url.startsWith("file:")) {
-      return fileURLToPath(
-        new URL("./templates/jake-resume.tex", import.meta.url),
+      const modulePath = fileURLToPath(import.meta.url);
+      const moduleRelativePath = join(
+        modulePath,
+        "..",
+        "templates",
+        "jake-resume.tex",
       );
+      if (existsSync(moduleRelativePath)) {
+        return moduleRelativePath;
+      }
     }
   } catch {
     // Fall through to cwd-based resolution below.

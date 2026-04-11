@@ -6,10 +6,6 @@ import {
   extractProjectsFromProfile,
   normalizeResumeProjectsSettings,
 } from "@server/services/resumeProjects";
-import {
-  getRxResumeBaseResumeIdKey,
-  normalizeRxResumeMode,
-} from "@server/services/rxresume/baseResumeId";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 
@@ -73,11 +69,8 @@ export const settingsUpdateRegistry: Partial<{
 }> = {};
 
 const RXRESUME_CACHE_INVALIDATION_KEYS = new Set<keyof UpdateSettingsInput>([
-  "rxresumeMode",
   "rxresumeUrl",
   "rxresumeApiKey",
-  "rxresumeEmail",
-  "rxresumePassword",
   "rxresumeBaseResumeId",
 ]);
 
@@ -113,25 +106,11 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
   }
 
   if (key === "rxresumeBaseResumeId") {
-    settingsUpdateRegistry.rxresumeBaseResumeId = async ({
-      value,
-      context,
-    }) => {
+    settingsUpdateRegistry.rxresumeBaseResumeId = async ({ value }) => {
       const serialized = normalizeEnvInput(value as string | null | undefined);
-      const mode = normalizeRxResumeMode(
-        context.input.rxresumeMode ??
-          (await settingsRepo.getSetting("rxresumeMode")) ??
-          process.env.RXRESUME_MODE ??
-          null,
-      );
-      const modeSpecificKey = getRxResumeBaseResumeIdKey(mode);
 
       return result({
-        actions: [
-          // Keep the legacy/current key in sync for compatibility and fallback.
-          persistAction("rxresumeBaseResumeId", serialized),
-          persistAction(modeSpecificKey, serialized),
-        ],
+        actions: [persistAction("rxresumeBaseResumeId", serialized)],
         deferred: ["clearRxResumeCaches"],
       });
     };

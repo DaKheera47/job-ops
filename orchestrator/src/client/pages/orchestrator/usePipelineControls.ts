@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import { useSettings } from "@client/hooks/useSettings";
 import { getCompatibleSourcesForCountry } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types.js";
@@ -34,7 +35,7 @@ export type UsePipelineControlsResult = {
   openRunMode: (mode: RunMode) => void;
   handleCancelPipeline: () => Promise<void>;
   handleSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
-  handleManualImported: (importedJobId: string) => Promise<void>;
+  handleManualImported: (result: ManualImportResult) => Promise<void>;
   refreshSettings: () => Promise<AppSettings | null>;
 };
 
@@ -200,12 +201,14 @@ export function usePipelineControls(
   );
 
   const handleManualImported = useCallback(
-    async (importedJobId: string) => {
+    async (imported: ManualImportResult) => {
       trackProductEvent("jobs_pipeline_run_started", {
         mode: "manual_import",
+        manual_import_source: imported.source,
+        manual_import_source_host: imported.sourceHost ?? undefined,
       });
       await loadJobs();
-      navigateWithContext("ready", importedJobId);
+      navigateWithContext("ready", imported.jobId);
     },
     [loadJobs, navigateWithContext],
   );

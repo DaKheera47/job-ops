@@ -83,6 +83,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   const { personName } = useProfile();
   const { renderMarkdownInJobDescriptions } = useSettings();
+  const openEditDetails = useCallback(() => {
+    window.setTimeout(() => setIsEditDetailsOpen(true), 0);
+  }, []);
 
   const handleTailoringDirtyChange = useCallback(
     (isDirty: boolean) => {
@@ -535,7 +538,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Edit description
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+            <DropdownMenuItem onSelect={openEditDetails}>
               <Edit2 className="mr-2 h-4 w-4" />
               Edit details
             </DropdownMenuItem>

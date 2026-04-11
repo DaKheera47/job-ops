@@ -9,7 +9,6 @@ import {
   PDF_RENDERER_LABELS,
   type PdfRenderer,
   type ResumeProjectCatalogItem,
-  type RxResumeMode,
 } from "@shared/types.js";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import type React from "react";
@@ -32,7 +31,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { clampInt } from "@/lib/utils";
 import { StatusIndicator } from "./StatusIndicator";
 
@@ -57,18 +55,13 @@ type ProjectSelectionConfig = {
 };
 
 type ReactiveResumeConfigPanelProps = {
-  mode: RxResumeMode;
-  onModeChange: (mode: RxResumeMode) => void;
   pdfRenderer: PdfRenderer;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
   pdfRendererError?: string;
   disabled?: boolean;
   hasRxResumeAccess?: boolean;
   showValidationStatus?: boolean;
-  validationStatuses?: {
-    v4: VersionValidationState;
-    v5: VersionValidationState;
-  };
+  validationStatus?: VersionValidationState;
   intro?: {
     title: string;
     description?: string;
@@ -86,16 +79,6 @@ type ReactiveResumeConfigPanelProps = {
     baseUrlError?: string;
     baseUrlHelper?: string;
     baseUrlPlaceholder?: string;
-  };
-  v4: {
-    email: string;
-    onEmailChange: (value: string) => void;
-    emailError?: string;
-    password: string;
-    onPasswordChange: (value: string) => void;
-    passwordError?: string;
-    emailPlaceholder?: string;
-    passwordPlaceholder?: string;
   };
   projectSelection?: ProjectSelectionConfig;
 };
@@ -133,25 +116,22 @@ function isAvailabilityWarning(state?: VersionValidationState): boolean {
 export const ReactiveResumeConfigPanel: React.FC<
   ReactiveResumeConfigPanelProps
 > = ({
-  mode,
-  onModeChange,
   pdfRenderer,
   onPdfRendererChange,
   pdfRendererError,
   disabled = false,
   hasRxResumeAccess = false,
   showValidationStatus = false,
-  validationStatuses,
+  validationStatus,
   intro,
   shared,
   v5,
-  v4,
   projectSelection,
 }) => {
   const canShowProjectSelection = Boolean(
     projectSelection && hasRxResumeAccess,
   );
-  const selectedValidationStatus = validationStatuses?.[mode];
+  const selectedValidationStatus = validationStatus;
   const showInlineValidationAlert = Boolean(
     selectedValidationStatus?.checked &&
       !selectedValidationStatus.valid &&
@@ -160,8 +140,7 @@ export const ReactiveResumeConfigPanel: React.FC<
   const selectedValidationIsWarning =
     showInlineValidationAlert &&
     isAvailabilityWarning(selectedValidationStatus);
-  const handleModeChange = (value: string) =>
-    onModeChange(value === "v4" ? "v4" : "v5");
+
   const latexSelected = pdfRenderer === "latex";
 
   return (
@@ -206,20 +185,9 @@ export const ReactiveResumeConfigPanel: React.FC<
         </p>
       </div>
 
-      <Tabs value={mode} onValueChange={handleModeChange}>
-        <TabsList className="grid h-auto w-full grid-cols-2">
-          <TabsTrigger value="v5" disabled={disabled}>
-            v5 (API key)
-          </TabsTrigger>
-          <TabsTrigger value="v4" disabled={disabled}>
-            v4 (Email + Password)
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {showValidationStatus && selectedValidationStatus ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
-          {renderStatusPill(`${mode} status`, selectedValidationStatus)}
+          {renderStatusPill("v5 status", selectedValidationStatus)}
         </div>
       ) : null}
 
@@ -233,7 +201,7 @@ export const ReactiveResumeConfigPanel: React.FC<
             <AlertCircle className="h-4 w-4" />
           )}
           <AlertTitle>
-            Reactive Resume {mode.toUpperCase()}{" "}
+            Reactive Resume API{" "}
             {selectedValidationIsWarning ? "warning" : "error"}
           </AlertTitle>
           <AlertDescription>
@@ -242,7 +210,7 @@ export const ReactiveResumeConfigPanel: React.FC<
         </Alert>
       ) : null}
 
-      {mode === "v5" ? (
+      {
         <div className="grid gap-4">
           <SettingsInput
             label="RxResume URL"
@@ -277,55 +245,7 @@ export const ReactiveResumeConfigPanel: React.FC<
             error={v5.error}
           />
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="md:col-span-2">
-            <SettingsInput
-              label="RxResume URL"
-              inputProps={{
-                name: "rxresumeUrl",
-                value: shared.baseUrl,
-                onChange: (event) =>
-                  shared.onBaseUrlChange(event.currentTarget.value),
-              }}
-              type="url"
-              placeholder={
-                shared.baseUrlPlaceholder ?? "https://resume.example.com"
-              }
-              helper={
-                shared.baseUrlHelper ??
-                "Leave blank to use the public cloud default for the selected mode."
-              }
-              disabled={disabled}
-              error={shared.baseUrlError}
-            />
-          </div>
-          <SettingsInput
-            label="v4 Email"
-            inputProps={{
-              name: "rxresumeEmail",
-              value: v4.email,
-              onChange: (event) => v4.onEmailChange(event.currentTarget.value),
-            }}
-            placeholder={v4.emailPlaceholder ?? "you@example.com"}
-            disabled={disabled}
-            error={v4.emailError}
-          />
-          <SettingsInput
-            label="v4 Password"
-            inputProps={{
-              name: "rxresumePassword",
-              value: v4.password,
-              onChange: (event) =>
-                v4.onPasswordChange(event.currentTarget.value),
-            }}
-            type="password"
-            placeholder={v4.passwordPlaceholder ?? "Enter v4 password"}
-            disabled={disabled}
-            error={v4.passwordError}
-          />
-        </div>
-      )}
+      }
 
       {projectSelection ? (
         <>
@@ -342,7 +262,6 @@ export const ReactiveResumeConfigPanel: React.FC<
                 value={projectSelection.baseResumeId}
                 onValueChange={projectSelection.onBaseResumeIdChange}
                 hasRxResumeAccess={hasRxResumeAccess}
-                rxresumeMode={mode}
                 disabled={projectSelection.disabled}
               />
 
@@ -415,12 +334,7 @@ export const ReactiveResumeConfigPanel: React.FC<
                         const aiSelectable = Boolean(
                           value?.aiSelectableProjectIds.includes(project.id),
                         );
-                        const projectMeta =
-                          mode === "v5"
-                            ? project.date
-                            : [project.description, project.date]
-                                .filter(Boolean)
-                                .join(" - ");
+                        const projectMeta = project.date;
 
                         return (
                           <TableRow key={project.id}>

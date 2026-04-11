@@ -229,7 +229,9 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
       starting: cleanOptional(job.starting) ?? undefined,
     });
 
-    const processResult = await processJob(createdJob.id);
+    const processResult = await processJob(createdJob.id, {
+      analyticsOrigin: "manual_job_create",
+    });
     if (!processResult.success) {
       logger.warn("Manual job auto-processing failed", {
         jobId: createdJob.id,

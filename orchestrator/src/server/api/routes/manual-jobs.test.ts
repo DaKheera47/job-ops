@@ -87,7 +87,9 @@ describe.sequential("Manual jobs API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.source).toBe("manual");
     expect(body.data.jobUrl).toMatch(/^manual:\/\//);
-    expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id);
+    expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id, {
+      analyticsOrigin: "manual_job_create",
+    });
     await new Promise((resolve) => setTimeout(resolve, 25));
   });
 });

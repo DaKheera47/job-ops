@@ -49,6 +49,9 @@ export const DecideMode: React.FC<DecideModeProps> = ({
   const [showDescription, setShowDescription] = useState(false);
   const jobLink = job.applicationLink || job.jobUrl;
   const { renderMarkdownInJobDescriptions } = useSettings();
+  const handleEditDetailsSelect = () => {
+    window.setTimeout(() => onEditDetails(), 0);
+  };
 
   const description = useMemo(
     () => getRenderableJobDescription(job.jobDescription),
@@ -132,7 +135,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-56">
-            <DropdownMenuItem onSelect={onEditDetails}>
+            <DropdownMenuItem onSelect={handleEditDetailsSelect}>
               <Edit2 className="mr-2 h-4 w-4" />
               Edit details
             </DropdownMenuItem>

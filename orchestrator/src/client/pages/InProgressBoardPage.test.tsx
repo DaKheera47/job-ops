@@ -45,6 +45,7 @@ const makeJob = (overrides: Partial<JobListItem>): JobListItem => ({
   salaryMaxAmount: null,
   salaryCurrency: null,
   discoveredAt: "2026-01-01T00:00:00.000Z",
+  readyAt: null,
   appliedAt: null,
   updatedAt: "2026-01-01T00:00:00.000Z",
   ...overrides,
@@ -146,6 +147,7 @@ describe("InProgressBoardPage", () => {
           actor: "user",
           eventType: "status_update",
           eventLabel: "Moved to Offer",
+          reasonCode: "in_progress_board_drag",
         },
       });
     });

@@ -79,7 +79,13 @@ describe("ManualImportSheet", () => {
       }),
     });
 
-    await waitFor(() => expect(onImported).toHaveBeenCalledWith("job-1"));
+    await waitFor(() =>
+      expect(onImported).toHaveBeenCalledWith({
+        jobId: "job-1",
+        source: "pasted_description",
+        sourceHost: null,
+      }),
+    );
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(toast.success).toHaveBeenCalledWith(
       "Job imported",
@@ -291,6 +297,48 @@ describe("ManualImportSheet", () => {
       // Check the job URL field has the fetched URL (first https://... input is Job URL)
       const urlInputs = screen.getAllByPlaceholderText("https://...");
       expect(urlInputs[0]).toHaveValue("https://example.com/job");
+    });
+
+    it("reports fetched URL provenance when import completes", async () => {
+      const onImported = vi.fn().mockResolvedValue(undefined);
+
+      vi.mocked(api.fetchJobFromUrl).mockResolvedValue({
+        content: "Software Engineer role at Acme Corp",
+        url: "https://jobs.example.com/job",
+      });
+      vi.mocked(api.inferManualJob).mockResolvedValue({
+        job: {
+          title: "Software Engineer",
+          employer: "Acme Corp",
+          jobDescription: "Great opportunity to join our team.",
+        },
+      });
+      vi.mocked(api.importManualJob).mockResolvedValue({ id: "job-2" } as any);
+
+      render(
+        <ManualImportSheet
+          open
+          onOpenChange={vi.fn()}
+          onImported={onImported}
+        />,
+      );
+
+      fireEvent.change(
+        screen.getByPlaceholderText("https://example.com/job-posting"),
+        { target: { value: "https://jobs.example.com/job" } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
+
+      await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
+      fireEvent.click(screen.getByRole("button", { name: /import job/i }));
+
+      await waitFor(() =>
+        expect(onImported).toHaveBeenCalledWith({
+          jobId: "job-2",
+          source: "fetched_url",
+          sourceHost: "jobs.example.com",
+        }),
+      );
     });
 
     it("shows error and returns to paste step when fetch fails", async () => {

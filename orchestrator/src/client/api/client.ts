@@ -11,6 +11,12 @@ import type {
   BackupInfo,
   BranchInfo,
   DemoInfoResponse,
+  DesignResumeDocument,
+  DesignResumeExportResponse,
+  DesignResumeJson,
+  DesignResumePatchRequest,
+  DesignResumePdfResponse,
+  DesignResumeStatusResponse,
   Job,
   JobActionRequest,
   JobActionResponse,
@@ -38,7 +44,6 @@ import type {
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
-  RxResumeMode,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -207,6 +212,29 @@ export async function logout(): Promise<void> {
     }
   }
   clearBasicAuthCredentials();
+}
+
+export function getCachedBasicAuthHeader(): string | undefined {
+  return cachedBasicAuthCredentials
+    ? encodeBasicAuth(cachedBasicAuthCredentials)
+    : undefined;
+}
+
+export function getCachedBasicAuthUsername(): string | undefined {
+  return cachedBasicAuthCredentials?.username;
+}
+
+export function hasBasicAuthPromptHandler(): boolean {
+  return basicAuthPromptHandler !== null;
+}
+
+export async function requestBasicAuthHeader(
+  request: BasicAuthPromptRequest,
+): Promise<string | null> {
+  const credentials = await requestBasicAuthCredentials(request);
+  if (!credentials) return null;
+  cachedBasicAuthCredentials = credentials;
+  return encodeBasicAuth(credentials);
 }
 
 export function __resetApiClientAuthForTests(): void {
@@ -1408,7 +1436,6 @@ export async function getResumeProjectsCatalog(): Promise<
       return await getRxResumeProjects(
         settings.rxresumeBaseResumeId,
         undefined,
-        settings.rxresumeMode?.value,
       );
     }
   } catch {
@@ -1420,6 +1447,72 @@ export async function getResumeProjectsCatalog(): Promise<
 
 export async function getProfile(): Promise<ResumeProfile> {
   return fetchApi<ResumeProfile>("/profile");
+}
+
+export async function getDesignResume(): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume");
+}
+
+export async function getDesignResumeStatus(): Promise<DesignResumeStatusResponse> {
+  return fetchApi<DesignResumeStatusResponse>("/design-resume/status");
+}
+
+export async function importDesignResumeFromRxResume(): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/import/rxresume", {
+    method: "POST",
+  });
+}
+
+export async function importDesignResumeFromFile(input: {
+  fileName: string;
+  mediaType?: string;
+  dataBase64: string;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/import/file", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateDesignResume(
+  input: DesignResumePatchRequest,
+): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function uploadDesignResumePicture(input: {
+  fileName: string;
+  dataUrl: string;
+  baseRevision?: number;
+  document?: DesignResumeJson;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteDesignResumePicture(input?: {
+  baseRevision?: number;
+  document?: DesignResumeJson;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets/picture", {
+    method: "DELETE",
+    body: JSON.stringify(input ?? {}),
+  });
+}
+
+export async function exportDesignResume(): Promise<DesignResumeExportResponse> {
+  return fetchApi<DesignResumeExportResponse>("/design-resume/export");
+}
+
+export async function generateDesignResumePdf(): Promise<DesignResumePdfResponse> {
+  return fetchApi<DesignResumePdfResponse>("/design-resume/generate-pdf", {
+    method: "POST",
+  });
 }
 
 export async function getProfileStatus(): Promise<ProfileStatusResponse> {
@@ -1456,9 +1549,6 @@ export async function getLlmModels(input?: {
 }
 
 export async function validateRxresume(input?: {
-  mode?: "v4" | "v5";
-  email?: string;
-  password?: string;
   apiKey?: string;
   baseUrl?: string;
 }): Promise<ValidationResult> {
@@ -1481,12 +1571,9 @@ export async function updateSettings(
   });
 }
 
-export async function getRxResumes(
-  mode?: RxResumeMode,
-): Promise<{ id: string; name: string }[]> {
-  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
   const data = await fetchApi<{ resumes: { id: string; name: string }[] }>(
-    `/settings/rx-resumes${query}`,
+    `/settings/rx-resumes`,
   );
   return data.resumes;
 }
@@ -1494,11 +1581,9 @@ export async function getRxResumes(
 export async function getRxResumeProjects(
   resumeId: string,
   signal?: AbortSignal,
-  mode?: RxResumeMode,
 ): Promise<ResumeProjectCatalogItem[]> {
-  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
   const data = await fetchApi<{ projects: ResumeProjectCatalogItem[] }>(
-    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects${query}`,
+    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects`,
     { signal },
   );
   return data.projects;

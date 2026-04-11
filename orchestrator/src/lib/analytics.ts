@@ -1,3 +1,5 @@
+import type { ApplicationStage } from "@shared/types";
+
 declare const __APP_VERSION__: string;
 
 type UmamiTracker = {
@@ -34,6 +36,8 @@ type ProductEventMap = {
     country?: string;
     has_city_locations?: boolean;
     search_terms_count?: number;
+    manual_import_source?: "pasted_description" | "fetched_url";
+    manual_import_source_host?: string;
   };
   jobs_pipeline_run_cancel_requested: {
     was_running: boolean;
@@ -92,6 +96,17 @@ type ProductEventMap = {
     item_count: number;
     provider: string;
     result: "success" | "error";
+  };
+  ghostwriter_response_completed: {
+    trigger: "new_prompt" | "regenerate" | "edit";
+    message_length_bucket: string;
+  };
+  ghostwriter_response_copied: {
+    message_length_bucket: string;
+  };
+  manual_stage_transition_logged: {
+    source: "job_page" | "in_progress_board";
+    to_stage: ApplicationStage;
   };
   tracer_filters_applied: {
     include_bots: boolean;

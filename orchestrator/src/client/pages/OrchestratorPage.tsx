@@ -42,6 +42,8 @@ export const OrchestratorPage: React.FC = () => {
     setSponsorFilter,
     salaryFilter,
     setSalaryFilter,
+    dateFilter,
+    setDateFilter,
     sort,
     setSort,
     resetFilters,
@@ -144,6 +146,7 @@ export const OrchestratorPage: React.FC = () => {
   const activeJobs = useFilteredJobs(
     jobs,
     activeTab,
+    dateFilter,
     sourceFilter,
     sponsorFilter,
     salaryFilter,
@@ -179,6 +182,7 @@ export const OrchestratorPage: React.FC = () => {
   }, [selectedJob, activeTab]);
 
   const counts = useMemo(() => getJobCounts(jobs), [jobs]);
+  const displayedCounts = useMemo(() => counts, [counts]);
   const sourcesWithJobs = useMemo(() => getSourcesWithJobs(jobs), [jobs]);
   const {
     selectedJobIds,
@@ -271,6 +275,10 @@ export const OrchestratorPage: React.FC = () => {
         "salaryMin",
         "salaryMax",
         "minSalary",
+        "date",
+        "appliedRange",
+        "appliedStart",
+        "appliedEnd",
       ]) {
         nextParams.delete(key);
       }
@@ -347,6 +355,43 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
+  const primaryEmptyStateAction = useMemo(() => {
+    if (activeTab === "ready" && counts.discovered > 0) {
+      return {
+        label: "Tailor discovered jobs",
+        onClick: () => setActiveTab("discovered"),
+      };
+    }
+
+    if (activeTab === "discovered" || activeTab === "all") {
+      return {
+        label: "Run pipeline",
+        onClick: () => openRunMode("automatic"),
+      };
+    }
+
+    return undefined;
+  }, [activeTab, counts.discovered, openRunMode, setActiveTab]);
+
+  const secondaryEmptyStateAction = useMemo(() => {
+    if (activeTab === "ready") {
+      return {
+        label: "Run pipeline",
+        onClick: () => openRunMode("automatic"),
+      };
+    }
+
+    return undefined;
+  }, [activeTab, openRunMode]);
+
+  const emptyStateMessage = useMemo(() => {
+    if (dateFilter.dimensions.length === 0) {
+      return undefined;
+    }
+
+    return "No jobs match the selected date filters.";
+  }, [dateFilter.dimensions.length]);
+
   return (
     <>
       <OrchestratorHeader
@@ -360,7 +405,7 @@ export const OrchestratorPage: React.FC = () => {
       />
 
       <main
-        className={`container mx-auto max-w-7xl space-y-6 px-4 py-6 ${
+        className={`container mx-auto space-y-6 px-4 py-6 ${
           selectedJobIds.size > 0 ? "pb-36 lg:pb-12" : "pb-12"
         }`}
       >
@@ -381,7 +426,7 @@ export const OrchestratorPage: React.FC = () => {
           <OrchestratorFilters
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            counts={counts}
+            counts={displayedCounts}
             onOpenCommandBar={() => setIsCommandBarOpen(true)}
             isFiltersOpen={isFiltersOpen}
             onFiltersOpenChange={setIsFiltersOpen}
@@ -391,6 +436,8 @@ export const OrchestratorPage: React.FC = () => {
             onSponsorFilterChange={setSponsorFilter}
             salaryFilter={salaryFilter}
             onSalaryFilterChange={setSalaryFilter}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
             sourcesWithJobs={sourcesWithJobs}
             sort={sort}
             onSortChange={setSort}
@@ -411,6 +458,9 @@ export const OrchestratorPage: React.FC = () => {
               onSelectJob={handleSelectJob}
               onToggleSelectJob={toggleSelectJob}
               onToggleSelectAll={toggleSelectAll}
+              primaryEmptyStateAction={primaryEmptyStateAction}
+              secondaryEmptyStateAction={secondaryEmptyStateAction}
+              emptyStateMessage={emptyStateMessage}
             />
 
             {/* Inspector panel: visually subordinate to list */}

@@ -76,6 +76,7 @@ The workflow will:
 
 - bump `orchestrator/package.json`
 - update `package-lock.json`
+- cut the matching Docusaurus docs version
 - commit the version bump to `main`
 - create and push tag `vX.Y.Z`
 - publish the `ghcr.io/.../job-ops` image for that release

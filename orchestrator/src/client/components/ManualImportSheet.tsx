@@ -11,12 +11,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ManualImportFlow } from "./ManualImportFlow";
+import { ManualImportFlow, type ManualImportResult } from "./ManualImportFlow";
 
 interface ManualImportSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onImported: (jobId: string) => void | Promise<void>;
+  onImported: (result: ManualImportResult) => void | Promise<void>;
 }
 
 export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({

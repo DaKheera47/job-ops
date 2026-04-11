@@ -35,11 +35,8 @@ import { type Request, type Response, Router } from "express";
 export const settingsRouter = Router();
 
 const RXRESUME_SAVE_VALIDATION_KEYS: Array<keyof UpdateSettingsInput> = [
-  "rxresumeMode",
   "rxresumeUrl",
   "rxresumeApiKey",
-  "rxresumeEmail",
-  "rxresumePassword",
 ];
 
 function hasInputKey<K extends keyof UpdateSettingsInput>(
@@ -64,21 +61,6 @@ function buildRxResumeValidationOptions(
   input: UpdateSettingsInput,
 ): Parameters<typeof validateRxResumeCredentials>[0] {
   return {
-    mode:
-      input.rxresumeMode === "v4" || input.rxresumeMode === "v5"
-        ? input.rxresumeMode
-        : undefined,
-    v4: {
-      ...(hasInputKey(input, "rxresumeEmail")
-        ? { email: input.rxresumeEmail }
-        : {}),
-      ...(hasInputKey(input, "rxresumePassword")
-        ? { password: input.rxresumePassword }
-        : {}),
-      ...(hasInputKey(input, "rxresumeUrl")
-        ? { baseUrl: input.rxresumeUrl }
-        : {}),
-    },
     v5: {
       ...(hasInputKey(input, "rxresumeApiKey")
         ? { apiKey: input.rxresumeApiKey }
@@ -205,7 +187,7 @@ settingsRouter.patch(
             {
               requestId: getRequestId() ?? null,
               route: "PATCH /api/settings",
-              rxresumeMode: validation.mode ?? input.rxresumeMode ?? null,
+              rxresumeMode: validation.mode ?? null,
               status,
             },
           );
@@ -218,7 +200,7 @@ settingsRouter.patch(
             {
               requestId: getRequestId() ?? null,
               route: "PATCH /api/settings",
-              rxresumeMode: validation.mode ?? input.rxresumeMode ?? null,
+              rxresumeMode: validation.mode ?? null,
               status,
             },
           );
@@ -294,7 +276,7 @@ settingsRouter.post(
 );
 
 /**
- * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume (v4/v5 adapter)
+ * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume
  */
 function failRxResume(res: Response, error: unknown): void {
   if (error instanceof RxResumeAuthConfigError) {
@@ -343,13 +325,9 @@ function failRxResume(res: Response, error: unknown): void {
 
 settingsRouter.get(
   "/rx-resumes",
-  asyncRoute(async (req: Request, res: Response) => {
+  asyncRoute(async (_req: Request, res: Response) => {
     try {
-      const modeParam =
-        typeof req.query.mode === "string" ? req.query.mode : undefined;
-      const mode =
-        modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
-      const resumes = await listResumes({ mode });
+      const resumes = await listResumes();
 
       ok(res, {
         resumes: resumes.map((resume) => ({
@@ -364,7 +342,7 @@ settingsRouter.get(
 );
 
 /**
- * GET /api/settings/rx-resumes/:id/projects - Fetch project catalog from Reactive Resume (v4/v5 adapter)
+ * GET /api/settings/rx-resumes/:id/projects - Fetch project catalog from Reactive Resume (v5 adapter)
  */
 settingsRouter.get(
   "/rx-resumes/:id/projects",
@@ -376,20 +354,13 @@ settingsRouter.get(
         return;
       }
 
-      const modeParam =
-        typeof req.query.mode === "string" ? req.query.mode : undefined;
-      const mode =
-        modeParam === "v4" || modeParam === "v5" ? modeParam : undefined;
-
-      const resume = await getResume(resumeId, { mode });
-      const validated = await validateResumeSchema(resume.data ?? {}, { mode });
+      const resume = await getResume(resumeId);
+      const validated = await validateResumeSchema(resume.data ?? {});
       if (!validated.ok) {
         fail(res, badRequest(validated.message));
         return;
       }
-      const { catalog } = extractProjectsFromResume(resume.data ?? {}, {
-        mode: validated.mode,
-      });
+      const { catalog } = extractProjectsFromResume(resume.data ?? {});
 
       ok(res, { projects: catalog });
     } catch (error) {

@@ -11,12 +11,6 @@ vi.mock("@server/services/rxresume", () => ({
   })),
   validateResumeSchema: vi.fn(async (data: unknown) => ({
     ok: true,
-    mode:
-      data &&
-      typeof data === "object" &&
-      typeof (data as Record<string, unknown>).summary === "object"
-        ? "v5"
-        : "v4",
     data,
   })),
   extractProjectsFromResume: vi.fn((data: unknown) => {
@@ -80,7 +74,7 @@ describe.sequential("Settings API routes", () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
         RXRESUME_URL: "https://env.rxresume.example.com",
       },
     }));
@@ -96,11 +90,12 @@ describe.sequential("Settings API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.model.default).toBe("test-model");
     expect(Array.isArray(body.data.searchTerms.value)).toBe(true);
-    expect(body.data.rxresumeEmail).toBe("resume@example.com");
+    expect(body.data.rxresumeApiKeyHint).toBe("resu");
     expect(body.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
     expect(body.data.pdfRenderer.value).toBe("rxresume");
     expect(body.data.pdfRenderer.default).toBe("rxresume");
     expect(body.data.llmApiKeyHint).toBe("secr");
+    expect(body.data.basicAuthPassword).toBeNull();
     expect(body.data.basicAuthActive).toBe(false);
     expect(body.data.ghostwriterSystemPromptTemplate.value).toBe(
       getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
@@ -113,12 +108,35 @@ describe.sequential("Settings API routes", () => {
     );
   });
 
+  it("does not expose the basic auth password when only the password is configured", async () => {
+    const partialBasicAuth = await startServer({
+      env: {
+        BASIC_AUTH_PASSWORD: "secret-only",
+        BASIC_AUTH_USER: "",
+        LLM_API_KEY: "secret-key",
+        RXRESUME_API_KEY: "resume-api-key",
+      },
+    });
+
+    try {
+      const res = await fetch(`${partialBasicAuth.baseUrl}/api/settings`);
+      const body = await res.json();
+
+      expect(body.ok).toBe(true);
+      expect(body.data.basicAuthActive).toBe(false);
+      expect(body.data.basicAuthPassword).toBeNull();
+      expect(body.data.basicAuthPasswordHint).toBe("secr");
+    } finally {
+      await stopServer(partialBasicAuth);
+    }
+  });
+
   it("normalizes hyphenated openai-compatible env defaults", async () => {
     const hyphenated = await startServer({
       env: {
         LLM_API_KEY: "secret-key",
         LLM_PROVIDER: "openai-compatible",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -141,7 +159,7 @@ describe.sequential("Settings API routes", () => {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
         LLM_PROVIDER: "openai",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -162,7 +180,7 @@ describe.sequential("Settings API routes", () => {
       env: {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -191,7 +209,7 @@ describe.sequential("Settings API routes", () => {
       env: {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -230,9 +248,11 @@ describe.sequential("Settings API routes", () => {
       body: JSON.stringify({
         pdfRenderer: "latex",
         searchTerms: ["engineer"],
-        rxresumeEmail: "updated@example.com",
+        rxresumeApiKey: "updated-key",
         rxresumeUrl: "https://resume.example.com",
         llmApiKey: "updated-secret",
+        basicAuthUser: "admin",
+        basicAuthPassword: "letmein",
         ghostwriterSystemPromptTemplate: "Custom Ghostwriter {{tone}}",
       }),
     });
@@ -242,9 +262,11 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.pdfRenderer.override).toBe("latex");
     expect(patchBody.data.searchTerms.value).toEqual(["engineer"]);
     expect(patchBody.data.searchTerms.override).toEqual(["engineer"]);
-    expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
+    expect(patchBody.data.rxresumeApiKeyHint).toBe("upda");
     expect(patchBody.data.rxresumeUrl).toBe("https://resume.example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
+    expect(patchBody.data.basicAuthUser).toBe("admin");
+    expect(patchBody.data.basicAuthPassword).toBe("letmein");
     expect(patchBody.data.ghostwriterSystemPromptTemplate.override).toBe(
       "Custom Ghostwriter {{tone}}",
     );
@@ -263,7 +285,6 @@ describe.sequential("Settings API routes", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rxresumeMode: "v5",
         rxresumeApiKey: "invalid-key",
       }),
     });
@@ -276,7 +297,7 @@ describe.sequential("Settings API routes", () => {
 
     const settingsRes = await fetch(`${baseUrl}/api/settings`);
     const settingsBody = await settingsRes.json();
-    expect(settingsBody.data.rxresumeApiKeyHint).toBeNull();
+    expect(settingsBody.data.rxresumeApiKeyHint).toBe("resu");
   });
 
   it("blocks saving when Reactive Resume returns another 4xx validation failure", async () => {
@@ -321,7 +342,6 @@ describe.sequential("Settings API routes", () => {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rxresumeMode: "v5",
         rxresumeApiKey: "rr-v5-warning-key",
       }),
     });

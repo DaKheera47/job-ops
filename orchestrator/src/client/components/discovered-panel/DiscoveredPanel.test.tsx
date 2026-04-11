@@ -139,7 +139,9 @@ describe("DiscoveredPanel", () => {
     );
 
     fireEvent.click(screen.getByRole("menuitem", { name: /edit details/i }));
-    expect(screen.getByTestId("job-details-edit-drawer")).toBeInTheDocument();
+    expect(
+      await screen.findByTestId("job-details-edit-drawer"),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /save details/i }));
     await waitFor(() => expect(onJobUpdated).toHaveBeenCalled());

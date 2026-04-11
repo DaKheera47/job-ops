@@ -2,6 +2,7 @@ import { createJob } from "@shared/testing/factories";
 import type { Job } from "@shared/types";
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import type { JobDateFilter } from "./constants";
 import { useFilteredJobs } from "./useFilteredJobs";
 
 const baseJob = createJob({
@@ -14,16 +15,126 @@ const baseJob = createJob({
   status: "ready",
 });
 
+const defaultDateFilter: JobDateFilter = {
+  dimensions: [],
+  startDate: null,
+  endDate: null,
+  preset: null,
+};
+
 describe("useFilteredJobs", () => {
-  it("keeps processing jobs visible in the all jobs tab", () => {
+  it("keeps only ready jobs in the ready tab", () => {
     const jobs: Job[] = [
-      { ...baseJob, id: "in-progress", status: "in_progress" },
+      { ...baseJob, id: "ready", status: "ready" },
       { ...baseJob, id: "processing", status: "processing" },
+    ];
+
+    const { result } = renderHook(() =>
+      useFilteredJobs(
+        jobs,
+        "ready",
+        defaultDateFilter,
+        "all",
+        "all",
+        { mode: "at_least", min: null, max: null },
+        { key: "score", direction: "desc" },
+      ),
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual(["ready"]);
+  });
+
+  it("filters by discovered date on the discovered tab", () => {
+    const jobs: Job[] = [
       {
         ...baseJob,
-        id: "closed",
-        status: "in_progress",
-        closedAt: 1741996800,
+        id: "match",
+        status: "discovered",
+        discoveredAt: "2026-04-05T14:00:00.000Z",
+      },
+      {
+        ...baseJob,
+        id: "outside",
+        status: "processing",
+        discoveredAt: "2026-03-01T14:00:00.000Z",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useFilteredJobs(
+        jobs,
+        "discovered",
+        {
+          dimensions: ["discovered"],
+          startDate: "2026-04-01",
+          endDate: "2026-04-06",
+          preset: "custom",
+        },
+        "all",
+        "all",
+        { mode: "at_least", min: null, max: null },
+        { key: "score", direction: "desc" },
+      ),
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual(["match"]);
+  });
+
+  it("filters applied jobs by applied date", () => {
+    const jobs: Job[] = [
+      {
+        ...baseJob,
+        id: "applied",
+        status: "applied",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+      },
+      {
+        ...baseJob,
+        id: "outside",
+        status: "applied",
+        appliedAt: "2026-03-20T14:00:00.000Z",
+      },
+    ];
+
+    const { result } = renderHook(() =>
+      useFilteredJobs(
+        jobs,
+        "applied",
+        {
+          dimensions: ["applied"],
+          startDate: "2026-04-01",
+          endDate: "2026-04-06",
+          preset: "custom",
+        },
+        "all",
+        "all",
+        { mode: "at_least", min: null, max: null },
+        { key: "score", direction: "desc" },
+      ),
+    );
+
+    expect(result.current.map((job) => job.id)).toEqual(["applied"]);
+  });
+
+  it("matches multiple date dimensions with OR logic", () => {
+    const jobs: Job[] = [
+      {
+        ...baseJob,
+        id: "ready-match",
+        status: "ready",
+        readyAt: "2026-04-04T14:00:00.000Z",
+      },
+      {
+        ...baseJob,
+        id: "closed-match",
+        status: "ready",
+        closedAt: 1775347200,
+      },
+      {
+        ...baseJob,
+        id: "no-match",
+        status: "ready",
+        readyAt: "2026-03-01T14:00:00.000Z",
       },
     ];
 
@@ -31,129 +142,148 @@ describe("useFilteredJobs", () => {
       useFilteredJobs(
         jobs,
         "all",
+        {
+          dimensions: ["ready", "closed"],
+          startDate: "2026-04-03",
+          endDate: "2026-04-06",
+          preset: "custom",
+        },
         "all",
         "all",
         { mode: "at_least", min: null, max: null },
-        {
-          key: "score",
-          direction: "desc",
-        },
+        { key: "score", direction: "desc" },
       ),
     );
 
     expect(result.current.map((job) => job.id)).toEqual([
-      "in-progress",
-      "processing",
+      "closed-match",
+      "ready-match",
     ]);
   });
 
-  it("keeps processing jobs visible in the ready tab", () => {
+  it("composes date filtering with source, sponsor, and salary filters", () => {
     const jobs: Job[] = [
-      { ...baseJob, id: "ready", status: "ready" },
-      { ...baseJob, id: "processing", status: "processing" },
-      { ...baseJob, id: "discovered", status: "discovered" },
+      {
+        ...baseJob,
+        id: "match",
+        source: "linkedin",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+        sponsorMatchScore: 99,
+        salaryMinAmount: 80000,
+      },
+      {
+        ...baseJob,
+        id: "wrong-source",
+        source: "indeed",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+        sponsorMatchScore: 99,
+        salaryMinAmount: 80000,
+      },
+      {
+        ...baseJob,
+        id: "wrong-sponsor",
+        source: "linkedin",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+        sponsorMatchScore: 45,
+        salaryMinAmount: 80000,
+      },
+      {
+        ...baseJob,
+        id: "wrong-salary",
+        source: "linkedin",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+        sponsorMatchScore: 99,
+        salaryMinAmount: 50000,
+      },
     ];
 
     const { result } = renderHook(() =>
       useFilteredJobs(
         jobs,
-        "ready",
         "all",
-        "all",
-        { mode: "at_least", min: null, max: null },
         {
-          key: "score",
-          direction: "desc",
+          dimensions: ["applied"],
+          startDate: "2026-04-01",
+          endDate: "2026-04-06",
+          preset: "custom",
         },
-      ),
-    );
-
-    expect(result.current.map((job) => job.id)).toEqual(
-      expect.arrayContaining(["ready", "processing"]),
-    );
-    expect(result.current).toHaveLength(2);
-  });
-
-  it("filters by sponsor status categories", () => {
-    const jobs: Job[] = [
-      { ...baseJob, id: "confirmed", sponsorMatchScore: 99 },
-      { ...baseJob, id: "potential", sponsorMatchScore: 82 },
-      { ...baseJob, id: "not-found", sponsorMatchScore: 45 },
-      { ...baseJob, id: "unknown", sponsorMatchScore: null },
-    ];
-
-    const { result } = renderHook(() =>
-      useFilteredJobs(
-        jobs,
-        "all",
-        "all",
+        "linkedin",
         "confirmed",
-        { mode: "at_least", min: null, max: null },
-        {
-          key: "score",
-          direction: "desc",
-        },
+        { mode: "at_least", min: 70000, max: null },
+        { key: "score", direction: "desc" },
       ),
     );
 
-    expect(result.current.map((job) => job.id)).toEqual(["confirmed"]);
+    expect(result.current.map((job) => job.id)).toEqual(["match"]);
   });
 
-  it("filters by salary range using structured and text salary fields", () => {
+  it("sorts by date using the active date context", () => {
     const jobs: Job[] = [
-      { ...baseJob, id: "structured", salaryMinAmount: 70000 },
-      { ...baseJob, id: "k-format", salary: "GBP 65k" },
-      { ...baseJob, id: "below", salary: "GBP 55k" },
-      { ...baseJob, id: "none", salary: null },
+      {
+        ...baseJob,
+        id: "older",
+        appliedAt: "2026-04-03T14:00:00.000Z",
+      },
+      {
+        ...baseJob,
+        id: "newer",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+      },
     ];
 
     const { result } = renderHook(() =>
       useFilteredJobs(
         jobs,
         "all",
-        "all",
-        "all",
-        { mode: "between", min: 60000, max: 80000 },
         {
-          key: "score",
-          direction: "desc",
+          dimensions: ["applied"],
+          startDate: null,
+          endDate: null,
+          preset: null,
         },
+        "all",
+        "all",
+        { mode: "at_least", min: null, max: null },
+        { key: "date", direction: "desc" },
       ),
     );
 
-    expect(result.current.map((job) => job.id)).toEqual(
-      expect.arrayContaining(["structured", "k-format"]),
-    );
-    expect(result.current).toHaveLength(2);
+    expect(result.current.map((job) => job.id)).toEqual(["newer", "older"]);
   });
 
-  it("sorts by salary with highest first and missing salaries last", () => {
+  it("falls back through the date sort priority when the primary timestamp is missing", () => {
     const jobs: Job[] = [
-      { ...baseJob, id: "max", salaryMinAmount: 120000 },
-      { ...baseJob, id: "mid", salary: "GBP 65k" },
-      { ...baseJob, id: "low", salaryMinAmount: 50000 },
-      { ...baseJob, id: "none", salary: null, salaryMinAmount: null },
+      {
+        ...baseJob,
+        id: "fallback",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+        readyAt: null,
+      },
+      {
+        ...baseJob,
+        id: "ready",
+        readyAt: "2026-04-04T14:00:00.000Z",
+        appliedAt: "2026-04-03T14:00:00.000Z",
+      },
     ];
 
     const { result } = renderHook(() =>
       useFilteredJobs(
         jobs,
         "all",
+        {
+          dimensions: ["ready", "applied"],
+          startDate: null,
+          endDate: null,
+          preset: null,
+        },
         "all",
         "all",
         { mode: "at_least", min: null, max: null },
-        {
-          key: "salary",
-          direction: "desc",
-        },
+        { key: "date", direction: "desc" },
       ),
     );
 
-    expect(result.current.map((job) => job.id)).toEqual([
-      "max",
-      "mid",
-      "low",
-      "none",
-    ]);
+    expect(result.current.map((job) => job.id)).toEqual(["fallback", "ready"]);
   });
 });

@@ -1,3 +1,4 @@
+import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import { ManualImportFlow } from "@client/components/ManualImportFlow";
 import type { AppSettings, JobSource } from "@shared/types";
 import type React from "react";
@@ -26,7 +27,7 @@ interface RunModeModalProps {
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
-  onManualImported: (jobId: string) => Promise<void>;
+  onManualImported: (result: ManualImportResult) => Promise<void>;
 }
 
 export const RunModeModal: React.FC<RunModeModalProps> = ({

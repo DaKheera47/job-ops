@@ -1,21 +1,20 @@
-import type { PreparedRxResumePdfPayload } from "@server/services/rxresume";
+import { normalizeResumeJsonToLatexDocument } from "./document";
 import { renderLatexPdf } from "./latex";
-import { normalizePreparedResumeToLatexDocument } from "./normalize";
 
+export { normalizeResumeJsonToLatexDocument } from "./document";
 export {
   getLatexTemplatePath,
   getTectonicBinary,
   readLatexTemplate,
 } from "./latex";
-export { normalizePreparedResumeToLatexDocument } from "./normalize";
 export type * from "./types";
 
 export async function renderResumePdf(args: {
-  preparedResume: PreparedRxResumePdfPayload;
+  resumeJson: Record<string, unknown>;
   outputPath: string;
   jobId: string;
 }): Promise<void> {
-  const document = normalizePreparedResumeToLatexDocument(args.preparedResume);
+  const document = normalizeResumeJsonToLatexDocument(args.resumeJson);
   await renderLatexPdf({
     document,
     outputPath: args.outputPath,

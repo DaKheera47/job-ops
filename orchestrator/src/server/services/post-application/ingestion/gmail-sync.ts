@@ -1,4 +1,5 @@
 import { logger } from "@infra/logger";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { getAllJobs } from "@server/repositories/jobs";
 import {
   getPostApplicationIntegration,
@@ -123,6 +124,17 @@ async function createAutoStageEvent(args: {
   receivedAt: number;
   note: string;
 }): Promise<void> {
+  void trackServerProductEvent(
+    "tracking_email_matched",
+    {
+      provider: "gmail",
+      match_mode: "auto_link",
+      stage_target: args.stageTarget,
+      result: "success",
+    },
+    { urlPath: "/tracking-inbox" },
+  );
+
   const transition = resolveStageTransitionForTarget(args.stageTarget);
   if (transition.toStage === "no_change") return;
 

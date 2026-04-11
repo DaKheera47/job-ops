@@ -4,6 +4,7 @@ import {
   notFound,
   unprocessableEntity,
 } from "@infra/errors";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import { db, schema } from "@server/db";
 import { getJobById, listJobSummariesByIds } from "@server/repositories/jobs";
 import {
@@ -171,7 +172,7 @@ export async function approvePostApplicationInboxItem(args: {
         .run();
     }
 
-    return { stageEventId };
+    return { stageEventId, resolvedTarget };
   });
 
   const updatedMessage = await getPostApplicationMessageById(message.id);
@@ -181,6 +182,17 @@ export async function approvePostApplicationInboxItem(args: {
       `Post-application message '${message.id}' not found after approval.`,
     );
   }
+
+  void trackServerProductEvent(
+    "tracking_email_matched",
+    {
+      provider: args.provider,
+      match_mode: "manual_review",
+      stage_target: updated.resolvedTarget,
+      result: "success",
+    },
+    { urlPath: "/tracking-inbox" },
+  );
 
   return { message: updatedMessage, stageEventId: updated.stageEventId };
 }

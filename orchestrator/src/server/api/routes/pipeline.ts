@@ -58,7 +58,11 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
  * GET /api/pipeline/progress - Server-Sent Events endpoint for live progress
  */
 pipelineRouter.get("/progress", (req: Request, res: Response) => {
-  setupSse(res, { disableBuffering: true });
+  setupSse(res, {
+    cacheControl: "no-cache, no-transform",
+    disableBuffering: true,
+    flushHeaders: true,
+  });
 
   // Send initial progress
   const sendProgress = (data: unknown) => {

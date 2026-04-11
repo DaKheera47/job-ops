@@ -237,22 +237,6 @@ export const settingsRegistry = {
       return value ? JSON.stringify(value) : null;
     },
   },
-  rxresumeMode: {
-    kind: "typed" as const,
-    schema: z.enum(["v4", "v5"]),
-    default: (): "v4" | "v5" =>
-      (typeof process !== "undefined"
-        ? process.env.RXRESUME_MODE
-        : undefined) === "v4"
-        ? "v4"
-        : "v5",
-    parse: (raw: string | undefined): "v4" | "v5" | null => {
-      if (!raw) return null;
-      return raw === "v4" || raw === "v5" ? raw : null;
-    },
-    serialize: (value: "v4" | "v5" | null | undefined): string | null =>
-      value ?? null,
-  },
   pdfRenderer: {
     kind: "typed" as const,
     schema: z.enum(PDF_RENDERER_VALUES),
@@ -590,18 +574,9 @@ export const settingsRegistry = {
     kind: "string" as const,
     schema: z.string().trim().max(200),
   },
-  rxresumeBaseResumeIdV4: {
+  onboardingBasicAuthDecision: {
     kind: "string" as const,
-    schema: z.string().trim().max(200),
-  },
-  rxresumeBaseResumeIdV5: {
-    kind: "string" as const,
-    schema: z.string().trim().max(200),
-  },
-  rxresumeEmail: {
-    kind: "string" as const,
-    envKey: "RXRESUME_EMAIL",
-    schema: z.string().trim().max(200),
+    schema: z.enum(["enabled", "skipped"]),
   },
   rxresumeUrl: {
     kind: "string" as const,
@@ -631,11 +606,6 @@ export const settingsRegistry = {
   llmApiKey: {
     kind: "secret" as const,
     envKey: "LLM_API_KEY",
-    schema: z.string().trim().max(2000),
-  },
-  rxresumePassword: {
-    kind: "secret" as const,
-    envKey: "RXRESUME_PASSWORD",
     schema: z.string().trim().max(2000),
   },
   rxresumeApiKey: {

@@ -134,7 +134,6 @@ export const EnvironmentSettingsSection: React.FC<
                 placeholder="Enter new password"
                 disabled={isLoading || isSaving}
                 error={errors.basicAuthPassword?.message as string | undefined}
-                current={formatSecretHint(privateValues.basicAuthPasswordHint)}
               />
             </div>
           )}

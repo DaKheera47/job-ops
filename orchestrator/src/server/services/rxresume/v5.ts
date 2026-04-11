@@ -1,6 +1,6 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
-import { parseV4ResumeData, type ResumeData } from "./schema/v4";
+import { logger } from "@infra/logger";
 import { parseV5ResumeData } from "./schema/v5";
 
 type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
@@ -22,7 +22,7 @@ export type RxResumeGetByIdResponse = {
   name: string;
   slug: string;
   tags: string[];
-  data: ResumeData | Record<string, unknown>;
+  data: unknown;
   isPublic: boolean;
   isLocked: boolean;
   hasPassword: boolean;
@@ -30,8 +30,7 @@ export type RxResumeGetByIdResponse = {
 };
 
 export type RxResumeImportRequest = {
-  data: ResumeData | unknown;
-  // Not part of the documented v5 import schema, but accepted by some installs.
+  data: unknown;
   name?: string;
   slug?: string;
 };
@@ -115,6 +114,13 @@ async function executeWithKeyRetries(
         continue;
       }
 
+      logger.warn("Reactive Resume upstream request failed", {
+        endpoint: pathFromUrl(url),
+        method: options.method ?? "GET",
+        status: response.status,
+        upstreamError: errorBody,
+      });
+
       throw new Error(
         `Reactive Resume API error (${response.status}): ${errorMsg}`,
       );
@@ -128,6 +134,14 @@ async function executeWithKeyRetries(
   }
 
   throw new Error("All Reactive Resume API keys failed.");
+}
+
+function pathFromUrl(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return url;
+  }
 }
 
 /**
@@ -157,9 +171,7 @@ export async function getResume(
     config,
   )) as RxResumeGetByIdResponse;
   if (payload.data !== undefined) {
-    payload.data = parseV5ResumeData(payload.data) as
-      | ResumeData
-      | Record<string, unknown>;
+    payload.data = parseV5ResumeData(payload.data) as Record<string, unknown>;
   }
   return payload;
 }
@@ -201,13 +213,7 @@ export async function importResume(
   payload: RxResumeImportRequest,
   config?: RxResumeApiConfig,
 ): Promise<string> {
-  try {
-    payload.data = parseV5ResumeData(payload.data);
-  } catch {
-    // JobOps still generates the legacy/internal resume shape for tailoring.
-    // Accept it for v5 imports until the write path is upgraded to a native v5 schema.
-    payload.data = parseV4ResumeData(payload.data);
-  }
+  payload.data = parseV5ResumeData(payload.data);
 
   const result = (await fetchRxResume(
     "/resumes/import",
@@ -218,7 +224,7 @@ export async function importResume(
     config,
   )) as { id: string } | string;
 
-  // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
+  // In v5, Reactive Resume may return the full resume object or just the ID string.
   return typeof result === "string" ? result : result.id;
 }
 

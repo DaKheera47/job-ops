@@ -34,12 +34,82 @@ describe("JobListPanel", () => {
         onSelectJob={vi.fn()}
         onToggleSelectJob={vi.fn()}
         onToggleSelectAll={vi.fn()}
+        primaryEmptyStateAction={{
+          label: "Tailor discovered jobs",
+          onClick: vi.fn(),
+        }}
+        secondaryEmptyStateAction={{
+          label: "Run pipeline",
+          onClick: vi.fn(),
+        }}
       />,
     );
 
     expect(screen.getByText("No jobs found")).toBeInTheDocument();
     expect(
       screen.getByText("Run the pipeline to discover and process new jobs."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /tailor discovered jobs/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /run pipeline/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("fires empty state actions when provided", () => {
+    const onPrimary = vi.fn();
+    const onSecondary = vi.fn();
+
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={[]}
+        activeJobs={[]}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+        primaryEmptyStateAction={{
+          label: "Tailor discovered jobs",
+          onClick: onPrimary,
+        }}
+        secondaryEmptyStateAction={{
+          label: "Run pipeline",
+          onClick: onSecondary,
+        }}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /tailor discovered jobs/i }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: /run pipeline/i }));
+
+    expect(onPrimary).toHaveBeenCalledTimes(1);
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+  });
+
+  it("prefers a custom empty state message when provided", () => {
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={[]}
+        activeJobs={[]}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="all"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+        emptyStateMessage="No applied jobs found for this date range."
+      />,
+    );
+
+    expect(
+      screen.getByText("No applied jobs found for this date range."),
     ).toBeInTheDocument();
   });
 

@@ -79,12 +79,16 @@ export async function getEnvSettingsData(
     }
   }
 
-  const basicAuthUser =
-    activeOverrides.basicAuthUser ?? process.env.BASIC_AUTH_USER;
-  const basicAuthPassword =
-    activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD;
+  const basicAuthUser = normalizeEnvInput(
+    activeOverrides.basicAuthUser ?? process.env.BASIC_AUTH_USER,
+  );
+  const basicAuthPassword = normalizeEnvInput(
+    activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD,
+  );
+  const basicAuthActive = Boolean(basicAuthUser && basicAuthPassword);
 
-  values.basicAuthActive = Boolean(basicAuthUser && basicAuthPassword);
+  values.basicAuthActive = basicAuthActive;
+  values.basicAuthPassword = basicAuthActive ? basicAuthPassword : null;
 
   return values;
 }

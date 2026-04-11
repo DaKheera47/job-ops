@@ -2,6 +2,7 @@ import { toAppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
+import { getDesignResumeStatus } from "@server/services/design-resume";
 import { clearProfileCache, getProfile } from "@server/services/profile";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
@@ -48,6 +49,12 @@ profileRouter.get("/", async (_req: Request, res: Response) => {
  */
 profileRouter.get("/status", async (_req: Request, res: Response) => {
   try {
+    const localStatus = await getDesignResumeStatus();
+    if (localStatus.exists) {
+      ok(res, { exists: true, error: null });
+      return;
+    }
+
     const { resumeId: rxresumeBaseResumeId } =
       await getConfiguredRxResumeBaseResumeId();
 

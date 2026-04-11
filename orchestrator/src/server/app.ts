@@ -292,7 +292,10 @@ export function createApp() {
   });
   app.use(requestContextMiddleware());
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
-  app.use(express.json({ limit: "5mb" }));
+  // Resume file import sends base64 JSON payloads, which expand beyond the raw
+  // file size. Scope the larger JSON limit to that endpoint only.
+  app.use("/api/design-resume/import/file", express.json({ limit: "15mb" }));
+  app.use(express.json());
 
   // Logging middleware
   app.use((req, res, next) => {

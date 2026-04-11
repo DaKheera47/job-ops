@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { logger } from "@infra/logger";
+import { trackServerProductEvent } from "@infra/product-analytics";
 import type {
   JobTracerLinksResponse,
   TracerAnalyticsResponse,
@@ -561,6 +562,18 @@ export async function resolveTracerRedirect(args: {
     ipHash,
     uniqueFingerprintHash,
   });
+
+  if (!isLikelyBot) {
+    void trackServerProductEvent(
+      "tracer_human_click_recorded",
+      {
+        device_type: classifyDeviceType(userAgent),
+        ua_family: classifyUaFamily(userAgent),
+        has_referrer: Boolean(getReferrerHost(args.referrer)),
+      },
+      { urlPath: "/tracer-links" },
+    );
+  }
 
   return {
     destinationUrl: link.destinationUrl,

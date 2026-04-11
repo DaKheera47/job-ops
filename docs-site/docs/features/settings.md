@@ -141,7 +141,7 @@ Defaults and constraints:
 ![Reactive Resume settings section](/img/features/settings-reactive-resume-section.png)
 
 - Configure a shared RxResume URL for cloud or self-hosted deployments
-- Configure v4 email/password or v5 API key in the same section
+- Configure a v5 API key
 - Choose the PDF renderer:
   - RxResume export
   - Local LaTeX renderer
@@ -171,7 +171,7 @@ Readiness requires:
 ### Environment & Accounts
 
 - Configure service accounts:
-  - RxResume email/password
+  - RxResume API key
   - UKVisaJobs email/password
   - Adzuna app ID/app key
   - Optional basic authentication for write operations

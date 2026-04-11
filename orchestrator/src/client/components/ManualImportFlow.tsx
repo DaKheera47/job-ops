@@ -17,6 +17,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 type ManualImportStep = "paste" | "loading" | "review";
 
+export type ManualImportTrackingSource = "pasted_description" | "fetched_url";
+
+export interface ManualImportResult {
+  jobId: string;
+  source: ManualImportTrackingSource;
+  sourceHost: string | null;
+}
+
 type ManualJobDraftState = {
   title: string;
   employer: string;
@@ -110,8 +118,18 @@ const toPayload = (draft: ManualJobDraftState): ManualJobDraft => {
 
 interface ManualImportFlowProps {
   active: boolean;
-  onImported: (jobId: string) => void | Promise<void>;
+  onImported: (result: ManualImportResult) => void | Promise<void>;
   onClose: () => void;
+}
+
+function getSourceHost(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    return new URL(trimmed).hostname || null;
+  } catch {
+    return null;
+  }
 }
 
 export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
@@ -127,6 +145,9 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [importSource, setImportSource] =
+    useState<ManualImportTrackingSource>("pasted_description");
+  const [importSourceHost, setImportSourceHost] = useState<string | null>(null);
 
   useEffect(() => {
     if (active) return;
@@ -138,6 +159,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setWarning(null);
     setError(null);
     setIsImporting(false);
+    setImportSource("pasted_description");
+    setImportSourceHost(null);
   }, [active]);
 
   const stepIndex = STEP_INDEX_BY_ID[step];
@@ -180,6 +203,8 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
 
       setDraft(normalized);
       setWarning(inferResponse.warning ?? null);
+      setImportSource("fetched_url");
+      setImportSourceHost(getSourceHost(fetchedUrl));
       setStep("review");
     } catch (err) {
       const message =
@@ -209,6 +234,10 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       }
       setDraft(normalized);
       setWarning(response.warning ?? null);
+      setImportSource("pasted_description");
+      setImportSourceHost(
+        getSourceHost(draft.jobUrl) ?? getSourceHost(draft.applicationLink),
+      );
       setStep("review");
     } catch (err) {
       const message =
@@ -230,7 +259,14 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       toast.success("Job imported", {
         description: "The job was tailored and moved to the ready column.",
       });
-      await onImported(created.id);
+      await onImported({
+        jobId: created.id,
+        source: importSource,
+        sourceHost:
+          importSourceHost ??
+          getSourceHost(payload.jobUrl ?? "") ??
+          getSourceHost(payload.applicationLink ?? ""),
+      });
       onClose();
     } catch (err) {
       const message =

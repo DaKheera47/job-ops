@@ -88,6 +88,9 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const skipJobMutation = useSkipJobMutation();
 
   const { personName } = useProfile();
+  const openEditDetails = useCallback(() => {
+    window.setTimeout(() => setIsEditDetailsOpen(true), 0);
+  }, []);
 
   // Load project catalog once
   useEffect(() => {
@@ -507,7 +510,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Edit tailoring
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+            <DropdownMenuItem onSelect={openEditDetails}>
               <Edit2 className="mr-2 h-4 w-4" />
               Edit details
             </DropdownMenuItem>

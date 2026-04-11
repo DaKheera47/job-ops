@@ -9,7 +9,7 @@ type SettingsInputProps = {
   type?: React.HTMLInputTypeAttribute;
   disabled?: boolean;
   error?: string;
-  helper?: string;
+  helper?: React.ReactNode;
   current?: string;
 };
 

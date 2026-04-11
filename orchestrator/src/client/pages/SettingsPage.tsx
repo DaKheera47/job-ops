@@ -4,12 +4,10 @@ import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMuta
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import {
-  coerceRxResumeMode,
   getRxResumeCredentialDrafts,
   getRxResumeCredentialPrecheckFailure,
   isRxResumeAvailabilityValidationFailure,
   isRxResumeBlockingValidationFailure,
-  RXRESUME_MODES,
   RXRESUME_PRECHECK_MESSAGES,
   toRxResumeValidationPayload,
   validateAndMaybePersistRxResumeMode,
@@ -41,7 +39,6 @@ import type {
   JobStatus,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
-  RxResumeMode,
   ValidationResult,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -79,7 +76,6 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
   pdfRenderer: "rxresume",
-  rxresumeMode: "v5",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -91,9 +87,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
-  rxresumeEmail: "",
   rxresumeUrl: "",
-  rxresumePassword: "",
   rxresumeApiKey: "",
   basicAuthUser: "",
   basicAuthPassword: "",
@@ -313,11 +307,8 @@ const SECTION_FIELD_MAP: Record<
   ],
   "reactive-resume": [
     "pdfRenderer",
-    "rxresumeMode",
     "rxresumeBaseResumeId",
     "rxresumeApiKey",
-    "rxresumeEmail",
-    "rxresumePassword",
     "rxresumeUrl",
     "resumeProjects",
   ],
@@ -349,13 +340,10 @@ function matchesSettingsSearch(
   return haystack.toLowerCase().includes(normalized);
 }
 
-const getRxResumeValidationFieldsForMode = (
-  mode: RxResumeMode,
-): Array<keyof UpdateSettingsInput> =>
-  mode === "v5"
-    ? ["rxresumeApiKey", "rxresumeUrl"]
-    : ["rxresumeEmail", "rxresumePassword", "rxresumeUrl"];
-
+const getRxResumeValidationFields = (): Array<keyof UpdateSettingsInput> => [
+  "rxresumeApiKey",
+  "rxresumeUrl",
+];
 const toRxResumeValidationBadgeState = (
   validation: ValidationResult,
 ): RxResumeValidationBadgeState => ({
@@ -381,7 +369,6 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
   pdfRenderer: null,
-  rxresumeMode: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -393,9 +380,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
   chatStyleManualLanguage: null,
-  rxresumeEmail: null,
   rxresumeUrl: null,
-  rxresumePassword: null,
   rxresumeApiKey: null,
   basicAuthUser: null,
   basicAuthPassword: null,
@@ -424,14 +409,15 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.modelScorer.override ?? "",
   modelTailoring: data.modelTailoring.override ?? "",
   modelProjectSelection: data.modelProjectSelection.override ?? "",
-  llmProvider: normalizeLlmProviderValue(data.llmProvider.override),
+  llmProvider: normalizeLlmProviderValue(
+    data.llmProvider.override ?? data.llmProvider.value,
+  ),
   llmBaseUrl: data.llmBaseUrl.override ?? "",
   llmApiKey: "",
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
   pdfRenderer: data.pdfRenderer.override ?? data.pdfRenderer.value,
-  rxresumeMode: data.rxresumeMode.override ?? data.rxresumeMode.value,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
   renderMarkdownInJobDescriptions:
@@ -445,12 +431,10 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
     data.chatStyleMaxKeywordsPerSkill.override ?? null,
   chatStyleLanguageMode: data.chatStyleLanguageMode.override ?? null,
   chatStyleManualLanguage: data.chatStyleManualLanguage.override ?? null,
-  rxresumeEmail: data.rxresumeEmail ?? "",
   rxresumeUrl: data.rxresumeUrl ?? "",
-  rxresumePassword: "",
   rxresumeApiKey: "",
   basicAuthUser: data.basicAuthUser ?? "",
-  basicAuthPassword: "",
+  basicAuthPassword: data.basicAuthPassword ?? "",
   ukvisajobsEmail: data.ukvisajobsEmail ?? "",
   ukvisajobsPassword: "",
   adzunaAppId: data.adzunaAppId ?? "",
@@ -598,13 +582,12 @@ const getDerivedSettings = (settings: AppSettings | null) => {
     },
     envSettings: {
       readable: {
-        rxresumeEmail: settings?.rxresumeEmail ?? "",
         ukvisajobsEmail: settings?.ukvisajobsEmail ?? "",
         adzunaAppId: settings?.adzunaAppId ?? "",
         basicAuthUser: settings?.basicAuthUser ?? "",
+        basicAuthPassword: settings?.basicAuthPassword ?? "",
       },
       private: {
-        rxresumePasswordHint: settings?.rxresumePasswordHint ?? null,
         ukvisajobsPasswordHint: settings?.ukvisajobsPasswordHint ?? null,
         adzunaAppKeyHint: settings?.adzunaAppKeyHint ?? null,
         basicAuthPasswordHint: settings?.basicAuthPasswordHint ?? null,
@@ -678,13 +661,10 @@ export const SettingsPage: React.FC = () => {
   const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([]);
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [rxresumeValidationStatuses, setRxresumeValidationStatuses] = useState<{
-    v4: RxResumeValidationBadgeState;
-    v5: RxResumeValidationBadgeState;
-  }>({
-    v4: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
-    v5: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
-  });
+  const [rxresumeValidationStatus, setRxresumeValidationStatus] =
+    useState<RxResumeValidationBadgeState>(
+      EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
+    );
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>([
     "discovered",
   ]);
@@ -725,12 +705,7 @@ export const SettingsPage: React.FC = () => {
     control,
     formState: { isDirty, errors, isValid, dirtyFields },
   } = methods;
-  const {
-    storedRxResume,
-    getBaseResumeIdForMode,
-    setBaseResumeIdForMode,
-    syncBaseResumeIdsForMode,
-  } = useRxResumeConfigState(settings);
+  const { storedRxResume, setBaseResumeId } = useRxResumeConfigState(settings);
 
   const settingsQuery = useQuery({
     queryKey: queryKeys.settings.current(),
@@ -747,18 +722,11 @@ export const SettingsPage: React.FC = () => {
   const isLoadingBackups = backupsQuery.isLoading;
   useQueryErrorToast(backupsQuery.error, "Failed to load backups");
 
-  const rxresumeMode = (settings?.rxresumeMode?.value ?? "v5") as RxResumeMode;
-  const selectedRxresumeMode = (useWatch({
-    control,
-    name: "rxresumeMode",
-  }) ?? rxresumeMode) as RxResumeMode;
   const resumeProjectsValue = useWatch({
     control,
     name: "resumeProjects",
   });
-  const hasRxResumeAccess = Boolean(
-    rxresumeValidationStatuses[selectedRxresumeMode].valid,
-  );
+  const hasRxResumeAccess = Boolean(rxresumeValidationStatus.valid);
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -770,12 +738,11 @@ export const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     if (!settings) return;
-    const effectiveMode = coerceRxResumeMode(settings.rxresumeMode?.value);
-    const storedId = syncBaseResumeIdsForMode(effectiveMode);
+    const storedId = settings?.rxresumeBaseResumeId ?? null;
     setRxResumeBaseResumeIdDraft(storedId);
     setValue("rxresumeBaseResumeId", storedId, { shouldDirty: false });
     setRxResumeProjectsOverride(null);
-  }, [settings, setValue, syncBaseResumeIdsForMode]);
+  }, [settings, setValue]);
 
   useEffect(() => {
     let isMounted = true;
@@ -797,11 +764,7 @@ export const SettingsPage: React.FC = () => {
 
     setIsFetchingRxResumeProjects(true);
     api
-      .getRxResumeProjects(
-        rxResumeBaseResumeIdDraft,
-        controller.signal,
-        selectedRxresumeMode,
-      )
+      .getRxResumeProjects(rxResumeBaseResumeIdDraft, controller.signal)
       .then((projects) => {
         if (!isMounted) return;
         setRxResumeProjectsOverride(projects);
@@ -810,7 +773,7 @@ export const SettingsPage: React.FC = () => {
           getValues("resumeProjects") ?? null,
         );
         if (normalized) {
-          setValue("resumeProjects", normalized, { shouldDirty: true });
+          setValue("resumeProjects", normalized, { shouldDirty: false });
         }
       })
       .catch((error) => {
@@ -831,13 +794,7 @@ export const SettingsPage: React.FC = () => {
       isMounted = false;
       controller.abort();
     };
-  }, [
-    rxResumeBaseResumeIdDraft,
-    hasRxResumeAccess,
-    selectedRxresumeMode,
-    getValues,
-    setValue,
-  ]);
+  }, [rxResumeBaseResumeIdDraft, hasRxResumeAccess, getValues, setValue]);
 
   const derived = getDerivedSettings(settings);
   const {
@@ -914,37 +871,24 @@ export const SettingsPage: React.FC = () => {
   }, [refreshReadiness]);
 
   const setRxResumeValidationStatus = useCallback(
-    (mode: RxResumeMode, validation: ValidationResult) => {
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        [mode]: toRxResumeValidationBadgeState(validation),
-      }));
+    (validation: ValidationResult) => {
+      setRxresumeValidationStatus(toRxResumeValidationBadgeState(validation));
     },
     [],
   );
 
-  const clearRxResumeValidationFeedback = useCallback(
-    (mode: RxResumeMode) => {
-      setRxresumeValidationStatuses((current) => ({
-        ...current,
-        [mode]: EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
-      }));
-      clearErrors(getRxResumeValidationFieldsForMode(mode));
-    },
-    [clearErrors],
-  );
+  const clearRxResumeValidationFeedback = useCallback(() => {
+    setRxresumeValidationStatus(EMPTY_RXRESUME_VALIDATION_BADGE_STATE);
+    clearErrors(["rxresumeApiKey"]);
+  }, [clearErrors]);
 
-  const validateRxresumeMode = useCallback(
-    async (
-      mode: RxResumeMode,
-      options?: { silent?: boolean; persistOnSuccess?: boolean },
-    ) => {
+  const validateRxresume = useCallback(
+    async (options?: { silent?: boolean; persistOnSuccess?: boolean }) => {
       const { silent = false, persistOnSuccess = true } = options ?? {};
       const notify = !silent;
       const values = getValues();
       const draftCredentials = getRxResumeCredentialDrafts(values);
       const result = await validateAndMaybePersistRxResumeMode({
-        mode,
         stored: storedRxResume,
         draft: draftCredentials,
         validate: api.validateRxresume,
@@ -958,7 +902,7 @@ export const SettingsPage: React.FC = () => {
           error instanceof Error ? error.message : "RxResume validation failed",
       });
 
-      setRxResumeValidationStatus(mode, result.validation);
+      setRxResumeValidationStatus(result.validation);
 
       if (result.updatedSettings) {
         setSettings(result.updatedSettings);
@@ -967,7 +911,7 @@ export const SettingsPage: React.FC = () => {
           result.updatedSettings,
         );
         if (notify) {
-          toast.success(`Reactive Resume ${mode} validation passed`);
+          toast.success(`Reactive Resume validation passed`);
         }
         return;
       }
@@ -985,8 +929,7 @@ export const SettingsPage: React.FC = () => {
       }
 
       toast.error(
-        result.validation.message ||
-          `Reactive Resume ${mode} validation failed`,
+        result.validation.message || `Reactive Resume validation failed`,
       );
     },
     [getValues, queryClient, setRxResumeValidationStatus, storedRxResume],
@@ -995,21 +938,12 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (!settings) return;
 
-    const modesToCheck = RXRESUME_MODES.filter(
-      (mode) => !rxresumeValidationStatuses[mode].checked,
-    );
-    if (modesToCheck.length === 0) return;
+    if (!rxresumeValidationStatus.checked) {
+      void validateRxresume({ silent: true, persistOnSuccess: false });
+    }
+  }, [rxresumeValidationStatus, settings, validateRxresume]);
 
-    void Promise.all(
-      modesToCheck.map((mode) =>
-        validateRxresumeMode(mode, { silent: true, persistOnSuccess: false }),
-      ),
-    );
-  }, [rxresumeValidationStatuses, settings, validateRxresumeMode]);
-
-  const effectiveProfileProjects =
-    rxResumeProjectsOverride ??
-    (selectedRxresumeMode === rxresumeMode ? profileProjects : []);
+  const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects;
   const effectiveMaxProjectsTotal = effectiveProfileProjects.length;
 
   const lockedCount = resumeProjectsValue?.lockedProjectIds.length ?? 0;
@@ -1041,10 +975,6 @@ export const SettingsPage: React.FC = () => {
           : resumeProjectsData;
 
       const envPayload: Partial<UpdateSettingsInput> = {};
-
-      if (dirtyFields.rxresumeEmail || dirtyFields.rxresumePassword) {
-        envPayload.rxresumeEmail = normalizeString(data.rxresumeEmail);
-      }
 
       if (dirtyFields.rxresumeUrl) {
         envPayload.rxresumeUrl = normalizeString(data.rxresumeUrl);
@@ -1087,11 +1017,6 @@ export const SettingsPage: React.FC = () => {
       if (dirtyFields.llmApiKey) {
         const value = normalizePrivateInput(data.llmApiKey);
         if (value !== undefined) envPayload.llmApiKey = value;
-      }
-
-      if (dirtyFields.rxresumePassword) {
-        const value = normalizePrivateInput(data.rxresumePassword);
-        if (value !== undefined) envPayload.rxresumePassword = value;
       }
 
       if (dirtyFields.rxresumeApiKey) {
@@ -1142,9 +1067,6 @@ export const SettingsPage: React.FC = () => {
           data.pdfRenderer,
           reactiveResume.pdfRenderer.default,
         ),
-        ...(dirtyFields.rxresumeMode
-          ? { rxresumeMode: data.rxresumeMode ?? "v5" }
-          : {}),
         ...(dirtyFields.rxresumeBaseResumeId
           ? { rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId) }
           : {}),
@@ -1187,6 +1109,10 @@ export const SettingsPage: React.FC = () => {
           data.missingSalaryPenalty,
           scoring.missingSalaryPenalty.default,
         ),
+        autoSkipScoreThreshold: nullIfSame(
+          data.autoSkipScoreThreshold,
+          scoring.autoSkipScoreThreshold.default,
+        ),
         blockedCompanyKeywords: (() => {
           const normalized = normalizeStringArray(data.blockedCompanyKeywords);
           const normalizedDefault = normalizeStringArray(
@@ -1216,33 +1142,23 @@ export const SettingsPage: React.FC = () => {
       };
 
       const shouldValidateRxResumeBeforeSave = Boolean(
-        dirtyFields.rxresumeMode ||
-          dirtyFields.rxresumeUrl ||
-          dirtyFields.rxresumeApiKey ||
-          dirtyFields.rxresumeEmail ||
-          dirtyFields.rxresumePassword,
+        dirtyFields.rxresumeUrl || dirtyFields.rxresumeApiKey,
       );
-      const rxResumeValidationMode = (data.rxresumeMode ??
-        rxresumeMode) as RxResumeMode;
       let rxResumeSaveWarningMessage: string | null = null;
 
       if (shouldValidateRxResumeBeforeSave) {
         const validationDraft = getRxResumeCredentialDrafts(data);
         const precheckFailure = getRxResumeCredentialPrecheckFailure({
-          mode: rxResumeValidationMode,
           stored: storedRxResume,
           draft: validationDraft,
         });
 
         if (!precheckFailure) {
           const preserveBlankFields = [
-            ...(dirtyFields.rxresumeEmail ? (["email"] as const) : []),
-            ...(dirtyFields.rxresumePassword ? (["password"] as const) : []),
             ...(dirtyFields.rxresumeApiKey ? (["apiKey"] as const) : []),
             ...(dirtyFields.rxresumeUrl ? (["baseUrl"] as const) : []),
           ];
           const validation = await api.validateRxresume({
-            mode: rxResumeValidationMode,
             ...toRxResumeValidationPayload(validationDraft, {
               preserveBlankFields: preserveBlankFields as Array<
                 keyof ReturnType<typeof getRxResumeCredentialDrafts>
@@ -1250,39 +1166,19 @@ export const SettingsPage: React.FC = () => {
             }),
           });
 
-          setRxResumeValidationStatus(rxResumeValidationMode, validation);
+          setRxResumeValidationStatus(validation);
 
           if (isRxResumeBlockingValidationFailure(validation)) {
-            clearErrors(
-              getRxResumeValidationFieldsForMode(rxResumeValidationMode),
-            );
-            if (rxResumeValidationMode === "v5") {
-              setError("rxresumeApiKey", {
-                type: "manual",
-                message:
-                  validation.message ??
-                  "Reactive Resume v5 API key is invalid.",
-              });
-            } else {
-              setError("rxresumeEmail", {
-                type: "manual",
-                message:
-                  validation.message ??
-                  "Reactive Resume v4 email/password is invalid.",
-              });
-              setError("rxresumePassword", {
-                type: "manual",
-                message:
-                  validation.message ??
-                  "Reactive Resume v4 email/password is invalid.",
-              });
-            }
+            clearErrors(getRxResumeValidationFields());
+            setError("rxresumeApiKey", {
+              type: "manual",
+              message:
+                validation.message ?? "Reactive Resume API key is invalid.",
+            });
             return;
           }
 
-          clearErrors(
-            getRxResumeValidationFieldsForMode(rxResumeValidationMode),
-          );
+          clearErrors(getRxResumeValidationFields());
           if (isRxResumeAvailabilityValidationFailure(validation)) {
             rxResumeSaveWarningMessage =
               "Settings saved, but JobOps could not verify Reactive Resume because the instance is unavailable.";
@@ -1570,23 +1466,14 @@ export const SettingsPage: React.FC = () => {
       activeSectionContent = (
         <ReactiveResumeSection
           rxResumeBaseResumeIdDraft={rxResumeBaseResumeIdDraft}
-          onRxresumeModeChange={(mode) => {
-            const nextId = getBaseResumeIdForMode(mode);
-            setRxResumeBaseResumeIdDraft(nextId);
-            setValue("rxresumeBaseResumeId", nextId, { shouldDirty: true });
-            setRxResumeProjectsOverride(null);
-          }}
           setRxResumeBaseResumeIdDraft={(value) => {
-            const mode = (getValues("rxresumeMode") ??
-              rxresumeMode) as RxResumeMode;
-            setBaseResumeIdForMode(mode, value);
+            setBaseResumeId(value);
             setRxResumeBaseResumeIdDraft(value);
             setValue("rxresumeBaseResumeId", value, { shouldDirty: true });
           }}
           hasRxResumeAccess={hasRxResumeAccess}
-          rxresumeMode={rxresumeMode}
           onCredentialFieldEdit={clearRxResumeValidationFeedback}
-          validationStatuses={rxresumeValidationStatuses}
+          validationStatus={rxresumeValidationStatus}
           profileProjects={effectiveProfileProjects}
           lockedCount={lockedCount}
           maxProjectsTotal={effectiveMaxProjectsTotal}
@@ -1682,7 +1569,7 @@ export const SettingsPage: React.FC = () => {
         subtitle="Configure AI, scoring, integrations, and recovery from one focused workspace."
       />
 
-      <main className="container mx-auto max-w-7xl px-4 py-6 pb-12">
+      <main className="container mx-auto px-4 py-6 pb-12">
         <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-6 lg:self-start">
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/95">

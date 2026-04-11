@@ -1,74 +1,37 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { RxResumeMode, ValidationResult } from "@shared/types.js";
+import type { ValidationResult } from "@shared/types.js";
 
 export type RxResumeSettingsLike =
   | {
-      rxresumeMode?: { value?: string | null } | null;
-      rxresumeEmail?: string | null;
       rxresumeUrl?: string | null;
-      rxresumePasswordHint?: string | null;
       rxresumeApiKeyHint?: string | null;
       rxresumeBaseResumeId?: string | null;
-      rxresumeBaseResumeIdV4?: string | null;
-      rxresumeBaseResumeIdV5?: string | null;
     }
   | null
   | undefined;
 
-export const RXRESUME_MODES = ["v4", "v5"] as const;
-
 export const RXRESUME_PRECHECK_MESSAGES = {
-  "missing-v4-email-password": "Add v4 email and password, then test again.",
-  "missing-v5-api-key": "Add a v5 API key, then test again.",
+  "missing-v5-api-key": "Add an API key, then test again.",
 } as const;
-
-export const coerceRxResumeMode = (
-  value: unknown,
-  fallback: RxResumeMode = "v5",
-): RxResumeMode => (value === "v4" || value === "v5" ? value : fallback);
 
 export const getStoredRxResumeCredentialAvailability = (
   settings: RxResumeSettingsLike,
 ) => {
-  const email = Boolean(settings?.rxresumeEmail?.trim());
-  const password = Boolean(settings?.rxresumePasswordHint);
   const apiKey = Boolean(settings?.rxresumeApiKeyHint);
-  return { email, password, apiKey, hasV4: email && password, hasV5: apiKey };
+  return { apiKey, hasV5: apiKey };
 };
-
-export const getInitialRxResumeMode = (input: {
-  savedMode: RxResumeMode | null | undefined;
-  hasV4: boolean;
-  hasV5: boolean;
-}): RxResumeMode =>
-  coerceRxResumeMode(
-    input.savedMode ?? (input.hasV4 && !input.hasV5 ? "v4" : "v5"),
-  );
 
 export const getRxResumeBaseResumeSelection = (
   settings: RxResumeSettingsLike,
-  mode: RxResumeMode,
 ) => {
-  const idsByMode = {
-    v4:
-      settings?.rxresumeBaseResumeIdV4 ??
-      (mode === "v4" ? (settings?.rxresumeBaseResumeId ?? null) : null),
-    v5:
-      settings?.rxresumeBaseResumeIdV5 ??
-      (mode === "v5" ? (settings?.rxresumeBaseResumeId ?? null) : null),
-  } satisfies Record<RxResumeMode, string | null>;
-  return { idsByMode, selectedId: idsByMode[mode] ?? null };
+  return { selectedId: settings?.rxresumeBaseResumeId ?? null };
 };
 
 export const getRxResumeCredentialDrafts = (input: {
-  rxresumeEmail?: string | null;
   rxresumeUrl?: string | null;
-  rxresumePassword?: string | null;
   rxresumeApiKey?: string | null;
 }) => ({
-  email: input.rxresumeEmail?.trim() ?? "",
   baseUrl: input.rxresumeUrl?.trim() ?? "",
-  password: input.rxresumePassword?.trim() ?? "",
   apiKey: input.rxresumeApiKey?.trim() ?? "",
 });
 
@@ -77,21 +40,15 @@ export type RxResumeCredentialDrafts = ReturnType<
 >;
 export type RxResumeStoredCredentialAvailability = Pick<
   ReturnType<typeof getStoredRxResumeCredentialAvailability>,
-  "email" | "password" | "apiKey"
+  "apiKey"
 >;
 
 export const getRxResumeCredentialPrecheckFailure = (input: {
-  mode: RxResumeMode;
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
 }) => {
-  const hasV4 =
-    (input.stored.email || Boolean(input.draft.email)) &&
-    (input.stored.password || Boolean(input.draft.password));
   const hasV5 = input.stored.apiKey || Boolean(input.draft.apiKey);
-  if (input.mode === "v5" && !hasV5) return "missing-v5-api-key" as const;
-  if (input.mode === "v4" && !hasV4)
-    return "missing-v4-email-password" as const;
+  if (!hasV5) return "missing-v5-api-key" as const;
   return null;
 };
 
@@ -100,20 +57,9 @@ export type RxResumeCredentialPrecheckFailure = ReturnType<
 >;
 
 export const getRxResumeMissingCredentialLabels = (input: {
-  mode: RxResumeMode;
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
-}) =>
-  input.mode === "v5"
-    ? input.stored.apiKey || input.draft.apiKey
-      ? []
-      : ["RxResume v5 API key"]
-    : [
-        ...(input.stored.email || input.draft.email ? [] : ["RxResume email"]),
-        ...(input.stored.password || input.draft.password
-          ? []
-          : ["RxResume password"]),
-      ];
+}) => (input.stored.apiKey || input.draft.apiKey ? [] : ["RxResume API key"]);
 
 export const toRxResumeValidationPayload = (
   draft: RxResumeCredentialDrafts,
@@ -123,15 +69,9 @@ export const toRxResumeValidationPayload = (
 ) => {
   const preserveBlankFields = new Set(options?.preserveBlankFields ?? []);
   return {
-    email: preserveBlankFields.has("email")
-      ? draft.email
-      : draft.email || undefined,
     baseUrl: preserveBlankFields.has("baseUrl")
       ? draft.baseUrl
       : draft.baseUrl || undefined,
-    password: preserveBlankFields.has("password")
-      ? draft.password
-      : draft.password || undefined,
     apiKey: preserveBlankFields.has("apiKey")
       ? draft.apiKey
       : draft.apiKey || undefined,
@@ -154,27 +94,20 @@ export const isRxResumeAvailabilityValidationFailure = (
     (typeof validation.status === "number" && validation.status >= 500));
 
 export const buildRxResumeSettingsUpdate = (
-  mode: RxResumeMode,
   draft: RxResumeCredentialDrafts,
 ): Partial<UpdateSettingsInput> => {
   const update: Partial<UpdateSettingsInput> = {
-    rxresumeMode: mode,
     rxresumeUrl: draft.baseUrl || null,
   };
-  if (draft.email) update.rxresumeEmail = draft.email;
-  if (draft.password) update.rxresumePassword = draft.password;
   if (draft.apiKey) update.rxresumeApiKey = draft.apiKey;
   return update;
 };
 
 type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
-  mode: RxResumeMode;
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
   validate: (
-    payload: { mode: RxResumeMode } & ReturnType<
-      typeof toRxResumeValidationPayload
-    >,
+    payload: ReturnType<typeof toRxResumeValidationPayload>,
   ) => Promise<ValidationResult>;
   persist?: (update: Partial<UpdateSettingsInput>) => Promise<TSettings>;
   persistOnSuccess?: boolean;
@@ -182,8 +115,8 @@ type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
   getPrecheckMessage?: (
     failure: Exclude<RxResumeCredentialPrecheckFailure, null>,
   ) => string;
-  getValidationErrorMessage?: (error: unknown, mode: RxResumeMode) => string;
-  getPersistErrorMessage?: (error: unknown, mode: RxResumeMode) => string;
+  getValidationErrorMessage?: (error: unknown) => string;
+  getPersistErrorMessage?: (error: unknown) => string;
 };
 
 export type ValidateAndMaybePersistRxResumeModeResult<TSettings> = {
@@ -196,7 +129,6 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   input: ValidateAndMaybePersistRxResumeModeInput<TSettings>,
 ): Promise<ValidateAndMaybePersistRxResumeModeResult<TSettings>> => {
   const {
-    mode,
     stored,
     draft,
     validate,
@@ -215,7 +147,6 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   const precheckFailure = skipPrecheck
     ? null
     : getRxResumeCredentialPrecheckFailure({
-        mode,
         stored,
         draft,
       });
@@ -233,15 +164,12 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
 
   let validation: ValidationResult;
   try {
-    validation = await validate({
-      mode,
-      ...toRxResumeValidationPayload(draft),
-    });
+    validation = await validate(toRxResumeValidationPayload(draft));
   } catch (error) {
     return {
       validation: {
         valid: false,
-        message: getValidationErrorMessage(error, mode),
+        message: getValidationErrorMessage(error),
         status: 0,
       },
       precheckFailure: null,
@@ -262,9 +190,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   }
 
   try {
-    const updatedSettings = await persist(
-      buildRxResumeSettingsUpdate(mode, draft),
-    );
+    const updatedSettings = await persist(buildRxResumeSettingsUpdate(draft));
     return {
       validation: {
         valid: true,
@@ -278,7 +204,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
     return {
       validation: {
         valid: false,
-        message: getPersistErrorMessage(error, mode),
+        message: getPersistErrorMessage(error),
         status: 0,
       },
       precheckFailure: null,

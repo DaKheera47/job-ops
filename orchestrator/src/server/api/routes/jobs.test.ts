@@ -312,6 +312,7 @@ describe.sequential("Jobs API routes", () => {
 
       expect(res.status).toBe(200);
       expect(vi.mocked(generateFinalPdf)).toHaveBeenCalledWith(job.id, {
+        analyticsOrigin: "generate_pdf",
         requestOrigin: "https://canonical.jobops.example",
       });
     } finally {
@@ -500,6 +501,7 @@ describe.sequential("Jobs API routes", () => {
       expect(body.data.succeeded).toBe(1);
       expect(body.data.failed).toBe(1);
       expect(vi.mocked(processJob)).toHaveBeenCalledWith(discovered.id, {
+        analyticsOrigin: "move_to_ready",
         force: false,
         requestOrigin: "https://canonical.jobops.example",
       });
@@ -537,6 +539,7 @@ describe.sequential("Jobs API routes", () => {
       expect(res.status).toBe(200);
       expect(body.ok).toBe(true);
       expect(vi.mocked(processJob)).toHaveBeenCalledWith(job.id, {
+        analyticsOrigin: "move_to_ready",
         force: false,
         requestOrigin: "https://canonical.jobops.example",
       });

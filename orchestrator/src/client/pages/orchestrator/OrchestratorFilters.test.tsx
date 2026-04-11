@@ -44,6 +44,13 @@ const renderFilters = (
       max: null,
     },
     onSalaryFilterChange: vi.fn(),
+    dateFilter: {
+      dimensions: [],
+      startDate: null,
+      endDate: null,
+      preset: null,
+    },
+    onDateFilterChange: vi.fn(),
     sourcesWithJobs: ["gradcracker", "linkedin", "manual"] as JobSource[],
     sort: { key: "score", direction: "desc" } as JobSort,
     onSortChange: vi.fn(),
@@ -100,24 +107,74 @@ describe("OrchestratorFilters", () => {
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
-    fireEvent.click(await screen.findByText("Title"));
+    fireEvent.click(await screen.findByText("Date"));
     expect(props.onSortChange).toHaveBeenCalledWith({
-      key: "title",
-      direction: "asc",
-    });
-
-    fireEvent.click(screen.getByRole("combobox", { name: "Sort field" }));
-    fireEvent.click(await screen.findByText("Company"));
-    expect(props.onSortChange).toHaveBeenCalledWith({
-      key: "employer",
-      direction: "asc",
+      key: "date",
+      direction: "desc",
     });
 
     fireEvent.click(screen.getByRole("combobox", { name: "Sort order" }));
-    fireEvent.click(await screen.findByText("smallest first"));
+    fireEvent.click(await screen.findByText("Smallest first"));
     expect(props.onSortChange).toHaveBeenCalledWith({
       key: "score",
       direction: "asc",
+    });
+  });
+
+  it("updates date presets and custom dates from the drawer", async () => {
+    const { props } = renderFilters({
+      dateFilter: {
+        dimensions: ["applied"],
+        startDate: "2026-04-01",
+        endDate: "2026-04-08",
+        preset: "custom",
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^filters/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Ready" }));
+    expect(props.onDateFilterChange).toHaveBeenCalledWith({
+      dimensions: ["ready", "applied"],
+      startDate: "2026-04-01",
+      endDate: "2026-04-08",
+      preset: "custom",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Last 7 days" }));
+    expect(props.onDateFilterChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dimensions: ["applied"],
+        preset: "7",
+      }),
+    );
+
+    fireEvent.change(screen.getByLabelText("Start date"), {
+      target: { value: "2026-04-02" },
+    });
+    expect(props.onDateFilterChange).toHaveBeenCalledWith({
+      dimensions: ["applied"],
+      startDate: "2026-04-02",
+      endDate: "2026-04-08",
+      preset: "custom",
+    });
+
+    fireEvent.change(screen.getByLabelText("End date"), {
+      target: { value: "2026-04-09" },
+    });
+    expect(props.onDateFilterChange).toHaveBeenCalledWith({
+      dimensions: ["applied"],
+      startDate: "2026-04-01",
+      endDate: "2026-04-09",
+      preset: "custom",
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear date filters" }));
+    expect(props.onDateFilterChange).toHaveBeenCalledWith({
+      dimensions: [],
+      startDate: null,
+      endDate: null,
+      preset: null,
     });
   });
 

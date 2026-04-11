@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { BranchNavigator } from "./BranchNavigator";
 import { StreamingMessage } from "./StreamingMessage";
 
@@ -72,6 +73,9 @@ export const MessageList: React.FC<MessageListProps> = ({
     }
     try {
       await navigator.clipboard.writeText(content);
+      trackProductEvent("ghostwriter_response_copied", {
+        message_length_bucket: bucketQueryLength(content),
+      });
       setCopiedMessageId(messageId);
       if (copiedTimeoutRef.current !== null) {
         window.clearTimeout(copiedTimeoutRef.current);

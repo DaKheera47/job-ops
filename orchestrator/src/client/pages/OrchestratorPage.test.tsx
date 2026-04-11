@@ -208,6 +208,7 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
     onSourceFilterChange,
     onSponsorFilterChange,
     onSalaryFilterChange,
+    onDateFilterChange,
     onResetFilters,
     onSortChange,
     sourcesWithJobs,
@@ -221,6 +222,12 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
       mode: "at_least" | "at_most" | "between";
       min: number | null;
       max: number | null;
+    }) => void;
+    onDateFilterChange: (value: {
+      dimensions: Array<"ready" | "applied" | "closed" | "discovered">;
+      startDate: string | null;
+      endDate: string | null;
+      preset: "7" | "14" | "30" | "90" | "custom" | null;
     }) => void;
     onResetFilters: () => void;
     onSortChange: (s: any) => void;
@@ -259,6 +266,19 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
         }
       >
         Set Salary Range
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onDateFilterChange({
+            dimensions: ["applied"],
+            startDate: "2026-04-01",
+            endDate: "2026-04-08",
+            preset: "custom",
+          })
+        }
+      >
+        Set Date Filter
       </button>
       <button type="button" onClick={onResetFilters}>
         Reset Filters
@@ -657,6 +677,20 @@ describe("OrchestratorPage", () => {
       "salaryMax=90000",
     );
 
+    fireEvent.click(screen.getByText("Set Date Filter"));
+    expect(screen.getByTestId("location").textContent).toContain(
+      "date=applied",
+    );
+    expect(screen.getByTestId("location").textContent).toContain(
+      "appliedStart=2026-04-01",
+    );
+    expect(screen.getByTestId("location").textContent).toContain(
+      "appliedEnd=2026-04-08",
+    );
+    expect(screen.getByTestId("location").textContent).toContain(
+      "appliedRange=custom",
+    );
+
     fireEvent.click(screen.getByText("Set Sort"));
     expect(screen.getByTestId("location").textContent).toContain(
       "sort=title-asc",
@@ -669,7 +703,59 @@ describe("OrchestratorPage", () => {
     expect(locationText).not.toContain("salaryMode=");
     expect(locationText).not.toContain("salaryMin=");
     expect(locationText).not.toContain("salaryMax=");
+    expect(locationText).not.toContain("date=");
+    expect(locationText).not.toContain("appliedStart=");
+    expect(locationText).not.toContain("appliedEnd=");
+    expect(locationText).not.toContain("appliedRange=");
     expect(locationText).not.toContain("sort=");
+  });
+
+  it("filters all jobs by the selected date filter and updates the query params", () => {
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    mockJobs = [
+      createJob({
+        ...jobFixture,
+        id: "job-1",
+        status: "applied",
+        appliedAt: "2026-04-05T14:00:00.000Z",
+      }),
+      createJob({
+        ...jobFixture,
+        id: "job-2",
+        status: "in_progress",
+        appliedAt: "2026-04-04T14:00:00.000Z",
+      }),
+      createJob({
+        ...jobFixture,
+        id: "job-3",
+        status: "in_progress",
+        appliedAt: "2026-03-01T14:00:00.000Z",
+        closedAt: 1741996800,
+      }),
+    ];
+    mockSelectedJob = mockJobs[0];
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/all"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("filtered-count")).toHaveTextContent("2");
+
+    fireEvent.click(screen.getByText("Set Date Filter"));
+
+    expect(screen.getByTestId("location").textContent).toContain(
+      "date=applied",
+    );
+    expect(screen.getByTestId("filtered-count")).toHaveTextContent("2");
   });
 
   it("opens the detail drawer on mobile when a job is selected", () => {

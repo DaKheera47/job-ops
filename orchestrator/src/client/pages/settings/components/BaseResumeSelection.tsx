@@ -1,5 +1,4 @@
 import * as api from "@client/api";
-import type { RxResumeMode } from "@shared/types.js";
 import { RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -16,7 +15,6 @@ type BaseResumeSelectionProps = {
   value: string | null;
   onValueChange: (value: string | null) => void;
   hasRxResumeAccess: boolean;
-  rxresumeMode?: RxResumeMode;
   disabled?: boolean;
   isLoading?: boolean;
 };
@@ -25,7 +23,6 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   value,
   onValueChange,
   hasRxResumeAccess,
-  rxresumeMode,
   disabled = false,
   isLoading = false,
 }) => {
@@ -43,7 +40,7 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
     setIsFetchingResumes(true);
     setFetchError(null);
     try {
-      const data = await api.getRxResumes(rxresumeMode);
+      const data = await api.getRxResumes();
       setResumes(data);
 
       // Preselect if only one option is available and no value is currently set
@@ -58,7 +55,7 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
     } finally {
       setIsFetchingResumes(false);
     }
-  }, [hasRxResumeAccess, onValueChange, rxresumeMode, value]);
+  }, [hasRxResumeAccess, onValueChange, value]);
 
   useEffect(() => {
     if (hasRxResumeAccess) {

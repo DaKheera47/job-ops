@@ -48,6 +48,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { trackProductEvent } from "@/lib/analytics";
 import {
   copyTextToClipboard,
   formatJobForWebhook,
@@ -77,6 +78,9 @@ export const JobPage: React.FC = () => {
     null,
   );
   const pendingEventRef = React.useRef<StageEvent | null>(null);
+  const openEditDetails = React.useCallback(() => {
+    window.setTimeout(() => setIsEditDetailsOpen(true), 0);
+  }, []);
 
   const jobQuery = useQuery<Job | null>({
     queryKey: ["jobs", "detail", id ?? null] as const,
@@ -166,7 +170,11 @@ export const JobPage: React.FC = () => {
           metadata: {
             note: values.notes?.trim() || undefined,
             eventLabel: values.title.trim() || undefined,
-            reasonCode: values.reasonCode || undefined,
+            reasonCode:
+              values.reasonCode ||
+              (values.stage === "no_change"
+                ? undefined
+                : "job_page_manual_stage"),
             actor: "user",
             eventType: values.stage === "no_change" ? "note" : "status_update",
             externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
@@ -180,7 +188,11 @@ export const JobPage: React.FC = () => {
           metadata: {
             note: values.notes?.trim() || undefined,
             eventLabel: values.title.trim() || undefined,
-            reasonCode: values.reasonCode || undefined,
+            reasonCode:
+              values.reasonCode ||
+              (values.stage === "no_change"
+                ? undefined
+                : "job_page_manual_stage"),
             actor: "user",
             eventType: values.stage === "no_change" ? "note" : "status_update",
             externalUrl: values.salary ? `Salary: ${values.salary}` : undefined,
@@ -193,6 +205,12 @@ export const JobPage: React.FC = () => {
       await invalidateJobData(queryClient, job.id);
       pendingEventRef.current = null;
       setEditingEvent(null);
+      if (values.stage !== "no_change" && effectiveStage !== "applied") {
+        trackProductEvent("manual_stage_transition_logged", {
+          source: "job_page",
+          to_stage: effectiveStage,
+        });
+      }
       toast.success(eventId ? "Event updated" : "Event logged");
 
       if (effectiveStage === "offer") {
@@ -505,7 +523,7 @@ export const JobPage: React.FC = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+                  <DropdownMenuItem onSelect={openEditDetails}>
                     <Edit2 className="mr-2 h-4 w-4" />
                     Edit details
                   </DropdownMenuItem>
