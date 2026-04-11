@@ -36,8 +36,8 @@ Open:
 The onboarding wizard helps you validate and save:
 
 1. **LLM Provider**: OpenRouter by default (or OpenAI/Gemini/local URL).
-2. **PDF Export**: RxResume credentials, plus your preferred PDF renderer in Settings.
-3. **Template Resume**: Choose a base resume from your RxResume account.
+2. **Import your current resume**: Either upload a PDF/DOCX into JobOps or choose the Reactive Resume option and connect with your v5 API key.
+3. **Basic Auth**: Enable protection for write actions now or explicitly skip it for later.
 
 Settings are saved to the local database.
 

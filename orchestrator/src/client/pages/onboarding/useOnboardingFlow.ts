@@ -26,6 +26,7 @@ import type {
   BasicAuthChoice,
   OnboardingFormData,
   OnboardingStep,
+  ResumeSetupMode,
   StepId,
   ValidationState,
 } from "./types";
@@ -54,6 +55,8 @@ export function useOnboardingFlow() {
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
   const [basicAuthChoice, setBasicAuthChoice] = useState<BasicAuthChoice>(null);
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
+  const [resumeSetupMode, setResumeSetupMode] =
+    useState<ResumeSetupMode>("upload");
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
 
   const { control, getValues, reset, setValue, watch } =
@@ -101,6 +104,7 @@ export function useOnboardingFlow() {
           : null,
     );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
+    setResumeSetupMode(selectedId ? "rxresume" : "upload");
   }, [reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
@@ -249,15 +253,8 @@ export function useOnboardingFlow() {
       {
         id: "baseresume",
         label: "Resume",
-        subtitle: "Upload a file or continue to Reactive Resume",
+        subtitle: "Upload a file or use Reactive Resume",
         complete: baseResumeValidation.valid,
-        disabled: false,
-      },
-      {
-        id: "rxresume",
-        label: "Reactive Resume",
-        subtitle: "Optional export and template sync",
-        complete: rxresumeValidation.valid || baseResumeValidation.valid,
         disabled: false,
       },
       {
@@ -268,12 +265,7 @@ export function useOnboardingFlow() {
         disabled: false,
       },
     ],
-    [
-      basicAuthComplete,
-      baseResumeValidation.valid,
-      llmValidated,
-      rxresumeValidation.valid,
-    ],
+    [basicAuthComplete, baseResumeValidation.valid, llmValidated],
   );
 
   useEffect(() => {
@@ -426,9 +418,18 @@ export function useOnboardingFlow() {
       }
 
       setValue("rxresumeApiKey", "");
-      await validateBaseResume();
-      toast.success("Reactive Resume connected");
-      return true;
+      const resumeValidation = await validateBaseResume();
+      if (resumeValidation.valid) {
+        toast.success("Reactive Resume connected");
+        return true;
+      }
+
+      toast.info("Reactive Resume connected", {
+        description:
+          resumeValidation.message ||
+          "Choose a template resume to finish this step.",
+      });
+      return false;
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -606,11 +607,11 @@ export function useOnboardingFlow() {
       await handleSaveLlm();
       return;
     }
-    if (currentStep === "rxresume") {
-      await handleSaveRxresume();
-      return;
-    }
     if (currentStep === "baseresume") {
+      if (resumeSetupMode === "rxresume") {
+        await handleSaveRxresume();
+        return;
+      }
       await handleSaveBaseResume();
       return;
     }
@@ -621,6 +622,7 @@ export function useOnboardingFlow() {
     handleSaveBaseResume,
     handleSaveLlm,
     handleSaveRxresume,
+    resumeSetupMode,
   ]);
 
   const stepIndex = currentStep
@@ -642,19 +644,19 @@ export function useOnboardingFlow() {
       ? llmValidated
         ? "Revalidate connection"
         : "Save connection"
-      : currentStep === "rxresume"
-        ? rxresumeValidation.valid
-          ? "Recheck connection"
-          : "Save connection"
-        : currentStep === "baseresume"
-          ? baseResumeValidation.valid
+      : currentStep === "baseresume"
+        ? resumeSetupMode === "rxresume"
+          ? rxresumeValidation.valid
+            ? "Recheck Reactive Resume"
+            : "Connect Reactive Resume"
+          : baseResumeValidation.valid
             ? "Recheck resume"
             : "Check resume"
-          : basicAuthChoice === "enable"
-            ? "Enable basic auth"
-            : basicAuthChoice === "skip"
-              ? "Finish onboarding"
-              : "Choose an option";
+        : basicAuthChoice === "enable"
+          ? "Enable basic auth"
+          : basicAuthChoice === "skip"
+            ? "Finish onboarding"
+            : "Choose an option";
 
   return {
     baseResumeValidation,
@@ -675,6 +677,7 @@ export function useOnboardingFlow() {
     llmValidation,
     primaryLabel,
     progressValue,
+    resumeSetupMode,
     rxresumeValidation,
     selectedProvider,
     settings,
@@ -683,6 +686,7 @@ export function useOnboardingFlow() {
     watch,
     setCurrentStep,
     setBasicAuthChoice,
+    setResumeSetupMode,
     setValue,
     setBaseResumeId,
     handleBack: () => {

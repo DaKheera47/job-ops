@@ -48,9 +48,9 @@ export const RxResumeStep: React.FC<{
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <div className="space-y-5">
         <div className="rounded-lg border border-border/60 bg-muted/10 px-4 py-3 text-sm text-muted-foreground">
-          Reactive Resume is optional. Connect it only if you want upstream PDF
-          export or want to start from a template resume in your Reactive Resume
-          account.
+          Use Reactive Resume if your current resume already lives there. Once
+          connected, choose one of your existing resumes to import into Job Ops,
+          and keep RxResume available for optional upstream PDF export
         </div>
 
         <SettingsInput
@@ -116,8 +116,8 @@ export const RxResumeStep: React.FC<{
           <div className="space-y-1">
             <div className="text-sm font-medium">Template resume</div>
             <p className="text-xs text-muted-foreground">
-              Select this if you want Job Ops to use Reactive Resume as your
-              resume source instead of an uploaded local file.
+              Choose the resume Job Ops should treat as your imported base
+              resume for this onboarding step.
             </p>
           </div>
           <BaseResumeSelection

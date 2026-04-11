@@ -95,6 +95,7 @@ export const OnboardingPage: React.FC = () => {
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
                     pdfRenderer={flow.watch("pdfRenderer")}
+                    resumeSetupMode={flow.resumeSetupMode}
                     rxresumeApiKey={flow.watch("rxresumeApiKey")}
                     rxresumeApiKeyHint={flow.settings?.rxresumeApiKeyHint}
                     rxresumeUrl={flow.watch("rxresumeUrl")}
@@ -111,6 +112,7 @@ export const OnboardingPage: React.FC = () => {
                     onPdfRendererChange={(renderer) =>
                       flow.setValue("pdfRenderer", renderer)
                     }
+                    onResumeSetupModeChange={flow.setResumeSetupMode}
                     onRxresumeApiKeyChange={(value) =>
                       flow.setValue("rxresumeApiKey", value)
                     }

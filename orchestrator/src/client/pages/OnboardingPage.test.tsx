@@ -369,9 +369,7 @@ describe("OnboardingPage", () => {
       screen.getByText("Choose the LLM connection Job Ops should trust."),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
-      ),
+      screen.queryByText("Import your current resume."),
     ).not.toBeInTheDocument();
   });
 
@@ -405,13 +403,12 @@ describe("OnboardingPage", () => {
 
     renderPage();
 
-    fireEvent.click(getStepButton(/^Reactive Resume$/i));
+    fireEvent.click(getStepButton(/^Resume$/i));
+    fireEvent.click(screen.getByText("Use Reactive Resume"));
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "Optional: connect Reactive Resume for export and template sync.",
-        ),
+        screen.getByText("Import your current resume."),
       ).toBeInTheDocument();
     });
 
@@ -482,9 +479,7 @@ describe("OnboardingPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(
-          "Reactive Resume is optional. Upload a resume, or connect Reactive Resume to begin.",
-        ),
+        screen.getByText("Import your current resume."),
       ).toBeInTheDocument();
     });
 

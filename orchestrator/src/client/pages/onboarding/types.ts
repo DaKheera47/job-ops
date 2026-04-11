@@ -14,8 +14,9 @@ export type OnboardingFormData = {
   basicAuthPassword: string;
 };
 
-export type StepId = "llm" | "rxresume" | "baseresume" | "basicauth";
+export type StepId = "llm" | "baseresume" | "basicauth";
 export type BasicAuthChoice = "enable" | "skip" | null;
+export type ResumeSetupMode = "upload" | "rxresume";
 
 export type OnboardingStep = {
   id: StepId;

@@ -5,13 +5,13 @@ import type { Control } from "react-hook-form";
 import type {
   BasicAuthChoice,
   OnboardingFormData,
+  ResumeSetupMode,
   StepId,
   ValidationState,
 } from "../types";
 import { BaseResumeStep } from "./BaseResumeStep";
 import { BasicAuthStep } from "./BasicAuthStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
-import { RxResumeStep } from "./RxResumeStep";
 
 export const OnboardingStepContent: React.FC<{
   baseResumeValidation: ValidationState;
@@ -28,6 +28,7 @@ export const OnboardingStepContent: React.FC<{
   llmKeyHint: string | null;
   llmValidation: ValidationState;
   pdfRenderer: PdfRenderer;
+  resumeSetupMode: ResumeSetupMode;
   rxresumeApiKey: string;
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
@@ -41,6 +42,7 @@ export const OnboardingStepContent: React.FC<{
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
+  onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = (props) => {
   if (props.currentStep === "llm") {
@@ -55,35 +57,29 @@ export const OnboardingStepContent: React.FC<{
     );
   }
 
-  if (props.currentStep === "rxresume") {
-    return (
-      <RxResumeStep
-        baseResumeValue={props.baseResumeValue}
-        isResumeReady={props.isResumeReady}
-        isBusy={props.isBusy}
-        isSelfHosted={props.isRxResumeSelfHosted}
-        pdfRenderer={props.pdfRenderer}
-        rxresumeApiKey={props.rxresumeApiKey}
-        rxresumeApiKeyHint={props.rxresumeApiKeyHint}
-        rxresumeUrl={props.rxresumeUrl}
-        rxresumeValidation={props.rxresumeValidation}
-        onSelfHostedChange={props.onRxresumeSelfHostedChange}
-        onPdfRendererChange={props.onPdfRendererChange}
-        onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
-        onRxresumeUrlChange={props.onRxresumeUrlChange}
-        onTemplateResumeChange={props.onTemplateResumeChange}
-      />
-    );
-  }
-
   if (props.currentStep === "baseresume") {
     return (
       <BaseResumeStep
         baseResumeValidation={props.baseResumeValidation}
+        baseResumeValue={props.baseResumeValue}
         hasRxResumeAccess={props.rxresumeValidation.valid}
         isBusy={props.isBusy}
         isImportingResume={props.isImportingResume}
+        isResumeReady={props.isResumeReady}
+        isRxResumeSelfHosted={props.isRxResumeSelfHosted}
+        pdfRenderer={props.pdfRenderer}
+        resumeSetupMode={props.resumeSetupMode}
+        rxresumeApiKey={props.rxresumeApiKey}
+        rxresumeApiKeyHint={props.rxresumeApiKeyHint}
+        rxresumeUrl={props.rxresumeUrl}
+        rxresumeValidation={props.rxresumeValidation}
         onImportResumeFile={props.onImportResumeFile}
+        onPdfRendererChange={props.onPdfRendererChange}
+        onResumeSetupModeChange={props.onResumeSetupModeChange}
+        onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
+        onRxresumeSelfHostedChange={props.onRxresumeSelfHostedChange}
+        onRxresumeUrlChange={props.onRxresumeUrlChange}
+        onTemplateResumeChange={props.onTemplateResumeChange}
       />
     );
   }
