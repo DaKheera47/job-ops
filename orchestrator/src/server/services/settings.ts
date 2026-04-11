@@ -20,7 +20,7 @@ import {
   getResume,
   RxResumeAuthConfigError,
 } from "./rxresume";
-import { resolveRxResumeBaseResumeIdForMode } from "./rxresume/baseResumeId";
+import { resolveRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 function resolveDefaultLlmBaseUrl(provider: string): string {
   const normalized = provider.trim().toLowerCase().replace(/-/g, "_");
@@ -91,11 +91,8 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
       getDefaultModelForProvider(effectiveLlmProvider, process.env.MODEL),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
-  const rxresumeBaseResumeId = resolveRxResumeBaseResumeIdForMode({
-    rxresumeMode: overrides.rxresumeMode ?? process.env.RXRESUME_MODE ?? null,
+  const rxresumeBaseResumeId = resolveRxResumeBaseResumeId({
     rxresumeBaseResumeId: overrides.rxresumeBaseResumeId ?? null,
-    rxresumeBaseResumeIdV4: overrides.rxresumeBaseResumeIdV4 ?? null,
-    rxresumeBaseResumeIdV5: overrides.rxresumeBaseResumeIdV5 ?? null,
   });
   let profile: Record<string, unknown> = {};
   let localProfile: ResumeProfile | null = null;

@@ -499,17 +499,6 @@ describe("design resume service", () => {
     );
   });
 
-  it("rejects importing a v4 Reactive Resume source", async () => {
-    vi.mocked(getResume).mockResolvedValueOnce({
-      id: "rx-1",
-      mode: "v4",
-      data: {},
-    } as never);
-
-    await expect(importDesignResumeFromReactiveResume()).rejects.toThrow(
-      "Design Resume only works with Reactive Resume v5",
-    );
-  });
 
   it("keeps the existing picture asset when removing it hits a revision conflict", async () => {
     const resumeJson = makeValidResumeJson({

@@ -4,7 +4,6 @@ import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
 import {
-  getInitialRxResumeMode,
   getRxResumeCredentialDrafts,
   getRxResumeMissingCredentialLabels,
   validateAndMaybePersistRxResumeMode,
@@ -19,11 +18,7 @@ import {
 } from "@client/pages/settings/utils";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type {
-  PdfRenderer,
-  RxResumeMode,
-  ValidationResult,
-} from "@shared/types.js";
+import type { PdfRenderer, ValidationResult } from "@shared/types.js";
 import { Check } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -63,10 +58,7 @@ type OnboardingFormData = {
   llmBaseUrl: string;
   llmApiKey: string;
   pdfRenderer: PdfRenderer;
-  rxresumeMode: RxResumeMode;
-  rxresumeEmail: string;
   rxresumeUrl: string;
-  rxresumePassword: string;
   rxresumeApiKey: string;
   rxresumeBaseResumeId: string | null;
 };
@@ -77,7 +69,7 @@ const EMPTY_VALIDATION_STATE: ValidationState = {
   checked: false,
 };
 
-const EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
+const _EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
   ...EMPTY_VALIDATION_STATE,
   testedAt: null,
 };
@@ -104,12 +96,8 @@ export const OnboardingGate: React.FC = () => {
     isLoading: settingsLoading,
     refreshSettings,
   } = useSettings();
-  const {
-    storedRxResume,
-    getBaseResumeIdForMode,
-    setBaseResumeIdForMode,
-    syncBaseResumeIdsForMode,
-  } = useRxResumeConfigState(settings);
+  const { storedRxResume, setBaseResumeId, syncBaseResumeId } =
+    useRxResumeConfigState(settings);
 
   const [isSavingEnv, setIsSavingEnv] = useState(false);
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
@@ -121,13 +109,7 @@ export const OnboardingGate: React.FC = () => {
   const [rxresumeValidation, setRxresumeValidation] = useState<ValidationState>(
     EMPTY_VALIDATION_STATE,
   );
-  const [rxresumeVersionValidations, setRxresumeVersionValidations] = useState<{
-    v4: TimestampedValidationState;
-    v5: TimestampedValidationState;
-  }>({
-    v4: EMPTY_TIMESTAMPED_VALIDATION_STATE,
-    v5: EMPTY_TIMESTAMPED_VALIDATION_STATE,
-  });
+
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
   const [currentStep, setCurrentStep] = useState<string | null>(null);
@@ -141,10 +123,7 @@ export const OnboardingGate: React.FC = () => {
         llmBaseUrl: "",
         llmApiKey: "",
         pdfRenderer: "rxresume",
-        rxresumeMode: "v5",
-        rxresumeEmail: "",
         rxresumeUrl: "",
-        rxresumePassword: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: null,
       },
@@ -203,7 +182,6 @@ export const OnboardingGate: React.FC = () => {
     }
   }, []);
 
-  const rxresumeModeValue = watch("rxresumeMode");
   const selectedProvider = normalizeLlmProvider(
     llmProvider || settings?.llmProvider?.value || "openrouter",
   );
@@ -217,9 +195,6 @@ export const OnboardingGate: React.FC = () => {
 
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
-  const rxresumeModeCurrent = (rxresumeModeValue ||
-    settings?.rxresumeMode?.value ||
-    "v5") as RxResumeMode;
   const hasCheckedValidations =
     (requiresLlmKey ? llmValidation.checked : true) &&
     rxresumeValidation.checked &&
@@ -231,43 +206,30 @@ export const OnboardingGate: React.FC = () => {
     hasCheckedValidations &&
     !(llmValidated && rxresumeValidation.valid && baseResumeValidation.valid);
 
-  const validateRxresumeVersion = useCallback(
-    async (
-      version: "v4" | "v5",
-    ): Promise<ValidationResult & { checked: true; testedAt: number }> => {
-      const values = getValues();
-      const draftCredentials = getRxResumeCredentialDrafts(values);
-      const testedAt = Date.now();
-      const result = await validateAndMaybePersistRxResumeMode({
-        mode: version,
-        stored: storedRxResume,
-        draft: draftCredentials,
-        validate: api.validateRxresume,
-        getPrecheckMessage: (failure) =>
-          failure === "missing-v5-api-key"
-            ? "v5 API key required. Add a v5 API key, then test again."
-            : "v4 email and password required. Add both credentials, then test again.",
-        getValidationErrorMessage: (error, mode) =>
-          error instanceof Error
-            ? error.message
-            : `RxResume ${mode} validation failed`,
-      });
-      return { ...result.validation, checked: true, testedAt };
-    },
-    [getValues, storedRxResume],
-  );
+  const validateRxresumeVersion = useCallback(async (): Promise<
+    ValidationResult & { checked: true; testedAt: number }
+  > => {
+    const values = getValues();
+    const draftCredentials = getRxResumeCredentialDrafts(values);
+    const testedAt = Date.now();
+    const result = await validateAndMaybePersistRxResumeMode({
+      stored: storedRxResume,
+      draft: draftCredentials,
+      validate: api.validateRxresume,
+      getPrecheckMessage: (_failure: string) =>
+        "v5 API key required. Add a v5 API key, then test again.",
+      getValidationErrorMessage: (error: unknown) =>
+        error instanceof Error ? error.message : `RxResume validation failed`,
+    });
+    return { ...result.validation, checked: true, testedAt };
+  }, [getValues, storedRxResume]);
 
   const validateRxresume = useCallback(async () => {
-    const values = getValues();
-    const selectedMode = values.rxresumeMode;
+    const _values = getValues();
 
     setIsValidatingRxresume(true);
     try {
-      const versionResult = await validateRxresumeVersion(selectedMode);
-      setRxresumeVersionValidations((current) => ({
-        ...current,
-        [selectedMode]: versionResult,
-      }));
+      const versionResult = await validateRxresumeVersion();
 
       const result: ValidationResult = {
         valid: versionResult.valid,
@@ -283,33 +245,18 @@ export const OnboardingGate: React.FC = () => {
   // Initialize form values from settings
   useEffect(() => {
     if (settings) {
-      const initialMode = getInitialRxResumeMode({
-        savedMode: (settings.rxresumeMode?.value ??
-          null) as RxResumeMode | null,
-        hasV4: storedRxResume.hasV4,
-        hasV5: storedRxResume.hasV5,
-      });
-      const selectedId = syncBaseResumeIdsForMode(initialMode);
+      const selectedId = syncBaseResumeId();
       reset({
         llmProvider: settings.llmProvider?.value || "",
         llmBaseUrl: settings.llmBaseUrl?.value || "",
         llmApiKey: "",
         pdfRenderer: settings.pdfRenderer?.value ?? "rxresume",
-        rxresumeMode: initialMode,
-        rxresumeEmail: "",
         rxresumeUrl: settings.rxresumeUrl ?? "",
-        rxresumePassword: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: selectedId,
       });
     }
-  }, [
-    settings,
-    reset,
-    storedRxResume.hasV4,
-    storedRxResume.hasV5,
-    syncBaseResumeIdsForMode,
-  ]);
+  }, [settings, reset, syncBaseResumeId]);
 
   // Clear base URL when provider doesn't require it
   useEffect(() => {
@@ -465,10 +412,8 @@ export const OnboardingGate: React.FC = () => {
 
   const handleSaveRxresume = async (): Promise<boolean> => {
     const values = getValues();
-    const modeValue = values.rxresumeMode;
     const draftCredentials = getRxResumeCredentialDrafts(values);
     const missing = getRxResumeMissingCredentialLabels({
-      mode: modeValue,
       stored: storedRxResume,
       draft: draftCredentials,
     });
@@ -483,11 +428,10 @@ export const OnboardingGate: React.FC = () => {
     try {
       setIsValidatingRxresume(true);
       const result = await validateAndMaybePersistRxResumeMode({
-        mode: modeValue,
         stored: storedRxResume,
         draft: draftCredentials,
         validate: api.validateRxresume,
-        persist: async (update) => {
+        persist: async (update: Parameters<typeof api.updateSettings>[0]) => {
           setIsSavingEnv(true);
           try {
             await api.updateSettings({
@@ -500,33 +444,22 @@ export const OnboardingGate: React.FC = () => {
           }
         },
         persistOnSuccess: true,
-        getPrecheckMessage: (failure) =>
-          failure === "missing-v5-api-key"
-            ? "v5 API key required. Add a v5 API key, then test again."
-            : "v4 email and password required. Add both credentials, then test again.",
-        getValidationErrorMessage: (error) =>
+        getPrecheckMessage: (_failure: string) =>
+          "v5 API key required. Add a v5 API key, then test again.",
+        getValidationErrorMessage: (error: unknown) =>
           error instanceof Error ? error.message : "RxResume validation failed",
-        getPersistErrorMessage: (error) =>
+        getPersistErrorMessage: (error: unknown) =>
           error instanceof Error
             ? error.message
             : "Failed to save RxResume credentials",
       });
 
-      setRxresumeVersionValidations((current) => ({
-        ...current,
-        [modeValue]: {
-          ...result.validation,
-          checked: true,
-          testedAt: Date.now(),
-        },
-      }));
       setRxresumeValidation({ ...result.validation, checked: true });
 
       if (!result.validation.valid) {
         toast.error(result.validation.message || "RxResume validation failed");
         return false;
       }
-      setValue("rxresumePassword", "");
       setValue("rxresumeApiKey", "");
 
       toast.success("RxResume connected");
@@ -556,7 +489,6 @@ export const OnboardingGate: React.FC = () => {
       setIsSavingEnv(true);
       await api.updateSettings({
         pdfRenderer: values.pdfRenderer,
-        rxresumeMode: values.rxresumeMode,
         rxresumeBaseResumeId: values.rxresumeBaseResumeId,
       });
       const validation = await validateBaseResume();
@@ -769,29 +701,16 @@ export const OnboardingGate: React.FC = () => {
 
             <TabsContent value="rxresume" className="space-y-4 pt-6">
               <ReactiveResumeConfigPanel
-                mode={rxresumeModeCurrent}
-                onModeChange={(mode) => {
-                  setValue("rxresumeMode", mode);
-                  setValue(
-                    "rxresumeBaseResumeId",
-                    getBaseResumeIdForMode(mode),
-                  );
-                  setRxresumeValidation((previous) => ({
-                    ...EMPTY_VALIDATION_STATE,
-                    checked: previous.checked,
-                  }));
-                }}
                 pdfRenderer={watch("pdfRenderer")}
                 onPdfRendererChange={(renderer) =>
                   setValue("pdfRenderer", renderer)
                 }
                 disabled={isSavingEnv}
                 showValidationStatus
-                validationStatuses={rxresumeVersionValidations}
                 intro={{
                   title: "Link your RxResume account",
                   description:
-                    "Used to export tailored PDFs. Choose between Reactive Resume version 4 and 5, and provide the credentials.",
+                    "Used to export tailored PDFs. Provide your Reactive Resume API credentials.",
                 }}
                 v5={{
                   apiKey: watch("rxresumeApiKey"),
@@ -800,13 +719,6 @@ export const OnboardingGate: React.FC = () => {
                 shared={{
                   baseUrl: watch("rxresumeUrl"),
                   onBaseUrlChange: (value) => setValue("rxresumeUrl", value),
-                }}
-                v4={{
-                  email: watch("rxresumeEmail"),
-                  onEmailChange: (value) => setValue("rxresumeEmail", value),
-                  password: watch("rxresumePassword"),
-                  onPasswordChange: (value) =>
-                    setValue("rxresumePassword", value),
                 }}
               />
             </TabsContent>
@@ -828,13 +740,10 @@ export const OnboardingGate: React.FC = () => {
                   <BaseResumeSelection
                     value={field.value}
                     onValueChange={(value) => {
-                      const mode = (getValues("rxresumeMode") ??
-                        "v5") as RxResumeMode;
-                      setBaseResumeIdForMode(mode, value);
+                      setBaseResumeId(value);
                       field.onChange(value);
                     }}
                     hasRxResumeAccess={rxresumeValidation.valid}
-                    rxresumeMode={rxresumeModeCurrent}
                     disabled={isSavingEnv}
                   />
                 )}

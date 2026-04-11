@@ -16,7 +16,6 @@ type DesignResumePreviewPanelProps = {
   isUpdatingRenderer: boolean;
   isDirty: boolean;
   saveState: "idle" | "saving" | "saved" | "error";
-  blockedMessage?: string | null;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
 };
 
@@ -26,7 +25,6 @@ export function DesignResumePreviewPanel({
   isUpdatingRenderer,
   isDirty,
   saveState,
-  blockedMessage,
   onPdfRendererChange,
 }: DesignResumePreviewPanelProps) {
   return (
@@ -70,27 +68,13 @@ export function DesignResumePreviewPanel({
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        {blockedMessage ? (
-          <div className="flex h-full items-center justify-center bg-muted/10 p-6 xl:p-8">
-            <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-6 py-5 text-center">
-              <Eye className="h-6 w-6 text-amber-200" />
-              <div className="text-sm font-medium text-amber-100">
-                Preview unavailable
-              </div>
-              <div className="text-xs leading-6 text-amber-100/80">
-                {blockedMessage}
-              </div>
-            </div>
-          </div>
-        ) : (
-          <DesignResumePdfPreview
-            draft={draft}
-            pdfRenderer={pdfRenderer}
-            isUpdatingRenderer={isUpdatingRenderer}
-            isDirty={isDirty}
-            saveState={saveState}
-          />
-        )}
+        <DesignResumePdfPreview
+          draft={draft}
+          pdfRenderer={pdfRenderer}
+          isUpdatingRenderer={isUpdatingRenderer}
+          isDirty={isDirty}
+          saveState={saveState}
+        />
       </div>
     </section>
   );

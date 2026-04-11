@@ -35,14 +35,14 @@ export type ChatValues = {
 
 export type EnvSettingsValues = {
   readable: {
-    rxresumeEmail: string;
+    
     ukvisajobsEmail: string;
     adzunaAppId: string;
     basicAuthUser: string;
     basicAuthPassword: string;
   };
   private: {
-    rxresumePasswordHint: string | null;
+    
     ukvisajobsPasswordHint: string | null;
     adzunaAppKeyHint: string | null;
     basicAuthPasswordHint: string | null;

@@ -263,7 +263,7 @@ export const designResumeDocuments = sqliteTable("design_resume_documents", {
   resumeJson: text("resume_json", { mode: "json" }).notNull(),
   revision: integer("revision").notNull().default(1),
   sourceResumeId: text("source_resume_id"),
-  sourceMode: text("source_mode", { enum: ["v4", "v5"] }),
+  sourceMode: text("source_mode"),
   importedAt: text("imported_at"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),

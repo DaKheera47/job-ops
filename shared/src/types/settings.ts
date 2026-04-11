@@ -12,7 +12,6 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
-export type RxResumeMode = "v4" | "v5";
 export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
 export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
 export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
@@ -187,7 +186,6 @@ export interface AppSettings {
   penalizeMissingSalary: Resolved<boolean>;
   missingSalaryPenalty: Resolved<number>;
   autoSkipScoreThreshold: Resolved<number | null>;
-  rxresumeMode: Resolved<RxResumeMode>;
 
   // Model variants (no own default, fallback to model.value):
   modelScorer: ModelResolved;
@@ -196,9 +194,6 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
-  rxresumeBaseResumeIdV4: string | null;
-  rxresumeBaseResumeIdV5: string | null;
-  rxresumeEmail: string | null;
   rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;
@@ -208,7 +203,6 @@ export interface AppSettings {
   // Secret hints:
   llmApiKeyHint: string | null;
   rxresumeApiKeyHint: string | null;
-  rxresumePasswordHint: string | null;
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;
   basicAuthPasswordHint: string | null;

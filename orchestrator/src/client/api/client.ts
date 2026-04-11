@@ -44,7 +44,6 @@ import type {
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
-  RxResumeMode,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -1325,7 +1324,6 @@ export async function getResumeProjectsCatalog(): Promise<
       return await getRxResumeProjects(
         settings.rxresumeBaseResumeId,
         undefined,
-        settings.rxresumeMode?.value,
       );
     }
   } catch {
@@ -1453,12 +1451,9 @@ export async function updateSettings(
   });
 }
 
-export async function getRxResumes(
-  mode?: RxResumeMode,
-): Promise<{ id: string; name: string }[]> {
-  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+export async function getRxResumes(): Promise<{ id: string; name: string }[]> {
   const data = await fetchApi<{ resumes: { id: string; name: string }[] }>(
-    `/settings/rx-resumes${query}`,
+    `/settings/rx-resumes`,
   );
   return data.resumes;
 }
@@ -1466,11 +1461,9 @@ export async function getRxResumes(
 export async function getRxResumeProjects(
   resumeId: string,
   signal?: AbortSignal,
-  mode?: RxResumeMode,
 ): Promise<ResumeProjectCatalogItem[]> {
-  const query = mode ? `?mode=${encodeURIComponent(mode)}` : "";
   const data = await fetchApi<{ projects: ResumeProjectCatalogItem[] }>(
-    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects${query}`,
+    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/projects`,
     { signal },
   );
   return data.projects;

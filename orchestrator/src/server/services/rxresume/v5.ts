@@ -1,7 +1,6 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
 import { logger } from "@infra/logger";
-import type { ResumeData } from "./schema/v4";
 import { parseV5ResumeData } from "./schema/v5";
 
 type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
@@ -23,7 +22,7 @@ export type RxResumeGetByIdResponse = {
   name: string;
   slug: string;
   tags: string[];
-  data: ResumeData | Record<string, unknown>;
+  data: unknown | Record<string, unknown>;
   isPublic: boolean;
   isLocked: boolean;
   hasPassword: boolean;
@@ -31,7 +30,7 @@ export type RxResumeGetByIdResponse = {
 };
 
 export type RxResumeImportRequest = {
-  data: ResumeData | unknown;
+  data: unknown | unknown;
   name?: string;
   slug?: string;
 };
@@ -173,7 +172,7 @@ export async function getResume(
   )) as RxResumeGetByIdResponse;
   if (payload.data !== undefined) {
     payload.data = parseV5ResumeData(payload.data) as
-      | ResumeData
+      | any
       | Record<string, unknown>;
   }
   return payload;

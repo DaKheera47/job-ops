@@ -80,7 +80,7 @@ describe.sequential("Settings API routes", () => {
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
         RXRESUME_URL: "https://env.rxresume.example.com",
       },
     }));
@@ -96,7 +96,7 @@ describe.sequential("Settings API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.model.default).toBe("test-model");
     expect(Array.isArray(body.data.searchTerms.value)).toBe(true);
-    expect(body.data.rxresumeEmail).toBe("resume@example.com");
+    expect(body.data.rxresumeApiKeyHint).toBe("resu");
     expect(body.data.rxresumeUrl).toBe("https://env.rxresume.example.com");
     expect(body.data.pdfRenderer.value).toBe("rxresume");
     expect(body.data.pdfRenderer.default).toBe("rxresume");
@@ -120,7 +120,7 @@ describe.sequential("Settings API routes", () => {
         BASIC_AUTH_PASSWORD: "secret-only",
         BASIC_AUTH_USER: "",
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -142,7 +142,7 @@ describe.sequential("Settings API routes", () => {
       env: {
         LLM_API_KEY: "secret-key",
         LLM_PROVIDER: "openai-compatible",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -165,7 +165,7 @@ describe.sequential("Settings API routes", () => {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
         LLM_PROVIDER: "openai",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -186,7 +186,7 @@ describe.sequential("Settings API routes", () => {
       env: {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -215,7 +215,7 @@ describe.sequential("Settings API routes", () => {
       env: {
         MODEL: undefined,
         LLM_API_KEY: "secret-key",
-        RXRESUME_EMAIL: "resume@example.com",
+        RXRESUME_API_KEY: "resume-api-key",
       },
     });
 
@@ -254,7 +254,7 @@ describe.sequential("Settings API routes", () => {
       body: JSON.stringify({
         pdfRenderer: "latex",
         searchTerms: ["engineer"],
-        rxresumeEmail: "updated@example.com",
+        rxresumeApiKey: "updated-key",
         rxresumeUrl: "https://resume.example.com",
         llmApiKey: "updated-secret",
         basicAuthUser: "admin",
@@ -268,7 +268,7 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.pdfRenderer.override).toBe("latex");
     expect(patchBody.data.searchTerms.value).toEqual(["engineer"]);
     expect(patchBody.data.searchTerms.override).toEqual(["engineer"]);
-    expect(patchBody.data.rxresumeEmail).toBe("updated@example.com");
+    expect(patchBody.data.rxresumeApiKeyHint).toBe("upda");
     expect(patchBody.data.rxresumeUrl).toBe("https://resume.example.com");
     expect(patchBody.data.llmApiKeyHint).toBe("upda");
     expect(patchBody.data.basicAuthUser).toBe("admin");
@@ -304,7 +304,7 @@ describe.sequential("Settings API routes", () => {
 
     const settingsRes = await fetch(`${baseUrl}/api/settings`);
     const settingsBody = await settingsRes.json();
-    expect(settingsBody.data.rxresumeApiKeyHint).toBeNull();
+    expect(settingsBody.data.rxresumeApiKeyHint).toBe("resu");
   });
 
   it("blocks saving when Reactive Resume returns another 4xx validation failure", async () => {

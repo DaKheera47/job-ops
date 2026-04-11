@@ -24,7 +24,6 @@ import {
 } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 import {
-  convertV4ResumeToReactiveResumeV5Document,
   mergeReactiveResumeV5Content,
   prepareReactiveResumeV5DocumentForExternalUse,
 } from "./rxresume/document";
@@ -97,25 +96,20 @@ async function renderRxResumePdf(args: {
 }): Promise<void> {
   const { preparedResume, outputPath, jobId } = args;
   let importedResumeId: string | null = null;
-  const importData =
-    preparedResume.mode === "v5"
-      ? prepareReactiveResumeV5DocumentForExternalUse(preparedResume.data, {
-          requestOrigin: args.requestOrigin ?? null,
-        })
-      : preparedResume.data;
+  const importData = prepareReactiveResumeV5DocumentForExternalUse(
+    preparedResume.data,
+    {
+      requestOrigin: args.requestOrigin ?? null,
+    },
+  );
 
   try {
-    importedResumeId = await importRxResume(
-      {
-        name: args.name?.trim() || `JobOps Tailored Resume ${jobId}`,
-        data: importData,
-      },
-      { mode: preparedResume.mode },
-    );
-
-    const downloadUrl = await exportRxResumePdf(importedResumeId, {
-      mode: preparedResume.mode,
+    importedResumeId = await importRxResume({
+      name: args.name?.trim() || `JobOps Tailored Resume ${jobId}`,
+      data: importData,
     });
+
+    const downloadUrl = await exportRxResumePdf(importedResumeId);
     if (!downloadUrl || typeof downloadUrl !== "string") {
       throw new Error(
         "Reactive Resume did not return a PDF download URL. Switch Reactive Resume to v5 API key auth in Settings and try again.",
@@ -125,7 +119,7 @@ async function renderRxResumePdf(args: {
   } finally {
     if (importedResumeId) {
       try {
-        await deleteRxResume(importedResumeId, { mode: preparedResume.mode });
+        await deleteRxResume(importedResumeId);
       } catch (error) {
         logger.warn("Failed to clean up temporary Reactive Resume PDF export", {
           jobId,
@@ -137,20 +131,6 @@ async function renderRxResumePdf(args: {
   }
 }
 
-function normalizeResumeForReactiveResumeV5(args: {
-  resumeData: Record<string, unknown>;
-  mode: "v4" | "v5";
-  requestOrigin?: string | null;
-}): Record<string, unknown> {
-  return (
-    args.mode === "v4"
-      ? convertV4ResumeToReactiveResumeV5Document(args.resumeData, {
-          requestOrigin: args.requestOrigin ?? null,
-        })
-      : (parseV5ResumeData(args.resumeData) as Record<string, unknown>)
-  ) as Record<string, unknown>;
-}
-
 async function resolveDesignResumeForRenderer(args: {
   renderer: PdfRenderer;
   requestOrigin?: string | null;
@@ -158,7 +138,7 @@ async function resolveDesignResumeForRenderer(args: {
   documentId: string;
   title: string;
   data: Record<string, unknown>;
-  mode: "v4" | "v5";
+  mode: "v5";
 }> {
   const designResume = await getCurrentDesignResume();
   if (!designResume?.resumeJson) {
@@ -183,25 +163,15 @@ async function resolveDesignResumeForRenderer(args: {
   }
 
   try {
-    if (designResume.sourceMode !== "v5") {
-      throw new Error(
-        "Reactive Resume rendering now requires a v5 source resume. Reconnect Reactive Resume with v5 and re-import your Design Resume.",
-      );
-    }
-
-    const upstreamResume = await getRxResume(designResume.sourceResumeId, {
-      mode: designResume.sourceMode,
-    });
+    const upstreamResume = await getRxResume(designResume.sourceResumeId);
 
     if (!upstreamResume.data || typeof upstreamResume.data !== "object") {
       throw new Error("Reactive Resume base resume is empty or invalid.");
     }
 
-    const upstreamDocument = normalizeResumeForReactiveResumeV5({
-      resumeData: upstreamResume.data as Record<string, unknown>,
-      mode: "v5",
-      requestOrigin: args.requestOrigin ?? null,
-    });
+    const upstreamDocument = parseV5ResumeData(
+      upstreamResume.data as Record<string, unknown>,
+    ) as Record<string, unknown>;
 
     return {
       documentId: designResume.id,
@@ -236,7 +206,7 @@ async function loadBaseResumeSource(args: {
   requestOrigin?: string | null;
 }): Promise<{
   data: Record<string, unknown>;
-  mode: "v4" | "v5";
+  mode: "v5";
 }> {
   const designResume = await getCurrentDesignResume();
   if (designResume?.resumeJson) {
@@ -247,7 +217,7 @@ async function loadBaseResumeSource(args: {
       });
       return {
         data: resolved.data,
-        mode: resolved.mode,
+        mode: "v5",
       };
     }
 
@@ -270,19 +240,10 @@ async function loadBaseResumeSource(args: {
   if (!baseResume.data || typeof baseResume.data !== "object") {
     throw new Error("Reactive Resume base resume is empty or invalid.");
   }
-  if (baseResume.mode !== "v4" && baseResume.mode !== "v5") {
-    throw new Error("Reactive Resume returned an unsupported resume mode.");
-  }
-
-  if (args.renderer === "rxresume" && baseResume.mode !== "v5") {
-    throw new Error(
-      "Reactive Resume rendering now requires a v5 base resume. Reconnect Reactive Resume with v5 and select a v5 base resume in Settings.",
-    );
-  }
 
   return {
     data: baseResume.data as Record<string, unknown>,
-    mode: baseResume.mode,
+    mode: "v5",
   };
 }
 
@@ -322,7 +283,6 @@ export async function generatePdf(
     try {
       preparedResume = await prepareTailoredResumeForPdf({
         resumeData: baseResume.data,
-        mode: baseResume.mode,
         tailoredContent,
         jobDescription,
         selectedProjectIds,
@@ -347,7 +307,6 @@ export async function generatePdf(
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
-        mode: preparedResume.mode,
       });
     } else {
       await renderRxResumePdf({
@@ -379,7 +338,7 @@ export async function generateDesignResumePdf(options?: {
   const outputFileName = "design_resume_current.pdf";
   const outputPath = join(OUTPUT_DIR, outputFileName);
   const preparedResume: PreparedRxResumePdfPayload = {
-    mode: designResume.mode,
+    mode: "v5",
     data: structuredClone(designResume.data) as Record<string, unknown>,
     projectCatalog: [],
     selectedProjectIds: [],
@@ -397,7 +356,6 @@ export async function generateDesignResumePdf(options?: {
       resumeJson: designResume.data,
       outputPath,
       jobId: "design-resume",
-      mode: designResume.mode,
     });
   } else {
     await renderRxResumePdf({

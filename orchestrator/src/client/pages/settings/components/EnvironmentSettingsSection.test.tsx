@@ -7,11 +7,9 @@ import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 const EnvironmentSettingsHarness = () => {
   const methods = useForm<UpdateSettingsInput>({
     defaultValues: {
-      rxresumeEmail: "resume@example.com",
-      ukvisajobsEmail: "visa@example.com",
+            ukvisajobsEmail: "visa@example.com",
       basicAuthUser: "admin",
-      rxresumePassword: "",
-      ukvisajobsPassword: "",
+            ukvisajobsPassword: "",
       adzunaAppId: "adzuna-id",
       adzunaAppKey: "",
       basicAuthPassword: "super-secret",
@@ -26,15 +24,13 @@ const EnvironmentSettingsHarness = () => {
         <EnvironmentSettingsSection
           values={{
             readable: {
-              rxresumeEmail: "resume@example.com",
-              ukvisajobsEmail: "visa@example.com",
+                            ukvisajobsEmail: "visa@example.com",
               adzunaAppId: "adzuna-id",
               basicAuthUser: "admin",
               basicAuthPassword: "super-secret",
             },
             private: {
-              rxresumePasswordHint: null,
-              ukvisajobsPasswordHint: "pass",
+                            ukvisajobsPasswordHint: "pass",
               adzunaAppKeyHint: "adzu",
               basicAuthPasswordHint: "abcd",
               webhookSecretHint: "sec-",

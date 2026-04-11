@@ -44,7 +44,7 @@ export async function upsertDesignResumeDocument(input: {
   resumeJson: Record<string, unknown>;
   revision: number;
   sourceResumeId: string | null;
-  sourceMode: "v4" | "v5" | null;
+  sourceMode: string | null;
   importedAt: string | null;
   createdAt?: string;
   updatedAt: string;
