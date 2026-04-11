@@ -115,7 +115,7 @@ export function useOnboardingFlow() {
 
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
-  const llmValidated = requiresLlmKey ? llmValidation.valid : true;
+  const llmValidated = llmValidation.valid;
   const basicAuthComplete = Boolean(
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
@@ -206,29 +206,19 @@ export function useOnboardingFlow() {
   const runAllValidations = useCallback(async () => {
     if (!settings || demoMode) return;
 
-    const validations: Promise<ValidationResult>[] = [];
-    if (requiresLlmKey) {
-      validations.push(validateLlm());
-    } else {
-      setLlmValidation({ valid: true, message: null, checked: true });
-    }
-
-    validations.push(validateRxresume(), validateBaseResume());
+    const validations: Promise<ValidationResult>[] = [
+      validateLlm(),
+      validateRxresume(),
+      validateBaseResume(),
+    ];
     await Promise.allSettled(validations);
-  }, [
-    demoMode,
-    requiresLlmKey,
-    settings,
-    validateBaseResume,
-    validateLlm,
-    validateRxresume,
-  ]);
+  }, [demoMode, settings, validateBaseResume, validateLlm, validateRxresume]);
 
   useEffect(() => {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
-      (requiresLlmKey ? !llmValidation.checked : false) ||
+      !llmValidation.checked ||
       !rxresumeValidation.checked ||
       !baseResumeValidation.checked;
     if (!needsValidation) return;
@@ -238,7 +228,6 @@ export function useOnboardingFlow() {
     baseResumeValidation.checked,
     demoMode,
     llmValidation.checked,
-    requiresLlmKey,
     runAllValidations,
     rxresumeValidation.checked,
     settings,
@@ -328,9 +317,7 @@ export function useOnboardingFlow() {
       return false;
     }
 
-    const validation = requiresLlmKey
-      ? await validateLlm()
-      : { valid: true, message: null };
+    const validation = await validateLlm();
 
     if (!validation.valid) {
       toast.error(validation.message || "LLM validation failed");

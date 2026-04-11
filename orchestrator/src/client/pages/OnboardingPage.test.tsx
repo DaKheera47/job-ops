@@ -146,6 +146,49 @@ describe("OnboardingPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not treat local providers as validated before the connection check passes", async () => {
+    currentSettings = {
+      ...baseSettings,
+      llmProvider: { value: "lmstudio", default: "lmstudio", override: null },
+      llmBaseUrl: {
+        value: "http://localhost:1234",
+        default: "",
+        override: null,
+      },
+      llmApiKeyHint: null,
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "LM Studio is unreachable",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(api.validateLlm).toHaveBeenCalledWith({
+        provider: "lmstudio",
+        baseUrl: "http://localhost:1234",
+        apiKey: undefined,
+      });
+    });
+
+    expect(
+      screen.getByRole("button", { name: /save connection/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /revalidate connection/i }),
+    ).not.toBeInTheDocument();
+  });
+
   it("requires an explicit basic auth decision before onboarding can finish", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,

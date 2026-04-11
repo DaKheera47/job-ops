@@ -1,10 +1,7 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
-import {
-  getLlmProviderConfig,
-  normalizeLlmProvider,
-} from "@client/pages/settings/utils";
+import { normalizeLlmProvider } from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -28,38 +25,31 @@ export function useOnboardingRequirement() {
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
-  const requiresLlmKey = getLlmProviderConfig(selectedProvider).requiresApiKey;
 
   const runValidations = useCallback(async () => {
     if (!settings) return;
 
     const validations: Promise<ValidationResult>[] = [];
-    if (requiresLlmKey) {
-      validations.push(
-        api
-          .validateLlm({
-            provider: selectedProvider,
-            baseUrl: settings.llmBaseUrl?.value || undefined,
-          })
-          .then((result) => {
-            setLlmValidation({ ...result, checked: true });
-            return result;
-          })
-          .catch((error: unknown) => {
-            const result = {
-              valid: false,
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "LLM validation failed",
-            };
-            setLlmValidation({ ...result, checked: true });
-            return result;
-          }),
-      );
-    } else {
-      setLlmValidation({ valid: true, message: null, checked: true });
-    }
+    validations.push(
+      api
+        .validateLlm({
+          provider: selectedProvider,
+          baseUrl: settings.llmBaseUrl?.value || undefined,
+        })
+        .then((result) => {
+          setLlmValidation({ ...result, checked: true });
+          return result;
+        })
+        .catch((error: unknown) => {
+          const result = {
+            valid: false,
+            message:
+              error instanceof Error ? error.message : "LLM validation failed",
+          };
+          setLlmValidation({ ...result, checked: true });
+          return result;
+        }),
+    );
 
     validations.push(
       api
@@ -104,13 +94,13 @@ export function useOnboardingRequirement() {
     );
 
     await Promise.allSettled(validations);
-  }, [requiresLlmKey, selectedProvider, settings]);
+  }, [selectedProvider, settings]);
 
   useEffect(() => {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
-      (requiresLlmKey ? !llmValidation.checked : false) ||
+      !llmValidation.checked ||
       !rxresumeValidation.checked ||
       !baseResumeValidation.checked;
 
@@ -120,7 +110,6 @@ export function useOnboardingRequirement() {
     baseResumeValidation.checked,
     demoMode,
     llmValidation.checked,
-    requiresLlmKey,
     runValidations,
     rxresumeValidation.checked,
     settings,
@@ -131,7 +120,7 @@ export function useOnboardingRequirement() {
     if (demoMode) return true;
     if (!settings) return false;
 
-    const llmComplete = requiresLlmKey ? llmValidation.valid : true;
+    const llmComplete = llmValidation.valid;
     const basicAuthComplete =
       settings.basicAuthActive || settings.onboardingBasicAuthDecision !== null;
 
@@ -145,7 +134,6 @@ export function useOnboardingRequirement() {
     baseResumeValidation.valid,
     demoMode,
     llmValidation.valid,
-    requiresLlmKey,
     rxresumeValidation.valid,
     settings,
   ]);
@@ -154,7 +142,7 @@ export function useOnboardingRequirement() {
     !demoMode &&
     (settingsLoading ||
       !settings ||
-      (requiresLlmKey && !llmValidation.checked) ||
+      !llmValidation.checked ||
       !rxresumeValidation.checked ||
       !baseResumeValidation.checked);
 

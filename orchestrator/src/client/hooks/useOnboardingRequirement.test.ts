@@ -41,6 +41,10 @@ describe("useOnboardingRequirement", () => {
       valid: true,
       message: null,
     });
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
   });
 
   it("treats the persisted onboarding basic-auth decision as the source of truth", async () => {
@@ -83,5 +87,50 @@ describe("useOnboardingRequirement", () => {
     await waitFor(() => {
       expect(result.current.complete).toBe(true);
     });
+  });
+
+  it("validates non-api-key providers before treating onboarding as complete", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "LM Studio is unreachable",
+    });
+
+    const currentSettings: any = {
+      llmProvider: { value: "lmstudio", default: "lmstudio", override: null },
+      llmBaseUrl: {
+        value: "http://localhost:1234",
+        default: "",
+        override: null,
+      },
+      rxresumeUrl: null,
+      basicAuthActive: false,
+      onboardingBasicAuthDecision: "skipped",
+    };
+
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+    }));
+
+    const { result } = renderHookWithQueryClient(() =>
+      useOnboardingRequirement(),
+    );
+
+    await waitFor(() => {
+      expect(api.validateLlm).toHaveBeenCalledWith({
+        provider: "lmstudio",
+        baseUrl: "http://localhost:1234",
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+
+    expect(result.current.complete).toBe(false);
   });
 });
