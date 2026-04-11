@@ -31,6 +31,6 @@ export const STEP_COPY: Record<
     eyebrow: "Step 3",
     title: "Secure your workspace",
     description:
-      "Add a username and password so only you can make changes. You can always set this up later in Settings.",
+      "Add a username and password so only signed-in users can access protected parts of Job Ops. You can always set this up later in Settings.",
   },
 };

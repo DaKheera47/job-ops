@@ -225,7 +225,7 @@ describe("OnboardingPage", () => {
     });
   });
 
-  it("defaults the basic auth step to lock it down", async () => {
+  it("defaults the authentication step to lock it down", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -255,7 +255,7 @@ describe("OnboardingPage", () => {
 
     expect(screen.getByLabelText(/lock it down/i)).toBeChecked();
     expect(
-      screen.getByRole("button", { name: /enable basic auth/i }),
+      screen.getByRole("button", { name: /enable authentication/i }),
     ).toBeInTheDocument();
   });
 
@@ -773,7 +773,7 @@ describe("OnboardingPage", () => {
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
   });
 
-  it("lets the full basic-auth option card change the selection", async () => {
+  it("lets the full authentication option card change the selection", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -796,7 +796,7 @@ describe("OnboardingPage", () => {
     });
 
     const skipCard = screen
-      .getByText(/you can add protection later from settings\./i)
+      .getByText(/you can add authentication later from settings\./i)
       .closest("label");
 
     if (!skipCard) {

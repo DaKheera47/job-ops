@@ -171,7 +171,7 @@ describe.sequential("Stats proxy routes", () => {
     expect(await response.text()).toBe("Upstream timeout");
   });
 
-  it("allows stats proxy requests when basic auth is enabled", async () => {
+  it("allows stats proxy requests when authentication is enabled", async () => {
     await stopServer({ server, closeDb, tempDir });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {

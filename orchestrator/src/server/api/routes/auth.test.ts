@@ -11,6 +11,7 @@ describe.sequential("Auth routes", () => {
   const AUTH_ENV = {
     BASIC_AUTH_USER: "admin",
     BASIC_AUTH_PASSWORD: "secret",
+    JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
   };
 
   afterEach(async () => {
@@ -157,13 +158,21 @@ describe.sequential("Auth routes", () => {
       }));
     });
 
-    it("still accepts Basic Auth alongside JWT", async () => {
+    it("rejects Basic headers on protected routes while still allowing login with credentials", async () => {
       const credentials = Buffer.from("admin:secret").toString("base64");
       const res = await fetch(`${baseUrl}/api/settings`, {
         headers: { Authorization: `Basic ${credentials}` },
       });
 
-      expect(res.status).not.toBe(401);
+      expect(res.status).toBe(401);
+
+      const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "secret" }),
+      });
+
+      expect(loginRes.status).toBe(200);
     });
   });
 });

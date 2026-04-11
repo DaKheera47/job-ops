@@ -131,7 +131,7 @@ function buildUmamiProxyHeaders(req: express.Request): Headers {
   return headers;
 }
 
-export function createBasicAuthGuard() {
+export function createAuthGuard() {
   function getAuthConfig() {
     const user = process.env.BASIC_AUTH_USER || "";
     const pass = process.env.BASIC_AUTH_PASSWORD || "";
@@ -142,31 +142,12 @@ export function createBasicAuthGuard() {
     };
   }
 
-  function isAuthorized(req: express.Request): boolean {
-    const { user: authUser, pass: authPass, enabled } = getAuthConfig();
-    if (!enabled) return false;
-    const authHeader = req.headers.authorization || "";
-    if (!authHeader.startsWith("Basic ")) return false;
-    const encoded = authHeader.slice("Basic ".length).trim();
-    let decoded = "";
-    try {
-      decoded = Buffer.from(encoded, "base64").toString("utf-8");
-    } catch {
-      return false;
-    }
-    const separatorIndex = decoded.indexOf(":");
-    if (separatorIndex === -1) return false;
-    const user = decoded.slice(0, separatorIndex);
-    const pass = decoded.slice(separatorIndex + 1);
-    return user === authUser && pass === authPass;
-  }
-
-  function isJwtAuthorized(req: express.Request): boolean {
+  async function isAuthorized(req: express.Request): Promise<boolean> {
     const authHeader = req.headers.authorization || "";
     if (!authHeader.startsWith("Bearer ")) return false;
     const token = authHeader.slice("Bearer ".length).trim();
     try {
-      verifyToken(token);
+      await verifyToken(token);
       return true;
     } catch {
       return false;
@@ -221,22 +202,30 @@ export function createBasicAuthGuard() {
     res: express.Response,
     next: express.NextFunction,
   ) => {
-    const { enabled } = getAuthConfig();
-    if (!enabled || !requiresAuth(req.method, req.path)) return next();
-    if (isAuthorized(req) || isJwtAuthorized(req)) return next();
-    fail(res, unauthorized("Authentication required"));
+    void (async () => {
+      const { enabled } = getAuthConfig();
+      if (!enabled || !requiresAuth(req.method, req.path)) {
+        next();
+        return;
+      }
+      if (await isAuthorized(req)) {
+        next();
+        return;
+      }
+      fail(res, unauthorized("Authentication required"));
+    })().catch(next);
   };
 
   return {
     middleware,
     isAuthorized,
-    basicAuthEnabled: getAuthConfig().enabled,
+    authEnabled: getAuthConfig().enabled,
   };
 }
 
 export function createApp() {
   const app = express();
-  const authGuard = createBasicAuthGuard();
+  const authGuard = createAuthGuard();
   const corsMiddleware = cors();
 
   const handleTracerRedirect = async (
@@ -312,7 +301,7 @@ export function createApp() {
     next();
   });
 
-  // Optional Basic Auth for write access (read-only by default)
+  // Optional authentication for protected routes
   app.use(authGuard.middleware);
 
   // API routes

@@ -2,6 +2,7 @@
  * API client for the orchestrator backend.
  */
 
+import { redirectToSignIn } from "@client/lib/auth-navigation";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type {
   ApiResponse,
@@ -95,88 +96,102 @@ type StreamSseInput =
   | { content: string; stream: true }
   | { stream: true };
 
-export type BasicAuthCredentials = {
+export type AuthCredentials = {
   username: string;
   password: string;
 };
 
-export type BasicAuthPromptRequest = {
-  endpoint: string;
-  method: string;
-  attempt: number;
-  usernameHint?: string;
-  errorMessage?: string;
-};
+const LEGACY_SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
+const LEGACY_SESSION_JWT_KEY = "jobops.jwtToken";
+const SESSION_AUTH_TOKEN_KEY = "jobops.authToken";
 
-type BasicAuthPromptHandler = (
-  request: BasicAuthPromptRequest,
-) => Promise<BasicAuthCredentials | null>;
-
-const SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
-const SESSION_JWT_KEY = "jobops.jwtToken";
-
-function loadStoredCredentials(): BasicAuthCredentials | null {
+function loadStoredLegacyCredentials(): AuthCredentials | null {
   try {
-    const stored = sessionStorage.getItem(SESSION_AUTH_KEY);
+    const stored = sessionStorage.getItem(LEGACY_SESSION_AUTH_KEY);
     if (!stored) return null;
-    return JSON.parse(stored) as BasicAuthCredentials;
+    return JSON.parse(stored) as AuthCredentials;
   } catch {
     return null;
   }
 }
 
-function storeCredentials(credentials: BasicAuthCredentials | null): void {
+function storeLegacyCredentials(credentials: AuthCredentials | null): void {
   try {
     if (credentials) {
-      sessionStorage.setItem(SESSION_AUTH_KEY, JSON.stringify(credentials));
+      sessionStorage.setItem(
+        LEGACY_SESSION_AUTH_KEY,
+        JSON.stringify(credentials),
+      );
     } else {
-      sessionStorage.removeItem(SESSION_AUTH_KEY);
+      sessionStorage.removeItem(LEGACY_SESSION_AUTH_KEY);
     }
   } catch {
     // Ignore storage errors in restricted browser contexts.
   }
 }
 
-function loadStoredJwt(): string | null {
+function loadStoredAuthToken(): string | null {
   try {
-    return sessionStorage.getItem(SESSION_JWT_KEY);
+    return (
+      sessionStorage.getItem(SESSION_AUTH_TOKEN_KEY) ??
+      sessionStorage.getItem(LEGACY_SESSION_JWT_KEY)
+    );
   } catch {
     return null;
   }
 }
 
-function storeJwt(token: string | null): void {
+function storeAuthToken(token: string | null): void {
   try {
     if (token) {
-      sessionStorage.setItem(SESSION_JWT_KEY, token);
+      sessionStorage.setItem(SESSION_AUTH_TOKEN_KEY, token);
+      sessionStorage.removeItem(LEGACY_SESSION_JWT_KEY);
     } else {
-      sessionStorage.removeItem(SESSION_JWT_KEY);
+      sessionStorage.removeItem(SESSION_AUTH_TOKEN_KEY);
+      sessionStorage.removeItem(LEGACY_SESSION_JWT_KEY);
     }
   } catch {
     // Ignore storage errors in restricted browser contexts.
   }
 }
 
-let basicAuthPromptHandler: BasicAuthPromptHandler | null = null;
-let basicAuthPromptInFlight: Promise<BasicAuthCredentials | null> | null = null;
-let cachedBasicAuthCredentials: BasicAuthCredentials | null =
-  loadStoredCredentials();
-let cachedJwtToken: string | null = loadStoredJwt();
+let cachedLegacyCredentials: AuthCredentials | null =
+  loadStoredLegacyCredentials();
+let cachedAuthToken: string | null = loadStoredAuthToken();
+let authMigrationInFlight: Promise<boolean> | null = null;
 
-export function setBasicAuthPromptHandler(
-  handler: BasicAuthPromptHandler | null,
-): void {
-  basicAuthPromptHandler = handler;
+export function clearAuthSession(): void {
+  cachedLegacyCredentials = null;
+  cachedAuthToken = null;
+  storeLegacyCredentials(null);
+  storeAuthToken(null);
 }
 
-export function clearBasicAuthCredentials(): void {
-  cachedBasicAuthCredentials = null;
-  cachedJwtToken = null;
-  storeCredentials(null);
-  storeJwt(null);
+function setAuthenticatedSession(token: string): void {
+  cachedAuthToken = token;
+  storeAuthToken(token);
+  cachedLegacyCredentials = null;
+  storeLegacyCredentials(null);
 }
 
-export async function loginWithCredentials(
+async function readAuthResponse<T>(
+  response: Response,
+): Promise<ApiResponse<T> | LegacyApiResponse<T>> {
+  const text = await response.text();
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text);
+  } catch {
+    throw new ApiClientError(
+      `Server error (${response.status}): Expected JSON but received HTML. Is the backend server running?`,
+      { status: response.status },
+    );
+  }
+
+  return normalizeApiResponse<T>(payload);
+}
+
+export async function signInWithCredentials(
   username: string,
   password: string,
 ): Promise<void> {
@@ -185,65 +200,108 @@ export async function loginWithCredentials(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) {
-    throw new Error("Invalid credentials");
+
+  const parsed = await readAuthResponse<{ token: string }>(res);
+  if ("ok" in parsed) {
+    if (!parsed.ok) {
+      throw toApiError(res, parsed);
+    }
+  } else if (!parsed.success) {
+    throw toApiError(res, parsed);
   }
-  const body = await res.json();
-  const token = body.data?.token ?? body.token;
+
+  const token =
+    "ok" in parsed
+      ? parsed.data?.token
+      : (parsed.data as { token?: string } | undefined)?.token;
   if (!token) {
     throw new Error("No token returned");
   }
-  cachedJwtToken = token;
-  storeJwt(token);
-  // Clear legacy Basic Auth credentials.
-  cachedBasicAuthCredentials = null;
-  storeCredentials(null);
+  setAuthenticatedSession(token);
+}
+
+export async function restoreAuthSessionFromLegacyCredentials(): Promise<boolean> {
+  if (cachedAuthToken) return true;
+  if (!cachedLegacyCredentials) return false;
+  if (!authMigrationInFlight) {
+    const credentials = cachedLegacyCredentials;
+    authMigrationInFlight = (async () => {
+      try {
+        await signInWithCredentials(credentials.username, credentials.password);
+        return true;
+      } catch {
+        cachedLegacyCredentials = null;
+        storeLegacyCredentials(null);
+        return false;
+      } finally {
+        authMigrationInFlight = null;
+      }
+    })();
+  }
+  return authMigrationInFlight;
+}
+
+async function recoverAuthSessionFromUnauthorized(): Promise<string | null> {
+  cachedAuthToken = null;
+  storeAuthToken(null);
+
+  const restored = await restoreAuthSessionFromLegacyCredentials();
+  if (restored && cachedAuthToken) {
+    return `Bearer ${cachedAuthToken}`;
+  }
+
+  clearAuthSession();
+  redirectToSignIn();
+  return null;
+}
+
+export async function recoverAuthHeaderAfterUnauthorized(): Promise<
+  string | null
+> {
+  return recoverAuthSessionFromUnauthorized();
 }
 
 export async function logout(): Promise<void> {
-  if (cachedJwtToken) {
+  if (cachedAuthToken) {
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: { Authorization: `Bearer ${cachedJwtToken}` },
+        headers: { Authorization: `Bearer ${cachedAuthToken}` },
       });
     } catch {
       // Best-effort server-side invalidation.
     }
   }
-  clearBasicAuthCredentials();
+  clearAuthSession();
+  redirectToSignIn();
 }
 
-export function getCachedBasicAuthHeader(): string | undefined {
-  return cachedBasicAuthCredentials
-    ? encodeBasicAuth(cachedBasicAuthCredentials)
-    : undefined;
+export function getCachedAuthHeader(): string | undefined {
+  return cachedAuthToken ? `Bearer ${cachedAuthToken}` : undefined;
 }
 
-export function getCachedBasicAuthUsername(): string | undefined {
-  return cachedBasicAuthCredentials?.username;
-}
-
-export function hasBasicAuthPromptHandler(): boolean {
-  return basicAuthPromptHandler !== null;
-}
-
-export async function requestBasicAuthHeader(
-  request: BasicAuthPromptRequest,
-): Promise<string | null> {
-  const credentials = await requestBasicAuthCredentials(request);
-  if (!credentials) return null;
-  cachedBasicAuthCredentials = credentials;
-  return encodeBasicAuth(credentials);
+export function hasAuthenticatedSession(): boolean {
+  return Boolean(cachedAuthToken);
 }
 
 export function __resetApiClientAuthForTests(): void {
-  basicAuthPromptHandler = null;
-  basicAuthPromptInFlight = null;
-  cachedBasicAuthCredentials = null;
-  cachedJwtToken = null;
-  storeCredentials(null);
-  storeJwt(null);
+  cachedLegacyCredentials = null;
+  cachedAuthToken = null;
+  authMigrationInFlight = null;
+  storeLegacyCredentials(null);
+  storeAuthToken(null);
+}
+
+export function __setLegacyAuthCredentialsForTests(
+  credentials: AuthCredentials | null,
+): void {
+  cachedLegacyCredentials = credentials;
+  storeLegacyCredentials(credentials);
+}
+
+export function __setAuthTokenForTests(token: string | null): void {
+  cachedAuthToken = token;
+  storeAuthToken(token);
 }
 
 function normalizeApiResponse<T>(
@@ -287,10 +345,6 @@ function describeAction(endpoint: string, method?: string): string {
     return "Credential validation is simulated in demo mode.";
   }
   return "This action ran in demo simulation mode.";
-}
-
-function encodeBasicAuth(credentials: BasicAuthCredentials): string {
-  return `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`;
 }
 
 function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
@@ -349,18 +403,6 @@ function toApiError<T>(
   );
 }
 
-async function requestBasicAuthCredentials(
-  request: BasicAuthPromptRequest,
-): Promise<BasicAuthCredentials | null> {
-  if (!basicAuthPromptHandler) return null;
-  if (!basicAuthPromptInFlight) {
-    basicAuthPromptInFlight = basicAuthPromptHandler(request).finally(() => {
-      basicAuthPromptInFlight = null;
-    });
-  }
-  return basicAuthPromptInFlight;
-}
-
 async function fetchAndParse<T>(
   endpoint: string,
   options: RequestInit | undefined,
@@ -396,20 +438,15 @@ async function fetchAndParse<T>(
 }
 
 function getAuthHeader(): string | undefined {
-  if (cachedJwtToken) return `Bearer ${cachedJwtToken}`;
-  if (cachedBasicAuthCredentials)
-    return encodeBasicAuth(cachedBasicAuthCredentials);
-  return undefined;
+  return getCachedAuthHeader();
 }
 
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const method = (options?.method || "GET").toUpperCase();
   let authHeader = getAuthHeader();
   let authAttempt = 0;
-  let usernameHint = cachedBasicAuthCredentials?.username;
 
   while (true) {
     const { response, parsed } = await fetchAndParse(
@@ -418,42 +455,12 @@ async function fetchApi<T>(
       authHeader,
     );
 
-    if (
-      isUnauthorizedResponse(response, parsed) &&
-      basicAuthPromptHandler &&
-      authAttempt < 2
-    ) {
-      // If a JWT was used, it may be expired — clear it before prompting.
-      if (cachedJwtToken) {
-        cachedJwtToken = null;
-        storeJwt(null);
-      }
-
-      const credentials = await requestBasicAuthCredentials({
-        endpoint,
-        method,
-        attempt: authAttempt + 1,
-        usernameHint,
-        errorMessage:
-          authAttempt > 0
-            ? "Invalid credentials. Please try again."
-            : undefined,
-      });
-      if (!credentials) {
+    if (isUnauthorizedResponse(response, parsed) && authAttempt < 1) {
+      const recoveredAuthHeader = await recoverAuthSessionFromUnauthorized();
+      if (!recoveredAuthHeader) {
         throw toApiError(response, parsed);
       }
-
-      // Try JWT login first, fall back to Basic Auth.
-      try {
-        await loginWithCredentials(credentials.username, credentials.password);
-        authHeader = `Bearer ${cachedJwtToken}`;
-      } catch {
-        cachedBasicAuthCredentials = credentials;
-        storeCredentials(credentials);
-        authHeader = encodeBasicAuth(credentials);
-      }
-
-      usernameHint = credentials.username;
+      authHeader = recoveredAuthHeader;
       authAttempt += 1;
       continue;
     }
@@ -461,7 +468,8 @@ async function fetchApi<T>(
     if ("ok" in parsed) {
       if (!parsed.ok) {
         if (parsed.error.code === "UNAUTHORIZED") {
-          clearBasicAuthCredentials();
+          clearAuthSession();
+          redirectToSignIn();
         }
         if (parsed.meta?.blockedReason) {
           showDemoBlockedToast(parsed.meta.blockedReason);
@@ -476,7 +484,8 @@ async function fetchApi<T>(
 
     if (!parsed.success) {
       if (response.status === 401) {
-        clearBasicAuthCredentials();
+        clearAuthSession();
+        redirectToSignIn();
       }
       throw toApiError(response, parsed);
     }
@@ -617,12 +626,27 @@ async function streamSseEvents<TEvent>(
     headers.Authorization = streamAuth;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  let response = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers,
     body: JSON.stringify(input),
     signal: handlers.signal,
   });
+
+  if (response.status === 401) {
+    const recoveredAuthHeader = await recoverAuthSessionFromUnauthorized();
+    if (recoveredAuthHeader) {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          Authorization: recoveredAuthHeader,
+        },
+        body: JSON.stringify(input),
+        signal: handlers.signal,
+      });
+    }
+  }
 
   if (!response.ok) {
     let errorMessage = `Stream request failed with status ${response.status}`;

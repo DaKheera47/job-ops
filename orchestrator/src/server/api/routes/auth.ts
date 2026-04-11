@@ -1,4 +1,4 @@
-import { badRequest, unauthorized } from "@infra/errors";
+import { badRequest, serviceUnavailable, unauthorized } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import type { Request, Response } from "express";
@@ -35,7 +35,22 @@ authRouter.post(
       return;
     }
 
-    const { token, expiresIn } = signToken(username);
+    let token: string;
+    let expiresIn: number;
+    try {
+      ({ token, expiresIn } = await signToken(username));
+    } catch (error) {
+      fail(
+        res,
+        serviceUnavailable(
+          error instanceof Error
+            ? error.message
+            : "Authentication is not fully configured",
+        ),
+      );
+      return;
+    }
+
     ok(res, { token, expiresIn });
   }),
 );
@@ -47,8 +62,8 @@ authRouter.post(
     if (authHeader.startsWith("Bearer ")) {
       const token = authHeader.slice("Bearer ".length).trim();
       try {
-        const { jti, exp } = verifyToken(token);
-        blacklistToken(jti, exp);
+        const { jti } = await verifyToken(token);
+        await blacklistToken(jti);
       } catch {
         // Token already invalid — logout is idempotent.
       }

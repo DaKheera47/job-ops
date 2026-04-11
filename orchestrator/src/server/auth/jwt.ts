@@ -1,10 +1,8 @@
-import { createHmac, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import jwt from "jsonwebtoken";
 
 const DEFAULT_EXPIRY_SECONDS = 86400; // 24 hours
-
-/** In-memory set of revoked token IDs (JTI). Auto-prunes on expiry. */
-const blacklist = new Set<string>();
 
 function getJwtSecret(): string {
   const explicit = process.env.JWT_SECRET;
@@ -12,18 +10,7 @@ function getJwtSecret(): string {
     return explicit;
   }
 
-  // Derive from Basic Auth credentials if available.
-  const user = process.env.BASIC_AUTH_USER || "";
-  const pass = process.env.BASIC_AUTH_PASSWORD || "";
-  if (user && pass) {
-    return createHmac("sha256", "jobops-jwt-secret")
-      .update(`${user}:${pass}`)
-      .digest("hex");
-  }
-
-  throw new Error(
-    "JWT_SECRET or BASIC_AUTH_USER/BASIC_AUTH_PASSWORD must be set",
-  );
+  throw new Error("JWT_SECRET must be set and at least 32 characters long");
 }
 
 function getJwtExpirySeconds(): number {
@@ -35,13 +22,20 @@ function getJwtExpirySeconds(): number {
     : DEFAULT_EXPIRY_SECONDS;
 }
 
-export function signToken(sub: string): {
+export async function signToken(sub: string): Promise<{
   token: string;
   expiresIn: number;
-} {
+}> {
   const secret = getJwtSecret();
   const expiresIn = getJwtExpirySeconds();
   const jti = randomUUID();
+  const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+
+  await authSessionsRepo.createAuthSession({
+    id: jti,
+    subject: sub,
+    expiresAt,
+  });
 
   const token = jwt.sign({ sub }, secret, {
     algorithm: "HS256",
@@ -52,11 +46,11 @@ export function signToken(sub: string): {
   return { token, expiresIn };
 }
 
-export function verifyToken(token: string): {
+export async function verifyToken(token: string): Promise<{
   sub: string;
   jti: string;
   exp: number;
-} {
+}> {
   const secret = getJwtSecret();
   const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
@@ -66,7 +60,14 @@ export function verifyToken(token: string): {
     throw new Error("Token missing required claims");
   }
 
-  if (blacklist.has(payload.jti)) {
+  const session = await authSessionsRepo.getAuthSession(payload.jti);
+  const now = Math.floor(Date.now() / 1000);
+  if (
+    !session ||
+    session.revokedAt !== null ||
+    session.expiresAt <= now ||
+    session.subject !== payload.sub
+  ) {
     throw new Error("Token has been revoked");
   }
 
@@ -77,21 +78,11 @@ export function verifyToken(token: string): {
   };
 }
 
-export function blacklistToken(jti: string, expiresAt: number): void {
-  blacklist.add(jti);
-  const ttlMs = (expiresAt - Math.floor(Date.now() / 1000)) * 1000;
-  if (ttlMs > 0) {
-    setTimeout(() => blacklist.delete(jti), ttlMs).unref();
-  } else {
-    blacklist.delete(jti);
-  }
+export async function blacklistToken(jti: string): Promise<void> {
+  await authSessionsRepo.revokeAuthSession(jti);
 }
 
-export function isBlacklisted(jti: string): boolean {
-  return blacklist.has(jti);
-}
-
-/** Test-only: clear the blacklist. */
-export function __resetBlacklistForTests(): void {
-  blacklist.clear();
+/** Test-only: clear persisted auth sessions. */
+export async function __resetBlacklistForTests(): Promise<void> {
+  await authSessionsRepo.deleteAllAuthSessions();
 }
