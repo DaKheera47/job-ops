@@ -11,12 +11,6 @@ vi.mock("@server/services/rxresume", () => ({
   })),
   validateResumeSchema: vi.fn(async (data: unknown) => ({
     ok: true,
-    mode:
-      data &&
-      typeof data === "object" &&
-      typeof (data as Record<string, unknown>).summary === "object"
-        ? "v5"
-        : "v4",
     data,
   })),
   extractProjectsFromResume: vi.fn((data: unknown) => {

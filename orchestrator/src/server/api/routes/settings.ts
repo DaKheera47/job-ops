@@ -276,7 +276,7 @@ settingsRouter.post(
 );
 
 /**
- * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume (v4/v5 adapter)
+ * GET /api/settings/rx-resumes - Fetch list of resumes from Reactive Resume
  */
 function failRxResume(res: Response, error: unknown): void {
   if (error instanceof RxResumeAuthConfigError) {

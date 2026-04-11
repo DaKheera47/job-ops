@@ -34,9 +34,6 @@ vi.mock("@server/services/rxresume/baseResumeId", () => ({
 vi.mock("@server/services/rxresume", () => ({
   getResume: vi.fn(),
 }));
-vi.mock("@server/services/rxresume/schema/v4", () => ({
-  parseV4ResumeData: vi.fn((input: unknown) => input),
-}));
 vi.mock("@server/services/tracer-links", () => ({
   resolveTracerPublicBaseUrl: vi.fn(() => null),
 }));

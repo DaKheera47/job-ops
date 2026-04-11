@@ -224,7 +224,7 @@ export async function importResume(
     config,
   )) as { id: string } | string;
 
-  // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
+  // In v5, Reactive Resume may return the full resume object or just the ID string.
   return typeof result === "string" ? result : result.id;
 }
 
