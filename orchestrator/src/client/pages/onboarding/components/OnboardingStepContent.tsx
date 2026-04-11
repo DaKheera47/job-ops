@@ -21,6 +21,7 @@ export const OnboardingStepContent: React.FC<{
   control: Control<OnboardingFormData>;
   currentStep: StepId;
   isBusy: boolean;
+  isRxResumeSelfHosted: boolean;
   llmKeyHint: string | null;
   llmValidation: ValidationState;
   pdfRenderer: PdfRenderer;
@@ -35,6 +36,7 @@ export const OnboardingStepContent: React.FC<{
   onBasicAuthUserChange: (value: string) => void;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
   onRxresumeApiKeyChange: (value: string) => void;
+  onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = (props) => {
@@ -54,11 +56,13 @@ export const OnboardingStepContent: React.FC<{
     return (
       <RxResumeStep
         isBusy={props.isBusy}
+        isSelfHosted={props.isRxResumeSelfHosted}
         pdfRenderer={props.pdfRenderer}
         rxresumeApiKey={props.rxresumeApiKey}
         rxresumeApiKeyHint={props.rxresumeApiKeyHint}
         rxresumeUrl={props.rxresumeUrl}
         rxresumeValidation={props.rxresumeValidation}
+        onSelfHostedChange={props.onRxresumeSelfHostedChange}
         onPdfRendererChange={props.onPdfRendererChange}
         onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
         onRxresumeUrlChange={props.onRxresumeUrlChange}

@@ -58,6 +58,7 @@ export function useOnboardingFlow() {
     readBasicAuthDecision,
   );
   const [basicAuthChoice, setBasicAuthChoice] = useState<BasicAuthChoice>(null);
+  const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
 
   const { control, getValues, reset, setValue, watch } =
@@ -105,6 +106,7 @@ export function useOnboardingFlow() {
           ? "skip"
           : null,
     );
+    setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
   }, [reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
@@ -181,7 +183,10 @@ export function useOnboardingFlow() {
     try {
       const result = await validateAndMaybePersistRxResumeMode({
         stored: storedRxResume,
-        draft: getRxResumeCredentialDrafts(getValues()),
+        draft: getRxResumeCredentialDrafts({
+          ...getValues(),
+          rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
+        }),
         validate: api.validateRxresume,
         getPrecheckMessage: () =>
           "v5 API key required. Add a v5 API key, then test again.",
@@ -193,7 +198,7 @@ export function useOnboardingFlow() {
     } finally {
       setIsValidatingRxresume(false);
     }
-  }, [getValues, storedRxResume]);
+  }, [getValues, isRxResumeSelfHosted, storedRxResume]);
 
   useEffect(() => {
     if (!showBaseUrl) {
@@ -290,15 +295,10 @@ export function useOnboardingFlow() {
   useEffect(() => {
     if (!steps.length) return;
 
-    const firstIncomplete =
-      steps.find((step) => !step.complete)?.id ?? steps[0].id;
     setCurrentStep((existing) => {
-      if (!existing) return firstIncomplete;
+      if (!existing) return steps[0].id;
       const existingStep = steps.find((step) => step.id === existing);
-      if (!existingStep) return firstIncomplete;
-      if (existingStep.complete && existing !== firstIncomplete) {
-        return firstIncomplete;
-      }
+      if (!existingStep) return steps[0].id;
       return existing;
     });
   }, [steps]);
@@ -325,19 +325,6 @@ export function useOnboardingFlow() {
       navigate("/jobs/ready", { replace: true });
     }
   }, [complete, demoMode, navigate, settingsLoading]);
-
-  const goToNextStep = useCallback(
-    (from: StepId) => {
-      const currentIndex = steps.findIndex((step) => step.id === from);
-      const nextStep = steps
-        .slice(currentIndex + 1)
-        .find((step) => !step.disabled)?.id;
-      if (nextStep) {
-        setCurrentStep(nextStep);
-      }
-    },
-    [steps],
-  );
 
   const handleSaveLlm = useCallback(async () => {
     const values = getValues();
@@ -383,7 +370,6 @@ export function useOnboardingFlow() {
             ? `Default for ${providerConfig.label}: ${defaultModel}.`
             : "You can fine-tune models later in Settings.",
       });
-      goToNextStep("llm");
       return true;
     } catch (error) {
       toast.error(
@@ -395,7 +381,6 @@ export function useOnboardingFlow() {
     }
   }, [
     getValues,
-    goToNextStep,
     hasLlmKey,
     normalizedProvider,
     providerConfig.label,
@@ -409,7 +394,10 @@ export function useOnboardingFlow() {
 
   const handleSaveRxresume = useCallback(async () => {
     const values = getValues();
-    const draftCredentials = getRxResumeCredentialDrafts(values);
+    const draftCredentials = getRxResumeCredentialDrafts({
+      ...values,
+      rxresumeUrl: isRxResumeSelfHosted ? values.rxresumeUrl : "",
+    });
     const missing = getRxResumeMissingCredentialLabels({
       stored: storedRxResume,
       draft: draftCredentials,
@@ -459,7 +447,6 @@ export function useOnboardingFlow() {
 
       setValue("rxresumeApiKey", "");
       toast.success("Reactive Resume connected");
-      goToNextStep("rxresume");
       return true;
     } catch (error) {
       toast.error(
@@ -472,7 +459,23 @@ export function useOnboardingFlow() {
       setIsValidatingRxresume(false);
       setIsSaving(false);
     }
-  }, [getValues, goToNextStep, setValue, storedRxResume, syncSettingsCache]);
+  }, [
+    getValues,
+    isRxResumeSelfHosted,
+    setValue,
+    storedRxResume,
+    syncSettingsCache,
+  ]);
+
+  const handleRxresumeSelfHostedChange = useCallback(
+    (next: boolean) => {
+      setIsRxResumeSelfHosted(next);
+      if (!next) {
+        setValue("rxresumeUrl", "");
+      }
+    },
+    [setValue],
+  );
 
   const handleSaveBaseResume = useCallback(async () => {
     const values = getValues();
@@ -496,7 +499,6 @@ export function useOnboardingFlow() {
       }
 
       toast.success("Template resume locked in");
-      goToNextStep("baseresume");
       return true;
     } catch (error) {
       toast.error(
@@ -506,7 +508,7 @@ export function useOnboardingFlow() {
     } finally {
       setIsSaving(false);
     }
-  }, [getValues, goToNextStep, syncSettingsCache, validateBaseResume]);
+  }, [getValues, syncSettingsCache, validateBaseResume]);
 
   const handleCompleteBasicAuth = useCallback(async () => {
     if (basicAuthChoice === "skip") {
@@ -597,15 +599,15 @@ export function useOnboardingFlow() {
     currentStep === "llm"
       ? llmValidated
         ? "Revalidate connection"
-        : "Save and continue"
+        : "Save connection"
       : currentStep === "rxresume"
         ? rxresumeValidation.valid
           ? "Recheck connection"
-          : "Save and continue"
+          : "Save connection"
         : currentStep === "baseresume"
           ? baseResumeValidation.valid
             ? "Recheck selection"
-            : "Save and continue"
+            : "Save selection"
           : basicAuthChoice === "enable"
             ? "Enable basic auth"
             : basicAuthChoice === "skip"
@@ -621,7 +623,9 @@ export function useOnboardingFlow() {
     currentCopy,
     currentStep,
     demoMode,
+    handleRxresumeSelfHostedChange,
     isBusy,
+    isRxResumeSelfHosted,
     llmKeyHint,
     llmValidation,
     primaryLabel,

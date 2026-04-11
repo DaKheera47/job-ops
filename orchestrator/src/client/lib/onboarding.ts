@@ -1,6 +1,8 @@
 export type BasicAuthDecision = "enabled" | "skipped";
 
 export const BASIC_AUTH_DECISION_KEY = "jobops.onboarding.basicAuthDecision";
+export const BASIC_AUTH_DECISION_EVENT =
+  "jobops:onboarding-basic-auth-decision-change";
 
 export function readBasicAuthDecision(): BasicAuthDecision | null {
   try {
@@ -15,9 +17,10 @@ export function writeBasicAuthDecision(value: BasicAuthDecision | null): void {
   try {
     if (value === null) {
       localStorage.removeItem(BASIC_AUTH_DECISION_KEY);
-      return;
+    } else {
+      localStorage.setItem(BASIC_AUTH_DECISION_KEY, value);
     }
-    localStorage.setItem(BASIC_AUTH_DECISION_KEY, value);
+    window.dispatchEvent(new Event(BASIC_AUTH_DECISION_EVENT));
   } catch {
     // Ignore storage errors in restricted browser contexts.
   }

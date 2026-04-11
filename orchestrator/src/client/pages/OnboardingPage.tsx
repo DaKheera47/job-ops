@@ -88,6 +88,7 @@ export const OnboardingPage: React.FC = () => {
                     control={flow.control}
                     currentStep={flow.currentStep}
                     isBusy={flow.isBusy}
+                    isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
                     pdfRenderer={flow.watch("pdfRenderer")}
@@ -109,6 +110,9 @@ export const OnboardingPage: React.FC = () => {
                     }
                     onRxresumeApiKeyChange={(value) =>
                       flow.setValue("rxresumeApiKey", value)
+                    }
+                    onRxresumeSelfHostedChange={
+                      flow.handleRxresumeSelfHostedChange
                     }
                     onRxresumeUrlChange={(value) =>
                       flow.setValue("rxresumeUrl", value)

@@ -160,6 +160,14 @@ describe("OnboardingPage", () => {
 
     await waitFor(() => {
       expect(
+        screen.getByText("Choose the LLM connection Job Ops should trust."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /basic auth/i }));
+
+    await waitFor(() => {
+      expect(
         screen.getByText("Decide whether write actions should be protected."),
       ).toBeInTheDocument();
     });
@@ -190,6 +198,14 @@ describe("OnboardingPage", () => {
 
     await waitFor(() => {
       expect(
+        screen.getByText("Choose the LLM connection Job Ops should trust."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /basic auth/i }));
+
+    await waitFor(() => {
+      expect(
         screen.getByText("Decide whether write actions should be protected."),
       ).toBeInTheDocument();
     });
@@ -203,5 +219,93 @@ describe("OnboardingPage", () => {
     expect(localStorage.getItem("jobops.onboarding.basicAuthDecision")).toBe(
       "skipped",
     );
+  });
+
+  it("does not auto-advance after saving the LLM step", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings as any);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should trust."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /revalidate connection/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalled();
+    });
+
+    expect(
+      screen.getByText("Choose the LLM connection Job Ops should trust."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Connect the resume engine that will export tailored PDFs.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the RxResume URL hidden unless self-hosted mode is enabled", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    vi.mocked(useSettings).mockReturnValue({
+      settings: {
+        ...baseSettings,
+        rxresumeUrl: "",
+      } as any,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /rxresume/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(
+          "Connect the resume engine that will export tailored PDFs.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText(/custom url/i)).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: /self-hosted reactive resume/i }),
+    );
+
+    expect(screen.getByLabelText(/custom url/i)).toBeInTheDocument();
   });
 });

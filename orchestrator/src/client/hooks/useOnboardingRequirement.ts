@@ -1,7 +1,10 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
-import { readBasicAuthDecision } from "@client/lib/onboarding";
+import {
+  BASIC_AUTH_DECISION_EVENT,
+  readBasicAuthDecision,
+} from "@client/lib/onboarding";
 import { normalizeLlmProvider } from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -112,7 +115,22 @@ export function useOnboardingRequirement() {
   }, [requiresLlmKey, selectedProvider, settings]);
 
   useEffect(() => {
-    setBasicAuthDecision(readBasicAuthDecision());
+    const syncBasicAuthDecision = () => {
+      setBasicAuthDecision(readBasicAuthDecision());
+    };
+
+    syncBasicAuthDecision();
+
+    window.addEventListener(BASIC_AUTH_DECISION_EVENT, syncBasicAuthDecision);
+    window.addEventListener("storage", syncBasicAuthDecision);
+
+    return () => {
+      window.removeEventListener(
+        BASIC_AUTH_DECISION_EVENT,
+        syncBasicAuthDecision,
+      );
+      window.removeEventListener("storage", syncBasicAuthDecision);
+    };
   }, []);
 
   useEffect(() => {
