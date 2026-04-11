@@ -36,7 +36,7 @@ export const updateSettingsSchema = z.object(shape).superRefine((data, ctx) => {
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Username is required when basic auth is enabled",
+        message: "Username is required when authentication is enabled",
         path: ["basicAuthUser"],
       });
     }

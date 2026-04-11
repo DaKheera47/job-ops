@@ -54,8 +54,8 @@ describe("EnvironmentSettingsSection", () => {
 
     expect(screen.getByText(/pass\*{8}/)).toBeInTheDocument();
     expect(screen.getByText(/adzu\*{8}/)).toBeInTheDocument();
-    // Basic Auth
-    expect(screen.getByLabelText("Enable basic authentication")).toBeChecked();
+    // Authentication
+    expect(screen.getByLabelText("Enable authentication")).toBeChecked();
     expect(screen.getByDisplayValue("admin")).toBeInTheDocument();
     expect(screen.getByDisplayValue("super-secret")).toBeInTheDocument();
 

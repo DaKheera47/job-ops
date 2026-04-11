@@ -1,12 +1,17 @@
 import type { NextFunction, Request, Response } from "express";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createBasicAuthGuard } from "./app";
+import { createAuthGuard } from "./app";
+
+vi.mock("@server/auth/jwt", () => ({
+  verifyToken: vi.fn(),
+}));
+
+import { verifyToken } from "@server/auth/jwt";
 
 const originalEnv = { ...process.env };
 
-function buildAuthHeader(user: string, pass: string): string {
-  const token = Buffer.from(`${user}:${pass}`).toString("base64");
-  return `Basic ${token}`;
+function buildBearerHeader(token = "valid-token"): string {
+  return `Bearer ${token}`;
 }
 
 function createMockRequest(input: {
@@ -47,16 +52,17 @@ function createMockResponse(): Response & {
   } as unknown as Response & { statusCode: number; jsonBody: unknown };
 }
 
-describe.sequential("Basic Auth read-only enforcement", () => {
+describe.sequential("Auth read-only enforcement", () => {
   afterEach(() => {
     process.env = { ...originalEnv };
+    vi.clearAllMocks();
   });
 
-  it("allows non-API GETs without auth when Basic Auth is enabled", () => {
+  it("allows non-API GETs without auth when authentication is enabled", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
     const req = createMockRequest({ method: "GET", path: "/health" });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
@@ -67,16 +73,17 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("blocks GET /api/* without auth when Basic Auth is enabled", () => {
+  it("blocks GET /api/* without auth when authentication is enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
     const req = createMockRequest({ method: "GET", path: "/api/jobs" });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
     middleware(req, res, next);
+    await Promise.resolve();
 
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(401);
@@ -86,7 +93,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
     const req = createMockRequest({ method: "OPTIONS", path: "/api/jobs" });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
@@ -97,11 +104,11 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
-  it("blocks POST/PATCH/DELETE without auth when Basic Auth is enabled", () => {
+  it("blocks POST/PATCH/DELETE without auth when authentication is enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
 
     for (const request of [
       createMockRequest({ method: "POST", path: "/api/jobs/actions" }),
@@ -112,6 +119,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
       const next = vi.fn() as NextFunction;
 
       middleware(request, res, next);
+      await Promise.resolve();
 
       expect(next).not.toHaveBeenCalled();
       expect(res.statusCode).toBe(401);
@@ -125,20 +133,26 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     }
   });
 
-  it("allows API GETs with valid Basic Auth when enabled", () => {
+  it("allows API GETs with a valid bearer token when enabled", async () => {
     process.env.BASIC_AUTH_USER = "user";
     process.env.BASIC_AUTH_PASSWORD = "pass";
+    vi.mocked(verifyToken).mockResolvedValue({
+      sub: "user",
+      jti: "session-1",
+      exp: Math.floor(Date.now() / 1000) + 60,
+    });
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
     const req = createMockRequest({
       method: "GET",
       path: "/api/jobs",
-      authorization: buildAuthHeader("user", "pass"),
+      authorization: buildBearerHeader(),
     });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;
 
     middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
@@ -148,7 +162,7 @@ describe.sequential("Basic Auth read-only enforcement", () => {
     delete process.env.BASIC_AUTH_USER;
     delete process.env.BASIC_AUTH_PASSWORD;
 
-    const { middleware } = createBasicAuthGuard();
+    const { middleware } = createAuthGuard();
     const req = createMockRequest({
       method: "POST",
       path: "/api/jobs/actions",

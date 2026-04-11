@@ -257,6 +257,22 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const authSessions = sqliteTable(
+  "auth_sessions",
+  {
+    id: text("id").primaryKey(),
+    subject: text("subject").notNull(),
+    expiresAt: integer("expires_at", { mode: "number" }).notNull(),
+    revokedAt: integer("revoked_at", { mode: "number" }),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    expiresAtIndex: index("idx_auth_sessions_expires_at").on(table.expiresAt),
+    revokedAtIndex: index("idx_auth_sessions_revoked_at").on(table.revokedAt),
+  }),
+);
+
 export const designResumeDocuments = sqliteTable("design_resume_documents", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),

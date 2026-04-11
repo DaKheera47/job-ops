@@ -18,10 +18,6 @@ vi.mock("@/components/ui/sonner", () => ({
   Toaster: () => null,
 }));
 
-vi.mock("./components/BasicAuthPrompt", () => ({
-  BasicAuthPrompt: () => null,
-}));
-
 vi.mock("./components/OnboardingGate", () => ({
   OnboardingGate: () => null,
 }));
@@ -52,6 +48,10 @@ vi.mock("./pages/OrchestratorPage", () => ({
 
 vi.mock("./pages/SettingsPage", () => ({
   SettingsPage: () => null,
+}));
+
+vi.mock("./pages/SignInPage", () => ({
+  SignInPage: () => <div>sign-in</div>,
 }));
 
 vi.mock("./pages/TrackingInboxPage", () => ({

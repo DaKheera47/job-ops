@@ -223,22 +223,29 @@ describe.sequential("Tracer links routes", () => {
     }
   });
 
-  it("requires auth for tracer analytics GET routes when basic auth is enabled", async () => {
+  it("requires bearer auth for tracer analytics GET routes when authentication is enabled", async () => {
     await stopServer({ server, closeDb, tempDir });
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         BASIC_AUTH_USER: "admin",
         BASIC_AUTH_PASSWORD: "secret",
+        JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
       },
     }));
 
     const unauthorized = await fetch(`${baseUrl}/api/tracer-links/analytics`);
     expect(unauthorized.status).toBe(401);
 
-    const credentials = Buffer.from("admin:secret").toString("base64");
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "secret" }),
+    });
+    const loginBody = await loginRes.json();
+
     const authorized = await fetch(`${baseUrl}/api/tracer-links/analytics`, {
       headers: {
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Bearer ${loginBody.data.token}`,
       },
     });
     expect(authorized.status).toBe(200);

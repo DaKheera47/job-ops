@@ -3,6 +3,7 @@ import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import type React from "react";
 import { Navigate } from "react-router-dom";
+import { useOnboardingRequirement } from "@/client/hooks/useOnboardingRequirement";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
