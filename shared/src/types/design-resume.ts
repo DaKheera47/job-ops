@@ -348,7 +348,7 @@ export interface DesignResumeDocument {
   resumeJson: DesignResumeJson;
   revision: number;
   sourceResumeId: string | null;
-  sourceMode: string | null;
+  sourceMode: "v4" | "v5" | null;
   importedAt: string | null;
   createdAt: string;
   updatedAt: string;

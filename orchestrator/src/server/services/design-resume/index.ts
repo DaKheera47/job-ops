@@ -134,7 +134,7 @@ async function hydrateDocument(
     resumeJson: validateStoredDesignResumeDocument(row.resumeJson ?? {}),
     revision: row.revision,
     sourceResumeId: row.sourceResumeId ?? null,
-    sourceMode: row.sourceMode ?? null,
+    sourceMode: (row.sourceMode as "v4" | "v5" | null) ?? null,
     importedAt: row.importedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

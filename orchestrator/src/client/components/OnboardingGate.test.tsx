@@ -105,10 +105,8 @@ const settingsResponse = {
   settings: {
     llmProvider: { value: "openrouter", default: "openrouter", override: null },
     llmApiKeyHint: null,
-    rxresumeEmail: "",
     rxresumeUrl: "",
     rxresumeApiKeyHint: null,
-    rxresumePasswordHint: null,
     rxresumeBaseResumeId: null,
   },
   isLoading: false,

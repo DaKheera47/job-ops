@@ -51,7 +51,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 type ValidationState = ValidationResult & { checked: boolean };
-type TimestampedValidationState = ValidationState & { testedAt: number | null };
 
 type OnboardingFormData = {
   llmProvider: string;
@@ -67,11 +66,6 @@ const EMPTY_VALIDATION_STATE: ValidationState = {
   valid: false,
   message: null,
   checked: false,
-};
-
-const _EMPTY_TIMESTAMPED_VALIDATION_STATE: TimestampedValidationState = {
-  ...EMPTY_VALIDATION_STATE,
-  testedAt: null,
 };
 
 function getStepPrimaryLabel(input: {
@@ -225,8 +219,6 @@ export const OnboardingGate: React.FC = () => {
   }, [getValues, storedRxResume]);
 
   const validateRxresume = useCallback(async () => {
-    const _values = getValues();
-
     setIsValidatingRxresume(true);
     try {
       const versionResult = await validateRxresumeVersion();
@@ -240,7 +232,7 @@ export const OnboardingGate: React.FC = () => {
     } finally {
       setIsValidatingRxresume(false);
     }
-  }, [getValues, validateRxresumeVersion]);
+  }, [validateRxresumeVersion]);
 
   // Initialize form values from settings
   useEffect(() => {

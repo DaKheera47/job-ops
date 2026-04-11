@@ -95,6 +95,63 @@ describe("RxResume Service (index.ts)", () => {
       await getResume("1", { forceRefresh: true });
       expect(v5.getResume).toHaveBeenCalledTimes(2);
     });
+
+    it("expires cache after TTL and refetches", async () => {
+      vi.useFakeTimers();
+
+      vi.mocked(v5.getResume).mockResolvedValue({
+        id: "1",
+        name: "Resume 1",
+        data: { basics: { name: "John" } },
+      } as any);
+
+      await getResume("1");
+      expect(v5.getResume).toHaveBeenCalledTimes(1);
+
+      // Advance time by 6 minutes (TTL is 5 minutes)
+      vi.advanceTimersByTime(6 * 60 * 1000);
+
+      await getResume("1");
+      expect(v5.getResume).toHaveBeenCalledTimes(2);
+
+      vi.useRealTimers();
+    });
+
+    it("coalesces in-flight requests", async () => {
+      let resolveRequest: ((val: any) => void) | undefined;
+      const requestPromise = new Promise((resolve) => {
+        resolveRequest = resolve;
+      });
+
+      vi.mocked(v5.getResume).mockImplementation(() => requestPromise as any);
+
+      // Fire multiple requests concurrently
+      const promise1 = getResume("1");
+      const promise2 = getResume("1");
+      const promise3 = getResume("1");
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Only one upstream request should be fired
+      expect(v5.getResume).toHaveBeenCalledTimes(1);
+
+      // Resolve the upstream request
+      resolveRequest?.({
+        id: "1",
+        name: "Resume 1",
+        data: { basics: { name: "John" } },
+      });
+
+      const [res1, res2, res3] = await Promise.all([
+        promise1,
+        promise2,
+        promise3,
+      ]);
+
+      expect(res1).toEqual(res2);
+      expect(res1).toEqual(res3);
+      expect(v5.getResume).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("importResume", () => {

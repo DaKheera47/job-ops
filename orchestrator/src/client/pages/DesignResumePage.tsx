@@ -46,9 +46,6 @@ import {
 } from "../components/design-resume/utils";
 import { queryKeys } from "../lib/queryKeys";
 
-const _DESIGN_RESUME_V5_REQUIRED_MESSAGE =
-  "Design Resume only works with Reactive Resume v5. Switch Reactive Resume to v5 API key auth in Settings, choose a v5 base resume, then come back here.";
-
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
