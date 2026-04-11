@@ -1,4 +1,3 @@
-import { ShieldCheck } from "lucide-react";
 import type React from "react";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";

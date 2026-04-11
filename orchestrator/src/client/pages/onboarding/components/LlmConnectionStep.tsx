@@ -5,7 +5,6 @@ import {
   LLM_PROVIDERS,
   type LlmProviderId,
 } from "@client/pages/settings/utils";
-import { KeyRound } from "lucide-react";
 import type React from "react";
 import { type Control, Controller } from "react-hook-form";
 import {
@@ -17,6 +16,30 @@ import {
 } from "@/components/ui/select";
 import type { OnboardingFormData, ValidationState } from "../types";
 import { InlineValidation } from "./InlineValidation";
+
+function renderKeyHelper(
+  helperText: string,
+  helperHref: string | null,
+  keepSavedKey: boolean,
+) {
+  return (
+    <>
+      {helperHref ? (
+        <a
+          href={helperHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+        >
+          {helperText}
+        </a>
+      ) : (
+        helperText
+      )}
+      {keepSavedKey ? ". Leave blank to keep the saved key." : null}
+    </>
+  );
+}
 
 export const LlmConnectionStep: React.FC<{
   control: Control<OnboardingFormData>;
@@ -80,9 +103,7 @@ export const LlmConnectionStep: React.FC<{
               />
             )}
           />
-        ) : (
-          null
-        )}
+        ) : null}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -100,11 +121,11 @@ export const LlmConnectionStep: React.FC<{
                 }}
                 type="password"
                 placeholder="Paste a new key"
-                helper={
-                  llmKeyHint
-                    ? `${providerConfig.keyHelper}. Leave blank to keep the saved key.`
-                    : providerConfig.keyHelper
-                }
+                helper={renderKeyHelper(
+                  providerConfig.keyHelperText,
+                  providerConfig.keyHelperHref,
+                  Boolean(llmKeyHint),
+                )}
                 disabled={isBusy}
               />
             )}
