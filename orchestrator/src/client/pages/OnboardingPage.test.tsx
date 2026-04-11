@@ -65,6 +65,8 @@ const baseSettings = {
   basicAuthActive: false,
 };
 
+let currentSettings: any;
+
 function renderPage() {
   return renderWithQueryClient(
     <MemoryRouter initialEntries={["/onboarding"]}>
@@ -80,6 +82,7 @@ describe("OnboardingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    currentSettings = { ...baseSettings };
 
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: false,
@@ -90,14 +93,14 @@ describe("OnboardingPage", () => {
       baselineName: null,
     });
 
-    vi.mocked(useSettings).mockReturnValue({
-      settings: baseSettings as any,
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
       isLoading: false,
       refreshSettings: vi.fn(),
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
-    });
+    }));
 
     vi.mocked(useRxResumeConfigState).mockReturnValue({
       storedRxResume: {
@@ -194,10 +197,13 @@ describe("OnboardingPage", () => {
       valid: true,
       message: null,
     });
-    vi.mocked(api.updateSettings).mockResolvedValue({
-      ...baseSettings,
-      onboardingBasicAuthDecision: "skipped",
-    } as any);
+    vi.mocked(api.updateSettings).mockImplementation(async () => {
+      currentSettings = {
+        ...currentSettings,
+        onboardingBasicAuthDecision: "skipped",
+      };
+      return currentSettings;
+    });
 
     renderPage();
 
@@ -224,6 +230,55 @@ describe("OnboardingPage", () => {
     expect(api.updateSettings).toHaveBeenCalledWith({
       onboardingBasicAuthDecision: "skipped",
     });
+  });
+
+  it("does not leave onboarding early when basic auth is saved before the other steps are complete", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "Connection failed",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue({
+      ...baseSettings,
+      onboardingBasicAuthDecision: "skipped",
+    } as any);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should trust."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /basic auth/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Decide whether write actions should be protected."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/skip for now/i));
+    fireEvent.click(screen.getByRole("button", { name: /finish onboarding/i }));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        onboardingBasicAuthDecision: "skipped",
+      });
+    });
+
+    expect(screen.queryByText("ready page")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Decide whether write actions should be protected."),
+    ).toBeInTheDocument();
   });
 
   it("does not auto-advance after saving the LLM step", async () => {
@@ -281,17 +336,19 @@ describe("OnboardingPage", () => {
       message: null,
     });
 
-    vi.mocked(useSettings).mockReturnValue({
-      settings: {
-        ...baseSettings,
-        rxresumeUrl: "",
-      } as any,
+    currentSettings = {
+      ...baseSettings,
+      rxresumeUrl: "",
+    };
+
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
       isLoading: false,
       refreshSettings: vi.fn(),
       error: null,
       showSponsorInfo: true,
       renderMarkdownInJobDescriptions: true,
-    });
+    }));
 
     renderPage();
 
@@ -312,5 +369,46 @@ describe("OnboardingPage", () => {
     );
 
     expect(screen.getByLabelText(/custom url/i)).toBeInTheDocument();
+  });
+
+  it("lets the full basic-auth option card change the selection", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /basic auth/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Decide whether write actions should be protected."),
+      ).toBeInTheDocument();
+    });
+
+    const skipCard = screen
+      .getByText(
+        /finish onboarding now and come back in settings if you decide to lock the app down later/i,
+      )
+      .closest("label");
+
+    if (!skipCard) {
+      throw new Error("Expected the skip card to render as a label");
+    }
+
+    fireEvent.click(skipCard);
+
+    expect(
+      screen.getByRole("button", { name: /finish onboarding/i }),
+    ).toBeEnabled();
   });
 });

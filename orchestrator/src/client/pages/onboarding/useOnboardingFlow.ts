@@ -511,7 +511,6 @@ export function useOnboardingFlow() {
         });
         syncSettingsCache(nextSettings);
         toast.success("Basic auth skipped for now");
-        navigate("/jobs/ready", { replace: true });
         return true;
       } catch (error) {
         toast.error(
@@ -550,7 +549,6 @@ export function useOnboardingFlow() {
       syncSettingsCache(nextSettings);
       setValue("basicAuthPassword", "");
       toast.success("Basic auth enabled");
-      navigate("/jobs/ready", { replace: true });
       return true;
     } catch (error) {
       toast.error(
@@ -562,7 +560,7 @@ export function useOnboardingFlow() {
     } finally {
       setIsSaving(false);
     }
-  }, [basicAuthChoice, getValues, navigate, setValue, syncSettingsCache]);
+  }, [basicAuthChoice, getValues, setValue, syncSettingsCache]);
 
   const handlePrimaryAction = useCallback(async () => {
     if (!currentStep) return;

@@ -14,6 +14,5 @@ export const OnboardingGate: React.FC = () => {
     return null;
   }
 
-  const returnTo = `${location.pathname}${location.search}${location.hash}`;
-  return <Navigate to="/onboarding" replace state={{ returnTo }} />;
+  return <Navigate to="/onboarding" replace />;
 };

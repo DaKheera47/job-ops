@@ -48,8 +48,9 @@ export const BasicAuthStep: React.FC<{
         const checked = basicAuthChoice === option.value;
         const radioId = `basic-auth-${option.value}`;
         return (
-          <div
+          <label
             key={option.value}
+            htmlFor={radioId}
             className={cn(
               "flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-colors",
               checked
@@ -62,15 +63,15 @@ export const BasicAuthStep: React.FC<{
               value={option.value}
               className="mt-1"
             />
-            <label htmlFor={radioId} className="space-y-1">
+            <div className="space-y-1">
               <div className="text-base font-medium text-foreground">
                 {option.title}
               </div>
               <div className="text-sm leading-6 text-muted-foreground">
                 {option.description}
               </div>
-            </label>
-          </div>
+            </div>
+          </label>
         );
       })}
     </RadioGroup>

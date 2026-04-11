@@ -1,7 +1,10 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
-import { normalizeLlmProvider } from "@client/pages/settings/utils";
+import {
+  getLlmProviderConfig,
+  normalizeLlmProvider,
+} from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -25,11 +28,7 @@ export function useOnboardingRequirement() {
   );
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
-  const requiresLlmKey =
-    selectedProvider === "openrouter" ||
-    selectedProvider === "openai" ||
-    selectedProvider === "openai_compatible" ||
-    selectedProvider === "gemini";
+  const requiresLlmKey = getLlmProviderConfig(selectedProvider).requiresApiKey;
 
   const runValidations = useCallback(async () => {
     if (!settings) return;
