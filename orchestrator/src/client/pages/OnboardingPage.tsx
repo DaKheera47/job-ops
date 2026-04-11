@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { PageHeader, PageMain } from "@client/components/layout";
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
@@ -44,6 +45,13 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -125,12 +133,12 @@ function StepStatusBadge({
   return (
     <span
       className={cn(
-        "flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition-colors",
+        "flex h-8 w-8 items-center justify-center rounded-md border text-xs font-medium transition-colors",
         complete
-          ? "border-emerald-500 bg-emerald-500 text-emerald-950"
+          ? "border-emerald-500/60 bg-emerald-500/15 text-emerald-700"
           : active
-            ? "border-slate-900 bg-slate-900 text-stone-50"
-            : "border-stone-300 bg-stone-50 text-stone-500",
+            ? "border-primary bg-primary text-primary-foreground"
+            : "border-border/60 bg-muted/40 text-muted-foreground",
       )}
     >
       {complete ? <Check className="h-4 w-4" /> : index + 1}
@@ -142,7 +150,7 @@ function InlineValidation({ state }: { state: ValidationState }) {
   if (!state.checked || state.valid || !state.message) return null;
 
   return (
-    <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+    <div className="rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
       {state.message}
     </div>
   );
@@ -732,41 +740,43 @@ export const OnboardingPage: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.18),_transparent_34%),linear-gradient(135deg,_#f7f3ea_0%,_#f4efe4_48%,_#f0eadc_100%)] text-slate-900">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[-8rem] top-[-5rem] h-64 w-64 rounded-full bg-amber-300/30 blur-3xl" />
-        <div className="absolute bottom-[-8rem] right-[-6rem] h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
-      </div>
+    <>
+      <PageHeader
+        icon={Sparkles}
+        title="Onboarding"
+        subtitle="Connect your workspace before the pipeline starts running."
+        badge={`${progressValue}% ready`}
+      />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-8 px-4 py-6 sm:px-6 lg:flex-row lg:items-stretch lg:px-10 lg:py-10">
-        <aside className="flex w-full flex-col justify-between rounded-[2rem] border border-stone-200/70 bg-stone-50/85 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur sm:p-8 lg:w-[28rem] lg:p-10">
-          <div className="space-y-8">
-            <div className="space-y-4">
+      <PageMain className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <Card className="border-border/60 bg-card/40 shadow-none">
+            <CardHeader className="space-y-3">
               <Badge
                 variant="outline"
-                className="border-stone-300 bg-stone-100/80 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-stone-600"
+                className="w-fit uppercase tracking-wide"
               >
                 Setup flow
               </Badge>
-              <div className="space-y-3">
-                <h1 className="max-w-md font-serif text-4xl leading-tight tracking-tight text-slate-900 sm:text-5xl">
-                  Let&apos;s make this workspace production-ready.
-                </h1>
-                <p className="max-w-md text-sm leading-6 text-stone-600 sm:text-base">
-                  One step at a time. We&apos;ll lock in your model connection,
-                  resume pipeline, template source, and the optional auth guard
-                  before the rest of Job Ops opens up.
-                </p>
+              <CardTitle>
+                Let&apos;s make this workspace production-ready.
+              </CardTitle>
+              <CardDescription className="leading-6">
+                Existing values from your environment and settings are already
+                prefilled, so this flow only asks for what still needs
+                attention.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Progress</span>
+                  <span>{progressValue}%</span>
+                </div>
+                <Progress value={progressValue} className="h-2" />
               </div>
-            </div>
 
-            <div className="space-y-4 rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-sm">
-              <div className="flex items-center justify-between text-xs uppercase tracking-[0.22em] text-stone-500">
-                <span>Progress</span>
-                <span>{progressValue}%</span>
-              </div>
-              <Progress value={progressValue} className="h-2.5 bg-stone-200" />
-              <div className="space-y-3 pt-2">
+              <div className="space-y-2">
                 {steps.map((step, index) => {
                   const active = step.id === currentStep;
                   return (
@@ -776,10 +786,12 @@ export const OnboardingPage: React.FC = () => {
                       disabled={step.disabled}
                       onClick={() => setCurrentStep(step.id)}
                       className={cn(
-                        "flex w-full items-start gap-4 rounded-2xl px-2 py-2 text-left transition",
+                        "flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors",
                         step.disabled
-                          ? "cursor-not-allowed opacity-45"
-                          : "hover:bg-stone-100/80",
+                          ? "cursor-not-allowed opacity-50"
+                          : active
+                            ? "bg-muted/50"
+                            : "hover:bg-muted/30",
                       )}
                     >
                       <StepStatusBadge
@@ -787,11 +799,9 @@ export const OnboardingPage: React.FC = () => {
                         complete={step.complete}
                         index={index}
                       />
-                      <div className="min-w-0 space-y-1 pt-1">
-                        <div className="text-sm font-semibold text-slate-900">
-                          {step.label}
-                        </div>
-                        <div className="text-sm text-stone-500">
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="text-sm font-medium">{step.label}</div>
+                        <div className="text-xs text-muted-foreground">
                           {step.subtitle}
                         </div>
                       </div>
@@ -799,60 +809,48 @@ export const OnboardingPage: React.FC = () => {
                   );
                 })}
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="mt-8 rounded-[1.5rem] border border-stone-200 bg-stone-100/80 p-4 text-sm leading-6 text-stone-600">
-            <div className="mb-1 font-medium text-slate-900">
-              Need a shortcut?
-            </div>
-            Existing values from your environment and settings are prefilled
-            here, so you only need to change what is actually different.
-          </div>
-        </aside>
+          <Card className="border-border/60 bg-card/40 shadow-none">
+            {settingsLoading || !currentStep ? (
+              <CardContent className="flex min-h-[24rem] items-center justify-center text-sm text-muted-foreground">
+                Loading onboarding...
+              </CardContent>
+            ) : (
+              <form
+                className="flex min-h-[32rem] flex-col"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handlePrimaryAction();
+                }}
+              >
+                <CardHeader className="space-y-4 border-b border-border/60">
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="secondary">{currentCopy.eyebrow}</Badge>
+                    <span>
+                      {steps.filter((step) => step.complete).length} of{" "}
+                      {steps.length} complete
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <CardTitle className="text-2xl leading-tight sm:text-3xl">
+                      {currentCopy.title}
+                    </CardTitle>
+                    <CardDescription className="max-w-2xl leading-6">
+                      {currentCopy.description}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
 
-        <main className="flex min-h-[42rem] flex-1 flex-col justify-between rounded-[2rem] border border-stone-200/70 bg-white/88 p-6 shadow-[0_24px_70px_rgba(15,23,42,0.12)] backdrop-blur sm:p-8 lg:p-10">
-          {settingsLoading || !currentStep ? (
-            <div className="flex min-h-[24rem] flex-1 items-center justify-center text-sm text-stone-500">
-              Loading onboarding...
-            </div>
-          ) : (
-            <form
-              className="flex h-full flex-col"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handlePrimaryAction();
-              }}
-            >
-              <div className="space-y-8">
-                <div className="flex flex-wrap items-center gap-3 text-sm text-stone-500">
-                  <span className="inline-flex items-center gap-2 rounded-full bg-stone-100 px-3 py-1 font-medium text-stone-700">
-                    <Sparkles className="h-4 w-4" />
-                    {currentCopy.eyebrow}
-                  </span>
-                  <span>
-                    {steps.filter((step) => step.complete).length} of{" "}
-                    {steps.length} complete
-                  </span>
-                </div>
-
-                <div className="max-w-3xl space-y-4">
-                  <h2 className="font-serif text-3xl leading-tight tracking-tight text-slate-900 sm:text-[2.75rem]">
-                    {currentCopy.title}
-                  </h2>
-                  <p className="max-w-2xl text-base leading-7 text-stone-600">
-                    {currentCopy.description}
-                  </p>
-                </div>
-
-                <div className="min-h-[25rem] rounded-[1.75rem] border border-stone-200 bg-stone-50/75 p-5 sm:p-6 lg:p-8">
+                <CardContent className="flex flex-1 flex-col gap-6 pt-6">
                   {currentStep === "llm" && (
                     <div className="space-y-6">
                       <div className="grid gap-5 lg:grid-cols-2">
                         <div className="space-y-2">
                           <label
                             htmlFor="llmProvider"
-                            className="text-sm font-medium text-slate-900"
+                            className="text-sm font-medium"
                           >
                             Provider
                           </label>
@@ -867,7 +865,7 @@ export const OnboardingPage: React.FC = () => {
                               >
                                 <SelectTrigger
                                   id="llmProvider"
-                                  className="h-12 rounded-2xl border-stone-300 bg-white text-left"
+                                  className="h-10"
                                 >
                                   <SelectValue placeholder="Select provider" />
                                 </SelectTrigger>
@@ -881,7 +879,7 @@ export const OnboardingPage: React.FC = () => {
                               </Select>
                             )}
                           />
-                          <p className="text-sm leading-6 text-stone-500">
+                          <p className="text-sm text-muted-foreground">
                             {providerConfig.providerHint}
                           </p>
                         </div>
@@ -905,7 +903,7 @@ export const OnboardingPage: React.FC = () => {
                             )}
                           />
                         ) : (
-                          <div className="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-4 py-4 text-sm leading-6 text-stone-500">
+                          <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
                             This provider uses its default endpoint, so there is
                             no base URL to override here.
                           </div>
@@ -937,14 +935,14 @@ export const OnboardingPage: React.FC = () => {
                             )}
                           />
                         ) : (
-                          <div className="rounded-2xl border border-dashed border-stone-300 bg-white/80 px-4 py-4 text-sm leading-6 text-stone-500">
+                          <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
                             No API key is required for this provider. Job Ops
                             will only validate the local endpoint details.
                           </div>
                         )}
 
-                        <div className="rounded-[1.5rem] border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600 shadow-sm">
-                          <div className="mb-2 flex items-center gap-2 font-medium text-slate-900">
+                        <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
+                          <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
                             <KeyRound className="h-4 w-4" />
                             Connection notes
                           </div>
@@ -989,7 +987,7 @@ export const OnboardingPage: React.FC = () => {
 
                   {currentStep === "baseresume" && (
                     <div className="space-y-6">
-                      <div className="max-w-2xl text-sm leading-6 text-stone-600">
+                      <div className="max-w-2xl text-sm leading-6 text-muted-foreground">
                         The template resume is what tailoring starts from every
                         time. Pick the version that already reflects the voice,
                         structure, and sections you want Job Ops to preserve.
@@ -1010,7 +1008,7 @@ export const OnboardingPage: React.FC = () => {
                         )}
                       />
                       {!rxresumeValidation.valid && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
                           Finish the RxResume step first so Job Ops can load the
                           list of available resumes.
                         </div>
@@ -1052,22 +1050,22 @@ export const OnboardingPage: React.FC = () => {
                             <div
                               key={option.value}
                               className={cn(
-                                "flex cursor-pointer items-start gap-4 rounded-[1.5rem] border bg-white p-5 shadow-sm transition",
+                                "flex cursor-pointer items-start gap-4 rounded-lg border p-4 transition-colors",
                                 checked
-                                  ? "border-slate-900 ring-2 ring-slate-900/10"
-                                  : "border-stone-200 hover:border-stone-300",
+                                  ? "border-primary bg-muted/40"
+                                  : "border-border/60 hover:bg-muted/20",
                               )}
                             >
                               <RadioGroupItem
                                 id={radioId}
                                 value={option.value}
-                                className="mt-1 border-stone-400 text-slate-900"
+                                className="mt-1"
                               />
                               <label htmlFor={radioId} className="space-y-1">
-                                <div className="text-base font-semibold text-slate-900">
+                                <div className="text-base font-medium text-foreground">
                                   {option.title}
                                 </div>
-                                <div className="text-sm leading-6 text-stone-500">
+                                <div className="text-sm leading-6 text-muted-foreground">
                                   {option.description}
                                 </div>
                               </label>
@@ -1077,11 +1075,11 @@ export const OnboardingPage: React.FC = () => {
                       </RadioGroup>
 
                       {basicAuthChoice === "enable" && (
-                        <div className="grid gap-5 rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-sm lg:grid-cols-2">
+                        <div className="grid gap-5 rounded-lg border border-border/60 bg-muted/20 p-5 lg:grid-cols-2">
                           <div className="space-y-2">
                             <label
                               htmlFor="basicAuthUser"
-                              className="text-sm font-medium text-slate-900"
+                              className="text-sm font-medium"
                             >
                               Username
                             </label>
@@ -1095,14 +1093,13 @@ export const OnboardingPage: React.FC = () => {
                                 )
                               }
                               placeholder="jobops-admin"
-                              className="h-12 rounded-2xl border-stone-300 bg-stone-50"
                               disabled={isBusy}
                             />
                           </div>
                           <div className="space-y-2">
                             <label
                               htmlFor="basicAuthPassword"
-                              className="text-sm font-medium text-slate-900"
+                              className="text-sm font-medium"
                             >
                               Password
                             </label>
@@ -1117,15 +1114,14 @@ export const OnboardingPage: React.FC = () => {
                                 )
                               }
                               placeholder="Create a strong password"
-                              className="h-12 rounded-2xl border-stone-300 bg-stone-50"
                               disabled={isBusy}
                             />
                           </div>
                         </div>
                       )}
 
-                      <div className="rounded-[1.5rem] border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-600 shadow-sm">
-                        <div className="mb-2 flex items-center gap-2 font-medium text-slate-900">
+                      <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-sm leading-6 text-muted-foreground">
+                        <div className="mb-2 flex items-center gap-2 font-medium text-foreground">
                           <ShieldCheck className="h-4 w-4" />
                           Why this is a decision step
                         </div>
@@ -1137,49 +1133,46 @@ export const OnboardingPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
+                </CardContent>
 
-              <div className="mt-8 flex flex-col gap-3 border-t border-stone-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-11 rounded-full px-5 text-stone-700"
-                  onClick={() => {
-                    if (!canGoBack) return;
-                    setCurrentStep(steps[stepIndex - 1]?.id ?? currentStep);
-                  }}
-                  disabled={!canGoBack || isBusy}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </Button>
-
-                <div className="flex flex-col items-start gap-2 sm:items-end">
-                  <p className="text-sm text-stone-500">
-                    {currentStep === "basicauth"
-                      ? "Finish by enabling basic auth or explicitly skipping it for now."
-                      : "Each step saves immediately so you can keep moving."}
-                  </p>
+                <div className="flex flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <Button
-                    type="submit"
-                    size="lg"
-                    className="h-12 rounded-full px-6"
-                    disabled={
-                      isBusy ||
-                      (currentStep === "baseresume" &&
-                        !rxresumeValidation.valid)
-                    }
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      if (!canGoBack) return;
+                      setCurrentStep(steps[stepIndex - 1]?.id ?? currentStep);
+                    }}
+                    disabled={!canGoBack || isBusy}
                   >
-                    {primaryLabel}
-                    <ArrowRight className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" />
+                    Back
                   </Button>
+
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
+                    <p className="text-sm text-muted-foreground">
+                      {currentStep === "basicauth"
+                        ? "Finish by enabling basic auth or explicitly skipping it for now."
+                        : "Each step saves immediately so you can keep moving."}
+                    </p>
+                    <Button
+                      type="submit"
+                      disabled={
+                        isBusy ||
+                        (currentStep === "baseresume" &&
+                          !rxresumeValidation.valid)
+                      }
+                    >
+                      {primaryLabel}
+                      <ArrowRight className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </form>
-          )}
-        </main>
-      </div>
-    </div>
+              </form>
+            )}
+          </Card>
+        </div>
+      </PageMain>
+    </>
   );
 };
