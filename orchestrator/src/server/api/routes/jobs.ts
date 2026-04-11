@@ -1,3 +1,4 @@
+import { rm } from "node:fs/promises";
 import {
   AppError,
   type AppErrorCode,
@@ -34,6 +35,7 @@ import {
   simulateRescoreJob,
   simulateSummarizeJob,
 } from "@server/services/demo-simulator";
+import { uploadJobPdf } from "@server/services/job-pdf-upload";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -230,6 +232,12 @@ const listJobsQuerySchema = z.object({
 
 const jobsRevisionQuerySchema = z.object({
   status: z.string().optional(),
+});
+
+const uploadJobPdfSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  mediaType: z.string().trim().min(1).max(200).optional(),
+  dataBase64: z.string().trim().min(1),
 });
 
 const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
@@ -1107,6 +1115,111 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       status: err.status,
       code: err.code,
       details: err.details,
+    });
+
+    fail(res, err);
+  }
+});
+
+jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
+  let uploadedPath: string | null = null;
+
+  try {
+    const input = uploadJobPdfSchema.parse(req.body);
+    const currentJob = await jobsRepo.getJobById(req.params.id);
+
+    if (!currentJob) {
+      const err = new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found",
+      });
+      logger.warn("Job PDF upload failed", {
+        route: "POST /api/jobs/:id/pdf",
+        jobId: req.params.id,
+        status: err.status,
+        code: err.code,
+      });
+      fail(res, err);
+      return;
+    }
+
+    const uploaded = await uploadJobPdf({
+      jobId: req.params.id,
+      fileName: input.fileName,
+      mediaType: input.mediaType,
+      dataBase64: input.dataBase64,
+    });
+    uploadedPath = uploaded.outputPath;
+
+    const job = await jobsRepo.updateJob(req.params.id, {
+      pdfPath: uploaded.outputPath,
+    });
+
+    if (!job) {
+      await rm(uploaded.outputPath, { force: true }).catch((cleanupError) => {
+        logger.warn("Failed to clean up uploaded PDF after missing job", {
+          route: "POST /api/jobs/:id/pdf",
+          jobId: req.params.id,
+          cleanupError,
+        });
+      });
+
+      const err = new AppError({
+        status: 404,
+        code: "NOT_FOUND",
+        message: "Job not found",
+      });
+      logger.warn("Job PDF upload failed", {
+        route: "POST /api/jobs/:id/pdf",
+        jobId: req.params.id,
+        status: err.status,
+        code: err.code,
+      });
+      fail(res, err);
+      return;
+    }
+
+    logger.info("Job PDF uploaded", {
+      route: "POST /api/jobs/:id/pdf",
+      jobId: req.params.id,
+      fileName: input.fileName,
+      byteLength: uploaded.byteLength,
+    });
+
+    ok(res, job, 201);
+  } catch (error) {
+    const err =
+      error instanceof z.ZodError
+        ? badRequest(
+            error.issues[0]?.message ?? "Invalid job PDF upload request",
+            error.flatten(),
+          )
+        : error instanceof AppError
+          ? error
+          : new AppError({
+              status: 500,
+              code: "INTERNAL_ERROR",
+              message: error instanceof Error ? error.message : "Unknown error",
+            });
+
+    if (uploadedPath) {
+      await rm(uploadedPath, { force: true }).catch((cleanupError) => {
+        logger.warn("Failed to clean up uploaded PDF after route error", {
+          route: "POST /api/jobs/:id/pdf",
+          jobId: req.params.id,
+          cleanupError,
+        });
+      });
+    }
+
+    logger.error("Job PDF upload failed", {
+      route: "POST /api/jobs/:id/pdf",
+      jobId: req.params.id,
+      status: err.status,
+      code: err.code,
+      details: err.details,
+      uploadedPath,
     });
 
     fail(res, err);

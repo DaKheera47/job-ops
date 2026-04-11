@@ -3,6 +3,10 @@ import { fileToDataUrl } from "@client/components/design-resume/utils";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
+import {
+  hasCompletedBasicAuthOnboarding,
+  isOnboardingComplete,
+} from "@client/lib/onboarding";
 import { queryKeys } from "@client/lib/queryKeys";
 import {
   getRxResumeCredentialDrafts,
@@ -19,7 +23,6 @@ import type { AppSettings, ValidationResult } from "@shared/types.js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
@@ -32,7 +35,6 @@ import type {
 } from "./types";
 
 export function useOnboardingFlow() {
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { storedRxResume, setBaseResumeId, syncBaseResumeId } =
@@ -126,9 +128,7 @@ export function useOnboardingFlow() {
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
   const llmValidated = llmValidation.valid;
-  const basicAuthComplete = Boolean(
-    settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
-  );
+  const basicAuthComplete = hasCompletedBasicAuthOnboarding(settings);
 
   const toValidationState = useCallback(
     (
@@ -320,18 +320,12 @@ export function useOnboardingFlow() {
         )
       : 0;
 
-  const complete =
-    llmValidated && baseResumeValidation.valid && basicAuthComplete;
-
-  useEffect(() => {
-    if (demoMode) {
-      navigate("/jobs/ready", { replace: true });
-      return;
-    }
-    if (!settingsLoading && complete) {
-      navigate("/jobs/ready", { replace: true });
-    }
-  }, [complete, demoMode, navigate, settingsLoading]);
+  const complete = isOnboardingComplete({
+    demoMode,
+    settings,
+    llmValid: llmValidated,
+    baseResumeValid: baseResumeValidation.valid,
+  });
 
   const handleSaveLlm = useCallback(async () => {
     const values = getValues();

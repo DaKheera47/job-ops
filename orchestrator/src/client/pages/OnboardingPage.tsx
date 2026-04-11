@@ -2,6 +2,7 @@ import { PageHeader, PageMain } from "@client/components/layout";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import type React from "react";
 import { Navigate } from "react-router-dom";
+import { useOnboardingRequirement } from "@/client/hooks/useOnboardingRequirement";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,8 +18,13 @@ import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 
 export const OnboardingPage: React.FC = () => {
   const flow = useOnboardingFlow();
+  const onboardingRequirement = useOnboardingRequirement();
 
   if (flow.demoMode) {
+    return <Navigate to="/jobs/ready" replace />;
+  }
+
+  if (!onboardingRequirement.checking && onboardingRequirement.complete) {
     return <Navigate to="/jobs/ready" replace />;
   }
 

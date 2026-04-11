@@ -1,6 +1,7 @@
 import * as api from "@client/api";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useSettings } from "@client/hooks/useSettings";
+import { isOnboardingComplete } from "@client/lib/onboarding";
 import { normalizeLlmProvider } from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -125,14 +126,12 @@ export function useOnboardingRequirement() {
   ]);
 
   const complete = useMemo(() => {
-    if (demoMode) return true;
-    if (!settings) return false;
-
-    const llmComplete = llmValidation.valid;
-    const basicAuthComplete =
-      settings.basicAuthActive || settings.onboardingBasicAuthDecision !== null;
-
-    return llmComplete && baseResumeValidation.valid && basicAuthComplete;
+    return isOnboardingComplete({
+      demoMode,
+      settings,
+      llmValid: llmValidation.valid,
+      baseResumeValid: baseResumeValidation.valid,
+    });
   }, [baseResumeValidation.valid, demoMode, llmValidation.valid, settings]);
 
   const checking =
