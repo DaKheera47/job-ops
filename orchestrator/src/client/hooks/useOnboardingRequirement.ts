@@ -129,10 +129,19 @@ export function useOnboardingRequirement() {
     if (!settings) return false;
 
     const llmComplete = llmValidation.valid;
+    const searchTermsComplete = Boolean(
+      Array.isArray(settings.searchTerms?.override) &&
+        settings.searchTerms.override.length > 0,
+    );
     const basicAuthComplete =
       settings.basicAuthActive || settings.onboardingBasicAuthDecision !== null;
 
-    return llmComplete && baseResumeValidation.valid && basicAuthComplete;
+    return (
+      llmComplete &&
+      baseResumeValidation.valid &&
+      searchTermsComplete &&
+      basicAuthComplete
+    );
   }, [baseResumeValidation.valid, demoMode, llmValidation.valid, settings]);
 
   const checking =

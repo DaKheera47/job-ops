@@ -1,9 +1,10 @@
-import { ok, okWithMeta } from "@infra/http";
+import { asyncRoute, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { LlmService } from "@server/services/llm/service";
+import { suggestOnboardingSearchTerms } from "@server/services/onboarding-search-terms";
 import {
   getResume,
   RxResumeAuthConfigError,
@@ -304,4 +305,29 @@ onboardingRouter.get(
     const result = await validateResumeConfig();
     ok(res, result);
   },
+);
+
+onboardingRouter.post(
+  "/search-terms/suggest",
+  asyncRoute(async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          terms: [
+            "Product Engineer",
+            "Full Stack Engineer",
+            "Frontend Engineer",
+            "Backend Engineer",
+            "Software Engineer",
+          ],
+          source: "fallback",
+        },
+        { simulated: true },
+      );
+    }
+
+    const result = await suggestOnboardingSearchTerms();
+    ok(res, result);
+  }),
 );

@@ -37,7 +37,8 @@ The onboarding wizard helps you validate and save:
 
 1. **LLM Provider**: OpenRouter by default (or OpenAI/Gemini/local URL).
 2. **Import your current resume**: Either upload a PDF/DOCX into JobOps or choose the Reactive Resume option and connect with your v5 API key.
-3. **Basic Auth**: Enable protection for write actions now or explicitly skip it for later.
+3. **Search terms**: JobOps generates a first list of job-title search terms from your selected resume. Edit or regenerate them before saving.
+4. **Basic Auth**: Enable protection for write actions now or explicitly skip it for later.
 
 Settings are saved to the local database.
 

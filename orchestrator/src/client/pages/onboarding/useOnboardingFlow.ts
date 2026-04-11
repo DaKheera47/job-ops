@@ -15,9 +15,14 @@ import {
 } from "@client/pages/settings/utils";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { AppSettings, ValidationResult } from "@shared/types.js";
+import type {
+  AppSettings,
+  SearchTermsSuggestionResponse,
+  ValidationResult,
+} from "@shared/types.js";
+import { normalizeSearchTerms } from "@shared/utils/search-terms";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -45,6 +50,7 @@ export function useOnboardingFlow() {
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
   const [isValidatingBaseResume, setIsValidatingBaseResume] = useState(false);
   const [isImportingResume, setIsImportingResume] = useState(false);
+  const [isGeneratingSearchTerms, setIsGeneratingSearchTerms] = useState(false);
   const [llmValidation, setLlmValidation] = useState<ValidationState>(
     EMPTY_VALIDATION_STATE,
   );
@@ -58,7 +64,16 @@ export function useOnboardingFlow() {
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
   const [resumeSetupMode, setResumeSetupMode] =
     useState<ResumeSetupMode>("upload");
+  const [searchTermsSaved, setSearchTermsSaved] = useState(false);
+  const [hasSavedSearchTermsInSession, setHasSavedSearchTermsInSession] =
+    useState(false);
+  const [searchTermsSource, setSearchTermsSource] = useState<
+    SearchTermsSuggestionResponse["source"] | null
+  >(null);
+  const [searchTermsStale, setSearchTermsStale] = useState(false);
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
+  const searchTermsOverrideKeyRef = useRef<string | null>(null);
+  const autoSuggestionAttemptedRef = useRef(false);
 
   const { control, getValues, reset, setValue, watch } =
     useForm<OnboardingFormData>({
@@ -70,6 +85,8 @@ export function useOnboardingFlow() {
         rxresumeUrl: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: null,
+        searchTerms: [],
+        searchTermDraft: "",
         basicAuthUser: "",
         basicAuthPassword: "",
       },
@@ -86,6 +103,10 @@ export function useOnboardingFlow() {
     if (!settings) return;
 
     const selectedId = syncBaseResumeId();
+    const searchTermsOverride = settings.searchTerms?.override ?? null;
+    const hasExplicitSearchTermsOverride =
+      Array.isArray(searchTermsOverride) && searchTermsOverride.length > 0;
+    const searchTermsOverrideKey = JSON.stringify(searchTermsOverride);
     setLlmValidation(EMPTY_VALIDATION_STATE);
     setRxresumeValidation(EMPTY_VALIDATION_STATE);
     setBaseResumeValidation(EMPTY_VALIDATION_STATE);
@@ -97,6 +118,8 @@ export function useOnboardingFlow() {
       rxresumeUrl: settings.rxresumeUrl ?? "",
       rxresumeApiKey: "",
       rxresumeBaseResumeId: selectedId,
+      searchTerms: settings.searchTerms?.value ?? [],
+      searchTermDraft: "",
       basicAuthUser: settings.basicAuthUser ?? "",
       basicAuthPassword: "",
     });
@@ -109,6 +132,14 @@ export function useOnboardingFlow() {
     );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
     setResumeSetupMode(selectedId ? "rxresume" : "upload");
+    if (searchTermsOverrideKeyRef.current !== searchTermsOverrideKey) {
+      searchTermsOverrideKeyRef.current = searchTermsOverrideKey;
+      setSearchTermsSaved(hasExplicitSearchTermsOverride);
+      setHasSavedSearchTermsInSession(hasExplicitSearchTermsOverride);
+      setSearchTermsSource(null);
+      setSearchTermsStale(false);
+      autoSuggestionAttemptedRef.current = hasExplicitSearchTermsOverride;
+    }
   }, [reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
@@ -126,6 +157,11 @@ export function useOnboardingFlow() {
   const llmKeyHint = settings?.llmApiKeyHint ?? null;
   const hasLlmKey = Boolean(llmKeyHint);
   const llmValidated = llmValidation.valid;
+  const searchTermsOverride = settings?.searchTerms?.override ?? null;
+  const hasExplicitSearchTermsOverride = Boolean(
+    Array.isArray(searchTermsOverride) && searchTermsOverride.length > 0,
+  );
+  const searchTermsComplete = searchTermsSaved && !searchTermsStale;
   const basicAuthComplete = Boolean(
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
@@ -292,6 +328,13 @@ export function useOnboardingFlow() {
         disabled: false,
       },
       {
+        id: "searchterms",
+        label: "Search terms",
+        subtitle: "Titles to search for",
+        complete: searchTermsComplete,
+        disabled: false,
+      },
+      {
         id: "basicauth",
         label: "Basic auth",
         subtitle: "Protect write actions or skip",
@@ -299,7 +342,12 @@ export function useOnboardingFlow() {
         disabled: false,
       },
     ],
-    [basicAuthComplete, baseResumeValidation.valid, llmValidated],
+    [
+      basicAuthComplete,
+      baseResumeValidation.valid,
+      llmValidated,
+      searchTermsComplete,
+    ],
   );
 
   useEffect(() => {
@@ -321,7 +369,10 @@ export function useOnboardingFlow() {
       : 0;
 
   const complete =
-    llmValidated && baseResumeValidation.valid && basicAuthComplete;
+    llmValidated &&
+    baseResumeValidation.valid &&
+    searchTermsComplete &&
+    basicAuthComplete;
 
   useEffect(() => {
     if (demoMode) {
@@ -495,6 +546,64 @@ export function useOnboardingFlow() {
     [setValue],
   );
 
+  const markSearchTermsStale = useCallback(() => {
+    const currentTerms = getValues().searchTerms;
+    if (currentTerms.length === 0 && !hasSavedSearchTermsInSession) return;
+    setSearchTermsSaved(false);
+    setSearchTermsStale(true);
+    setSearchTermsSource(null);
+  }, [getValues, hasSavedSearchTermsInSession]);
+
+  const handleGenerateSearchTerms = useCallback(
+    async (options?: { showToast?: boolean }) => {
+      try {
+        setIsGeneratingSearchTerms(true);
+        const result = await api.suggestOnboardingSearchTerms();
+        setValue("searchTerms", result.terms, { shouldDirty: true });
+        setValue("searchTermDraft", "");
+        setSearchTermsSaved(false);
+        setSearchTermsSource(result.source);
+        setSearchTermsStale(false);
+
+        if (options?.showToast) {
+          toast.success("Search terms refreshed", {
+            description:
+              result.source === "ai"
+                ? "Job titles were generated from your current resume."
+                : "Job titles were refreshed from a simpler resume-based fallback.",
+          });
+        }
+
+        return result;
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to suggest search terms",
+        );
+        return null;
+      } finally {
+        setIsGeneratingSearchTerms(false);
+      }
+    },
+    [setValue],
+  );
+
+  useEffect(() => {
+    if (currentStep !== "searchterms") return;
+    if (hasExplicitSearchTermsOverride) return;
+    if (!baseResumeValidation.valid) return;
+    if (autoSuggestionAttemptedRef.current) return;
+
+    autoSuggestionAttemptedRef.current = true;
+    void handleGenerateSearchTerms();
+  }, [
+    baseResumeValidation.valid,
+    currentStep,
+    handleGenerateSearchTerms,
+    hasExplicitSearchTermsOverride,
+  ]);
+
   const handleSaveBaseResume = useCallback(async () => {
     try {
       const validation = await validateBaseResume();
@@ -556,6 +665,7 @@ export function useOnboardingFlow() {
               ? "Your local Design Resume is ready."
               : "Your local Design Resume is ready and PDF rendering was switched to LaTeX.",
         });
+        markSearchTermsStale();
       } catch (error) {
         toast.error(
           error instanceof Error
@@ -568,12 +678,44 @@ export function useOnboardingFlow() {
     },
     [
       queryClient,
+      markSearchTermsStale,
       settings?.pdfRenderer?.value,
       setValue,
       syncSettingsCache,
       validateBaseResume,
     ],
   );
+
+  const handleSaveSearchTerms = useCallback(async () => {
+    const nextTerms = normalizeSearchTerms(getValues().searchTerms);
+
+    if (nextTerms.length === 0) {
+      toast.info("Add at least one job title to continue");
+      return false;
+    }
+
+    try {
+      setIsSaving(true);
+      const nextSettings = await api.updateSettings({
+        searchTerms: nextTerms,
+      });
+      syncSettingsCache(nextSettings);
+      setValue("searchTerms", nextTerms);
+      setValue("searchTermDraft", "");
+      setSearchTermsSaved(true);
+      setHasSavedSearchTermsInSession(true);
+      setSearchTermsStale(false);
+      toast.success("Search terms saved");
+      return true;
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save search terms",
+      );
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [getValues, setValue, syncSettingsCache]);
 
   const handleCompleteBasicAuth = useCallback(async () => {
     if (basicAuthChoice === "skip") {
@@ -649,12 +791,17 @@ export function useOnboardingFlow() {
       await handleSaveBaseResume();
       return;
     }
+    if (currentStep === "searchterms") {
+      await handleSaveSearchTerms();
+      return;
+    }
     await handleCompleteBasicAuth();
   }, [
     currentStep,
     handleCompleteBasicAuth,
     handleSaveBaseResume,
     handleSaveLlm,
+    handleSaveSearchTerms,
     handleSaveRxresume,
     resumeSetupMode,
   ]);
@@ -667,6 +814,7 @@ export function useOnboardingFlow() {
     isSaving ||
     settingsLoading ||
     isImportingResume ||
+    isGeneratingSearchTerms ||
     isValidatingLlm ||
     isValidatingRxresume ||
     isValidatingBaseResume;
@@ -686,11 +834,15 @@ export function useOnboardingFlow() {
           : baseResumeValidation.valid
             ? "Recheck resume"
             : "Check resume"
-        : basicAuthChoice === "enable"
-          ? "Enable basic auth"
-          : basicAuthChoice === "skip"
-            ? "Finish onboarding"
-            : "Choose an option";
+        : currentStep === "searchterms"
+          ? hasSavedSearchTermsInSession
+            ? "Update search terms"
+            : "Save search terms"
+          : basicAuthChoice === "enable"
+            ? "Enable basic auth"
+            : basicAuthChoice === "skip"
+              ? "Finish onboarding"
+              : "Choose an option";
 
   return {
     baseResumeValidation,
@@ -705,14 +857,18 @@ export function useOnboardingFlow() {
     handleRxresumeSelfHostedChange,
     handleImportResumeFile,
     isBusy,
+    isGeneratingSearchTerms,
     isImportingResume,
     isRxResumeSelfHosted,
+    hasSavedSearchTermsInSession,
     llmKeyHint,
     llmValidation,
     primaryLabel,
     progressValue,
     resumeSetupMode,
     rxresumeValidation,
+    searchTermsSource,
+    searchTermsStale,
     selectedProvider,
     settings,
     settingsLoading,
@@ -723,10 +879,21 @@ export function useOnboardingFlow() {
     setResumeSetupMode,
     setValue,
     setBaseResumeId,
+    handleRegenerateSearchTerms: async () => {
+      await handleGenerateSearchTerms({ showToast: true });
+    },
     handleBack: () => {
       if (!canGoBack) return;
       setCurrentStep(steps[stepIndex - 1]?.id ?? currentStep);
     },
     handlePrimaryAction,
+    handleTemplateResumeChange: (value: string | null) => {
+      const currentValue = getValues().rxresumeBaseResumeId;
+      if (currentValue !== value) {
+        markSearchTermsStale();
+      }
+      setBaseResumeId(value);
+      setValue("rxresumeBaseResumeId", value);
+    },
   };
 }

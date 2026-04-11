@@ -11,6 +11,7 @@ import type {
 import { BaseResumeStep } from "./BaseResumeStep";
 import { BasicAuthStep } from "./BasicAuthStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
+import { SearchTermsStep } from "./SearchTermsStep";
 
 export const OnboardingStepContent: React.FC<{
   baseResumeValidation: ValidationState;
@@ -22,8 +23,10 @@ export const OnboardingStepContent: React.FC<{
   currentStep: StepId;
   isBusy: boolean;
   isImportingResume: boolean;
+  isGeneratingSearchTerms: boolean;
   isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
+  hasSavedSearchTermsInSession: boolean;
   llmKeyHint: string | null;
   llmValidation: ValidationState;
   resumeSetupMode: ResumeSetupMode;
@@ -31,15 +34,22 @@ export const OnboardingStepContent: React.FC<{
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
+  searchTermDraft: string;
+  searchTerms: string[];
+  searchTermsSource: "ai" | "fallback" | null;
+  searchTermsStale: boolean;
   selectedProvider: LlmProviderId;
   onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
   onBasicAuthPasswordChange: (value: string) => void;
   onBasicAuthUserChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
+  onRegenerateSearchTerms: () => Promise<void>;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
   onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
+  onSearchTermDraftChange: (value: string) => void;
+  onSearchTermsChange: (values: string[]) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = (props) => {
   if (props.currentStep === "llm") {
@@ -75,6 +85,23 @@ export const OnboardingStepContent: React.FC<{
         onRxresumeSelfHostedChange={props.onRxresumeSelfHostedChange}
         onRxresumeUrlChange={props.onRxresumeUrlChange}
         onTemplateResumeChange={props.onTemplateResumeChange}
+      />
+    );
+  }
+
+  if (props.currentStep === "searchterms") {
+    return (
+      <SearchTermsStep
+        hasSavedSearchTermsInSession={props.hasSavedSearchTermsInSession}
+        isBusy={props.isBusy}
+        isGeneratingSearchTerms={props.isGeneratingSearchTerms}
+        searchTermDraft={props.searchTermDraft}
+        searchTerms={props.searchTerms}
+        searchTermsSource={props.searchTermsSource}
+        searchTermsStale={props.searchTermsStale}
+        onRegenerate={props.onRegenerateSearchTerms}
+        onSearchTermDraftChange={props.onSearchTermDraftChange}
+        onSearchTermsChange={props.onSearchTermsChange}
       />
     );
   }

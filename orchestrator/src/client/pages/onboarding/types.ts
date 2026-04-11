@@ -13,11 +13,13 @@ export type OnboardingFormData = {
   rxresumeUrl: string;
   rxresumeApiKey: string;
   rxresumeBaseResumeId: string | null;
+  searchTerms: string[];
+  searchTermDraft: string;
   basicAuthUser: string;
   basicAuthPassword: string;
 };
 
-export type StepId = "llm" | "baseresume" | "basicauth";
+export type StepId = "llm" | "baseresume" | "searchterms" | "basicauth";
 export type BasicAuthChoice = "enable" | "skip" | null;
 export type ResumeSetupMode = "upload" | "rxresume";
 

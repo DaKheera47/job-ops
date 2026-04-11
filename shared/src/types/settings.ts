@@ -135,6 +135,11 @@ export interface ValidationResult {
   status?: number | null;
 }
 
+export interface SearchTermsSuggestionResponse {
+  terms: string[];
+  source: "ai" | "fallback";
+}
+
 export interface DemoInfoResponse {
   demoMode: boolean;
   resetCadenceHours: number;

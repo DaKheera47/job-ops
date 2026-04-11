@@ -11,6 +11,7 @@ import { OnboardingPage } from "./OnboardingPage";
 
 vi.mock("@client/api", () => ({
   importDesignResumeFromFile: vi.fn(),
+  suggestOnboardingSearchTerms: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -63,6 +64,11 @@ const baseSettings = {
   rxresumeUrl: "https://resume.example.com",
   rxresumeApiKeyHint: "rx-k",
   rxresumeBaseResumeId: "resume-1",
+  searchTerms: {
+    value: ["Platform Engineer"],
+    default: ["web developer"],
+    override: ["Platform Engineer"],
+  },
   basicAuthUser: null,
   basicAuthPassword: null,
   basicAuthPasswordHint: null,
@@ -131,6 +137,10 @@ describe("OnboardingPage", () => {
         message: null,
       },
     } as any);
+    vi.mocked(api.suggestOnboardingSearchTerms).mockResolvedValue({
+      terms: ["Platform Engineer", "Backend Engineer"],
+      source: "ai",
+    });
   });
 
   it("keeps the LLM step visible even when a key hint already exists", async () => {
@@ -259,6 +269,170 @@ describe("OnboardingPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the new search terms step in the onboarding rail", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /search terms/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("does not auto-generate search terms when explicit saved terms already exist", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /search terms/i }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the job titles to search for."),
+      ).toBeInTheDocument();
+    });
+
+    expect(api.suggestOnboardingSearchTerms).not.toHaveBeenCalled();
+    expect(screen.getByText(/saved search terms/i)).toBeInTheDocument();
+  });
+
+  it("auto-populates search terms from the resume when no explicit override exists", async () => {
+    currentSettings = {
+      ...baseSettings,
+      searchTerms: {
+        value: ["web developer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.suggestOnboardingSearchTerms).mockResolvedValue({
+      terms: ["Platform Engineer", "Backend Engineer"],
+      source: "ai",
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /search terms/i }));
+
+    await waitFor(() => {
+      expect(api.suggestOnboardingSearchTerms).toHaveBeenCalledTimes(1);
+    });
+
+    expect(
+      screen.getByText(/^generated from your resume$/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /currently selected: platform engineer, backend engineer/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("saves edited search terms through settings updates", async () => {
+    currentSettings = {
+      ...baseSettings,
+      searchTerms: {
+        value: ["web developer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.suggestOnboardingSearchTerms).mockResolvedValue({
+      terms: ["Platform Engineer", "Backend Engineer"],
+      source: "ai",
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("searchTerms" in update
+          ? {
+              searchTerms: {
+                value: update.searchTerms,
+                default: ["web developer"],
+                override: update.searchTerms,
+              },
+            }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: /search terms/i }));
+
+    await waitFor(() => {
+      expect(api.suggestOnboardingSearchTerms).toHaveBeenCalledTimes(1);
+    });
+
+    const input = screen.getByPlaceholderText("Type a role and press Enter");
+    fireEvent.change(input, {
+      target: { value: "Staff Software Engineer" },
+    });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: /save search terms/i }));
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith({
+        searchTerms: [
+          "Platform Engineer",
+          "Backend Engineer",
+          "Staff Software Engineer",
+        ],
+      });
+    });
+  });
+
   it("lets the user skip basic auth and finish onboarding", async () => {
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
@@ -348,6 +522,44 @@ describe("OnboardingPage", () => {
 
     expect(screen.queryByText("ready page")).not.toBeInTheDocument();
     expect(screen.getByText("Secure your workspace")).toBeInTheDocument();
+  });
+
+  it("does not finish onboarding when only default search terms exist", async () => {
+    currentSettings = {
+      ...baseSettings,
+      onboardingBasicAuthDecision: "skipped",
+      searchTerms: {
+        value: ["web developer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should use."),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText("ready page")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Choose the LLM connection Job Ops should use."),
+    ).toBeInTheDocument();
   });
 
   it("does not auto-advance after saving the LLM step", async () => {
@@ -626,6 +838,84 @@ describe("OnboardingPage", () => {
       expect(api.updateSettings).toHaveBeenCalledWith({
         pdfRenderer: "latex",
       });
+    });
+  });
+
+  it("marks the search terms step stale after the resume changes", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig)
+      .mockResolvedValueOnce({
+        valid: true,
+        message: null,
+      })
+      .mockResolvedValueOnce({
+        valid: true,
+        message: null,
+      });
+    vi.mocked(api.importDesignResumeFromFile).mockResolvedValue({
+      id: "primary",
+      title: "Taylor Resume",
+      resumeJson: {} as any,
+      revision: 1,
+      sourceResumeId: null,
+      sourceMode: null,
+      importedAt: "2026-04-11T00:00:00.000Z",
+      createdAt: "2026-04-11T00:00:00.000Z",
+      updatedAt: "2026-04-11T00:00:00.000Z",
+      assets: [],
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("pdfRenderer" in update
+          ? {
+              pdfRenderer: {
+                value: update.pdfRenderer,
+                default: "rxresume",
+                override: null,
+              },
+            }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    const { container } = renderPage();
+
+    fireEvent.click(getStepButton(/^Resume$/i));
+
+    const input = container.querySelector(
+      'input[type="file"][accept*=".pdf"]',
+    ) as HTMLInputElement | null;
+    if (!input) {
+      throw new Error("Expected resume upload input");
+    }
+
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["resume"], "resume.pdf", {
+            type: "application/pdf",
+          }),
+        ],
+      },
+    });
+
+    await waitFor(() => {
+      expect(api.importDesignResumeFromFile).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search terms/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/resume changed/i)).toBeInTheDocument();
     });
   });
 

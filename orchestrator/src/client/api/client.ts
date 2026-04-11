@@ -44,6 +44,7 @@ import type {
   ProfileStatusResponse,
   ResumeProfile,
   ResumeProjectCatalogItem,
+  SearchTermsSuggestionResponse,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -1448,6 +1449,15 @@ export async function validateRxresume(input?: {
 
 export async function validateResumeConfig(): Promise<ValidationResult> {
   return fetchApi<ValidationResult>("/onboarding/validate/resume");
+}
+
+export async function suggestOnboardingSearchTerms(): Promise<SearchTermsSuggestionResponse> {
+  return fetchApi<SearchTermsSuggestionResponse>(
+    "/onboarding/search-terms/suggest",
+    {
+      method: "POST",
+    },
+  );
 }
 
 export async function updateSettings(
