@@ -76,7 +76,6 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-
 function defaultSectionBase(title: string) {
   return { title, columns: 1, hidden: false };
 }
