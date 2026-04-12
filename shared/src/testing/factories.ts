@@ -155,6 +155,7 @@ export const createAppSettings = (
     override: null,
   },
   rxresumeBaseResumeId: null,
+  onboardingBasicAuthDecision: null,
   ukvisajobsMaxJobs: { value: 50, default: 50, override: null },
   adzunaMaxJobsPerTerm: { value: 50, default: 50, override: null },
   gradcrackerMaxJobsPerTerm: { value: 50, default: 50, override: null },

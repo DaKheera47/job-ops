@@ -1,9 +1,10 @@
-import { ok, okWithMeta } from "@infra/http";
+import { asyncRoute, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { LlmService } from "@server/services/llm/service";
+import { suggestOnboardingSearchTerms } from "@server/services/onboarding-search-terms";
 import {
   getResume,
   RxResumeAuthConfigError,
@@ -98,7 +99,7 @@ async function validateResumeConfig(): Promise<ValidationResponse> {
       return {
         valid: false,
         message:
-          "No base resume selected. Please select a resume from your RxResume account in Settings.",
+          "No local resume is ready yet. Upload a PDF or DOCX resume, or connect Reactive Resume and select a template resume.",
       };
     }
 
@@ -143,11 +144,6 @@ async function validateRxresume(options?: {
   apiKey?: string | null;
   baseUrl?: string | null;
 }): Promise<ValidationResponse> {
-  const localStatus = await getDesignResumeStatus();
-  if (localStatus.exists) {
-    return { valid: true, message: null, status: null };
-  }
-
   const requestApiKey = options?.apiKey?.trim() ?? "";
   const hasExplicitV5Input = options?.apiKey !== undefined;
 
@@ -309,4 +305,29 @@ onboardingRouter.get(
     const result = await validateResumeConfig();
     ok(res, result);
   },
+);
+
+onboardingRouter.post(
+  "/search-terms/suggest",
+  asyncRoute(async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return okWithMeta(
+        res,
+        {
+          terms: [
+            "Product Engineer",
+            "Full Stack Engineer",
+            "Frontend Engineer",
+            "Backend Engineer",
+            "Software Engineer",
+          ],
+          source: "fallback",
+        },
+        { simulated: true },
+      );
+    }
+
+    const result = await suggestOnboardingSearchTerms();
+    ok(res, result);
+  }),
 );

@@ -641,19 +641,19 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("enables save button when basic auth toggle is changed", async () => {
+  it("enables save button when the authentication toggle is changed", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
     const saveButton = getSaveButton();
 
     await openEnvironmentSection();
-    const authCheckbox = screen.getByLabelText(/enable basic authentication/i);
+    const authCheckbox = screen.getByLabelText(/enable authentication/i);
     fireEvent.click(authCheckbox);
     expect(saveButton).toBeEnabled();
   });
 
-  it("wipes basic auth credentials when toggle is disabled and saved", async () => {
-    // Initial state: Basic Auth is active
+  it("wipes auth credentials when the toggle is disabled and saved", async () => {
+    // Initial state: authentication is active
     const activeSettings = {
       ...baseSettings,
       basicAuthActive: true,
@@ -667,7 +667,7 @@ describe("SettingsPage", () => {
 
     await openEnvironmentSection();
 
-    const authCheckbox = screen.getByLabelText(/enable basic authentication/i);
+    const authCheckbox = screen.getByLabelText(/enable authentication/i);
     expect(authCheckbox).toBeChecked();
 
     // Disable it

@@ -19,24 +19,14 @@ You still apply to every job yourself. JobOps just finds jobs, makes sure you're
 
 Self-hosted. Docker-based.
 
-## 40s Demo: Crawl -> Score -> PDF -> Track
-
-<details>
-<summary>
-Pipeline Demo
-</summary>
-  
-  https://github.com/user-attachments/assets/5b9157a9-13b0-4ec6-9bd2-a39dbc2b11c5
-</details>
+## A demo's worth a thousand words
 
 
-<details>
-<summary>
-Apply & Track
-</summary>
-  
-  https://github.com/user-attachments/assets/06e5e782-47f5-42d0-8b28-b89102d7ea1b
-</details>
+
+https://github.com/user-attachments/assets/ec5bc249-aad5-41f2-b1ff-f7b3b6e6f7b8
+
+
+
 
 ## Documentation (Start Here)
 

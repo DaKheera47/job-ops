@@ -7,6 +7,23 @@ import { useOrchestratorData } from "./useOrchestratorData";
 const renderHook = (callback: () => ReturnType<typeof useOrchestratorData>) =>
   renderHookWithQueryClient(callback);
 
+type SseHandlers = {
+  onOpen?: () => void;
+  onMessage: (payload: unknown) => void;
+  onError?: () => void;
+};
+
+type MockSseInstance = {
+  url: string;
+  handlers: SseHandlers;
+  unsubscribe: ReturnType<typeof vi.fn>;
+};
+
+const sseMock = vi.hoisted(() => ({
+  instances: [] as MockSseInstance[],
+  subscribeToEventSource: vi.fn(),
+}));
+
 vi.mock("@client/api", () => ({
   getJobs: vi.fn(),
   getJobsRevision: vi.fn(),
@@ -14,38 +31,15 @@ vi.mock("@client/api", () => ({
   getPipelineStatus: vi.fn(),
 }));
 
+vi.mock("@client/lib/sse", () => ({
+  subscribeToEventSource: sseMock.subscribeToEventSource,
+}));
+
 vi.mock("sonner", () => ({
   toast: {
     error: vi.fn(),
   },
 }));
-
-class MockEventSource {
-  static instances: MockEventSource[] = [];
-  onopen: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-
-  constructor(public url: string) {
-    MockEventSource.instances.push(this);
-  }
-
-  close = vi.fn();
-
-  emitOpen() {
-    this.onopen?.(new Event("open"));
-  }
-
-  emitMessage(payload: unknown) {
-    this.onmessage?.({
-      data: JSON.stringify(payload),
-    } as MessageEvent);
-  }
-
-  emitError() {
-    this.onerror?.(new Event("error"));
-  }
-}
 
 const makeResponse = (jobId: string, revision = `rev-${jobId}`) => ({
   jobs: [{ id: jobId }],
@@ -78,8 +72,20 @@ describe("useOrchestratorData", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useRealTimers();
-    MockEventSource.instances = [];
-    (globalThis as any).EventSource = MockEventSource;
+    sseMock.instances.length = 0;
+    sseMock.subscribeToEventSource.mockReset();
+    sseMock.subscribeToEventSource.mockImplementation(
+      (url: string, handlers: SseHandlers) => {
+        const instance: MockSseInstance = {
+          url,
+          handlers,
+          unsubscribe: vi.fn(),
+        };
+        sseMock.instances.push(instance);
+        return instance.unsubscribe;
+      },
+    );
+    (globalThis as any).EventSource = class EventSource {};
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
       value: "visible",
@@ -101,6 +107,19 @@ describe("useOrchestratorData", () => {
       isRunning: false,
     } as any);
   });
+
+  const getSse = () => {
+    const instance = sseMock.instances[0];
+    if (!instance) {
+      throw new Error("Expected subscribeToEventSource to be called");
+    }
+    return {
+      emitOpen: () => instance.handlers.onOpen?.(),
+      emitMessage: (payload: unknown) => instance.handlers.onMessage(payload),
+      emitError: () => instance.handlers.onError?.(),
+      close: instance.unsubscribe,
+    };
+  };
 
   it("applies newest loadJobs response when requests resolve out of order", async () => {
     const { result } = renderHook(() => useOrchestratorData(null));
@@ -297,8 +316,7 @@ describe("useOrchestratorData", () => {
     });
     vi.mocked(api.getJobsRevision).mockClear();
 
-    const sse = MockEventSource.instances[0];
-    expect(sse).toBeTruthy();
+    const sse = getSse();
 
     act(() => {
       sse.emitOpen();
@@ -350,7 +368,7 @@ describe("useOrchestratorData", () => {
     });
     expect(result.current.pipelineTerminalEvent).toBeNull();
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitMessage({
@@ -374,7 +392,7 @@ describe("useOrchestratorData", () => {
     });
     expect(result.current.pipelineTerminalEvent).toBeNull();
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitMessage({ step: "crawling" });
@@ -437,7 +455,7 @@ describe("useOrchestratorData", () => {
     });
     expect(result.current.pipelineTerminalEvent).toBeNull();
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitError();
@@ -479,7 +497,7 @@ describe("useOrchestratorData", () => {
       await Promise.resolve();
     });
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitError();
@@ -528,7 +546,7 @@ describe("useOrchestratorData", () => {
     });
     expect(api.getJobs).toHaveBeenCalledTimes(1);
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitMessage({
@@ -553,7 +571,7 @@ describe("useOrchestratorData", () => {
     });
     vi.mocked(api.getPipelineStatus).mockClear();
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     act(() => {
       sse.emitOpen();
       sse.emitError();
@@ -610,7 +628,7 @@ describe("useOrchestratorData", () => {
       await Promise.resolve();
     });
 
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
     expect(sse.close).not.toHaveBeenCalled();
 
     unmount();

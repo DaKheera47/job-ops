@@ -68,13 +68,27 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   gemini: "Gemini uses the native AI Studio API and requires a key.",
 };
 
-const PROVIDER_KEY_HELPERS: Record<LlmProviderId, string> = {
-  openrouter: "Create a key at openrouter.ai",
-  lmstudio: "No API key required for LM Studio",
-  ollama: "No API key required for Ollama",
-  openai: "Create a key at platform.openai.com",
-  openai_compatible: "Use the bearer token issued by your compatible provider",
-  gemini: "Create a key at aistudio.google.com/api-keys",
+const PROVIDER_KEY_HELPERS: Record<
+  LlmProviderId,
+  { text: string; href?: string }
+> = {
+  openrouter: {
+    text: "Create a key at openrouter.ai",
+    href: "https://openrouter.ai/keys",
+  },
+  lmstudio: { text: "No API key required for LM Studio" },
+  ollama: { text: "No API key required for Ollama" },
+  openai: {
+    text: "Create a key at platform.openai.com",
+    href: "https://platform.openai.com/api-keys",
+  },
+  openai_compatible: {
+    text: "Use the bearer token issued by your compatible provider",
+  },
+  gemini: {
+    text: "Create a key at aistudio.google.com/api-keys",
+    href: "https://aistudio.google.com/app/apikey",
+  },
 };
 
 const BASE_URL_PROVIDERS = ["lmstudio", "ollama", "openai_compatible"] as const;
@@ -130,6 +144,7 @@ export function getLlmProviderConfig(provider: string | null | undefined) {
     baseUrlPlaceholder,
     baseUrlHelper,
     providerHint,
-    keyHelper,
+    keyHelperText: keyHelper.text,
+    keyHelperHref: keyHelper.href ?? null,
   };
 }

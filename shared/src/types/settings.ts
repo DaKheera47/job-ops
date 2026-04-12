@@ -135,6 +135,11 @@ export interface ValidationResult {
   status?: number | null;
 }
 
+export interface SearchTermsSuggestionResponse {
+  terms: string[];
+  source: "ai" | "fallback";
+}
+
 export interface DemoInfoResponse {
   demoMode: boolean;
   resetCadenceHours: number;
@@ -194,6 +199,7 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
+  onboardingBasicAuthDecision: "enabled" | "skipped" | null;
   rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;

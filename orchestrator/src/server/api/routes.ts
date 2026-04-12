@@ -3,6 +3,7 @@
  */
 
 import { Router } from "express";
+import { authRouter } from "./routes/auth";
 import { backupRouter } from "./routes/backup";
 import { databaseRouter } from "./routes/database";
 import { demoRouter } from "./routes/demo";
@@ -39,4 +40,5 @@ apiRouter.use("/visa-sponsors", visaSponsorsRouter);
 apiRouter.use("/onboarding", onboardingRouter);
 apiRouter.use("/backups", backupRouter);
 apiRouter.use("/tracer-links", tracerLinksRouter);
+apiRouter.use("/auth", authRouter);
 apiRouter.use("/", extractorHealthRouter);

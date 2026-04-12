@@ -61,10 +61,12 @@ export const DesignResumePage: React.FC = () => {
   } | null>(null);
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [pictureUploading, setPictureUploading] = useState(false);
+  const [resumeImporting, setResumeImporting] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [rendererUpdating, setRendererUpdating] = useState(false);
   const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const editVersionRef = useRef(0);
   const draftRef = useRef<DesignResumeDocument | null>(null);
   draftRef.current = draft;
@@ -236,6 +238,39 @@ export const DesignResumePage: React.FC = () => {
           ? importError.message
           : "Failed to import your resume.",
       );
+    }
+  };
+
+  const handleImportFile = async (file: File) => {
+    try {
+      setResumeImporting(true);
+      const dataUrl = await fileToDataUrl(file);
+      const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl.trim());
+
+      if (!match) {
+        throw new Error("Resume file could not be encoded for upload.");
+      }
+
+      const imported = await api.importDesignResumeFromFile({
+        fileName: file.name,
+        mediaType: file.type || match[1],
+        dataBase64: match[2],
+      });
+      setDesignResume(imported);
+      setSaveState("saved");
+      toast.success("Imported your resume file.");
+    } catch (importError) {
+      setSaveState("error");
+      toast.error(
+        importError instanceof Error
+          ? importError.message
+          : "Failed to import your resume file.",
+      );
+    } finally {
+      setResumeImporting(false);
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = "";
+      }
     }
   };
 
@@ -426,6 +461,18 @@ export const DesignResumePage: React.FC = () => {
           }
         }}
       />
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            void handleImportFile(file);
+          }
+        }}
+      />
 
       <PageHeader
         icon={PenSquare}
@@ -452,9 +499,19 @@ export const DesignResumePage: React.FC = () => {
             </Sheet>
 
             <div className="hidden items-center gap-2 sm:flex">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => importFileInputRef.current?.click()}
+                disabled={resumeImporting}
+              >
+                <Import className="mr-2 h-4 w-4" />
+                {resumeImporting ? "Importing File" : "Import File"}
+              </Button>
+
               <Button type="button" variant="outline" onClick={handleImport}>
                 <Import className="mr-2 h-4 w-4" />
-                {status?.exists ? "Re-import" : "Import"}
+                {status?.exists ? "Re-import RxResume" : "Import RxResume"}
               </Button>
 
               <Button
@@ -491,9 +548,16 @@ export const DesignResumePage: React.FC = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onSelect={() => importFileInputRef.current?.click()}
+                  disabled={resumeImporting}
+                >
+                  <Import className="mr-2 h-4 w-4" />
+                  {resumeImporting ? "Importing File" : "Import File"}
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => handleImport()}>
                   <Import className="mr-2 h-4 w-4" />
-                  {status?.exists ? "Re-import" : "Import"}
+                  {status?.exists ? "Re-import RxResume" : "Import RxResume"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => handleDownloadPdf()}

@@ -97,6 +97,21 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS auth_sessions (
+    id TEXT PRIMARY KEY,
+    subject TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    revoked_at INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at
+    ON auth_sessions(expires_at)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_auth_sessions_revoked_at
+    ON auth_sessions(revoked_at)`,
+
   `CREATE TABLE IF NOT EXISTS design_resume_documents (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,

@@ -109,10 +109,11 @@ export const EnvironmentSettingsSection: React.FC<
                 htmlFor="enableBasicAuth"
                 className="cursor-pointer text-sm font-medium leading-none"
               >
-                Enable basic authentication
+                Enable authentication
               </label>
               <p className="text-xs text-muted-foreground">
-                Require a username and password for write operations.
+                Require a username and password to sign in and access protected
+                routes.
               </p>
             </div>
           </div>

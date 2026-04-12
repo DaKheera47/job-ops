@@ -23,6 +23,7 @@ Depending on Reactive Resume for every profile lookup, project read, and PDF flo
 
 Design Resume reduces that dependency by letting you:
 
+- upload a PDF or DOCX resume directly into JobOps
 - import from Reactive Resume once
 - keep editing locally inside JobOps
 - preserve the original Reactive Resume v5 structure
@@ -31,10 +32,21 @@ Design Resume reduces that dependency by letting you:
 ## How to use it
 
 1. Open **Design Resume** from the main navigation.
-2. If this is your first time, click **Import from Reactive Resume**.
-3. Edit the left-panel fields directly.
-4. Watch for the local save indicator in the header.
-5. Use **Export** when you want the current Reactive Resume v5 JSON.
+2. If this is your first time, choose one of these import paths:
+   - Click **Import File** to upload a `pdf` or `docx` resume.
+   - Click **Import RxResume** if you already connected Reactive Resume and selected a base resume.
+3. Wait for JobOps to create or replace the local Design Resume.
+4. Edit the left-panel fields directly.
+5. Watch for the local save indicator in the header.
+6. Use **Export** when you want the current Reactive Resume v5 JSON.
+
+Import defaults and constraints:
+
+- File import supports `pdf` and `docx` only.
+- File import sends the uploaded file directly to your configured AI provider as an attached file.
+- There is no OCR or local text-extraction fallback. If the configured model cannot accept attached files, JobOps returns an error instead.
+- Uploaded or re-imported resumes replace the current local Design Resume and clear old Design Resume assets.
+- Onboarding treats Reactive Resume as optional. You can upload a resume to begin, then connect Reactive Resume later if you want upstream PDF export.
 
 Current v1 scope:
 
@@ -46,7 +58,9 @@ Current v1 scope:
 ## Common problems
 
 - Import button fails:
-  Verify your Reactive Resume mode, URL, credentials, and selected base resume in **Settings**.
+  Verify your AI provider supports attached file inputs for `pdf` or `docx`, or confirm your Reactive Resume mode, URL, credentials, and selected base resume in **Settings**.
+- File import says the model cannot handle the file directly:
+  Switch to a model with native document upload support, then try the import again. JobOps does not fall back to OCR or local text extraction.
 - You already had a local Design Resume from an older JobOps build:
   Re-import from a Reactive Resume v5 base resume. Older local documents are no longer auto-converted.
 - Changes do not appear in a generated PDF:

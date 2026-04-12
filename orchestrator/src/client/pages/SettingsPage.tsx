@@ -229,7 +229,7 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
       {
         id: "environment",
         label: "Accounts & Access",
-        description: "Service credentials and basic auth protection.",
+        description: "Service credentials and authentication protection.",
         searchTerms: ["security", "auth", "adzuna", "ukvisajobs"],
       },
     ],
@@ -957,7 +957,7 @@ export const SettingsPage: React.FC = () => {
       if (!password) {
         setError("basicAuthPassword", {
           type: "manual",
-          message: "Password is required when basic auth is enabled",
+          message: "Password is required when authentication is enabled",
         });
         return;
       }
@@ -996,7 +996,7 @@ export const SettingsPage: React.FC = () => {
         dirtyFields.basicAuthUser ||
         dirtyFields.basicAuthPassword
       ) {
-        // If enabling basic auth or changing either field, ensure we send at least the username
+        // If enabling authentication or changing either field, ensure we send at least the username
         // to keep the pair consistent in the backend.
         envPayload.basicAuthUser = normalizeString(data.basicAuthUser);
 

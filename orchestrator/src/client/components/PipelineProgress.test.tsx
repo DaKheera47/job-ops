@@ -1,29 +1,28 @@
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+type SseHandlers = {
+  onOpen?: () => void;
+  onMessage: (payload: unknown) => void;
+  onError?: () => void;
+};
+
+type MockSseInstance = {
+  url: string;
+  handlers: SseHandlers;
+  unsubscribe: ReturnType<typeof vi.fn>;
+};
+
+const sseMock = vi.hoisted(() => ({
+  instances: [] as MockSseInstance[],
+  subscribeToEventSource: vi.fn(),
+}));
+
+vi.mock("@/client/lib/sse", () => ({
+  subscribeToEventSource: sseMock.subscribeToEventSource,
+}));
+
 import { PipelineProgress } from "./PipelineProgress";
-
-class MockEventSource {
-  static instances: MockEventSource[] = [];
-  onopen: ((event: Event) => void) | null = null;
-  onmessage: ((event: MessageEvent) => void) | null = null;
-  onerror: ((event: Event) => void) | null = null;
-
-  constructor(public url: string) {
-    MockEventSource.instances.push(this);
-  }
-
-  close = vi.fn();
-
-  emitOpen() {
-    this.onopen?.(new Event("open"));
-  }
-
-  emitMessage(payload: unknown) {
-    this.onmessage?.({
-      data: JSON.stringify(payload),
-    } as MessageEvent);
-  }
-}
 
 const baseProgress = {
   step: "crawling" as const,
@@ -50,17 +49,41 @@ const baseProgress = {
 
 describe("PipelineProgress", () => {
   beforeEach(() => {
-    MockEventSource.instances = [];
-    (globalThis as any).EventSource = MockEventSource;
+    sseMock.instances.length = 0;
+    sseMock.subscribeToEventSource.mockReset();
+    sseMock.subscribeToEventSource.mockImplementation(
+      (url: string, handlers: SseHandlers) => {
+        const instance: MockSseInstance = {
+          url,
+          handlers,
+          unsubscribe: vi.fn(),
+        };
+        sseMock.instances.push(instance);
+        return instance.unsubscribe;
+      },
+    );
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
+  const getSse = () => {
+    const instance = sseMock.instances[0];
+    if (!instance) {
+      throw new Error("Expected subscribeToEventSource to be called");
+    }
+    return {
+      emitOpen: () => instance.handlers.onOpen?.(),
+      emitMessage: (payload: unknown) => instance.handlers.onMessage(payload),
+      emitError: () => instance.handlers.onError?.(),
+      close: instance.unsubscribe,
+    };
+  };
+
   it("renders renamed crawling labels and source/terms context", () => {
     render(<PipelineProgress isRunning />);
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
 
     act(() => {
       sse.emitOpen();
@@ -87,7 +110,7 @@ describe("PipelineProgress", () => {
 
   it("uses fallback dashes for unknown page denominators", () => {
     render(<PipelineProgress isRunning />);
-    const sse = MockEventSource.instances[0];
+    const sse = getSse();
 
     act(() => {
       sse.emitOpen();

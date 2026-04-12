@@ -20,11 +20,13 @@ import {
   Loader2,
   RefreshCcw,
   Undo2,
+  Upload,
   XCircle,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -74,6 +76,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
@@ -84,6 +87,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     timeoutId: ReturnType<typeof setTimeout>;
   } | null>(null);
   const previousJobIdRef = useRef<string | null>(null);
+  const uploadPdfInputRef = useRef<HTMLInputElement | null>(null);
   const markAsAppliedMutation = useMarkAsAppliedMutation();
   const skipJobMutation = useSkipJobMutation();
 
@@ -288,6 +292,29 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
       toast.error("Could not copy job info");
     }
   }, [job]);
+
+  const handleUploadPdf = useCallback(
+    async (file: File) => {
+      if (!job) return;
+
+      try {
+        setIsUploadingPdf(true);
+        await uploadJobPdfFromFile(job.id, file);
+        toast.success(job.pdfPath ? "PDF replaced" : "PDF attached");
+        await onJobUpdated();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to upload PDF";
+        toast.error(message);
+      } finally {
+        setIsUploadingPdf(false);
+        if (uploadPdfInputRef.current) {
+          uploadPdfInputRef.current.value = "";
+        }
+      }
+    },
+    [job, onJobUpdated],
+  );
 
   // Handler for regenerating PDF after tailoring edits
   const handleTailorFinalize = useCallback(async () => {
@@ -514,6 +541,17 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               <Edit2 className="mr-2 h-4 w-4" />
               Edit details
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => uploadPdfInputRef.current?.click()}
+              disabled={isUploadingPdf}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {isUploadingPdf
+                ? "Uploading PDF..."
+                : job.pdfPath
+                  ? "Replace PDF"
+                  : "Upload PDF"}
+            </DropdownMenuItem>
 
             <DropdownMenuItem
               onSelect={handleRegenerate}
@@ -568,6 +606,19 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         onOpenChange={setIsEditDetailsOpen}
         job={job}
         onJobUpdated={onJobUpdated}
+      />
+
+      <input
+        ref={uploadPdfInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.currentTarget.files?.[0];
+          if (file) {
+            void handleUploadPdf(file);
+          }
+        }}
       />
 
       {/* ─────────────────────────────────────────────────────────────────────
