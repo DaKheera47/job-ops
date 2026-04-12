@@ -4,7 +4,7 @@ import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
 import { validateAndMaybePersistRxResumeMode } from "@client/lib/rxresume-config";
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithQueryClient } from "../test/renderWithQueryClient";
@@ -372,10 +372,15 @@ describe("OnboardingPage", () => {
     expect(
       screen.getByText(/^generated from your resume$/i),
     ).toBeInTheDocument();
+
+    const collapsedTokens = screen.getByTestId(
+      "onboarding-search-terms-collapsed-tokens",
+    );
     expect(
-      screen.getByText(
-        /currently selected: platform engineer, backend engineer/i,
-      ),
+      within(collapsedTokens).getByText("Platform Engineer"),
+    ).toBeInTheDocument();
+    expect(
+      within(collapsedTokens).getByText("Backend Engineer"),
     ).toBeInTheDocument();
   });
 
