@@ -8,9 +8,10 @@ vi.mock("@/components/ui/alert-dialog", () => ({
   AlertDialog: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
-  AlertDialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  AlertDialogContent: ({
+    children,
+    ...props
+  }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   AlertDialogDescription: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
@@ -109,5 +110,14 @@ describe("LogEventModal", () => {
 
     expect(await screen.findByText("Title is required")).toBeInTheDocument();
     expect(onLog).not.toHaveBeenCalled();
+  });
+
+  it("keeps the modal scrollable on small screens", () => {
+    render(<LogEventModal isOpen onClose={vi.fn()} onLog={vi.fn()} />);
+
+    expect(screen.getByTestId("log-event-modal")).toHaveClass(
+      "max-h-[calc(100vh-2rem)]",
+      "overflow-y-auto",
+    );
   });
 });

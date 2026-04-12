@@ -137,7 +137,10 @@ export const LogEventModal: React.FC<LogEventModalProps> = ({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent
+        data-testid="log-event-modal"
+        className="max-h-[calc(100vh-2rem)] max-w-md overflow-y-auto"
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>
             {editingEvent ? "Edit Event" : "Log Event"}
