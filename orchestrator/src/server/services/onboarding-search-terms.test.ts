@@ -113,6 +113,72 @@ describe("suggestOnboardingSearchTerms", () => {
     });
   });
 
+  it("falls back to project and skill context when no headline or visible positions exist", async () => {
+    vi.mocked(getProfile).mockResolvedValue({
+      basics: {
+        summary: "Backend platform engineer focused on distributed systems.",
+      },
+      sections: {
+        experience: {
+          items: [
+            {
+              id: "exp-1",
+              company: "Hidden",
+              position: "Principal Engineer",
+              location: "Remote",
+              date: "2023",
+              summary: "Hidden role",
+              visible: false,
+            },
+          ],
+        },
+        projects: {
+          items: [
+            {
+              id: "proj-1",
+              name: "Developer Platform",
+              description: "Internal platform tooling",
+              date: "2024",
+              summary: "Platform project",
+              keywords: ["Platform Engineer", "Internal tooling"],
+              visible: true,
+            },
+          ],
+        },
+        skills: {
+          items: [
+            {
+              id: "skill-1",
+              name: "Site Reliability Engineering",
+              description: "Reliability and production operations",
+              level: 5,
+              keywords: ["Distributed Systems"],
+              visible: true,
+            },
+          ],
+        },
+      },
+    } satisfies ResumeProfile);
+    callJsonMock.mockResolvedValue({
+      success: false,
+      error: "LLM provider unavailable",
+    });
+
+    const result = await suggestOnboardingSearchTerms();
+
+    expect(result).toEqual({
+      terms: [
+        "Developer Platform",
+        "Site Reliability Engineering",
+        "Platform Engineer",
+        "Internal tooling",
+        "Distributed Systems",
+        "Backend platform engineer focused on distributed systems.",
+      ],
+      source: "fallback",
+    });
+  });
+
   it("throws a conflict when no usable resume profile exists", async () => {
     vi.mocked(getProfile).mockResolvedValue({
       basics: {},

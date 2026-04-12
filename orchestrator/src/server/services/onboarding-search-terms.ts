@@ -115,14 +115,20 @@ function hasUsableContext(context: SearchTermContext): boolean {
 export function buildFallbackSearchTerms(
   profile: ResumeProfile,
 ): SearchTermsSuggestionResponse {
-  const headline = toTrimmed(profile.basics?.headline || profile.basics?.label);
-  const positions =
-    profile.sections?.experience?.items
-      ?.filter((item) => isVisible(item))
-      .map((item) => toTrimmed(item.position)) ?? [];
+  const context = collectContext(profile);
 
   return {
-    terms: dedupe([headline, ...positions]),
+    terms: dedupe([
+      context.headline,
+      ...context.experiencePositions,
+      ...context.projectNames,
+      ...context.skillNames,
+      ...context.projectKeywords,
+      ...context.skillKeywords,
+      // Summary is a last resort so AI failures still return something
+      // deterministic for resumes that lack explicit title-like fields.
+      context.summary,
+    ]),
     source: "fallback",
   };
 }
