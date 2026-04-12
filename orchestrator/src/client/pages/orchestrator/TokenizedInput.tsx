@@ -19,6 +19,9 @@ interface TokenizedInputProps {
   disabled?: boolean;
 }
 
+const TOKEN_PILL_CLASS_NAME =
+  "inline-flex items-center rounded-full border px-2 py-1 text-xs text-muted-foreground";
+
 function mergeUnique(values: string[], nextValues: string[]): string[] {
   const seen = new Set(values.map((value) => value.toLowerCase()));
   const out = [...values];
@@ -41,32 +44,30 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   placeholder,
   helperText,
   removeLabelPrefix,
-  collapsedTextLimit = 3,
+  collapsedTextLimit = 5,
   disabled = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const tokensRef = useRef<HTMLDivElement | null>(null);
-  const summaryRef = useRef<HTMLParagraphElement | null>(null);
+  const collapsedTokensRef = useRef<HTMLDivElement | null>(null);
   const [tokensHeight, setTokensHeight] = useState(20);
-  const [summaryHeight, setSummaryHeight] = useState(20);
+  const [collapsedTokensHeight, setCollapsedTokensHeight] = useState(20);
   const updateHeights = useCallback(() => {
     if (tokensRef.current) {
       setTokensHeight(Math.max(20, tokensRef.current.scrollHeight));
     }
-    if (summaryRef.current) {
-      setSummaryHeight(Math.max(20, summaryRef.current.scrollHeight));
+    if (collapsedTokensRef.current) {
+      setCollapsedTokensHeight(
+        Math.max(20, collapsedTokensRef.current.scrollHeight),
+      );
     }
   }, []);
 
-  const collapsedSummary = useMemo(() => {
-    if (values.length === 0) return "";
+  const collapsedPreview = useMemo(() => {
     const visibleCount = Math.max(0, Math.floor(collapsedTextLimit));
-    if (visibleCount === 0) return `and ${values.length} more`;
-
     const visibleValues = values.slice(0, visibleCount);
-    const hiddenCount = values.length - visibleValues.length;
-    if (hiddenCount <= 0) return visibleValues.join(", ");
-    return `${visibleValues.join(", ")} and ${hiddenCount} more`;
+    const hiddenCount = Math.max(0, values.length - visibleValues.length);
+    return { visibleValues, hiddenCount };
   }, [collapsedTextLimit, values]);
 
   const addValues = (input: string) => {
@@ -81,7 +82,9 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
 
     const observer = new ResizeObserver(updateHeights);
     if (tokensRef.current) observer.observe(tokensRef.current);
-    if (summaryRef.current) observer.observe(summaryRef.current);
+    if (collapsedTokensRef.current) {
+      observer.observe(collapsedTokensRef.current);
+    }
 
     return () => observer.disconnect();
   }, [updateHeights]);
@@ -126,12 +129,15 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
       {values.length > 0 ? (
         <motion.div
           className="relative overflow-hidden"
-          animate={{ height: isFocused ? tokensHeight : summaryHeight }}
+          animate={{
+            height: isFocused ? tokensHeight : collapsedTokensHeight,
+          }}
           transition={{ duration: 0.16, ease: "easeOut" }}
         >
           <motion.div
             aria-hidden={!isFocused}
             ref={tokensRef}
+            data-testid={`${id}-expanded-tokens`}
             className="absolute inset-x-0 top-0 flex flex-wrap gap-2"
             animate={{
               opacity: isFocused ? 1 : 0,
@@ -153,7 +159,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-auto rounded-full px-2 py-1 text-xs text-muted-foreground"
+                    className={`h-auto ${TOKEN_PILL_CLASS_NAME}`}
                     aria-label={`${removeLabelPrefix} ${value}`}
                     disabled={disabled}
                     onPointerDown={(event) => event.preventDefault()}
@@ -164,25 +170,35 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
                     }
                   >
                     {value}
-                    <X className="h-3 w-3" />
+                    <X className="ml-1 h-3 w-3" />
                   </Button>
                 </motion.div>
               ))}
             </AnimatePresence>
           </motion.div>
-          <motion.p
+          <motion.div
             aria-hidden={isFocused}
-            ref={summaryRef}
-            className="absolute inset-x-0 top-0 text-xs text-muted-foreground"
+            ref={collapsedTokensRef}
+            data-testid={`${id}-collapsed-tokens`}
+            className="absolute inset-x-0 top-0 flex flex-wrap gap-2"
             animate={{
               opacity: isFocused ? 0 : 1,
               y: isFocused ? 4 : 0,
             }}
             transition={{ duration: 0.16, ease: "easeOut" }}
-            style={{ pointerEvents: isFocused ? "none" : "auto" }}
+            style={{ pointerEvents: "none" }}
           >
-            Currently selected: {collapsedSummary}
-          </motion.p>
+            {collapsedPreview.visibleValues.map((value) => (
+              <span key={value} className={TOKEN_PILL_CLASS_NAME}>
+                {value}
+              </span>
+            ))}
+            {collapsedPreview.hiddenCount > 0 ? (
+              <span className={TOKEN_PILL_CLASS_NAME}>
+                +{collapsedPreview.hiddenCount} more
+              </span>
+            ) : null}
+          </motion.div>
         </motion.div>
       ) : null}
     </div>

@@ -1,5 +1,11 @@
 import { createAppSettings } from "@shared/testing/factories.js";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
@@ -367,6 +373,16 @@ describe("AutomaticRunTab", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
+
+    const collapsedTokens = screen.getByTestId(
+      "city-locations-input-collapsed-tokens",
+    );
+    expect(within(collapsedTokens).getByText("London")).toBeInTheDocument();
+    expect(within(collapsedTokens).getByText("Manchester")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove city London" }),
+    ).not.toBeInTheDocument();
+
     fireEvent.focus(screen.getByLabelText("Cities"));
 
     expect(

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { parseCityLocationsInput } from "./automatic-run";
 import { TokenizedInput } from "./TokenizedInput";
@@ -9,8 +9,8 @@ function buildClipboardData(text: string): DataTransfer {
   } as DataTransfer;
 }
 
-function renderCityInput() {
-  let values: string[] = [];
+function renderCityInput(initialValues: string[] = []) {
+  let values: string[] = [...initialValues];
   let draft = "";
 
   const setValues = (next: string[]) => {
@@ -49,7 +49,7 @@ function renderCityInput() {
 }
 
 describe("TokenizedInput", () => {
-  it("tokenizes single-value paste and clears draft", () => {
+  it("shows collapsed pills without remove buttons after tokenizing a single value", () => {
     const { getInput } = renderCityInput();
     const input = getInput();
 
@@ -59,7 +59,11 @@ describe("TokenizedInput", () => {
     });
 
     expect(input.value).toBe("");
-    expect(screen.getByText("Currently selected: Leeds")).toBeInTheDocument();
+    const collapsedTokens = screen.getByTestId("cities-collapsed-tokens");
+    expect(within(collapsedTokens).getByText("Leeds")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove city Leeds" }),
+    ).not.toBeInTheDocument();
   });
 
   it("tokenizes multi-value paste and removes duplicates", () => {
@@ -81,5 +85,42 @@ describe("TokenizedInput", () => {
     expect(
       screen.queryByRole("button", { name: "Remove city leeds" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows a collapsed overflow pill when more than five values are selected", () => {
+    renderCityInput([
+      "Leeds",
+      "London",
+      "Manchester",
+      "Bristol",
+      "Liverpool",
+      "York",
+    ]);
+
+    const collapsedTokens = screen.getByTestId("cities-collapsed-tokens");
+    expect(within(collapsedTokens).getByText("Leeds")).toBeInTheDocument();
+    expect(within(collapsedTokens).getByText("Liverpool")).toBeInTheDocument();
+    expect(within(collapsedTokens).getByText("+1 more")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove city York" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows removable pills only when the input is focused", () => {
+    const { getInput } = renderCityInput(["Leeds", "London"]);
+    const input = getInput();
+
+    expect(
+      screen.queryByRole("button", { name: "Remove city Leeds" }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.focus(input);
+
+    expect(
+      screen.getByRole("button", { name: "Remove city Leeds" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove city London" }),
+    ).toBeInTheDocument();
   });
 });

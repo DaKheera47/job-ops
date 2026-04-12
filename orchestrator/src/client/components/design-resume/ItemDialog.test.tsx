@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ItemDialog, type ItemFieldConfig } from "./ItemDialog";
 
@@ -26,7 +26,10 @@ describe("ItemDialog", () => {
       />,
     );
 
-    expect(screen.getByText("Currently selected: React")).toBeInTheDocument();
+    const collapsedTokens = screen.getByTestId(
+      "design-resume-item-keywords-collapsed-tokens",
+    );
+    expect(within(collapsedTokens).getByText("React")).toBeInTheDocument();
 
     const input = screen.getByLabelText("Keywords");
     fireEvent.change(input, { target: { value: "TypeScript, Next.js" } });
