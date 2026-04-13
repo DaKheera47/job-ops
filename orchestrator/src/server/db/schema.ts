@@ -141,6 +141,26 @@ export const tasks = sqliteTable("tasks", {
   notes: text("notes"),
 });
 
+export const jobNotes = sqliteTable(
+  "job_notes",
+  {
+    id: text("id").primaryKey(),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    jobUpdatedIndex: index("idx_job_notes_job_updated").on(
+      table.jobId,
+      table.updatedAt,
+    ),
+  }),
+);
+
 export const interviews = sqliteTable("interviews", {
   id: text("id").primaryKey(),
   applicationId: text("application_id")
@@ -497,6 +517,8 @@ export type StageEventRow = typeof stageEvents.$inferSelect;
 export type NewStageEventRow = typeof stageEvents.$inferInsert;
 export type TaskRow = typeof tasks.$inferSelect;
 export type NewTaskRow = typeof tasks.$inferInsert;
+export type JobNoteRow = typeof jobNotes.$inferSelect;
+export type NewJobNoteRow = typeof jobNotes.$inferInsert;
 export type InterviewRow = typeof interviews.$inferSelect;
 export type NewInterviewRow = typeof interviews.$inferInsert;
 export type PipelineRunRow = typeof pipelineRuns.$inferSelect;

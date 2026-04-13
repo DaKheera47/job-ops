@@ -212,6 +212,19 @@ const migrations = [
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
+  `CREATE TABLE IF NOT EXISTS job_notes (
+    id TEXT PRIMARY KEY,
+    job_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_job_notes_job_updated
+    ON job_notes(job_id, updated_at)`,
+
   `CREATE TABLE IF NOT EXISTS interviews (
     id TEXT PRIMARY KEY,
     application_id TEXT NOT NULL,

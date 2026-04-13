@@ -5,16 +5,19 @@
 import { randomUUID } from "node:crypto";
 import type {
   CreateJobInput,
+  CreateJobNoteInput,
   Job,
   JobListItem,
+  JobNote,
   JobStatus,
   JobsRevisionResponse,
   UpdateJobInput,
+  UpdateJobNoteInput,
 } from "@shared/types";
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
-const { jobs } = schema;
+const { jobNotes, jobs } = schema;
 
 type AppliedDuplicateMatchCandidate = {
   id: string;
@@ -169,6 +172,86 @@ export async function getJobsRevision(
 export async function getJobById(id: string): Promise<Job | null> {
   const [row] = await db.select().from(jobs).where(eq(jobs.id, id));
   return row ? mapRowToJob(row) : null;
+}
+
+export async function listJobNotes(jobId: string): Promise<JobNote[]> {
+  const rows = await db
+    .select()
+    .from(jobNotes)
+    .where(eq(jobNotes.jobId, jobId))
+    .orderBy(
+      desc(jobNotes.updatedAt),
+      desc(jobNotes.createdAt),
+      desc(jobNotes.id),
+    );
+
+  return rows.map(mapRowToJobNote);
+}
+
+export async function getJobNoteById(noteId: string): Promise<JobNote | null> {
+  const [row] = await db.select().from(jobNotes).where(eq(jobNotes.id, noteId));
+  return row ? mapRowToJobNote(row) : null;
+}
+
+export async function getJobNoteForJob(
+  jobId: string,
+  noteId: string,
+): Promise<JobNote | null> {
+  const [row] = await db
+    .select()
+    .from(jobNotes)
+    .where(and(eq(jobNotes.id, noteId), eq(jobNotes.jobId, jobId)));
+  return row ? mapRowToJobNote(row) : null;
+}
+
+export async function createJobNote(
+  input: CreateJobNoteInput & { jobId: string },
+): Promise<JobNote> {
+  const id = randomUUID();
+  const now = new Date().toISOString();
+
+  await db.insert(jobNotes).values({
+    id,
+    jobId: input.jobId,
+    title: input.title,
+    content: input.content,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const note = await getJobNoteById(id);
+  if (!note) {
+    throw new Error(`Failed to retrieve newly created job note with ID ${id}`);
+  }
+  return note;
+}
+
+export async function updateJobNote(
+  input: { jobId: string; noteId: string } & UpdateJobNoteInput,
+): Promise<JobNote | null> {
+  const now = new Date().toISOString();
+
+  await db
+    .update(jobNotes)
+    .set({
+      title: input.title,
+      content: input.content,
+      updatedAt: now,
+    })
+    .where(and(eq(jobNotes.id, input.noteId), eq(jobNotes.jobId, input.jobId)));
+
+  return getJobNoteForJob(input.jobId, input.noteId);
+}
+
+export async function deleteJobNote(input: {
+  jobId: string;
+  noteId: string;
+}): Promise<number> {
+  const result = await db
+    .delete(jobNotes)
+    .where(and(eq(jobNotes.id, input.noteId), eq(jobNotes.jobId, input.jobId)));
+
+  return result.changes;
 }
 
 export async function listJobSummariesByIds(jobIds: string[]): Promise<
@@ -541,6 +624,17 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     processedAt: row.processedAt,
     readyAt: row.readyAt,
     appliedAt: row.appliedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function mapRowToJobNote(row: typeof jobNotes.$inferSelect): JobNote {
+  return {
+    id: row.id,
+    jobId: row.jobId,
+    title: row.title,
+    content: row.content,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
