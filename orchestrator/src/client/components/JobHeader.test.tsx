@@ -123,6 +123,28 @@ describe("JobHeader", () => {
     expect(screen.getByText("Sponsor Not Found")).toBeInTheDocument();
   });
 
+  it("shows a previously applied status indicator with match details", () => {
+    const jobWithAppliedDuplicate = {
+      ...mockJob,
+      appliedDuplicateMatch: {
+        jobId: "job-2",
+        title: "Software Engineer",
+        employer: "Tech Corp",
+        appliedAt: "2026-04-01T10:00:00.000Z",
+        score: 97,
+        titleScore: 98,
+        employerScore: 96,
+      },
+    };
+
+    renderWithRouter(<JobHeader job={jobWithAppliedDuplicate} />);
+
+    expect(screen.getByText("Previously Applied")).toBeInTheDocument();
+    expect(
+      screen.getByText("Applied 1 Apr 2026 · 97% match"),
+    ).toBeInTheDocument();
+  });
+
   it("hides sponsor info when showSponsorInfo is false", () => {
     (useSettings as any).mockReturnValue({
       showSponsorInfo: false,

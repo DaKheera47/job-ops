@@ -288,11 +288,16 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
 }));
 
 vi.mock("./orchestrator/JobDetailPanel", () => ({
-  JobDetailPanel: () => <div data-testid="detail-panel" />,
+  JobDetailPanel: ({ selectedJob }: { selectedJob: Job | null }) => (
+    <div data-testid="detail-panel">
+      {selectedJob?.appliedDuplicateMatch ? "Previously Applied" : "No match"}
+    </div>
+  ),
 }));
 
 vi.mock("./orchestrator/JobListPanel", () => ({
   JobListPanel: ({
+    activeJobs,
     onSelectJob,
     onToggleSelectJob,
     onToggleSelectAll,
@@ -302,12 +307,16 @@ vi.mock("./orchestrator/JobListPanel", () => ({
     onToggleSelectJob: (id: string) => void;
     onToggleSelectAll: (checked: boolean) => void;
     selectedJobId: string | null;
+    activeJobs: Job[];
   }) => (
     <div>
       <div data-job-id="job-1" />
       <div data-job-id="job-2" />
       <div data-job-id="job-3" />
       <div data-testid="selected-job">{selectedJobId ?? "none"}</div>
+      <div data-testid="duplicate-count">
+        {activeJobs.filter((job) => job.appliedDuplicateMatch).length}
+      </div>
       <button
         data-testid="toggle-select-all-on"
         type="button"
@@ -504,6 +513,46 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(locationText()).toContain("/all/job-2");
     });
+  });
+
+  it("surfaces applied duplicate warnings for reposted jobs in the orchestrator flow", () => {
+    const appliedJob = createJob({
+      id: "job-applied",
+      status: "applied",
+      appliedAt: "2026-04-01T10:00:00.000Z",
+    });
+    const repostedJob = createJob({
+      id: "job-1",
+      status: "ready",
+      appliedDuplicateMatch: {
+        jobId: "job-applied",
+        title: appliedJob.title,
+        employer: appliedJob.employer,
+        appliedAt: "2026-04-01T10:00:00.000Z",
+        score: 96,
+        titleScore: 97,
+        employerScore: 95,
+      },
+    });
+    mockJobs = [repostedJob, appliedJob, processingJob];
+    mockSelectedJob = repostedJob;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/ready/job-1"]}>
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("duplicate-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("detail-panel")).toHaveTextContent(
+      "Previously Applied",
+    );
   });
 
   it("preserves the selected job id when a refresh temporarily excludes it", async () => {

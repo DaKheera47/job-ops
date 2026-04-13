@@ -36,6 +36,7 @@ It exists to ensure:
 - a consistent path from discovery to tailored output
 - clear status transitions across manual and automated workflows
 - predictable regeneration behavior when job data changes
+- visibility when a reposted role looks like a job you already applied to, even if the URL changed
 - faster external research from the Ready tab with prebuilt search links for LinkedIn, GitHub, and broader web results
 - one place to filter and sort jobs across every orchestrator tab
 
@@ -66,6 +67,8 @@ What the panel includes:
 - salary filters
 - date filters
 - sorting controls
+
+Job rows and the detail header can also show a `Previously Applied` warning when JobOps finds a high-confidence fuzzy match against one of your past applied or in-progress jobs using title and company, not just URL dedupe. To avoid flagging genuinely new openings, JobOps only shows this warning when the matched historical application falls within 30 days of the current job's discovery date.
 
 Date filters work on every jobs tab:
 

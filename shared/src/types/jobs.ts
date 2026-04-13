@@ -119,6 +119,16 @@ export interface Interview {
 
 export type JobSource = ExtractorSourceId;
 
+export interface AppliedDuplicateMatch {
+  jobId: string;
+  title: string;
+  employer: string;
+  appliedAt: string;
+  score: number;
+  titleScore: number;
+  employerScore: number;
+}
+
 export interface Job {
   id: string;
 
@@ -156,6 +166,7 @@ export interface Job {
   tracerLinksEnabled: boolean; // Rewrite outbound resume links to tracer links on next PDF generation
   sponsorMatchScore: number | null; // 0-100 fuzzy match score with visa sponsors
   sponsorMatchNames: string | null; // JSON array of matched sponsor names (when 100% matches or top match)
+  appliedDuplicateMatch: AppliedDuplicateMatch | null; // Prior applied/in-progress job with highly similar title + employer
 
   // JobSpy fields (nullable for non-JobSpy sources)
   jobType: string | null;
@@ -209,6 +220,7 @@ export type JobListItem = Pick<
   | "closedAt"
   | "suitabilityScore"
   | "sponsorMatchScore"
+  | "appliedDuplicateMatch"
   | "jobType"
   | "jobFunction"
   | "salaryMinAmount"

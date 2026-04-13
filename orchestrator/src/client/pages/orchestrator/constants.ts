@@ -73,6 +73,11 @@ export const defaultStatusToken = {
   dot: "bg-muted-foreground",
 };
 
+export const appliedDuplicateIndicator = {
+  label: "Previously Applied",
+  dot: "bg-yellow-400",
+};
+
 export type FilterTab = "ready" | "discovered" | "applied" | "all";
 export type DateFilterPreset = "7" | "14" | "30" | "90" | "custom";
 export type DateFilterDimension = "ready" | "applied" | "closed" | "discovered";

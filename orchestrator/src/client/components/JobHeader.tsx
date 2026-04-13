@@ -1,4 +1,4 @@
-import type { Job } from "@shared/types.js";
+import type { AppliedDuplicateMatch, Job } from "@shared/types.js";
 import {
   ArrowUpRight,
   Calendar,
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
+import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
 import {
   getJobStatusIndicator,
   getTracerStatusIndicator,
@@ -157,6 +158,35 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
   );
 };
 
+const AppliedDuplicatePill: React.FC<{
+  match: AppliedDuplicateMatch | null;
+}> = ({ match }) => {
+  if (!match) {
+    return null;
+  }
+
+  const appliedDate = formatDate(match.appliedAt) ?? "Unknown date";
+  const tooltip = (
+    <div className="space-y-1">
+      <p className="text-xs font-medium">{match.title}</p>
+      <p className="text-xs opacity-80">{match.employer}</p>
+      <p className="text-[10px] opacity-80">
+        Applied {appliedDate} · {match.score}% match
+      </p>
+    </div>
+  );
+
+  return (
+    <StatusIndicator
+      dotColor={appliedDuplicateIndicator.dot}
+      label={appliedDuplicateIndicator.label}
+      className="cursor-help"
+      tooltip={tooltip}
+      tooltipClassName="max-w-xs"
+    />
+  );
+};
+
 export const JobHeader: React.FC<JobHeaderProps> = ({
   job,
   className,
@@ -248,6 +278,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             dotColor={tracerStatus.dotColor}
             label={tracerStatus.label}
           />
+          <AppliedDuplicatePill match={job.appliedDuplicateMatch} />
           {showSponsorInfo && (
             <SponsorPill
               score={job.sponsorMatchScore}
