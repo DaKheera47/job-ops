@@ -76,7 +76,9 @@ describe.sequential("Jobs API routes", () => {
     expect(defaultRes.status).toBe(200);
     expect(defaultBody.ok).toBe(true);
     expect(defaultBody.data.jobs[0]).not.toHaveProperty("jobDescription");
-    expect(defaultBody.data.jobs[0]).not.toHaveProperty("appliedDuplicateMatch");
+    expect(defaultBody.data.jobs[0]).not.toHaveProperty(
+      "appliedDuplicateMatch",
+    );
     expect(typeof defaultBody.data.revision).toBe("string");
   });
 
