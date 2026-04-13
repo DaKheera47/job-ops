@@ -54,7 +54,7 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
-      screen.getByRole("combobox", { name: "United States" }),
+      screen.getByRole("button", { name: "United States" }),
     ).toBeInTheDocument();
   });
 
@@ -85,7 +85,7 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
-      screen.getByRole("combobox", { name: "United States" }),
+      screen.getByRole("button", { name: "United States" }),
     ).toBeInTheDocument();
   });
 
@@ -116,7 +116,7 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
-      screen.getByRole("combobox", { name: "United States" }),
+      screen.getByRole("button", { name: "United States" }),
     ).toBeInTheDocument();
   });
 

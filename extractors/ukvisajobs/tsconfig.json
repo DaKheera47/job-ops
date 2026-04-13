@@ -1,17 +1,18 @@
 {
-  "extends": "@apify/tsconfig",
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "outDir": "dist",
+    "strict": true,
     "noUnusedLocals": false,
-    "lib": ["DOM"],
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["../../shared/src/*"]
     }
   },
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*", "./tests/**/*", "./manifest.ts"]
 }
