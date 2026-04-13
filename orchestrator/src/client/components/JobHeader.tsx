@@ -159,7 +159,7 @@ const SponsorPill: React.FC<SponsorPillProps> = ({ score, names, onCheck }) => {
 };
 
 const AppliedDuplicatePill: React.FC<{
-  match: AppliedDuplicateMatch | null;
+  match: AppliedDuplicateMatch | null | undefined;
 }> = ({ match }) => {
   if (!match) {
     return null;
