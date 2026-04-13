@@ -176,9 +176,9 @@ export async function startServer(options?: {
       defaultRegistry,
     );
   } else {
-    vi
-      .spyOn(registryModule, "getExtractorRegistry")
-      .mockResolvedValue(defaultRegistry);
+    vi.spyOn(registryModule, "getExtractorRegistry").mockResolvedValue(
+      defaultRegistry,
+    );
   }
   const { createApp } = await import("../../app");
   const { closeDb } = await import("@server/db/index");
