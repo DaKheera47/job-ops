@@ -26,4 +26,24 @@ describe("job note content bridge", () => {
     expect(markdown).toContain("- mission");
     expect(markdown).toContain("- team");
   });
+
+  it("preserves backslashes without double escaping them", () => {
+    const markdown = editorHtmlToMarkdown(`<p>C:\\temp\\notes\\draft.md</p>`);
+
+    expect(markdown).toBe(String.raw`C:\\temp\\notes\\draft.md`);
+  });
+
+  it("serializes balanced parentheses in link urls safely", () => {
+    const markdown = editorHtmlToMarkdown(
+      `<p><a href="https://example.com/foo(bar)">Docs</a></p>`,
+    );
+
+    expect(markdown).toBe("[Docs](https://example.com/foo%28bar%29)");
+  });
+
+  it("keeps br tags as hard breaks instead of collapsing them to spaces", () => {
+    const markdown = editorHtmlToMarkdown(`<p>line one<br>line two</p>`);
+
+    expect(markdown).toBe("line one  \nline two");
+  });
 });

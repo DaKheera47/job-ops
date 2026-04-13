@@ -6,13 +6,13 @@ const markdownIt = new MarkdownIt({
   breaks: false,
 });
 
-const ESCAPE_RE = /([\\`*_{}()[\]#+>])/g;
+const ESCAPE_RE = /([`*_{}()[\]#+>])/g;
 
 const escapeMarkdownText = (value: string) =>
   value.replaceAll("\\", "\\\\").replace(ESCAPE_RE, "\\$1");
 
 const escapeLinkTarget = (value: string) =>
-  encodeURI(value.trim()).replaceAll(")", "%29");
+  encodeURI(value.trim()).replaceAll("(", "%28").replaceAll(")", "%29");
 
 const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ");
 
@@ -56,8 +56,7 @@ function serializeInlineNode(node: Node): string {
 function serializeInlineChildren(node: ParentNode): string {
   return Array.from(node.childNodes)
     .map((child) => serializeInlineNode(child))
-    .join("")
-    .replace(/\s{2,}/g, " ");
+    .join("");
 }
 
 function serializeBlockNode(node: Node): string {
