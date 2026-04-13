@@ -123,7 +123,7 @@ describe("JobHeader", () => {
     expect(screen.getByText("Sponsor Not Found")).toBeInTheDocument();
   });
 
-  it("shows a previously applied badge with match details", () => {
+  it("shows a previously applied status indicator with match details", () => {
     const jobWithAppliedDuplicate = {
       ...mockJob,
       appliedDuplicateMatch: {

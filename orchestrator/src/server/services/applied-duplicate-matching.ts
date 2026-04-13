@@ -11,6 +11,7 @@ import type {
 } from "@shared/types";
 
 const APPLIED_DUPLICATE_THRESHOLD = 90;
+const APPLIED_DUPLICATE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const HISTORICAL_JOB_STATUSES: ReadonlySet<JobStatus> = new Set([
   "applied",
   "in_progress",
@@ -18,11 +19,23 @@ const HISTORICAL_JOB_STATUSES: ReadonlySet<JobStatus> = new Set([
 
 type MatchableJob = Pick<
   Job,
-  "id" | "title" | "employer" | "status" | "appliedAt"
+  "id" | "title" | "employer" | "status" | "appliedAt" | "discoveredAt"
 >;
 
 function isHistoricalJob(job: MatchableJob): boolean {
   return HISTORICAL_JOB_STATUSES.has(job.status) && Boolean(job.appliedAt);
+}
+
+function isWithinDuplicateWindow(job: MatchableJob, candidate: MatchableJob) {
+  const discoveredAt = Date.parse(job.discoveredAt);
+  const appliedAt = Date.parse(candidate.appliedAt as string);
+
+  if (!Number.isFinite(discoveredAt) || !Number.isFinite(appliedAt)) {
+    return false;
+  }
+
+  const ageMs = discoveredAt - appliedAt;
+  return ageMs >= 0 && ageMs <= APPLIED_DUPLICATE_WINDOW_MS;
 }
 
 export function findAppliedDuplicateMatch(
@@ -43,6 +56,10 @@ export function findAppliedDuplicateMatch(
 
   for (const candidate of candidates) {
     if (!isHistoricalJob(candidate) || candidate.id === job.id) {
+      continue;
+    }
+
+    if (!isWithinDuplicateWindow(job, candidate)) {
       continue;
     }
 

@@ -90,7 +90,12 @@ export async function getJobListItems(
 }
 
 export async function getAppliedDuplicateMatchCandidates(): Promise<
-  Array<Pick<Job, "id" | "title" | "employer" | "status" | "appliedAt">>
+  Array<
+    Pick<
+      Job,
+      "id" | "title" | "employer" | "status" | "appliedAt" | "discoveredAt"
+    >
+  >
 > {
   const rows = await db
     .select({
@@ -99,6 +104,7 @@ export async function getAppliedDuplicateMatchCandidates(): Promise<
       employer: jobs.employer,
       status: jobs.status,
       appliedAt: jobs.appliedAt,
+      discoveredAt: jobs.discoveredAt,
     })
     .from(jobs)
     .where(inArray(jobs.status, ["applied", "in_progress"]))
@@ -110,6 +116,7 @@ export async function getAppliedDuplicateMatchCandidates(): Promise<
     employer: row.employer,
     status: row.status as JobStatus,
     appliedAt: row.appliedAt,
+    discoveredAt: row.discoveredAt,
   }));
 }
 

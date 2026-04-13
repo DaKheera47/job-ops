@@ -20,10 +20,10 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
+import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
 import {
   getJobStatusIndicator,
   getTracerStatusIndicator,
-  StatusBadgeIndicator,
   StatusIndicator,
 } from "./StatusIndicator";
 
@@ -177,10 +177,10 @@ const AppliedDuplicatePill: React.FC<{
   );
 
   return (
-    <StatusBadgeIndicator
-      label="Previously Applied"
-      variant="amber"
-      className="cursor-help text-[10px]"
+    <StatusIndicator
+      dotColor={appliedDuplicateIndicator.dot}
+      label={appliedDuplicateIndicator.label}
+      className="cursor-help"
       tooltip={tooltip}
       tooltipClassName="max-w-xs"
     />

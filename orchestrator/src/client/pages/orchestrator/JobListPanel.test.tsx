@@ -148,7 +148,7 @@ describe("JobListPanel", () => {
     expect(onSelectJob).toHaveBeenCalledWith("job-2");
   });
 
-  it("shows a previously applied badge for flagged reposts", () => {
+  it("shows a yellow status dot for flagged reposts without an inline badge", () => {
     const jobs = [
       createJob({
         id: "job-1",
@@ -179,7 +179,10 @@ describe("JobListPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Previously Applied")).toBeInTheDocument();
+    expect(screen.queryByText("Previously Applied")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Previously Applied")).toHaveClass(
+      "bg-yellow-400",
+    );
   });
 
   it("toggles row selection and select-all", () => {

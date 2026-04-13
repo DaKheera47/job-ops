@@ -12,6 +12,7 @@ describe("applied duplicate matching", () => {
       title: "Backend Engineer",
       employer: "Acme Labs",
       status: "ready",
+      discoveredAt: "2026-04-15T10:00:00.000Z",
     });
     const appliedJob = createJob({
       id: "applied-job",
@@ -38,6 +39,7 @@ describe("applied duplicate matching", () => {
       title: "Platform Engineer",
       employer: "Acme Ltd",
       status: "discovered",
+      discoveredAt: "2026-04-15T10:00:00.000Z",
     });
     const appliedJob = createJob({
       id: "applied-job",
@@ -58,6 +60,7 @@ describe("applied duplicate matching", () => {
       title: "Backend Engineer",
       employer: "Acme Labs",
       status: "ready",
+      discoveredAt: "2026-04-15T10:00:00.000Z",
     });
     const appliedJob = createJob({
       id: "applied-job",
@@ -76,6 +79,7 @@ describe("applied duplicate matching", () => {
       title: "Backend Engineer",
       employer: "Acme Labs",
       status: "ready",
+      discoveredAt: "2026-04-15T10:00:00.000Z",
     });
     const appliedJob = createJob({
       id: "applied-job",
@@ -94,6 +98,7 @@ describe("applied duplicate matching", () => {
       title: "Senior Backend Engineer",
       employer: "Acme Labs",
       status: "ready",
+      discoveredAt: "2026-04-15T10:00:00.000Z",
     });
     const olderPerfectMatch = createJob({
       id: "older-perfect",
@@ -149,5 +154,24 @@ describe("applied duplicate matching", () => {
     );
 
     expect(annotatedJob.appliedDuplicateMatch).toBeNull();
+  });
+
+  it("does not match when the historical application is older than 30 days", () => {
+    const repostedJob = createJob({
+      id: "new-job",
+      title: "Backend Engineer",
+      employer: "Acme Labs",
+      status: "ready",
+      discoveredAt: "2026-05-15T10:00:00.000Z",
+    });
+    const oldAppliedJob = createJob({
+      id: "applied-job",
+      title: "Backend Engineer",
+      employer: "Acme Labs",
+      status: "applied",
+      appliedAt: "2026-04-01T10:00:00.000Z",
+    });
+
+    expect(findAppliedDuplicateMatch(repostedJob, [oldAppliedJob])).toBeNull();
   });
 });

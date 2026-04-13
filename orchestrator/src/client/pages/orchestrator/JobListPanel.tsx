@@ -5,7 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import type { FilterTab } from "./constants";
-import { defaultStatusToken, emptyStateCopy, statusTokens } from "./constants";
+import {
+  appliedDuplicateIndicator,
+  defaultStatusToken,
+  emptyStateCopy,
+  statusTokens,
+} from "./constants";
 import { JobRowContent } from "./JobRowContent";
 
 interface EmptyStateAction {
@@ -104,6 +109,12 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
           const isSelected = job.id === selectedJobId;
           const isChecked = selectedJobIds.has(job.id);
           const statusToken = statusTokens[job.status] ?? defaultStatusToken;
+          const statusDotClassName = job.appliedDuplicateMatch
+            ? appliedDuplicateIndicator.dot
+            : statusToken.dot;
+          const statusDotTitle = job.appliedDuplicateMatch
+            ? appliedDuplicateIndicator.label
+            : statusToken.label;
           return (
             <div
               key={job.id}
@@ -123,12 +134,12 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                 <span
                   className={cn(
                     "absolute inset-0 m-auto h-2 w-2 rounded-full transition-opacity duration-150 ease-out",
-                    statusToken.dot,
+                    statusDotClassName,
                     isChecked || isSelected
                       ? "opacity-0"
                       : "opacity-100 group-hover:opacity-0",
                   )}
-                  title={statusToken.label}
+                  title={statusDotTitle}
                 />
                 <Checkbox
                   checked={isChecked}

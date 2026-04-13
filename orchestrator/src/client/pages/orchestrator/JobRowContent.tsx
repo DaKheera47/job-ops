@@ -1,5 +1,4 @@
 import type { JobListItem } from "@shared/types.js";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { defaultStatusToken, statusTokens } from "./constants";
 
@@ -56,13 +55,6 @@ export const JobRowContent = ({
             <span className="before:content-['_in_']">{job.location}</span>
           )}
         </div>
-        {job.appliedDuplicateMatch && (
-          <div className="mt-1">
-            <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-200">
-              Previously Applied
-            </Badge>
-          </div>
-        )}
         {job.salary?.trim() && (
           <div className="truncate text-xs text-muted-foreground mt-0.5">
             {job.salary}
