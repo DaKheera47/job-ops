@@ -50,6 +50,23 @@ function getSearchableValue(option: SearchableDropdownOption): string {
   return [option.label, option.searchText ?? "", option.value].join(" ").trim();
 }
 
+function toDomIdSegment(value: string): string {
+  return Array.from(value)
+    .map((character) => {
+      if (/^[A-Za-z0-9_-]$/.test(character)) return character;
+      return `_${character.codePointAt(0)?.toString(36) ?? "0"}_`;
+    })
+    .join("");
+}
+
+function createRowDomId(
+  listId: string,
+  type: SearchableDropdownRow["type"],
+  value: string,
+): string {
+  return `${toDomIdSegment(listId)}-${type}-${toDomIdSegment(value)}`;
+}
+
 export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   inputId,
   value,
@@ -66,7 +83,9 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const [listElement, setListElement] = React.useState<HTMLDivElement | null>(
+    null,
+  );
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const deferredQuery = React.useDeferredValue(query);
   const listId = React.useId();
@@ -94,7 +113,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
     if (hasCustomValue) {
       nextRows.push({
-        id: `custom:${listId}:${trimmedQuery}`,
+        id: createRowDomId(listId, "custom", trimmedQuery),
         type: "custom",
         label: `Use "${trimmedQuery}"`,
         value: trimmedQuery,
@@ -103,7 +122,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 
     for (const option of filteredOptions) {
       nextRows.push({
-        id: option.value,
+        id: createRowDomId(listId, "option", option.value),
         type: "option",
         disabled: Boolean(option.disabled),
         option,
@@ -138,14 +157,18 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   const activeRowIndex = activeRowId ? rowIds.indexOf(activeRowId) : -1;
   const activeRow = activeRowIndex >= 0 ? rows[activeRowIndex] : null;
 
+  const setListRef = React.useCallback((element: HTMLDivElement | null) => {
+    setListElement(element);
+  }, []);
+
   const { scrollToIndex, measureElement, getVirtualItems, getTotalSize } =
-    useVirtualizedListbox({
+    useVirtualizedListbox<HTMLButtonElement>({
       count: rows.length,
       estimateSize: () => 40,
       getItemKey: (index: number) => rows[index]?.id ?? index,
       initialRect: { width: 320, height: 256 },
       overscan: 8,
-      scrollElementRef: listRef,
+      scrollElement: listElement,
     });
 
   React.useEffect(() => {
@@ -279,8 +302,9 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         <Button
           type="button"
           variant="outline"
-          role="combobox"
+          aria-haspopup="listbox"
           aria-expanded={open}
+          aria-controls={listId}
           aria-label={inputId ? undefined : (ariaLabel ?? triggerLabel)}
           disabled={disabled}
           className={cn("justify-between", triggerClassName)}
@@ -310,7 +334,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
           />
         </div>
         <div
-          ref={listRef}
+          ref={setListRef}
           id={listId}
           role="listbox"
           aria-label={ariaLabel}
@@ -340,7 +364,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
                     data-index={virtualItem.index}
                     role="option"
                     tabIndex={-1}
-                    aria-selected={isActive}
+                    aria-selected={selected}
                     aria-disabled={row.type === "option" ? row.disabled : false}
                     id={row.id}
                     className={cn(

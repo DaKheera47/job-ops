@@ -1,7 +1,6 @@
 "use client";
 
-import type { Key, RefObject } from "react";
-import { useLayoutEffect, useState } from "react";
+import type { Key } from "react";
 import {
   useVirtualizedList,
   type VirtualListScrollAlignment,
@@ -28,28 +27,21 @@ export type UseVirtualizedListboxOptions = {
     width: number;
   };
   overscan?: number;
-  scrollElementRef?: RefObject<HTMLElement | null>;
+  scrollElement?: HTMLElement | null;
 };
 
-export function useVirtualizedListbox({
+export function useVirtualizedListbox<
+  TItemElement extends HTMLElement = HTMLElement,
+>({
   count,
   estimateSize = () => 40,
   enabled = true,
   getItemKey,
   initialRect,
   overscan = 8,
-  scrollElementRef,
+  scrollElement = null,
 }: UseVirtualizedListboxOptions) {
-  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
-
-  useLayoutEffect(() => {
-    const nextElement = scrollElementRef?.current ?? null;
-    setScrollElement((current) =>
-      current === nextElement ? current : nextElement,
-    );
-  });
-
-  const virtualizer = useVirtualizedList({
+  const virtualizer = useVirtualizedList<HTMLElement, TItemElement>({
     count,
     mode: "element",
     scrollElement,
@@ -63,8 +55,10 @@ export function useVirtualizedListbox({
   return {
     getTotalSize: () => virtualizer.getTotalSize(),
     getVirtualItems: () => virtualizer.getVirtualItems(),
-    measureElement: (node: Element | null) => {
-      virtualizer.measureElement(node as HTMLDivElement | null);
+    measureElement: (
+      node: Parameters<typeof virtualizer.measureElement>[0],
+    ) => {
+      virtualizer.measureElement(node);
     },
     scrollToIndex: (
       index: number,

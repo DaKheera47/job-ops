@@ -1,4 +1,5 @@
 import type { JobListItem } from "@shared/types.js";
+import type { RefObject } from "react";
 import { useCallback, useEffect, useState } from "react";
 import type { VirtualListHandle } from "@/client/lib/virtual-list";
 
@@ -13,7 +14,7 @@ type UseScrollToJobItemParams = {
   selectedJobId: string | null;
   isDesktop: boolean;
   onEnsureJobSelected: (jobId: string) => void;
-  listHandle: VirtualListHandle | null;
+  listHandleRef: RefObject<VirtualListHandle>;
 };
 
 export const useScrollToJobItem = ({
@@ -21,7 +22,7 @@ export const useScrollToJobItem = ({
   selectedJobId,
   isDesktop,
   onEnsureJobSelected,
-  listHandle,
+  listHandleRef,
 }: UseScrollToJobItemParams) => {
   const [pendingTarget, setPendingTarget] =
     useState<PendingScrollTarget | null>(null);
@@ -59,6 +60,7 @@ export const useScrollToJobItem = ({
     const targetIndex = activeJobs.findIndex(
       (job) => job.id === pendingTarget.jobId,
     );
+    const listHandle = listHandleRef.current;
     if (targetIndex === -1 || !listHandle) return;
 
     listHandle.scrollToIndex(targetIndex, {
@@ -69,10 +71,10 @@ export const useScrollToJobItem = ({
   }, [
     activeJobs,
     isDesktop,
-    listHandle,
     onEnsureJobSelected,
     pendingTarget,
     selectedJobId,
+    listHandleRef,
   ]);
 
   return { requestScrollToJob };

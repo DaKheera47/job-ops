@@ -81,19 +81,19 @@ describe("SearchableDropdown", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Choose option" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose option" }));
 
     await screen.findByRole("listbox");
+    expect(screen.getAllByRole("combobox")).toHaveLength(1);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("option", { name: "Option 0" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("option", { name: "Option 0" })).toBeVisible();
     });
 
-    expect(
-      screen.queryByRole("option", { name: "Option 90" }),
-    ).not.toBeInTheDocument();
+    const firstOption = screen.getByRole("option", { name: "Option 0" });
+    expect(firstOption.id).toContain("-option-");
+    expect(firstOption.id).not.toContain(" ");
+    expect(screen.queryByRole("option", { name: "Option 90" })).toBeNull();
   });
 
   it("selects an offscreen result after scrolling to it", async () => {
@@ -109,7 +109,7 @@ describe("SearchableDropdown", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Choose option" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose option" }));
 
     await screen.findByRole("listbox");
 
@@ -143,7 +143,7 @@ describe("SearchableDropdown", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Choose option" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose option" }));
     fireEvent.change(screen.getByPlaceholderText("Search..."), {
       target: { value: "Custom company" },
     });
@@ -157,9 +157,34 @@ describe("SearchableDropdown", () => {
 
     expect(onValueChange).toHaveBeenCalledWith("Custom company");
 
-    fireEvent.click(screen.getByRole("combobox", { name: "Choose option" }));
+    fireEvent.click(screen.getByRole("button", { name: "Choose option" }));
     fireEvent.click(screen.getByRole("option", { name: "Disabled option" }));
 
     expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps aria-selected tied to the selected value instead of focus", async () => {
+    render(
+      <SearchableDropdown
+        value="option-1"
+        options={buildOptions(30)}
+        onValueChange={vi.fn()}
+        placeholder="Choose an option"
+        ariaLabel="Choose option"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Choose option" }));
+
+    await screen.findByRole("listbox");
+
+    const input = screen.getByPlaceholderText("Search...");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+
+    const selectedOption = screen.getByRole("option", { name: "Option 1" });
+    const activeOption = screen.getByRole("option", { name: "Option 2" });
+
+    expect(selectedOption).toHaveAttribute("aria-selected", "true");
+    expect(activeOption).toHaveAttribute("aria-selected", "false");
   });
 });

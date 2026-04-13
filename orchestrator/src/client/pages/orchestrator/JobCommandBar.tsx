@@ -260,20 +260,19 @@ export const JobCommandBar: React.FC<JobCommandBarProps> = ({
     () => buildFallbackVirtualItems(rows, scrollTop, viewportHeight),
     [rows, scrollTop, viewportHeight],
   );
+  const estimatedTotalSize = useMemo(
+    () =>
+      rows.reduce(
+        (currentTotal, row) => currentTotal + getEstimatedRowHeight(row),
+        0,
+      ),
+    [rows],
+  );
 
   const renderedVirtualItems =
     virtualItems.length > 0 ? virtualItems : estimatedLayout;
   const renderedTotalSize =
-    virtualItems.length > 0
-      ? totalSize
-      : estimatedLayout.reduce(
-          (currentMax, item) =>
-            Math.max(
-              currentMax,
-              item.start + getEstimatedRowHeight(rows[item.index] ?? item.row),
-            ),
-          0,
-        );
+    virtualItems.length > 0 ? totalSize : estimatedTotalSize;
 
   const setResultsScrollElement = useCallback(
     (element: HTMLDivElement | null) => {

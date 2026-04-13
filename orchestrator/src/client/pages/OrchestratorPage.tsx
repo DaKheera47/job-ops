@@ -221,7 +221,7 @@ export const OrchestratorPage: React.FC = () => {
     selectedJobId,
     isDesktop,
     onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
-    listHandle: jobListHandleRef.current,
+    listHandleRef: jobListHandleRef,
   });
 
   const isAnyModalOpen =
