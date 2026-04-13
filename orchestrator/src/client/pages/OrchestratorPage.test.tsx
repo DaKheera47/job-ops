@@ -1,6 +1,7 @@
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { forwardRef, useImperativeHandle } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -66,6 +67,7 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   cityLocations: [],
   workplaceTypes: ["remote", "hybrid", "onsite"],
 };
+const mockJobListScrollToIndex = vi.fn();
 
 const jobFixture = createJob({
   id: "job-1",
@@ -296,77 +298,88 @@ vi.mock("./orchestrator/JobDetailPanel", () => ({
 }));
 
 vi.mock("./orchestrator/JobListPanel", () => ({
-  JobListPanel: ({
-    activeJobs,
-    onSelectJob,
-    onToggleSelectJob,
-    onToggleSelectAll,
-    selectedJobId,
-  }: {
-    onSelectJob: (id: string) => void;
-    onToggleSelectJob: (id: string) => void;
-    onToggleSelectAll: (checked: boolean) => void;
-    selectedJobId: string | null;
-    activeJobs: Job[];
-  }) => (
-    <div>
-      <div data-job-id="job-1" />
-      <div data-job-id="job-2" />
-      <div data-job-id="job-3" />
-      <div data-testid="selected-job">{selectedJobId ?? "none"}</div>
-      <div data-testid="duplicate-count">
-        {activeJobs.filter((job) => job.appliedDuplicateMatch).length}
-      </div>
-      <button
-        data-testid="toggle-select-all-on"
-        type="button"
-        onClick={() => onToggleSelectAll(true)}
-      >
-        Toggle all on
-      </button>
-      <button
-        data-testid="toggle-select-all-off"
-        type="button"
-        onClick={() => onToggleSelectAll(false)}
-      >
-        Toggle all off
-      </button>
-      <button
-        data-testid="toggle-select-job-1"
-        type="button"
-        onClick={() => onToggleSelectJob("job-1")}
-      >
-        Toggle job 1
-      </button>
-      <button
-        data-testid="toggle-select-job-3"
-        type="button"
-        onClick={() => onToggleSelectJob("job-3")}
-      >
-        Toggle job 3
-      </button>
-      <button
-        data-testid="select-job-1"
-        type="button"
-        onClick={() => onSelectJob("job-1")}
-      >
-        Select job 1
-      </button>
-      <button
-        data-testid="select-job-2"
-        type="button"
-        onClick={() => onSelectJob("job-2")}
-      >
-        Select job 2
-      </button>
-      <button
-        data-testid="select-job-3"
-        type="button"
-        onClick={() => onSelectJob("job-3")}
-      >
-        Select job 3
-      </button>
-    </div>
+  JobListPanel: forwardRef(
+    (
+      {
+        activeJobs,
+        onSelectJob,
+        onToggleSelectJob,
+        onToggleSelectAll,
+        selectedJobId,
+      }: {
+        onSelectJob: (id: string) => void;
+        onToggleSelectJob: (id: string) => void;
+        onToggleSelectAll: (checked: boolean) => void;
+        selectedJobId: string | null;
+        activeJobs: Job[];
+      },
+      ref,
+    ) => {
+      useImperativeHandle(ref, () => ({
+        scrollToIndex: mockJobListScrollToIndex,
+      }));
+
+      return (
+        <div>
+          <div data-job-id="job-1" />
+          <div data-job-id="job-2" />
+          <div data-job-id="job-3" />
+          <div data-testid="selected-job">{selectedJobId ?? "none"}</div>
+          <div data-testid="duplicate-count">
+            {activeJobs.filter((job) => job.appliedDuplicateMatch).length}
+          </div>
+          <button
+            data-testid="toggle-select-all-on"
+            type="button"
+            onClick={() => onToggleSelectAll(true)}
+          >
+            Toggle all on
+          </button>
+          <button
+            data-testid="toggle-select-all-off"
+            type="button"
+            onClick={() => onToggleSelectAll(false)}
+          >
+            Toggle all off
+          </button>
+          <button
+            data-testid="toggle-select-job-1"
+            type="button"
+            onClick={() => onToggleSelectJob("job-1")}
+          >
+            Toggle job 1
+          </button>
+          <button
+            data-testid="toggle-select-job-3"
+            type="button"
+            onClick={() => onToggleSelectJob("job-3")}
+          >
+            Toggle job 3
+          </button>
+          <button
+            data-testid="select-job-1"
+            type="button"
+            onClick={() => onSelectJob("job-1")}
+          >
+            Select job 1
+          </button>
+          <button
+            data-testid="select-job-2"
+            type="button"
+            onClick={() => onSelectJob("job-2")}
+          >
+            Select job 2
+          </button>
+          <button
+            data-testid="select-job-3"
+            type="button"
+            onClick={() => onSelectJob("job-3")}
+          >
+            Select job 3
+          </button>
+        </div>
+      );
+    },
   ),
 }));
 
@@ -645,6 +658,13 @@ describe("OrchestratorPage", () => {
       expect(locationText).not.toContain("salaryMax=");
       expect(locationText).not.toContain("q=");
     });
+    expect(mockJobListScrollToIndex).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({
+        align: "center",
+        behavior: "smooth",
+      }),
+    );
   });
 
   it("removes legacy q query params on load", async () => {
@@ -1177,11 +1197,25 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(screen.getByTestId("selected-job")).toHaveTextContent("job-2");
     });
+    expect(mockJobListScrollToIndex).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({
+        align: "center",
+        behavior: "smooth",
+      }),
+    );
 
     pressKey("k");
     await waitFor(() => {
       expect(screen.getByTestId("selected-job")).toHaveTextContent("job-1");
     });
+    expect(mockJobListScrollToIndex).toHaveBeenLastCalledWith(
+      0,
+      expect.objectContaining({
+        align: "center",
+        behavior: "smooth",
+      }),
+    );
 
     pressKey("2");
     await waitFor(() => {

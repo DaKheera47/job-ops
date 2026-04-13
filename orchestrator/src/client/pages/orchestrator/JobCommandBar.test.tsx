@@ -1,23 +1,43 @@
-import { createJob } from "@shared/testing/factories.js";
-import type { Job } from "@shared/types.js";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import type { JobListItem } from "@shared/types.js";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { JobCommandBar } from "./JobCommandBar";
+import { installVirtualizerSizeMock } from "./virtualizedList.test-utils";
 
-const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+const cleanupVirtualizerMock = installVirtualizerSizeMock();
 
-beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-    configurable: true,
-    value: vi.fn(),
-  });
+const createJob = (overrides: Partial<JobListItem> = {}): JobListItem => ({
+  id: "job-1",
+  source: "indeed",
+  title: "Backend Engineer",
+  employer: "Acme",
+  jobUrl: "https://example.com/jobs/job-1",
+  applicationLink: null,
+  datePosted: null,
+  deadline: null,
+  salary: null,
+  location: null,
+  status: "ready",
+  outcome: null,
+  closedAt: null,
+  suitabilityScore: null,
+  sponsorMatchScore: null,
+  appliedDuplicateMatch: null,
+  jobType: null,
+  jobFunction: null,
+  salaryMinAmount: null,
+  salaryMaxAmount: null,
+  salaryCurrency: null,
+  discoveredAt: "2025-01-01T00:00:00Z",
+  readyAt: null,
+  appliedAt: null,
+  updatedAt: "2025-01-01T00:00:00Z",
+  ...overrides,
 });
 
 afterAll(() => {
-  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-    configurable: true,
-    value: originalScrollIntoView,
-  });
+  cleanupVirtualizerMock();
+  vi.restoreAllMocks();
 });
 
 describe("JobCommandBar", () => {
@@ -102,7 +122,7 @@ describe("JobCommandBar", () => {
     );
   });
 
-  it("shows selectable filter suggestion for @ tokens", () => {
+  it("shows selectable filter suggestion for @ tokens", async () => {
     render(
       <JobCommandBar
         jobs={[
@@ -122,16 +142,17 @@ describe("JobCommandBar", () => {
     );
     fireEvent.change(input, { target: { value: "@ready" } });
 
-    expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
+    const lockSuggestion = await screen.findByText("Lock to @ready");
+    expect(lockSuggestion).toBeInTheDocument();
     expect(screen.queryByText("No jobs found.")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Lock to @ready"));
+    fireEvent.click(lockSuggestion);
 
     expect(screen.getByText("@ready")).toBeInTheDocument();
     expect(screen.getByText("Ready Engineer")).toBeInTheDocument();
   });
 
-  it("shows all lock suggestions for bare @", () => {
+  it("shows all lock suggestions for bare @", async () => {
     render(
       <JobCommandBar
         jobs={[createJob({ id: "ready-job", status: "ready" })]}
@@ -145,12 +166,14 @@ describe("JobCommandBar", () => {
     );
     fireEvent.change(input, { target: { value: "@" } });
 
-    expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
-    expect(screen.getByText("Lock to @discovered")).toBeInTheDocument();
-    expect(screen.getByText("Lock to @applied")).toBeInTheDocument();
-    expect(screen.getByText("Lock to @in-progress")).toBeInTheDocument();
-    expect(screen.getByText("Lock to @skipped")).toBeInTheDocument();
-    expect(screen.getByText("Lock to @expired")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Lock to @ready")).toBeInTheDocument();
+      expect(screen.getByText("Lock to @discovered")).toBeInTheDocument();
+      expect(screen.getByText("Lock to @applied")).toBeInTheDocument();
+      expect(screen.getByText("Lock to @in-progress")).toBeInTheDocument();
+      expect(screen.getByText("Lock to @skipped")).toBeInTheDocument();
+      expect(screen.getByText("Lock to @expired")).toBeInTheDocument();
+    });
   });
 
   it("creates in-progress lock from @prog + Tab", () => {
@@ -171,9 +194,9 @@ describe("JobCommandBar", () => {
     expect(screen.getByText("@in-progress")).toBeInTheDocument();
   });
 
-  it("searches by company name and routes to the matched state", () => {
+  it("searches by company name and routes to the matched state", async () => {
     const onSelectJob = vi.fn();
-    const jobs: Job[] = [
+    const jobs: JobListItem[] = [
       createJob({
         id: "ready-job",
         title: "Backend Engineer",
@@ -198,13 +221,13 @@ describe("JobCommandBar", () => {
         target: { value: "Globex" },
       },
     );
-    fireEvent.click(screen.getByText("Platform Engineer"));
+    fireEvent.click(await screen.findByText("Platform Engineer"));
 
     expect(onSelectJob).toHaveBeenCalledWith("applied", "applied-job");
   });
 
-  it("returns only locked status results", () => {
-    const jobs: Job[] = [
+  it("returns only locked status results", async () => {
+    const jobs: JobListItem[] = [
       createJob({
         id: "disc-1",
         title: "Frontend Engineer",
@@ -226,13 +249,13 @@ describe("JobCommandBar", () => {
     fireEvent.keyDown(input, { key: "Tab" });
     fireEvent.change(input, { target: { value: "Frontend" } });
 
-    expect(screen.getByText("Frontend Engineer")).toBeInTheDocument();
+    expect(await screen.findByText("Frontend Engineer")).toBeInTheDocument();
     expect(screen.queryByText("@applied")).not.toBeInTheDocument();
     expect(screen.queryByText("Applied")).not.toBeInTheDocument();
   });
 
-  it("ranks closest match first within a lock", () => {
-    const jobs: Job[] = [
+  it("ranks closest match first within a lock", async () => {
+    const jobs: JobListItem[] = [
       createJob({
         id: "ready-job",
         title: "Junior Software Engineer (Data Products)",
@@ -265,7 +288,7 @@ describe("JobCommandBar", () => {
       target: { value: "joinrs" },
     });
 
-    const options = screen.getAllByRole("option");
+    const options = await screen.findAllByRole("option");
     expect(options[0]).toHaveTextContent("Joinrs");
     expect(options[0]).toHaveTextContent("Junior Web Developer");
   });
@@ -403,7 +426,7 @@ describe("JobCommandBar", () => {
     expect((input as HTMLInputElement).value).toBe("@all");
   });
 
-  it("routes in-progress jobs to the all jobs view", () => {
+  it("routes in-progress jobs to the all jobs view", async () => {
     const onSelectJob = vi.fn();
 
     render(
@@ -429,13 +452,13 @@ describe("JobCommandBar", () => {
         target: { value: "Globex" },
       },
     );
-    fireEvent.click(screen.getByText("Staff Engineer"));
+    fireEvent.click(await screen.findByText("Staff Engineer"));
 
     expect(onSelectJob).toHaveBeenCalledWith("all", "in-progress-job");
   });
 
   it("excludes processing jobs from every lock scope", () => {
-    const jobs: Job[] = [
+    const jobs: JobListItem[] = [
       createJob({
         id: "processing-job",
         title: "Processing-only keyword",
@@ -484,5 +507,71 @@ describe("JobCommandBar", () => {
         screen.queryByText("Processing-only keyword"),
       ).not.toBeInTheDocument();
     }
+  });
+
+  it("virtualizes large result sets without mounting every matching option", async () => {
+    const jobs = Array.from({ length: 24 }, (_, index) =>
+      createJob({
+        id: `job-${index}`,
+        title: `Engineer ${index}`,
+        employer: "Acme",
+        status: "ready",
+        discoveredAt: `2025-01-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+      }),
+    );
+
+    render(<JobCommandBar jobs={jobs} onSelectJob={vi.fn()} />);
+
+    openWithKeyboard();
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Search jobs by job title or company name...",
+      ),
+      {
+        target: { value: "Engineer" },
+      },
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole("option").length).toBeLessThan(jobs.length);
+    });
+    expect(screen.queryByText("Engineer 0")).not.toBeInTheDocument();
+    expect(await screen.findByText("Engineer 23")).toBeInTheDocument();
+  });
+
+  it("scrolls to and selects an offscreen result with keyboard navigation", async () => {
+    const onSelectJob = vi.fn();
+    const jobs = Array.from({ length: 20 }, (_, index) =>
+      createJob({
+        id: `job-${index}`,
+        title: `Engineer ${index}`,
+        employer: "Acme",
+        status: "ready",
+        discoveredAt: `2025-02-${String(index + 1).padStart(2, "0")}T00:00:00Z`,
+      }),
+    );
+
+    render(<JobCommandBar jobs={jobs} onSelectJob={onSelectJob} />);
+
+    openWithKeyboard();
+    const input = screen.getByPlaceholderText(
+      "Search jobs by job title or company name...",
+    );
+    fireEvent.change(input, { target: { value: "Engineer" } });
+
+    await screen.findByText("Engineer 19");
+    expect(screen.queryByText("Engineer 0")).not.toBeInTheDocument();
+
+    for (let index = 0; index < 19; index += 1) {
+      fireEvent.keyDown(input, { key: "ArrowDown" });
+    }
+
+    await waitFor(() => {
+      expect(screen.getByText("Engineer 0")).toBeInTheDocument();
+    });
+
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(onSelectJob).toHaveBeenCalledWith("ready", "job-0");
   });
 });

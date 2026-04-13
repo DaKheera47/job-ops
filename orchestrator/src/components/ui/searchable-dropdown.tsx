@@ -1,19 +1,12 @@
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, Search } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useVirtualizedListbox } from "@/components/ui/virtualized-listbox";
 import { cn } from "@/lib/utils";
 
 export interface SearchableDropdownOption {
@@ -38,6 +31,25 @@ interface SearchableDropdownProps {
   listClassName?: string;
 }
 
+type SearchableDropdownRow =
+  | {
+      id: string;
+      type: "custom";
+      label: string;
+      value: string;
+    }
+  | {
+      id: string;
+      type: "option";
+      disabled: boolean;
+      option: SearchableDropdownOption;
+      searchableValue: string;
+    };
+
+function getSearchableValue(option: SearchableDropdownOption): string {
+  return [option.label, option.searchText ?? "", option.value].join(" ").trim();
+}
+
 export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
   inputId,
   value,
@@ -54,8 +66,13 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
+  const listRef = React.useRef<HTMLDivElement | null>(null);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const deferredQuery = React.useDeferredValue(query);
+  const listId = React.useId();
   const selectedOption = options.find((option) => option.value === value);
   const trimmedQuery = query.trim();
+  const deferredTrimmedQuery = deferredQuery.trim();
   const hasCustomValue =
     trimmedQuery.length > 0 &&
     !options.some(
@@ -63,6 +80,177 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         option.value === trimmedQuery || option.label.trim() === trimmedQuery,
     );
   const triggerLabel = selectedOption?.label ?? (value || placeholder);
+  const filteredOptions = React.useMemo(() => {
+    if (!deferredTrimmedQuery) return options;
+
+    const normalizedQuery = deferredTrimmedQuery.toLowerCase();
+    return options.filter((option) =>
+      getSearchableValue(option).toLowerCase().includes(normalizedQuery),
+    );
+  }, [deferredTrimmedQuery, options]);
+
+  const rows = React.useMemo<SearchableDropdownRow[]>(() => {
+    const nextRows: SearchableDropdownRow[] = [];
+
+    if (hasCustomValue) {
+      nextRows.push({
+        id: `custom:${listId}:${trimmedQuery}`,
+        type: "custom",
+        label: `Use "${trimmedQuery}"`,
+        value: trimmedQuery,
+      });
+    }
+
+    for (const option of filteredOptions) {
+      nextRows.push({
+        id: option.value,
+        type: "option",
+        disabled: Boolean(option.disabled),
+        option,
+        searchableValue: getSearchableValue(option),
+      });
+    }
+
+    return nextRows;
+  }, [filteredOptions, hasCustomValue, listId, trimmedQuery]);
+
+  const selectedRowId = React.useMemo(
+    () =>
+      rows.find(
+        (row) =>
+          row.type === "option" && row.option.value === value && !row.disabled,
+      )?.id ?? null,
+    [rows, value],
+  );
+  const rowIds = React.useMemo(() => rows.map((row) => row.id), [rows]);
+  const selectableRowIndexes = React.useMemo(() => {
+    const indexes: number[] = [];
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      if (row.type === "custom" || !row.disabled) {
+        indexes.push(index);
+      }
+    }
+    return indexes;
+  }, [rows]);
+
+  const [activeRowId, setActiveRowId] = React.useState<string | null>(null);
+  const activeRowIndex = activeRowId ? rowIds.indexOf(activeRowId) : -1;
+  const activeRow = activeRowIndex >= 0 ? rows[activeRowIndex] : null;
+
+  const { scrollToIndex, measureElement, getVirtualItems, getTotalSize } =
+    useVirtualizedListbox({
+      count: rows.length,
+      estimateSize: () => 40,
+      getItemKey: (index: number) => rows[index]?.id ?? index,
+      initialRect: { width: 320, height: 256 },
+      overscan: 8,
+      scrollElementRef: listRef,
+    });
+
+  React.useEffect(() => {
+    if (!open) return;
+
+    setActiveRowId((current) => {
+      if (current) {
+        const currentRow = rows.find((row) => row.id === current);
+        if (
+          currentRow &&
+          (currentRow.type === "custom" || !currentRow.disabled)
+        ) {
+          return current;
+        }
+      }
+
+      if (!rows.length) return null;
+      if (!trimmedQuery && selectedRowId) return selectedRowId;
+      return rows[selectableRowIndexes[0]]?.id ?? null;
+    });
+  }, [open, rows, selectedRowId, selectableRowIndexes, trimmedQuery]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    if (activeRowIndex < 0) return;
+    scrollToIndex(activeRowIndex, { align: "auto" });
+  }, [activeRowIndex, open, scrollToIndex]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus();
+  }, [open]);
+
+  const selectRow = React.useCallback(
+    (row: SearchableDropdownRow) => {
+      if (row.type === "option") {
+        if (row.disabled) return;
+        onValueChange(row.option.value);
+      } else {
+        onValueChange(row.value);
+      }
+      setOpen(false);
+      setQuery("");
+      setActiveRowId(null);
+    },
+    [onValueChange],
+  );
+
+  const moveActive = React.useCallback(
+    (direction: 1 | -1) => {
+      if (!selectableRowIndexes.length) return;
+
+      const currentSelectableIndex =
+        selectableRowIndexes.indexOf(activeRowIndex);
+
+      let nextSelectableIndex = currentSelectableIndex;
+      if (nextSelectableIndex < 0) {
+        nextSelectableIndex = direction === 1 ? -1 : 0;
+      }
+
+      nextSelectableIndex =
+        (nextSelectableIndex + direction + selectableRowIndexes.length) %
+        selectableRowIndexes.length;
+
+      setActiveRowId(
+        rows[selectableRowIndexes[nextSelectableIndex]]?.id ?? null,
+      );
+    },
+    [activeRowIndex, rows, selectableRowIndexes],
+  );
+
+  const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      moveActive(1);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      moveActive(-1);
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      setActiveRowId(rows[selectableRowIndexes[0]]?.id ?? null);
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      setActiveRowId(
+        rows[selectableRowIndexes[selectableRowIndexes.length - 1]]?.id ?? null,
+      );
+      return;
+    }
+
+    if (event.key === "Enter" && activeRow) {
+      event.preventDefault();
+      selectRow(activeRow);
+    }
+  };
+
+  const virtualItems = getVirtualItems();
 
   return (
     <Popover
@@ -71,6 +259,7 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         setOpen(nextOpen);
         if (!nextOpen) {
           setQuery("");
+          setActiveRowId(null);
         }
       }}
     >
@@ -104,64 +293,89 @@ export const SearchableDropdown: React.FC<SearchableDropdownProps> = ({
         align="start"
         className={cn("w-[320px] p-0", contentClassName)}
       >
-        <Command loop>
-          <CommandInput
+        <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+          <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+          <input
+            ref={inputRef}
+            role="combobox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-activedescendant={activeRowId ?? undefined}
+            aria-autocomplete="list"
             placeholder={searchPlaceholder}
             value={query}
-            onValueChange={setQuery}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={handleInputKeyDown}
+            className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
           />
-          <CommandList
-            className={cn("max-h-56", listClassName)}
-            onWheelCapture={(event) => event.stopPropagation()}
-          >
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {hasCustomValue ? (
-                <CommandItem
-                  value={`Use ${trimmedQuery}`}
-                  onSelect={() => {
-                    onValueChange(trimmedQuery);
-                    setOpen(false);
-                    setQuery("");
-                  }}
-                >
-                  <span className="truncate">{`Use "${trimmedQuery}"`}</span>
-                </CommandItem>
-              ) : null}
-              {options.map((option) => {
-                const selected = value === option.value;
-                const searchableValue = [
-                  option.label,
-                  option.searchText ?? "",
-                  option.value,
-                ]
-                  .join(" ")
-                  .trim();
+        </div>
+        <div
+          ref={listRef}
+          id={listId}
+          role="listbox"
+          aria-label={ariaLabel}
+          className={cn(
+            "max-h-56 overflow-y-auto overflow-x-hidden",
+            listClassName,
+          )}
+          onWheelCapture={(event) => event.stopPropagation()}
+        >
+          {rows.length === 0 ? (
+            <div className="py-6 text-center text-sm">{emptyText}</div>
+          ) : (
+            <div className="relative w-full" style={{ height: getTotalSize() }}>
+              {virtualItems.map((virtualItem) => {
+                const row = rows[virtualItem.index];
+                if (!row) return null;
+
+                const selected =
+                  row.type === "option" && value === row.option.value;
+                const isActive = row.id === activeRowId;
 
                 return (
-                  <CommandItem
-                    key={option.value}
-                    value={searchableValue}
-                    disabled={option.disabled}
-                    onSelect={() => {
-                      onValueChange(option.value);
-                      setOpen(false);
-                      setQuery("");
+                  <button
+                    key={virtualItem.key}
+                    ref={measureElement}
+                    type="button"
+                    data-index={virtualItem.index}
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={isActive}
+                    aria-disabled={row.type === "option" ? row.disabled : false}
+                    id={row.id}
+                    className={cn(
+                      "absolute left-0 top-0 flex w-full cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-left text-sm outline-none",
+                      isActive ? "bg-accent text-accent-foreground" : "",
+                      row.type === "option" && row.disabled
+                        ? "pointer-events-none opacity-50"
+                        : "hover:bg-accent/80 hover:text-accent-foreground",
+                    )}
+                    style={{
+                      transform: `translateY(${virtualItem.start}px)`,
                     }}
+                    onMouseEnter={() => {
+                      if (row.type === "option" && row.disabled) return;
+                      setActiveRowId(row.id);
+                    }}
+                    onClick={() => selectRow(row)}
                   >
-                    <span className="truncate">{option.label}</span>
-                    <Check
-                      className={cn(
-                        "ml-auto h-4 w-4 shrink-0",
-                        selected ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
+                    <span className="truncate">
+                      {row.type === "custom" ? row.label : row.option.label}
+                    </span>
+                    {row.type === "option" ? (
+                      <Check
+                        className={cn(
+                          "ml-auto h-4 w-4 shrink-0",
+                          selected ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                    ) : null}
+                  </button>
                 );
               })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

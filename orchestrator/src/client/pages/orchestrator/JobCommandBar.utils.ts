@@ -10,6 +10,27 @@ export type StatusLock =
   | "skipped"
   | "expired";
 
+export type CommandBarRow =
+  | {
+      id: string;
+      kind: "groupHeading";
+      heading: string;
+      groupId: CommandGroupId | "filters";
+    }
+  | {
+      id: string;
+      kind: "separator";
+      groupId: CommandGroupId;
+    }
+  | {
+      id: string;
+      kind: "option";
+      optionKind: "lockSuggestion" | "job";
+      groupId: CommandGroupId | "filters";
+      lock?: StatusLock;
+      job?: JobListItem;
+    };
+
 export const commandGroupMeta: Array<{ id: CommandGroupId; heading: string }> =
   [
     { id: "ready", heading: "Ready" },
@@ -216,4 +237,71 @@ export const orderCommandGroups = (
       commandGroupMeta.findIndex((group) => group.id === b.id)
     );
   });
+};
+
+export const getCommandBarRowId = (row: CommandBarRow) => row.id;
+
+export const buildCommandBarRows = ({
+  activeLock,
+  groupedJobs,
+  lockSuggestions,
+  orderedGroups,
+}: {
+  activeLock: StatusLock | null;
+  groupedJobs: Record<CommandGroupId, JobListItem[]>;
+  lockSuggestions: StatusLock[];
+  orderedGroups: Array<{ id: CommandGroupId; heading: string }>;
+}): CommandBarRow[] => {
+  const rows: CommandBarRow[] = [];
+
+  if (!activeLock && lockSuggestions.length > 0) {
+    rows.push({
+      id: "command-bar-filters-heading",
+      kind: "groupHeading",
+      heading: "Filters",
+      groupId: "filters",
+    });
+
+    for (const lock of lockSuggestions) {
+      rows.push({
+        id: `command-bar-lock-${lock}`,
+        kind: "option",
+        optionKind: "lockSuggestion",
+        groupId: "filters",
+        lock,
+      });
+    }
+  }
+
+  for (const [index, group] of orderedGroups.entries()) {
+    const items = groupedJobs[group.id];
+    if (items.length === 0) continue;
+
+    if (index > 0) {
+      rows.push({
+        id: `command-bar-separator-${group.id}`,
+        kind: "separator",
+        groupId: group.id,
+      });
+    }
+
+    rows.push({
+      id: `command-bar-group-${group.id}-heading`,
+      kind: "groupHeading",
+      heading: group.heading,
+      groupId: group.id,
+    });
+
+    for (const job of items) {
+      rows.push({
+        id: `command-bar-job-${job.id}`,
+        kind: "option",
+        optionKind: "job",
+        groupId: group.id,
+        job,
+      });
+    }
+  }
+
+  return rows;
 };

@@ -1,7 +1,32 @@
+import { setupWindowVirtualizerTestEnvironment } from "@client/test/virtualization";
 import { createJob } from "@shared/testing/factories.js";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { JobListPanel } from "./JobListPanel";
+
+const createJobs = (count: number) =>
+  Array.from({ length: count }, (_, index) =>
+    createJob({
+      id: `job-${index + 1}`,
+      title: `Job ${index + 1}`,
+      employer: `Employer ${index + 1}`,
+    }),
+  );
+
+let virtualizationEnvironment: ReturnType<
+  typeof setupWindowVirtualizerTestEnvironment
+> | null = null;
+
+afterEach(() => {
+  virtualizationEnvironment?.cleanup();
+  virtualizationEnvironment = null;
+});
 
 describe("JobListPanel", () => {
   it("shows a loading state when fetching jobs", () => {
@@ -269,5 +294,41 @@ describe("JobListPanel", () => {
     expect(screen.getByLabelText("Select Backend Engineer")).toHaveClass(
       "opacity-100",
     );
+  });
+
+  it("keeps large lists virtualized and scrolls offscreen rows into view", async () => {
+    virtualizationEnvironment = setupWindowVirtualizerTestEnvironment({
+      viewportHeight: 240,
+      rowHeight: 72,
+    });
+    const jobs = createJobs(40);
+
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId="job-1"
+        selectedJobIds={new Set(["job-1"])}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("select-job-35")).not.toBeInTheDocument();
+    const renderedRows = screen.getAllByTestId(/select-job-/);
+    expect(renderedRows.length).toBeGreaterThan(0);
+    expect(renderedRows.length).toBeLessThan(jobs.length);
+
+    act(() => {
+      window.scrollY = 2800;
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("select-job-35")).toBeInTheDocument();
+    });
   });
 });
