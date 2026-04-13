@@ -16,6 +16,15 @@ import { db, schema } from "../db/index";
 
 const { jobs } = schema;
 
+type AppliedDuplicateMatchCandidate = {
+  id: string;
+  title: string;
+  employer: string;
+  status: Extract<JobStatus, "applied" | "in_progress">;
+  appliedAt: string;
+  discoveredAt: string;
+};
+
 function normalizeStatusFilter(statuses?: JobStatus[]): string | null {
   if (!statuses || statuses.length === 0) return null;
   return Array.from(new Set(statuses)).sort().join(",");
@@ -90,12 +99,7 @@ export async function getJobListItems(
 }
 
 export async function getAppliedDuplicateMatchCandidates(): Promise<
-  Array<
-    Pick<
-      Job,
-      "id" | "title" | "employer" | "status" | "appliedAt" | "discoveredAt"
-    >
-  >
+  AppliedDuplicateMatchCandidate[]
 > {
   const rows = await db
     .select({
@@ -107,15 +111,20 @@ export async function getAppliedDuplicateMatchCandidates(): Promise<
       discoveredAt: jobs.discoveredAt,
     })
     .from(jobs)
-    .where(inArray(jobs.status, ["applied", "in_progress"]))
+    .where(
+      and(
+        inArray(jobs.status, ["applied", "in_progress"]),
+        sql`${jobs.appliedAt} IS NOT NULL`,
+      ),
+    )
     .orderBy(desc(jobs.appliedAt));
 
   return rows.map((row) => ({
     id: row.id,
     title: row.title,
     employer: row.employer,
-    status: row.status as JobStatus,
-    appliedAt: row.appliedAt,
+    status: row.status as AppliedDuplicateMatchCandidate["status"],
+    appliedAt: row.appliedAt as string,
     discoveredAt: row.discoveredAt,
   }));
 }

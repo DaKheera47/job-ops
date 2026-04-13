@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   attachAppliedDuplicateMatches,
   findAppliedDuplicateMatch,
+  isHistoricalAppliedJob,
 } from "./applied-duplicate-matching";
 
 describe("applied duplicate matching", () => {
@@ -154,6 +155,15 @@ describe("applied duplicate matching", () => {
     );
 
     expect(annotatedJob.appliedDuplicateMatch).toBeNull();
+  });
+
+  it("treats in-progress jobs without an applied timestamp as non-historical", () => {
+    expect(
+      isHistoricalAppliedJob({
+        status: "in_progress",
+        appliedAt: null,
+      }),
+    ).toBe(false);
   });
 
   it("does not match when the historical application is older than 30 days", () => {

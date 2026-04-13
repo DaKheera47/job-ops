@@ -22,7 +22,9 @@ type MatchableJob = Pick<
   "id" | "title" | "employer" | "status" | "appliedAt" | "discoveredAt"
 >;
 
-function isHistoricalJob(job: MatchableJob): boolean {
+export function isHistoricalAppliedJob(
+  job: Pick<Job, "status" | "appliedAt">,
+): boolean {
   return HISTORICAL_JOB_STATUSES.has(job.status) && Boolean(job.appliedAt);
 }
 
@@ -42,7 +44,7 @@ export function findAppliedDuplicateMatch(
   job: MatchableJob,
   candidates: MatchableJob[],
 ): AppliedDuplicateMatch | null {
-  if (isHistoricalJob(job)) {
+  if (isHistoricalAppliedJob(job)) {
     return null;
   }
 
@@ -55,7 +57,7 @@ export function findAppliedDuplicateMatch(
   let bestMatch: AppliedDuplicateMatch | null = null;
 
   for (const candidate of candidates) {
-    if (!isHistoricalJob(candidate) || candidate.id === job.id) {
+    if (!isHistoricalAppliedJob(candidate) || candidate.id === job.id) {
       continue;
     }
 

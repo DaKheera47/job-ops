@@ -28,7 +28,10 @@ import {
   transitionStage,
   updateStageEvent,
 } from "@server/services/applicationTracking";
-import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
+import {
+  attachAppliedDuplicateMatches,
+  isHistoricalAppliedJob,
+} from "@server/services/applied-duplicate-matching";
 import {
   simulateApplyJob,
   simulateGeneratePdf,
@@ -535,12 +538,15 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
       view === "list"
         ? await jobsRepo.getJobListItems(statuses)
         : await jobsRepo.getAllJobs(statuses);
-    const appliedDuplicateCandidates =
-      await jobsRepo.getAppliedDuplicateMatchCandidates();
-    const jobsWithAppliedDuplicateMatches = attachAppliedDuplicateMatches(
-      jobs,
-      appliedDuplicateCandidates,
+    const shouldAttachAppliedDuplicateMatches = jobs.some(
+      (job) => !isHistoricalAppliedJob(job),
     );
+    const jobsWithAppliedDuplicateMatches = shouldAttachAppliedDuplicateMatches
+      ? attachAppliedDuplicateMatches(
+          jobs,
+          await jobsRepo.getAppliedDuplicateMatchCandidates(),
+        )
+      : jobs;
     const stats = await jobsRepo.getJobStats();
     const revision = await jobsRepo.getJobsRevision(statuses);
 

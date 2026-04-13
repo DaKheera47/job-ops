@@ -130,6 +130,56 @@ describe.sequential("Jobs API routes", () => {
     expect(detailBody.data.appliedDuplicateMatch?.score).toBe(100);
   });
 
+  it("skips applied duplicate candidate fetching when the list only contains historical jobs", async () => {
+    const jobsRepo = await import("@server/repositories/jobs");
+    const candidateSpy = vi.spyOn(
+      jobsRepo,
+      "getAppliedDuplicateMatchCandidates",
+    );
+    const { createJob, updateJob } = jobsRepo;
+    const appliedJob = await createJob({
+      source: "manual",
+      title: "Applied Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/applied-only",
+      jobDescription: "Applied description",
+    });
+    const inProgressJob = await createJob({
+      source: "manual",
+      title: "In Progress Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/in-progress-only",
+      jobDescription: "In progress description",
+    });
+
+    await updateJob(appliedJob.id, {
+      status: "applied",
+      appliedAt: "2026-04-01T10:00:00.000Z",
+    });
+    await updateJob(inProgressJob.id, {
+      status: "in_progress",
+      appliedAt: "2026-04-02T10:00:00.000Z",
+    });
+
+    const listRes = await fetch(
+      `${baseUrl}/api/jobs?view=list&status=applied,in_progress`,
+    );
+    const listBody = await listRes.json();
+
+    expect(listRes.status).toBe(200);
+    expect(listBody.ok).toBe(true);
+    expect(candidateSpy).not.toHaveBeenCalled();
+    expect(listBody.data.jobs).toHaveLength(2);
+    expect(
+      listBody.data.jobs.every(
+        (job: { appliedDuplicateMatch: unknown }) =>
+          job.appliedDuplicateMatch === null,
+      ),
+    ).toBe(true);
+
+    candidateSpy.mockRestore();
+  });
+
   it("returns jobs revision and supports status filtering", async () => {
     const { createJob, updateJob } = await import("@server/repositories/jobs");
     const readyJob = await createJob({
