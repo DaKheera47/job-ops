@@ -77,6 +77,59 @@ describe.sequential("Jobs API routes", () => {
     expect(typeof defaultBody.data.revision).toBe("string");
   });
 
+  it("adds applied duplicate match metadata to list and detail responses", async () => {
+    const { createJob, updateJob } = await import("@server/repositories/jobs");
+    const appliedJob = await createJob({
+      source: "manual",
+      title: "Backend Engineer",
+      employer: "Acme Ltd",
+      jobUrl: "https://example.com/job/applied-original",
+      jobDescription: "Original description",
+    });
+    const repostedJob = await createJob({
+      source: "manual",
+      title: "Backend Engineer",
+      employer: "Acme Limited",
+      jobUrl: "https://example.com/job/reposted",
+      jobDescription: "Reposted description",
+    });
+
+    await updateJob(appliedJob.id, {
+      status: "applied",
+      appliedAt: "2026-04-01T10:00:00.000Z",
+    });
+    await updateJob(repostedJob.id, { status: "ready" });
+
+    const listRes = await fetch(`${baseUrl}/api/jobs?view=list`);
+    const listBody = await listRes.json();
+    const repostedListItem = listBody.data.jobs.find(
+      (job: { id: string }) => job.id === repostedJob.id,
+    );
+    const appliedListItem = listBody.data.jobs.find(
+      (job: { id: string }) => job.id === appliedJob.id,
+    );
+
+    expect(listRes.status).toBe(200);
+    expect(repostedListItem.appliedDuplicateMatch).toEqual({
+      jobId: appliedJob.id,
+      title: "Backend Engineer",
+      employer: "Acme Ltd",
+      appliedAt: "2026-04-01T10:00:00.000Z",
+      score: 100,
+      titleScore: 100,
+      employerScore: 100,
+    });
+    expect(appliedListItem.appliedDuplicateMatch).toBeNull();
+
+    const detailRes = await fetch(`${baseUrl}/api/jobs/${repostedJob.id}`);
+    const detailBody = await detailRes.json();
+
+    expect(detailRes.status).toBe(200);
+    expect(detailBody.ok).toBe(true);
+    expect(detailBody.data.appliedDuplicateMatch?.jobId).toBe(appliedJob.id);
+    expect(detailBody.data.appliedDuplicateMatch?.score).toBe(100);
+  });
+
   it("returns jobs revision and supports status filtering", async () => {
     const { createJob, updateJob } = await import("@server/repositories/jobs");
     const readyJob = await createJob({

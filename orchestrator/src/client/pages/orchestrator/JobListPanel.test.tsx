@@ -148,6 +148,40 @@ describe("JobListPanel", () => {
     expect(onSelectJob).toHaveBeenCalledWith("job-2");
   });
 
+  it("shows a previously applied badge for flagged reposts", () => {
+    const jobs = [
+      createJob({
+        id: "job-1",
+        title: "Backend Engineer",
+        appliedDuplicateMatch: {
+          jobId: "job-applied",
+          title: "Backend Engineer",
+          employer: "Acme Labs",
+          appliedAt: "2026-04-01T10:00:00.000Z",
+          score: 96,
+          titleScore: 97,
+          employerScore: 95,
+        },
+      }),
+    ];
+
+    render(
+      <JobListPanel
+        isLoading={false}
+        jobs={jobs}
+        activeJobs={jobs}
+        selectedJobId={null}
+        selectedJobIds={new Set()}
+        activeTab="ready"
+        onSelectJob={vi.fn()}
+        onToggleSelectJob={vi.fn()}
+        onToggleSelectAll={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Previously Applied")).toBeInTheDocument();
+  });
+
   it("toggles row selection and select-all", () => {
     const onToggleSelectJob = vi.fn();
     const onToggleSelectAll = vi.fn();

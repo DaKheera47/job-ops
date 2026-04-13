@@ -39,6 +39,7 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   tracerLinksEnabled: false,
   sponsorMatchScore: null,
   sponsorMatchNames: null,
+  appliedDuplicateMatch: null,
   jobType: null,
   salarySource: null,
   salaryInterval: null,

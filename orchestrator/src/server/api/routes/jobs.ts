@@ -28,6 +28,7 @@ import {
   transitionStage,
   updateStageEvent,
 } from "@server/services/applicationTracking";
+import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
 import {
   simulateApplyJob,
   simulateGeneratePdf,
@@ -534,12 +535,18 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
       view === "list"
         ? await jobsRepo.getJobListItems(statuses)
         : await jobsRepo.getAllJobs(statuses);
+    const appliedDuplicateCandidates =
+      await jobsRepo.getAppliedDuplicateMatchCandidates();
+    const jobsWithAppliedDuplicateMatches = attachAppliedDuplicateMatches(
+      jobs,
+      appliedDuplicateCandidates,
+    );
     const stats = await jobsRepo.getJobStats();
     const revision = await jobsRepo.getJobsRevision(statuses);
 
     const response: JobsListResponse<Job | JobListItem> = {
-      jobs,
-      total: jobs.length,
+      jobs: jobsWithAppliedDuplicateMatches,
+      total: jobsWithAppliedDuplicateMatches.length,
       byStatus: stats,
       revision: revision.revision,
     };
@@ -549,7 +556,7 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
       view,
       statusFilter: statusFilter ?? null,
       revision: revision.revision,
-      returnedCount: jobs.length,
+      returnedCount: jobsWithAppliedDuplicateMatches.length,
     });
 
     ok(res, response);
@@ -903,7 +910,11 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
     if (!job) {
       return fail(res, notFound("Job not found"));
     }
-    ok(res, job);
+    const [jobWithAppliedDuplicateMatch] = attachAppliedDuplicateMatches(
+      [job],
+      await jobsRepo.getAppliedDuplicateMatchCandidates(),
+    );
+    ok(res, jobWithAppliedDuplicateMatch);
   } catch (error) {
     fail(res, toAppError(error));
   }

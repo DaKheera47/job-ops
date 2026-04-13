@@ -12,6 +12,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { getDataDir } from "@server/config/dataDir";
 import { createScheduler } from "@server/utils/scheduler";
+import {
+  calculateSimilarity,
+  normalizeCompanyName,
+} from "@shared/job-matching";
 import type {
   VisaSponsor,
   VisaSponsorProviderManifest,
@@ -19,7 +23,6 @@ import type {
   VisaSponsorSearchResult,
   VisaSponsorStatusResponse,
 } from "@shared/types";
-import { normalizeWhitespace } from "@shared/utils/string";
 import { isVisaSponsorProviderId } from "@shared/visa-sponsor-providers";
 import { parseVisaSponsorsCsv } from "@shared/visa-sponsors/csv";
 import {
@@ -62,72 +65,6 @@ function getOrCreateProviderState(providerId: string): ProviderState {
 // ============================================================================
 // Company name normalization and similarity (shared across all providers)
 // ============================================================================
-
-const COMPANY_SUFFIXES = [
-  "limited",
-  "ltd",
-  "llp",
-  "plc",
-  "inc",
-  "incorporated",
-  "corporation",
-  "corp",
-  "company",
-  "co",
-  "llc",
-  "uk",
-  "international",
-  "intl",
-  "group",
-  "holdings",
-  "t/a",
-  "trading as",
-  "&",
-  "the",
-];
-
-export function normalizeCompanyName(name: string): string {
-  let normalized = name.toLowerCase().trim();
-  normalized = normalized.replace(/[.,'"()[\]{}!?@#$%^&*+=|\\/<>:;`~]/g, " ");
-  for (const suffix of COMPANY_SUFFIXES) {
-    const regex = new RegExp(`\\b${suffix}\\b`, "gi");
-    normalized = normalized.replace(regex, "");
-  }
-  return normalizeWhitespace(normalized);
-}
-
-export function calculateSimilarity(str1: string, str2: string): number {
-  const s1 = str1.toLowerCase();
-  const s2 = str2.toLowerCase();
-
-  if (s1 === s2) return 100;
-  if (s1.length === 0 || s2.length === 0) return 0;
-
-  if (s1.includes(s2) || s2.includes(s1)) {
-    const longerLen = Math.max(s1.length, s2.length);
-    const shorterLen = Math.min(s1.length, s2.length);
-    return Math.round((shorterLen / longerLen) * 100);
-  }
-
-  const matrix: number[][] = [];
-  for (let i = 0; i <= s1.length; i++) matrix[i] = [i];
-  for (let j = 0; j <= s2.length; j++) matrix[0][j] = j;
-
-  for (let i = 1; i <= s1.length; i++) {
-    for (let j = 1; j <= s2.length; j++) {
-      const cost = s1[i - 1] === s2[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost,
-      );
-    }
-  }
-
-  const distance = matrix[s1.length][s2.length];
-  const maxLen = Math.max(s1.length, s2.length);
-  return Math.round(((maxLen - distance) / maxLen) * 100);
-}
 
 // ============================================================================
 // CSV parsing (generic 5-column format used for stored files)

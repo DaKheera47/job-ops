@@ -85,6 +85,31 @@ export async function getJobListItems(
     ...row,
     source: row.source as JobListItem["source"],
     status: row.status as JobStatus,
+    appliedDuplicateMatch: null,
+  }));
+}
+
+export async function getAppliedDuplicateMatchCandidates(): Promise<
+  Array<Pick<Job, "id" | "title" | "employer" | "status" | "appliedAt">>
+> {
+  const rows = await db
+    .select({
+      id: jobs.id,
+      title: jobs.title,
+      employer: jobs.employer,
+      status: jobs.status,
+      appliedAt: jobs.appliedAt,
+    })
+    .from(jobs)
+    .where(inArray(jobs.status, ["applied", "in_progress"]))
+    .orderBy(desc(jobs.appliedAt));
+
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    employer: row.employer,
+    status: row.status as JobStatus,
+    appliedAt: row.appliedAt,
   }));
 }
 
@@ -471,6 +496,7 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     sponsorMatchScore: row.sponsorMatchScore ?? null,
     sponsorMatchNames: row.sponsorMatchNames ?? null,
+    appliedDuplicateMatch: null,
     jobType: row.jobType ?? null,
     salarySource: row.salarySource ?? null,
     salaryInterval: row.salaryInterval ?? null,
