@@ -1,4 +1,20 @@
+import umami from "@umami/node";
+
+import { logger } from "./logger";
 import { trackServerProductEvent } from "./product-analytics";
+
+vi.mock("@umami/node", () => ({
+  default: {
+    init: vi.fn(),
+    track: vi.fn(),
+  },
+}));
+
+vi.mock("./logger", () => ({
+  logger: {
+    warn: vi.fn(),
+  },
+}));
 
 describe("server product analytics", () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -7,9 +23,9 @@ describe("server product analytics", () => {
   beforeEach(() => {
     process.env.NODE_ENV = "development";
     process.env.JOBOPS_PUBLIC_BASE_URL = "https://jobops.example";
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(null, { status: 202 })),
+    vi.clearAllMocks();
+    vi.mocked(umami.track).mockResolvedValue(
+      new Response(null, { status: 202 }),
     );
   });
 
@@ -20,7 +36,6 @@ describe("server product analytics", () => {
     } else {
       process.env.JOBOPS_PUBLIC_BASE_URL = originalBaseUrl;
     }
-    vi.unstubAllGlobals();
   });
 
   it("sends Umami-compatible event payloads with sanitized data", async () => {
@@ -38,40 +53,21 @@ describe("server product analytics", () => {
       },
     );
 
-    expect(fetch).toHaveBeenCalledTimes(1);
-    const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
-
-    expect(url).toBe("https://umami.dakheera47.com/api/send");
-    expect(init?.method).toBe("POST");
-    expect(init?.headers).toEqual({
-      "content-type": "application/json",
-      "user-agent": "job-ops-server-analytics/1.0",
+    expect(umami.init).toHaveBeenCalledWith({
+      websiteId: "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66",
+      hostUrl: "https://umami.dakheera47.com",
+      userAgent: "job-ops-server-analytics/1.0",
     });
-
-    const payload = JSON.parse(String(init?.body)) as {
-      type: string;
-      payload: {
-        website: string;
-        hostname: string;
-        url: string;
-        name: string;
-        data?: Record<string, unknown>;
-      };
-    };
-
-    expect(payload).toEqual({
-      type: "event",
-      payload: {
-        website: "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66",
-        hostname: "jobops.example",
-        url: "/applications/in-progress",
-        name: "application_offer_detected",
-        data: {
-          source: "tracking_inbox_auto",
-          stage: "offer",
-        },
+    expect(umami.track).toHaveBeenCalledWith({
+      hostname: "jobops.example",
+      url: "/applications/in-progress",
+      name: "application_offer_detected",
+      data: {
+        source: "tracking_inbox_auto",
+        stage: "offer",
       },
     });
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   it("does not emit analytics during test runs", async () => {
@@ -81,6 +77,34 @@ describe("server product analytics", () => {
       origin: "move_to_ready",
     });
 
-    expect(fetch).not.toHaveBeenCalled();
+    expect(umami.init).not.toHaveBeenCalled();
+    expect(umami.track).not.toHaveBeenCalled();
+  });
+
+  it("logs a warning when Umami returns a non-ok response", async () => {
+    vi.mocked(umami.track).mockResolvedValue(
+      new Response(null, { status: 500 }),
+    );
+
+    await trackServerProductEvent(
+      "resume_generated",
+      {
+        origin: "move_to_ready",
+      },
+      {
+        requestOrigin: "https://app.jobops.example",
+        urlPath: "/jobs",
+      },
+    );
+
+    expect(logger.warn).toHaveBeenCalledWith(
+      "Server product analytics request failed",
+      {
+        event: "resume_generated",
+        status: 500,
+        requestOrigin: "https://app.jobops.example",
+        urlPath: "/jobs",
+      },
+    );
   });
 });

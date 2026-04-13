@@ -49,6 +49,7 @@
     "@tiptap/extension-link": "^3.22.2",
     "@tiptap/react": "^3.22.2",
     "@tiptap/starter-kit": "^3.22.2",
+    "@umami/node": "^0.4.0",
     "better-sqlite3": "^11.6.0",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",

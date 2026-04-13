@@ -1,9 +1,10 @@
+import umami from "@umami/node";
+
 import { logger } from "./logger";
 import { sanitizeUnknown } from "./sanitize";
 
-const UMAMI_EVENT_ENDPOINT = "https://umami.dakheera47.com/api/send";
+const UMAMI_HOST_URL = "https://umami.dakheera47.com";
 const UMAMI_WEBSITE_ID = "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66";
-const ANALYTICS_TIMEOUT_MS = 5_000;
 const UMAMI_USER_AGENT = "job-ops-server-analytics/1.0";
 const DISALLOWED_KEY_PARTS = [
   "query",
@@ -98,23 +99,16 @@ export async function trackServerProductEvent(
   });
 
   try {
-    const response = await fetch(UMAMI_EVENT_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "user-agent": UMAMI_USER_AGENT,
-      },
-      body: JSON.stringify({
-        type: "event",
-        payload: {
-          website: UMAMI_WEBSITE_ID,
-          hostname: page.hostname,
-          url: page.url,
-          name: event,
-          ...(sanitized ? { data: sanitized } : {}),
-        },
-      }),
-      signal: AbortSignal.timeout(ANALYTICS_TIMEOUT_MS),
+    umami.init({
+      websiteId: UMAMI_WEBSITE_ID,
+      hostUrl: UMAMI_HOST_URL,
+      userAgent: UMAMI_USER_AGENT,
+    });
+    const response = await umami.track({
+      hostname: page.hostname,
+      url: page.url,
+      name: event,
+      ...(sanitized ? { data: sanitized } : {}),
     });
 
     if (!response.ok) {
