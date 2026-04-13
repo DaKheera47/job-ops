@@ -237,6 +237,286 @@ describe.sequential("Jobs API routes", () => {
     expect(res.status).toBe(404);
   });
 
+  describe("job notes", () => {
+    it("creates, lists, updates, and deletes notes for a job", async () => {
+      const { createJob } = await import("@server/repositories/jobs");
+      const job = await createJob({
+        source: "manual",
+        title: "Notes Role",
+        employer: "Acme",
+        jobUrl: "https://example.com/job/notes-flow",
+        jobDescription: "Test description",
+      });
+
+      const createRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Why this company",
+          content: "Strong mission, team, and growth opportunities.",
+        }),
+      });
+      const createBody = await createRes.json();
+
+      expect(createRes.status).toBe(201);
+      expect(createBody.ok).toBe(true);
+      expect(createBody.data.title).toBe("Why this company");
+      expect(createBody.data.content).toBe(
+        "Strong mission, team, and growth opportunities.",
+      );
+      expect(createBody.data.jobId).toBe(job.id);
+      expect(createBody.data.createdAt).toBeTruthy();
+      expect(createBody.data.updatedAt).toBeTruthy();
+      expect(typeof createBody.meta.requestId).toBe("string");
+      expect(createRes.headers.get("x-request-id")).toBe(
+        createBody.meta.requestId,
+      );
+
+      const listRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`);
+      const listBody = await listRes.json();
+
+      expect(listRes.status).toBe(200);
+      expect(listBody.ok).toBe(true);
+      expect(Array.isArray(listBody.data)).toBe(true);
+      expect(listBody.data).toHaveLength(1);
+      expect(listBody.data[0].id).toBe(createBody.data.id);
+      expect(listBody.data[0].title).toBe("Why this company");
+      expect(typeof listBody.meta.requestId).toBe("string");
+
+      const updateRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/${createBody.data.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Recruiter contact",
+            content: "Jamie Lee at Acme. Follow up next week.",
+          }),
+        },
+      );
+      const updateBody = await updateRes.json();
+
+      expect(updateRes.status).toBe(200);
+      expect(updateBody.ok).toBe(true);
+      expect(updateBody.data.title).toBe("Recruiter contact");
+      expect(updateBody.data.content).toBe(
+        "Jamie Lee at Acme. Follow up next week.",
+      );
+      expect(updateBody.data.updatedAt).toBeTruthy();
+      expect(typeof updateBody.meta.requestId).toBe("string");
+
+      const deleteRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/${createBody.data.id}`,
+        {
+          method: "DELETE",
+        },
+      );
+      const deleteBody = await deleteRes.json();
+
+      expect(deleteRes.status).toBe(200);
+      expect(deleteBody.ok).toBe(true);
+      expect(deleteBody.data).toBeNull();
+      expect(typeof deleteBody.meta.requestId).toBe("string");
+
+      const emptyRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`);
+      const emptyBody = await emptyRes.json();
+      expect(emptyRes.status).toBe(200);
+      expect(emptyBody.ok).toBe(true);
+      expect(emptyBody.data).toHaveLength(0);
+    });
+
+    it("validates note payloads", async () => {
+      const { createJob } = await import("@server/repositories/jobs");
+      const job = await createJob({
+        source: "manual",
+        title: "Validation Role",
+        employer: "Acme",
+        jobUrl: "https://example.com/job/notes-validation",
+        jobDescription: "Test description",
+      });
+
+      const invalidCreateRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "   ",
+            content: "x".repeat(20001),
+          }),
+        },
+      );
+      const invalidCreateBody = await invalidCreateRes.json();
+
+      expect(invalidCreateRes.status).toBe(400);
+      expect(invalidCreateBody.ok).toBe(false);
+      expect(invalidCreateBody.error.code).toBe("INVALID_REQUEST");
+      expect(typeof invalidCreateBody.meta.requestId).toBe("string");
+
+      const createRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Interview prep",
+          content: "Focus on systems design and behavioral stories.",
+        }),
+      });
+      const createBody = await createRes.json();
+
+      expect(createRes.status).toBe(201);
+      expect(createBody.ok).toBe(true);
+
+      const invalidUpdateRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/${createBody.data.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: " ".repeat(2),
+            content: " ",
+          }),
+        },
+      );
+      const invalidUpdateBody = await invalidUpdateRes.json();
+
+      expect(invalidUpdateRes.status).toBe(400);
+      expect(invalidUpdateBody.ok).toBe(false);
+      expect(invalidUpdateBody.error.code).toBe("INVALID_REQUEST");
+      expect(typeof invalidUpdateBody.meta.requestId).toBe("string");
+    });
+
+    it("returns 404s for missing jobs and notes", async () => {
+      const { createJob } = await import("@server/repositories/jobs");
+      const job = await createJob({
+        source: "manual",
+        title: "Missing Note Role",
+        employer: "Acme",
+        jobUrl: "https://example.com/job/notes-missing",
+        jobDescription: "Test description",
+      });
+
+      const missingJobListRes = await fetch(
+        `${baseUrl}/api/jobs/missing-id/notes`,
+      );
+      const missingJobListBody = await missingJobListRes.json();
+
+      expect(missingJobListRes.status).toBe(404);
+      expect(missingJobListBody.ok).toBe(false);
+      expect(missingJobListBody.error.code).toBe("NOT_FOUND");
+      expect(typeof missingJobListBody.meta.requestId).toBe("string");
+
+      const missingJobCreateRes = await fetch(
+        `${baseUrl}/api/jobs/missing-id/notes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Question",
+            content: "Answer",
+          }),
+        },
+      );
+      const missingJobCreateBody = await missingJobCreateRes.json();
+
+      expect(missingJobCreateRes.status).toBe(404);
+      expect(missingJobCreateBody.ok).toBe(false);
+      expect(missingJobCreateBody.error.code).toBe("NOT_FOUND");
+
+      const missingNotePatchRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/missing-note-id`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Updated",
+            content: "Updated answer",
+          }),
+        },
+      );
+      const missingNotePatchBody = await missingNotePatchRes.json();
+
+      expect(missingNotePatchRes.status).toBe(404);
+      expect(missingNotePatchBody.ok).toBe(false);
+      expect(missingNotePatchBody.error.code).toBe("NOT_FOUND");
+
+      const missingNoteDeleteRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/missing-note-id`,
+        {
+          method: "DELETE",
+        },
+      );
+      const missingNoteDeleteBody = await missingNoteDeleteRes.json();
+
+      expect(missingNoteDeleteRes.status).toBe(404);
+      expect(missingNoteDeleteBody.ok).toBe(false);
+      expect(missingNoteDeleteBody.error.code).toBe("NOT_FOUND");
+      expect(typeof missingNoteDeleteBody.meta.requestId).toBe("string");
+    });
+
+    it("orders notes by most recently updated first", async () => {
+      const { createJob } = await import("@server/repositories/jobs");
+      const job = await createJob({
+        source: "manual",
+        title: "Ordering Role",
+        employer: "Acme",
+        jobUrl: "https://example.com/job/notes-ordering",
+        jobDescription: "Test description",
+      });
+
+      const firstRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Company research",
+          content: "Read the latest product launch post.",
+        }),
+      });
+      const firstBody = await firstRes.json();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const secondRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: "Interview contacts",
+          content: "Met with Sara from recruiting.",
+        }),
+      });
+      const secondBody = await secondRes.json();
+
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      const updateRes = await fetch(
+        `${baseUrl}/api/jobs/${job.id}/notes/${firstBody.data.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Company research",
+            content: "Read the latest product launch post and team blog.",
+          }),
+        },
+      );
+      const updateBody = await updateRes.json();
+
+      expect(updateRes.status).toBe(200);
+      expect(updateBody.ok).toBe(true);
+
+      const listRes = await fetch(`${baseUrl}/api/jobs/${job.id}/notes`);
+      const listBody = await listRes.json();
+
+      expect(listRes.status).toBe(200);
+      expect(listBody.ok).toBe(true);
+      expect(listBody.data).toHaveLength(2);
+      expect(listBody.data[0].id).toBe(firstBody.data.id);
+      expect(listBody.data[1].id).toBe(secondBody.data.id);
+      expect(listBody.data[0].updatedAt >= listBody.data[1].updatedAt).toBe(
+        true,
+      );
+    });
+  });
+
   it("uploads a PDF resume for a job and stores it in data/pdfs", async () => {
     const { createJob } = await import("@server/repositories/jobs");
     const job = await createJob({

@@ -117,6 +117,15 @@ export interface Interview {
   outcome: InterviewOutcome | null;
 }
 
+export interface JobNote {
+  id: string;
+  jobId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type JobSource = ExtractorSourceId;
 
 export interface AppliedDuplicateMatch {
@@ -328,4 +337,14 @@ export interface UpdateJobInput {
   appliedAt?: string;
   sponsorMatchScore?: number;
   sponsorMatchNames?: string;
+}
+
+export interface CreateJobNoteInput {
+  title: string;
+  content: string;
+}
+
+export interface UpdateJobNoteInput {
+  title: string;
+  content: string;
 }

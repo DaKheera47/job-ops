@@ -11,6 +11,7 @@ import type {
   AppSettings,
   BackupInfo,
   BranchInfo,
+  CreateJobNoteInput,
   DemoInfoResponse,
   DesignResumeDocument,
   DesignResumeExportResponse,
@@ -26,6 +27,7 @@ import type {
   JobChatStreamEvent,
   JobChatThread,
   JobListItem,
+  JobNote,
   JobOutcome,
   JobSource,
   JobsListResponse,
@@ -51,6 +53,7 @@ import type {
   StageTransitionTarget,
   TracerAnalyticsResponse,
   TracerReadinessResponse,
+  UpdateJobNoteInput,
   ValidationResult,
   VisaSponsor,
   VisaSponsorSearchResponse,
@@ -577,6 +580,40 @@ export async function updateJob(
   return fetchApi<Job>(`/jobs/${id}`, {
     method: "PATCH",
     body: JSON.stringify(update),
+  });
+}
+
+export async function getJobNotes(id: string): Promise<JobNote[]> {
+  return fetchApi<JobNote[]>(`/jobs/${id}/notes?t=${Date.now()}`);
+}
+
+export async function createJobNote(
+  jobId: string,
+  input: CreateJobNoteInput,
+): Promise<JobNote> {
+  return fetchApi<JobNote>(`/jobs/${jobId}/notes`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateJobNote(
+  jobId: string,
+  noteId: string,
+  input: UpdateJobNoteInput,
+): Promise<JobNote> {
+  return fetchApi<JobNote>(`/jobs/${jobId}/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteJobNote(
+  jobId: string,
+  noteId: string,
+): Promise<void> {
+  await fetchApi<void>(`/jobs/${jobId}/notes/${noteId}`, {
+    method: "DELETE",
   });
 }
 
