@@ -173,6 +173,20 @@ export const LlmConnectionStep: React.FC<{
           {isCodexProvider ? (
             <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
               <div className="text-xs font-medium">Codex Sign-In</div>
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>Option 1: Start sign-in here with a one-time device code.</p>
+                <p>
+                  Option 2: Reuse host login (Docker) by setting{" "}
+                  <span className="font-mono text-foreground">
+                    CODEX_HOME_MOUNT
+                  </span>{" "}
+                  to your host{" "}
+                  <span className="font-mono text-foreground">.codex</span>{" "}
+                  path, then running{" "}
+                  <span className="font-mono text-foreground">codex login</span>{" "}
+                  on the host once.
+                </p>
+              </div>
               <p className="text-xs text-muted-foreground">
                 {codexAuthStatus?.authenticated
                   ? "Codex is authenticated and ready."

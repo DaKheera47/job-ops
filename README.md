@@ -59,6 +59,19 @@ If you pick the `Codex` provider, authenticate once inside the running container
 docker compose exec job-ops codex login
 ```
 
+Prefer logging in once on your host and reusing it in Docker? Set this in `.env`:
+
+```bash
+CODEX_HOME_MOUNT=/absolute/path/to/your/.codex
+```
+
+Then restart and log in once on the host:
+
+```bash
+docker compose up -d
+codex login
+```
+
 ---
 
 ## How It Works

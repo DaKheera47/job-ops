@@ -119,4 +119,22 @@ describe("codex device login service", () => {
     );
     expect(getCodexDeviceAuthSnapshot().status).toBe("failed");
   });
+
+  it("provides host-login guidance when device auth is disabled upstream", async () => {
+    vi.mocked(spawn).mockImplementation(() =>
+      createMockProcess((stdout, _stderr, proc) => {
+        setTimeout(() => {
+          stdout.write(
+            "Enable device code authorization for Codex in ChatGPT Security Settings, then run `codex login --device-auth` again.\n",
+          );
+          proc.emit("exit", 1, null);
+        }, 0);
+      }),
+    );
+
+    await expect(startCodexDeviceAuth()).rejects.toThrow(/CODEX_HOME_MOUNT/i);
+    const snapshot = getCodexDeviceAuthSnapshot();
+    expect(snapshot.status).toBe("failed");
+    expect(snapshot.message).toMatch(/host/i);
+  });
 });

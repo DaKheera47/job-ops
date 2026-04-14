@@ -135,6 +135,16 @@ function buildOutputMessage(session: DeviceAuthSession): string | null {
   return latest ? truncate(latest, 400) : null;
 }
 
+function normalizeStartupFailureMessage(message: string): string {
+  if (/enable device code authorization/i.test(message)) {
+    return truncate(
+      "Device-code auth is disabled for this account. Enable it in ChatGPT Security Settings, or use host login reuse by setting CODEX_HOME_MOUNT to your host .codex path and running `codex login` on the host.",
+      400,
+    );
+  }
+  return truncate(message, 400);
+}
+
 function stopSessionProcess(session: DeviceAuthSession): void {
   if (session.proc && !session.proc.killed) {
     session.proc.kill("SIGTERM");
@@ -193,9 +203,10 @@ async function waitForDeviceCode(
       }
 
       session.status = "failed";
-      session.message =
+      const rawMessage =
         buildOutputMessage(session) ||
         `Codex login exited before a device code was returned (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
+      session.message = normalizeStartupFailureMessage(rawMessage);
       stopSessionProcess(session);
       reject(new Error(session.message));
     };
@@ -205,10 +216,10 @@ async function waitForDeviceCode(
       session.status = "failed";
       const message = error.message.includes("ENOENT")
         ? "Codex CLI is not installed in this runtime."
-        : truncate(error.message, 400);
-      session.message = message;
+        : normalizeStartupFailureMessage(error.message);
+      session.message = normalizeStartupFailureMessage(message);
       stopSessionProcess(session);
-      reject(new Error(message));
+      reject(new Error(session.message));
     };
 
     proc.stdout.on("data", onStdout);
