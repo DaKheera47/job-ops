@@ -229,9 +229,13 @@ describe("SettingsPage", () => {
 
     await waitFor(() => expect(api.startCodexAuth).toHaveBeenCalled());
     expect(await screen.findByText(/ABCD-EFGH/)).toBeInTheDocument();
-    expect(
-      await screen.findByText(/https:\/\/auth\.openai\.com\/codex\/device/i),
-    ).toBeInTheDocument();
+    const openVerificationLink = await screen.findByRole("link", {
+      name: /open verification page/i,
+    });
+    expect(openVerificationLink).toHaveAttribute(
+      "href",
+      "https://auth.openai.com/codex/device",
+    );
   });
 
   it("shows validation error for too long model override", async () => {
