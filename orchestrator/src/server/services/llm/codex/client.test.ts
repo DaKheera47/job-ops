@@ -5,7 +5,7 @@ import { createInterface } from "node:readline";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { LlmRequestOptions } from "../types";
-import { CodexClient } from "./client";
+import { __resetCodexSharedSessionForTests, CodexClient } from "./client";
 
 const { spawnMock } = vi.hoisted(() => ({
   spawnMock: vi.fn(),
@@ -92,7 +92,8 @@ function mockSpawn(
 }
 
 describe("CodexClient", () => {
-  afterEach(() => {
+  afterEach(async () => {
+    await __resetCodexSharedSessionForTests();
     vi.restoreAllMocks();
   });
 
@@ -237,5 +238,53 @@ describe("CodexClient", () => {
     const client = new CodexClient();
     const models = await client.listModels();
     expect(models).toEqual(["gpt-5", "gpt-5-mini", "o4-mini"]);
+  });
+
+  it("reuses a shared app-server session across sequential calls", async () => {
+    const spawnCallsBefore = vi.mocked(spawn).mock.calls.length;
+    let initializeCalls = 0;
+    let authCalls = 0;
+    let modelListCalls = 0;
+
+    mockSpawn((request, helpers) => {
+      if (request.method === "initialize") {
+        initializeCalls += 1;
+        helpers.respond({
+          userAgent: "test",
+          codexHome: "/tmp/codex",
+          platformFamily: "unix",
+          platformOs: "linux",
+        });
+        return;
+      }
+      if (request.method === "getAuthStatus") {
+        authCalls += 1;
+        helpers.respond({
+          authMethod: "openai",
+          requiresOpenaiAuth: false,
+        });
+        return;
+      }
+      if (request.method === "model/list") {
+        modelListCalls += 1;
+        helpers.respond({
+          data: [{ model: "gpt-5" }],
+          nextCursor: null,
+        });
+        return;
+      }
+      helpers.respond({});
+    });
+
+    const client = new CodexClient();
+    const auth = await client.validateCredentials();
+    const models = await client.listModels();
+
+    expect(auth.valid).toBe(true);
+    expect(models).toEqual(["gpt-5"]);
+    expect(initializeCalls).toBe(1);
+    expect(authCalls).toBe(1);
+    expect(modelListCalls).toBe(1);
+    expect(vi.mocked(spawn).mock.calls.length - spawnCallsBefore).toBe(1);
   });
 });

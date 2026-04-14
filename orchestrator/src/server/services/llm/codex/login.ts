@@ -209,7 +209,23 @@ async function waitForDeviceCode(
     const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
       clearTimeout(timeout);
       if (session.verificationUrl && session.userCode) {
+        if (code === 0) {
+          session.status = "completed";
+          session.message = "Codex login completed.";
+          stopSessionProcess(session);
+          cleanup();
+          resolve(toSnapshot(session));
+          return;
+        }
+
+        session.status = "failed";
+        const rawMessage =
+          buildOutputMessage(session) ||
+          `Codex login failed (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
+        session.message = normalizeStartupFailureMessage(rawMessage);
+        stopSessionProcess(session);
         cleanup();
+        reject(new Error(session.message));
         return;
       }
 
@@ -278,13 +294,19 @@ export function getCodexDeviceAuthSnapshot(): CodexDeviceAuthSnapshot {
   return toSnapshot(activeSession);
 }
 
-export async function startCodexDeviceAuth(): Promise<CodexDeviceAuthSnapshot> {
+export async function startCodexDeviceAuth(
+  forceRestart = false,
+): Promise<CodexDeviceAuthSnapshot> {
   if (activeSession) {
     if (
       activeSession.status === "starting" ||
       activeSession.status === "running"
     ) {
-      return toSnapshot(activeSession);
+      if (!forceRestart) {
+        return toSnapshot(activeSession);
+      }
+      stopSessionProcess(activeSession);
+      activeSession = null;
     }
   }
 

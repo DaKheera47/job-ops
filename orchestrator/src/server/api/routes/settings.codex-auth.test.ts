@@ -121,7 +121,20 @@ describe.sequential("Settings codex auth routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.flowStatus).toBe("running");
     expect(body.data.userCode).toBe("ABCD-EFGH");
-    expect(startCodexDeviceAuthMock).toHaveBeenCalledOnce();
+    expect(startCodexDeviceAuthMock).toHaveBeenCalledWith(false);
+  });
+
+  it("forces codex device auth restart when requested", async () => {
+    const res = await fetch(`${baseUrl}/api/settings/codex-auth/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ forceRestart: true }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(startCodexDeviceAuthMock).toHaveBeenCalledWith(true);
   });
 
   it("returns SERVICE_UNAVAILABLE when codex auth start fails", async () => {

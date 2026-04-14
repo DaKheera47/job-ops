@@ -56,12 +56,12 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
     }
   }, []);
 
-  const startCodexAuth = useCallback(async () => {
+  const startCodexAuth = useCallback(async (forceRestart = false) => {
     setIsStartingCodexAuth(true);
     setCodexAuthError(null);
     setHasCopiedCode(false);
     try {
-      const status = await api.startCodexAuth();
+      const status = await api.startCodexAuth({ forceRestart });
       setCodexAuthStatus(status);
     } catch (error) {
       setCodexAuthError(
@@ -123,7 +123,7 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
 
   useEffect(() => {
     if (!expirationMs || codexAuthStatus?.authenticated) return;
-    if (expirationMs - Date.now() > TWO_MINUTES_MS) return;
+    setNowMs(Date.now());
 
     const timer = window.setInterval(() => {
       setNowMs(Date.now());
@@ -278,7 +278,7 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => void startCodexAuth()}
+              onClick={() => void startCodexAuth(true)}
               disabled={isBusy || isStartingCodexAuth}
             >
               {isStartingCodexAuth ? "Starting..." : "Start New Sign-In"}

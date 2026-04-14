@@ -1672,9 +1672,14 @@ export async function getCodexAuthStatus(): Promise<CodexAuthStatusResponse> {
   return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth");
 }
 
-export async function startCodexAuth(): Promise<CodexAuthStatusResponse> {
+export async function startCodexAuth(input?: {
+  forceRestart?: boolean;
+}): Promise<CodexAuthStatusResponse> {
   return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth/start", {
     method: "POST",
+    body: JSON.stringify({
+      forceRestart: input?.forceRestart ?? false,
+    }),
   });
 }
 

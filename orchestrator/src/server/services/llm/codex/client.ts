@@ -9,6 +9,7 @@ import { truncate } from "../utils/string";
 const DEFAULT_STARTUP_TIMEOUT_MS = 15_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_TURN_TIMEOUT_MS = 120_000;
+const DEFAULT_IDLE_TIMEOUT_MS = 30_000;
 const MAX_STDERR_LINES = 40;
 const FALLBACK_CLIENT_VERSION = "dev";
 
@@ -77,6 +78,17 @@ function buildCodexErrorMessage(error: unknown): string {
 function isAbortError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return error.name === "AbortError" || error.message.includes("aborted");
+}
+
+function isSessionInfrastructureError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("app-server exited unexpectedly") ||
+    message.includes("broken pipe") ||
+    message.includes("epipe") ||
+    message.includes("stream was destroyed")
+  );
 }
 
 function toNonEmptyString(value: unknown): string | null {
@@ -353,7 +365,7 @@ class CodexAppServerSession {
       pending.timer = setTimeout(() => {
         this.pending.delete(id);
         pending.reject(
-          new Error(`Codex app-server request timed out (${method}).`),
+          new Error(`Codex app-server request timeout (${method}).`),
         );
       }, timeoutMs);
 
@@ -416,6 +428,10 @@ class CodexAppServerSession {
     }
   }
 
+  clearBufferedNotifications(): void {
+    this.notificationQueue.length = 0;
+  }
+
   private waitForNextNotification(options?: {
     signal?: AbortSignal;
     timeoutMs?: number;
@@ -444,7 +460,7 @@ class CodexAppServerSession {
       if (timeoutMs && timeoutMs > 0) {
         waiter.timer = setTimeout(() => {
           this.removeWaiter(waiter);
-          waiter.reject(new Error("Timed out waiting for Codex notification."));
+          waiter.reject(new Error("Codex notification wait timeout."));
         }, timeoutMs);
       }
 
@@ -578,33 +594,125 @@ class CodexAppServerSession {
   }
 }
 
+let sharedSession: CodexAppServerSession | null = null;
+let startupPromise: Promise<CodexAppServerSession> | null = null;
+let idleTimer: NodeJS.Timeout | null = null;
+let operationTail: Promise<void> = Promise.resolve();
+
+function clearIdleTimer(): void {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+}
+
+async function resetSharedSession(): Promise<void> {
+  clearIdleTimer();
+  const session = sharedSession;
+  sharedSession = null;
+  if (session) {
+    await session.close();
+  }
+}
+
+function scheduleIdleClose(): void {
+  clearIdleTimer();
+  const idleTimeoutMs = getPositiveIntEnv(
+    "CODEX_APP_SERVER_IDLE_TIMEOUT_MS",
+    DEFAULT_IDLE_TIMEOUT_MS,
+  );
+  if (idleTimeoutMs <= 0) return;
+
+  idleTimer = setTimeout(() => {
+    void enqueueSessionOperation(async () => {
+      await resetSharedSession();
+    });
+  }, idleTimeoutMs);
+}
+
+async function getOrStartSession(
+  signal?: AbortSignal,
+): Promise<CodexAppServerSession> {
+  if (sharedSession) {
+    return sharedSession;
+  }
+  if (startupPromise) {
+    return await startupPromise;
+  }
+
+  startupPromise = CodexAppServerSession.start({ signal });
+  try {
+    const session = await startupPromise;
+    sharedSession = session;
+    return session;
+  } finally {
+    startupPromise = null;
+  }
+}
+
+function enqueueSessionOperation<T>(task: () => Promise<T>): Promise<T> {
+  const run = operationTail.then(task, task);
+  operationTail = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function withCodexSession<T>(args: {
+  signal?: AbortSignal;
+  task: (session: CodexAppServerSession) => Promise<T>;
+}): Promise<T> {
+  return await enqueueSessionOperation(async () => {
+    clearIdleTimer();
+    const session = await getOrStartSession(args.signal);
+    session.clearBufferedNotifications();
+    try {
+      return await args.task(session);
+    } catch (error) {
+      if (isSessionInfrastructureError(error)) {
+        await resetSharedSession();
+      }
+      throw error;
+    } finally {
+      scheduleIdleClose();
+    }
+  });
+}
+
+async function closeCodexSessionForTests(): Promise<void> {
+  await enqueueSessionOperation(async () => {
+    await resetSharedSession();
+  });
+}
+
 export class CodexClient {
   async validateCredentials(
     signal?: AbortSignal,
   ): Promise<{ valid: boolean; message: string | null }> {
     try {
-      const session = await CodexAppServerSession.start({ signal });
-      try {
-        const auth = (await session.request("getAuthStatus", {
-          includeToken: false,
-          refreshToken: false,
-        })) as {
-          authMethod?: string | null;
-          requiresOpenaiAuth?: boolean | null;
-        };
-
-        if (!auth?.authMethod && auth?.requiresOpenaiAuth !== false) {
-          return {
-            valid: false,
-            message:
-              "Codex is not authenticated in this container. Run `codex login` and try again.",
+      return await withCodexSession({
+        signal,
+        task: async (session) => {
+          const auth = (await session.request("getAuthStatus", {
+            includeToken: false,
+            refreshToken: false,
+          })) as {
+            authMethod?: string | null;
+            requiresOpenaiAuth?: boolean | null;
           };
-        }
 
-        return { valid: true, message: null };
-      } finally {
-        await session.close();
-      }
+          if (!auth?.authMethod && auth?.requiresOpenaiAuth !== false) {
+            return {
+              valid: false,
+              message:
+                "Codex is not authenticated in this container. Run `codex login` and try again.",
+            };
+          }
+
+          return { valid: true, message: null };
+        },
+      });
     } catch (error) {
       if (isAbortError(error)) {
         return {
@@ -620,252 +728,259 @@ export class CodexClient {
   }
 
   async listModels(signal?: AbortSignal): Promise<string[]> {
-    const session = await CodexAppServerSession.start({ signal });
-    try {
-      const models: string[] = [];
-      let cursor: string | null = null;
+    return await withCodexSession({
+      signal,
+      task: async (session) => {
+        const models: string[] = [];
+        let cursor: string | null = null;
 
-      while (true) {
-        const result = (await session.request("model/list", {
-          cursor,
-          limit: 100,
-          includeHidden: false,
-        })) as {
-          data?: Array<{ model?: string | null; id?: string | null }>;
-          nextCursor?: string | null;
-        };
+        while (true) {
+          const result = (await session.request("model/list", {
+            cursor,
+            limit: 100,
+            includeHidden: false,
+          })) as {
+            data?: Array<{ model?: string | null; id?: string | null }>;
+            nextCursor?: string | null;
+          };
 
-        for (const model of result.data ?? []) {
-          const value = (model.model || model.id || "").trim();
-          if (value) {
-            models.push(value);
+          for (const model of result.data ?? []) {
+            const value = (model.model || model.id || "").trim();
+            if (value) {
+              models.push(value);
+            }
           }
+
+          if (!result.nextCursor) {
+            break;
+          }
+          cursor = result.nextCursor;
         }
 
-        if (!result.nextCursor) {
-          break;
-        }
-        cursor = result.nextCursor;
-      }
-
-      return Array.from(new Set(models)).sort((left, right) =>
-        left.localeCompare(right),
-      );
-    } finally {
-      await session.close();
-    }
+        return Array.from(new Set(models)).sort((left, right) =>
+          left.localeCompare(right),
+        );
+      },
+    });
   }
 
   async callJson(
     options: LlmRequestOptions<unknown>,
   ): Promise<{ text: string; turnId: string }> {
-    const session = await CodexAppServerSession.start({
+    return await withCodexSession({
       signal: options.signal,
-    });
-    try {
-      const threadStart = (await session.request("thread/start", {
-        model: options.model.trim() || null,
-        ephemeral: true,
-        approvalPolicy: "never",
-        sandbox: "read-only",
-        experimentalRawEvents: false,
-        persistExtendedHistory: false,
-      })) as {
-        thread?: { id?: string };
-      };
-
-      const threadId = threadStart.thread?.id;
-      if (!threadId) {
-        throw new Error("Codex thread/start did not return a thread id.");
-      }
-
-      const turnStart = (await session.request(
-        "turn/start",
-        {
-          threadId,
+      task: async (session) => {
+        const threadStart = (await session.request("thread/start", {
           model: options.model.trim() || null,
-          input: [
-            {
-              type: "text",
-              text: formatPrompt({
-                messages: options.messages,
-                jsonSchema: options.jsonSchema,
-              }),
-              text_elements: [],
-            },
-          ],
-          outputSchema: options.jsonSchema.schema,
-        },
-        {
-          signal: options.signal,
-          timeoutMs: getPositiveIntEnv(
-            "CODEX_APP_SERVER_REQUEST_TIMEOUT_MS",
-            DEFAULT_REQUEST_TIMEOUT_MS,
-          ),
-        },
-      )) as {
-        turn?: { id?: string };
-      };
+          ephemeral: true,
+          approvalPolicy: "never",
+          sandbox: "read-only",
+          experimentalRawEvents: false,
+          persistExtendedHistory: false,
+        })) as {
+          thread?: { id?: string };
+        };
 
-      const turnId = turnStart.turn?.id;
-      if (!turnId) {
-        throw new Error("Codex turn/start did not return a turn id.");
-      }
+        const threadId = threadStart.thread?.id;
+        if (!threadId) {
+          throw new Error("Codex thread/start did not return a thread id.");
+        }
 
-      const timeoutMs = getPositiveIntEnv(
-        "CODEX_APP_SERVER_TURN_TIMEOUT_MS",
-        DEFAULT_TURN_TIMEOUT_MS,
-      );
-      const capturedMessages = new Map<
-        string,
-        { text: string; phase: string | null }
-      >();
-      let turnCompleted: JsonRpcNotification | null = null;
-
-      while (!turnCompleted) {
-        const notification = await session.waitForNotification(
-          (candidate) => {
-            if (candidate.method === "turn/completed") {
-              const params = candidate.params as
-                | { turn?: { id?: string } }
-                | undefined;
-              return params?.turn?.id === turnId;
-            }
-
-            if (candidate.method === "item/agentMessage/delta") {
-              const params = candidate.params as
-                | { threadId?: string; turnId?: string; itemId?: string }
-                | undefined;
-              return (
-                params?.threadId === threadId &&
-                params?.turnId === turnId &&
-                typeof params.itemId === "string"
-              );
-            }
-
-            if (candidate.method === "item/completed") {
-              const params = candidate.params as
-                | { threadId?: string; turnId?: string; item?: unknown }
-                | undefined;
-              return (
-                params?.threadId === threadId &&
-                params?.turnId === turnId &&
-                typeof params.item === "object" &&
-                params.item !== null
-              );
-            }
-
-            return false;
+        const turnStart = (await session.request(
+          "turn/start",
+          {
+            threadId,
+            model: options.model.trim() || null,
+            input: [
+              {
+                type: "text",
+                text: formatPrompt({
+                  messages: options.messages,
+                  jsonSchema: options.jsonSchema,
+                }),
+                text_elements: [],
+              },
+            ],
+            outputSchema: options.jsonSchema.schema,
           },
           {
             signal: options.signal,
-            timeoutMs,
+            timeoutMs: getPositiveIntEnv(
+              "CODEX_APP_SERVER_REQUEST_TIMEOUT_MS",
+              DEFAULT_REQUEST_TIMEOUT_MS,
+            ),
           },
-        );
-
-        if (notification.method === "item/agentMessage/delta") {
-          const params = notification.params as
-            | { itemId?: string; delta?: string }
-            | undefined;
-          const itemId = params?.itemId;
-          if (typeof itemId === "string" && typeof params?.delta === "string") {
-            const existing = capturedMessages.get(itemId) ?? {
-              text: "",
-              phase: null,
-            };
-            capturedMessages.set(itemId, {
-              text: `${existing.text}${params.delta}`,
-              phase: existing.phase,
-            });
-          }
-          continue;
-        }
-
-        if (notification.method === "item/completed") {
-          const params = notification.params as { item?: unknown } | undefined;
-          const item =
-            params && typeof params.item === "object" && params.item !== null
-              ? (params.item as Record<string, unknown>)
-              : null;
-          if (item?.type === "agentMessage") {
-            const itemId =
-              typeof item.id === "string"
-                ? item.id
-                : `agent-message-${capturedMessages.size + 1}`;
-            const text = typeof item.text === "string" ? item.text : "";
-            const phase = typeof item.phase === "string" ? item.phase : null;
-            const existing = capturedMessages.get(itemId);
-            capturedMessages.set(itemId, {
-              text: text || existing?.text || "",
-              phase: phase ?? existing?.phase ?? null,
-            });
-          }
-          continue;
-        }
-
-        turnCompleted = notification;
-      }
-
-      const completedParams = turnCompleted.params as
-        | {
-            turn?: {
-              id?: string;
-              status?: string;
-              error?: { message?: string | null } | null;
-            };
-          }
-        | undefined;
-      const status = completedParams?.turn?.status;
-      if (status === "failed") {
-        const errorMessage =
-          completedParams?.turn?.error?.message?.trim() ||
-          "Codex turn failed with no error message.";
-        throw new Error(errorMessage);
-      }
-      if (status === "interrupted") {
-        throw new Error("Codex turn was interrupted.");
-      }
-
-      const textFromEvents = pickBestAgentMessageText(
-        Array.from(capturedMessages.values()),
-      );
-      if (textFromEvents) {
-        return { text: textFromEvents, turnId };
-      }
-
-      let text: string | null = null;
-      try {
-        const threadRead = (await session.request("thread/read", {
-          threadId,
-          includeTurns: true,
-        })) as {
-          thread?: {
-            turns?: Array<{
-              id?: string;
-              items?: unknown[];
-            }>;
-          };
+        )) as {
+          turn?: { id?: string };
         };
 
-        const turn = (threadRead.thread?.turns ?? []).find(
-          (candidate) => candidate.id === turnId,
-        );
-        text = extractAgentMessageText(turn ?? null);
-      } catch (error) {
-        logger.debug("Codex thread/read fallback unavailable", {
-          message: buildCodexErrorMessage(error),
-        });
-      }
+        const turnId = turnStart.turn?.id;
+        if (!turnId) {
+          throw new Error("Codex turn/start did not return a turn id.");
+        }
 
-      if (!text) {
-        throw new Error(
-          "Codex turn completed but no assistant message text was returned.",
+        const timeoutMs = getPositiveIntEnv(
+          "CODEX_APP_SERVER_TURN_TIMEOUT_MS",
+          DEFAULT_TURN_TIMEOUT_MS,
         );
-      }
+        const capturedMessages = new Map<
+          string,
+          { text: string; phase: string | null }
+        >();
+        let turnCompleted: JsonRpcNotification | null = null;
 
-      return { text, turnId };
-    } finally {
-      await session.close();
-    }
+        while (!turnCompleted) {
+          const notification = await session.waitForNotification(
+            (candidate) => {
+              if (candidate.method === "turn/completed") {
+                const params = candidate.params as
+                  | { turn?: { id?: string } }
+                  | undefined;
+                return params?.turn?.id === turnId;
+              }
+
+              if (candidate.method === "item/agentMessage/delta") {
+                const params = candidate.params as
+                  | { threadId?: string; turnId?: string; itemId?: string }
+                  | undefined;
+                return (
+                  params?.threadId === threadId &&
+                  params?.turnId === turnId &&
+                  typeof params.itemId === "string"
+                );
+              }
+
+              if (candidate.method === "item/completed") {
+                const params = candidate.params as
+                  | { threadId?: string; turnId?: string; item?: unknown }
+                  | undefined;
+                return (
+                  params?.threadId === threadId &&
+                  params?.turnId === turnId &&
+                  typeof params.item === "object" &&
+                  params.item !== null
+                );
+              }
+
+              return false;
+            },
+            {
+              signal: options.signal,
+              timeoutMs,
+            },
+          );
+
+          if (notification.method === "item/agentMessage/delta") {
+            const params = notification.params as
+              | { itemId?: string; delta?: string }
+              | undefined;
+            const itemId = params?.itemId;
+            if (
+              typeof itemId === "string" &&
+              typeof params?.delta === "string"
+            ) {
+              const existing = capturedMessages.get(itemId) ?? {
+                text: "",
+                phase: null,
+              };
+              capturedMessages.set(itemId, {
+                text: `${existing.text}${params.delta}`,
+                phase: existing.phase,
+              });
+            }
+            continue;
+          }
+
+          if (notification.method === "item/completed") {
+            const params = notification.params as
+              | { item?: unknown }
+              | undefined;
+            const item =
+              params && typeof params.item === "object" && params.item !== null
+                ? (params.item as Record<string, unknown>)
+                : null;
+            if (item?.type === "agentMessage") {
+              const itemId =
+                typeof item.id === "string"
+                  ? item.id
+                  : `agent-message-${capturedMessages.size + 1}`;
+              const text = typeof item.text === "string" ? item.text : "";
+              const phase = typeof item.phase === "string" ? item.phase : null;
+              const existing = capturedMessages.get(itemId);
+              capturedMessages.set(itemId, {
+                text: text || existing?.text || "",
+                phase: phase ?? existing?.phase ?? null,
+              });
+            }
+            continue;
+          }
+
+          turnCompleted = notification;
+        }
+
+        const completedParams = turnCompleted.params as
+          | {
+              turn?: {
+                id?: string;
+                status?: string;
+                error?: { message?: string | null } | null;
+              };
+            }
+          | undefined;
+        const status = completedParams?.turn?.status;
+        if (status === "failed") {
+          const errorMessage =
+            completedParams?.turn?.error?.message?.trim() ||
+            "Codex turn failed with no error message.";
+          throw new Error(errorMessage);
+        }
+        if (status === "interrupted") {
+          throw new Error("Codex turn was interrupted.");
+        }
+
+        const textFromEvents = pickBestAgentMessageText(
+          Array.from(capturedMessages.values()),
+        );
+        if (textFromEvents) {
+          return { text: textFromEvents, turnId };
+        }
+
+        let text: string | null = null;
+        try {
+          const threadRead = (await session.request("thread/read", {
+            threadId,
+            includeTurns: true,
+          })) as {
+            thread?: {
+              turns?: Array<{
+                id?: string;
+                items?: unknown[];
+              }>;
+            };
+          };
+
+          const turn = (threadRead.thread?.turns ?? []).find(
+            (candidate) => candidate.id === turnId,
+          );
+          text = extractAgentMessageText(turn ?? null);
+        } catch (error) {
+          logger.debug("Codex thread/read fallback unavailable", {
+            message: buildCodexErrorMessage(error),
+          });
+        }
+
+        if (!text) {
+          throw new Error(
+            "Codex turn completed but no assistant message text was returned.",
+          );
+        }
+
+        return { text, turnId };
+      },
+    });
   }
+}
+
+export async function __resetCodexSharedSessionForTests(): Promise<void> {
+  await closeCodexSessionForTests();
 }

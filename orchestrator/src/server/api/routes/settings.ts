@@ -372,7 +372,7 @@ settingsRouter.get(
 
 settingsRouter.post(
   "/codex-auth/start",
-  asyncRoute(async (_req: Request, res: Response) => {
+  asyncRoute(async (req: Request, res: Response) => {
     if (isDemoMode()) {
       fail(
         res,
@@ -381,9 +381,11 @@ settingsRouter.post(
       return;
     }
 
+    const forceRestart = req.body?.forceRestart === true;
+
     try {
       clearCodexValidationCache();
-      await startCodexDeviceAuth();
+      await startCodexDeviceAuth(forceRestart);
       const data = await getCodexAuthResponseData();
       ok(res, data);
     } catch (error) {

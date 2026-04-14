@@ -105,6 +105,33 @@ describe("codex device login service", () => {
     expect(second.verificationUrl).toBe(first.verificationUrl);
   });
 
+  it("restarts device auth when forced and returns a new code", async () => {
+    vi.mocked(spawn)
+      .mockImplementationOnce(() =>
+        createMockProcess((stdout) => {
+          setTimeout(() => {
+            stdout.write("https://auth.openai.com/codex/device\n");
+            stdout.write("FIRST-CODE\n");
+          }, 0);
+        }),
+      )
+      .mockImplementationOnce(() =>
+        createMockProcess((stdout) => {
+          setTimeout(() => {
+            stdout.write("https://auth.openai.com/codex/device\n");
+            stdout.write("SECOND-CODE\n");
+          }, 0);
+        }),
+      );
+
+    const first = await startCodexDeviceAuth();
+    const second = await startCodexDeviceAuth(true);
+
+    expect(vi.mocked(spawn)).toHaveBeenCalledTimes(2);
+    expect(first.userCode).toBe("FIRST-CODE");
+    expect(second.userCode).toBe("SECOND-CODE");
+  });
+
   it("tracks process completion when login exits immediately after printing device code", async () => {
     vi.mocked(spawn).mockImplementation(() =>
       createMockProcess((stdout, _stderr, proc) => {
