@@ -1,4 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { logger } from "@infra/logger";
 import type { JsonSchemaDefinition, LlmRequestOptions } from "../types";
@@ -8,6 +10,7 @@ const DEFAULT_STARTUP_TIMEOUT_MS = 15_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_TURN_TIMEOUT_MS = 120_000;
 const MAX_STDERR_LINES = 40;
+const FALLBACK_CLIENT_VERSION = "dev";
 
 type JsonRpcId = number | string;
 
@@ -74,6 +77,50 @@ function buildCodexErrorMessage(error: unknown): string {
 function isAbortError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   return error.name === "AbortError" || error.message.includes("aborted");
+}
+
+function toNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function readVersionFromPackage(filePath: string): string | null {
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw) as { version?: unknown };
+    return toNonEmptyString(parsed.version);
+  } catch {
+    return null;
+  }
+}
+
+let cachedClientVersion: string | null = null;
+
+function resolveClientVersion(): string {
+  if (cachedClientVersion) {
+    return cachedClientVersion;
+  }
+
+  const envVersion =
+    toNonEmptyString(process.env.JOBOPS_VERSION) ||
+    toNonEmptyString(process.env.npm_package_version);
+  if (envVersion) {
+    cachedClientVersion = envVersion;
+    return cachedClientVersion;
+  }
+
+  const packageVersion =
+    readVersionFromPackage(
+      join(process.cwd(), "orchestrator", "package.json"),
+    ) || readVersionFromPackage(join(process.cwd(), "package.json"));
+  if (packageVersion) {
+    cachedClientVersion = packageVersion;
+    return cachedClientVersion;
+  }
+
+  cachedClientVersion = FALLBACK_CLIENT_VERSION;
+  return cachedClientVersion;
 }
 
 function formatPrompt(args: {
@@ -219,7 +266,7 @@ class CodexAppServerSession {
           clientInfo: {
             name: "job-ops",
             title: "JobOps",
-            version: "0.3.1",
+            version: resolveClientVersion(),
           },
           capabilities: {
             experimentalApi: false,

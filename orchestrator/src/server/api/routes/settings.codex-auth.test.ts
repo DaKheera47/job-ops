@@ -73,6 +73,25 @@ describe.sequential("Settings codex auth routes", () => {
     expect(body.data.validationMessage).toBe("Codex not authenticated");
   });
 
+  it("caches codex validation briefly while device auth is in progress", async () => {
+    getCodexDeviceAuthSnapshotMock.mockReturnValue({
+      status: "running",
+      loginInProgress: true,
+      verificationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-EFGH",
+      startedAt: "2026-04-14T16:00:00.000Z",
+      expiresAt: "2026-04-14T16:15:00.000Z",
+      message: "Open the verification URL and enter the one-time code.",
+    });
+
+    const first = await fetch(`${baseUrl}/api/settings/codex-auth`);
+    const second = await fetch(`${baseUrl}/api/settings/codex-auth`);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(validateCredentialsMock).toHaveBeenCalledTimes(1);
+  });
+
   it("starts codex device auth and returns flow details", async () => {
     startCodexDeviceAuthMock.mockResolvedValueOnce({
       status: "running",

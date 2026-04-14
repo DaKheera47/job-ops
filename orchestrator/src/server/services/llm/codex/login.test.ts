@@ -105,6 +105,29 @@ describe("codex device login service", () => {
     expect(second.verificationUrl).toBe(first.verificationUrl);
   });
 
+  it("tracks process completion when login exits immediately after printing device code", async () => {
+    vi.mocked(spawn).mockImplementation(() =>
+      createMockProcess((stdout, _stderr, proc) => {
+        setTimeout(() => {
+          stdout.write("https://auth.openai.com/codex/device\n");
+          stdout.write("ABCD-EFGH\n");
+          proc.emit("exit", 0, null);
+        }, 0);
+      }),
+    );
+
+    const snapshot = await startCodexDeviceAuth();
+    expect(snapshot.userCode).toBe("ABCD-EFGH");
+
+    await new Promise<void>((resolve) => {
+      setImmediate(resolve);
+    });
+
+    const current = getCodexDeviceAuthSnapshot();
+    expect(current.status).toBe("completed");
+    expect(current.loginInProgress).toBe(false);
+  });
+
   it("fails when the login process exits before yielding a device code", async () => {
     vi.mocked(spawn).mockImplementation(() =>
       createMockProcess((_stdout, _stderr, proc) => {

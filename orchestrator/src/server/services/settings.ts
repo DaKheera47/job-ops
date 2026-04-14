@@ -36,7 +36,7 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
     return "https://generativelanguage.googleapis.com";
   }
   if (normalized === "codex") {
-    return "stdio://";
+    return "";
   }
   return "https://openrouter.ai";
 }

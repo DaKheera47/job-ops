@@ -2,7 +2,7 @@ import { createProviderStrategy } from "./factory";
 
 export const codexStrategy = createProviderStrategy({
   provider: "codex",
-  defaultBaseUrl: "stdio://",
+  defaultBaseUrl: "",
   requiresApiKey: false,
   modes: ["none"],
   validationPaths: [],

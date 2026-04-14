@@ -43,7 +43,7 @@ describe("LlmService provider normalization", () => {
     });
 
     expect(llm.getProvider()).toBe("codex");
-    expect(llm.getBaseUrl()).toBe("stdio://");
+    expect(llm.getBaseUrl()).toBe("");
   });
 
   it("retries codex JSON parsing failures and succeeds on a later attempt", async () => {

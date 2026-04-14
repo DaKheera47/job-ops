@@ -167,15 +167,25 @@ async function waitForDeviceCode(
       session.message =
         "Timed out waiting for Codex device authorization code. Try again.";
       stopSessionProcess(session);
+      cleanup();
       reject(new Error(session.message));
     }, DEVICE_AUTH_TIMEOUT_MS);
 
+    const cleanup = () => {
+      proc.stdout.off("data", onStdout);
+      proc.stderr.off("data", onStderr);
+      proc.off("exit", onExit);
+      proc.off("error", onError);
+    };
+
     const tryResolve = () => {
       if (session.verificationUrl && session.userCode) {
+        attachExitTracking(session);
         clearTimeout(timeout);
         session.status = "running";
         session.message =
           "Open the verification URL and enter the one-time code to finish login.";
+        cleanup();
         resolve(toSnapshot(session));
       }
     };
@@ -199,6 +209,7 @@ async function waitForDeviceCode(
     const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
       clearTimeout(timeout);
       if (session.verificationUrl && session.userCode) {
+        cleanup();
         return;
       }
 
@@ -208,6 +219,7 @@ async function waitForDeviceCode(
         `Codex login exited before a device code was returned (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
       session.message = normalizeStartupFailureMessage(rawMessage);
       stopSessionProcess(session);
+      cleanup();
       reject(new Error(session.message));
     };
 
@@ -219,6 +231,7 @@ async function waitForDeviceCode(
         : normalizeStartupFailureMessage(error.message);
       session.message = normalizeStartupFailureMessage(message);
       stopSessionProcess(session);
+      cleanup();
       reject(new Error(session.message));
     };
 
@@ -297,7 +310,6 @@ export async function startCodexDeviceAuth(): Promise<CodexDeviceAuthSnapshot> {
 
   try {
     const snapshot = await waitForDeviceCode(session);
-    attachExitTracking(session);
     return snapshot;
   } catch (error) {
     logger.warn("Codex device-auth startup failed", {

@@ -111,6 +111,57 @@ function getDefaultValidationBaseUrl(
   return undefined;
 }
 
+const CODEX_AUTH_VALIDATION_TTL_MS = 5_000;
+let codexValidationCache: {
+  value: { valid: boolean; message: string | null };
+  expiresAtMs: number;
+} | null = null;
+let codexValidationInFlight: Promise<{
+  valid: boolean;
+  message: string | null;
+}> | null = null;
+
+function clearCodexValidationCache(): void {
+  codexValidationCache = null;
+  codexValidationInFlight = null;
+}
+
+async function validateCodexCredentials(): Promise<{
+  valid: boolean;
+  message: string | null;
+}> {
+  return await new LlmService({ provider: "codex" }).validateCredentials();
+}
+
+async function getCachedCodexValidation(): Promise<{
+  valid: boolean;
+  message: string | null;
+}> {
+  const now = Date.now();
+  if (codexValidationCache && codexValidationCache.expiresAtMs > now) {
+    return codexValidationCache.value;
+  }
+
+  if (codexValidationInFlight) {
+    return await codexValidationInFlight;
+  }
+
+  codexValidationInFlight = (async () => {
+    const validation = await validateCodexCredentials();
+    codexValidationCache = {
+      value: validation,
+      expiresAtMs: Date.now() + CODEX_AUTH_VALIDATION_TTL_MS,
+    };
+    return validation;
+  })();
+
+  try {
+    return await codexValidationInFlight;
+  } finally {
+    codexValidationInFlight = null;
+  }
+}
+
 async function resolveLlmConfig(input: {
   provider?: string | null;
   apiKey?: string | null;
@@ -159,10 +210,13 @@ async function getCodexAuthResponseData(): Promise<{
   expiresAt: string | null;
   flowMessage: string | null;
 }> {
-  const [validation, flow] = await Promise.all([
-    new LlmService({ provider: "codex" }).validateCredentials(),
-    Promise.resolve(getCodexDeviceAuthSnapshot()),
-  ]);
+  const flow = getCodexDeviceAuthSnapshot();
+  const validation = flow.loginInProgress
+    ? await getCachedCodexValidation()
+    : await validateCodexCredentials();
+  if (!flow.loginInProgress) {
+    clearCodexValidationCache();
+  }
 
   return {
     authenticated: validation.valid,
@@ -328,6 +382,7 @@ settingsRouter.post(
     }
 
     try {
+      clearCodexValidationCache();
       await startCodexDeviceAuth();
       const data = await getCodexAuthResponseData();
       ok(res, data);

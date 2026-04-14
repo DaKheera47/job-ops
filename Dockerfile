@@ -13,6 +13,7 @@ ENV DATA_DIR=/app/data
 ENV CODEX_HOME=/app/codex-home
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PATH=/root/.local/bin:${PATH}
+ARG CODEX_CLI_VERSION=0.23.0
 
 # Install runtime dependencies shared by build and production stages.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Codex CLI for local app-server based inference.
-RUN npm install -g @openai/codex@latest
+RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
 WORKDIR /app
 
