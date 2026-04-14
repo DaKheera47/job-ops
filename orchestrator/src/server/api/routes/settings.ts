@@ -12,6 +12,10 @@ import { getRequestId } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { setBackupSettings } from "@server/services/backup/index";
+import {
+  getCodexDeviceAuthSnapshot,
+  startCodexDeviceAuth,
+} from "@server/services/llm/codex/login";
 import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
@@ -144,6 +148,35 @@ async function resolveLlmConfig(input: {
   };
 }
 
+async function getCodexAuthResponseData(): Promise<{
+  authenticated: boolean;
+  validationMessage: string | null;
+  flowStatus: string;
+  loginInProgress: boolean;
+  verificationUrl: string | null;
+  userCode: string | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  flowMessage: string | null;
+}> {
+  const [validation, flow] = await Promise.all([
+    new LlmService({ provider: "codex" }).validateCredentials(),
+    Promise.resolve(getCodexDeviceAuthSnapshot()),
+  ]);
+
+  return {
+    authenticated: validation.valid,
+    validationMessage: validation.message,
+    flowStatus: flow.status,
+    loginInProgress: flow.loginInProgress,
+    verificationUrl: flow.verificationUrl,
+    userCode: flow.userCode,
+    startedAt: flow.startedAt,
+    expiresAt: flow.expiresAt,
+    flowMessage: flow.message,
+  };
+}
+
 /**
  * GET /api/settings - Get app settings (effective + defaults)
  */
@@ -271,6 +304,44 @@ settingsRouter.post(
           ? badRequest(message)
           : upstreamError(message),
       );
+    }
+  }),
+);
+
+settingsRouter.get(
+  "/codex-auth",
+  asyncRoute(async (_req: Request, res: Response) => {
+    const data = await getCodexAuthResponseData();
+    ok(res, data);
+  }),
+);
+
+settingsRouter.post(
+  "/codex-auth/start",
+  asyncRoute(async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      fail(
+        res,
+        serviceUnavailable("Codex sign-in is disabled in the public demo."),
+      );
+      return;
+    }
+
+    try {
+      await startCodexDeviceAuth();
+      const data = await getCodexAuthResponseData();
+      ok(res, data);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to start Codex sign-in.";
+      logger.warn("Codex sign-in flow failed to start", {
+        requestId: getRequestId() ?? null,
+        route: "POST /api/settings/codex-auth/start",
+        message,
+      });
+      fail(res, serviceUnavailable(message));
     }
   }),
 );

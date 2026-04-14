@@ -1,3 +1,4 @@
+import * as api from "@client/api";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
   getLlmProviderConfig,
@@ -6,7 +7,9 @@ import {
   type LlmProviderId,
 } from "@client/pages/settings/utils";
 import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type Control, Controller } from "react-hook-form";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -50,6 +53,90 @@ export const LlmConnectionStep: React.FC<{
 }> = ({ control, isBusy, llmKeyHint, selectedProvider, validation }) => {
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
+  const isCodexProvider = providerConfig.normalizedProvider === "codex";
+  const [codexAuthStatus, setCodexAuthStatus] = useState<Awaited<
+    ReturnType<typeof api.getCodexAuthStatus>
+  > | null>(null);
+  const [isLoadingCodexAuthStatus, setIsLoadingCodexAuthStatus] =
+    useState(false);
+  const [isStartingCodexAuth, setIsStartingCodexAuth] = useState(false);
+  const [codexAuthError, setCodexAuthError] = useState<string | null>(null);
+
+  const refreshCodexAuthStatus = useCallback(
+    async (showLoading = true) => {
+      if (!isCodexProvider) return;
+      if (showLoading) {
+        setIsLoadingCodexAuthStatus(true);
+      }
+      setCodexAuthError(null);
+      try {
+        const status = await api.getCodexAuthStatus();
+        setCodexAuthStatus(status);
+      } catch (error) {
+        setCodexAuthError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load Codex sign-in status.",
+        );
+      } finally {
+        if (showLoading) {
+          setIsLoadingCodexAuthStatus(false);
+        }
+      }
+    },
+    [isCodexProvider],
+  );
+
+  const startCodexAuth = useCallback(async () => {
+    setIsStartingCodexAuth(true);
+    setCodexAuthError(null);
+    try {
+      const status = await api.startCodexAuth();
+      setCodexAuthStatus(status);
+    } catch (error) {
+      setCodexAuthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to start Codex sign-in.",
+      );
+    } finally {
+      setIsStartingCodexAuth(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isCodexProvider) {
+      setCodexAuthStatus(null);
+      setCodexAuthError(null);
+      setIsLoadingCodexAuthStatus(false);
+      setIsStartingCodexAuth(false);
+      return;
+    }
+
+    void refreshCodexAuthStatus();
+  }, [isCodexProvider, refreshCodexAuthStatus]);
+
+  useEffect(() => {
+    if (!isCodexProvider || !codexAuthStatus?.loginInProgress) {
+      return;
+    }
+    if (codexAuthStatus.authenticated) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshCodexAuthStatus(false);
+    }, 4_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    codexAuthStatus?.authenticated,
+    codexAuthStatus?.loginInProgress,
+    isCodexProvider,
+    refreshCodexAuthStatus,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -83,6 +170,81 @@ export const LlmConnectionStep: React.FC<{
           <p className="text-sm text-muted-foreground">
             {providerConfig.providerHint}
           </p>
+          {isCodexProvider ? (
+            <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+              <div className="text-xs font-medium">Codex Sign-In</div>
+              <p className="text-xs text-muted-foreground">
+                {codexAuthStatus?.authenticated
+                  ? "Codex is authenticated and ready."
+                  : "Start sign-in to get a device code, then complete it in your browser."}
+              </p>
+              {codexAuthStatus?.verificationUrl && codexAuthStatus?.userCode ? (
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <div>
+                    Code:{" "}
+                    <span className="font-mono text-foreground">
+                      {codexAuthStatus.userCode}
+                    </span>
+                  </div>
+                  <div className="break-all">
+                    URL:{" "}
+                    <a
+                      href={codexAuthStatus.verificationUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
+                    >
+                      {codexAuthStatus.verificationUrl}
+                    </a>
+                  </div>
+                  {codexAuthStatus.expiresAt ? (
+                    <div>
+                      Expires at:{" "}
+                      {new Date(codexAuthStatus.expiresAt).toLocaleString()}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+              {codexAuthStatus?.validationMessage ? (
+                <p className="text-xs text-muted-foreground">
+                  Status: {codexAuthStatus.validationMessage}
+                </p>
+              ) : null}
+              {codexAuthStatus?.flowMessage &&
+              !codexAuthStatus.authenticated ? (
+                <p className="text-xs text-muted-foreground">
+                  {codexAuthStatus.flowMessage}
+                </p>
+              ) : null}
+              {codexAuthError ? (
+                <p className="text-xs text-destructive">{codexAuthError}</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void startCodexAuth()}
+                  disabled={isBusy || isStartingCodexAuth}
+                >
+                  {isStartingCodexAuth
+                    ? "Starting..."
+                    : codexAuthStatus?.authenticated
+                      ? "Start New Sign-In"
+                      : "Start Sign-In"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void refreshCodexAuthStatus()}
+                  disabled={isBusy || isLoadingCodexAuthStatus}
+                >
+                  {isLoadingCodexAuthStatus ? "Checking..." : "Refresh Status"}
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {showBaseUrl ? (
@@ -132,8 +294,7 @@ export const LlmConnectionStep: React.FC<{
           />
         ) : (
           <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-            No API key is required for this provider. Job Ops will only validate
-            the local endpoint details.
+            No API key is required for this provider.
           </div>
         )}
       </div>
