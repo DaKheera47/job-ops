@@ -36,7 +36,6 @@ npm --workspace docs-site run build
   - `Enable device code authorization for Codex in ChatGPT Security Settings, then run "codex login --device-auth" again`
 - Fix:
   - Enable device-code authorization in ChatGPT Security Settings and retry sign-in
-  - Or use host-login reuse with `CODEX_HOME_MOUNT` and `codex login` on host
 - Full guide:
   - [Codex Authentication](/docs/next/getting-started/codex-auth)
 

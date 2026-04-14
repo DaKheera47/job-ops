@@ -42,18 +42,7 @@ The onboarding wizard helps you validate and save:
 
 Settings are saved to the local database.
 
-## Codex login (host once)
-
-If you use the `Codex` provider and want to avoid logging in inside the container, mount your host `.codex` directory:
-
-1. In `.env`, set:
-   - `CODEX_HOME_MOUNT=/absolute/path/to/your/.codex`
-2. Restart:
-   - `docker compose up -d`
-3. Log in once on the host:
-   - `codex login`
-
-JobOps will reuse that session inside Docker through `/app/codex-home`.
+## Codex sign-in
 
 For full Codex auth troubleshooting (including device-code authorization errors), see:
 

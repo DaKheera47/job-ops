@@ -138,7 +138,7 @@ function buildOutputMessage(session: DeviceAuthSession): string | null {
 function normalizeStartupFailureMessage(message: string): string {
   if (/enable device code authorization/i.test(message)) {
     return truncate(
-      "Device-code auth is disabled for this account. Enable it in ChatGPT Security Settings, or use host login reuse by setting CODEX_HOME_MOUNT to your host .codex path and running `codex login` on the host.",
+      "Device-code auth is disabled for this account. Enable it in ChatGPT Security Settings, then try Codex sign-in again.",
       400,
     );
   }

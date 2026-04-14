@@ -14,10 +14,8 @@ services:
     volumes:
       # Persist database and generated PDFs
       - ./data:/app/data
-      # Persist Codex login/session data for app-server provider.
-      # Optional host mount override:
-      # CODEX_HOME_MOUNT=/absolute/path/to/.codex
-      - ${CODEX_HOME_MOUNT:-codex-home}:/app/codex-home
+      # Persist Codex login/session data for app-server provider
+      - codex-home:/app/codex-home
     environment:
       # Server config
       - NODE_ENV=production

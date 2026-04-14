@@ -120,7 +120,7 @@ describe("codex device login service", () => {
     expect(getCodexDeviceAuthSnapshot().status).toBe("failed");
   });
 
-  it("provides host-login guidance when device auth is disabled upstream", async () => {
+  it("guides user to security settings when device auth is disabled upstream", async () => {
     vi.mocked(spawn).mockImplementation(() =>
       createMockProcess((stdout, _stderr, proc) => {
         setTimeout(() => {
@@ -132,9 +132,11 @@ describe("codex device login service", () => {
       }),
     );
 
-    await expect(startCodexDeviceAuth()).rejects.toThrow(/CODEX_HOME_MOUNT/i);
+    await expect(startCodexDeviceAuth()).rejects.toThrow(
+      /ChatGPT Security Settings/i,
+    );
     const snapshot = getCodexDeviceAuthSnapshot();
     expect(snapshot.status).toBe("failed");
-    expect(snapshot.message).toMatch(/host/i);
+    expect(snapshot.message).toMatch(/Security Settings/i);
   });
 });
