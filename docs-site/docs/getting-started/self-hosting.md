@@ -55,6 +55,10 @@ If you use the `Codex` provider and want to avoid logging in inside the containe
 
 JobOps will reuse that session inside Docker through `/app/codex-home`.
 
+For full Codex auth troubleshooting (including device-code authorization errors), see:
+
+- [Codex Authentication](/docs/next/getting-started/codex-auth)
+
 ## Gmail OAuth (Tracking Inbox)
 
 If you want Gmail integration, configure OAuth credentials.
