@@ -26,6 +26,7 @@ export const LLM_PROVIDERS = [
   "openai",
   "openai_compatible",
   "gemini",
+  "codex",
 ] as const;
 
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
@@ -42,6 +43,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openai: "OpenAI",
   openai_compatible: "OpenAI-compatible",
   gemini: "Gemini",
+  codex: "Codex",
 };
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
@@ -66,6 +68,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
   gemini: "Gemini uses the native AI Studio API and requires a key.",
+  codex:
+    "Codex runs through a local app-server process and uses your Codex login session.",
 };
 
 const PROVIDER_KEY_HELPERS: Record<
@@ -89,6 +93,7 @@ const PROVIDER_KEY_HELPERS: Record<
     text: "Create a key at aistudio.google.com/api-keys",
     href: "https://aistudio.google.com/app/apikey",
   },
+  codex: { text: "No API key required when Codex is authenticated locally" },
 };
 
 const BASE_URL_PROVIDERS = ["lmstudio", "ollama", "openai_compatible"] as const;

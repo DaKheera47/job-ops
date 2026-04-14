@@ -14,6 +14,8 @@ services:
     volumes:
       # Persist database and generated PDFs
       - ./data:/app/data
+      # Persist Codex login/session data for app-server provider
+      - codex-home:/app/codex-home
     environment:
       # Server config
       - NODE_ENV=production
@@ -21,6 +23,8 @@ services:
 
       # Python path (uses system python in container)
       - PYTHON_PATH=/usr/bin/python3
+      # Codex runtime home (stores auth and config)
+      - CODEX_HOME=/app/codex-home
 
     env_file:
       - path: ./.env
@@ -69,3 +73,4 @@ services:
 # Volumes for data persistence
 volumes:
   data:
+  codex-home:

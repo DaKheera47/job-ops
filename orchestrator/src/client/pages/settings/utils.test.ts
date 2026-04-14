@@ -28,6 +28,13 @@ describe("settings utils", () => {
       "https://aistudio.google.com/app/apikey",
     );
     expect(getLlmProviderConfig("ollama").keyHelperHref).toBeNull();
+    expect(getLlmProviderConfig("codex").keyHelperHref).toBeNull();
+  });
+
+  it("treats codex as a local provider without API key and base URL inputs", () => {
+    const config = getLlmProviderConfig("codex");
+    expect(config.showApiKey).toBe(false);
+    expect(config.showBaseUrl).toBe(false);
   });
 
   it("normalizes the hyphenated openai-compatible alias", () => {

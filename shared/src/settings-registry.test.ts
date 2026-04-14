@@ -282,6 +282,7 @@ describe("settingsRegistry helpers", () => {
       expect(getDefaultModelForProvider("gemini")).toBe(
         "google/gemini-3-flash-preview",
       );
+      expect(getDefaultModelForProvider("codex")).toBe("");
       expect(getDefaultModelForProvider("openrouter")).toBe(
         "google/gemini-3-flash-preview",
       );

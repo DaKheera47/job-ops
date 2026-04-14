@@ -43,6 +43,7 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+export const DEFAULT_CODEX_MODEL = "";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,
@@ -61,6 +62,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "codex") {
+    return DEFAULT_CODEX_MODEL;
   }
   return DEFAULT_GEMINI_MODEL;
 }
@@ -169,6 +174,7 @@ export const settingsRegistry = {
           "openai",
           "openai_compatible",
           "gemini",
+          "codex",
         ])
         .nullable(),
     ),

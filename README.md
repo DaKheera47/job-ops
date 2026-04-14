@@ -53,6 +53,12 @@ docker compose up -d
 
 Open `http://localhost:3005` and follow the onboarding wizard. You'll be searching in under 10 minutes.
 
+If you pick the `Codex` provider, authenticate once inside the running container:
+
+```bash
+docker compose exec job-ops codex login
+```
+
 ---
 
 ## How It Works
@@ -101,6 +107,7 @@ No manual updates. No spreadsheets. See the [tracking docs](https://jobops.dakhe
 
 JobOps works with the model provider you already use:
 
+- Codex (local app-server in Docker, authenticated with `codex login`)
 - OpenAI
 - Google Gemini
 - OpenRouter
