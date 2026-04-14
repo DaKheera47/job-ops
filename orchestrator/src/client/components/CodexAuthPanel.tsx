@@ -1,11 +1,5 @@
 import * as api from "@client/api";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
+import { CheckCircle2, Copy, ExternalLink, Loader2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +25,8 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
   const [isLoadingCodexAuthStatus, setIsLoadingCodexAuthStatus] =
     useState(false);
   const [isStartingCodexAuth, setIsStartingCodexAuth] = useState(false);
+  const [isDisconnectingCodexAuth, setIsDisconnectingCodexAuth] =
+    useState(false);
   const [codexAuthError, setCodexAuthError] = useState<string | null>(null);
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -93,6 +89,22 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
     }
   }, [codexAuthStatus?.userCode]);
 
+  const disconnectCodex = useCallback(async () => {
+    setIsDisconnectingCodexAuth(true);
+    setCodexAuthError(null);
+    setHasCopiedCode(false);
+    try {
+      const status = await api.disconnectCodexAuth();
+      setCodexAuthStatus(status);
+    } catch (error) {
+      setCodexAuthError(
+        error instanceof Error ? error.message : "Failed to disconnect Codex.",
+      );
+    } finally {
+      setIsDisconnectingCodexAuth(false);
+    }
+  }, []);
+
   useEffect(() => {
     void refreshCodexAuthStatus();
   }, [refreshCodexAuthStatus]);
@@ -143,45 +155,54 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
   const isAuthenticated = Boolean(codexAuthStatus?.authenticated);
   const isWaitingForApproval =
     Boolean(codexAuthStatus?.loginInProgress) && !isAuthenticated;
-  const hasFailed = codexAuthStatus?.flowStatus === "failed";
+  const displayUsername = codexAuthStatus?.username?.trim() || "your account";
 
-  const badge = isAuthenticated
-    ? {
-        icon: CheckCircle2,
-        text: "Authenticated",
-        className: "border-emerald-300 bg-emerald-500/10 text-emerald-700",
-      }
-    : hasFailed
-      ? {
-          icon: AlertCircle,
-          text: "Needs Attention",
-          className: "border-destructive/40 bg-destructive/10 text-destructive",
-        }
-      : isWaitingForApproval
-        ? {
-            icon: Loader2,
-            text: "Waiting for approval",
-            className: "border-amber-300 bg-amber-500/10 text-amber-700",
-          }
-        : {
-            icon: AlertCircle,
-            text: "Not authenticated",
-            className: "border-border bg-muted text-muted-foreground",
-          };
-  const BadgeIcon = badge.icon;
+  if (isAuthenticated) {
+    return (
+      <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-xs font-medium">Codex Sign-In</div>
+          <Badge
+            className="gap-1 border-emerald-700 bg-emerald-700 text-white dark:border-emerald-300 dark:bg-emerald-300 dark:text-emerald-950"
+            variant="outline"
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Authenticated
+          </Badge>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-300/60 bg-emerald-500/10 px-3 py-2">
+          <p className="text-sm text-foreground">
+            <span className="font-medium">Connected as </span>
+            <span className="font-mono">{displayUsername}</span>
+          </p>
+          <button
+            type="button"
+            className="text-xs font-medium text-destructive underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => void disconnectCodex()}
+            disabled={isBusy || isDisconnectingCodexAuth}
+          >
+            {isDisconnectingCodexAuth ? "Disconnecting..." : "Disconnect"}
+          </button>
+        </div>
+
+        {codexAuthError ? (
+          <p className="text-xs text-destructive">{codexAuthError}</p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs font-medium">Codex Sign-In</div>
-        <Badge className={`gap-1 ${badge.className}`} variant="outline">
-          <BadgeIcon
-            className={`h-3.5 w-3.5 ${
-              isWaitingForApproval ? "animate-spin" : ""
-            }`}
-          />
-          {badge.text}
-        </Badge>
+        {isWaitingForApproval ? (
+          <div className="inline-flex items-center gap-1 text-xs text-amber-700">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Waiting for approval
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-md border border-dashed border-border/70 bg-background/60 px-3 py-2 text-xs text-muted-foreground">

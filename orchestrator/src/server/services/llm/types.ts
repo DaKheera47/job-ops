@@ -51,6 +51,7 @@ export type LlmResponse<T> = LlmResult<T> | LlmError;
 export type LlmValidationResult = {
   valid: boolean;
   message: string | null;
+  username?: string | null;
 };
 
 export type LlmServiceOptions = {

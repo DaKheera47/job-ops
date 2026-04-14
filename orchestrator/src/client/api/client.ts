@@ -102,6 +102,7 @@ type StreamSseInput =
 
 export type CodexAuthStatusResponse = {
   authenticated: boolean;
+  username: string | null;
   validationMessage: string | null;
   flowStatus: string;
   loginInProgress: boolean;
@@ -1680,6 +1681,12 @@ export async function startCodexAuth(input?: {
     body: JSON.stringify({
       forceRestart: input?.forceRestart ?? false,
     }),
+  });
+}
+
+export async function disconnectCodexAuth(): Promise<CodexAuthStatusResponse> {
+  return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth/disconnect", {
+    method: "POST",
   });
 }
 

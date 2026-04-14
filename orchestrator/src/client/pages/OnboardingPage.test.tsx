@@ -15,6 +15,7 @@ vi.mock("@client/api", () => ({
   suggestOnboardingSearchTerms: vi.fn(),
   getCodexAuthStatus: vi.fn(),
   startCodexAuth: vi.fn(),
+  disconnectCodexAuth: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -159,6 +160,7 @@ describe("OnboardingPage", () => {
     });
     vi.mocked(api.getCodexAuthStatus).mockResolvedValue({
       authenticated: false,
+      username: null,
       validationMessage:
         "Codex is not authenticated in this container. Run `codex login` and try again.",
       flowStatus: "idle",
@@ -171,6 +173,7 @@ describe("OnboardingPage", () => {
     });
     vi.mocked(api.startCodexAuth).mockResolvedValue({
       authenticated: false,
+      username: null,
       validationMessage:
         "Codex is not authenticated in this container. Run `codex login` and try again.",
       flowStatus: "running",

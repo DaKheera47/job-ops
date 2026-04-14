@@ -19,6 +19,7 @@ vi.mock("../api", () => ({
   getLlmModels: vi.fn().mockResolvedValue([]),
   getCodexAuthStatus: vi.fn().mockResolvedValue({
     authenticated: false,
+    username: null,
     validationMessage:
       "Codex is not authenticated in this container. Run `codex login` and try again.",
     flowStatus: "idle",
@@ -31,6 +32,7 @@ vi.mock("../api", () => ({
   }),
   startCodexAuth: vi.fn().mockResolvedValue({
     authenticated: false,
+    username: null,
     validationMessage:
       "Codex is not authenticated in this container. Run `codex login` and try again.",
     flowStatus: "running",
@@ -42,6 +44,7 @@ vi.mock("../api", () => ({
     flowMessage:
       "Open the verification URL and enter the one-time code to finish login.",
   }),
+  disconnectCodexAuth: vi.fn(),
   updateSettings: vi.fn(),
   validateRxresume: vi.fn(),
   getRxResumeProjects: vi.fn(),

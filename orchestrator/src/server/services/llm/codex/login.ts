@@ -3,6 +3,7 @@ import { logger } from "@infra/logger";
 import { truncate } from "../utils/string";
 
 const DEVICE_AUTH_TIMEOUT_MS = 15_000;
+const LOGOUT_TIMEOUT_MS = 10_000;
 const MAX_BUFFERED_LINES = 80;
 const DEVICE_CODE_REGEX = /\b[A-Z0-9]{4,}-[A-Z0-9]{4,}\b/;
 const URL_REGEX = /(https?:\/\/[^\s]+)/i;
@@ -143,6 +144,12 @@ function normalizeStartupFailureMessage(message: string): string {
     );
   }
   return truncate(message, 400);
+}
+
+function isAlreadyLoggedOutMessage(message: string): boolean {
+  return /not logged in|not authenticated|already logged out|already signed out/i.test(
+    message,
+  );
 }
 
 function stopSessionProcess(session: DeviceAuthSession): void {
@@ -339,6 +346,73 @@ export async function startCodexDeviceAuth(
     });
     throw error;
   }
+}
+
+export async function disconnectCodexAuth(): Promise<CodexDeviceAuthSnapshot> {
+  if (activeSession) {
+    stopSessionProcess(activeSession);
+    activeSession = null;
+  }
+
+  const command = process.env.CODEX_APP_SERVER_BIN?.trim() || "codex";
+
+  await new Promise<void>((resolve, reject) => {
+    const proc = spawn(command, ["logout"], {
+      stdio: "pipe",
+      cwd: process.cwd(),
+      env: process.env,
+    });
+
+    const output: string[] = [];
+    const appendOutput = (chunk: Buffer | string) => {
+      const text = typeof chunk === "string" ? chunk : chunk.toString("utf8");
+      for (const line of text.split(/\r?\n/)) {
+        const normalized = stripAnsi(line).trim();
+        if (!normalized) continue;
+        output.push(normalized);
+        if (output.length > MAX_BUFFERED_LINES) {
+          output.shift();
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      proc.kill("SIGTERM");
+      reject(new Error("Timed out while disconnecting Codex."));
+    }, LOGOUT_TIMEOUT_MS);
+
+    proc.stdout.on("data", appendOutput);
+    proc.stderr.on("data", appendOutput);
+
+    proc.once("error", (error) => {
+      clearTimeout(timer);
+      if (error.message.includes("ENOENT")) {
+        reject(new Error("Codex CLI is not installed in this runtime."));
+        return;
+      }
+      reject(new Error(truncate(error.message, 400)));
+    });
+
+    proc.once("exit", (code, signal) => {
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve();
+        return;
+      }
+
+      const latestOutput = output.at(-1);
+      const message =
+        latestOutput ||
+        `Codex logout failed (code=${code ?? "null"}, signal=${signal ?? "null"}).`;
+      if (isAlreadyLoggedOutMessage(message)) {
+        resolve();
+        return;
+      }
+      reject(new Error(truncate(message, 400)));
+    });
+  });
+
+  return toSnapshot(activeSession);
 }
 
 export function __resetCodexDeviceAuthForTests(): void {

@@ -5,6 +5,7 @@ import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   __resetCodexDeviceAuthForTests,
+  disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
 } from "./login";
@@ -188,5 +189,34 @@ describe("codex device login service", () => {
     const snapshot = getCodexDeviceAuthSnapshot();
     expect(snapshot.status).toBe("failed");
     expect(snapshot.message).toMatch(/Security Settings/i);
+  });
+
+  it("disconnects codex auth successfully", async () => {
+    vi.mocked(spawn).mockImplementation(() =>
+      createMockProcess((_stdout, _stderr, proc) => {
+        setTimeout(() => {
+          proc.emit("exit", 0, null);
+        }, 0);
+      }),
+    );
+
+    const snapshot = await disconnectCodexAuth();
+    expect(snapshot.status).toBe("idle");
+    expect(snapshot.loginInProgress).toBe(false);
+  });
+
+  it("treats already-logged-out state as a successful disconnect", async () => {
+    vi.mocked(spawn).mockImplementation(() =>
+      createMockProcess((_stdout, stderr, proc) => {
+        setTimeout(() => {
+          stderr.write("Not logged in.\n");
+          proc.emit("exit", 1, null);
+        }, 0);
+      }),
+    );
+
+    const snapshot = await disconnectCodexAuth();
+    expect(snapshot.status).toBe("idle");
+    expect(snapshot.loginInProgress).toBe(false);
   });
 });

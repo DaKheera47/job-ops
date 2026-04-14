@@ -59,6 +59,17 @@ type NotificationWaiter = {
   abortCleanup: (() => void) | null;
 };
 
+type CodexAuthStatusResponse = {
+  authMethod?: string | null;
+  requiresOpenaiAuth?: boolean | null;
+  username?: string | null;
+  userName?: string | null;
+  login?: string | null;
+  email?: string | null;
+  account?: Record<string, unknown> | null;
+  user?: Record<string, unknown> | null;
+};
+
 function getPositiveIntEnv(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();
   if (!raw) return fallback;
@@ -95,6 +106,42 @@ function toNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : null;
+}
+
+function getRecordString(
+  record: Record<string, unknown> | null | undefined,
+  key: string,
+): string | null {
+  if (!record) return null;
+  return toNonEmptyString(record[key]);
+}
+
+function extractCodexUsername(raw: unknown): string | null {
+  if (!raw || typeof raw !== "object") return null;
+  const auth = raw as CodexAuthStatusResponse;
+
+  const direct =
+    toNonEmptyString(auth.username) ||
+    toNonEmptyString(auth.userName) ||
+    toNonEmptyString(auth.login) ||
+    toNonEmptyString(auth.email);
+  if (direct) return direct;
+
+  const fromUser =
+    getRecordString(auth.user ?? null, "username") ||
+    getRecordString(auth.user ?? null, "userName") ||
+    getRecordString(auth.user ?? null, "login") ||
+    getRecordString(auth.user ?? null, "email") ||
+    getRecordString(auth.user ?? null, "name");
+  if (fromUser) return fromUser;
+
+  return (
+    getRecordString(auth.account ?? null, "username") ||
+    getRecordString(auth.account ?? null, "userName") ||
+    getRecordString(auth.account ?? null, "login") ||
+    getRecordString(auth.account ?? null, "email") ||
+    getRecordString(auth.account ?? null, "name")
+  );
 }
 
 function readVersionFromPackage(filePath: string): string | null {
@@ -687,9 +734,11 @@ async function closeCodexSessionForTests(): Promise<void> {
 }
 
 export class CodexClient {
-  async validateCredentials(
-    signal?: AbortSignal,
-  ): Promise<{ valid: boolean; message: string | null }> {
+  async getAuthStatus(signal?: AbortSignal): Promise<{
+    valid: boolean;
+    message: string | null;
+    username: string | null;
+  }> {
     try {
       return await withCodexSession({
         signal,
@@ -697,20 +746,22 @@ export class CodexClient {
           const auth = (await session.request("getAuthStatus", {
             includeToken: false,
             refreshToken: false,
-          })) as {
-            authMethod?: string | null;
-            requiresOpenaiAuth?: boolean | null;
-          };
+          })) as CodexAuthStatusResponse;
 
           if (!auth?.authMethod && auth?.requiresOpenaiAuth !== false) {
             return {
               valid: false,
               message:
                 "Codex is not authenticated in this container. Run `codex login` and try again.",
+              username: null,
             };
           }
 
-          return { valid: true, message: null };
+          return {
+            valid: true,
+            message: null,
+            username: extractCodexUsername(auth),
+          };
         },
       });
     } catch (error) {
@@ -718,13 +769,28 @@ export class CodexClient {
         return {
           valid: false,
           message: "Codex validation was cancelled.",
+          username: null,
         };
       }
       return {
         valid: false,
         message: buildCodexErrorMessage(error),
+        username: null,
       };
     }
+  }
+
+  async validateCredentials(signal?: AbortSignal): Promise<{
+    valid: boolean;
+    message: string | null;
+    username?: string | null;
+  }> {
+    const status = await this.getAuthStatus(signal);
+    return {
+      valid: status.valid,
+      message: status.message,
+      username: status.username,
+    };
   }
 
   async listModels(signal?: AbortSignal): Promise<string[]> {

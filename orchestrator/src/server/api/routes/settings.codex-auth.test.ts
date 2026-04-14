@@ -3,16 +3,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   startCodexDeviceAuthMock,
+  disconnectCodexAuthMock,
   getCodexDeviceAuthSnapshotMock,
   validateCredentialsMock,
 } = vi.hoisted(() => ({
   startCodexDeviceAuthMock: vi.fn(),
+  disconnectCodexAuthMock: vi.fn(),
   getCodexDeviceAuthSnapshotMock: vi.fn(),
   validateCredentialsMock: vi.fn(),
 }));
 
 vi.mock("@server/services/llm/codex/login", () => ({
   startCodexDeviceAuth: startCodexDeviceAuthMock,
+  disconnectCodexAuth: disconnectCodexAuthMock,
   getCodexDeviceAuthSnapshot: getCodexDeviceAuthSnapshotMock,
 }));
 
@@ -50,6 +53,7 @@ describe.sequential("Settings codex auth routes", () => {
       message: "Codex not authenticated",
     });
     startCodexDeviceAuthMock.mockResolvedValue(undefined);
+    disconnectCodexAuthMock.mockResolvedValue(undefined);
 
     ({ server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
@@ -152,5 +156,17 @@ describe.sequential("Settings codex auth routes", () => {
     expect(body.ok).toBe(false);
     expect(body.error.code).toBe("SERVICE_UNAVAILABLE");
     expect(body.meta.requestId).toBe("req-codex-auth-fail");
+  });
+
+  it("disconnects codex auth and returns status", async () => {
+    const res = await fetch(`${baseUrl}/api/settings/codex-auth/disconnect`, {
+      method: "POST",
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.authenticated).toBe(false);
+    expect(disconnectCodexAuthMock).toHaveBeenCalledOnce();
   });
 });

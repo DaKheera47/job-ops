@@ -13,6 +13,7 @@ import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { setBackupSettings } from "@server/services/backup/index";
 import {
+  disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
 } from "@server/services/llm/codex/login";
@@ -113,12 +114,13 @@ function getDefaultValidationBaseUrl(
 
 const CODEX_AUTH_VALIDATION_TTL_MS = 5_000;
 let codexValidationCache: {
-  value: { valid: boolean; message: string | null };
+  value: { valid: boolean; message: string | null; username?: string | null };
   expiresAtMs: number;
 } | null = null;
 let codexValidationInFlight: Promise<{
   valid: boolean;
   message: string | null;
+  username?: string | null;
 }> | null = null;
 
 function clearCodexValidationCache(): void {
@@ -129,6 +131,7 @@ function clearCodexValidationCache(): void {
 async function validateCodexCredentials(): Promise<{
   valid: boolean;
   message: string | null;
+  username?: string | null;
 }> {
   return await new LlmService({ provider: "codex" }).validateCredentials();
 }
@@ -136,6 +139,7 @@ async function validateCodexCredentials(): Promise<{
 async function getCachedCodexValidation(): Promise<{
   valid: boolean;
   message: string | null;
+  username?: string | null;
 }> {
   const now = Date.now();
   if (codexValidationCache && codexValidationCache.expiresAtMs > now) {
@@ -201,6 +205,7 @@ async function resolveLlmConfig(input: {
 
 async function getCodexAuthResponseData(): Promise<{
   authenticated: boolean;
+  username: string | null;
   validationMessage: string | null;
   flowStatus: string;
   loginInProgress: boolean;
@@ -220,6 +225,7 @@ async function getCodexAuthResponseData(): Promise<{
 
   return {
     authenticated: validation.valid,
+    username: validation.username ?? null,
     validationMessage: validation.message,
     flowStatus: flow.status,
     loginInProgress: flow.loginInProgress,
@@ -396,6 +402,37 @@ settingsRouter.post(
       logger.warn("Codex sign-in flow failed to start", {
         requestId: getRequestId() ?? null,
         route: "POST /api/settings/codex-auth/start",
+        message,
+      });
+      fail(res, serviceUnavailable(message));
+    }
+  }),
+);
+
+settingsRouter.post(
+  "/codex-auth/disconnect",
+  asyncRoute(async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      return sendDemoBlocked(
+        res,
+        "Codex sign-out is disabled in the public demo.",
+        { route: "POST /api/settings/codex-auth/disconnect" },
+      );
+    }
+
+    try {
+      await disconnectCodexAuth();
+      clearCodexValidationCache();
+      const data = await getCodexAuthResponseData();
+      ok(res, data);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to disconnect Codex right now.";
+      logger.warn("Codex sign-out failed", {
+        requestId: getRequestId(),
+        route: "POST /api/settings/codex-auth/disconnect",
         message,
       });
       fail(res, serviceUnavailable(message));

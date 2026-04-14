@@ -203,6 +203,36 @@ describe("CodexClient", () => {
     expect(result.message).toMatch(/codex login/i);
   });
 
+  it("returns username when codex auth status includes identity data", async () => {
+    mockSpawn((request, helpers) => {
+      if (request.method === "initialize") {
+        helpers.respond({
+          userAgent: "test",
+          codexHome: "/tmp/codex",
+          platformFamily: "unix",
+          platformOs: "linux",
+        });
+        return;
+      }
+      if (request.method === "getAuthStatus") {
+        helpers.respond({
+          authMethod: "openai",
+          requiresOpenaiAuth: false,
+          user: {
+            email: "dev@example.com",
+          },
+        });
+        return;
+      }
+      helpers.respond({});
+    });
+
+    const client = new CodexClient();
+    const result = await client.validateCredentials();
+    expect(result.valid).toBe(true);
+    expect(result.username).toBe("dev@example.com");
+  });
+
   it("paginates model/list and deduplicates model names", async () => {
     let modelListCalls = 0;
 
