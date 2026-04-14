@@ -1,0 +1,361 @@
+import * as api from "@client/api";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+type CodexAuthPanelProps = {
+  isBusy: boolean;
+};
+
+type AuthMode = "device" | "host";
+
+const TWO_MINUTES_MS = 2 * 60 * 1000;
+
+function formatRemaining(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
+  const [authMode, setAuthMode] = useState<AuthMode>("device");
+  const [codexAuthStatus, setCodexAuthStatus] = useState<Awaited<
+    ReturnType<typeof api.getCodexAuthStatus>
+  > | null>(null);
+  const [isLoadingCodexAuthStatus, setIsLoadingCodexAuthStatus] =
+    useState(false);
+  const [isStartingCodexAuth, setIsStartingCodexAuth] = useState(false);
+  const [codexAuthError, setCodexAuthError] = useState<string | null>(null);
+  const [hasCopiedCode, setHasCopiedCode] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  const refreshCodexAuthStatus = useCallback(async (showLoading = true) => {
+    if (showLoading) {
+      setIsLoadingCodexAuthStatus(true);
+    }
+    setCodexAuthError(null);
+    try {
+      const status = await api.getCodexAuthStatus();
+      setCodexAuthStatus(status);
+    } catch (error) {
+      setCodexAuthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load Codex sign-in status.",
+      );
+    } finally {
+      if (showLoading) {
+        setIsLoadingCodexAuthStatus(false);
+      }
+    }
+  }, []);
+
+  const startCodexAuth = useCallback(async () => {
+    setIsStartingCodexAuth(true);
+    setCodexAuthError(null);
+    setHasCopiedCode(false);
+    try {
+      const status = await api.startCodexAuth();
+      setCodexAuthStatus(status);
+    } catch (error) {
+      setCodexAuthError(
+        error instanceof Error
+          ? error.message
+          : "Failed to start Codex sign-in.",
+      );
+    } finally {
+      setIsStartingCodexAuth(false);
+    }
+  }, []);
+
+  const copyCode = useCallback(async () => {
+    const code = codexAuthStatus?.userCode;
+    if (!code) return;
+    if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+      setCodexAuthError("Copy is not available in this browser.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(code);
+      setHasCopiedCode(true);
+      window.setTimeout(() => setHasCopiedCode(false), 1800);
+    } catch (error) {
+      setCodexAuthError(
+        error instanceof Error ? error.message : "Failed to copy code.",
+      );
+    }
+  }, [codexAuthStatus?.userCode]);
+
+  useEffect(() => {
+    void refreshCodexAuthStatus();
+  }, [refreshCodexAuthStatus]);
+
+  useEffect(() => {
+    if (!codexAuthStatus?.loginInProgress || codexAuthStatus.authenticated) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshCodexAuthStatus(false);
+    }, 4_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [
+    codexAuthStatus?.authenticated,
+    codexAuthStatus?.loginInProgress,
+    refreshCodexAuthStatus,
+  ]);
+
+  const expirationMs = useMemo(() => {
+    if (!codexAuthStatus?.expiresAt) return null;
+    const parsed = Date.parse(codexAuthStatus.expiresAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [codexAuthStatus?.expiresAt]);
+
+  useEffect(() => {
+    if (!expirationMs || codexAuthStatus?.authenticated) return;
+    if (expirationMs - Date.now() > TWO_MINUTES_MS) return;
+
+    const timer = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [codexAuthStatus?.authenticated, expirationMs]);
+
+  const remainingMs = expirationMs ? expirationMs - nowMs : null;
+  const showExpiryCountdown =
+    remainingMs !== null && remainingMs > 0 && remainingMs <= TWO_MINUTES_MS;
+
+  const hasCode = Boolean(codexAuthStatus?.userCode);
+  const hasVerificationUrl = Boolean(codexAuthStatus?.verificationUrl);
+  const hasDevicePayload = hasCode && hasVerificationUrl;
+  const isAuthenticated = Boolean(codexAuthStatus?.authenticated);
+  const isWaitingForApproval =
+    Boolean(codexAuthStatus?.loginInProgress) && !isAuthenticated;
+  const hasFailed = codexAuthStatus?.flowStatus === "failed";
+
+  const badge = isAuthenticated
+    ? {
+        icon: CheckCircle2,
+        text: "Authenticated",
+        className: "border-emerald-300 bg-emerald-500/10 text-emerald-700",
+      }
+    : hasFailed
+      ? {
+          icon: AlertCircle,
+          text: "Needs Attention",
+          className: "border-destructive/40 bg-destructive/10 text-destructive",
+        }
+      : isWaitingForApproval
+        ? {
+            icon: Loader2,
+            text: "Waiting for approval",
+            className: "border-amber-300 bg-amber-500/10 text-amber-700",
+          }
+        : {
+            icon: AlertCircle,
+            text: "Not authenticated",
+            className: "border-border bg-muted text-muted-foreground",
+          };
+  const BadgeIcon = badge.icon;
+
+  return (
+    <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-xs font-medium">Codex Sign-In</div>
+        <Badge className={`gap-1 ${badge.className}`} variant="outline">
+          <BadgeIcon
+            className={`h-3.5 w-3.5 ${
+              isWaitingForApproval ? "animate-spin" : ""
+            }`}
+          />
+          {badge.text}
+        </Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={authMode === "device" ? "secondary" : "outline"}
+          onClick={() => setAuthMode("device")}
+          disabled={isBusy}
+        >
+          Device Code
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant={authMode === "host" ? "secondary" : "outline"}
+          onClick={() => setAuthMode("host")}
+          disabled={isBusy}
+        >
+          Use Docker Login
+        </Button>
+      </div>
+
+      {authMode === "device" ? (
+        <div className="space-y-3">
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              {hasDevicePayload || isAuthenticated ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              ) : (
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px]">
+                  1
+                </span>
+              )}
+              <span>Start sign-in</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {hasCopiedCode || isAuthenticated ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              ) : (
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px]">
+                  2
+                </span>
+              )}
+              <span>Copy code and open verification page</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {isAuthenticated ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+              ) : isWaitingForApproval ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-700" />
+              ) : (
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px]">
+                  3
+                </span>
+              )}
+              <span>Approve and return to JobOps</span>
+            </div>
+          </div>
+
+          {hasDevicePayload ? (
+            <div className="space-y-2 rounded-lg border border-border bg-background/70 p-3">
+              <div className="text-center text-[11px] uppercase tracking-wide text-muted-foreground">
+                One-time code
+              </div>
+              <div className="text-center font-mono text-2xl font-semibold tracking-widest text-foreground">
+                {codexAuthStatus?.userCode}
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void copyCode()}
+                  disabled={isBusy}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  {hasCopiedCode ? "Copied" : "Copy code"}
+                </Button>
+                <Button type="button" size="sm" variant="outline" asChild>
+                  <a
+                    href={codexAuthStatus?.verificationUrl ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Open verification page
+                  </a>
+                </Button>
+              </div>
+              <div className="break-all text-center text-[11px] text-muted-foreground">
+                {codexAuthStatus?.verificationUrl}
+              </div>
+              {showExpiryCountdown ? (
+                <div className="text-center text-[11px] text-amber-700">
+                  Code expires in {formatRemaining(remainingMs)}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-border/70 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              Click{" "}
+              <span className="font-medium text-foreground">Start Sign-In</span>{" "}
+              to generate your one-time code.
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {hasDevicePayload && !isAuthenticated ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void refreshCodexAuthStatus()}
+                  disabled={isBusy || isLoadingCodexAuthStatus}
+                >
+                  {isLoadingCodexAuthStatus ? "Checking..." : "Check Status"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void startCodexAuth()}
+                  disabled={isBusy || isStartingCodexAuth}
+                >
+                  {isStartingCodexAuth ? "Starting..." : "Start New Sign-In"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => void startCodexAuth()}
+                disabled={isBusy || isStartingCodexAuth}
+              >
+                {isStartingCodexAuth ? "Starting..." : "Start Sign-In"}
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 rounded-lg border border-border bg-background/70 p-3 text-xs text-muted-foreground">
+          <div className="text-foreground">
+            Reuse your host Codex session inside Docker.
+          </div>
+          <ol className="space-y-1">
+            <li>1. Set `CODEX_HOME_MOUNT` to your host `.codex` directory.</li>
+            <li>2. Run `docker compose up -d`.</li>
+            <li>3. Run `codex login` on the host once.</li>
+            <li>4. Return and click `Check Status`.</li>
+          </ol>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() => void refreshCodexAuthStatus()}
+            disabled={isBusy || isLoadingCodexAuthStatus}
+          >
+            {isLoadingCodexAuthStatus ? "Checking..." : "Check Status"}
+          </Button>
+        </div>
+      )}
+
+      {codexAuthError ? (
+        <p className="text-xs text-destructive">{codexAuthError}</p>
+      ) : null}
+      {codexAuthStatus?.flowMessage && !isAuthenticated ? (
+        <p className="text-xs text-muted-foreground">
+          {codexAuthStatus.flowMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+};

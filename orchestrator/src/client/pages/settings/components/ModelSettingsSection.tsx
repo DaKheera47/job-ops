@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { ModelValues } from "@client/pages/settings/types";
@@ -12,15 +13,8 @@ import {
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type React from "react";
-import {
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { Button } from "@/components/ui/button";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import {
   Select,
@@ -71,13 +65,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [modelsError, setModelsError] = useState<string | null>(null);
-  const [codexAuthStatus, setCodexAuthStatus] = useState<Awaited<
-    ReturnType<typeof api.getCodexAuthStatus>
-  > | null>(null);
-  const [isLoadingCodexAuthStatus, setIsLoadingCodexAuthStatus] =
-    useState(false);
-  const [isStartingCodexAuth, setIsStartingCodexAuth] = useState(false);
-  const [codexAuthError, setCodexAuthError] = useState<string | null>(null);
   const {
     effective,
     default: defaultModel,
@@ -117,48 +104,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const hasAvailableApiKey = showApiKey
     ? Boolean(deferredApiKey.trim() || llmApiKeyHint)
     : true;
-
-  const refreshCodexAuthStatus = useCallback(
-    async (showLoading = true) => {
-      if (!isCodexProvider) return;
-      if (showLoading) {
-        setIsLoadingCodexAuthStatus(true);
-      }
-      setCodexAuthError(null);
-      try {
-        const status = await api.getCodexAuthStatus();
-        setCodexAuthStatus(status);
-      } catch (error) {
-        setCodexAuthError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load Codex sign-in status.",
-        );
-      } finally {
-        if (showLoading) {
-          setIsLoadingCodexAuthStatus(false);
-        }
-      }
-    },
-    [isCodexProvider],
-  );
-
-  const startCodexAuth = useCallback(async () => {
-    setIsStartingCodexAuth(true);
-    setCodexAuthError(null);
-    try {
-      const status = await api.startCodexAuth();
-      setCodexAuthStatus(status);
-    } catch (error) {
-      setCodexAuthError(
-        error instanceof Error
-          ? error.message
-          : "Failed to start Codex sign-in.",
-      );
-    } finally {
-      setIsStartingCodexAuth(false);
-    }
-  }, []);
 
   useEffect(() => {
     if (showBaseUrl) return;
@@ -236,40 +181,6 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
     showApiKey,
     showBaseUrl,
     supportsModelSuggestions,
-  ]);
-
-  useEffect(() => {
-    if (!isCodexProvider) {
-      setCodexAuthStatus(null);
-      setCodexAuthError(null);
-      setIsLoadingCodexAuthStatus(false);
-      setIsStartingCodexAuth(false);
-      return;
-    }
-
-    void refreshCodexAuthStatus();
-  }, [isCodexProvider, refreshCodexAuthStatus]);
-
-  useEffect(() => {
-    if (!isCodexProvider || !codexAuthStatus?.loginInProgress) {
-      return;
-    }
-    if (codexAuthStatus.authenticated) {
-      return;
-    }
-
-    const timer = window.setInterval(() => {
-      void refreshCodexAuthStatus(false);
-    }, 4_000);
-
-    return () => {
-      window.clearInterval(timer);
-    };
-  }, [
-    codexAuthStatus?.authenticated,
-    codexAuthStatus?.loginInProgress,
-    isCodexProvider,
-    refreshCodexAuthStatus,
   ]);
 
   const keyHint = formatSecretHint(llmApiKeyHint);
@@ -364,106 +275,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <p className="text-xs text-muted-foreground">
                 {providerConfig.providerHint}
               </p>
-              {isCodexProvider && (
-                <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
-                  <div className="text-xs font-medium">Codex Sign-In</div>
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <p>
-                      Option 1: Start sign-in here with a one-time device code.
-                    </p>
-                    <p>
-                      Option 2: Reuse host login (Docker) by setting{" "}
-                      <span className="font-mono text-foreground">
-                        CODEX_HOME_MOUNT
-                      </span>{" "}
-                      to your host{" "}
-                      <span className="font-mono text-foreground">.codex</span>{" "}
-                      path, then running{" "}
-                      <span className="font-mono text-foreground">
-                        codex login
-                      </span>{" "}
-                      on the host once.
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {codexAuthStatus?.authenticated
-                      ? "Codex is authenticated and ready."
-                      : "Start sign-in to get a device code, then complete it in your browser."}
-                  </p>
-                  {codexAuthStatus?.verificationUrl &&
-                    codexAuthStatus?.userCode && (
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div>
-                          Code:{" "}
-                          <span className="font-mono text-foreground">
-                            {codexAuthStatus.userCode}
-                          </span>
-                        </div>
-                        <div className="break-all">
-                          URL:{" "}
-                          <a
-                            href={codexAuthStatus.verificationUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-                          >
-                            {codexAuthStatus.verificationUrl}
-                          </a>
-                        </div>
-                        {codexAuthStatus.expiresAt && (
-                          <div>
-                            Expires at:{" "}
-                            {new Date(
-                              codexAuthStatus.expiresAt,
-                            ).toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  {codexAuthStatus?.validationMessage && (
-                    <p className="text-xs text-muted-foreground">
-                      Status: {codexAuthStatus.validationMessage}
-                    </p>
-                  )}
-                  {codexAuthStatus?.flowMessage &&
-                    !codexAuthStatus.authenticated && (
-                      <p className="text-xs text-muted-foreground">
-                        {codexAuthStatus.flowMessage}
-                      </p>
-                    )}
-                  {codexAuthError && (
-                    <p className="text-xs text-destructive">{codexAuthError}</p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void startCodexAuth()}
-                      disabled={isLoading || isSaving || isStartingCodexAuth}
-                    >
-                      {isStartingCodexAuth
-                        ? "Starting..."
-                        : codexAuthStatus?.authenticated
-                          ? "Start New Sign-In"
-                          : "Start Sign-In"}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void refreshCodexAuthStatus()}
-                      disabled={
-                        isLoading || isSaving || isLoadingCodexAuthStatus
-                      }
-                    >
-                      {isLoadingCodexAuthStatus
-                        ? "Checking..."
-                        : "Refresh Status"}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {isCodexProvider ? (
+                <CodexAuthPanel isBusy={isLoading || isSaving} />
+              ) : null}
             </div>
             {showBaseUrl && (
               <SettingsInput
