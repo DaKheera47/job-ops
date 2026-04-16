@@ -1,0 +1,153 @@
+.generator {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  background: linear-gradient(
+    180deg,
+    var(--ifm-background-surface-color) 0%,
+    color-mix(in srgb, var(--ifm-color-primary-lightest) 14%, var(--ifm-background-surface-color)) 100%
+  );
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06);
+}
+
+.lead {
+  margin: 0 0 1rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.labelRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+.label {
+  font-weight: 600;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.input,
+.code {
+  width: 100%;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 0.75rem;
+  background: var(--ifm-background-color);
+  color: var(--ifm-font-color-base);
+  font: inherit;
+}
+
+.input {
+  padding: 0.8rem 0.9rem;
+}
+
+.code {
+  min-height: 11rem;
+  padding: 0.9rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.86rem;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.button,
+.bookmarkletLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.button {
+  border: 1px solid var(--ifm-color-primary);
+  background: var(--ifm-color-primary);
+  color: white;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+}
+
+.bookmarkletLink {
+  border: 1px dashed var(--ifm-color-primary);
+  color: var(--ifm-color-primary-darkest);
+  background: color-mix(in srgb, var(--ifm-color-primary-lightest) 30%, white);
+}
+
+.bookmarkletLink:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--ifm-color-primary-lightest) 45%, white);
+}
+
+.disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.status {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.privacy {
+  margin: 1rem 0 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--ifm-color-emphasis-100) 75%, white);
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.94rem;
+}
+
+.error {
+  color: var(--ifm-color-danger-dark);
+}
+
+@media (max-width: 640px) {
+  .generator {
+    padding: 1rem;
+  }
+
+  .labelRow {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .actions {
+    align-items: stretch;
+  }
+
+  .button,
+  .bookmarkletLink {
+    width: 100%;
+  }
+}

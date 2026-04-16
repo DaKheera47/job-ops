@@ -313,6 +313,15 @@ export interface ManualJobFetchResponse {
   url: string;
 }
 
+export interface ManualJobIngestionResponse {
+  job: Job;
+  ingestion: {
+    source: "url";
+    movedToReady: boolean;
+    warning?: string | null;
+  };
+}
+
 export interface UpdateJobInput {
   title?: string;
   employer?: string;

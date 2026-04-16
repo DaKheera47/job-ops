@@ -36,6 +36,7 @@ import type {
   ManualJobDraft,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
+  ManualJobIngestionResponse,
   PipelineStatusResponse,
   PostApplicationAction,
   PostApplicationActionResponse,
@@ -1520,6 +1521,15 @@ export async function importManualJob(input: {
   job: ManualJobDraft;
 }): Promise<Job> {
   return fetchApi<Job>("/manual-jobs/import", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function ingestManualJobUrl(input: {
+  url: string;
+}): Promise<ManualJobIngestionResponse> {
+  return fetchApi<ManualJobIngestionResponse>("/manual-jobs/ingest", {
     method: "POST",
     body: JSON.stringify(input),
   });

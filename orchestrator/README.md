@@ -73,6 +73,7 @@ orchestrator/
 | POST | `/api/jobs/actions` | Run job actions (`move_to_ready`, `rescore`, `skip`) for one or many jobs |
 | POST | `/api/jobs/actions/stream` | Stream job action progress/events for one or many jobs |
 | POST | `/api/jobs/:id/apply` | Mark as applied |
+| POST | `/api/manual-jobs/ingest` | Fetch a job URL, infer fields, create a manual job, and try to move it to ready |
 
 ### Pipeline
 
