@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from "node:fs";
-
 const nextVersion = process.argv[2]?.trim();
 
 if (!nextVersion || !/^\d+\.\d+\.\d+$/.test(nextVersion)) {
