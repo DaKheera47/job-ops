@@ -54,12 +54,13 @@ export default function BookmarkletGenerator() {
 
   const { normalizedHost, warning } = normalizeHost(hostInput);
   const bookmarklet = buildBookmarklet(normalizedHost, tokenInput);
-  const hostIsInvalid = hostInput.trim().length > 0 && normalizedHost.length === 0;
+  const hostIsInvalid =
+    hostInput.trim().length > 0 && normalizedHost.length === 0;
 
   useEffect(() => {
     if (!linkRef.current) return;
     if (!bookmarklet) {
-      linkRef.current.removeAttribute("href");
+      linkRef.current.setAttribute("href", "about:blank");
       return;
     }
 
@@ -75,7 +76,9 @@ export default function BookmarkletGenerator() {
 
     try {
       await navigator.clipboard.writeText(bookmarklet);
-      setStatusMessage("Bookmarklet copied. Save it as a bookmark or drag the link below.");
+      setStatusMessage(
+        "Bookmarklet copied. Save it as a bookmark or drag the link below.",
+      );
     } catch {
       setStatusMessage(
         "Copy failed in this browser. Select the generated bookmarklet text and copy it manually.",
@@ -94,7 +97,9 @@ export default function BookmarkletGenerator() {
         <label className={styles.field} htmlFor={hostId}>
           <span className={styles.labelRow}>
             <span className={styles.label}>JobOps host</span>
-            <span className={styles.hint}>Use an origin like https://jobops.example.com</span>
+            <span className={styles.hint}>
+              Use an origin like https://jobops.example.com
+            </span>
           </span>
           <input
             id={hostId}
@@ -106,7 +111,8 @@ export default function BookmarkletGenerator() {
           />
           {hostIsInvalid ? (
             <span className={`${styles.hint} ${styles.error}`}>
-              Enter a full origin with protocol, such as https://jobops.example.com.
+              Enter a full origin with protocol, such as
+              https://jobops.example.com.
             </span>
           ) : warning ? (
             <span className={styles.hint}>{warning}</span>
@@ -116,7 +122,9 @@ export default function BookmarkletGenerator() {
         <label className={styles.field} htmlFor={tokenId}>
           <span className={styles.labelRow}>
             <span className={styles.label}>Bearer token</span>
-            <span className={styles.hint}>Optional if your JobOps API is public</span>
+            <span className={styles.hint}>
+              Optional if your JobOps API is public
+            </span>
           </span>
           <input
             id={tokenId}
@@ -145,13 +153,15 @@ export default function BookmarkletGenerator() {
           <a
             ref={linkRef}
             className={`${styles.bookmarkletLink} ${!bookmarklet ? styles.disabled : ""}`}
-            href={undefined}
+            href="about:blank"
           >
             Drag this to your bookmarks bar
           </a>
         </div>
 
-        {statusMessage ? <p className={styles.status}>{statusMessage}</p> : null}
+        {statusMessage ? (
+          <p className={styles.status}>{statusMessage}</p>
+        ) : null}
       </div>
 
       <p className={styles.privacy}>

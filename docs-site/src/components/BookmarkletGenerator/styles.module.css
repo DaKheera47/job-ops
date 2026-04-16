@@ -6,7 +6,12 @@
   background: linear-gradient(
     180deg,
     var(--ifm-background-surface-color) 0%,
-    color-mix(in srgb, var(--ifm-color-primary-lightest) 14%, var(--ifm-background-surface-color)) 100%
+    color-mix(
+        in srgb,
+        var(--ifm-color-primary-lightest) 14%,
+        var(--ifm-background-surface-color)
+      )
+      100%
   );
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06);
 }
