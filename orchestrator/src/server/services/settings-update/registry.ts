@@ -39,6 +39,12 @@ export type SettingsUpdatePlan = {
   shouldClearRxResumeCaches: boolean;
 };
 
+const LEGACY_SETTINGS_TO_CLEAR_ON_UPDATE: Partial<
+  Record<SettingKey, SettingKey[]>
+> = {
+  searchCities: ["jobspyLocation"],
+};
+
 function result(
   args: {
     actions?: SettingsUpdateAction[];
@@ -144,8 +150,16 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
       deferred.push("clearRxResumeCaches");
     }
 
+    const legacyKeysToClear =
+      LEGACY_SETTINGS_TO_CLEAR_ON_UPDATE[targetKey]?.filter(
+        (legacyKey) => legacyKey !== targetKey,
+      ) ?? [];
+
     return result({
-      actions: [persistAction(targetKey, serialized, sideEffect)],
+      actions: [
+        persistAction(targetKey, serialized, sideEffect),
+        ...legacyKeysToClear.map((legacyKey) => persistAction(legacyKey, null)),
+      ],
       deferred,
     });
   };

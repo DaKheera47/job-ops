@@ -151,4 +151,19 @@ describe("applySettingsUpdates", () => {
     expect(plan.shouldClearRxResumeCaches).toBe(true);
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
   });
+
+  it("clears legacy jobspyLocation when searchCities is updated", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+
+    await applySettingsUpdates({
+      searchCities: null,
+    });
+
+    expect(vi.mocked(settingsRepo.setSetting).mock.calls).toEqual(
+      expect.arrayContaining([
+        ["searchCities", null],
+        ["jobspyLocation", null],
+      ]),
+    );
+  });
 });
