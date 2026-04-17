@@ -4,6 +4,7 @@ import {
   parseJobSpyProgressLine,
   resolveJobSpyCountryIndeed,
   resolveJobSpyLocations,
+  resolveJobSpySiteLocations,
 } from "../src/run";
 
 describe("parseJobSpyProgressLine", () => {
@@ -62,5 +63,31 @@ describe("parseJobSpyProgressLine", () => {
 
   it("does not fall back country_indeed to UK when none is configured", () => {
     expect(resolveJobSpyCountryIndeed({ countryIndeed: null })).toBeNull();
+  });
+
+  it("uses the selected country as LinkedIn's location for country-only runs", () => {
+    expect(
+      resolveJobSpySiteLocations({
+        location: null,
+        countryIndeed: "croatia",
+      }),
+    ).toEqual({
+      linkedinLocation: "croatia",
+      indeedLocation: null,
+      glassdoorLocation: null,
+    });
+  });
+
+  it("keeps explicit locations for all JobSpy sites when a city is set", () => {
+    expect(
+      resolveJobSpySiteLocations({
+        location: "Zagreb",
+        countryIndeed: "croatia",
+      }),
+    ).toEqual({
+      linkedinLocation: "Zagreb",
+      indeedLocation: "Zagreb",
+      glassdoorLocation: "Zagreb",
+    });
   });
 });

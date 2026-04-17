@@ -65,7 +65,6 @@ Incompatible sources are disabled with explanatory tooltips.
 Workplace type applies globally to the run across all search terms and locations.
 
 Search cities only applies when you explicitly add one or more cities. Leaving it empty does not inject a hidden UK fallback or fake city value.
-When a country is selected, discovered jobs are still checked against that country even if no city is set, so off-country results are dropped before scoring.
 
 Source behavior differs:
 

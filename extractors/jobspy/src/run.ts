@@ -170,6 +170,29 @@ export function resolveJobSpyCountryIndeed(args: {
   );
 }
 
+export function resolveJobSpySiteLocations(args: {
+  location?: string | null;
+  countryIndeed?: string | null;
+}): {
+  linkedinLocation: string | null;
+  indeedLocation: string | null;
+  glassdoorLocation: string | null;
+} {
+  const location = normalizeOptionalString(args.location);
+  const countryIndeed = normalizeOptionalString(args.countryIndeed);
+
+  // JobSpy does not apply geo filtering consistently across sites:
+  // - LinkedIn only honors `location`, so a country-only run must send the
+  //   selected country there or LinkedIn searches globally.
+  // - Indeed and Glassdoor honor `country_indeed` directly, so we only pass a
+  //   location when the user explicitly asked for a city/region.
+  return {
+    linkedinLocation: location ?? countryIndeed,
+    indeedLocation: location,
+    glassdoorLocation: location,
+  };
+}
+
 export function deriveIsRemoteFlag(
   workplaceTypes: Array<"remote" | "hybrid" | "onsite"> | undefined,
 ): boolean | undefined {
@@ -210,6 +233,10 @@ export async function runJobSpy(
         const suffix = `${runIndex}_${slugForFilename(searchTerm)}_${slugForFilename(locationToken)}`;
         const outputCsv = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.csv`);
         const outputJson = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.json`);
+        const siteLocations = resolveJobSpySiteLocations({
+          location,
+          countryIndeed,
+        });
 
         await new Promise<void>((resolve, reject) => {
           // Auto-detect venv if present, so contributors don't need to set
@@ -239,7 +266,6 @@ export async function runJobSpy(
               JOBSPY_SEARCH_TERM: searchTerm,
               JOBSPY_TERM_INDEX: String(runIndex),
               JOBSPY_TERM_TOTAL: String(totalRuns),
-              JOBSPY_LOCATION: location,
               JOBSPY_RESULTS_WANTED: String(
                 options.resultsWanted ??
                   process.env.JOBSPY_RESULTS_WANTED ??
@@ -262,6 +288,15 @@ export async function runJobSpy(
               JOBSPY_OUTPUT_CSV: outputCsv,
               JOBSPY_OUTPUT_JSON: outputJson,
               ...(location ? { JOBSPY_LOCATION: location } : {}),
+              ...(siteLocations.linkedinLocation
+                ? { JOBSPY_LINKEDIN_LOCATION: siteLocations.linkedinLocation }
+                : {}),
+              ...(siteLocations.indeedLocation
+                ? { JOBSPY_INDEED_LOCATION: siteLocations.indeedLocation }
+                : {}),
+              ...(siteLocations.glassdoorLocation
+                ? { JOBSPY_GLASSDOOR_LOCATION: siteLocations.glassdoorLocation }
+                : {}),
               ...(countryIndeed
                 ? { JOBSPY_COUNTRY_INDEED: countryIndeed }
                 : {}),

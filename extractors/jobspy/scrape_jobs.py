@@ -117,6 +117,9 @@ def main() -> int:
     sites = _parse_sites(_env_str("JOBSPY_SITES", "indeed,linkedin"))
     search_term = _env_str("JOBSPY_SEARCH_TERM", "web developer")
     location = _env_str("JOBSPY_LOCATION", "")
+    linkedin_location = _env_str("JOBSPY_LINKEDIN_LOCATION", location)
+    indeed_location = _env_str("JOBSPY_INDEED_LOCATION", location)
+    glassdoor_location = _env_str("JOBSPY_GLASSDOOR_LOCATION", location)
     results_wanted = _env_int("JOBSPY_RESULTS_WANTED", 200)
     hours_old = _env_int("JOBSPY_HOURS_OLD", 72)
     country_indeed = _env_str("JOBSPY_COUNTRY_INDEED", "")
@@ -143,14 +146,32 @@ def main() -> int:
         },
     )
     frames: list[pd.DataFrame] = []
-    non_glassdoor_sites = [site for site in sites if site != "glassdoor"]
-
-    if non_glassdoor_sites:
+    # JobSpy's site-level geo filters are inconsistent:
+    # - LinkedIn only respects `location`.
+    # - Indeed/Glassdoor respect `country_indeed`, and `location` is optional
+    #   narrowing for a city/region search.
+    # Run them separately so "country with no city" does not become a global
+    # LinkedIn search, and so we do not inject synthetic locations into Indeed.
+    if "linkedin" in sites:
         frames.append(
             _scrape_for_sites(
-                sites=non_glassdoor_sites,
+                sites=["linkedin"],
                 search_term=search_term,
-                location=location,
+                location=linkedin_location,
+                results_wanted=results_wanted,
+                hours_old=hours_old,
+                country_indeed="",
+                linkedin_fetch_description=linkedin_fetch_description,
+                is_remote=is_remote,
+            )
+        )
+
+    if "indeed" in sites:
+        frames.append(
+            _scrape_for_sites(
+                sites=["indeed"],
+                search_term=search_term,
+                location=indeed_location,
                 results_wanted=results_wanted,
                 hours_old=hours_old,
                 country_indeed=country_indeed,
@@ -160,12 +181,12 @@ def main() -> int:
         )
 
     if "glassdoor" in sites:
-        glassdoor_location = location
-        if _is_country_level_location(location, country_indeed):
+        effective_glassdoor_location = glassdoor_location
+        if _is_country_level_location(glassdoor_location, country_indeed):
             # Glassdoor works best with city-level location terms.
-            fallback_city = _glassdoor_city_for_country(country_indeed, location)
+            fallback_city = _glassdoor_city_for_country(country_indeed, glassdoor_location)
             if fallback_city:
-                glassdoor_location = fallback_city
+                effective_glassdoor_location = fallback_city
                 print(
                     "jobspy: Glassdoor location matched country; using city fallback "
                     f"({fallback_city})"
@@ -178,7 +199,7 @@ def main() -> int:
             _scrape_for_sites(
                 sites=["glassdoor"],
                 search_term=search_term,
-                location=glassdoor_location,
+                location=effective_glassdoor_location,
                 results_wanted=results_wanted,
                 hours_old=hours_old,
                 country_indeed=country_indeed,
