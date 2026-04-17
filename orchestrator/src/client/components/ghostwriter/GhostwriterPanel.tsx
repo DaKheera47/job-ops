@@ -5,8 +5,10 @@ import type {
   JobChatMessage,
   JobChatStreamEvent,
 } from "@shared/types";
+import { Settings2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -18,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
@@ -381,6 +384,19 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
               writing style preferences. Ask for tailored response drafts, or
               concise role-fit talking points.
             </p>
+            <div className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 w-fit"
+                asChild
+              >
+                <Link to="/settings#chat">
+                  <Settings2 className="h-4 w-4" />
+                  Alter personality
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <MessageList

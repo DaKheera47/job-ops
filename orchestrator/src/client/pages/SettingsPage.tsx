@@ -51,6 +51,7 @@ import {
   useForm,
   useWatch,
 } from "react-hook-form";
+import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -655,10 +656,30 @@ const getDerivedSettings = (settings: AppSettings | null) => {
 
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [activeSection, setActiveSection] =
     useState<SettingsSectionId>("model");
   const [openGroups, setOpenGroups] = useState<SettingsGroupId[]>([]);
+
+  useEffect(() => {
+    const hash = location.hash.replace(/^#/, "");
+    const allSectionIds = SETTINGS_NAV_GROUPS.flatMap((g) =>
+      g.items.map((i) => i.id),
+    );
+    if (hash && allSectionIds.includes(hash as SettingsSectionId)) {
+      setActiveSection(hash as SettingsSectionId);
+      const parentGroup = SETTINGS_NAV_GROUPS.find((g) =>
+        g.items.some((i) => i.id === hash),
+      );
+      if (parentGroup) {
+        setOpenGroups((prev) =>
+          prev.includes(parentGroup.id) ? prev : [...prev, parentGroup.id],
+        );
+      }
+    }
+  }, [location.hash]);
+
   const [settingsSearch, setSettingsSearch] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [rxresumeValidationStatus, setRxresumeValidationStatus] =
