@@ -639,8 +639,9 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    expect(screen.getByText("Location preferences")).toBeInTheDocument();
-    expect(screen.getByText("Coverage")).toBeInTheDocument();
+    expect(screen.getByText("Work arrangement")).toBeInTheDocument();
+    expect(screen.getByText("Location scope")).toBeInTheDocument();
+    expect(screen.getByText("Match strictness")).toBeInTheDocument();
     expect(
       screen.getByText("Selected locations + remote worldwide"),
     ).toBeInTheDocument();

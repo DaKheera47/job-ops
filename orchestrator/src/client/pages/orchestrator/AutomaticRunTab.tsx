@@ -215,15 +215,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const minSuitabilityScore =
       memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
 
-    const rememberedRunBudget =
-      normalizeRunBudget(
-        settings?.jobspyResultsWanted?.value ??
-          settings?.startupjobsMaxJobsPerTerm?.value ??
-          settings?.adzunaMaxJobsPerTerm?.value ??
-          settings?.gradcrackerMaxJobsPerTerm?.value ??
-          settings?.ukvisajobsMaxJobs?.value ??
-          DEFAULT_VALUES.runBudget,
-      );
+    const rememberedRunBudget = normalizeRunBudget(
+      settings?.jobspyResultsWanted?.value ??
+        settings?.startupjobsMaxJobsPerTerm?.value ??
+        settings?.adzunaMaxJobsPerTerm?.value ??
+        settings?.gradcrackerMaxJobsPerTerm?.value ??
+        settings?.ukvisajobsMaxJobs?.value ??
+        DEFAULT_VALUES.runBudget,
+    );
     const hasExplicitLocationOverride = Boolean(
       settings?.jobspyCountryIndeed?.override ||
         settings?.searchCities?.override,
@@ -548,7 +547,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         />
                         {formatWorkplaceTypeLabel(workplaceType)}
                       </label>
-                    )
+                    );
                   })}
                 </div>
                 {workplaceTypeSelectionInvalid ? (

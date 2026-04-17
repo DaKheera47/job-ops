@@ -59,6 +59,7 @@ Incompatible sources are disabled with explanatory tooltips.
 - **Resumes tailored** (`topN`)
 - **Min suitability score**
 - **Max jobs discovered** (run budget cap)
+- `Max jobs discovered` accepts values from `50` to `1000` in the UI.
 - **Search cities** (optional multi-city input; empty by default; required for Glassdoor)
 - **Workplace type** (`Remote`, `Hybrid`, `Onsite`)
 
