@@ -1,21 +1,809 @@
-anu@fedora:~/Workspace/.trash/job-ops-attempts/job-ops/orchestrator% podman logs job-ops | grep -i certification
+anu@fedora:~% podman logs job-ops
+🔧 Running database migrations...
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (legacy backfill not applicable)
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+🎉 Database migrations complete!
 npm notice
 npm notice New major version of npm available! 10.9.7 -> 11.12.1
 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
 npm notice To update run: npm install -g npm@11.12.1
 npm notice
-{"ts":"2026-04-17T15:14:25.813Z","level":"info","msg":"Profile loaded from local Design Resume","requestId":"690d4170-5296-43d4-8b5d-d9380882c312","meta":{"hasSections":true,"hasCertifications":false,"certificationsKeys":[]}}
-{"ts":"2026-04-17T15:14:27.666Z","level":"warn","msg":"Tracer readiness check failed","requestId":"8b31c43d-423a-450f-ab70-dd6460ab8ba7","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776438867666}}
-{"ts":"2026-04-17T15:15:17.082Z","level":"info","msg":"HTTP request completed","requestId":"b343be1d-d152-4d4a-bc04-7e9acf4acecb","meta":{"method":"GET","path":"/rx-resumes/019d8d9a-39ba-75bf-bd51-4a634f889dd0/certifications","status":200,"durationMs":630}}
-{"ts":"2026-04-17T15:15:29.983Z","level":"warn","msg":"Certification extraction failed: items is not an array","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","meta":{"itemsType":"undefined"}}
-{"ts":"2026-04-17T15:15:29.983Z","level":"info","msg":"Selecting certifications","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911"}
-{"ts":"2026-04-17T15:15:29.983Z","level":"info","msg":"Extracting certifications from profile","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":false,"certificationsKeys":[]}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: profile data","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"totalCertifications":0,"selectionItemsCount":0}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: settings","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"maxCertifications":0,"lockedCount":0,"aiSelectableCount":0}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: desiredCount","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"desiredCount":0}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"eligibleCount":0}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection started","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","meta":{"desiredCount":0,"eligibleCount":0}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd"}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: picked IDs","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"pickedCount":0,"pickedIds":[]}}
-{"ts":"2026-04-17T15:15:29.984Z","level":"info","msg":"Certification selection: final result","jobId":"c70276c3-0928-4fcf-8ced-034bc4afc1fd","requestId":"d869c17e-5313-4edf-bb80-3020d1667911","meta":{"lockedCount":0,"pickedCount":0,"total":""}}
-anu@fedora:~/Workspace/.trash/job-ops-attempts/job-ops/orchestrator%
+
+> job-ops-orchestrator@0.3.1 start
+> tsx src/server/index.ts
+
+{"ts":"2026-04-17T16:01:31.336Z","level":"info","msg":"Extractor registry initialized","meta":{"manifestCount":8,"sourceCount":10,"manifests":[{"id":"adzuna","sources":["adzuna"],"requiredEnvVarsCount":2},{"id":"golangjobs","sources":["golangjobs"],"requiredEnvVarsCount":0},{"id":"gradcracker","sources":["gradcracker"],"requiredEnvVarsCount":0},{"id":"hiringcafe","sources":["hiringcafe"],"requiredEnvVarsCount":0},{"id":"jobspy","sources":["indeed","linkedin","glassdoor"],"requiredEnvVarsCount":0},{"id":"startupjobs","sources":["startupjobs"],"requiredEnvVarsCount":0},{"id":"ukvisajobs","sources":["ukvisajobs"],"requiredEnvVarsCount":2},{"id":"workingnomads","sources":["workingnomads"],"requiredEnvVarsCount":0}]}}
+
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🚀 Job Ops Orchestrator                                 ║
+║                                                           ║
+║   Server running at: http://localhost:3001               ║
+║                                                           ║
+║   API:     http://localhost:3001/api                     ║
+║   Health:  http://localhost:3001/health                  ║
+║   PDFs:    http://localhost:3001/pdfs                    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+{"ts":"2026-04-17T16:01:31.344Z","level":"info","msg":"Resolved visa sponsor providers root","meta":{"selectedRoot":"/app/visa-sponsor-providers","candidates":["/app/orchestrator/visa-sponsor-providers","/app/visa-sponsor-providers","/app/visa-sponsor-providers"]}}
+{"ts":"2026-04-17T16:01:31.345Z","level":"info","msg":"Discovered visa sponsor provider manifest paths","meta":{"root":"/app/visa-sponsor-providers","manifestCount":1,"manifestPaths":["/app/visa-sponsor-providers/uk/manifest.ts"]}}
+{"ts":"2026-04-17T16:01:31.345Z","level":"info","msg":"Loading visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","fileUrl":"file:///app/visa-sponsor-providers/uk/manifest.ts"}}
+{"ts":"2026-04-17T16:01:31.363Z","level":"info","msg":"Loaded visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","id":"uk","countryKey":"united kingdom"}}
+{"ts":"2026-04-17T16:01:31.363Z","level":"info","msg":"Visa sponsor provider registry initialized","meta":{"count":1,"providers":["uk"]}}
+✅ Provider uk initialized with 140986 sponsors
+🚀 [visa-sponsors-uk] Starting scheduler at hour 2...
+⏰ [visa-sponsors-uk] Next run scheduled for: 2026-04-18T02:00:00.000Z
+{"ts":"2026-04-17T16:01:31.892Z","level":"info","msg":"Backup settings updated","meta":{"enabled":false,"hour":2,"maxCount":5}}
+ℹ️ Backups disabled. Enable in settings to schedule automatic backups.
+{"ts":"2026-04-17T16:01:34.311Z","level":"info","msg":"HTTP request completed","requestId":"b2ca7ddb-7363-4264-b95a-53ff1852cad9","meta":{"method":"GET","path":"/design-resume","status":200,"durationMs":14}}
+{"ts":"2026-04-17T16:01:34.420Z","level":"info","msg":"HTTP request completed","requestId":"f8eeef95-de0f-4a49-82e3-21f2f731cbc4","meta":{"method":"GET","path":"/assets/index-DcOdYmXo.css","status":200,"durationMs":8}}
+{"ts":"2026-04-17T16:01:34.435Z","level":"info","msg":"HTTP request completed","requestId":"f9e95e95-6fb7-4c60-9e18-f4ad18b52339","meta":{"method":"GET","path":"/assets/index-BwD4WsFi.js","status":200,"durationMs":32}}
+{"ts":"2026-04-17T16:01:35.316Z","level":"info","msg":"HTTP request completed","requestId":"e2a0bd65-30f9-46d8-ae46-1d369b88c916","meta":{"method":"GET","path":"/","status":200,"durationMs":203}}
+{"ts":"2026-04-17T16:01:35.321Z","level":"info","msg":"HTTP request completed","requestId":"5ab9639d-59d0-4c47-95b4-4d6a007cc2ab","meta":{"method":"GET","path":"/info","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:01:35.334Z","level":"info","msg":"HTTP request completed","requestId":"27bfe36e-2329-4f90-a870-b460d0b24ec0","meta":{"method":"GET","path":"/","status":200,"durationMs":12}}
+{"ts":"2026-04-17T16:01:35.345Z","level":"info","msg":"HTTP request completed","requestId":"e3ce8e97-7be0-48ad-a417-baa411ec2e37","meta":{"method":"GET","path":"/status","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:01:36.832Z","level":"info","msg":"HTTP request completed","requestId":"38e761f2-fa36-4f03-99df-368911fb25e2","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":8}}
+{"ts":"2026-04-17T16:01:37.029Z","level":"info","msg":"HTTP request completed","requestId":"6825573d-e95d-47eb-9825-12cb056af0f4","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":275}}
+{"ts":"2026-04-17T16:01:37.213Z","level":"info","msg":"HTTP request completed","requestId":"57c47d51-8a70-4f81-80cf-5d54668ddbba","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":418}}
+{"ts":"2026-04-17T16:01:37.477Z","level":"info","msg":"Generating Design Resume PDF","requestId":"8bc9ffeb-d259-45a5-b797-52d84ad1caf9","meta":{"renderer":"rxresume","documentId":"primary"}}
+{"ts":"2026-04-17T16:01:37.951Z","level":"info","msg":"HTTP request completed","requestId":"fce97cbe-ddb5-4372-af67-b4e6eebb79af","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:01:38.059Z","level":"info","msg":"HTTP request completed","requestId":"a969770b-abb3-48ac-9411-f80aacd29323","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":118}}
+{"ts":"2026-04-17T16:01:38.260Z","level":"info","msg":"HTTP request completed","requestId":"a0baa700-6baf-42d8-b677-2d00c70ffc0d","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":315}}
+{"ts":"2026-04-17T16:01:41.407Z","level":"info","msg":"HTTP request completed","requestId":"8bc9ffeb-d259-45a5-b797-52d84ad1caf9","meta":{"method":"POST","path":"/generate-pdf","status":200,"durationMs":4601}}
+{"ts":"2026-04-17T16:01:41.427Z","level":"info","msg":"HTTP request completed","requestId":"a9dd0caf-9c64-49f8-9c77-6a96a31410d0","meta":{"method":"GET","path":"/design_resume_current.pdf","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:01:57.494Z","level":"info","msg":"HTTP request completed","requestId":"11cd06cc-bfea-4f5a-b863-482f42426079","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:02:27.133Z","level":"info","msg":"Profile loaded from local Design Resume","requestId":"80632086-2796-4c16-a0f2-ad332180c1ab","meta":{"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"]}}
+{"ts":"2026-04-17T16:02:27.135Z","level":"info","msg":"HTTP request completed","requestId":"80632086-2796-4c16-a0f2-ad332180c1ab","meta":{"method":"GET","path":"/","status":200,"durationMs":114}}
+{"ts":"2026-04-17T16:02:27.224Z","level":"info","msg":"HTTP request completed","requestId":"3b304251-199a-4cc4-beb6-92e548ce19de","meta":{"method":"GET","path":"/","status":200,"durationMs":86}}
+{"ts":"2026-04-17T16:02:27.229Z","level":"info","msg":"HTTP request completed","requestId":"ba19284e-81ee-4a7f-9a49-cf5d4710d906","meta":{"method":"GET","path":"/info","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:02:27.237Z","level":"info","msg":"Jobs list fetched","requestId":"02d5f626-7170-4335-8159-778d4febb6ac","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T15:56:39.224Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:02:27.239Z","level":"info","msg":"HTTP request completed","requestId":"02d5f626-7170-4335-8159-778d4febb6ac","meta":{"method":"GET","path":"/","status":200,"durationMs":8}}
+{"ts":"2026-04-17T16:02:27.255Z","level":"info","msg":"HTTP request completed","requestId":"f3daa1f7-8bd2-459c-bd68-1b4a02954592","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":15}}
+{"ts":"2026-04-17T16:02:27.259Z","level":"info","msg":"HTTP request completed","requestId":"dce654f2-80a9-4100-8848-a443b359ec4c","meta":{"method":"GET","path":"/status","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:02:27.260Z","level":"info","msg":"HTTP request completed","requestId":"0e187321-66be-4250-9af9-cd61aa7bd7ee","meta":{"method":"GET","path":"/favicon.png","status":200,"durationMs":124}}
+{"ts":"2026-04-17T16:02:27.434Z","level":"info","msg":"HTTP request completed","requestId":"bc675257-719e-40d0-98de-9bffff45887d","meta":{"method":"GET","path":"/17eb6247-b01d-44b1-976b-9ee418ae93fb","status":200,"durationMs":8}}
+{"ts":"2026-04-17T16:02:27.502Z","level":"warn","msg":"Tracer readiness check failed","requestId":"b8201bed-63bf-4bdb-a15f-e312193070f4","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776441747502}}
+{"ts":"2026-04-17T16:02:27.503Z","level":"info","msg":"HTTP request completed","requestId":"b8201bed-63bf-4bdb-a15f-e312193070f4","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:02:28.483Z","level":"info","msg":"HTTP request completed","requestId":"0e99e7f4-abe4-4c56-8e04-0b2f87cc90d8","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:02:28.791Z","level":"info","msg":"HTTP request completed","requestId":"3e53e320-7ef1-4771-894b-6044ca1b0632","meta":{"method":"GET","path":"/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:02:30.900Z","level":"info","msg":"HTTP request completed","requestId":"7f11c944-55c7-4721-a9fa-1ff4ff8b931f","meta":{"method":"GET","path":"/b03d745b-9cb2-4f5a-a82d-6ff023543cf0","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:02:32.881Z","level":"info","msg":"HTTP request completed","requestId":"e704b500-6537-4d2d-b2bd-81cb66d4d4e0","meta":{"method":"GET","path":"/","status":200,"durationMs":86}}
+{"ts":"2026-04-17T16:02:32.900Z","level":"info","msg":"HTTP request completed","requestId":"dfcad5cc-4ab8-47e2-a957-556e6348f8e6","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:02:32.909Z","level":"info","msg":"HTTP request completed","requestId":"ffafc10f-a529-4ccd-b5db-c3b56b589a1e","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":8}}
+{"ts":"2026-04-17T16:02:34.763Z","level":"info","msg":"Summarizing job","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56"}
+{"ts":"2026-04-17T16:02:34.766Z","level":"info","msg":"Generating tailoring content","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56"}
+{"ts":"2026-04-17T16:02:43.130Z","level":"info","msg":"Selecting projects","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56"}
+{"ts":"2026-04-17T16:02:43.131Z","level":"info","msg":"Selecting certifications","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56"}
+{"ts":"2026-04-17T16:02:43.132Z","level":"info","msg":"Extracting certifications from profile","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:02:43.132Z","level":"info","msg":"Certification extraction: found items","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:02:43.133Z","level":"info","msg":"Certification extraction completed","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:02:43.133Z","level":"info","msg":"Certification selection: profile data","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:02:43.134Z","level":"info","msg":"Certification selection: settings","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:02:43.134Z","level":"info","msg":"Certification selection: desiredCount","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:02:43.134Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:02:43.135Z","level":"info","msg":"Certification selection started","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:02:43.135Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0"}
+{"ts":"2026-04-17T16:02:43.135Z","level":"info","msg":"Certification selection: picked IDs","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:02:43.135Z","level":"info","msg":"Certification selection: final result","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:02:43.172Z","level":"info","msg":"HTTP request completed","requestId":"a840dd18-34c9-439d-bbaf-88e9887ffc56","meta":{"method":"POST","path":"/b03d745b-9cb2-4f5a-a82d-6ff023543cf0/summarize","status":200,"durationMs":8412}}
+{"ts":"2026-04-17T16:02:52.915Z","level":"info","msg":"Summarizing job","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd"}
+{"ts":"2026-04-17T16:02:52.917Z","level":"info","msg":"Selecting projects","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd"}
+{"ts":"2026-04-17T16:02:52.917Z","level":"info","msg":"Selecting certifications","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd"}
+{"ts":"2026-04-17T16:02:52.917Z","level":"info","msg":"Extracting certifications from profile","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:02:52.918Z","level":"info","msg":"Certification extraction: found items","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification extraction completed","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: profile data","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: settings","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: desiredCount","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection started","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0"}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: picked IDs","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:02:52.920Z","level":"info","msg":"Certification selection: final result","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:02:52.923Z","level":"info","msg":"Generating final PDF","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd"}
+{"ts":"2026-04-17T16:02:52.929Z","level":"info","msg":"Generating PDF resume","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","renderer":"rxresume"}}
+{"ts":"2026-04-17T16:02:52.955Z","level":"info","msg":"Certification selection started","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:02:52.955Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0"}
+{"ts":"2026-04-17T16:02:57.004Z","level":"info","msg":"Jobs revision fetched","requestId":"9d76a83d-3983-4ee7-89e4-3a836e017378","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:02:52.925Z:28:all","total":28}}
+{"ts":"2026-04-17T16:02:57.005Z","level":"info","msg":"HTTP request completed","requestId":"9d76a83d-3983-4ee7-89e4-3a836e017378","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:02:57.021Z","level":"info","msg":"Jobs list fetched","requestId":"416ab979-dd6d-4ee3-af8a-30da75ff6c52","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:02:52.925Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:02:57.023Z","level":"info","msg":"HTTP request completed","requestId":"416ab979-dd6d-4ee3-af8a-30da75ff6c52","meta":{"method":"GET","path":"/","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:02:57.090Z","level":"info","msg":"HTTP request completed","requestId":"8925cb60-1a34-452c-97ab-35251937d7b1","meta":{"method":"GET","path":"/b03d745b-9cb2-4f5a-a82d-6ff023543cf0","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:02:57.151Z","level":"info","msg":"PDF generated successfully","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","outputPath":"/app/data/pdfs/resume_b03d745b-9cb2-4f5a-a82d-6ff023543cf0.pdf","renderer":"rxresume"}}
+{"ts":"2026-04-17T16:02:57.166Z","level":"warn","msg":"Server product analytics request errored","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"event":"resume_generated","requestOrigin":"http://localhost:3005","urlPath":"/jobs","error":{"name":"TypeError","message":"umami.init is not a function","stack":"TypeError: umami.init is not a function\n    at trackServerProductEvent (/app/orchestrator/src/server/infra/product-analytics.ts:102:11)\n    at <anonymous> (/app/orchestrator/src/server/pipeline/orchestrator.ts:447:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async processJob (/app/orchestrator/src/server/pipeline/orchestrator.ts:501:23)\n    at async executeJobActionForJob (/app/orchestrator/src/server/api/routes/jobs.ts:415:27)\n    at async worker (/app/orchestrator/src/server/utils/async-pool.ts:65:24)\n    at async Promise.all (index 0)\n    at async asyncPool (/app/orchestrator/src/server/utils/async-pool.ts:83:3)\n    at async <anonymous> (/app/orchestrator/src/server/api/routes/jobs.ts:691:21)"}}}
+{"ts":"2026-04-17T16:02:57.167Z","level":"warn","msg":"Server product analytics request errored","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","jobId":"b03d745b-9cb2-4f5a-a82d-6ff023543cf0","meta":{"event":"job_moved_to_ready","requestOrigin":"http://localhost:3005","urlPath":"/jobs","error":{"name":"TypeError","message":"umami.init is not a function","stack":"TypeError: umami.init is not a function\n    at trackServerProductEvent (/app/orchestrator/src/server/infra/product-analytics.ts:102:11)\n    at <anonymous> (/app/orchestrator/src/server/pipeline/orchestrator.ts:463:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async processJob (/app/orchestrator/src/server/pipeline/orchestrator.ts:501:23)\n    at async executeJobActionForJob (/app/orchestrator/src/server/api/routes/jobs.ts:415:27)\n    at async worker (/app/orchestrator/src/server/utils/async-pool.ts:65:24)\n    at async Promise.all (index 0)\n    at async asyncPool (/app/orchestrator/src/server/utils/async-pool.ts:83:3)\n    at async <anonymous> (/app/orchestrator/src/server/api/routes/jobs.ts:691:21)"}}}
+{"ts":"2026-04-17T16:02:57.169Z","level":"info","msg":"Job action completed","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"route":"POST /api/jobs/actions","action":"move_to_ready","requested":1,"succeeded":1,"failed":0,"concurrency":4}}
+{"ts":"2026-04-17T16:02:57.171Z","level":"info","msg":"HTTP request completed","requestId":"8204480d-3603-4103-be88-62e44fb79ecd","meta":{"method":"POST","path":"/actions","status":200,"durationMs":4261}}
+{"ts":"2026-04-17T16:02:57.427Z","level":"info","msg":"Jobs list fetched","requestId":"d8e24b45-13a0-4fde-8fa0-b37a56e882ab","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:02:57.152Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:02:57.428Z","level":"info","msg":"HTTP request completed","requestId":"d8e24b45-13a0-4fde-8fa0-b37a56e882ab","meta":{"method":"GET","path":"/","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:02:57.435Z","level":"info","msg":"HTTP request completed","requestId":"2d581030-c64e-4b12-a0d7-d44d863d81eb","meta":{"method":"GET","path":"/7e31d66f-d5b0-4fc3-a3c6-dd3b01c1ac16","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:02:57.601Z","level":"info","msg":"HTTP request completed","requestId":"1da9ff57-5e75-43ce-a11f-c27b8dcc0674","meta":{"method":"GET","path":"/","status":200,"durationMs":86}}
+{"ts":"2026-04-17T16:02:57.605Z","level":"info","msg":"HTTP request completed","requestId":"b5efbac2-bc16-471e-9a26-829a52611c35","meta":{"method":"GET","path":"/","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:02:57.626Z","level":"info","msg":"HTTP request completed","requestId":"314197b3-6543-492b-acad-249d19808c2d","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":9}}
+{"ts":"2026-04-17T16:02:57.633Z","level":"info","msg":"HTTP request completed","requestId":"aace6f67-0ec9-43f9-8a61-3e25d3f1c636","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:02:59.494Z","level":"info","msg":"HTTP request completed","requestId":"1c8b059b-535f-477f-b21a-ad24e69d9fa1","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:03:01.633Z","level":"info","msg":"HTTP request completed","requestId":"d3e51f89-b352-4c3c-8b43-8d06dcaa27df","meta":{"method":"GET","path":"/","status":200,"durationMs":88}}
+{"ts":"2026-04-17T16:03:01.635Z","level":"info","msg":"HTTP request completed","requestId":"e390d78a-f35b-4d4d-8ced-0d95a7aa0803","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:03:01.650Z","level":"info","msg":"HTTP request completed","requestId":"ebc9dcc2-8c23-42af-93ae-8981d8b6ec4c","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:03:04.490Z","level":"info","msg":"HTTP request completed","requestId":"0b364011-a5dc-4afa-98e3-99d9336b1ec2","meta":{"method":"GET","path":"/b03d745b-9cb2-4f5a-a82d-6ff023543cf0","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:03:05.945Z","level":"info","msg":"HTTP request completed","requestId":"7e6352d2-baeb-4e88-b731-97fc81c01ddc","meta":{"method":"GET","path":"/resume_b03d745b-9cb2-4f5a-a82d-6ff023543cf0.pdf","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:03:30.262Z","level":"info","msg":"HTTP request completed","requestId":"825ea1b2-b69f-49e2-bee8-ec560c609228","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:04:00.474Z","level":"info","msg":"HTTP request completed","requestId":"02b07384-5704-4745-9557-6d90f25bb240","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:04:31.477Z","level":"info","msg":"HTTP request completed","requestId":"25dee60e-c3a3-4424-bee4-7f0e447faadb","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:05:02.482Z","level":"info","msg":"HTTP request completed","requestId":"fec14816-3ce8-4744-9b9d-64319752081a","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:05:33.471Z","level":"info","msg":"HTTP request completed","requestId":"12c3401b-9eac-4743-aad5-551a9a788682","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:06:04.487Z","level":"info","msg":"HTTP request completed","requestId":"5508fb08-decf-42d3-8278-93c6d1d92c50","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:06:35.473Z","level":"info","msg":"HTTP request completed","requestId":"66f175a9-c71e-4396-9aaf-77b330040175","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:07:06.482Z","level":"info","msg":"HTTP request completed","requestId":"cba196f4-4b09-4fcf-8244-1099d71aabd1","meta":{"method":"GET","path":"/health","status":200,"durationMs":0}}
+{"ts":"2026-04-17T16:07:37.482Z","level":"info","msg":"HTTP request completed","requestId":"1773ecde-e972-49c9-92a8-062be48916ba","meta":{"method":"GET","path":"/health","status":200,"durationMs":0}}
+{"ts":"2026-04-17T16:08:08.483Z","level":"info","msg":"HTTP request completed","requestId":"29563a76-56d8-4fd0-8119-a434f9c5838a","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:08:39.481Z","level":"info","msg":"HTTP request completed","requestId":"2bce11ce-deb3-4782-9593-2b510a247f18","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:09:10.477Z","level":"info","msg":"HTTP request completed","requestId":"4f454b5e-baa7-41e2-979e-d52c72762db3","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:09:29.564Z","level":"info","msg":"Jobs revision fetched","requestId":"0200c90a-936b-49b6-aaa8-683b57cc7ad7","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:02:57.152Z:28:all","total":28}}
+{"ts":"2026-04-17T16:09:29.565Z","level":"info","msg":"HTTP request completed","requestId":"0200c90a-936b-49b6-aaa8-683b57cc7ad7","meta":{"method":"GET","path":"/revision","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:09:32.362Z","level":"info","msg":"HTTP request completed","requestId":"c0f069d5-6660-4359-8a60-87c619405512","meta":{"method":"GET","path":"/","status":200,"durationMs":83}}
+{"ts":"2026-04-17T16:09:32.364Z","level":"warn","msg":"Tracer readiness check failed","requestId":"87aef50f-e467-4c93-9e90-b287e8657447","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776442172364}}
+{"ts":"2026-04-17T16:09:32.365Z","level":"info","msg":"HTTP request completed","requestId":"87aef50f-e467-4c93-9e90-b287e8657447","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:09:33.471Z","level":"info","msg":"HTTP request completed","requestId":"fda31cee-3314-4fc5-8523-6cd6f2a3ac19","meta":{"method":"GET","path":"/jobs/discovered/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:09:33.673Z","level":"info","msg":"HTTP request completed","requestId":"a648bb82-1172-4211-9112-eb5697de667c","meta":{"method":"GET","path":"/assets/index-BwD4WsFi.js","status":304,"durationMs":2}}
+{"ts":"2026-04-17T16:09:33.683Z","level":"info","msg":"HTTP request completed","requestId":"962244b2-01a0-4293-a94e-2ee05e5cde85","meta":{"method":"GET","path":"/assets/index-DcOdYmXo.css","status":304,"durationMs":2}}
+{"ts":"2026-04-17T16:09:34.328Z","level":"info","msg":"HTTP request completed","requestId":"02be63a0-d631-4260-a8fc-99e1fbdc5e4a","meta":{"method":"GET","path":"/favicon.png","status":304,"durationMs":1}}
+{"ts":"2026-04-17T16:09:34.472Z","level":"info","msg":"HTTP request completed","requestId":"11bf04f0-29cf-4429-be42-93e728ae31f4","meta":{"method":"GET","path":"/","status":200,"durationMs":97}}
+{"ts":"2026-04-17T16:09:34.479Z","level":"info","msg":"HTTP request completed","requestId":"dd1db8d2-d448-4341-a016-af6787dde808","meta":{"method":"GET","path":"/","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:09:34.482Z","level":"info","msg":"HTTP request completed","requestId":"cf7d6811-ba7c-48a8-9c41-545fe9e41ecf","meta":{"method":"GET","path":"/info","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:09:34.486Z","level":"info","msg":"Jobs list fetched","requestId":"fe93ebf1-c50d-405c-8187-abd451572db1","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:02:57.152Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:09:34.488Z","level":"info","msg":"HTTP request completed","requestId":"fe93ebf1-c50d-405c-8187-abd451572db1","meta":{"method":"GET","path":"/","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:09:34.491Z","level":"info","msg":"HTTP request completed","requestId":"bb82ccb4-0e45-4f0f-8806-a318e4b9193d","meta":{"method":"GET","path":"/status","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:09:35.888Z","level":"info","msg":"HTTP request completed","requestId":"7312b878-dcbd-4a35-9b69-dfc3319c8abf","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:09:36.088Z","level":"info","msg":"HTTP request completed","requestId":"f64c780e-b8c8-4686-808c-8d235250bc60","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":217}}
+{"ts":"2026-04-17T16:09:36.275Z","level":"info","msg":"HTTP request completed","requestId":"9172653a-0183-49b3-b8d7-a85345443e38","meta":{"method":"GET","path":"/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:09:36.416Z","level":"info","msg":"HTTP request completed","requestId":"3d1df406-8518-42ea-ae33-cda9791e08fd","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":538}}
+{"ts":"2026-04-17T16:09:37.506Z","level":"info","msg":"HTTP request completed","requestId":"30f00a08-4807-4441-a099-7d9adb00bd1c","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:09:37.526Z","level":"info","msg":"HTTP request completed","requestId":"39f6feed-da6d-4d6d-a033-946039794f63","meta":{"method":"GET","path":"/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:09:37.534Z","level":"info","msg":"HTTP request completed","requestId":"837067bd-d431-4206-ac3e-ea5107b0919e","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:09:37.570Z","level":"info","msg":"HTTP request completed","requestId":"55dc2619-cd52-42f5-a5ee-d6336bfa2005","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:09:37.606Z","level":"info","msg":"HTTP request completed","requestId":"828795e1-7b48-4714-9638-18899a0f35f3","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":113}}
+{"ts":"2026-04-17T16:09:37.686Z","level":"info","msg":"HTTP request completed","requestId":"9dea8218-9c09-4214-b056-bf602906d4e5","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":179}}
+{"ts":"2026-04-17T16:09:37.795Z","level":"info","msg":"HTTP request completed","requestId":"68a1e8b1-2b6a-4c82-86ae-bdb42c62a516","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":297}}
+{"ts":"2026-04-17T16:09:37.893Z","level":"info","msg":"HTTP request completed","requestId":"e0694ba0-3c17-4032-8677-d67fcdde542c","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":378}}
+{"ts":"2026-04-17T16:09:39.441Z","level":"info","msg":"HTTP request completed","requestId":"a7b2d195-8cff-4928-8a23-e7ad6c7388d4","meta":{"method":"GET","path":"/","status":200,"durationMs":81}}
+{"ts":"2026-04-17T16:09:40.048Z","level":"info","msg":"HTTP request completed","requestId":"6be56bf1-be8c-4ae1-80e7-37de93c2daad","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":598}}
+{"ts":"2026-04-17T16:09:40.048Z","level":"info","msg":"HTTP request completed","requestId":"2653ecbc-033f-4b4f-b02a-4637742f4ffb","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":595}}
+{"ts":"2026-04-17T16:09:41.136Z","level":"info","msg":"Summarizing job","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103"}
+{"ts":"2026-04-17T16:09:41.137Z","level":"info","msg":"Generating tailoring content","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103"}
+{"ts":"2026-04-17T16:09:41.486Z","level":"info","msg":"HTTP request completed","requestId":"2e1677c0-7cad-4528-9dd3-625d8a53ae7e","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:09:47.889Z","level":"info","msg":"Selecting projects","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103"}
+{"ts":"2026-04-17T16:09:47.890Z","level":"info","msg":"Selecting certifications","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103"}
+{"ts":"2026-04-17T16:09:47.890Z","level":"info","msg":"Extracting certifications from profile","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:09:47.891Z","level":"info","msg":"Certification extraction: found items","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:09:47.891Z","level":"info","msg":"Certification extraction completed","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:09:47.891Z","level":"info","msg":"Certification selection: profile data","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection: settings","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection: desiredCount","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection started","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470"}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection: picked IDs","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:09:47.892Z","level":"info","msg":"Certification selection: final result","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:09:47.898Z","level":"info","msg":"HTTP request completed","requestId":"91515ac0-44b6-4c03-9893-77fc12cb0103","meta":{"method":"POST","path":"/c7f69162-7a20-4fd3-8960-c65e9c9e0470/summarize","status":200,"durationMs":6764}}
+{"ts":"2026-04-17T16:09:49.521Z","level":"info","msg":"Jobs revision fetched","requestId":"73fbdf9c-c38e-42b1-83c3-f36cb0eed3e2","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:47.892Z:28:all","total":28}}
+{"ts":"2026-04-17T16:09:49.522Z","level":"info","msg":"HTTP request completed","requestId":"73fbdf9c-c38e-42b1-83c3-f36cb0eed3e2","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:09:49.710Z","level":"info","msg":"Jobs list fetched","requestId":"5e1a2b22-28d1-45f1-b7a9-b3f7be732fd8","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:09:47.892Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:09:49.712Z","level":"info","msg":"HTTP request completed","requestId":"5e1a2b22-28d1-45f1-b7a9-b3f7be732fd8","meta":{"method":"GET","path":"/","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:09:49.810Z","level":"info","msg":"HTTP request completed","requestId":"5a0beeeb-8e0a-455f-988f-453d09f92677","meta":{"method":"GET","path":"/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:09:52.081Z","level":"info","msg":"Summarizing job","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa"}
+{"ts":"2026-04-17T16:09:52.082Z","level":"info","msg":"Selecting projects","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa"}
+{"ts":"2026-04-17T16:09:52.083Z","level":"info","msg":"Selecting certifications","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa"}
+{"ts":"2026-04-17T16:09:52.083Z","level":"info","msg":"Extracting certifications from profile","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification extraction: found items","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification extraction completed","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection: profile data","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection: settings","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection: desiredCount","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection started","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:09:52.084Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470"}
+{"ts":"2026-04-17T16:09:52.085Z","level":"info","msg":"Certification selection: picked IDs","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:09:52.085Z","level":"info","msg":"Certification selection: final result","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:09:52.087Z","level":"info","msg":"Generating final PDF","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa"}
+{"ts":"2026-04-17T16:09:52.092Z","level":"info","msg":"Generating PDF resume","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","renderer":"rxresume"}}
+{"ts":"2026-04-17T16:09:52.121Z","level":"info","msg":"Certification selection started","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:09:52.121Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470"}
+{"ts":"2026-04-17T16:09:56.131Z","level":"info","msg":"PDF generated successfully","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","outputPath":"/app/data/pdfs/resume_c7f69162-7a20-4fd3-8960-c65e9c9e0470.pdf","renderer":"rxresume"}}
+{"ts":"2026-04-17T16:09:56.134Z","level":"warn","msg":"Server product analytics request errored","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"event":"resume_generated","requestOrigin":"http://localhost:3005","urlPath":"/jobs","error":{"name":"TypeError","message":"umami.init is not a function","stack":"TypeError: umami.init is not a function\n    at trackServerProductEvent (/app/orchestrator/src/server/infra/product-analytics.ts:102:11)\n    at <anonymous> (/app/orchestrator/src/server/pipeline/orchestrator.ts:447:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async processJob (/app/orchestrator/src/server/pipeline/orchestrator.ts:501:23)\n    at async executeJobActionForJob (/app/orchestrator/src/server/api/routes/jobs.ts:415:27)\n    at async worker (/app/orchestrator/src/server/utils/async-pool.ts:65:24)\n    at async Promise.all (index 0)\n    at async asyncPool (/app/orchestrator/src/server/utils/async-pool.ts:83:3)\n    at async <anonymous> (/app/orchestrator/src/server/api/routes/jobs.ts:691:21)"}}}
+{"ts":"2026-04-17T16:09:56.135Z","level":"warn","msg":"Server product analytics request errored","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","jobId":"c7f69162-7a20-4fd3-8960-c65e9c9e0470","meta":{"event":"job_moved_to_ready","requestOrigin":"http://localhost:3005","urlPath":"/jobs","error":{"name":"TypeError","message":"umami.init is not a function","stack":"TypeError: umami.init is not a function\n    at trackServerProductEvent (/app/orchestrator/src/server/infra/product-analytics.ts:102:11)\n    at <anonymous> (/app/orchestrator/src/server/pipeline/orchestrator.ts:463:14)\n    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)\n    at async processJob (/app/orchestrator/src/server/pipeline/orchestrator.ts:501:23)\n    at async executeJobActionForJob (/app/orchestrator/src/server/api/routes/jobs.ts:415:27)\n    at async worker (/app/orchestrator/src/server/utils/async-pool.ts:65:24)\n    at async Promise.all (index 0)\n    at async asyncPool (/app/orchestrator/src/server/utils/async-pool.ts:83:3)\n    at async <anonymous> (/app/orchestrator/src/server/api/routes/jobs.ts:691:21)"}}}
+{"ts":"2026-04-17T16:09:56.136Z","level":"info","msg":"Job action completed","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"route":"POST /api/jobs/actions","action":"move_to_ready","requested":1,"succeeded":1,"failed":0,"concurrency":4}}
+{"ts":"2026-04-17T16:09:56.137Z","level":"info","msg":"HTTP request completed","requestId":"c62a410d-c19b-485d-a0e2-847c4141deaa","meta":{"method":"POST","path":"/actions","status":200,"durationMs":4058}}
+{"ts":"2026-04-17T16:09:56.312Z","level":"info","msg":"Jobs list fetched","requestId":"c0e103e6-7b6c-44d6-953b-fc6bdeb45fe5","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:09:56.314Z","level":"info","msg":"HTTP request completed","requestId":"c0e103e6-7b6c-44d6-953b-fc6bdeb45fe5","meta":{"method":"GET","path":"/","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:09:56.319Z","level":"info","msg":"HTTP request completed","requestId":"c3c2eb6b-f566-4a35-a133-5b3a85979d98","meta":{"method":"GET","path":"/cc77f9d6-1c29-46d4-befb-b2a8b9b0073b","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:09:59.618Z","level":"info","msg":"HTTP request completed","requestId":"46f1414f-9eeb-4654-af98-b47ad0738745","meta":{"method":"GET","path":"/17eb6247-b01d-44b1-976b-9ee418ae93fb","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:09:59.707Z","level":"info","msg":"HTTP request completed","requestId":"da587d5e-a712-439e-8172-f9a31656c1b3","meta":{"method":"GET","path":"/","status":200,"durationMs":88}}
+{"ts":"2026-04-17T16:09:59.768Z","level":"info","msg":"HTTP request completed","requestId":"64279068-541a-4dba-9488-44d442a717e1","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:10:04.280Z","level":"info","msg":"HTTP request completed","requestId":"8b4b8f6c-1031-4e8f-ab1a-ff6384e10a4d","meta":{"method":"GET","path":"/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:10:04.351Z","level":"info","msg":"Jobs revision fetched","requestId":"17689930-336d-4bec-a50e-c14a29b49ffd","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:10:04.352Z","level":"info","msg":"HTTP request completed","requestId":"17689930-336d-4bec-a50e-c14a29b49ffd","meta":{"method":"GET","path":"/revision","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:10:05.921Z","level":"info","msg":"HTTP request completed","requestId":"51bc10bf-aa6d-4762-a757-63a1a213ad2f","meta":{"method":"GET","path":"/resume_c7f69162-7a20-4fd3-8960-c65e9c9e0470.pdf","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:10:12.477Z","level":"info","msg":"HTTP request completed","requestId":"ee50be37-2a6e-492d-a9ad-6d0c6c353003","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:10:43.492Z","level":"info","msg":"HTTP request completed","requestId":"a10e3217-dc8b-4cb7-a28f-014cbcd12735","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:11:14.486Z","level":"info","msg":"HTTP request completed","requestId":"2a217173-1f45-4955-b006-63e3568cc7df","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+🔧 Running database migrations...
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (legacy backfill not applicable)
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+↩️ Migration skipped (column already exists)
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+✅ Migration applied
+🎉 Database migrations complete!
+
+> job-ops-orchestrator@0.3.1 start
+> tsx src/server/index.ts
+
+{"ts":"2026-04-17T16:11:38.576Z","level":"info","msg":"Extractor registry initialized","meta":{"manifestCount":8,"sourceCount":10,"manifests":[{"id":"adzuna","sources":["adzuna"],"requiredEnvVarsCount":2},{"id":"golangjobs","sources":["golangjobs"],"requiredEnvVarsCount":0},{"id":"gradcracker","sources":["gradcracker"],"requiredEnvVarsCount":0},{"id":"hiringcafe","sources":["hiringcafe"],"requiredEnvVarsCount":0},{"id":"jobspy","sources":["indeed","linkedin","glassdoor"],"requiredEnvVarsCount":0},{"id":"startupjobs","sources":["startupjobs"],"requiredEnvVarsCount":0},{"id":"ukvisajobs","sources":["ukvisajobs"],"requiredEnvVarsCount":2},{"id":"workingnomads","sources":["workingnomads"],"requiredEnvVarsCount":0}]}}
+
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🚀 Job Ops Orchestrator                                 ║
+║                                                           ║
+║   Server running at: http://localhost:3001               ║
+║                                                           ║
+║   API:     http://localhost:3001/api                     ║
+║   Health:  http://localhost:3001/health                  ║
+║   PDFs:    http://localhost:3001/pdfs                    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Resolved visa sponsor providers root","meta":{"selectedRoot":"/app/visa-sponsor-providers","candidates":["/app/orchestrator/visa-sponsor-providers","/app/visa-sponsor-providers","/app/visa-sponsor-providers"]}}
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Discovered visa sponsor provider manifest paths","meta":{"root":"/app/visa-sponsor-providers","manifestCount":1,"manifestPaths":["/app/visa-sponsor-providers/uk/manifest.ts"]}}
+{"ts":"2026-04-17T16:11:38.585Z","level":"info","msg":"Loading visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","fileUrl":"file:///app/visa-sponsor-providers/uk/manifest.ts"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Loaded visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","id":"uk","countryKey":"united kingdom"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Visa sponsor provider registry initialized","meta":{"count":1,"providers":["uk"]}}
+✅ Provider uk initialized with 140986 sponsors
+🚀 [visa-sponsors-uk] Starting scheduler at hour 2...
+⏰ [visa-sponsors-uk] Next run scheduled for: 2026-04-18T02:00:00.000Z
+{"ts":"2026-04-17T16:11:39.076Z","level":"info","msg":"Backup settings updated","meta":{"enabled":false,"hour":2,"maxCount":5}}
+ℹ️ Backups disabled. Enable in settings to schedule automatic backups.
+{"ts":"2026-04-17T16:12:04.500Z","level":"info","msg":"HTTP request completed","requestId":"60daedd7-d28c-4fc3-bee4-f5399280e552","meta":{"method":"GET","path":"/health","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:12:35.492Z","level":"info","msg":"HTTP request completed","requestId":"d25dd135-3126-4d49-ab3f-50ddbf780976","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:13:06.462Z","level":"info","msg":"HTTP request completed","requestId":"a03bcb9b-ee2e-4458-a262-d4aeeab87fbf","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:13:37.439Z","level":"info","msg":"HTTP request completed","requestId":"1d3c9a43-222a-49f6-812e-906353f13a02","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:08.437Z","level":"info","msg":"HTTP request completed","requestId":"9684be13-aaa5-46ef-9247-139a7ed3e0f7","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:39.443Z","level":"info","msg":"HTTP request completed","requestId":"0634011f-7ba7-417d-8e8a-303ec35ada50","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:15:10.467Z","level":"info","msg":"HTTP request completed","requestId":"365c25dd-5386-43dd-a0ff-73c811dd5ddc","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:15:41.453Z","level":"info","msg":"HTTP request completed","requestId":"0981633a-dfed-470b-8558-b6de6f5c1cfe","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:16:12.492Z","level":"info","msg":"HTTP request completed","requestId":"50eec738-9a9b-4f58-9012-e7bfce34541b","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:16:43.489Z","level":"info","msg":"HTTP request completed","requestId":"4683161b-8dd2-4516-aae4-48aaabaeeac5","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:17:14.426Z","level":"info","msg":"HTTP request completed","requestId":"d62bb99b-02fc-4b87-afc3-0e6337107d04","meta":{"method":"GET","path":"/health","status":200,"durationMs":0}}
+{"ts":"2026-04-17T16:17:45.485Z","level":"info","msg":"HTTP request completed","requestId":"118fadfd-7c0e-41b3-96aa-cbad4971af5c","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:04.861Z","level":"info","msg":"HTTP request completed","requestId":"2d16d8d4-cba8-447e-a7cb-7b8854bb5658","meta":{"method":"GET","path":"/status","status":200,"durationMs":22}}
+{"ts":"2026-04-17T16:18:04.879Z","level":"info","msg":"Jobs revision fetched","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:04.880Z","level":"info","msg":"HTTP request completed","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"method":"GET","path":"/revision","status":200,"durationMs":43}}
+{"ts":"2026-04-17T16:18:05.916Z","level":"info","msg":"HTTP request completed","requestId":"4ec1af53-1a2a-4cf3-a876-25d233206fe7","meta":{"method":"GET","path":"/jobs/ready/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:06.131Z","level":"info","msg":"HTTP request completed","requestId":"b9b3662a-985c-4080-ad8f-f71f997c983b","meta":{"method":"GET","path":"/assets/index-BwD4WsFi.js","status":304,"durationMs":4}}
+{"ts":"2026-04-17T16:18:06.133Z","level":"info","msg":"HTTP request completed","requestId":"8d28bddd-fd4d-401f-b528-89b3c4a543a1","meta":{"method":"GET","path":"/assets/index-DcOdYmXo.css","status":304,"durationMs":1}}
+{"ts":"2026-04-17T16:18:06.775Z","level":"info","msg":"HTTP request completed","requestId":"46371b88-b069-4021-99c1-32f9ae9df931","meta":{"method":"GET","path":"/favicon.png","status":304,"durationMs":2}}
+{"ts":"2026-04-17T16:18:06.855Z","level":"info","msg":"HTTP request completed","requestId":"5e617ee0-dc86-4b92-9c9d-8f559aa5bc38","meta":{"method":"GET","path":"/status","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:07.096Z","level":"info","msg":"Profile loaded from local Design Resume","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"]}}
+{"ts":"2026-04-17T16:18:07.098Z","level":"info","msg":"HTTP request completed","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"method":"GET","path":"/","status":200,"durationMs":242}}
+{"ts":"2026-04-17T16:18:07.193Z","level":"info","msg":"HTTP request completed","requestId":"55468e3b-9d60-482d-84e5-89d2348c70c7","meta":{"method":"GET","path":"/","status":200,"durationMs":92}}
+{"ts":"2026-04-17T16:18:07.196Z","level":"info","msg":"HTTP request completed","requestId":"5f4823c2-3ddd-45b7-b4fc-14340eb7ca65","meta":{"method":"GET","path":"/info","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:07.208Z","level":"info","msg":"Jobs list fetched","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:18:07.209Z","level":"info","msg":"HTTP request completed","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"method":"GET","path":"/","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:18:08.447Z","level":"info","msg":"HTTP request completed","requestId":"c375bcd9-d822-4c9b-a3b9-7aba024bf650","meta":{"method":"GET","path":"/17eb6247-b01d-44b1-976b-9ee418ae93fb","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.461Z","level":"info","msg":"HTTP request completed","requestId":"711a0035-a47e-4734-80c4-21da5d51aba1","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.927Z","level":"info","msg":"HTTP request completed","requestId":"d0878c81-c040-4548-8995-bf38a32ee955","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":499}}
+{"ts":"2026-04-17T16:18:08.944Z","level":"info","msg":"HTTP request completed","requestId":"dce72d1b-9658-4e30-9b88-17b6ce830cf7","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":527}}
+{"ts":"2026-04-17T16:18:09.193Z","level":"info","msg":"HTTP request completed","requestId":"cb9cc9de-26ec-4424-a144-1b4bc35844aa","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":833}}
+{"ts":"2026-04-17T16:18:09.869Z","level":"info","msg":"HTTP request completed","requestId":"26a71d73-9181-491a-8023-a94d8ca186de","meta":{"method":"GET","path":"/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:09.887Z","level":"info","msg":"HTTP request completed","requestId":"458ac139-867a-477b-8bfa-f981a720479f","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:10.058Z","level":"info","msg":"HTTP request completed","requestId":"e757fca4-6800-4da1-be8e-fa73b5a2bb65","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":186}}
+{"ts":"2026-04-17T16:18:10.085Z","level":"warn","msg":"Tracer readiness check failed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776442690085}}
+{"ts":"2026-04-17T16:18:10.087Z","level":"info","msg":"HTTP request completed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:10.174Z","level":"info","msg":"HTTP request completed","requestId":"7982d45d-2cae-4eab-be2a-90dcdb24c6cb","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":297}}
+{"ts":"2026-04-17T16:18:10.771Z","level":"info","msg":"HTTP request completed","requestId":"ed227060-380a-430a-8ede-43c48cbc4031","meta":{"method":"GET","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:18:12.442Z","level":"info","msg":"HTTP request completed","requestId":"0067d73e-883a-45e0-a87e-10cac2ecf089","meta":{"method":"GET","path":"/","status":200,"durationMs":96}}
+{"ts":"2026-04-17T16:18:12.458Z","level":"info","msg":"HTTP request completed","requestId":"89a2ca9f-ac1f-492a-8fb0-4e0f3aa2eb7d","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:12.468Z","level":"info","msg":"HTTP request completed","requestId":"97b40f0d-8b64-4ee3-a34a-684364a5b3a2","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":9}}
+{"ts":"2026-04-17T16:18:16.068Z","level":"info","msg":"Summarizing job","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.070Z","level":"info","msg":"Generating tailoring content","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.506Z","level":"info","msg":"HTTP request completed","requestId":"a5866345-cbfb-4bfe-b872-b8ac02c65ccb","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:36.804Z","level":"info","msg":"Jobs revision fetched","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:36.805Z","level":"info","msg":"HTTP request completed","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:18:39.854Z","level":"info","msg":"HTTP request completed","requestId":"360d3076-328b-45d5-8b0e-540098f89650","meta":{"method":"POST","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9/summarize","status":400,"durationMs":23790}}
+{"ts":"2026-04-17T16:18:47.487Z","level":"info","msg":"HTTP request completed","requestId":"05b13e8b-bf0d-43a3-8c43-9ca9dcd7b330","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:48.947Z","level":"info","msg":"Jobs revision fetched","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:48.948Z","level":"info","msg":"HTTP request completed","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:06.820Z","level":"info","msg":"Jobs revision fetched","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:06.821Z","level":"info","msg":"HTTP request completed","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:18.490Z","level":"info","msg":"HTTP request completed","requestId":"9b955dd3-3e31-44ef-8939-739fc05e65cf","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:19:21.800Z","level":"info","msg":"Jobs revision fetched","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:21.801Z","level":"info","msg":"HTTP request completed","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+anu@fedora:~%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{"ts":"2026-04-17T16:11:38.576Z","level":"info","msg":"Extractor registry initialized","meta":{"manifestCount":8,"sourceCount":10,"manifests":[{"id":"adzuna","sources":["adzuna"],"requiredEnvVarsCount":2},{"id":"golangjobs","sources":["golangjobs"],"requiredEnvVarsCount":0},{"id":"gradcracker","sources":["gradcracker"],"requiredEnvVarsCount":0},{"id":"hiringcafe","sources":["hiringcafe"],"requiredEnvVarsCount":0},{"id":"jobspy","sources":["indeed","linkedin","glassdoor"],"requiredEnvVarsCount":0},{"id":"startupjobs","sources":["startupjobs"],"requiredEnvVarsCount":0},{"id":"ukvisajobs","sources":["ukvisajobs"],"requiredEnvVarsCount":2},{"id":"workingnomads","sources":["workingnomads"],"requiredEnvVarsCount":0}]}}
+
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🚀 Job Ops Orchestrator                                 ║
+║                                                           ║
+║   Server running at: http://localhost:3001               ║
+║                                                           ║
+║   API:     http://localhost:3001/api                     ║
+║   Health:  http://localhost:3001/health                  ║
+║   PDFs:    http://localhost:3001/pdfs                    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Resolved visa sponsor providers root","meta":{"selectedRoot":"/app/visa-sponsor-providers","candidates":["/app/orchestrator/visa-sponsor-providers","/app/visa-sponsor-providers","/app/visa-sponsor-providers"]}}
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Discovered visa sponsor provider manifest paths","meta":{"root":"/app/visa-sponsor-providers","manifestCount":1,"manifestPaths":["/app/visa-sponsor-providers/uk/manifest.ts"]}}
+{"ts":"2026-04-17T16:11:38.585Z","level":"info","msg":"Loading visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","fileUrl":"file:///app/visa-sponsor-providers/uk/manifest.ts"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Loaded visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","id":"uk","countryKey":"united kingdom"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Visa sponsor provider registry initialized","meta":{"count":1,"providers":["uk"]}}
+✅ Provider uk initialized with 140986 sponsors
+🚀 [visa-sponsors-uk] Starting scheduler at hour 2...
+⏰ [visa-sponsors-uk] Next run scheduled for: 2026-04-18T02:00:00.000Z
+{"ts":"2026-04-17T16:11:39.076Z","level":"info","msg":"Backup settings updated","meta":{"enabled":false,"hour":2,"maxCount":5}}
+ℹ️ Backups disabled. Enable in settings to schedule automatic backups.
+{"ts":"2026-04-17T16:12:04.500Z","level":"info","msg":"HTTP request completed","requestId":"60daedd7-d28c-4fc3-bee4-f5399280e552","meta":{"method":"GET","path":"/health","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:12:35.492Z","level":"info","msg":"HTTP request completed","requestId":"d25dd135-3126-4d49-ab3f-50ddbf780976","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:13:06.462Z","level":"info","msg":"HTTP request completed","requestId":"a03bcb9b-ee2e-4458-a262-d4aeeab87fbf","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:13:37.439Z","level":"info","msg":"HTTP request completed","requestId":"1d3c9a43-222a-49f6-812e-906353f13a02","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:08.437Z","level":"info","msg":"HTTP request completed","requestId":"9684be13-aaa5-46ef-9247-139a7ed3e0f7","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:39.443Z","level":"info","msg":"HTTP request completed","requestId":"0634011f-7ba7-417d-8e8a-303ec35ada50","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:15:10.467Z","level":"info","msg":"HTTP request completed","requestId":"365c25dd-5386-43dd-a0ff-73c811dd5ddc","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:15:41.453Z","level":"info","msg":"HTTP request completed","requestId":"0981633a-dfed-470b-8558-b6de6f5c1cfe","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:16:12.492Z","level":"info","msg":"HTTP request completed","requestId":"50eec738-9a9b-4f58-9012-e7bfce34541b","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:16:43.489Z","level":"info","msg":"HTTP request completed","requestId":"4683161b-8dd2-4516-aae4-48aaabaeeac5","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:17:14.426Z","level":"info","msg":"HTTP request completed","requestId":"d62bb99b-02fc-4b87-afc3-0e6337107d04","meta":{"method":"GET","path":"/health","status":200,"durationMs":0}}
+{"ts":"2026-04-17T16:17:45.485Z","level":"info","msg":"HTTP request completed","requestId":"118fadfd-7c0e-41b3-96aa-cbad4971af5c","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:04.861Z","level":"info","msg":"HTTP request completed","requestId":"2d16d8d4-cba8-447e-a7cb-7b8854bb5658","meta":{"method":"GET","path":"/status","status":200,"durationMs":22}}
+{"ts":"2026-04-17T16:18:04.879Z","level":"info","msg":"Jobs revision fetched","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:04.880Z","level":"info","msg":"HTTP request completed","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"method":"GET","path":"/revision","status":200,"durationMs":43}}
+{"ts":"2026-04-17T16:18:05.916Z","level":"info","msg":"HTTP request completed","requestId":"4ec1af53-1a2a-4cf3-a876-25d233206fe7","meta":{"method":"GET","path":"/jobs/ready/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:06.131Z","level":"info","msg":"HTTP request completed","requestId":"b9b3662a-985c-4080-ad8f-f71f997c983b","meta":{"method":"GET","path":"/assets/index-BwD4WsFi.js","status":304,"durationMs":4}}
+{"ts":"2026-04-17T16:18:06.133Z","level":"info","msg":"HTTP request completed","requestId":"8d28bddd-fd4d-401f-b528-89b3c4a543a1","meta":{"method":"GET","path":"/assets/index-DcOdYmXo.css","status":304,"durationMs":1}}
+{"ts":"2026-04-17T16:18:06.775Z","level":"info","msg":"HTTP request completed","requestId":"46371b88-b069-4021-99c1-32f9ae9df931","meta":{"method":"GET","path":"/favicon.png","status":304,"durationMs":2}}
+{"ts":"2026-04-17T16:18:06.855Z","level":"info","msg":"HTTP request completed","requestId":"5e617ee0-dc86-4b92-9c9d-8f559aa5bc38","meta":{"method":"GET","path":"/status","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:07.096Z","level":"info","msg":"Profile loaded from local Design Resume","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"]}}
+{"ts":"2026-04-17T16:18:07.098Z","level":"info","msg":"HTTP request completed","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"method":"GET","path":"/","status":200,"durationMs":242}}
+{"ts":"2026-04-17T16:18:07.193Z","level":"info","msg":"HTTP request completed","requestId":"55468e3b-9d60-482d-84e5-89d2348c70c7","meta":{"method":"GET","path":"/","status":200,"durationMs":92}}
+{"ts":"2026-04-17T16:18:07.196Z","level":"info","msg":"HTTP request completed","requestId":"5f4823c2-3ddd-45b7-b4fc-14340eb7ca65","meta":{"method":"GET","path":"/info","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:07.208Z","level":"info","msg":"Jobs list fetched","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:18:07.209Z","level":"info","msg":"HTTP request completed","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"method":"GET","path":"/","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:18:08.447Z","level":"info","msg":"HTTP request completed","requestId":"c375bcd9-d822-4c9b-a3b9-7aba024bf650","meta":{"method":"GET","path":"/17eb6247-b01d-44b1-976b-9ee418ae93fb","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.461Z","level":"info","msg":"HTTP request completed","requestId":"711a0035-a47e-4734-80c4-21da5d51aba1","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.927Z","level":"info","msg":"HTTP request completed","requestId":"d0878c81-c040-4548-8995-bf38a32ee955","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":499}}
+{"ts":"2026-04-17T16:18:08.944Z","level":"info","msg":"HTTP request completed","requestId":"dce72d1b-9658-4e30-9b88-17b6ce830cf7","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":527}}
+{"ts":"2026-04-17T16:18:09.193Z","level":"info","msg":"HTTP request completed","requestId":"cb9cc9de-26ec-4424-a144-1b4bc35844aa","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":833}}
+{"ts":"2026-04-17T16:18:09.869Z","level":"info","msg":"HTTP request completed","requestId":"26a71d73-9181-491a-8023-a94d8ca186de","meta":{"method":"GET","path":"/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:09.887Z","level":"info","msg":"HTTP request completed","requestId":"458ac139-867a-477b-8bfa-f981a720479f","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:10.058Z","level":"info","msg":"HTTP request completed","requestId":"e757fca4-6800-4da1-be8e-fa73b5a2bb65","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":186}}
+{"ts":"2026-04-17T16:18:10.085Z","level":"warn","msg":"Tracer readiness check failed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776442690085}}
+{"ts":"2026-04-17T16:18:10.087Z","level":"info","msg":"HTTP request completed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:10.174Z","level":"info","msg":"HTTP request completed","requestId":"7982d45d-2cae-4eab-be2a-90dcdb24c6cb","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":297}}
+{"ts":"2026-04-17T16:18:10.771Z","level":"info","msg":"HTTP request completed","requestId":"ed227060-380a-430a-8ede-43c48cbc4031","meta":{"method":"GET","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:18:12.442Z","level":"info","msg":"HTTP request completed","requestId":"0067d73e-883a-45e0-a87e-10cac2ecf089","meta":{"method":"GET","path":"/","status":200,"durationMs":96}}
+{"ts":"2026-04-17T16:18:12.458Z","level":"info","msg":"HTTP request completed","requestId":"89a2ca9f-ac1f-492a-8fb0-4e0f3aa2eb7d","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:12.468Z","level":"info","msg":"HTTP request completed","requestId":"97b40f0d-8b64-4ee3-a34a-684364a5b3a2","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":9}}
+{"ts":"2026-04-17T16:18:16.068Z","level":"info","msg":"Summarizing job","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.070Z","level":"info","msg":"Generating tailoring content","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.506Z","level":"info","msg":"HTTP request completed","requestId":"a5866345-cbfb-4bfe-b872-b8ac02c65ccb","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:36.804Z","level":"info","msg":"Jobs revision fetched","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:36.805Z","level":"info","msg":"HTTP request completed","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:18:39.854Z","level":"info","msg":"HTTP request completed","requestId":"360d3076-328b-45d5-8b0e-540098f89650","meta":{"method":"POST","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9/summarize","status":400,"durationMs":23790}}
+{"ts":"2026-04-17T16:18:47.487Z","level":"info","msg":"HTTP request completed","requestId":"05b13e8b-bf0d-43a3-8c43-9ca9dcd7b330","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:48.947Z","level":"info","msg":"Jobs revision fetched","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:48.948Z","level":"info","msg":"HTTP request completed","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:06.820Z","level":"info","msg":"Jobs revision fetched","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:06.821Z","level":"info","msg":"HTTP request completed","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:18.490Z","level":"info","msg":"HTTP request completed","requestId":"9b955dd3-3e31-44ef-8939-739fc05e65cf","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:19:21.800Z","level":"info","msg":"Jobs revision fetched","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:21.801Z","level":"info","msg":"HTTP request completed","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:36.822Z","level":"info","msg":"Jobs revision fetched","requestId":"c81ce6f8-f661-4be8-a5d3-fe739ec34806","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:36.823Z","level":"info","msg":"HTTP request completed","requestId":"c81ce6f8-f661-4be8-a5d3-fe739ec34806","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:49.497Z","level":"info","msg":"HTTP request completed","requestId":"79c00ffb-917a-4781-9775-bc7a25eae5c8","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:20:06.823Z","level":"info","msg":"Jobs revision fetched","requestId":"aafd9c20-e8e0-4361-a824-6ba7156bd38f","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:06.824Z","level":"info","msg":"HTTP request completed","requestId":"aafd9c20-e8e0-4361-a824-6ba7156bd38f","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:20:15.787Z","level":"info","msg":"Jobs revision fetched","requestId":"732ab13c-5d14-4bcc-a7f5-bd1546a4bc20","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:15.788Z","level":"info","msg":"HTTP request completed","requestId":"732ab13c-5d14-4bcc-a7f5-bd1546a4bc20","meta":{"method":"GET","path":"/revision","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:20:17.424Z","level":"info","msg":"Jobs revision fetched","requestId":"5bc24105-c3b4-4991-84cc-904ebcfbea57","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:17.426Z","level":"info","msg":"HTTP request completed","requestId":"5bc24105-c3b4-4991-84cc-904ebcfbea57","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:20:20.488Z","level":"info","msg":"HTTP request completed","requestId":"e4b1656c-e864-4c94-a4bf-b3e6f3eb0458","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:20:51.480Z","level":"info","msg":"HTTP request completed","requestId":"5cb754aa-2aab-47bb-9087-7b530820a0dd","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:21:22.481Z","level":"info","msg":"HTTP request completed","requestId":"02231751-9dc9-4224-ad6c-7779e21c4ce7","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:21:24.518Z","level":"info","msg":"Jobs revision fetched","requestId":"d466eeb8-f3c0-43d3-a1fc-f996073b0427","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:21:24.519Z","level":"info","msg":"HTTP request completed","requestId":"d466eeb8-f3c0-43d3-a1fc-f996073b0427","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:21:27.520Z","level":"info","msg":"Summarizing job","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:27.522Z","level":"info","msg":"Generating tailoring content","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.889Z","level":"info","msg":"Selecting projects","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.890Z","level":"info","msg":"Selecting certifications","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.891Z","level":"info","msg":"Extracting certifications from profile","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:21:35.891Z","level":"info","msg":"Certification extraction: found items","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification extraction completed","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification selection: profile data","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification selection: settings","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: desiredCount","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection started","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9"}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: picked IDs","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:21:35.894Z","level":"info","msg":"Certification selection: final result","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:21:35.909Z","level":"info","msg":"HTTP request completed","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"method":"POST","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9/summarize","status":200,"durationMs":8392}}
+{"ts":"2026-04-17T16:21:37.375Z","level":"info","msg":"Jobs revision fetched","requestId":"2db14b1d-9996-4a62-a04c-9f3a71a4312a","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:21:35.894Z:28:all","total":28}}
+{"ts":"2026-04-17T16:21:37.376Z","level":"info","msg":"HTTP request completed","requestId":"2db14b1d-9996-4a62-a04c-9f3a71a4312a","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:21:37.391Z","level":"info","msg":"Jobs list fetched","requestId":"95da509f-1051-42ca-bc80-94d30536e148","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:21:35.894Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:21:37.392Z","level":"info","msg":"HTTP request completed","requestId":"95da509f-1051-42ca-bc80-94d30536e148","meta":{"method":"GET","path":"/","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:21:37.465Z","level":"info","msg":"HTTP request completed","requestId":"58677773-203a-4310-ba64-18284b2e4b60","meta":{"method":"GET","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:21:53.476Z","level":"info","msg":"HTTP request completed","requestId":"242b9fa9-2bd6-4b8e-b199-5afeb606f7f0","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026{"ts":"2026-04-17T16:11:38.576Z","level":"info","msg":"Extractor registry initialized","meta":{"manifestCount":8,"sourceCount":10,"manifests":[{"id":"adzuna","sources":["adzuna"],"requiredEnvVarsCount":2},{"id":"golangjobs","sources":["golangjobs"],"requiredEnvVarsCount":0},{"id":"gradcracker","sources":["gradcracker"],"requiredEnvVarsCount":0},{"id":"hiringcafe","sources":["hiringcafe"],"requiredEnvVarsCount":0},{"id":"jobspy","sources":["indeed","linkedin","glassdoor"],"requiredEnvVarsCount":0},{"id":"startupjobs","sources":["startupjobs"],"requiredEnvVarsCount":0},{"id":"ukvisajobs","sources":["ukvisajobs"],"requiredEnvVarsCount":2},{"id":"workingnomads","sources":["workingnomads"],"requiredEnvVarsCount":0}]}}
+
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   🚀 Job Ops Orchestrator                                 ║
+║                                                           ║
+║   Server running at: http://localhost:3001               ║
+║                                                           ║
+║   API:     http://localhost:3001/api                     ║
+║   Health:  http://localhost:3001/health                  ║
+║   PDFs:    http://localhost:3001/pdfs                    ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Resolved visa sponsor providers root","meta":{"selectedRoot":"/app/visa-sponsor-providers","candidates":["/app/orchestrator/visa-sponsor-providers","/app/visa-sponsor-providers","/app/visa-sponsor-providers"]}}
+{"ts":"2026-04-17T16:11:38.584Z","level":"info","msg":"Discovered visa sponsor provider manifest paths","meta":{"root":"/app/visa-sponsor-providers","manifestCount":1,"manifestPaths":["/app/visa-sponsor-providers/uk/manifest.ts"]}}
+{"ts":"2026-04-17T16:11:38.585Z","level":"info","msg":"Loading visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","fileUrl":"file:///app/visa-sponsor-providers/uk/manifest.ts"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Loaded visa sponsor provider manifest","meta":{"path":"/app/visa-sponsor-providers/uk/manifest.ts","id":"uk","countryKey":"united kingdom"}}
+{"ts":"2026-04-17T16:11:38.591Z","level":"info","msg":"Visa sponsor provider registry initialized","meta":{"count":1,"providers":["uk"]}}
+✅ Provider uk initialized with 140986 sponsors
+🚀 [visa-sponsors-uk] Starting scheduler at hour 2...
+⏰ [visa-sponsors-uk] Next run scheduled for: 2026-04-18T02:00:00.000Z
+{"ts":"2026-04-17T16:11:39.076Z","level":"info","msg":"Backup settings updated","meta":{"enabled":false,"hour":2,"maxCount":5}}
+ℹ️ Backups disabled. Enable in settings to schedule automatic backups.
+{"ts":"2026-04-17T16:12:04.500Z","level":"info","msg":"HTTP request completed","requestId":"60daedd7-d28c-4fc3-bee4-f5399280e552","meta":{"method":"GET","path":"/health","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:12:35.492Z","level":"info","msg":"HTTP request completed","requestId":"d25dd135-3126-4d49-ab3f-50ddbf780976","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:13:06.462Z","level":"info","msg":"HTTP request completed","requestId":"a03bcb9b-ee2e-4458-a262-d4aeeab87fbf","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:13:37.439Z","level":"info","msg":"HTTP request completed","requestId":"1d3c9a43-222a-49f6-812e-906353f13a02","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:08.437Z","level":"info","msg":"HTTP request completed","requestId":"9684be13-aaa5-46ef-9247-139a7ed3e0f7","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:14:39.443Z","level":"info","msg":"HTTP request completed","requestId":"0634011f-7ba7-417d-8e8a-303ec35ada50","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:15:10.467Z","level":"info","msg":"HTTP request completed","requestId":"365c25dd-5386-43dd-a0ff-73c811dd5ddc","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:15:41.453Z","level":"info","msg":"HTTP request completed","requestId":"0981633a-dfed-470b-8558-b6de6f5c1cfe","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:16:12.492Z","level":"info","msg":"HTTP request completed","requestId":"50eec738-9a9b-4f58-9012-e7bfce34541b","meta":{"method":"GET","path":"/health","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:16:43.489Z","level":"info","msg":"HTTP request completed","requestId":"4683161b-8dd2-4516-aae4-48aaabaeeac5","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:17:14.426Z","level":"info","msg":"HTTP request completed","requestId":"d62bb99b-02fc-4b87-afc3-0e6337107d04","meta":{"method":"GET","path":"/health","status":200,"durationMs":0}}
+{"ts":"2026-04-17T16:17:45.485Z","level":"info","msg":"HTTP request completed","requestId":"118fadfd-7c0e-41b3-96aa-cbad4971af5c","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:04.861Z","level":"info","msg":"HTTP request completed","requestId":"2d16d8d4-cba8-447e-a7cb-7b8854bb5658","meta":{"method":"GET","path":"/status","status":200,"durationMs":22}}
+{"ts":"2026-04-17T16:18:04.879Z","level":"info","msg":"Jobs revision fetched","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:04.880Z","level":"info","msg":"HTTP request completed","requestId":"6e7523ed-6cb7-482b-b2f3-cdb0f3dc863d","meta":{"method":"GET","path":"/revision","status":200,"durationMs":43}}
+{"ts":"2026-04-17T16:18:05.916Z","level":"info","msg":"HTTP request completed","requestId":"4ec1af53-1a2a-4cf3-a876-25d233206fe7","meta":{"method":"GET","path":"/jobs/ready/c7f69162-7a20-4fd3-8960-c65e9c9e0470","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:06.131Z","level":"info","msg":"HTTP request completed","requestId":"b9b3662a-985c-4080-ad8f-f71f997c983b","meta":{"method":"GET","path":"/assets/index-BwD4WsFi.js","status":304,"durationMs":4}}
+{"ts":"2026-04-17T16:18:06.133Z","level":"info","msg":"HTTP request completed","requestId":"8d28bddd-fd4d-401f-b528-89b3c4a543a1","meta":{"method":"GET","path":"/assets/index-DcOdYmXo.css","status":304,"durationMs":1}}
+{"ts":"2026-04-17T16:18:06.775Z","level":"info","msg":"HTTP request completed","requestId":"46371b88-b069-4021-99c1-32f9ae9df931","meta":{"method":"GET","path":"/favicon.png","status":304,"durationMs":2}}
+{"ts":"2026-04-17T16:18:06.855Z","level":"info","msg":"HTTP request completed","requestId":"5e617ee0-dc86-4b92-9c9d-8f559aa5bc38","meta":{"method":"GET","path":"/status","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:07.096Z","level":"info","msg":"Profile loaded from local Design Resume","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"]}}
+{"ts":"2026-04-17T16:18:07.098Z","level":"info","msg":"HTTP request completed","requestId":"0aad6baf-94d2-43a3-9936-841d6f59374b","meta":{"method":"GET","path":"/","status":200,"durationMs":242}}
+{"ts":"2026-04-17T16:18:07.193Z","level":"info","msg":"HTTP request completed","requestId":"55468e3b-9d60-482d-84e5-89d2348c70c7","meta":{"method":"GET","path":"/","status":200,"durationMs":92}}
+{"ts":"2026-04-17T16:18:07.196Z","level":"info","msg":"HTTP request completed","requestId":"5f4823c2-3ddd-45b7-b4fc-14340eb7ca65","meta":{"method":"GET","path":"/info","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:18:07.208Z","level":"info","msg":"Jobs list fetched","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:18:07.209Z","level":"info","msg":"HTTP request completed","requestId":"3f965e1f-551e-4868-a460-7e58e8e5e416","meta":{"method":"GET","path":"/","status":200,"durationMs":10}}
+{"ts":"2026-04-17T16:18:08.447Z","level":"info","msg":"HTTP request completed","requestId":"c375bcd9-d822-4c9b-a3b9-7aba024bf650","meta":{"method":"GET","path":"/17eb6247-b01d-44b1-976b-9ee418ae93fb","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.461Z","level":"info","msg":"HTTP request completed","requestId":"711a0035-a47e-4734-80c4-21da5d51aba1","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":13}}
+{"ts":"2026-04-17T16:18:08.927Z","level":"info","msg":"HTTP request completed","requestId":"d0878c81-c040-4548-8995-bf38a32ee955","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":499}}
+{"ts":"2026-04-17T16:18:08.944Z","level":"info","msg":"HTTP request completed","requestId":"dce72d1b-9658-4e30-9b88-17b6ce830cf7","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":527}}
+{"ts":"2026-04-17T16:18:09.193Z","level":"info","msg":"HTTP request completed","requestId":"cb9cc9de-26ec-4424-a144-1b4bc35844aa","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":833}}
+{"ts":"2026-04-17T16:18:09.869Z","level":"info","msg":"HTTP request completed","requestId":"26a71d73-9181-491a-8023-a94d8ca186de","meta":{"method":"GET","path":"/cd7e0cfc-17cb-4678-ac0f-756b61a33945","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:09.887Z","level":"info","msg":"HTTP request completed","requestId":"458ac139-867a-477b-8bfa-f981a720479f","meta":{"method":"GET","path":"/validate/resume","status":200,"durationMs":6}}
+{"ts":"2026-04-17T16:18:10.058Z","level":"info","msg":"HTTP request completed","requestId":"e757fca4-6800-4da1-be8e-fa73b5a2bb65","meta":{"method":"POST","path":"/validate/llm","status":200,"durationMs":186}}
+{"ts":"2026-04-17T16:18:10.085Z","level":"warn","msg":"Tracer readiness check failed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"route":"tracer-readiness","status":"unavailable","publicBaseUrl":"http://localhost:3005","reason":"Configured public URL must be internet-reachable (not localhost/private network).","checkedAt":1776442690085}}
+{"ts":"2026-04-17T16:18:10.087Z","level":"info","msg":"HTTP request completed","requestId":"ec13bbf2-6e09-4b8d-b596-5b2101046541","meta":{"method":"GET","path":"/readiness","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:18:10.174Z","level":"info","msg":"HTTP request completed","requestId":"7982d45d-2cae-4eab-be2a-90dcdb24c6cb","meta":{"method":"POST","path":"/validate/rxresume","status":200,"durationMs":297}}
+{"ts":"2026-04-17T16:18:10.771Z","level":"info","msg":"HTTP request completed","requestId":"ed227060-380a-430a-8ede-43c48cbc4031","meta":{"method":"GET","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:18:12.442Z","level":"info","msg":"HTTP request completed","requestId":"0067d73e-883a-45e0-a87e-10cac2ecf089","meta":{"method":"GET","path":"/","status":200,"durationMs":96}}
+{"ts":"2026-04-17T16:18:12.458Z","level":"info","msg":"HTTP request completed","requestId":"89a2ca9f-ac1f-492a-8fb0-4e0f3aa2eb7d","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/projects","status":200,"durationMs":7}}
+{"ts":"2026-04-17T16:18:12.468Z","level":"info","msg":"HTTP request completed","requestId":"97b40f0d-8b64-4ee3-a34a-684364a5b3a2","meta":{"method":"GET","path":"/rx-resumes/019d9c1e-4d60-7042-bafd-6ddb54195ea6/certifications","status":200,"durationMs":9}}
+{"ts":"2026-04-17T16:18:16.068Z","level":"info","msg":"Summarizing job","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.070Z","level":"info","msg":"Generating tailoring content","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"360d3076-328b-45d5-8b0e-540098f89650"}
+{"ts":"2026-04-17T16:18:16.506Z","level":"info","msg":"HTTP request completed","requestId":"a5866345-cbfb-4bfe-b872-b8ac02c65ccb","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:36.804Z","level":"info","msg":"Jobs revision fetched","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:36.805Z","level":"info","msg":"HTTP request completed","requestId":"79fbda75-3305-4e96-9574-83e851632203","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:18:39.854Z","level":"info","msg":"HTTP request completed","requestId":"360d3076-328b-45d5-8b0e-540098f89650","meta":{"method":"POST","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9/summarize","status":400,"durationMs":23790}}
+{"ts":"2026-04-17T16:18:47.487Z","level":"info","msg":"HTTP request completed","requestId":"05b13e8b-bf0d-43a3-8c43-9ca9dcd7b330","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:18:48.947Z","level":"info","msg":"Jobs revision fetched","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:18:48.948Z","level":"info","msg":"HTTP request completed","requestId":"df65b78c-7f4e-4e66-bef3-fa10a80caf69","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:06.820Z","level":"info","msg":"Jobs revision fetched","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:06.821Z","level":"info","msg":"HTTP request completed","requestId":"b79f476f-a604-4101-bc4a-9c540d1861d4","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:18.490Z","level":"info","msg":"HTTP request completed","requestId":"9b955dd3-3e31-44ef-8939-739fc05e65cf","meta":{"method":"GET","path":"/health","status":200,"durationMs":2}}
+{"ts":"2026-04-17T16:19:21.800Z","level":"info","msg":"Jobs revision fetched","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:21.801Z","level":"info","msg":"HTTP request completed","requestId":"4521a0a7-6f14-4241-881b-4005fb17d4b6","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:36.822Z","level":"info","msg":"Jobs revision fetched","requestId":"c81ce6f8-f661-4be8-a5d3-fe739ec34806","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:19:36.823Z","level":"info","msg":"HTTP request completed","requestId":"c81ce6f8-f661-4be8-a5d3-fe739ec34806","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:19:49.497Z","level":"info","msg":"HTTP request completed","requestId":"79c00ffb-917a-4781-9775-bc7a25eae5c8","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:20:06.823Z","level":"info","msg":"Jobs revision fetched","requestId":"aafd9c20-e8e0-4361-a824-6ba7156bd38f","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:06.824Z","level":"info","msg":"HTTP request completed","requestId":"aafd9c20-e8e0-4361-a824-6ba7156bd38f","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:20:15.787Z","level":"info","msg":"Jobs revision fetched","requestId":"732ab13c-5d14-4bcc-a7f5-bd1546a4bc20","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:15.788Z","level":"info","msg":"HTTP request completed","requestId":"732ab13c-5d14-4bcc-a7f5-bd1546a4bc20","meta":{"method":"GET","path":"/revision","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:20:17.424Z","level":"info","msg":"Jobs revision fetched","requestId":"5bc24105-c3b4-4991-84cc-904ebcfbea57","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:20:17.426Z","level":"info","msg":"HTTP request completed","requestId":"5bc24105-c3b4-4991-84cc-904ebcfbea57","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:20:20.488Z","level":"info","msg":"HTTP request completed","requestId":"e4b1656c-e864-4c94-a4bf-b3e6f3eb0458","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:20:51.480Z","level":"info","msg":"HTTP request completed","requestId":"5cb754aa-2aab-47bb-9087-7b530820a0dd","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:21:22.481Z","level":"info","msg":"HTTP request completed","requestId":"02231751-9dc9-4224-ad6c-7779e21c4ce7","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026-04-17T16:21:24.518Z","level":"info","msg":"Jobs revision fetched","requestId":"d466eeb8-f3c0-43d3-a1fc-f996073b0427","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:09:56.131Z:28:all","total":28}}
+{"ts":"2026-04-17T16:21:24.519Z","level":"info","msg":"HTTP request completed","requestId":"d466eeb8-f3c0-43d3-a1fc-f996073b0427","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:21:27.520Z","level":"info","msg":"Summarizing job","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:27.522Z","level":"info","msg":"Generating tailoring content","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.889Z","level":"info","msg":"Selecting projects","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.890Z","level":"info","msg":"Selecting certifications","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204"}
+{"ts":"2026-04-17T16:21:35.891Z","level":"info","msg":"Extracting certifications from profile","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"hasProfile":true,"hasSections":true,"hasCertifications":true,"certificationsKeys":["id","visible","name","items"],"certificationsItems":[{"id":"9597c835-66b6-4623-8f67-9fe80ec822bc","title":"AI Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"f5f14e24-f93d-42d3-a8dd-55241be99387","title":"Product Manager Professional Certificate","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"507f17ae-6c23-415a-8d4d-d9ac5ac96183","title":"Product Management Certification Specialization","issuer":"from SkillUp Online","date":"","description":"","hidden":false,"visible":true},{"id":"0fe2bb00-b4f6-4002-bb48-0a07f79f33f7","title":"Agile Project Management Professional Certificate","issuer":"from Atlassian","date":"","description":"","hidden":false,"visible":true},{"id":"4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e","title":"Agile Development and Scrum","issuer":"from IBM","date":"","description":"","hidden":false,"visible":true},{"id":"2eea90db-c216-4f14-bfc6-de1065811868","title":"Agile for the Modern Product Manager","issuer":"from Scrum Alliance","date":"","description":"","hidden":false,"visible":true},{"id":"7fa76337-12b5-4256-a7e5-db30e1c841ff","title":"AI Professional Certificate","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f","title":"Generative AI Leader Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"3d5663da-897b-4464-ba8a-24ff9fc6d09b","title":"IT Leadership Professional Certificate","issuer":"from ServiceNow","date":"","description":"","hidden":false,"visible":true},{"id":"a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c","title":"Program Management for IT Professionals","issuer":"from LinkedIn","date":"","description":"","hidden":false,"visible":true},{"id":"b4e03bbf-f553-4f8c-92a0-52e38da6f5d2","title":"Digital Transformation Using AI/ML Specialization","issuer":"from Google","date":"","description":"","hidden":false,"visible":true},{"id":"cert001","title":"Generative AI: Foundation Models and Platforms","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert002","title":"Generative AI: Supercharge Your Product Management Career","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert003","title":"Product Management: Building AI-Powered Products","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert004","title":"Generative AI: Prompt Engineering Basics","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert005","title":"Generative AI: Introduction and Applications","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert006","title":"Artificial Intelligence (AI)","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert007","title":"Practice Exam for AIPMM Certified Product Manager (CPM)","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert008","title":"Product Management: Capstone Project","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},{"id":"cert009","title":"Product Management: Developing and Delivering a New Product","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert010","title":"AI for Data Analysis","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert011","title":"AI for App Building","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert012","title":"AI for Content Creation","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert013","title":"AI for Writing and Communicating","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert014","title":"AI for Research and Insights","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert015","title":"AI for Brainstorming and Planning","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert016","title":"AI Fundamentals","issuer":"from Google","date":"","description":"","hidden":true,"visible":false},{"id":"cert017","title":"Product Management: Initial Product Strategy and Plan","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert018","title":"Product Management: Stakeholder Collaboration","issuer":"from SkillUp Online","date":"","description":"","hidden":true,"visible":false},{"id":"cert019","title":"Product Management","issuer":"from IBM","date":"","description":"","hidden":true,"visible":false},"[TRUNCATED_ITEMS 78]"]}}
+{"ts":"2026-04-17T16:21:35.891Z","level":"info","msg":"Certification extraction: found items","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"itemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification extraction completed","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"catalogCount":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification selection: profile data","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"totalCertifications":108,"selectionItemsCount":108}}
+{"ts":"2026-04-17T16:21:35.892Z","level":"info","msg":"Certification selection: settings","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"maxCertifications":11,"lockedCount":11,"aiSelectableCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: desiredCount","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"desiredCount":0}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: eligible certifications","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"eligibleCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection started","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","meta":{"desiredCount":0,"eligibleCount":97}}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection skipped: desiredCount is 0","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9"}
+{"ts":"2026-04-17T16:21:35.893Z","level":"info","msg":"Certification selection: picked IDs","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"pickedCount":0,"pickedIds":[]}}
+{"ts":"2026-04-17T16:21:35.894Z","level":"info","msg":"Certification selection: final result","jobId":"0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"lockedCount":11,"pickedCount":0,"total":"9597c835-66b6-4623-8f67-9fe80ec822bc,f5f14e24-f93d-42d3-a8dd-55241be99387,507f17ae-6c23-415a-8d4d-d9ac5ac96183,0fe2bb00-b4f6-4002-bb48-0a07f79f33f7,4bddc9a0-15c4-4e39-ad73-cddeb3efdd6e,2eea90db-c216-4f14-bfc6-de1065811868,7fa76337-12b5-4256-a7e5-db30e1c841ff,f0f8d8e8-5b6c-4d7e-9f0a-1e2b3c4d5e6f,3d5663da-897b-4464-ba8a-24ff9fc6d09b,a6e2b8c5-d3f4-4a7e-9b1c-2d3e4f5a6b7c,b4e03bbf-f553-4f8c-92a0-52e38da6f5d2"}}
+{"ts":"2026-04-17T16:21:35.909Z","level":"info","msg":"HTTP request completed","requestId":"e656f3e6-9df0-46b8-9da9-d0e5a4353204","meta":{"method":"POST","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9/summarize","status":200,"durationMs":8392}}
+{"ts":"2026-04-17T16:21:37.375Z","level":"info","msg":"Jobs revision fetched","requestId":"2db14b1d-9996-4a62-a04c-9f3a71a4312a","meta":{"route":"GET /api/jobs/revision","statusFilter":null,"revision":"2026-04-17T16:21:35.894Z:28:all","total":28}}
+{"ts":"2026-04-17T16:21:37.376Z","level":"info","msg":"HTTP request completed","requestId":"2db14b1d-9996-4a62-a04c-9f3a71a4312a","meta":{"method":"GET","path":"/revision","status":200,"durationMs":3}}
+{"ts":"2026-04-17T16:21:37.391Z","level":"info","msg":"Jobs list fetched","requestId":"95da509f-1051-42ca-bc80-94d30536e148","meta":{"route":"GET /api/jobs","view":"list","statusFilter":null,"revision":"2026-04-17T16:21:35.894Z:28:all","returnedCount":28}}
+{"ts":"2026-04-17T16:21:37.392Z","level":"info","msg":"HTTP request completed","requestId":"95da509f-1051-42ca-bc80-94d30536e148","meta":{"method":"GET","path":"/","status":200,"durationMs":5}}
+{"ts":"2026-04-17T16:21:37.465Z","level":"info","msg":"HTTP request completed","requestId":"58677773-203a-4310-ba64-18284b2e4b60","meta":{"method":"GET","path":"/0ce9fd5b-5563-4ebd-89eb-7b194bc307a9","status":200,"durationMs":4}}
+{"ts":"2026-04-17T16:21:53.476Z","level":"info","msg":"HTTP request completed","requestId":"242b9fa9-2bd6-4b8e-b199-5afeb606f7f0","meta":{"method":"GET","path":"/health","status":200,"durationMs":1}}
+{"ts":"2026

@@ -198,6 +198,7 @@ export interface AppSettings {
   pipelineWebhookUrl: Resolved<string>;
   jobCompleteWebhookUrl: Resolved<string>;
   resumeProjects: Resolved<ResumeProjectsSettings>;
+  resumeCertifications: Resolved<ResumeCertificationsSettings>;
   pdfRenderer: Resolved<PdfRenderer>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
@@ -257,4 +258,5 @@ export interface AppSettings {
   // Computed:
   basicAuthActive: boolean;
   profileProjects: ResumeProjectCatalogItem[];
+  profileCertifications: ResumeCertificationCatalogItem[];
 }

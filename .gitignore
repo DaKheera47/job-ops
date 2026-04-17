@@ -25,3 +25,6 @@ tmp/
 
 # Docker compose override for local testing
 docker-compose.override.yml
+
+# Logs
+.logs/

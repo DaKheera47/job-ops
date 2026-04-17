@@ -11,6 +11,7 @@ import {
   type ChatStyleManualLanguage,
   PDF_RENDERER_VALUES,
   type PdfRenderer,
+  type ResumeCertificationsSettings,
   type ResumeProjectsSettings,
 } from "./types/settings";
 
@@ -155,6 +156,12 @@ export const resumeProjectsSchema = z.object({
   aiSelectableProjectIds: z.array(z.string().trim().min(1)).max(200),
 });
 
+export const resumeCertificationsSchema = z.object({
+  maxCertifications: z.number().int().min(0).max(100),
+  lockedCertificationIds: z.array(z.string().trim().min(1)).max(200),
+  aiSelectableCertificationIds: z.array(z.string().trim().min(1)).max(200),
+});
+
 export const settingsRegistry = {
   // --- Typed Settings ---
   model: {
@@ -249,6 +256,28 @@ export const settingsRegistry = {
     },
     serialize: (
       value: ResumeProjectsSettings | null | undefined,
+    ): string | null => {
+      return value ? JSON.stringify(value) : null;
+    },
+  },
+  resumeCertifications: {
+    kind: "typed" as const,
+    schema: resumeCertificationsSchema,
+    default: (): ResumeCertificationsSettings => ({
+      maxCertifications: 11,
+      lockedCertificationIds: [],
+      aiSelectableCertificationIds: [],
+    }),
+    parse: (raw: string | undefined): ResumeCertificationsSettings | null => {
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+    serialize: (
+      value: ResumeCertificationsSettings | null | undefined,
     ): string | null => {
       return value ? JSON.stringify(value) : null;
     },

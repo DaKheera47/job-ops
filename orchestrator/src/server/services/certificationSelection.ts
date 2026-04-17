@@ -61,11 +61,19 @@ export async function pickCertificationIdsForJob(args: {
     desiredCount,
   });
 
+  logger.info("Certification selection: AI prompt", { prompt });
+
   const llm = new LlmService();
   const result = await llm.callJson<{ selectedCertificationIds: string[] }>({
     model,
     messages: [{ role: "user", content: prompt }],
     jsonSchema: CERTIFICATION_SELECTION_SCHEMA,
+  });
+
+  logger.info("Certification selection: AI response", {
+    success: result.success,
+    data: result.data,
+    error: result.error,
   });
 
   if (!result.success) {

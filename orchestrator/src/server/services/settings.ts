@@ -16,6 +16,10 @@ import {
   resolveResumeProjectsSettings,
 } from "./resumeProjects";
 import {
+  extractCertificationsFromProfile,
+  resolveResumeCertificationsSettings,
+} from "./resumeCertifications";
+import {
   extractProjectsFromResume,
   getResume,
   RxResumeAuthConfigError,
@@ -197,6 +201,32 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
           value: resolved.resumeProjects,
           default: resolved.defaultResumeProjects,
           override: resolved.overrideResumeProjects,
+        };
+        continue;
+      }
+
+      if (key === "resumeCertifications") {
+        let catalog: AppSettings["profileCertifications"] = [];
+        if (Object.keys(profile).length > 0 && localProfile) {
+          try {
+            catalog = extractCertificationsFromProfile(localProfile).catalog;
+          } catch (error) {
+            logger.warn("Failed to extract certifications from resume data", {
+              error,
+            });
+          }
+        }
+        const resolved = resolveResumeCertificationsSettings({
+          catalog,
+          overrideRaw: rawOverride ?? null,
+        });
+        result.profileCertifications = resolved.profileCertifications;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
+        (result as any).resumeCertifications = {
+          value: resolved.resumeCertifications,
+          default: resolved.defaultResumeCertifications,
+          override: resolved.overrideResumeCertifications,
         };
         continue;
       }
