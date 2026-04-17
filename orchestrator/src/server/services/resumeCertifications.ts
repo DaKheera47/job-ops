@@ -142,9 +142,25 @@ export function resolveResumeCertificationsSettings(args: {
     ? normalizeResumeCertificationsSettings(overrideParsed, allowed)
     : null;
 
-  const resumeCertifications = overrideResumeCertifications
-    ? normalizeResumeCertificationsSettings(overrideResumeCertifications, allowed)
-    : defaultResumeCertifications;
+  // Merge incomplete override with defaults
+  let resumeCertifications: ResumeCertificationsSettings;
+  if (overrideResumeCertifications) {
+    // If aiSelectableCertificationIds is empty in override, rebuild from catalog
+    if (
+      overrideResumeCertifications.aiSelectableCertificationIds.length === 0
+    ) {
+      resumeCertifications = {
+        maxCertifications: overrideResumeCertifications.maxCertifications,
+        lockedCertificationIds: defaultResumeCertifications.lockedCertificationIds,
+        aiSelectableCertificationIds:
+          defaultResumeCertifications.aiSelectableCertificationIds,
+      };
+    } else {
+      resumeCertifications = overrideResumeCertifications;
+    }
+  } else {
+    resumeCertifications = defaultResumeCertifications;
+  }
 
   return {
     profileCertifications,

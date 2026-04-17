@@ -19,10 +19,12 @@ import { getSetting } from "../repositories/settings";
 import { generatePdf } from "../services/pdf";
 import { getProfile } from "../services/profile";
 import {
-  buildDefaultResumeCertificationsSettings,
   extractCertificationsFromProfile,
   pickCertificationIdsForJob,
 } from "../services/certificationSelection";
+import {
+  resolveResumeCertificationsSettings,
+} from "../services/resumeCertifications";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
@@ -326,26 +328,31 @@ export async function summarizeJob(
             selectionItemsCount: selectionItems.length,
           });
 
-          const certificationSettings =
-            buildDefaultResumeCertificationsSettings(catalog);
+          const overrideResumeCertificationsRaw = await getSetting(
+            "resumeCertifications",
+          );
+          const { resumeCertifications } = resolveResumeCertificationsSettings({
+            catalog,
+            overrideRaw: overrideResumeCertificationsRaw,
+          });
           jobLogger.info("Certification selection: settings", {
-            maxCertifications: certificationSettings.maxCertifications,
-            lockedCount: certificationSettings.lockedCertificationIds.length,
+            maxCertifications: resumeCertifications.maxCertifications,
+            lockedCount: resumeCertifications.lockedCertificationIds.length,
             aiSelectableCount:
-              certificationSettings.aiSelectableCertificationIds.length,
+              resumeCertifications.aiSelectableCertificationIds.length,
           });
 
-          const locked = certificationSettings.lockedCertificationIds;
+          const locked = resumeCertifications.lockedCertificationIds;
           const desiredCount = Math.max(
             0,
-            certificationSettings.maxCertifications - locked.length,
+            resumeCertifications.maxCertifications - locked.length,
           );
           jobLogger.info("Certification selection: desiredCount", {
             desiredCount,
           });
 
           const eligibleSet = new Set(
-            certificationSettings.aiSelectableCertificationIds,
+            resumeCertifications.aiSelectableCertificationIds,
           );
           const eligibleCertifications = selectionItems.filter((c) =>
             eligibleSet.has(c.id),
