@@ -501,7 +501,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           shouldDirty: true,
                         })
                       }
-                      placeholder='e.g. "Zagreb"'
+                      placeholder='e.g. "London"'
                       removeLabelPrefix="Remove city"
                     />
                   </div>
