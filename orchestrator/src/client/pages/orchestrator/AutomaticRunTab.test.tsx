@@ -438,6 +438,36 @@ describe("AutomaticRunTab", () => {
     expect(screen.getByLabelText("Hybrid")).not.toBeChecked();
   });
 
+  it("normalizes saved max jobs discovered values below 50 in the UI", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 25,
+            default: 200,
+            override: 25,
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(50);
+  });
+
   it("requires at least one workplace type", async () => {
     render(
       <AutomaticRunTab
@@ -527,6 +557,43 @@ describe("AutomaticRunTab", () => {
       expect(onSaveAndRun).toHaveBeenCalledWith(
         expect.objectContaining({
           workplaceTypes: ["remote"],
+        }),
+      );
+    });
+  });
+
+  it("clamps max jobs discovered to 50 before submitting", async () => {
+    const onSaveAndRun = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={onSaveAndRun}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+    fireEvent.change(screen.getByLabelText("Max jobs discovered"), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+
+    await waitFor(() => {
+      expect(onSaveAndRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runBudget: 50,
         }),
       );
     });

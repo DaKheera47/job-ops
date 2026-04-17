@@ -98,6 +98,8 @@ const GLASSDOOR_COUNTRY_REASON =
 const GLASSDOOR_LOCATION_REASON =
   "Add at least one city in Location preferences to enable Glassdoor.";
 const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
+const MIN_RUN_BUDGET = 50;
+const MAX_RUN_BUDGET = 1000;
 
 function normalizeUiCountryKey(value: string): string {
   const normalized = normalizeCountryKey(value);
@@ -124,6 +126,10 @@ function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeRunBudget(value: number): number {
+  return Math.min(MAX_RUN_BUDGET, Math.max(MIN_RUN_BUDGET, Math.round(value)));
 }
 
 function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
@@ -210,12 +216,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
 
     const rememberedRunBudget =
-      settings?.jobspyResultsWanted?.value ??
-      settings?.startupjobsMaxJobsPerTerm?.value ??
-      settings?.adzunaMaxJobsPerTerm?.value ??
-      settings?.gradcrackerMaxJobsPerTerm?.value ??
-      settings?.ukvisajobsMaxJobs?.value ??
-      DEFAULT_VALUES.runBudget;
+      normalizeRunBudget(
+        settings?.jobspyResultsWanted?.value ??
+          settings?.startupjobsMaxJobsPerTerm?.value ??
+          settings?.adzunaMaxJobsPerTerm?.value ??
+          settings?.gradcrackerMaxJobsPerTerm?.value ??
+          settings?.ukvisajobsMaxJobs?.value ??
+          DEFAULT_VALUES.runBudget,
+      );
     const hasExplicitLocationOverride = Boolean(
       settings?.jobspyCountryIndeed?.override ||
         settings?.searchCities?.override,
@@ -276,7 +284,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         100,
         DEFAULT_VALUES.minSuitabilityScore,
       ),
-      runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
+      runBudget: toNumber(
+        runBudgetInput,
+        MIN_RUN_BUDGET,
+        MAX_RUN_BUDGET,
+        DEFAULT_VALUES.runBudget,
+      ),
       country: normalizedCountry || DEFAULT_VALUES.country,
       cityLocations,
       workplaceTypes: normalizeWorkplaceTypes(workplaceTypes),
@@ -669,8 +682,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       <Input
                         id="jobs-per-term"
                         type="number"
-                        min={1}
-                        max={1000}
+                        min={MIN_RUN_BUDGET}
+                        max={MAX_RUN_BUDGET}
                         value={runBudgetInput}
                         onChange={(event) =>
                           setValue("runBudget", event.target.value)
