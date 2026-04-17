@@ -59,6 +59,7 @@ describe.sequential("Jobs API routes", () => {
     expect(listBody.data.jobs[0].id).toBeTruthy();
     expect(listBody.data.jobs[0].title).toBe("List View Role");
     expect(listBody.data.jobs[0]).not.toHaveProperty("jobDescription");
+    expect(listBody.data.jobs[0]).not.toHaveProperty("appliedDuplicateMatch");
     expect(typeof listBody.data.revision).toBe("string");
 
     const fullRes = await fetch(`${baseUrl}/api/jobs?view=full`);
@@ -67,6 +68,7 @@ describe.sequential("Jobs API routes", () => {
     expect(fullBody.ok).toBe(true);
     expect(fullBody.data.jobs[0].title).toBe("List View Role");
     expect(fullBody.data.jobs[0]).toHaveProperty("jobDescription");
+    expect(fullBody.data.jobs[0]).not.toHaveProperty("appliedDuplicateMatch");
     expect(typeof fullBody.data.revision).toBe("string");
 
     const defaultRes = await fetch(`${baseUrl}/api/jobs`);
@@ -74,10 +76,100 @@ describe.sequential("Jobs API routes", () => {
     expect(defaultRes.status).toBe(200);
     expect(defaultBody.ok).toBe(true);
     expect(defaultBody.data.jobs[0]).not.toHaveProperty("jobDescription");
+    expect(defaultBody.data.jobs[0]).not.toHaveProperty(
+      "appliedDuplicateMatch",
+    );
     expect(typeof defaultBody.data.revision).toBe("string");
   });
 
-  it("adds applied duplicate match metadata to list and detail responses", async () => {
+  it("keeps the jobs list response contract unchanged in benchmark mode", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: { BENCHMARK_JOBS_TIMING: "1" },
+    }));
+
+    const { createJob } = await import("@server/repositories/jobs");
+    await createJob({
+      source: "manual",
+      title: "Bench Mode Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/bench-mode",
+      jobDescription: "Bench mode description",
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs?view=list`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toHaveProperty("jobs");
+    expect(body.data).toHaveProperty("total");
+    expect(body.data).toHaveProperty("byStatus");
+    expect(body.data).toHaveProperty("revision");
+    expect(body.data).not.toHaveProperty("totalMs");
+    expect(body.data).not.toHaveProperty("internalRouteMs");
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  it("emits the benchmark log only when benchmark mode is enabled", async () => {
+    const { logger } = await import("@infra/logger");
+    const infoSpy = vi.spyOn(logger, "info");
+    const { createJob } = await import("@server/repositories/jobs");
+
+    await createJob({
+      source: "manual",
+      title: "No Benchmark Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/no-benchmark-log",
+      jobDescription: "No benchmark log description",
+    });
+
+    await fetch(`${baseUrl}/api/jobs?view=list`);
+
+    expect(
+      infoSpy.mock.calls.filter(
+        ([message]) => message === "Jobs list benchmark",
+      ),
+    ).toHaveLength(0);
+
+    infoSpy.mockClear();
+    infoSpy.mockRestore();
+
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: { BENCHMARK_JOBS_TIMING: "1" },
+    }));
+
+    const { logger: enabledLogger } = await import("@infra/logger");
+    const enabledInfoSpy = vi.spyOn(enabledLogger, "info");
+    const enabledRepo = await import("@server/repositories/jobs");
+    await enabledRepo.createJob({
+      source: "manual",
+      title: "Benchmark Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/benchmark-log",
+      jobDescription: "Benchmark log description",
+    });
+
+    await fetch(`${baseUrl}/api/jobs?view=list`);
+
+    const benchmarkCalls = enabledInfoSpy.mock.calls.filter(
+      ([message]) => message === "Jobs list benchmark",
+    );
+
+    expect(benchmarkCalls).toHaveLength(1);
+    expect(benchmarkCalls[0]?.[1]).toMatchObject({
+      route: "GET /api/jobs",
+      view: "list",
+      duplicateMatchingEnabled: false,
+      returnedCount: 1,
+      candidateCount: 0,
+    });
+
+    enabledInfoSpy.mockRestore();
+  });
+
+  it("omits applied duplicate match metadata from list responses and keeps it in detail responses", async () => {
     const { createJob, updateJob } = await import("@server/repositories/jobs");
     const appliedJob = await createJob({
       source: "manual",
@@ -110,22 +202,15 @@ describe.sequential("Jobs API routes", () => {
     );
 
     expect(listRes.status).toBe(200);
-    expect(repostedListItem.appliedDuplicateMatch).toEqual({
-      jobId: appliedJob.id,
-      title: "Backend Engineer",
-      employer: "Acme Ltd",
-      appliedAt: "2026-04-01T10:00:00.000Z",
-      score: 100,
-      titleScore: 100,
-      employerScore: 100,
-    });
-    expect(appliedListItem.appliedDuplicateMatch).toBeNull();
+    expect(repostedListItem).not.toHaveProperty("appliedDuplicateMatch");
+    expect(appliedListItem).not.toHaveProperty("appliedDuplicateMatch");
 
     const detailRes = await fetch(`${baseUrl}/api/jobs/${repostedJob.id}`);
     const detailBody = await detailRes.json();
 
     expect(detailRes.status).toBe(200);
     expect(detailBody.ok).toBe(true);
+    expect(detailBody.data).toHaveProperty("appliedDuplicateMatch");
     expect(detailBody.data.appliedDuplicateMatch?.jobId).toBe(appliedJob.id);
     expect(detailBody.data.appliedDuplicateMatch?.score).toBe(100);
   });
@@ -172,8 +257,8 @@ describe.sequential("Jobs API routes", () => {
     expect(listBody.data.jobs).toHaveLength(2);
     expect(
       listBody.data.jobs.every(
-        (job: { appliedDuplicateMatch: unknown }) =>
-          job.appliedDuplicateMatch === null,
+        (job: { appliedDuplicateMatch?: unknown }) =>
+          !Object.hasOwn(job, "appliedDuplicateMatch"),
       ),
     ).toBe(true);
 

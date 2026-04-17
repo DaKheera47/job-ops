@@ -97,7 +97,6 @@ export async function getJobListItems(
     ...row,
     source: row.source as JobListItem["source"],
     status: row.status as JobStatus,
-    appliedDuplicateMatch: null,
   }));
 }
 
@@ -595,7 +594,6 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     sponsorMatchScore: row.sponsorMatchScore ?? null,
     sponsorMatchNames: row.sponsorMatchNames ?? null,
-    appliedDuplicateMatch: null,
     jobType: row.jobType ?? null,
     salarySource: row.salarySource ?? null,
     salaryInterval: row.salaryInterval ?? null,

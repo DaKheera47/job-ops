@@ -42,6 +42,12 @@ The onboarding wizard helps you validate and save:
 
 Settings are saved to the local database.
 
+## Codex sign-in
+
+For full Codex auth troubleshooting (including device-code authorization errors), see:
+
+- [Codex Authentication](/docs/next/getting-started/codex-auth)
+
 ## Gmail OAuth (Tracking Inbox)
 
 If you want Gmail integration, configure OAuth credentials.

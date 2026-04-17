@@ -17,6 +17,34 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
 vi.mock("../api", () => ({
   getSettings: vi.fn(),
   getLlmModels: vi.fn().mockResolvedValue([]),
+  getCodexAuthStatus: vi.fn().mockResolvedValue({
+    authenticated: false,
+    username: null,
+    validationMessage:
+      "Codex is not authenticated in this container. Run `codex login` and try again.",
+    flowStatus: "idle",
+    loginInProgress: false,
+    verificationUrl: null,
+    userCode: null,
+    startedAt: null,
+    expiresAt: null,
+    flowMessage: null,
+  }),
+  startCodexAuth: vi.fn().mockResolvedValue({
+    authenticated: false,
+    username: null,
+    validationMessage:
+      "Codex is not authenticated in this container. Run `codex login` and try again.",
+    flowStatus: "running",
+    loginInProgress: true,
+    verificationUrl: "https://auth.openai.com/codex/device",
+    userCode: "ABCD-EFGH",
+    startedAt: "2026-04-14T16:00:00.000Z",
+    expiresAt: "2026-04-14T16:15:00.000Z",
+    flowMessage:
+      "Open the verification URL and enter the one-time code to finish login.",
+  }),
+  disconnectCodexAuth: vi.fn(),
   updateSettings: vi.fn(),
   validateRxresume: vi.fn(),
   getRxResumeProjects: vi.fn(),
@@ -179,6 +207,38 @@ describe("SettingsPage", () => {
       }),
     );
     expect(toast.success).toHaveBeenCalledWith("Settings saved");
+  });
+
+  it("starts codex sign-in from model settings", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        llmProvider: {
+          value: "codex",
+          default: "codex",
+          override: "codex",
+        },
+      }),
+    );
+
+    renderPage();
+    await openModelSection();
+
+    await waitFor(() => expect(api.getCodexAuthStatus).toHaveBeenCalled());
+
+    const startButton = await screen.findByRole("button", {
+      name: /start sign-in/i,
+    });
+    fireEvent.click(startButton);
+
+    await waitFor(() => expect(api.startCodexAuth).toHaveBeenCalled());
+    expect(await screen.findByText(/ABCD-EFGH/)).toBeInTheDocument();
+    const openVerificationLink = await screen.findByRole("link", {
+      name: /open verification page/i,
+    });
+    expect(openVerificationLink).toHaveAttribute(
+      "href",
+      "https://auth.openai.com/codex/device",
+    );
   });
 
   it("shows validation error for too long model override", async () => {

@@ -1,8 +1,9 @@
 import { useKeyboardAvailability } from "@client/hooks/useKeyboardAvailability";
 import { useSettings } from "@client/hooks/useSettings";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import type { VirtualListHandle } from "@/client/lib/virtual-list";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerClose, DrawerContent } from "@/components/ui/drawer";
 import { KeyboardShortcutBar } from "../components/KeyboardShortcutBar";
@@ -71,6 +72,7 @@ export const OrchestratorPage: React.FC = () => {
   );
 
   const selectedJobId = jobId || null;
+  const jobListHandleRef = useRef<VirtualListHandle | null>(null);
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
@@ -219,6 +221,7 @@ export const OrchestratorPage: React.FC = () => {
     selectedJobId,
     isDesktop,
     onEnsureJobSelected: (id) => navigateWithContext(activeTab, id, true),
+    listHandleRef: jobListHandleRef,
   });
 
   const isAnyModalOpen =
@@ -449,6 +452,7 @@ export const OrchestratorPage: React.FC = () => {
           <div className="grid gap-4 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)]">
             {/* Primary region: Job list with highest visual weight */}
             <JobListPanel
+              ref={jobListHandleRef}
               isLoading={isLoading}
               jobs={jobs}
               activeJobs={activeJobs}

@@ -100,6 +100,19 @@ type StreamSseInput =
   | { content: string; stream: true }
   | { stream: true };
 
+export type CodexAuthStatusResponse = {
+  authenticated: boolean;
+  username: string | null;
+  validationMessage: string | null;
+  flowStatus: string;
+  loginInProgress: boolean;
+  verificationUrl: string | null;
+  userCode: string | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  flowMessage: string | null;
+};
+
 export type AuthCredentials = {
   username: string;
   password: string;
@@ -1654,6 +1667,27 @@ export async function getLlmModels(input?: {
     body: JSON.stringify(input ?? {}),
   });
   return data.models;
+}
+
+export async function getCodexAuthStatus(): Promise<CodexAuthStatusResponse> {
+  return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth");
+}
+
+export async function startCodexAuth(input?: {
+  forceRestart?: boolean;
+}): Promise<CodexAuthStatusResponse> {
+  return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth/start", {
+    method: "POST",
+    body: JSON.stringify({
+      forceRestart: input?.forceRestart ?? false,
+    }),
+  });
+}
+
+export async function disconnectCodexAuth(): Promise<CodexAuthStatusResponse> {
+  return fetchApi<CodexAuthStatusResponse>("/settings/codex-auth/disconnect", {
+    method: "POST",
+  });
 }
 
 export async function validateRxresume(input?: {

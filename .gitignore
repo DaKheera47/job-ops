@@ -19,3 +19,6 @@ extractors/ukvisajobs/storage/
 # OS files
 .DS_Store
 Thumbs.db
+
+# local temp artifacts
+tmp/

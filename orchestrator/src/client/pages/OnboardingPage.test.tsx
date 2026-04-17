@@ -13,6 +13,9 @@ import { OnboardingPage } from "./OnboardingPage";
 vi.mock("@client/api", () => ({
   importDesignResumeFromFile: vi.fn(),
   suggestOnboardingSearchTerms: vi.fn(),
+  getCodexAuthStatus: vi.fn(),
+  startCodexAuth: vi.fn(),
+  disconnectCodexAuth: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -155,6 +158,33 @@ describe("OnboardingPage", () => {
       terms: ["Platform Engineer", "Backend Engineer"],
       source: "ai",
     });
+    vi.mocked(api.getCodexAuthStatus).mockResolvedValue({
+      authenticated: false,
+      username: null,
+      validationMessage:
+        "Codex is not authenticated in this container. Run `codex login` and try again.",
+      flowStatus: "idle",
+      loginInProgress: false,
+      verificationUrl: null,
+      userCode: null,
+      startedAt: null,
+      expiresAt: null,
+      flowMessage: null,
+    });
+    vi.mocked(api.startCodexAuth).mockResolvedValue({
+      authenticated: false,
+      username: null,
+      validationMessage:
+        "Codex is not authenticated in this container. Run `codex login` and try again.",
+      flowStatus: "running",
+      loginInProgress: true,
+      verificationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-EFGH",
+      startedAt: "2026-04-14T16:00:00.000Z",
+      expiresAt: "2026-04-14T16:15:00.000Z",
+      flowMessage:
+        "Open the verification URL and enter the one-time code to finish login.",
+    });
   });
 
   it("keeps the LLM step visible even when a key hint already exists", async () => {
@@ -181,6 +211,43 @@ describe("OnboardingPage", () => {
     expect(
       screen.getByText(/leave blank to keep the saved key/i),
     ).toBeInTheDocument();
+  });
+
+  it("shows Codex sign-in controls in onboarding when provider is codex", async () => {
+    currentSettings = {
+      ...baseSettings,
+      llmProvider: { value: "codex", default: "codex", override: null },
+      llmApiKeyHint: null,
+    };
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: false,
+      message: "Codex is not authenticated in this container.",
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(api.getCodexAuthStatus).toHaveBeenCalled());
+    expect(screen.getByText("Codex Sign-In")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /start sign-in/i }));
+
+    await waitFor(() => expect(api.startCodexAuth).toHaveBeenCalled());
+    expect(await screen.findByText(/ABCD-EFGH/)).toBeInTheDocument();
+    const openVerificationLink = await screen.findByRole("link", {
+      name: /open verification page/i,
+    });
+    expect(openVerificationLink).toHaveAttribute(
+      "href",
+      "https://auth.openai.com/codex/device",
+    );
   });
 
   it("does not treat local providers as validated before the connection check passes", async () => {

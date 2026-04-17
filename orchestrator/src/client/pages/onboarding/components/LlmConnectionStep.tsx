@@ -1,3 +1,4 @@
+import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
   getLlmProviderConfig,
@@ -50,6 +51,7 @@ export const LlmConnectionStep: React.FC<{
 }> = ({ control, isBusy, llmKeyHint, selectedProvider, validation }) => {
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
+  const isCodexProvider = providerConfig.normalizedProvider === "codex";
 
   return (
     <div className="space-y-6">
@@ -83,6 +85,7 @@ export const LlmConnectionStep: React.FC<{
           <p className="text-sm text-muted-foreground">
             {providerConfig.providerHint}
           </p>
+          {isCodexProvider ? <CodexAuthPanel isBusy={isBusy} /> : null}
         </div>
 
         {showBaseUrl ? (
@@ -132,8 +135,7 @@ export const LlmConnectionStep: React.FC<{
           />
         ) : (
           <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-            No API key is required for this provider. Job Ops will only validate
-            the local endpoint details.
+            No API key is required for this provider.
           </div>
         )}
       </div>

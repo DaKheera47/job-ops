@@ -22,42 +22,62 @@ type MatchableJob = Pick<
   "id" | "title" | "employer" | "status" | "appliedAt" | "discoveredAt"
 >;
 
+type PreparedMatchableJob = MatchableJob & {
+  normalizedTitle: string;
+  normalizedEmployer: string;
+  discoveredAtMs: number | null;
+  appliedAtMs: number | null;
+};
+
 export function isHistoricalAppliedJob(
   job: Pick<Job, "status" | "appliedAt">,
 ): boolean {
   return HISTORICAL_JOB_STATUSES.has(job.status) && Boolean(job.appliedAt);
 }
 
-function isWithinDuplicateWindow(job: MatchableJob, candidate: MatchableJob) {
-  const discoveredAt = Date.parse(job.discoveredAt);
-  const appliedAt = Date.parse(candidate.appliedAt as string);
+function prepareMatchableJob(job: MatchableJob): PreparedMatchableJob {
+  const discoveredAtMs = Date.parse(job.discoveredAt);
+  const appliedAtMs = job.appliedAt ? Date.parse(job.appliedAt) : null;
 
-  if (!Number.isFinite(discoveredAt) || !Number.isFinite(appliedAt)) {
+  return {
+    ...job,
+    normalizedTitle: normalizeJobTitle(job.title),
+    normalizedEmployer: normalizeCompanyName(job.employer),
+    discoveredAtMs: Number.isFinite(discoveredAtMs) ? discoveredAtMs : null,
+    appliedAtMs:
+      appliedAtMs !== null && Number.isFinite(appliedAtMs) ? appliedAtMs : null,
+  };
+}
+
+function isWithinDuplicateWindow(
+  job: PreparedMatchableJob,
+  candidate: PreparedMatchableJob,
+) {
+  if (job.discoveredAtMs === null || candidate.appliedAtMs === null) {
     return false;
   }
 
-  const ageMs = discoveredAt - appliedAt;
+  const ageMs = job.discoveredAtMs - candidate.appliedAtMs;
   return ageMs >= 0 && ageMs <= APPLIED_DUPLICATE_WINDOW_MS;
 }
 
-export function findAppliedDuplicateMatch(
-  job: MatchableJob,
-  candidates: MatchableJob[],
+function findAppliedDuplicateMatchFromPreparedJobs(
+  job: PreparedMatchableJob,
+  candidates: PreparedMatchableJob[],
 ): AppliedDuplicateMatch | null {
-  if (isHistoricalAppliedJob(job)) {
-    return null;
-  }
-
-  const normalizedTitle = normalizeJobTitle(job.title);
-  const normalizedEmployer = normalizeCompanyName(job.employer);
-  if (!normalizedTitle || !normalizedEmployer) {
+  if (!job.normalizedTitle || !job.normalizedEmployer) {
     return null;
   }
 
   let bestMatch: AppliedDuplicateMatch | null = null;
+  let bestAppliedAtMs = 0;
 
   for (const candidate of candidates) {
-    if (!isHistoricalAppliedJob(candidate) || candidate.id === job.id) {
+    if (candidate.id === job.id || !isHistoricalAppliedJob(candidate)) {
+      continue;
+    }
+
+    if (!candidate.normalizedTitle || !candidate.normalizedEmployer) {
       continue;
     }
 
@@ -66,12 +86,12 @@ export function findAppliedDuplicateMatch(
     }
 
     const titleScore = calculateSimilarity(
-      normalizedTitle,
-      normalizeJobTitle(candidate.title),
+      job.normalizedTitle,
+      candidate.normalizedTitle,
     );
     const employerScore = calculateSimilarity(
-      normalizedEmployer,
-      normalizeCompanyName(candidate.employer),
+      job.normalizedEmployer,
+      candidate.normalizedEmployer,
     );
 
     if (
@@ -92,28 +112,63 @@ export function findAppliedDuplicateMatch(
       employerScore,
     };
 
-    const currentAppliedAt = Date.parse(candidateMatch.appliedAt);
-    const bestAppliedAt = bestMatch ? Date.parse(bestMatch.appliedAt) : 0;
+    const currentAppliedAt = candidate.appliedAtMs ?? 0;
 
     if (
       !bestMatch ||
       candidateMatch.score > bestMatch.score ||
       (candidateMatch.score === bestMatch.score &&
-        currentAppliedAt > bestAppliedAt)
+        currentAppliedAt > bestAppliedAtMs)
     ) {
       bestMatch = candidateMatch;
+      bestAppliedAtMs = currentAppliedAt;
     }
   }
 
   return bestMatch;
 }
 
+export function findAppliedDuplicateMatch(
+  job: MatchableJob,
+  candidates: MatchableJob[],
+): AppliedDuplicateMatch | null {
+  if (isHistoricalAppliedJob(job)) {
+    return null;
+  }
+
+  const preparedJob = prepareMatchableJob(job);
+  if (!preparedJob.normalizedTitle || !preparedJob.normalizedEmployer) {
+    return null;
+  }
+
+  return findAppliedDuplicateMatchFromPreparedJobs(
+    preparedJob,
+    candidates.map(prepareMatchableJob),
+  );
+}
+
 export function attachAppliedDuplicateMatches<T extends Job | JobListItem>(
   jobs: T[],
   candidates: MatchableJob[],
 ): T[] {
-  return jobs.map((job) => ({
-    ...job,
-    appliedDuplicateMatch: findAppliedDuplicateMatch(job, candidates),
-  }));
+  const preparedCandidates = candidates.map(prepareMatchableJob);
+
+  return jobs.map((job) => {
+    if (isHistoricalAppliedJob(job)) {
+      return {
+        ...job,
+        appliedDuplicateMatch: null,
+      };
+    }
+
+    const preparedJob = prepareMatchableJob(job);
+
+    return {
+      ...job,
+      appliedDuplicateMatch: findAppliedDuplicateMatchFromPreparedJobs(
+        preparedJob,
+        preparedCandidates,
+      ),
+    };
+  });
 }

@@ -3,16 +3,9 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import "@testing-library/jest-dom";
+import { installDomMeasurementMocks } from "@/client/test/dom-measurement";
 
-if (typeof globalThis.ResizeObserver === "undefined") {
-  class ResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-
-  globalThis.ResizeObserver = ResizeObserver;
-}
+installDomMeasurementMocks();
 
 const hasStorageShape = (value: unknown): value is Storage => {
   if (!value || typeof value !== "object") return false;

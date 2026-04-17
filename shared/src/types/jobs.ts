@@ -175,7 +175,7 @@ export interface Job {
   tracerLinksEnabled: boolean; // Rewrite outbound resume links to tracer links on next PDF generation
   sponsorMatchScore: number | null; // 0-100 fuzzy match score with visa sponsors
   sponsorMatchNames: string | null; // JSON array of matched sponsor names (when 100% matches or top match)
-  appliedDuplicateMatch: AppliedDuplicateMatch | null; // Prior applied/in-progress job with highly similar title + employer
+  appliedDuplicateMatch?: AppliedDuplicateMatch | null; // Included on detail responses and may be omitted on list responses
 
   // JobSpy fields (nullable for non-JobSpy sources)
   jobType: string | null;

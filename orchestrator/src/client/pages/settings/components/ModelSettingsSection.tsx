@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { ModelValues } from "@client/pages/settings/types";
@@ -83,6 +84,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const previousProviderRef = useRef(selectedProvider);
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
+  const isCodexProvider = providerConfig.normalizedProvider === "codex";
 
   const llmBaseUrlValue = watch("llmBaseUrl");
   const llmApiKeyValue = watch("llmApiKey") ?? "";
@@ -273,6 +275,9 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               <p className="text-xs text-muted-foreground">
                 {providerConfig.providerHint}
               </p>
+              {isCodexProvider ? (
+                <CodexAuthPanel isBusy={isLoading || isSaving} />
+              ) : null}
             </div>
             {showBaseUrl && (
               <SettingsInput

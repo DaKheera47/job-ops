@@ -10,8 +10,10 @@ ENV NODE_ENV=production
 ENV PORT=3001
 ENV PYTHON_PATH=/usr/bin/python3
 ENV DATA_DIR=/app/data
+ENV CODEX_HOME=/app/codex-home
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PATH=/root/.local/bin:${PATH}
+ARG CODEX_CLI_VERSION=0.120.0
 
 # Install runtime dependencies shared by build and production stages.
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -22,6 +24,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 \
     curl && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+# Install Codex CLI for local app-server based inference.
+RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
 WORKDIR /app
 
@@ -166,8 +171,8 @@ COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 
-# Create data directory.
-RUN mkdir -p /app/data/pdfs
+# Create runtime directories.
+RUN mkdir -p /app/data/pdfs /app/codex-home
 
 EXPOSE 3001
 

@@ -28,10 +28,7 @@ import {
   transitionStage,
   updateStageEvent,
 } from "@server/services/applicationTracking";
-import {
-  attachAppliedDuplicateMatches,
-  isHistoricalAppliedJob,
-} from "@server/services/applied-duplicate-matching";
+import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
 import {
   simulateApplyJob,
   simulateGeneratePdf,
@@ -253,6 +250,9 @@ const SKIPPABLE_STATUSES: ReadonlySet<JobStatus> = new Set([
   "discovered",
   "ready",
 ]);
+const JOBS_BENCHMARK_ENABLED =
+  process.env.BENCHMARK_JOBS_TIMING === "1" ||
+  process.env.BENCHMARK_JOBS_TIMING === "true";
 
 function parseStatusFilter(statusFilter?: string): JobStatus[] | undefined {
   const parsed = statusFilter?.split(",").filter(Boolean) as
@@ -524,7 +524,17 @@ function mapJobActionFailure(
  */
 jobsRouter.get("/", async (req: Request, res: Response) => {
   try {
+    const benchmarkStart = performance.now();
+    let queryParseMs = 0;
+    let primaryQueryMs = 0;
+    const duplicateCandidatesQueryMs = 0;
+    const duplicateMatchCpuMs = 0;
+    let statsAggregateMs = 0;
+    let revisionAggregateMs = 0;
+
+    const queryParseStart = performance.now();
     const parsedQuery = listJobsQuerySchema.safeParse(req.query);
+    queryParseMs = performance.now() - queryParseStart;
     if (!parsedQuery.success) {
       return fail(
         res,
@@ -539,35 +549,61 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     const statuses = parseStatusFilter(statusFilter);
     const view = parsedQuery.data.view ?? "list";
 
+    const primaryQueryStart = performance.now();
     const jobs: Array<Job | JobListItem> =
       view === "list"
         ? await jobsRepo.getJobListItems(statuses)
         : await jobsRepo.getAllJobs(statuses);
-    const shouldAttachAppliedDuplicateMatches = jobs.some(
-      (job) => !isHistoricalAppliedJob(job),
-    );
-    const jobsWithAppliedDuplicateMatches = shouldAttachAppliedDuplicateMatches
-      ? attachAppliedDuplicateMatches(
-          jobs,
-          await jobsRepo.getAppliedDuplicateMatchCandidates(),
-        )
-      : jobs;
+    primaryQueryMs = performance.now() - primaryQueryStart;
+    const candidateCount = 0;
+    const duplicateMatchingEnabled = false;
+    const statsAggregateStart = performance.now();
     const stats = await jobsRepo.getJobStats();
+    statsAggregateMs = performance.now() - statsAggregateStart;
+    const revisionAggregateStart = performance.now();
     const revision = await jobsRepo.getJobsRevision(statuses);
+    revisionAggregateMs = performance.now() - revisionAggregateStart;
 
     const response: JobsListResponse<Job | JobListItem> = {
-      jobs: jobsWithAppliedDuplicateMatches,
-      total: jobsWithAppliedDuplicateMatches.length,
+      jobs,
+      total: jobs.length,
       byStatus: stats,
       revision: revision.revision,
     };
+    const internalRouteMs =
+      queryParseMs +
+      primaryQueryMs +
+      duplicateCandidatesQueryMs +
+      duplicateMatchCpuMs +
+      statsAggregateMs +
+      revisionAggregateMs;
+    const totalMs = performance.now() - benchmarkStart;
+
+    if (JOBS_BENCHMARK_ENABLED) {
+      logger.info("Jobs list benchmark", {
+        route: "GET /api/jobs",
+        view,
+        statusFilter: statusFilter ?? null,
+        returnedCount: jobs.length,
+        duplicateMatchingEnabled,
+        candidateCount,
+        totalMs,
+        queryParseMs,
+        primaryQueryMs,
+        duplicateCandidatesQueryMs,
+        duplicateMatchCpuMs,
+        statsAggregateMs,
+        revisionAggregateMs,
+        internalRouteMs,
+      });
+    }
 
     logger.info("Jobs list fetched", {
       route: "GET /api/jobs",
       view,
       statusFilter: statusFilter ?? null,
       revision: revision.revision,
-      returnedCount: jobsWithAppliedDuplicateMatches.length,
+      returnedCount: jobs.length,
     });
 
     ok(res, response);

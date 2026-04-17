@@ -1,8 +1,7 @@
 import type { JobListItem } from "@shared/types.js";
+import type { RefObject } from "react";
 import { useCallback, useEffect, useState } from "react";
-
-const escapeCssAttributeValue = (value: string) =>
-  value.replaceAll("\\", "\\\\").replaceAll('"', '\\"');
+import type { VirtualListHandle } from "@/client/lib/virtual-list";
 
 type PendingScrollTarget = {
   jobId: string;
@@ -15,6 +14,7 @@ type UseScrollToJobItemParams = {
   selectedJobId: string | null;
   isDesktop: boolean;
   onEnsureJobSelected: (jobId: string) => void;
+  listHandleRef: RefObject<VirtualListHandle>;
 };
 
 export const useScrollToJobItem = ({
@@ -22,6 +22,7 @@ export const useScrollToJobItem = ({
   selectedJobId,
   isDesktop,
   onEnsureJobSelected,
+  listHandleRef,
 }: UseScrollToJobItemParams) => {
   const [pendingTarget, setPendingTarget] =
     useState<PendingScrollTarget | null>(null);
@@ -56,14 +57,15 @@ export const useScrollToJobItem = ({
       return;
     }
 
-    if (typeof document === "undefined") return;
-    const selector = `[data-job-id="${escapeCssAttributeValue(pendingTarget.jobId)}"]`;
-    const target = document.querySelector<HTMLElement>(selector);
-    if (!target) return;
+    const targetIndex = activeJobs.findIndex(
+      (job) => job.id === pendingTarget.jobId,
+    );
+    const listHandle = listHandleRef.current;
+    if (targetIndex === -1 || !listHandle) return;
 
-    target.scrollIntoView({
+    listHandle.scrollToIndex(targetIndex, {
+      align: "center",
       behavior: isDesktop ? "smooth" : "auto",
-      block: "center",
     });
     setPendingTarget(null);
   }, [
@@ -72,6 +74,7 @@ export const useScrollToJobItem = ({
     onEnsureJobSelected,
     pendingTarget,
     selectedJobId,
+    listHandleRef,
   ]);
 
   return { requestScrollToJob };

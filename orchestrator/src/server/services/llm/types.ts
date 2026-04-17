@@ -4,7 +4,8 @@ export type LlmProvider =
   | "ollama"
   | "openai"
   | "openai_compatible"
-  | "gemini";
+  | "gemini"
+  | "codex";
 
 export type ResponseMode = "json_schema" | "json_object" | "text" | "none";
 
@@ -50,6 +51,7 @@ export type LlmResponse<T> = LlmResult<T> | LlmError;
 export type LlmValidationResult = {
   valid: boolean;
   message: string | null;
+  username?: string | null;
 };
 
 export type LlmServiceOptions = {

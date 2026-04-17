@@ -30,6 +30,15 @@ npm --workspace docs-site run build
 - Validate `LLM_API_KEY` and provider settings.
 - Check settings page and API connectivity.
 
+## Codex sign-in shows device-code authorization error
+
+- Symptom: UI shows:
+  - `Enable device code authorization for Codex in ChatGPT Security Settings, then run "codex login --device-auth" again`
+- Fix:
+  - Enable device-code authorization in ChatGPT Security Settings and retry sign-in
+- Full guide:
+  - [Codex Authentication](/docs/next/getting-started/codex-auth)
+
 ## Resume tailoring or scoring says the model does not exist
 
 - Root cause: the selected provider and model do not match.
