@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { getSetting } from "@server/repositories/settings";
 import { pickCertificationIdsForJob } from "@server/services/certificationSelection";
 import { pickProjectIdsForJob } from "@server/services/projectSelection";
+import { resolveResumeCertificationsSettings } from "@server/services/resumeCertifications";
 import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
 import {
   resolveTracerPublicBaseUrl,
@@ -463,38 +464,23 @@ export async function prepareTailoredResumeForPdf(args: {
     args.selectedCertificationIds === undefined
   ) {
     // Extract certifications from resume
-    const certificationCatalog: ResumeCertificationCatalogItem[] = [];
-    const sections = asRecord(workingCopy.sections);
-    const certificationsSection = asRecord(sections?.certifications);
-    const certItems = asArray(certificationsSection?.items);
-    if (certItems) {
-      for (const raw of certItems) {
-        const item = asRecord(raw);
-        if (!item) continue;
-        const id = typeof item.id === "string" ? item.id : "";
-        if (!id) continue;
-        const title = typeof item.title === "string" ? item.title : "";
-        const issuer = typeof item.issuer === "string" ? item.issuer : "";
-        const date = typeof item.date === "string" ? item.date : "";
-        const isVisibleInBase = !(typeof item.hidden === "boolean"
-          ? item.hidden
-          : false);
-        certificationCatalog.push({ id, title, issuer, date, isVisibleInBase });
-      }
-    }
+    const { catalog: certificationCatalog } = extractCertificationsFromResumeV5(workingCopy);
 
-    // Use default settings for certifications (no user override for now)
-    const lockedCertificationIds = certificationCatalog
-      .filter((c) => c.isVisibleInBase)
-      .map((c) => c.id);
-    const lockedSet = new Set(lockedCertificationIds);
-    const aiSelectableCertificationIds = certificationCatalog
-      .map((c) => c.id)
-      .filter((id) => !lockedSet.has(id));
+    // Use database settings for certifications
+    const overrideResumeCertificationsRaw = await getSetting("resumeCertifications");
+    const { resumeCertifications } = resolveResumeCertificationsSettings({
+      catalog: certificationCatalog,
+      overrideRaw: overrideResumeCertificationsRaw,
+    });
 
-    const desiredCount = Math.max(0, 3 - lockedCertificationIds.length);
+    const locked = resumeCertifications.lockedCertificationIds;
+    const desiredCount = Math.max(
+      0,
+      resumeCertifications.maxCertifications - locked.length,
+    );
+    const eligibleSet = new Set(resumeCertifications.aiSelectableCertificationIds);
     const eligibleCertifications = certificationCatalog.filter((c) =>
-      aiSelectableCertificationIds.includes(c.id),
+      eligibleSet.has(c.id),
     );
 
     const picked = await pickCertificationIdsForJob({
@@ -506,7 +492,7 @@ export async function prepareTailoredResumeForPdf(args: {
       desiredCount,
     });
 
-    selectedCertificationIds = [...lockedCertificationIds, ...picked];
+    selectedCertificationIds = [...locked, ...picked];
   }
 
   applyCertificationVisibility({
