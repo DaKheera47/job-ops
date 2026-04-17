@@ -1,4 +1,11 @@
 import {
+  buildLocationPreferencesSummary,
+  type LocationMatchStrictness,
+  type LocationSearchScope,
+  normalizeLocationMatchStrictness,
+  normalizeLocationSearchScope,
+} from "@shared/location-preferences.js";
+import {
   parseSearchCitiesSetting,
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
@@ -20,6 +27,8 @@ export interface AutomaticRunValues {
   country: string;
   cityLocations: string[];
   workplaceTypes: WorkplaceType[];
+  searchScope: LocationSearchScope;
+  matchStrictness: LocationMatchStrictness;
 }
 
 export interface AutomaticPresetValues {
@@ -62,6 +71,38 @@ export const AUTOMATIC_PRESETS: Record<
 };
 
 export const RUN_MEMORY_STORAGE_KEY = "jobops.pipeline.run-memory.v1";
+
+export const SEARCH_SCOPE_OPTIONS: Array<{
+  value: LocationSearchScope;
+  label: string;
+}> = [
+  {
+    value: "selected_only",
+    label: "Only selected locations",
+  },
+  {
+    value: "selected_plus_remote_worldwide",
+    label: "Selected locations + remote worldwide",
+  },
+  {
+    value: "remote_worldwide_prioritize_selected",
+    label: "Remote worldwide",
+  },
+];
+
+export const MATCH_STRICTNESS_OPTIONS: Array<{
+  value: LocationMatchStrictness;
+  label: string;
+}> = [
+  {
+    value: "exact_only",
+    label: "Exact matches only",
+  },
+  {
+    value: "flexible",
+    label: "Include likely matches",
+  },
+];
 
 export interface AutomaticRunMemory {
   topN: number;
@@ -173,6 +214,25 @@ export function parseCityLocationsSetting(
 
 export function serializeCityLocationsSetting(cities: string[]): string | null {
   return serializeSearchCitiesSetting(cities);
+}
+
+export function summarizeLocationPreferences(
+  values: Pick<
+    AutomaticRunValues,
+    | "country"
+    | "cityLocations"
+    | "workplaceTypes"
+    | "searchScope"
+    | "matchStrictness"
+  >,
+): string {
+  return buildLocationPreferencesSummary({
+    country: values.country,
+    cityLocations: values.cityLocations,
+    workplaceTypes: values.workplaceTypes,
+    searchScope: normalizeLocationSearchScope(values.searchScope),
+    matchStrictness: normalizeLocationMatchStrictness(values.matchStrictness),
+  });
 }
 
 export function stringifySearchTerms(terms: string[]): string {

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  LOCATION_MATCH_STRICTNESS_VALUES,
+  LOCATION_SEARCH_SCOPE_VALUES,
+} from "./location-preferences";
 import { getDefaultPromptTemplate } from "./prompt-template-definitions";
 import {
   CHAT_STYLE_LANGUAGE_MODE_VALUES,
@@ -138,6 +142,12 @@ const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
 
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 const parseWorkplaceTypesOrNull = createEnumArrayParser(WORKPLACE_TYPE_VALUES);
+const parseLocationSearchScopeOrNull = createEnumParser(
+  LOCATION_SEARCH_SCOPE_VALUES,
+);
+const parseLocationMatchStrictnessOrNull = createEnumParser(
+  LOCATION_MATCH_STRICTNESS_VALUES,
+);
 
 export const resumeProjectsSchema = z.object({
   maxProjects: z.number().int().min(0).max(100),
@@ -364,6 +374,22 @@ export const settingsRegistry = {
         ? process.env.SEARCH_CITIES || process.env.JOBSPY_LOCATION || ""
         : "",
     parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  locationSearchScope: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
+    default: () => "selected_only" as const,
+    parse: parseLocationSearchScopeOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  locationMatchStrictness: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
+    default: () => "exact_only" as const,
+    parse: parseLocationMatchStrictnessOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },

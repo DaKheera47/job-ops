@@ -1,6 +1,10 @@
 import type { PipelineConfig } from "@shared/types";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { selectJobsStep } from "./select-jobs";
+
+vi.mock("@server/repositories/settings", () => ({
+  getAllSettings: vi.fn().mockResolvedValue({}),
+}));
 
 const baseConfig: PipelineConfig = {
   topN: 2,
@@ -14,7 +18,7 @@ const baseConfig: PipelineConfig = {
 };
 
 describe("selectJobsStep", () => {
-  it("filters by min score, sorts descending, and limits topN", () => {
+  it("filters by min score, sorts descending, and limits topN", async () => {
     const jobs = [
       { id: "a", suitabilityScore: 90, suitabilityReason: "high" },
       { id: "b", suitabilityScore: 45, suitabilityReason: "low" },
@@ -22,11 +26,42 @@ describe("selectJobsStep", () => {
       { id: "d", suitabilityScore: 70, suitabilityReason: "ok" },
     ] as any;
 
-    const selected = selectJobsStep({
+    const selected = await selectJobsStep({
       scoredJobs: jobs,
       mergedConfig: baseConfig,
     });
 
     expect(selected.map((job) => job.id)).toEqual(["a", "c"]);
+  });
+
+  it("breaks score ties toward selected locations when requested", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      locationSearchScope: "remote_worldwide_prioritize_selected",
+      jobspyCountryIndeed: "croatia",
+      searchCities: "Zagreb",
+    } as any);
+
+    const jobs = [
+      {
+        id: "remote-anywhere",
+        suitabilityScore: 80,
+        suitabilityReason: "tie",
+        location: "Remote - Worldwide",
+      },
+      {
+        id: "zagreb",
+        suitabilityScore: 80,
+        suitabilityReason: "tie",
+        location: "Zagreb, Croatia",
+      },
+    ] as any;
+
+    const selected = await selectJobsStep({
+      scoredJobs: jobs,
+      mergedConfig: { ...baseConfig, topN: 1 },
+    });
+
+    expect(selected.map((job) => job.id)).toEqual(["zagreb"]);
   });
 });

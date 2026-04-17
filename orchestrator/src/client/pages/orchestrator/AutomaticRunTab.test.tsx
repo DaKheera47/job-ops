@@ -289,7 +289,7 @@ describe("AutomaticRunTab", () => {
     const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
     expect(glassdoorButton).toBeDisabled();
     expect(glassdoorButton.getAttribute("title")).toContain(
-      "Add at least one city in Advanced settings to enable Glassdoor.",
+      "Add at least one city in Location preferences to enable Glassdoor.",
     );
   });
 
@@ -318,7 +318,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
     fireEvent.focus(screen.getByLabelText("Cities"));
 
     expect(
@@ -394,8 +393,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     const collapsedTokens = screen.getByTestId(
       "city-locations-input-collapsed-tokens",
     );
@@ -436,8 +433,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     expect(screen.getByLabelText("Remote")).toBeChecked();
     expect(screen.getByLabelText("Onsite")).toBeChecked();
     expect(screen.getByLabelText("Hybrid")).not.toBeChecked();
@@ -463,7 +458,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
     fireEvent.click(screen.getByLabelText("Remote"));
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
@@ -476,7 +470,7 @@ describe("AutomaticRunTab", () => {
     ).toBeDisabled();
   });
 
-  it("shows JobSpy guidance when non-remote workplace types are selected", () => {
+  it("keeps source-specific warnings out of the location section", () => {
     render(
       <AutomaticRunTab
         open
@@ -496,13 +490,11 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     expect(
-      screen.getByText(
-        /Indeed, LinkedIn, and Glassdoor only support strict remote filtering\./i,
+      screen.queryByText(
+        /Some sources can only apply a strict remote filter\./i,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("submits workplace types in onSaveAndRun values", async () => {
@@ -527,7 +519,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
     fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
@@ -539,5 +530,59 @@ describe("AutomaticRunTab", () => {
         }),
       );
     });
+  });
+
+  it("shows the new location preference controls and a live summary", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          locationSearchScope: {
+            value: "selected_plus_remote_worldwide",
+            default: "selected_only",
+            override: "selected_plus_remote_worldwide",
+          },
+          locationMatchStrictness: {
+            value: "flexible",
+            default: "exact_only",
+            override: "flexible",
+          },
+          searchCities: {
+            value: "Zagreb",
+            default: "",
+            override: "Zagreb",
+          },
+          workplaceTypes: {
+            value: ["remote", "hybrid", "onsite"],
+            default: ["remote", "hybrid", "onsite"],
+            override: ["remote", "hybrid", "onsite"],
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText("Location preferences")).toBeInTheDocument();
+    expect(screen.getByText("Where")).toBeInTheDocument();
+    expect(screen.getByText("Coverage")).toBeInTheDocument();
+    expect(
+      screen.getByText("Selected locations + remote worldwide"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Include likely matches")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /You'll get (hybrid and onsite|onsite and hybrid) jobs in Zagreb in Croatia plus remote jobs worldwide\. Likely matches are included\./i,
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -13,7 +13,7 @@ interface TokenizedInputProps {
   onDraftChange: (value: string) => void;
   onValuesChange: (values: string[]) => void;
   placeholder: string;
-  helperText: string;
+  helperText?: string;
   removeLabelPrefix: string;
   collapsedTextLimit?: number;
   disabled?: boolean;
@@ -125,7 +125,9 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
         placeholder={placeholder}
         disabled={disabled}
       />
-      <p className="text-xs text-muted-foreground">{helperText}</p>
+      {helperText ? (
+        <p className="text-xs text-muted-foreground">{helperText}</p>
+      ) : null}
       {values.length > 0 ? (
         <motion.div
           className="relative overflow-hidden"

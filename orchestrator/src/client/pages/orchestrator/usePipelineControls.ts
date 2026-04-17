@@ -175,6 +175,8 @@ export function usePipelineControls(
       await api.updateSettings({
         searchTerms: values.searchTerms,
         workplaceTypes: values.workplaceTypes,
+        locationSearchScope: values.searchScope,
+        locationMatchStrictness: values.matchStrictness,
         jobspyResultsWanted: limits.jobspyResultsWanted,
         gradcrackerMaxJobsPerTerm: limits.gradcrackerMaxJobsPerTerm,
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,

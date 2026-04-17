@@ -201,6 +201,16 @@ export const createAppSettings = (
     default: "",
     override: null,
   },
+  locationSearchScope: {
+    value: "selected_only",
+    default: "selected_only",
+    override: null,
+  },
+  locationMatchStrictness: {
+    value: "exact_only",
+    default: "exact_only",
+    override: null,
+  },
   jobspyResultsWanted: { value: 20, default: 20, override: null },
   jobspyCountryIndeed: {
     value: "",

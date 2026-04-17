@@ -375,6 +375,119 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs[0]?.location).toBe("Zagreb, Croatia");
   });
 
+  it("keeps remote jobs worldwide when scope allows them", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+
+    const jobspyManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["indeed", "linkedin", "glassdoor"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Engineer - Zagreb",
+            employer: "ACME Croatia",
+            location: "Zagreb, Croatia",
+            isRemote: false,
+            jobUrl: "https://example.com/hr-1",
+          },
+          {
+            source: "linkedin",
+            title: "Engineer - Anywhere",
+            employer: "Remote Co",
+            location: "Bengaluru, Karnataka, India",
+            isRemote: true,
+            jobUrl: "https://example.com/in-remote-1",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "croatia",
+      searchCities: null,
+      workplaceTypes: JSON.stringify(["remote", "hybrid"]),
+      locationSearchScope: "selected_plus_remote_worldwide",
+    } as any);
+
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", jobspyManifest as any]]),
+      manifestBySource: new Map([
+        ["indeed", jobspyManifest as any],
+        ["linkedin", jobspyManifest as any],
+        ["glassdoor", jobspyManifest as any],
+      ]),
+      availableSources: ["indeed", "linkedin", "glassdoor"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: ["linkedin"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(2);
+    expect(result.discoveredJobs.map((job) => job.jobUrl)).toEqual([
+      "https://example.com/hr-1",
+      "https://example.com/in-remote-1",
+    ]);
+  });
+
+  it("keeps country matches when strictness is flexible and city metadata disagrees", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+
+    const jobspyManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["indeed", "linkedin", "glassdoor"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Engineer - Split",
+            employer: "ACME Croatia",
+            location: "Split, Croatia",
+            jobUrl: "https://example.com/hr-1",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "croatia",
+      searchCities: "Zagreb",
+      locationMatchStrictness: "flexible",
+    } as any);
+
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", jobspyManifest as any]]),
+      manifestBySource: new Map([
+        ["indeed", jobspyManifest as any],
+        ["linkedin", jobspyManifest as any],
+        ["glassdoor", jobspyManifest as any],
+      ]),
+      availableSources: ["indeed", "linkedin", "glassdoor"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: ["linkedin"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.discoveredJobs[0]?.location).toBe("Split, Croatia");
+  });
+
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const jobsRepo = await import("@server/repositories/jobs");

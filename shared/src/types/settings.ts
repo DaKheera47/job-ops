@@ -1,3 +1,8 @@
+import type {
+  LocationMatchStrictness,
+  LocationSearchScope,
+} from "../location-preferences";
+
 export interface ResumeProjectCatalogItem {
   id: string;
   name: string;
@@ -173,6 +178,8 @@ export interface AppSettings {
   tailoringPromptTemplate: Resolved<string>;
   scoringPromptTemplate: Resolved<string>;
   searchCities: Resolved<string>;
+  locationSearchScope: Resolved<LocationSearchScope>;
+  locationMatchStrictness: Resolved<LocationMatchStrictness>;
   jobspyResultsWanted: Resolved<number>;
   jobspyCountryIndeed: Resolved<string>;
   showSponsorInfo: Resolved<boolean>;

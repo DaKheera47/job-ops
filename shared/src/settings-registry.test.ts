@@ -71,6 +71,15 @@ describe("settingsRegistry helpers", () => {
         }
       }
     });
+
+    it("defaults location scope and strictness to explicit local matching", () => {
+      expect(settingsRegistry.locationSearchScope.default()).toBe(
+        "selected_only",
+      );
+      expect(settingsRegistry.locationMatchStrictness.default()).toBe(
+        "exact_only",
+      );
+    });
   });
 
   describe("string parsing (parseNonEmptyStringOrNull)", () => {

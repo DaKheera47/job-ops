@@ -29,6 +29,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -74,6 +76,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["indeed", "linkedin", "gradcracker", "ukvisajobs"],
     });
@@ -102,6 +106,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["adzuna"],
     });
@@ -120,6 +126,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["hiringcafe"],
     });
@@ -138,6 +146,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["startupjobs"],
     });
@@ -156,6 +166,8 @@ describe("automatic-run utilities", () => {
         country: "united kingdom",
         cityLocations: [],
         workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
       },
       sources: ["workingnomads"],
     });

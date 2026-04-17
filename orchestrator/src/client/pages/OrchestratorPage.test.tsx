@@ -66,6 +66,8 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   country: "united kingdom",
   cityLocations: [],
   workplaceTypes: ["remote", "hybrid", "onsite"],
+  searchScope: "selected_only",
+  matchStrictness: "exact_only",
 };
 const mockJobListScrollToIndex = vi.fn();
 
@@ -448,6 +450,8 @@ describe("OrchestratorPage", () => {
       country: "united kingdom",
       cityLocations: [],
       workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     };
   });
 
@@ -916,6 +920,8 @@ describe("OrchestratorPage", () => {
         startupjobsMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
         searchCities: null,
+        locationSearchScope: "selected_only",
+        locationMatchStrictness: "exact_only",
       });
     });
     expect(api.runPipeline).toHaveBeenCalledWith({
@@ -941,6 +947,8 @@ describe("OrchestratorPage", () => {
       country: "united kingdom",
       cityLocations: ["London", "Manchester"],
       workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     };
 
     render(
@@ -976,6 +984,8 @@ describe("OrchestratorPage", () => {
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
       workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     };
 
     render(
@@ -1011,6 +1021,8 @@ describe("OrchestratorPage", () => {
       country: "united kingdom",
       cityLocations: ["Leeds", "Manchester"],
       workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     };
 
     render(
@@ -1118,6 +1130,8 @@ describe("OrchestratorPage", () => {
       country: "united states",
       cityLocations: [],
       workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     };
 
     render(
