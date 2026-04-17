@@ -16,6 +16,7 @@ import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
   clearRxResumeResumeCache,
+  extractCertificationsFromResumeV5,
   extractProjectsFromResume,
   getResume,
   listResumes,
@@ -363,6 +364,36 @@ settingsRouter.get(
       const { catalog } = extractProjectsFromResume(resume.data ?? {});
 
       ok(res, { projects: catalog });
+    } catch (error) {
+      failRxResume(res, error);
+    }
+  }),
+);
+
+/**
+ * GET /api/settings/rx-resumes/:id/certifications - Fetch certification catalog from Reactive Resume (v5 adapter)
+ */
+settingsRouter.get(
+  "/rx-resumes/:id/certifications",
+  asyncRoute(async (req: Request, res: Response) => {
+    try {
+      const resumeId = req.params.id;
+      if (!resumeId) {
+        fail(res, badRequest("Resume id is required."));
+        return;
+      }
+
+      const resume = await getResume(resumeId);
+      const validated = await validateResumeSchema(resume.data ?? {});
+      if (!validated.ok) {
+        fail(res, badRequest(validated.message));
+        return;
+      }
+      const { catalog } = extractCertificationsFromResumeV5(
+        (resume.data ?? {}) as Record<string, unknown>,
+      );
+
+      ok(res, { certifications: catalog });
     } catch (error) {
       failRxResume(res, error);
     }

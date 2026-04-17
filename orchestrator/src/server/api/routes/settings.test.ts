@@ -32,6 +32,24 @@ vi.mock("@server/services/rxresume", () => ({
       }),
     };
   }),
+  extractCertificationsFromResumeV5: vi.fn((data: unknown) => {
+    const root = (data ?? {}) as Record<string, unknown>;
+    const sections = (root.sections ?? {}) as Record<string, unknown>;
+    const certifications = (sections.certifications ?? {}) as Record<string, unknown>;
+    const items = Array.isArray(certifications.items) ? certifications.items : [];
+    return {
+      catalog: items.map((item) => {
+        const cert = item as Record<string, unknown>;
+        return {
+          id: String(cert.id ?? ""),
+          title: String(cert.name ?? ""),
+          issuer: String(cert.issuer ?? ""),
+          date: String(cert.date ?? ""),
+          isVisibleInBase: !cert.hidden,
+        };
+      }),
+    };
+  }),
   RxResumeAuthConfigError: class RxResumeAuthConfigError extends Error {
     constructor(message = "Reactive Resume auth config missing") {
       super(message);
@@ -52,6 +70,7 @@ vi.mock("@server/services/rxresume", () => ({
 }));
 
 import {
+  extractCertificationsFromResumeV5,
   extractProjectsFromResume,
   getResume,
   validateCredentials,
@@ -500,5 +519,63 @@ describe.sequential("Settings API routes", () => {
       },
     ]);
     expect(extractProjectsFromResume).toHaveBeenCalled();
+  });
+
+  it("returns certification catalog for v5-shaped Reactive Resume payloads", async () => {
+    vi.mocked(getResume).mockResolvedValue({
+      id: "resume-v5",
+      name: "Resume v5",
+      mode: "v5",
+      data: {
+        sections: {
+          certifications: {
+            title: "Certifications",
+            columns: 1,
+            hidden: false,
+            items: [
+              {
+                id: "c1",
+                hidden: false,
+                name: "AWS Certified",
+                issuer: "Amazon",
+                date: "2024",
+                description: "Cloud certification",
+              },
+            ],
+          },
+        },
+        summary: {},
+      },
+    } as any);
+
+    const res = await fetch(
+      `${baseUrl}/api/settings/rx-resumes/resume-v5/certifications?mode=v5`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.certifications).toEqual([
+      {
+        id: "c1",
+        title: "AWS Certified",
+        issuer: "Amazon",
+        date: "2024",
+        isVisibleInBase: true,
+      },
+    ]);
+    expect(extractCertificationsFromResumeV5).toHaveBeenCalled();
+  });
+
+  it("handles invalid resume ID for certifications endpoint", async () => {
+    vi.mocked(getResume).mockResolvedValue(null as any);
+
+    const res = await fetch(
+      `${baseUrl}/api/settings/rx-resumes/invalid/certifications`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
   });
 });

@@ -18,6 +18,11 @@ import * as pipelineRepo from "../repositories/pipeline";
 import { getSetting } from "../repositories/settings";
 import { generatePdf } from "../services/pdf";
 import { getProfile } from "../services/profile";
+import {
+  buildDefaultResumeCertificationsSettings,
+  extractCertificationsFromProfile,
+  pickCertificationIdsForJob,
+} from "../services/certificationSelection";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
@@ -309,11 +314,46 @@ export async function summarizeJob(
         }
       }
 
+      // 3. Suggest Certifications
+      let selectedCertificationIds = job.selectedCertificationIds;
+      if (!selectedCertificationIds || options?.force) {
+        jobLogger.info("Selecting certifications");
+        try {
+          const { catalog, selectionItems } =
+            extractCertificationsFromProfile(profile);
+          const certificationSettings =
+            buildDefaultResumeCertificationsSettings(catalog);
+
+          const locked = certificationSettings.lockedCertificationIds;
+          const desiredCount = Math.max(
+            0,
+            certificationSettings.maxCertifications - locked.length,
+          );
+          const eligibleSet = new Set(
+            certificationSettings.aiSelectableCertificationIds,
+          );
+          const eligibleCertifications = selectionItems.filter((c) =>
+            eligibleSet.has(c.id),
+          );
+
+          const picked = await pickCertificationIdsForJob({
+            jobDescription: job.jobDescription || "",
+            eligibleCertifications,
+            desiredCount,
+          });
+
+          selectedCertificationIds = [...locked, ...picked].join(",");
+        } catch (error) {
+          jobLogger.warn("Failed to suggest certifications", error);
+        }
+      }
+
       await jobsRepo.updateJob(job.id, {
         tailoredSummary: tailoredSummary ?? undefined,
         tailoredHeadline: tailoredHeadline ?? undefined,
         tailoredSkills: tailoredSkills ?? undefined,
         selectedProjectIds: selectedProjectIds ?? undefined,
+        selectedCertificationIds: selectedCertificationIds ?? undefined,
       });
 
       return { success: true };
@@ -355,6 +395,7 @@ export async function generateFinalPdf(
         job.jobDescription || "",
         undefined, // deprecated baseResumePath parameter
         job.selectedProjectIds,
+        job.selectedCertificationIds,
         {
           tracerLinksEnabled: job.tracerLinksEnabled,
           requestOrigin: options?.requestOrigin ?? null,

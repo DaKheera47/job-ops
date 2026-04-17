@@ -45,6 +45,7 @@ import type {
   PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
   ProfileStatusResponse,
+  ResumeCertificationCatalogItem,
   ResumeProfile,
   ResumeProjectCatalogItem,
   SearchTermsSuggestionResponse,
@@ -1553,6 +1554,24 @@ export async function getResumeProjectsCatalog(): Promise<
   return getProfileProjects();
 }
 
+export async function getResumeCertificationsCatalog(): Promise<
+  ResumeCertificationCatalogItem[]
+> {
+  try {
+    const settings = await getSettings();
+    if (settings.rxresumeBaseResumeId) {
+      return await getRxResumeCertifications(
+        settings.rxresumeBaseResumeId,
+        undefined,
+      );
+    }
+  } catch {
+    // fall through to profile-based certifications
+  }
+
+  return getProfileCertifications();
+}
+
 export async function getProfile(): Promise<ResumeProfile> {
   return fetchApi<ResumeProfile>("/profile");
 }
@@ -1704,6 +1723,23 @@ export async function getRxResumeProjects(
     { signal },
   );
   return data.projects;
+}
+
+export async function getRxResumeCertifications(
+  resumeId: string,
+  signal?: AbortSignal,
+): Promise<ResumeCertificationCatalogItem[]> {
+  const data = await fetchApi<{ certifications: ResumeCertificationCatalogItem[] }>(
+    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/certifications`,
+    { signal },
+  );
+  return data.certifications;
+}
+
+export async function getProfileCertifications(): Promise<
+  ResumeCertificationCatalogItem[]
+> {
+  return fetchApi<ResumeCertificationCatalogItem[]>("/profile/certifications");
 }
 
 // Database API

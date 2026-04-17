@@ -261,6 +261,7 @@ export async function generatePdf(
   jobDescription: string,
   _baseResumePath?: string, // Deprecated: now always uses Design Resume or the configured Reactive Resume base resume
   selectedProjectIds?: string | null,
+  selectedCertificationIds?: string | null,
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
   let renderer: PdfRenderer | null = null;
@@ -286,6 +287,7 @@ export async function generatePdf(
         tailoredContent,
         jobDescription,
         selectedProjectIds,
+        selectedCertificationIds,
         jobId,
         tracerLinks: {
           enabled: Boolean(options?.tracerLinksEnabled),

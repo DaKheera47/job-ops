@@ -1,23 +1,38 @@
 import { createHash } from "node:crypto";
 import { getSetting } from "@server/repositories/settings";
+import { pickCertificationIdsForJob } from "@server/services/certificationSelection";
 import { pickProjectIdsForJob } from "@server/services/projectSelection";
 import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
 import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
+import type { ResumeCertificationCatalogItem } from "@shared/types";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
   getResumeSchemaValidationMessage,
   safeParseV5ResumeData,
 } from "./schema";
 import {
+  applyCertificationVisibility,
   applyProjectVisibility,
   applyTailoredChunks,
   cloneResumeData,
+  extractCertificationsFromResume as extractCertificationsFromResumeV5,
   extractProjectsFromResume as extractProjectsFromResumeV5,
   type TailoredSkillsInput,
+  type RecordLike,
 } from "./tailoring";
+
+function asRecord(value: unknown): RecordLike | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as RecordLike)
+    : null;
+}
+
+function asArray(value: unknown): unknown[] | null {
+  return Array.isArray(value) ? value : null;
+}
 import * as v5 from "./v5";
 
 export type RxResumeResume = {
@@ -382,6 +397,7 @@ export async function prepareTailoredResumeForPdf(args: {
   };
   jobDescription: string;
   selectedProjectIds?: string | null;
+  selectedCertificationIds?: string | null;
   tracerLinks?: {
     enabled: boolean;
     requestOrigin?: string | null;
@@ -436,6 +452,66 @@ export async function prepareTailoredResumeForPdf(args: {
     resumeData: workingCopy,
     selectedProjectIds: new Set(selectedIds),
     forceVisibleProjectsSection: args.forceVisibleProjectsSection,
+  });
+
+  // 3. Apply Certification Visibility
+  let selectedCertificationIds = parseSelectedProjectIds(
+    args.selectedCertificationIds,
+  );
+  if (
+    args.selectedCertificationIds === null ||
+    args.selectedCertificationIds === undefined
+  ) {
+    // Extract certifications from resume
+    const certificationCatalog: ResumeCertificationCatalogItem[] = [];
+    const sections = asRecord(workingCopy.sections);
+    const certificationsSection = asRecord(sections?.certifications);
+    const certItems = asArray(certificationsSection?.items);
+    if (certItems) {
+      for (const raw of certItems) {
+        const item = asRecord(raw);
+        if (!item) continue;
+        const id = typeof item.id === "string" ? item.id : "";
+        if (!id) continue;
+        const title = typeof item.title === "string" ? item.title : "";
+        const issuer = typeof item.issuer === "string" ? item.issuer : "";
+        const date = typeof item.date === "string" ? item.date : "";
+        const isVisibleInBase = !(typeof item.hidden === "boolean"
+          ? item.hidden
+          : false);
+        certificationCatalog.push({ id, title, issuer, date, isVisibleInBase });
+      }
+    }
+
+    // Use default settings for certifications (no user override for now)
+    const lockedCertificationIds = certificationCatalog
+      .filter((c) => c.isVisibleInBase)
+      .map((c) => c.id);
+    const lockedSet = new Set(lockedCertificationIds);
+    const aiSelectableCertificationIds = certificationCatalog
+      .map((c) => c.id)
+      .filter((id) => !lockedSet.has(id));
+
+    const desiredCount = Math.max(0, 3 - lockedCertificationIds.length);
+    const eligibleCertifications = certificationCatalog.filter((c) =>
+      aiSelectableCertificationIds.includes(c.id),
+    );
+
+    const picked = await pickCertificationIdsForJob({
+      jobDescription: args.jobDescription,
+      eligibleCertifications: eligibleCertifications.map((c) => ({
+        ...c,
+        summaryText: "", // No summary needed for fallback
+      })),
+      desiredCount,
+    });
+
+    selectedCertificationIds = [...lockedCertificationIds, ...picked];
+  }
+
+  applyCertificationVisibility({
+    resumeData: workingCopy,
+    selectedCertificationIds: new Set(selectedCertificationIds),
   });
 
   if (args.tracerLinks?.enabled) {
@@ -557,3 +633,5 @@ export async function validateCredentials(
     };
   }
 }
+
+export { extractCertificationsFromResumeV5 };

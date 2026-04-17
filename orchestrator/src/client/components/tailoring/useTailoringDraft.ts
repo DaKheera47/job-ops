@@ -1,5 +1,9 @@
 import * as api from "@client/api";
-import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
+import type {
+  Job,
+  ResumeCertificationCatalogItem,
+  ResumeProjectCatalogItem,
+} from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createTailoredSkillDraftId,
@@ -26,6 +30,9 @@ const parseIncomingDraft = (incomingJob: Job) => {
   const headline = incomingJob.tailoredHeadline || "";
   const description = incomingJob.jobDescription || "";
   const selectedIds = parseSelectedIds(incomingJob.selectedProjectIds);
+  const selectedCertificationIds = parseSelectedIds(
+    incomingJob.selectedCertificationIds,
+  );
   const skillsDraft = toEditableSkillGroups(
     parseTailoredSkills(incomingJob.tailoredSkills),
   );
@@ -39,6 +46,7 @@ const parseIncomingDraft = (incomingJob: Job) => {
     headline,
     description,
     selectedIds,
+    selectedCertificationIds,
     skillsDraft,
     skillsJson,
     tracerLinksEnabled,
@@ -55,6 +63,9 @@ export function useTailoringDraft({
   onDirtyChange,
 }: UseTailoringDraftParams) {
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
+  const [certificationCatalog, setCertificationCatalog] = useState<
+    ResumeCertificationCatalogItem[]
+  >([]);
   const [isCatalogLoading, setIsCatalogLoading] = useState(true);
   const [summary, setSummary] = useState(job.tailoredSummary || "");
   const [headline, setHeadline] = useState(job.tailoredHeadline || "");
@@ -64,6 +75,9 @@ export function useTailoringDraft({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
+  const [selectedCertificationIds, setSelectedCertificationIds] = useState<
+    Set<string>
+  >(() => parseSelectedIds(job.selectedCertificationIds));
   const [skillsDraft, setSkillsDraft] = useState<EditableSkillGroup[]>(() =>
     toEditableSkillGroups(parseTailoredSkills(job.tailoredSkills)),
   );
@@ -82,6 +96,10 @@ export function useTailoringDraft({
   const [savedSelectedIds, setSavedSelectedIds] = useState<Set<string>>(() =>
     parseSelectedIds(job.selectedProjectIds),
   );
+  const [savedSelectedCertificationIds, setSavedSelectedCertificationIds] =
+    useState<Set<string>>(() =>
+      parseSelectedIds(job.selectedCertificationIds),
+    );
   const [savedSkillsJson, setSavedSkillsJson] = useState(() =>
     serializeTailoredSkills(parseTailoredSkills(job.tailoredSkills)),
   );
@@ -102,13 +120,22 @@ export function useTailoringDraft({
     [selectedIds],
   );
 
+  const selectedCertificationIdsCsv = useMemo(
+    () => Array.from(selectedCertificationIds).join(","),
+    [selectedCertificationIds],
+  );
+
   const isDirty = useMemo(() => {
     if (summary !== savedSummary) return true;
     if (headline !== savedHeadline) return true;
     if (jobDescription !== savedDescription) return true;
     if (skillsJson !== savedSkillsJson) return true;
     if (tracerLinksEnabled !== savedTracerLinksEnabled) return true;
-    return hasSelectionDiff(selectedIds, savedSelectedIds);
+    if (hasSelectionDiff(selectedIds, savedSelectedIds)) return true;
+    return hasSelectionDiff(
+      selectedCertificationIds,
+      savedSelectedCertificationIds,
+    );
   }, [
     summary,
     savedSummary,
@@ -122,6 +149,8 @@ export function useTailoringDraft({
     savedTracerLinksEnabled,
     selectedIds,
     savedSelectedIds,
+    selectedCertificationIds,
+    savedSelectedCertificationIds,
   ]);
 
   const applyIncomingDraft = useCallback((incomingJob: Job) => {
@@ -130,11 +159,13 @@ export function useTailoringDraft({
     setHeadline(next.headline);
     setJobDescription(next.description);
     setSelectedIds(next.selectedIds);
+    setSelectedCertificationIds(next.selectedCertificationIds);
     setSkillsDraft(next.skillsDraft);
     setSavedSummary(next.summary);
     setSavedHeadline(next.headline);
     setSavedDescription(next.description);
     setSavedSelectedIds(next.selectedIds);
+    setSavedSelectedCertificationIds(next.selectedCertificationIds);
     setSavedSkillsJson(next.skillsJson);
     setTracerLinksEnabled(next.tracerLinksEnabled);
     setSavedTracerLinksEnabled(next.tracerLinksEnabled);
@@ -150,10 +181,18 @@ export function useTailoringDraft({
 
   useEffect(() => {
     setIsCatalogLoading(true);
-    api
-      .getResumeProjectsCatalog()
-      .then(setCatalog)
-      .catch(() => setCatalog([]))
+    Promise.all([
+      api.getResumeProjectsCatalog().catch(() => []),
+      api.getResumeCertificationsCatalog().catch(() => []),
+    ])
+      .then(([projects, certifications]) => {
+        setCatalog(projects);
+        setCertificationCatalog(certifications);
+      })
+      .catch(() => {
+        setCatalog([]);
+        setCertificationCatalog([]);
+      })
       .finally(() => setIsCatalogLoading(false));
   }, []);
 
@@ -188,6 +227,15 @@ export function useTailoringDraft({
     });
   }, []);
 
+  const handleToggleCertification = useCallback((id: string) => {
+    setSelectedCertificationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   const handleAddSkillGroup = useCallback(() => {
     const nextId = createTailoredSkillDraftId();
     setSkillsDraft((prev) => [
@@ -214,6 +262,7 @@ export function useTailoringDraft({
 
   return {
     catalog,
+    certificationCatalog,
     isCatalogLoading,
     summary,
     setSummary,
@@ -223,6 +272,8 @@ export function useTailoringDraft({
     setJobDescription,
     selectedIds,
     selectedIdsCsv,
+    selectedCertificationIds,
+    selectedCertificationIdsCsv,
     skillsDraft,
     setSkillsDraft,
     openSkillGroupId,
@@ -233,6 +284,7 @@ export function useTailoringDraft({
     isDirty,
     applyIncomingDraft,
     handleToggleProject,
+    handleToggleCertification,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
     handleRemoveSkillGroup,

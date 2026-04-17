@@ -110,7 +110,24 @@ const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
           title: "Certifications",
           columns: 1,
           hidden: false,
-          items: [],
+          items: [
+            {
+              id: "c1",
+              hidden: false,
+              name: "AWS Certified",
+              issuer: "Amazon",
+              date: "2024",
+              description: "Cloud certification",
+            },
+            {
+              id: "c2",
+              hidden: false,
+              name: "GCP Certified",
+              issuer: "Google",
+              date: "2023",
+              description: "Cloud certification",
+            },
+          ],
         },
         publications: {
           title: "Publications",
@@ -284,6 +301,10 @@ vi.mock("./profile", () => ({
 
 vi.mock("./projectSelection", () => ({
   pickProjectIdsForJob: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock("./certificationSelection", () => ({
+  pickCertificationIdsForJob: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("./resumeProjects", () => ({
@@ -544,5 +565,55 @@ describe("PDF Service Tailoring Logic", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("should apply selectedCertificationIds and hide non-selected certifications", async () => {
+    const tailoredContent = {
+      summary: "New Sum",
+      headline: "New Head",
+      skills: [],
+    };
+
+    await generatePdf(
+      "job-1",
+      tailoredContent,
+      "Job Desc",
+      "base.json",
+      undefined,
+      "c1",
+    );
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
+
+    const certifications = savedResumeJson.sections.certifications.items;
+    const c1 = certifications.find((c: any) => c.id === "c1");
+    const c2 = certifications.find((c: any) => c.id === "c2");
+
+    expect(c1.hidden).toBe(false);
+    expect(c2.hidden).toBe(true);
+  });
+
+  it("should handle comma-separated certification IDs correctly", async () => {
+    await generatePdf("job-2", {}, "desc", "base.json", undefined, "c1, c2 ");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
+    const certifications = savedResumeJson.sections.certifications.items;
+
+    expect(certifications.find((c: any) => c.id === "c1").hidden).toBe(false);
+    expect(certifications.find((c: any) => c.id === "c2").hidden).toBe(false);
+  });
+
+  it("keeps certifications section visible when selected certification list is explicitly empty", async () => {
+    await generatePdf("job-empty-certs", {}, "desc", "base.json", undefined, "");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
+    const savedResumeJson = mockResumeRenderer.getLastResumeJson();
+    const certifications = savedResumeJson.sections.certifications.items;
+
+    expect(certifications.find((c: any) => c.id === "c1").hidden).toBe(true);
+    expect(certifications.find((c: any) => c.id === "c2").hidden).toBe(true);
+    expect(savedResumeJson.sections.certifications.hidden).toBe(false);
   });
 });

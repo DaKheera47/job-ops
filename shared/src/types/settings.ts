@@ -12,6 +12,25 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
+export interface ResumeCertificationCatalogItem {
+  id: string;
+  title: string;
+  issuer: string;
+  date: string;
+  isVisibleInBase: boolean;
+}
+
+export interface ResumeCertificationSelectionItem
+  extends ResumeCertificationCatalogItem {
+  summaryText: string;
+}
+
+export interface ResumeCertificationsSettings {
+  maxCertifications: number;
+  lockedCertificationIds: string[];
+  aiSelectableCertificationIds: string[];
+}
+
 export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
 export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
 export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
@@ -116,6 +135,19 @@ export interface ResumeProfile {
         location: string;
         date: string;
         summary: string;
+        visible: boolean;
+      }>;
+    };
+    certifications?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        title: string;
+        issuer: string;
+        date: string;
+        description: string;
         visible: boolean;
       }>;
     };

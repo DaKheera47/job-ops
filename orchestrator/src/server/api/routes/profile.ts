@@ -4,6 +4,7 @@ import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { clearProfileCache, getProfile } from "@server/services/profile";
+import { extractCertificationsFromProfile } from "@server/services/resumeCertifications";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
   clearRxResumeResumeCache,
@@ -26,6 +27,23 @@ profileRouter.get("/projects", async (_req: Request, res: Response) => {
     }
     const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
+    ok(res, catalog);
+  } catch (error) {
+    fail(res, toAppError(error));
+  }
+});
+
+/**
+ * GET /api/profile/certifications - Get all certifications available in the base resume
+ */
+profileRouter.get("/certifications", async (_req: Request, res: Response) => {
+  try {
+    if (isDemoMode()) {
+      ok(res, []);
+      return;
+    }
+    const profile = await getProfile();
+    const { catalog } = extractCertificationsFromProfile(profile);
     ok(res, catalog);
   } catch (error) {
     fail(res, toAppError(error));

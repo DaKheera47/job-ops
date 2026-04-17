@@ -6,7 +6,8 @@ export type LlmModelPurpose =
   | "default"
   | "scoring"
   | "tailoring"
-  | "projectSelection";
+  | "projectSelection"
+  | "certificationSelection";
 
 function readStringSettingValue(
   setting: { value?: unknown } | null | undefined,
@@ -51,6 +52,12 @@ export async function resolveLlmModel(
     );
   }
 
+  if (purpose === "certificationSelection") {
+    return (
+      readStringSettingValue(settings?.modelProjectSelection) ?? defaultModel
+    );
+  }
+
   return defaultModel;
 }
 
@@ -80,7 +87,10 @@ export async function resolveLlmRuntimeSettings(
         : purpose === "projectSelection"
           ? (readStringSettingValue(settings?.modelProjectSelection) ??
             defaultModel)
-          : defaultModel;
+          : purpose === "certificationSelection"
+            ? (readStringSettingValue(settings?.modelProjectSelection) ??
+              defaultModel)
+            : defaultModel;
 
   return {
     model,

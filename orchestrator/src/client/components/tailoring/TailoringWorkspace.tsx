@@ -70,6 +70,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
   const {
     catalog,
+    certificationCatalog,
     isCatalogLoading,
     summary,
     setSummary,
@@ -79,6 +80,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     setJobDescription,
     selectedIds,
     selectedIdsCsv,
+    selectedCertificationIds,
+    selectedCertificationIdsCsv,
     tracerLinksEnabled,
     setTracerLinksEnabled,
     skillsDraft,
@@ -89,6 +92,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     isDirty,
     applyIncomingDraft,
     handleToggleProject,
+    handleToggleCertification,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
     handleRemoveSkillGroup,
@@ -146,6 +150,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       tailoredSkills: skillsJson,
       jobDescription,
       selectedProjectIds: selectedIdsCsv,
+      selectedCertificationIds: selectedCertificationIdsCsv,
       tracerLinksEnabled,
     }),
     [
@@ -154,6 +159,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       skillsJson,
       jobDescription,
       selectedIdsCsv,
+      selectedCertificationIdsCsv,
       tracerLinksEnabled,
     ],
   );
@@ -324,12 +330,14 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   const tailoringSectionsProps = useMemo<TailoringSectionsProps>(
     () => ({
       catalog,
+      certificationCatalog,
       isCatalogLoading,
       summary,
       headline,
       jobDescription,
       skillsDraft,
       selectedIds,
+      selectedCertificationIds,
       tracerLinksEnabled,
       tracerEnableBlocked,
       tracerEnableBlockedReason,
@@ -362,16 +370,19 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       onUpdateSkillGroup: handleUpdateSkillGroup,
       onRemoveSkillGroup: handleRemoveSkillGroup,
       onToggleProject: handleToggleProject,
+      onToggleCertification: handleToggleCertification,
       onTracerLinksEnabledChange: setTracerLinksEnabled,
     }),
     [
       catalog,
+      certificationCatalog,
       isCatalogLoading,
       summary,
       headline,
       jobDescription,
       skillsDraft,
       selectedIds,
+      selectedCertificationIds,
       tracerLinksEnabled,
       tracerEnableBlocked,
       tracerEnableBlockedReason,
@@ -396,6 +407,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       handleUpdateSkillGroup,
       handleRemoveSkillGroup,
       handleToggleProject,
+      handleToggleCertification,
       setTracerLinksEnabled,
     ],
   );

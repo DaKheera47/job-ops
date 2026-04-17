@@ -1,8 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
-import type { ResumeProjectCatalogItem } from "@shared/types";
+import type {
+  ResumeCertificationCatalogItem,
+  ResumeProjectCatalogItem,
+} from "@shared/types";
 import { stripHtmlTags } from "@shared/utils/string";
 
-type RecordLike = Record<string, unknown>;
+export type RecordLike = Record<string, unknown>;
 
 export type TailoredSkillsInput =
   | Array<{ name: string; keywords: string[] }>
@@ -219,6 +222,44 @@ export function extractProjectsFromResume(resumeData: RecordLike): {
   return { catalog, selectionItems };
 }
 
+export function extractCertificationsFromResume(resumeData: RecordLike): {
+  catalog: ResumeCertificationCatalogItem[];
+} {
+  const sections = asRecord(resumeData.sections);
+  const certificationsSection = asRecord(sections?.certifications);
+  const items = asArray(certificationsSection?.items);
+  if (!items) return { catalog: [] };
+
+  const catalog: ResumeCertificationCatalogItem[] = [];
+
+  for (const raw of items) {
+    const item = asRecord(raw);
+    if (!item) continue;
+    const id = typeof item.id === "string" ? item.id : "";
+    if (!id) continue;
+
+    const title = typeof item.name === "string" ? item.name : id;
+    const issuer =
+      typeof item.issuer === "string" ? item.issuer : "";
+    const date = typeof item.date === "string" ? item.date : "";
+
+    const isVisibleInBase = !(typeof item.hidden === "boolean"
+      ? item.hidden
+      : false);
+
+    const base: ResumeCertificationCatalogItem = {
+      id,
+      title,
+      issuer,
+      date,
+      isVisibleInBase,
+    };
+    catalog.push(base);
+  }
+
+  return { catalog };
+}
+
 export function applyProjectVisibility(args: {
   resumeData: RecordLike;
   selectedProjectIds: ReadonlySet<string>;
@@ -243,6 +284,34 @@ export function applyProjectVisibility(args: {
   if (args.forceVisibleProjectsSection !== false) {
     if ("hidden" in projectsSection) {
       projectsSection.hidden = false;
+    }
+  }
+}
+
+export function applyCertificationVisibility(args: {
+  resumeData: RecordLike;
+  selectedCertificationIds: ReadonlySet<string>;
+}): void {
+  const sections = asRecord(args.resumeData.sections);
+  const certificationsSection = asRecord(sections?.certifications);
+  const items = asArray(certificationsSection?.items);
+  if (!certificationsSection || !items) return;
+
+  for (const raw of items) {
+    const item = asRecord(raw);
+    if (!item) continue;
+    const id = typeof item.id === "string" ? item.id : "";
+    if (!id) continue;
+
+    if ("hidden" in item) {
+      item.hidden = !args.selectedCertificationIds.has(id);
+    }
+  }
+
+  // Ensure certifications section is visible if there are selected certifications
+  if (args.selectedCertificationIds.size > 0) {
+    if ("hidden" in certificationsSection) {
+      certificationsSection.hidden = false;
     }
   }
 }

@@ -20,6 +20,11 @@ vi.mock("@server/services/profile", () => ({
   clearProfileCache: vi.fn(),
 }));
 
+// Mock the resumeCertifications service
+vi.mock("@server/services/resumeCertifications", () => ({
+  extractCertificationsFromProfile: vi.fn(),
+}));
+
 // Mock the settings repository
 vi.mock("@server/repositories/settings", async (importOriginal) => {
   const original = (await importOriginal()) as Record<string, unknown>;
@@ -30,6 +35,7 @@ vi.mock("@server/repositories/settings", async (importOriginal) => {
 });
 
 import { getSetting } from "@server/repositories/settings";
+import { extractCertificationsFromProfile } from "@server/services/resumeCertifications";
 import { getProfile } from "@server/services/profile";
 import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
 
@@ -122,6 +128,102 @@ describe.sequential("Profile API routes", () => {
           id: expect.any(String),
           name: expect.any(String),
         });
+      } finally {
+        await stopServer(demoServer);
+      }
+    });
+  });
+
+  describe("GET /api/profile/certifications", () => {
+    it("returns certifications when profile is configured", async () => {
+      const mockProfile = {
+        sections: {
+          certifications: {
+            items: [
+              {
+                id: "cert1",
+                title: "Certification 1",
+                issuer: "Issuer 1",
+                date: "2024",
+                description: "Desc 1",
+                visible: true,
+              },
+              {
+                id: "cert2",
+                title: "Certification 2",
+                issuer: "Issuer 2",
+                date: "2023",
+                description: "Desc 2",
+                visible: false,
+              },
+            ],
+          },
+        },
+      };
+      vi.mocked(getProfile).mockResolvedValue(mockProfile);
+      vi.mocked(extractCertificationsFromProfile).mockReturnValue({
+        catalog: [
+          {
+            id: "cert1",
+            title: "Certification 1",
+            issuer: "Issuer 1",
+            date: "2024",
+            isVisibleInBase: true,
+          },
+          {
+            id: "cert2",
+            title: "Certification 2",
+            issuer: "Issuer 2",
+            date: "2023",
+            isVisibleInBase: false,
+          },
+        ],
+      });
+
+      const res = await fetch(`${baseUrl}/api/profile/certifications`);
+      const body = await res.json();
+
+      expect(res.ok).toBe(true);
+      expect(body.ok).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBe(2);
+    });
+
+    it("returns error when profile is not configured", async () => {
+      vi.mocked(getProfile).mockRejectedValue(
+        new Error("Base resume not configured."),
+      );
+
+      const res = await fetch(`${baseUrl}/api/profile/certifications`);
+      const body = await res.json();
+
+      expect(res.ok).toBe(false);
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain("Base resume not configured");
+    });
+
+    it("returns empty array in demo mode", async () => {
+      const demoServer = await startServer({
+        env: {
+          DEMO_MODE: "true",
+          BASIC_AUTH_USER: "",
+          BASIC_AUTH_PASSWORD: "",
+        },
+      });
+      try {
+        vi.mocked(getProfile).mockRejectedValue(
+          new Error("should not be used"),
+        );
+
+        const res = await fetch(
+          `${demoServer.baseUrl}/api/profile/certifications`,
+        );
+        const body = await res.json();
+
+        expect(res.ok).toBe(true);
+        expect(body.ok).toBe(true);
+        expect(Array.isArray(body.data)).toBe(true);
+        expect(body.data.length).toBe(0);
       } finally {
         await stopServer(demoServer);
       }

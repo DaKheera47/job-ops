@@ -1,4 +1,7 @@
-import type { ResumeProjectCatalogItem } from "@shared/types.js";
+import type {
+  ResumeCertificationCatalogItem,
+  ResumeProjectCatalogItem,
+} from "@shared/types.js";
 import { Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import type React from "react";
 import {
@@ -20,12 +23,14 @@ import type { EditableSkillGroup } from "../tailoring-utils";
 
 interface TailoringSectionsProps {
   catalog: ResumeProjectCatalogItem[];
+  certificationCatalog: ResumeCertificationCatalogItem[];
   isCatalogLoading: boolean;
   summary: string;
   headline: string;
   jobDescription: string;
   skillsDraft: EditableSkillGroup[];
   selectedIds: Set<string>;
+  selectedCertificationIds: Set<string>;
   tracerLinksEnabled: boolean;
   tracerEnableBlocked: boolean;
   tracerEnableBlockedReason: string | null;
@@ -57,6 +62,7 @@ interface TailoringSectionsProps {
   ) => void;
   onRemoveSkillGroup: (id: string) => void;
   onToggleProject: (id: string) => void;
+  onToggleCertification: (id: string) => void;
   onTracerLinksEnabledChange: (value: boolean) => void;
 }
 
@@ -68,12 +74,14 @@ const inputClass =
 
 export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   catalog,
+  certificationCatalog,
   isCatalogLoading,
   summary,
   headline,
   jobDescription,
   skillsDraft,
   selectedIds,
+  selectedCertificationIds,
   tracerLinksEnabled,
   tracerEnableBlocked,
   tracerEnableBlockedReason,
@@ -101,6 +109,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   onUpdateSkillGroup,
   onRemoveSkillGroup,
   onToggleProject,
+  onToggleCertification,
   onTracerLinksEnabledChange,
 }) => {
   const tracerToggleDisabled =
@@ -404,6 +413,42 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                 maxProjects={3}
                 disabled={disableInputs}
               />
+            </AccordionContent>
+          </AccordionItem>
+        )}
+
+        {!isCatalogLoading && certificationCatalog.length > 0 && (
+          <AccordionItem value="certifications" className={sectionClass}>
+            <AccordionTrigger className={triggerClass}>
+              Selected Certifications
+            </AccordionTrigger>
+            <AccordionContent className="px-3 pb-3 pt-1">
+              <div className="space-y-2">
+                {certificationCatalog.map((cert) => (
+                  <div
+                    key={cert.id}
+                    className="flex items-center gap-3 rounded-md border border-border/60 bg-background/40 p-3"
+                  >
+                    <Checkbox
+                      id={`cert-${cert.id}`}
+                      checked={selectedCertificationIds.has(cert.id)}
+                      onCheckedChange={() => onToggleCertification(cert.id)}
+                      disabled={disableInputs}
+                    />
+                    <div className="flex flex-1 flex-col">
+                      <label
+                        htmlFor={`cert-${cert.id}`}
+                        className="text-sm font-medium cursor-pointer"
+                      >
+                        {cert.title}
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        {cert.issuer} • {cert.date}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </AccordionContent>
           </AccordionItem>
         )}
