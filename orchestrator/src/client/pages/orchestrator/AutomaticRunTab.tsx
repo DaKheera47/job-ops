@@ -452,14 +452,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             </div>
             <Separator />
             <section className="space-y-6">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Location preferences
-              </h3>
-
               <div className="space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Where
-                </p>
                 <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
                   <div className="space-y-2">
                     <Label className="text-base font-semibold">Country</Label>
@@ -519,24 +512,20 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Work arrangement
                 </p>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 gap-x-4">
                   {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
                     const checkboxId = `workplace-type-${workplaceType}`;
                     const checked = workplaceTypes.includes(workplaceType);
+
                     return (
                       <label
                         key={workplaceType}
                         htmlFor={checkboxId}
-                        className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors ${
-                          checked
-                            ? "border-foreground/30 bg-foreground text-background"
-                            : "border-border/70 bg-background text-foreground"
-                        }`}
+                        className={`flex cursor-pointer items-center gap-3 text-sm transition-colors`}
                       >
                         <Checkbox
                           id={checkboxId}
                           checked={checked}
-                          className="border-current data-[state=checked]:border-current data-[state=checked]:bg-current data-[state=checked]:text-background"
                           onCheckedChange={(nextChecked) => {
                             toggleWorkplaceType(
                               workplaceType,
@@ -546,7 +535,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         />
                         {formatWorkplaceTypeLabel(workplaceType)}
                       </label>
-                    );
+                    )
                   })}
                 </div>
                 {workplaceTypeSelectionInvalid ? (
@@ -558,7 +547,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Coverage
+                  Location scope
                 </p>
                 <RadioGroup
                   value={searchScope}
@@ -594,7 +583,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Match behavior
+                  Match strictness
                 </p>
                 <RadioGroup
                   value={matchStrictness}
@@ -631,10 +620,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               </div>
 
               <div className="rounded-2xl bg-muted px-4 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Summary
-                </p>
-                <p className="mt-2 text-base font-medium leading-6 text-foreground">
+                <p className="text-base font-medium leading-6 text-foreground">
                   {locationSummary}
                 </p>
               </div>
