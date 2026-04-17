@@ -676,6 +676,7 @@ export async function designResumeToProfile(
   const skills = asRecord(sections.skills) ?? {};
   const projects = asRecord(sections.projects) ?? {};
   const experience = asRecord(sections.experience) ?? {};
+  const certifications = asRecord(sections.certifications) ?? {};
 
   return {
     basics: {
@@ -752,6 +753,23 @@ export async function designResumeToProfile(
             location: toText(record.location),
             date: toText(record.period),
             summary: toText(record.description),
+            visible: !toBoolean(record.hidden, false),
+          };
+        }),
+      },
+      certifications: {
+        id: "certifications",
+        visible: !toBoolean(certifications.hidden, false),
+        name: toText(certifications.title, "Certifications"),
+        items: asArray(certifications.items).map((item) => {
+          const record = asRecord(item) ?? {};
+          return {
+            id: toText(record.id, createId()),
+            title: toText(record.title),
+            issuer: toText(record.issuer),
+            date: toText(record.date),
+            description: toText(record.description),
+            hidden: toBoolean(record.hidden, false),
             visible: !toBoolean(record.hidden, false),
           };
         }),
