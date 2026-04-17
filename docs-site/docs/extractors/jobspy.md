@@ -22,10 +22,10 @@ Key environment variables:
 
 - `JOBSPY_SITES` (default: `indeed,linkedin`)
 - `JOBSPY_SEARCH_TERM` (default: `web developer`)
-- `JOBSPY_LOCATION` (default: `UK`)
+- `JOBSPY_LOCATION` (default: empty)
 - `JOBSPY_RESULTS_WANTED` (default: `200`)
 - `JOBSPY_HOURS_OLD` (default: `72`)
-- `JOBSPY_COUNTRY_INDEED` (default: `UK`)
+- `JOBSPY_COUNTRY_INDEED` (default: empty)
 - `JOBSPY_LINKEDIN_FETCH_DESCRIPTION` (default: `true`)
 - `JOBSPY_IS_REMOTE` (unset by default)
 
@@ -53,6 +53,8 @@ The service in `orchestrator/src/server/services/jobspy.ts`:
 - Temp output files are stored under `data/imports/`.
 - If workplace type is only `Remote`, JobSpy runs with `JOBSPY_IS_REMOTE=true`.
 - If workplace type includes `Hybrid` or `Onsite`, JobSpy cannot enforce those filters precisely, so the JobSpy-backed sources run without a workplace-type filter and may return broader results.
+- If no city is configured, JobSpy runs without a hidden UK location fallback. The selected pipeline country is passed through when available, but no fake city or UK default is injected.
+- When a pipeline country is selected, the orchestrator applies a strict post-import country filter so off-country JobSpy results do not continue through scoring.
 
 ## Common Problems
 

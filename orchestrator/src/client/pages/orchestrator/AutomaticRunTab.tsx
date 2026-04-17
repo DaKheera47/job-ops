@@ -62,7 +62,7 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
   runBudget: 200,
-  country: "united kingdom",
+  country: "",
   cityLocations: [],
   workplaceTypes: ["remote", "hybrid", "onsite"],
 };
@@ -291,6 +291,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     [pipelineSources, isSourceAvailableForRun],
   );
 
+  const countrySelectionInvalid = values.country.length === 0;
+
   const hasOnlyRemoteWorkplaceType =
     workplaceTypes.length === 1 && workplaceTypes[0] === "remote";
   const hasJobSpySourceSelected = compatiblePipelineSources.some(
@@ -338,6 +340,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     isSaving ||
     compatiblePipelineSources.length === 0 ||
     values.searchTerms.length === 0 ||
+    countrySelectionInvalid ||
     workplaceTypeSelectionInvalid;
 
   const toggleWorkplaceType = (
@@ -440,8 +443,15 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 searchPlaceholder="Search country..."
                 emptyText="No matching countries."
                 triggerClassName="h-9 w-full md:max-w-xs"
-                ariaLabel={formatCountryLabel(values.country)}
+                ariaLabel={
+                  values.country
+                    ? formatCountryLabel(values.country)
+                    : "Select country"
+                }
               />
+              {countrySelectionInvalid ? (
+                <p className="text-xs text-destructive">Select a country.</p>
+              ) : null}
             </div>
             <Separator />
             <Accordion

@@ -177,7 +177,7 @@ export async function runHiringCafe(
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
       : ["web developer"];
-  const country = (options.country || "united kingdom").trim().toLowerCase();
+  const country = (options.country ?? "").trim().toLowerCase();
   const countryKey = normalizeCountryKey(options.countryKey ?? "");
   const maxJobsPerTerm = options.maxJobsPerTerm ?? 200;
   const locationRadiusMiles = Math.max(

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { deriveIsRemoteFlag, parseJobSpyProgressLine } from "../src/run";
+import {
+  deriveIsRemoteFlag,
+  parseJobSpyProgressLine,
+  resolveJobSpyCountryIndeed,
+  resolveJobSpyLocations,
+} from "../src/run";
 
 describe("parseJobSpyProgressLine", () => {
   it("parses term_start progress lines", () => {
@@ -47,5 +52,15 @@ describe("parseJobSpyProgressLine", () => {
     expect(deriveIsRemoteFlag(["onsite"])).toBeUndefined();
     expect(deriveIsRemoteFlag(["remote", "hybrid"])).toBeUndefined();
     expect(deriveIsRemoteFlag(["remote", "hybrid", "onsite"])).toBeUndefined();
+  });
+
+  it("runs a country-only search when no city locations are configured", () => {
+    expect(resolveJobSpyLocations({ location: null, locations: [] })).toEqual([
+      null,
+    ]);
+  });
+
+  it("does not fall back country_indeed to UK when none is configured", () => {
+    expect(resolveJobSpyCountryIndeed({ countryIndeed: null })).toBeNull();
   });
 });

@@ -203,8 +203,8 @@ export const createAppSettings = (
   },
   jobspyResultsWanted: { value: 20, default: 20, override: null },
   jobspyCountryIndeed: {
-    value: "united kingdom",
-    default: "united kingdom",
+    value: "",
+    default: "",
     override: null,
   },
   showSponsorInfo: { value: true, default: true, override: null },

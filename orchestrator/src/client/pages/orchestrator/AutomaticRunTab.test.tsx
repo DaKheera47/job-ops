@@ -58,6 +58,28 @@ describe("AutomaticRunTab", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not default the country picker to United Kingdom", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Select country" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start run now" }),
+    ).toBeDisabled();
+  });
+
   it("loads persisted country from settings", () => {
     render(
       <AutomaticRunTab
@@ -425,7 +447,13 @@ describe("AutomaticRunTab", () => {
     render(
       <AutomaticRunTab
         open
-        settings={createAppSettings()}
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
         onToggleSource={vi.fn()}
@@ -483,7 +511,13 @@ describe("AutomaticRunTab", () => {
     render(
       <AutomaticRunTab
         open
-        settings={createAppSettings()}
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
         onToggleSource={vi.fn()}

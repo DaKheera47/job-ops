@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   matchesRequestedCity,
+  matchesRequestedCountry,
   parseSearchCitiesSetting,
   resolveSearchCities,
   serializeSearchCitiesSetting,
@@ -78,5 +79,20 @@ describe("search-cities", () => {
     expect(
       matchesRequestedCity("New York, NY, United States", "new york"),
     ).toBe(true);
+  });
+
+  it("matches requested countries using canonical names and common aliases", () => {
+    expect(matchesRequestedCountry("Zagreb, Croatia", "croatia")).toBe(true);
+    expect(
+      matchesRequestedCountry("Leeds, England, UK", "united kingdom"),
+    ).toBe(true);
+    expect(
+      matchesRequestedCountry(
+        "Austin, Texas, United States of America",
+        "united states",
+      ),
+    ).toBe(true);
+    expect(matchesRequestedCountry("Bengaluru, India", "croatia")).toBe(false);
+    expect(matchesRequestedCountry(undefined, "croatia")).toBe(false);
   });
 });

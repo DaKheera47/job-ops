@@ -6,6 +6,19 @@ const LOCATION_ALIASES: Record<string, string> = {
   usa: "united states",
 };
 
+const COUNTRY_LOCATION_VARIANTS: Record<string, string[]> = {
+  "united kingdom": [
+    "uk",
+    "great britain",
+    "britain",
+    "england",
+    "scotland",
+    "wales",
+    "northern ireland",
+  ],
+  "united states": ["us", "usa", "united states of america"],
+};
+
 export function normalizeLocationToken(
   value: string | null | undefined,
 ): string {
@@ -86,10 +99,17 @@ export function matchesRequestedCity(
   jobLocation: string | undefined,
   requestedCity: string,
 ): boolean {
+  return matchesRequestedLocationTokens(jobLocation, requestedCity);
+}
+
+function matchesRequestedLocationTokens(
+  jobLocation: string | undefined,
+  requestedLocation: string,
+): boolean {
   const normalizedJobLocation = normalizeLocationToken(jobLocation)
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
-  const normalizedRequestedLocation = normalizeLocationToken(requestedCity)
+  const normalizedRequestedLocation = normalizeLocationToken(requestedLocation)
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
   if (!normalizedJobLocation || !normalizedRequestedLocation) return false;
@@ -110,4 +130,21 @@ export function matchesRequestedCity(
   }
 
   return false;
+}
+
+export function matchesRequestedCountry(
+  jobLocation: string | undefined,
+  requestedCountry: string,
+): boolean {
+  const normalizedCountry = normalizeCountryKey(requestedCountry);
+  if (!normalizedCountry) return false;
+
+  const candidates = [
+    normalizedCountry,
+    ...(COUNTRY_LOCATION_VARIANTS[normalizedCountry] ?? []),
+  ];
+
+  return candidates.some((candidate) =>
+    matchesRequestedLocationTokens(jobLocation, candidate),
+  );
 }

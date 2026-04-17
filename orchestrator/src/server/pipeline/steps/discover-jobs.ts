@@ -12,6 +12,7 @@ import {
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import {
   matchesRequestedCity,
+  matchesRequestedCountry,
   resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
@@ -77,6 +78,18 @@ function filterJobsByRequestedCities(args: {
   );
 }
 
+function filterJobsBySelectedCountry(args: {
+  jobs: CreateJobInput[];
+  selectedCountry: string;
+}): CreateJobInput[] {
+  const { jobs, selectedCountry } = args;
+  if (!selectedCountry) return jobs;
+
+  return jobs.filter((job) =>
+    matchesRequestedCountry(job.location ?? undefined, selectedCountry),
+  );
+}
+
 export async function discoverJobsStep(args: {
   mergedConfig: PipelineConfig;
   shouldCancel?: () => boolean;
@@ -107,14 +120,13 @@ export async function discoverJobsStep(args: {
   }
 
   const selectedCountry = normalizeCountryKey(
-    settings.jobspyCountryIndeed ??
-      settings.searchCities ??
-      settings.jobspyLocation ??
-      "united kingdom",
+    settings.jobspyCountryIndeed ?? "",
   );
-  const compatibleSources = args.mergedConfig.sources.filter((source) =>
-    isSourceAllowedForCountry(source, selectedCountry),
-  );
+  const compatibleSources = selectedCountry
+    ? args.mergedConfig.sources.filter((source) =>
+        isSourceAllowedForCountry(source, selectedCountry),
+      )
+    : args.mergedConfig.sources;
   let existingJobUrlsPromise: Promise<string[]> | null = null;
   const getExistingJobUrls = (): Promise<string[]> => {
     if (!existingJobUrlsPromise) {
@@ -126,7 +138,7 @@ export async function discoverJobsStep(args: {
     (source) => !compatibleSources.includes(source),
   );
 
-  if (skippedSources.length > 0) {
+  if (selectedCountry && skippedSources.length > 0) {
     logger.info("Skipping incompatible sources for selected country", {
       step: "discover-jobs",
       country: selectedCountry,
@@ -136,7 +148,11 @@ export async function discoverJobsStep(args: {
     });
   }
 
-  if (args.mergedConfig.sources.length > 0 && compatibleSources.length === 0) {
+  if (
+    selectedCountry &&
+    args.mergedConfig.sources.length > 0 &&
+    compatibleSources.length === 0
+  ) {
     throw new Error(
       `No compatible sources for selected country: ${formatCountryLabel(selectedCountry)}`,
     );
@@ -289,15 +305,32 @@ export async function discoverJobsStep(args: {
     sourceErrors.push(...sourceResult.sourceErrors);
   }
 
+  const countryFilteredJobs = filterJobsBySelectedCountry({
+    jobs: discoveredJobs,
+    selectedCountry,
+  });
+  const countryFilteredOutCount =
+    discoveredJobs.length - countryFilteredJobs.length;
+
+  if (countryFilteredOutCount > 0) {
+    logger.info("Dropped discovered jobs that did not match selected country", {
+      step: "discover-jobs",
+      droppedCount: countryFilteredOutCount,
+      selectedCountry,
+      selectedCountryLabel: formatCountryLabel(selectedCountry),
+    });
+  }
+
   const requestedCities = resolveSearchCities({
     single: settings.searchCities ?? settings.jobspyLocation,
   });
   const cityFilteredJobs = filterJobsByRequestedCities({
-    jobs: discoveredJobs,
+    jobs: countryFilteredJobs,
     selectedCountry,
     requestedCities,
   });
-  const cityFilteredOutCount = discoveredJobs.length - cityFilteredJobs.length;
+  const cityFilteredOutCount =
+    countryFilteredJobs.length - cityFilteredJobs.length;
 
   if (cityFilteredOutCount > 0) {
     logger.info("Dropped discovered jobs that did not match requested cities", {

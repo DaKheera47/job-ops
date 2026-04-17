@@ -385,8 +385,8 @@ export const settingsRegistry = {
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.JOBSPY_COUNTRY_INDEED || "UK"
-        : "UK",
+        ? process.env.JOBSPY_COUNTRY_INDEED || ""
+        : "",
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,

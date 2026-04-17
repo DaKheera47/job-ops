@@ -143,6 +143,33 @@ export interface JobSpyResult {
   error?: string;
 }
 
+function normalizeOptionalString(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+export function resolveJobSpyLocations(args: {
+  locations?: string[] | null;
+  location?: string | null;
+}): Array<string | null> {
+  const locations = resolveSearchCities({
+    list: args.locations,
+    single: args.location,
+    env: process.env.JOBSPY_LOCATION,
+  });
+  return locations.length > 0 ? locations : [null];
+}
+
+export function resolveJobSpyCountryIndeed(args: {
+  countryIndeed?: string | null;
+}): string | null {
+  return normalizeOptionalString(
+    args.countryIndeed ?? process.env.JOBSPY_COUNTRY_INDEED,
+  );
+}
+
 export function deriveIsRemoteFlag(
   workplaceTypes: Array<"remote" | "hybrid" | "onsite"> | undefined,
 ): boolean | undefined {
@@ -164,14 +191,8 @@ export async function runJobSpy(
     .join(",");
 
   const searchTerms = resolveSearchTerms(options);
-  const locations = resolveSearchCities({
-    list: options.locations,
-    single: options.location,
-    env: process.env.JOBSPY_LOCATION,
-    fallback: "UK",
-  });
-  const countryIndeed =
-    options.countryIndeed ?? process.env.JOBSPY_COUNTRY_INDEED ?? "UK";
+  const runLocations = resolveJobSpyLocations(options);
+  const countryIndeed = resolveJobSpyCountryIndeed(options);
   if (searchTerms.length === 0) {
     return { success: true, jobs: [] };
   }
@@ -179,13 +200,14 @@ export async function runJobSpy(
   try {
     const jobs: CreateJobInput[] = [];
     const seenJobUrls = new Set<string>();
-    const totalRuns = searchTerms.length * locations.length;
+    const totalRuns = searchTerms.length * runLocations.length;
     let runIndex = 0;
 
     for (const searchTerm of searchTerms) {
-      for (const location of locations) {
+      for (const location of runLocations) {
         runIndex += 1;
-        const suffix = `${runIndex}_${slugForFilename(searchTerm)}_${slugForFilename(location)}`;
+        const locationToken = location ?? countryIndeed ?? "anywhere";
+        const suffix = `${runIndex}_${slugForFilename(searchTerm)}_${slugForFilename(locationToken)}`;
         const outputCsv = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.csv`);
         const outputJson = join(OUTPUT_DIR, `jobspy_jobs_${suffix}.json`);
 
@@ -226,7 +248,6 @@ export async function runJobSpy(
               JOBSPY_HOURS_OLD: String(
                 options.hoursOld ?? process.env.JOBSPY_HOURS_OLD ?? 72,
               ),
-              JOBSPY_COUNTRY_INDEED: countryIndeed,
               JOBSPY_LINKEDIN_FETCH_DESCRIPTION: String(
                 options.linkedinFetchDescription ??
                   process.env.JOBSPY_LINKEDIN_FETCH_DESCRIPTION ??
@@ -240,6 +261,10 @@ export async function runJobSpy(
               ),
               JOBSPY_OUTPUT_CSV: outputCsv,
               JOBSPY_OUTPUT_JSON: outputJson,
+              ...(location ? { JOBSPY_LOCATION: location } : {}),
+              ...(countryIndeed
+                ? { JOBSPY_COUNTRY_INDEED: countryIndeed }
+                : {}),
             },
           });
 

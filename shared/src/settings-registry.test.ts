@@ -56,6 +56,21 @@ describe("settingsRegistry helpers", () => {
         }
       }
     });
+
+    it("does not default jobspyCountryIndeed to UK when no env is configured", () => {
+      const previousJobspyCountryIndeed = process.env.JOBSPY_COUNTRY_INDEED;
+      delete process.env.JOBSPY_COUNTRY_INDEED;
+
+      try {
+        expect(settingsRegistry.jobspyCountryIndeed.default()).toBe("");
+      } finally {
+        if (previousJobspyCountryIndeed === undefined) {
+          delete process.env.JOBSPY_COUNTRY_INDEED;
+        } else {
+          process.env.JOBSPY_COUNTRY_INDEED = previousJobspyCountryIndeed;
+        }
+      }
+    });
   });
 
   describe("string parsing (parseNonEmptyStringOrNull)", () => {
