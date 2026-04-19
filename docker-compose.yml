@@ -7,6 +7,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     image: ghcr.io/dakheera47/job-ops:latest
     container_name: job-ops
     ports:

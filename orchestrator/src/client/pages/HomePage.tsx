@@ -14,6 +14,7 @@ import type React from "react";
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { queryKeys } from "@/client/lib/queryKeys";
+import { OverviewPipelineRunsSection } from "./overview/OverviewPipelineRunsSection";
 
 type JobWithEvents = {
   id: string;
@@ -141,6 +142,8 @@ export const HomePage: React.FC = () => {
       />
 
       <PageMain>
+        <OverviewPipelineRunsSection />
+
         <ApplicationsPerDayChart
           appliedAt={appliedDates}
           isLoading={isLoading}

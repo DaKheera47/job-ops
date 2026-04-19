@@ -2,6 +2,7 @@ import {
   AppError,
   badRequest,
   conflict,
+  notFound,
   requestTimeout,
   serviceUnavailable,
 } from "@infra/errors";
@@ -100,6 +101,31 @@ pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
     );
   }
 });
+
+/**
+ * GET /api/pipeline/runs/:id/insights - Get exact and inferred metrics for a run
+ */
+pipelineRouter.get(
+  "/runs/:id/insights",
+  async (req: Request, res: Response) => {
+    try {
+      const insights = await pipelineRepo.getPipelineRunInsights(req.params.id);
+      if (!insights) {
+        return fail(res, notFound("Pipeline run not found"));
+      }
+      ok(res, insights);
+    } catch (error) {
+      fail(
+        res,
+        new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: error instanceof Error ? error.message : "Unknown error",
+        }),
+      );
+    }
+  },
+);
 
 /**
  * POST /api/pipeline/run - Trigger the pipeline manually

@@ -28,6 +28,28 @@ export interface PipelineStatusResponse {
   nextScheduledRun: string | null;
 }
 
+export type PipelineMetricQuality =
+  | "exact"
+  | "inferred_from_timestamps"
+  | "unavailable";
+
+export interface PipelineRunMetric<T = number | null> {
+  value: T;
+  quality: PipelineMetricQuality;
+}
+
+export interface PipelineRunInsights {
+  run: PipelineRun;
+  exactMetrics: {
+    durationMs: number | null;
+  };
+  inferredMetrics: {
+    jobsCreated: PipelineRunMetric<number | null>;
+    jobsUpdated: PipelineRunMetric<number | null>;
+    jobsProcessed: PipelineRunMetric<number | null>;
+  };
+}
+
 export interface JobsListResponse<TJob = Job> {
   jobs: TJob[];
   total: number;
