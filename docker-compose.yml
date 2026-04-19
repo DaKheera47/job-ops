@@ -66,6 +66,9 @@ services:
         - path: ./extractors/golangjobs/src
           target: /app/extractors/golangjobs/src
           action: sync+restart
+        - path: ./extractors/seek/src
+          target: /app/extractors/seek/src
+          action: sync+restart
         - path: ./extractors/jobspy
           target: /app/extractors/jobspy
           action: sync+restart

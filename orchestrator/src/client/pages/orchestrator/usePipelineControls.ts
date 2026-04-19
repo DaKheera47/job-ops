@@ -182,6 +182,7 @@ export function usePipelineControls(
         ukvisajobsMaxJobs: limits.ukvisajobsMaxJobs,
         adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
         startupjobsMaxJobsPerTerm: limits.startupjobsMaxJobsPerTerm,
+        seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
         searchCities,
       });

@@ -161,6 +161,7 @@ export const createAppSettings = (
   adzunaMaxJobsPerTerm: { value: 50, default: 50, override: null },
   gradcrackerMaxJobsPerTerm: { value: 50, default: 50, override: null },
   startupjobsMaxJobsPerTerm: { value: 50, default: 50, override: null },
+  seekMaxJobsPerTerm: { value: 50, default: 50, override: null },
   searchTerms: {
     value: ["Software Engineer"],
     default: ["Software Engineer"],
@@ -253,6 +254,7 @@ export const createAppSettings = (
   ukvisajobsPasswordHint: null,
   adzunaAppId: null,
   adzunaAppKeyHint: null,
+  apifyTokenHint: null,
   webhookSecretHint: null,
   basicAuthActive: false,
   backupEnabled: { value: false, default: false, override: null },

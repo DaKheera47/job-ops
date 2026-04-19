@@ -175,4 +175,24 @@ describe("automatic-run utilities", () => {
     expect(estimate.discovered.cap).toBeGreaterThan(0);
     expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
   });
+
+  it("includes seek in estimate caps using the shared term budget", () => {
+    const estimate = calculateAutomaticEstimate({
+      values: {
+        topN: 10,
+        minSuitabilityScore: 50,
+        searchTerms: ["backend", "platform"],
+        runBudget: 120,
+        country: "australia",
+        cityLocations: [],
+        workplaceTypes: ["remote", "hybrid", "onsite"],
+        searchScope: "selected_only",
+        matchStrictness: "exact_only",
+      },
+      sources: ["seek"],
+    });
+
+    expect(estimate.discovered.cap).toBeGreaterThan(0);
+    expect(estimate.discovered.cap).toBeLessThanOrEqual(120);
+  });
 });

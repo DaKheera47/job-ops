@@ -63,6 +63,7 @@ COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/seek/package*.json ./extractors/seek/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
 RUN --mount=type=cache,target=/root/.npm \
@@ -86,6 +87,7 @@ COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/seek ./extractors/seek
 
 # ============================================================================
 # PARALLEL BUILD STAGES
@@ -117,6 +119,7 @@ COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/seek/package*.json ./extractors/seek/
 
 # Install production Node dependencies only.
 RUN --mount=type=cache,target=/root/.npm \
@@ -170,6 +173,7 @@ COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/seek ./extractors/seek
 
 # Create runtime directories.
 RUN mkdir -p /app/data/pdfs /app/codex-home

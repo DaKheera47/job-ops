@@ -170,6 +170,7 @@ export interface AppSettings {
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;
   startupjobsMaxJobsPerTerm: Resolved<number>;
+  seekMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
   workplaceTypes: Resolved<Array<"remote" | "hybrid" | "onsite">>;
   blockedCompanyKeywords: Resolved<string[]>;
@@ -218,6 +219,7 @@ export interface AppSettings {
   rxresumeApiKeyHint: string | null;
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;
+  apifyTokenHint: string | null;
   basicAuthPasswordHint: string | null;
   webhookSecretHint: string | null;
 

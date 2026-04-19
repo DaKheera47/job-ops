@@ -301,6 +301,19 @@ export const settingsRegistry = {
     parse: parseIntOrNull,
     serialize: serializeNullableNumber,
   },
+  seekMaxJobsPerTerm: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(1000),
+    default: (): number =>
+      parseInt(
+        typeof process !== "undefined"
+          ? process.env.SEEK_MAX_JOBS_PER_TERM || "50"
+          : "50",
+        10,
+      ),
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
   searchTerms: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(100),
@@ -653,6 +666,11 @@ export const settingsRegistry = {
   adzunaAppKey: {
     kind: "secret" as const,
     envKey: "ADZUNA_APP_KEY",
+    schema: z.string().trim().max(2000),
+  },
+  apifyToken: {
+    kind: "secret" as const,
+    envKey: "APIFY_TOKEN",
     schema: z.string().trim().max(2000),
   },
   basicAuthPassword: {

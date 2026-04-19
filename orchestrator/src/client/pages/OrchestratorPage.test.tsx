@@ -918,6 +918,7 @@ describe("OrchestratorPage", () => {
         ukvisajobsMaxJobs: 150,
         adzunaMaxJobsPerTerm: 150,
         startupjobsMaxJobsPerTerm: 150,
+        seekMaxJobsPerTerm: 150,
         jobspyCountryIndeed: "united kingdom",
         searchCities: null,
         locationSearchScope: "selected_only",

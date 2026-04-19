@@ -132,6 +132,7 @@ export interface ExtractorLimits {
   adzunaMaxJobsPerTerm: number;
   startupjobsMaxJobsPerTerm: number;
   workingnomadsMaxJobsPerTerm: number;
+  seekMaxJobsPerTerm: number;
 }
 
 export function deriveExtractorLimits(args: {
@@ -150,6 +151,7 @@ export function deriveExtractorLimits(args: {
   const includesHiringCafe = args.sources.includes("hiringcafe");
   const includesStartupJobs = args.sources.includes("startupjobs");
   const includesWorkingNomads = args.sources.includes("workingnomads");
+  const includesSeek = args.sources.includes("seek");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
@@ -160,7 +162,8 @@ export function deriveExtractorLimits(args: {
     (includesAdzuna ? termCount : 0) +
     (includesHiringCafe ? termCount : 0) +
     (includesStartupJobs ? termCount : 0) +
-    (includesWorkingNomads ? termCount : 0);
+    (includesWorkingNomads ? termCount : 0) +
+    (includesSeek ? termCount : 0);
 
   if (weightedContributors <= 0) {
     return {
@@ -170,6 +173,7 @@ export function deriveExtractorLimits(args: {
       adzunaMaxJobsPerTerm: budget,
       startupjobsMaxJobsPerTerm: budget,
       workingnomadsMaxJobsPerTerm: budget,
+      seekMaxJobsPerTerm: budget,
     };
   }
 
@@ -183,6 +187,7 @@ export function deriveExtractorLimits(args: {
     adzunaMaxJobsPerTerm: perUnit,
     startupjobsMaxJobsPerTerm: perUnit,
     workingnomadsMaxJobsPerTerm: perUnit,
+    seekMaxJobsPerTerm: perUnit,
   };
 }
 
@@ -268,6 +273,7 @@ export function calculateAutomaticEstimate(args: {
   const hasHiringCafe = sources.includes("hiringcafe");
   const hasStartupJobs = sources.includes("startupjobs");
   const hasWorkingNomads = sources.includes("workingnomads");
+  const hasSeek = sources.includes("seek");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
@@ -292,6 +298,7 @@ export function calculateAutomaticEstimate(args: {
   const workingNomadsCap = hasWorkingNomads
     ? limits.workingnomadsMaxJobsPerTerm * termCount
     : 0;
+  const seekCap = hasSeek ? limits.seekMaxJobsPerTerm * termCount : 0;
 
   const discoveredCap =
     jobspyCap +
@@ -300,7 +307,8 @@ export function calculateAutomaticEstimate(args: {
     adzunaCap +
     hiringCafeCap +
     startupJobsCap +
-    workingNomadsCap;
+    workingNomadsCap +
+    seekCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);
   const discoveredMax = Math.round(discoveredCap * 0.75);
   const processedMin = Math.min(values.topN, discoveredMin);

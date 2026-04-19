@@ -81,6 +81,7 @@ Open `http://localhost:3005` and follow the onboarding wizard. You'll be searchi
 | Gradcracker | STEM/Grads (UK) |
 | UK Visa Jobs | Sponsorship (UK) |
 | Golang Jobs | Go developers |
+| Seek | Australia/NZ (via Apify) |
 
 Custom extractors can be added via TypeScript. See the [extractor docs](https://jobops.dakheera47.com/docs/extractors/overview).
 
