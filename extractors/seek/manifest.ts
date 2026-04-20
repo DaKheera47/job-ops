@@ -1,8 +1,8 @@
+import { resolveSearchCities } from "@shared/search-cities.js";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
 } from "@shared/types/extractors";
-import { resolveSearchCities } from "@shared/search-cities.js";
 import { runSeek } from "./src/run";
 
 function toProgress(event: {

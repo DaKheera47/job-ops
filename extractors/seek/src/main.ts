@@ -7,10 +7,7 @@ const searchTerms = (
 ) as string[];
 
 const location = process.env.SEEK_LOCATION ?? "All Australia";
-const maxJobsPerTerm = parseInt(
-  process.env.SEEK_MAX_JOBS_PER_TERM ?? "50",
-  10,
-);
+const maxJobsPerTerm = parseInt(process.env.SEEK_MAX_JOBS_PER_TERM ?? "50", 10);
 
 runSeek({ searchTerms, location, maxJobsPerTerm })
   .then((result) => {

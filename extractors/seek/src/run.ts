@@ -1,5 +1,5 @@
-import { ApifyClient } from "apify-client";
 import type { CreateJobInput } from "@shared/types/jobs";
+import { ApifyClient } from "apify-client";
 
 const ACTOR_ID =
   process.env.SEEK_APIFY_ACTOR_ID ?? "unfenced-group/seek-com-au-scraper";
@@ -41,10 +41,10 @@ function toStr(value: unknown): string | undefined {
 }
 
 function toNum(value: unknown): number | undefined {
-  if (typeof value === "number" && isFinite(value)) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string") {
     const n = parseFloat(value);
-    if (isFinite(n)) return n;
+    if (Number.isFinite(n)) return n;
   }
   return undefined;
 }

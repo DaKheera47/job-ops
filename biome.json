@@ -10,7 +10,9 @@
       "**",
       "!!**/dist",
       "!!docs-site/.docusaurus",
-      "!!docs-site/build"
+      "!!docs-site/build",
+      "!!**/.venv",
+      "!!.claude"
     ]
   },
   "css": {
