@@ -24,6 +24,7 @@ export type SeekProgressEvent =
 export interface RunSeekOptions {
   searchTerms?: string[];
   location?: string;
+  country?: string;
   maxJobsPerTerm?: number;
   onProgress?: (event: SeekProgressEvent) => void;
   shouldCancel?: () => boolean;
@@ -48,7 +49,10 @@ function toNum(value: unknown): number | undefined {
   return undefined;
 }
 
-function mapSeekItem(item: SeekRawItem): CreateJobInput | null {
+function mapSeekItem(
+  item: SeekRawItem,
+  countryLabel: string,
+): CreateJobInput | null {
   const jobUrl = toStr(item.url);
   if (!jobUrl) return null;
 
@@ -68,7 +72,7 @@ function mapSeekItem(item: SeekRawItem): CreateJobInput | null {
     jobUrl,
     applicationLink: toStr(item.applyUrl) ?? jobUrl,
     location: toStr(item.location)
-      ? `${toStr(item.location)}, Australia`
+      ? `${toStr(item.location)}, ${countryLabel}`
       : undefined,
     salary: toStr(item.salaryLabel),
     salaryMinAmount: salaryMin,
@@ -98,7 +102,9 @@ export async function runSeek(
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
       : ["software engineer"];
-  const location = options.location ?? "All Australia";
+  const countryLabel =
+    options.country === "new zealand" ? "New Zealand" : "Australia";
+  const location = options.location ?? `All ${countryLabel}`;
   const maxJobsPerTerm = options.maxJobsPerTerm ?? 50;
   const termTotal = searchTerms.length;
 
@@ -135,7 +141,7 @@ export async function runSeek(
       let jobsFoundTerm = 0;
       for (const item of items) {
         if (options.shouldCancel?.()) break;
-        const mapped = mapSeekItem(item as SeekRawItem);
+        const mapped = mapSeekItem(item as SeekRawItem, countryLabel);
         if (!mapped) continue;
         const key = mapped.sourceJobId ?? mapped.jobUrl;
         if (seen.has(key)) continue;

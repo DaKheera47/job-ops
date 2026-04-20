@@ -2,6 +2,7 @@ import type {
   ExtractorManifest,
   ExtractorProgressEvent,
 } from "@shared/types/extractors";
+import { resolveSearchCities } from "@shared/search-cities.js";
 import { runSeek } from "./src/run";
 
 function toProgress(event: {
@@ -46,14 +47,18 @@ export const manifest: ExtractorManifest = {
       ? parseInt(context.settings.seekMaxJobsPerTerm, 10)
       : 50;
 
-    const location =
-      context.settings.searchCities ??
-      context.settings.jobspyLocation ??
-      "All Australia";
+    const countryLabel =
+      context.selectedCountry === "new zealand" ? "New Zealand" : "Australia";
+
+    const cities = resolveSearchCities({
+      single: context.settings.searchCities ?? context.settings.jobspyLocation,
+    });
+    const location = cities[0] ?? `All ${countryLabel}`;
 
     const result = await runSeek({
       searchTerms: context.searchTerms,
       location,
+      country: context.selectedCountry,
       maxJobsPerTerm,
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
