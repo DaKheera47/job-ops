@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const stepState = vi.hoisted(() => {
   let resolveDiscover:
@@ -44,8 +47,22 @@ vi.mock("./steps", () => ({
 }));
 
 describe.sequential("pipeline cancellation", () => {
-  beforeEach(() => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    vi.resetModules();
     vi.clearAllMocks();
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-pipeline-cancel-"));
+    process.env.DATA_DIR = tempDir;
+    process.env.NODE_ENV = "test";
+
+    await import("../db/migrate");
+  });
+
+  afterEach(async () => {
+    const { closeDb } = await import("../db/index");
+    closeDb();
+    await rm(tempDir, { recursive: true, force: true });
   });
 
   it("marks run as cancelled at checkpoint and resets running state", async () => {
