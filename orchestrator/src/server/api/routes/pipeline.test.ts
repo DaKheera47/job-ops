@@ -64,6 +64,52 @@ describe.sequential("Pipeline API routes", () => {
       jobsDiscovered: 8,
       jobsProcessed: 1,
       errorMessage: null,
+      requestedConfig: {
+        topN: 10,
+        minSuitabilityScore: 55,
+        sources: ["linkedin", "indeed"],
+        enableCrawling: true,
+        enableScoring: true,
+        enableImporting: true,
+        enableAutoTailoring: true,
+      },
+      effectiveConfig: {
+        country: "united states",
+        countryLabel: "United States",
+        searchCities: ["London"],
+        searchTermsCount: 2,
+        workplaceTypes: ["remote"],
+        locationSearchScope: "selected_only",
+        locationMatchStrictness: "exact_only",
+        compatibleSources: ["linkedin", "indeed"],
+        skippedSources: [],
+        blockedCompanyKeywordsCount: 1,
+        sourceLimits: {
+          ukvisajobsMaxJobs: 50,
+          adzunaMaxJobsPerTerm: 50,
+          gradcrackerMaxJobsPerTerm: 50,
+          startupjobsMaxJobsPerTerm: 50,
+          jobspyResultsWanted: 20,
+        },
+        autoSkipScoreThreshold: 65,
+        pdfRenderer: "rxresume",
+        models: {
+          scorer: "model-scorer",
+          tailoring: "model-tailoring",
+          projectSelection: "model-project-selection",
+        },
+        resumeProjects: {
+          maxProjects: 3,
+          lockedProjectCount: 1,
+          aiSelectableProjectCount: 2,
+        },
+      },
+      resultSummary: {
+        stage: "processing",
+        jobsScored: 5,
+        jobsSelected: 2,
+        sourceErrors: ["indeed: upstream timeout"],
+      },
     });
 
     await db.insert(schema.jobs).values([
@@ -116,6 +162,18 @@ describe.sequential("Pipeline API routes", () => {
       }),
     );
     expect(body.data.exactMetrics.durationMs).toBe(600000);
+    expect(body.data.savedDetails).toEqual(
+      expect.objectContaining({
+        requestedConfig: expect.objectContaining({
+          topN: 10,
+          sources: ["linkedin", "indeed"],
+        }),
+        resultSummary: expect.objectContaining({
+          stage: "processing",
+          sourceErrors: ["indeed: upstream timeout"],
+        }),
+      }),
+    );
     expect(body.data.inferredMetrics.jobsCreated).toEqual({
       value: 2,
       quality: "inferred_from_timestamps",
@@ -150,6 +208,7 @@ describe.sequential("Pipeline API routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
+    expect(body.data.savedDetails).toBeNull();
     expect(body.data.inferredMetrics.jobsCreated).toEqual({
       value: null,
       quality: "unavailable",

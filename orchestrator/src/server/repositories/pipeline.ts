@@ -3,7 +3,12 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { PipelineRun, PipelineRunInsights } from "@shared/types";
+import type {
+  PipelineRun,
+  PipelineRunInsights,
+  PipelineRunResultSummary,
+  PipelineRunSavedDetails,
+} from "@shared/types";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
@@ -23,10 +28,29 @@ function mapRowToPipelineRun(
   };
 }
 
+function mapRowToSavedDetails(
+  row: typeof schema.pipelineRuns.$inferSelect,
+): PipelineRunSavedDetails | null {
+  if (!row.requestedConfig || !row.effectiveConfig || !row.resultSummary) {
+    return null;
+  }
+
+  return {
+    requestedConfig:
+      row.requestedConfig as PipelineRunSavedDetails["requestedConfig"],
+    effectiveConfig:
+      row.effectiveConfig as PipelineRunSavedDetails["effectiveConfig"],
+    resultSummary:
+      row.resultSummary as PipelineRunSavedDetails["resultSummary"],
+  };
+}
+
 /**
  * Create a new pipeline run.
  */
-export async function createPipelineRun(): Promise<PipelineRun> {
+export async function createPipelineRun(args?: {
+  savedDetails?: PipelineRunSavedDetails | null;
+}): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -34,6 +58,9 @@ export async function createPipelineRun(): Promise<PipelineRun> {
     id,
     startedAt: now,
     status: "running",
+    requestedConfig: args?.savedDetails?.requestedConfig ?? null,
+    effectiveConfig: args?.savedDetails?.effectiveConfig ?? null,
+    resultSummary: args?.savedDetails?.resultSummary ?? null,
   });
 
   return {
@@ -58,6 +85,7 @@ export async function updatePipelineRun(
     jobsDiscovered: number;
     jobsProcessed: number;
     errorMessage: string;
+    resultSummary: PipelineRunResultSummary | null;
   }>,
 ): Promise<void> {
   await db.update(pipelineRuns).set(update).where(eq(pipelineRuns.id, id));
@@ -108,8 +136,15 @@ export async function getPipelineRunById(
 export async function getPipelineRunInsights(
   id: string,
 ): Promise<PipelineRunInsights | null> {
-  const run = await getPipelineRunById(id);
-  if (!run) return null;
+  const [row] = await db
+    .select()
+    .from(pipelineRuns)
+    .where(eq(pipelineRuns.id, id))
+    .limit(1);
+  if (!row) return null;
+
+  const run = mapRowToPipelineRun(row);
+  const savedDetails = mapRowToSavedDetails(row);
 
   const durationMs =
     run.completedAt == null
@@ -124,6 +159,7 @@ export async function getPipelineRunInsights(
     return {
       run,
       exactMetrics: { durationMs },
+      savedDetails,
       inferredMetrics: {
         jobsCreated: { value: null, quality: "unavailable" },
         jobsUpdated: { value: null, quality: "unavailable" },
@@ -166,6 +202,7 @@ export async function getPipelineRunInsights(
   return {
     run,
     exactMetrics: { durationMs },
+    savedDetails,
     inferredMetrics: {
       jobsCreated: {
         value: createdRow?.count ?? 0,

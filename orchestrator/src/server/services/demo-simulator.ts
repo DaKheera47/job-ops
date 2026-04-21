@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import * as pipeline from "@server/pipeline/index";
+import { buildPipelineRunSavedDetails } from "@server/pipeline/run-details";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { transitionStage } from "@server/services/applicationTracking";
@@ -50,7 +51,20 @@ async function ensureJob(jobId: string): Promise<Job> {
 export async function simulatePipelineRun(
   config?: Partial<PipelineConfig>,
 ): Promise<{ message: string; runId: string; jobsDiscovered: number }> {
-  const run = await pipelineRepo.createPipelineRun();
+  const mergedConfig: PipelineConfig = {
+    topN: config?.topN ?? 10,
+    minSuitabilityScore: config?.minSuitabilityScore ?? 50,
+    sources: config?.sources ?? ["manual"],
+    outputDir: "/tmp",
+    enableCrawling: config?.enableCrawling ?? true,
+    enableScoring: config?.enableScoring ?? true,
+    enableImporting: config?.enableImporting ?? true,
+    enableAutoTailoring: config?.enableAutoTailoring ?? true,
+  };
+  const savedDetails = await buildPipelineRunSavedDetails(mergedConfig).catch(
+    () => null,
+  );
+  const run = await pipelineRepo.createPipelineRun({ savedDetails });
   const source = config?.sources?.[0] ?? "manual";
   const now = new Date();
   const isoNow = now.toISOString();
@@ -73,6 +87,15 @@ export async function simulatePipelineRun(
     completedAt: isoNow,
     jobsDiscovered: 1,
     jobsProcessed: 0,
+    resultSummary: savedDetails?.resultSummary
+      ? {
+          ...savedDetails.resultSummary,
+          stage: "completed",
+          jobsScored: 0,
+          jobsSelected: 0,
+          sourceErrors: [],
+        }
+      : null,
   });
   pipeline.progressHelpers.complete(1, 0);
   logger.info("Simulated demo pipeline run", { pipelineRunId: run.id });

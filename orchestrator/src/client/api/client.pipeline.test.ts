@@ -63,6 +63,7 @@ describe("pipeline client helpers", () => {
             errorMessage: null,
           },
           exactMetrics: { durationMs: 300000 },
+          savedDetails: null,
           inferredMetrics: {
             jobsCreated: { value: 5, quality: "inferred_from_timestamps" },
             jobsUpdated: { value: 4, quality: "inferred_from_timestamps" },

@@ -75,6 +75,54 @@ describe("OverviewPipelineRunsSection", () => {
         errorMessage: "Scoring failed",
       },
       exactMetrics: { durationMs: 240000 },
+      savedDetails: {
+        requestedConfig: {
+          topN: 5,
+          minSuitabilityScore: 75,
+          sources: ["linkedin", "indeed"],
+          enableCrawling: true,
+          enableScoring: true,
+          enableImporting: true,
+          enableAutoTailoring: false,
+        },
+        effectiveConfig: {
+          country: "united states",
+          countryLabel: "United States",
+          searchCities: ["London"],
+          searchTermsCount: 3,
+          workplaceTypes: ["remote", "hybrid"],
+          locationSearchScope: "selected_only",
+          locationMatchStrictness: "exact_only",
+          compatibleSources: ["linkedin", "indeed"],
+          skippedSources: [],
+          blockedCompanyKeywordsCount: 2,
+          sourceLimits: {
+            ukvisajobsMaxJobs: 50,
+            adzunaMaxJobsPerTerm: 50,
+            gradcrackerMaxJobsPerTerm: 50,
+            startupjobsMaxJobsPerTerm: 50,
+            jobspyResultsWanted: 20,
+          },
+          autoSkipScoreThreshold: 60,
+          pdfRenderer: "rxresume",
+          models: {
+            scorer: "gpt-scorer",
+            tailoring: "gpt-tailor",
+            projectSelection: "gpt-projects",
+          },
+          resumeProjects: {
+            maxProjects: 3,
+            lockedProjectCount: 1,
+            aiSelectableProjectCount: 4,
+          },
+        },
+        resultSummary: {
+          stage: "selection",
+          jobsScored: 4,
+          jobsSelected: 2,
+          sourceErrors: ["linkedin: temporary rate limit"],
+        },
+      },
       inferredMetrics: {
         jobsCreated: { value: 4, quality: "inferred_from_timestamps" },
         jobsUpdated: { value: 4, quality: "inferred_from_timestamps" },
@@ -99,9 +147,16 @@ describe("OverviewPipelineRunsSection", () => {
       expect(api.getPipelineRunInsights).toHaveBeenCalledWith("run-failed"),
     );
     expect(await screen.findByText("Run details")).toBeInTheDocument();
+    expect(screen.getByText("Saved settings")).toBeInTheDocument();
+    expect(screen.getByText("Requested run")).toBeInTheDocument();
+    expect(screen.getByText("Effective settings")).toBeInTheDocument();
+    expect(screen.getByText("Saved execution summary")).toBeInTheDocument();
     expect(screen.getByText("What changed")).toBeInTheDocument();
     expect(screen.getByText("Inferred from timestamps")).toBeInTheDocument();
     expect(screen.getByText("Scoring failed")).toBeInTheDocument();
+    expect(
+      screen.getByText("linkedin: temporary rate limit"),
+    ).toBeInTheDocument();
   });
 
   it("shows live progress when a run is active", async () => {
@@ -140,6 +195,7 @@ describe("OverviewPipelineRunsSection", () => {
         errorMessage: null,
       },
       exactMetrics: { durationMs: null },
+      savedDetails: null,
       inferredMetrics: {
         jobsCreated: { value: null, quality: "unavailable" },
         jobsUpdated: { value: null, quality: "unavailable" },

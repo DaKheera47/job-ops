@@ -2,6 +2,7 @@ import * as api from "@client/api";
 import { ListItem } from "@client/components/layout";
 import { PipelineProgress } from "@client/components/PipelineProgress";
 import { queryKeys } from "@client/lib/queryKeys";
+import { sourceLabel } from "@shared/extractors";
 import type { PipelineRun, PipelineRunInsights } from "@shared/types";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -93,6 +94,19 @@ function RunStatusBadge(props: { status: PipelineRunDisplayStatus }) {
   );
 }
 
+function formatSourceList(sources: string[]) {
+  if (sources.length === 0) return "None";
+  return sources.join(", ");
+}
+
+function formatToggleState(value: boolean) {
+  return value ? "Enabled" : "Disabled";
+}
+
+function formatStageLabel(stage: string) {
+  return stage.replace(/_/g, " ");
+}
+
 function RunsList(props: {
   runs: PipelineRun[];
   activeRunId: string | null;
@@ -172,6 +186,7 @@ function RunInsightsBody(props: {
   isActiveRun: boolean;
 }) {
   const { run, exactMetrics, inferredMetrics } = props.insights;
+  const savedDetails = props.insights.savedDetails;
   const displayStatus = getPipelineRunDisplayStatus(run, {
     isActive: props.isActiveRun,
   });
@@ -215,6 +230,193 @@ function RunInsightsBody(props: {
           <div className="mt-1 text-muted-foreground">{runReason}</div>
         </div>
       ) : null}
+
+      <div className="space-y-3">
+        <div className="font-medium">Saved settings</div>
+        {savedDetails ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+              <div className="text-sm font-medium">Requested run</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <MetricCard
+                  label="Top N"
+                  value={savedDetails.requestedConfig.topN.toLocaleString()}
+                />
+                <MetricCard
+                  label="Min suitability score"
+                  value={savedDetails.requestedConfig.minSuitabilityScore.toLocaleString()}
+                />
+                <MetricCard
+                  label="Sources"
+                  value={formatSourceList(
+                    savedDetails.requestedConfig.sources.map(sourceLabel),
+                  )}
+                />
+                <MetricCard
+                  label="Crawling"
+                  value={formatToggleState(
+                    savedDetails.requestedConfig.enableCrawling,
+                  )}
+                />
+                <MetricCard
+                  label="Scoring"
+                  value={formatToggleState(
+                    savedDetails.requestedConfig.enableScoring,
+                  )}
+                />
+                <MetricCard
+                  label="Importing"
+                  value={formatToggleState(
+                    savedDetails.requestedConfig.enableImporting,
+                  )}
+                />
+                <MetricCard
+                  label="Auto tailoring"
+                  value={formatToggleState(
+                    savedDetails.requestedConfig.enableAutoTailoring,
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+              <div className="text-sm font-medium">Effective settings</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <MetricCard
+                  label="Country"
+                  value={
+                    savedDetails.effectiveConfig.countryLabel ??
+                    "Not restricted"
+                  }
+                />
+                <MetricCard
+                  label="Cities"
+                  value={
+                    savedDetails.effectiveConfig.searchCities.length > 0
+                      ? savedDetails.effectiveConfig.searchCities.join(", ")
+                      : "Not restricted"
+                  }
+                />
+                <MetricCard
+                  label="Workplace types"
+                  value={
+                    savedDetails.effectiveConfig.workplaceTypes.length > 0
+                      ? savedDetails.effectiveConfig.workplaceTypes.join(", ")
+                      : "Not restricted"
+                  }
+                />
+                <MetricCard
+                  label="Location matching"
+                  value={`${formatStageLabel(
+                    savedDetails.effectiveConfig.locationSearchScope,
+                  )}; ${formatStageLabel(
+                    savedDetails.effectiveConfig.locationMatchStrictness,
+                  )}`}
+                />
+                <MetricCard
+                  label="Compatible sources"
+                  value={formatSourceList(
+                    savedDetails.effectiveConfig.compatibleSources.map(
+                      sourceLabel,
+                    ),
+                  )}
+                />
+                <MetricCard
+                  label="Skipped sources"
+                  value={
+                    savedDetails.effectiveConfig.skippedSources.length > 0
+                      ? savedDetails.effectiveConfig.skippedSources
+                          .map((entry) => sourceLabel(entry.source))
+                          .join(", ")
+                      : "None"
+                  }
+                  hint={
+                    savedDetails.effectiveConfig.skippedSources.length > 0
+                      ? savedDetails.effectiveConfig.skippedSources
+                          .map((entry) => entry.reason)
+                          .join(" ")
+                      : null
+                  }
+                />
+                <MetricCard
+                  label="Search terms"
+                  value={savedDetails.effectiveConfig.searchTermsCount.toLocaleString()}
+                />
+                <MetricCard
+                  label="Blocked company filters"
+                  value={savedDetails.effectiveConfig.blockedCompanyKeywordsCount.toLocaleString()}
+                />
+                <MetricCard
+                  label="Auto-skip threshold"
+                  value={
+                    savedDetails.effectiveConfig.autoSkipScoreThreshold == null
+                      ? "Off"
+                      : savedDetails.effectiveConfig.autoSkipScoreThreshold.toLocaleString()
+                  }
+                />
+                <MetricCard
+                  label="PDF renderer"
+                  value={savedDetails.effectiveConfig.pdfRenderer}
+                />
+                <MetricCard
+                  label="Source limits"
+                  value={`Indeed ${savedDetails.effectiveConfig.sourceLimits.jobspyResultsWanted}; UK Visa Jobs ${savedDetails.effectiveConfig.sourceLimits.ukvisajobsMaxJobs}`}
+                  hint={`Adzuna ${savedDetails.effectiveConfig.sourceLimits.adzunaMaxJobsPerTerm}; Gradcracker ${savedDetails.effectiveConfig.sourceLimits.gradcrackerMaxJobsPerTerm}; startup.jobs ${savedDetails.effectiveConfig.sourceLimits.startupjobsMaxJobsPerTerm}`}
+                />
+                <MetricCard
+                  label="Resume projects"
+                  value={`${savedDetails.effectiveConfig.resumeProjects.maxProjects} max`}
+                  hint={`${savedDetails.effectiveConfig.resumeProjects.lockedProjectCount} locked, ${savedDetails.effectiveConfig.resumeProjects.aiSelectableProjectCount} AI-selectable`}
+                />
+                <MetricCard
+                  label="Models"
+                  value={savedDetails.effectiveConfig.models.scorer}
+                  hint={`Tailoring ${savedDetails.effectiveConfig.models.tailoring}; project selection ${savedDetails.effectiveConfig.models.projectSelection}`}
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-3">
+              <div className="text-sm font-medium">Saved execution summary</div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <MetricCard
+                  label="Last recorded stage"
+                  value={formatStageLabel(savedDetails.resultSummary.stage)}
+                />
+                <MetricCard
+                  label="Jobs scored"
+                  value={
+                    savedDetails.resultSummary.jobsScored == null
+                      ? "Not recorded"
+                      : savedDetails.resultSummary.jobsScored.toLocaleString()
+                  }
+                />
+                <MetricCard
+                  label="Jobs selected"
+                  value={
+                    savedDetails.resultSummary.jobsSelected == null
+                      ? "Not recorded"
+                      : savedDetails.resultSummary.jobsSelected.toLocaleString()
+                  }
+                />
+                <MetricCard
+                  label="Source errors"
+                  value={savedDetails.resultSummary.sourceErrors.length.toLocaleString()}
+                />
+              </div>
+              {savedDetails.resultSummary.sourceErrors.length > 0 ? (
+                <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3 text-sm text-muted-foreground">
+                  {savedDetails.resultSummary.sourceErrors.join(" ")}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-sm text-muted-foreground">
+            Saved run settings are available for newer pipeline runs.
+          </div>
+        )}
+      </div>
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
