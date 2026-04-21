@@ -119,34 +119,16 @@ function buildLocationEvidence(args: {
   locationBase?: string | undefined;
   legacyLocation?: string | undefined;
   locations: string[];
-}): JobLocationEvidence[] | undefined {
-  const evidence: JobLocationEvidence[] = [];
+}): JobLocationEvidence | undefined {
+  const location =
+    args.locationBase ?? args.legacyLocation ?? args.locations[0] ?? undefined;
 
-  if (args.locationBase) {
-    evidence.push({
-      kind: "location",
-      value: args.locationBase,
-      sourceField: "location_base",
-    });
-  }
+  if (!location) return undefined;
 
-  if (args.legacyLocation) {
-    evidence.push({
-      kind: "location",
-      value: args.legacyLocation,
-      sourceField: "location",
-    });
-  }
-
-  for (const location of args.locations) {
-    evidence.push({
-      kind: "location",
-      value: location,
-      sourceField: "locations",
-    });
-  }
-
-  return evidence.length > 0 ? evidence : undefined;
+  return {
+    location,
+    source: "workingnomads",
+  };
 }
 
 function escapeQueryString(value: string): string {

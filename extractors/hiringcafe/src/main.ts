@@ -34,6 +34,7 @@ interface ExtractedJob {
   jobUrl: string;
   applicationLink: string;
   location?: string;
+  locationEvidence?: JobLocationEvidence;
   salary?: string;
   datePosted?: string;
   jobDescription?: string;
@@ -176,42 +177,24 @@ function buildLocationEvidence(args: {
   cities: string[];
   states: string[];
   countries: string[];
-}): JobLocationEvidence[] | undefined {
-  const evidence: JobLocationEvidence[] = [];
+}): JobLocationEvidence | undefined {
+  const location =
+    args.formattedLocation ??
+    args.cities[0] ??
+    args.states[0] ??
+    args.countries[0];
 
-  if (args.formattedLocation) {
-    evidence.push({
-      kind: "location",
-      value: args.formattedLocation,
-      sourceField: "formatted_workplace_location",
-    });
-  }
+  const city = args.cities[0];
+  const country = args.countries[0];
 
-  for (const city of args.cities) {
-    evidence.push({
-      kind: "city",
-      value: city,
-      sourceField: "workplace_cities",
-    });
-  }
+  if (!location && !city && !country) return undefined;
 
-  for (const state of args.states) {
-    evidence.push({
-      kind: "region",
-      value: state,
-      sourceField: "workplace_states",
-    });
-  }
-
-  for (const country of args.countries) {
-    evidence.push({
-      kind: "country",
-      value: country,
-      sourceField: "workplace_countries",
-    });
-  }
-
-  return evidence.length > 0 ? evidence : undefined;
+  return {
+    location,
+    city,
+    country,
+    source: "hiringcafe",
+  };
 }
 
 function mapHiringCafeJob(raw: RawHiringCafeJob): ExtractedJob | null {

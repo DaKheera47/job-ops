@@ -130,13 +130,10 @@ function mapAdzunaRow(row: AdzunaRawJob): CreateJobInput | null {
 
   const location = toStringOrNull(row.location);
   const locationEvidence = location
-    ? ([
-        {
-          kind: "location",
-          value: location,
-          sourceField: "location",
-        },
-      ] satisfies JobLocationEvidence[])
+    ? ({
+        location,
+        source: "adzuna",
+      } satisfies JobLocationEvidence)
     : undefined;
 
   return {
@@ -149,7 +146,7 @@ function mapAdzunaRow(row: AdzunaRawJob): CreateJobInput | null {
       toStringOrNull(row.applicationLink) ??
       toStringOrNull(row.jobUrl) ??
       undefined,
-    location,
+    location: location ?? undefined,
     locationEvidence,
     salary: toStringOrNull(row.salary) ?? undefined,
     datePosted: toStringOrNull(row.datePosted) ?? undefined,
