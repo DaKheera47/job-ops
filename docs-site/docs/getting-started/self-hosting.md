@@ -35,8 +35,9 @@ echo "GITHUB_TOKEN=ghp_your_token_here" >> .env
 docker compose up -d --build
 ```
 
-JobOps uses this token only during the Docker build step that downloads
-Camoufox browser binaries.
+JobOps passes this token to the Docker build as a BuildKit secret only for the
+Camoufox download step. It is not stored in the runtime container
+environment.
 
 ## 2) Access the app and onboard
 

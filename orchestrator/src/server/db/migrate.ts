@@ -455,10 +455,6 @@ const migrations = [
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
 
-  `ALTER TABLE pipeline_runs ADD COLUMN requested_config TEXT`,
-  `ALTER TABLE pipeline_runs ADD COLUMN effective_config TEXT`,
-  `ALTER TABLE pipeline_runs ADD COLUMN result_summary TEXT`,
-
   // Ensure jobs status supports "in_progress" for existing databases.
   `CREATE TABLE IF NOT EXISTS jobs_new (
     id TEXT PRIMARY KEY,

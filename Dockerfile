@@ -71,8 +71,8 @@ RUN --mount=type=cache,target=/root/.npm \
     --no-audit --no-fund --progress=false
 
 # Fetch Camoufox binaries before copying source to keep the download cached.
-ARG GITHUB_TOKEN
-RUN GITHUB_TOKEN="${GITHUB_TOKEN}" node ./scripts/camoufox-fetch.mjs
+RUN --mount=type=secret,id=github_token,required=false \
+    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM node-deps AS build-sources
 

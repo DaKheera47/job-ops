@@ -7,8 +7,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      secrets:
+        - github_token
     image: ghcr.io/dakheera47/job-ops:latest
     container_name: job-ops
     ports:
@@ -38,6 +38,10 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
     develop:
       watch:
         # Rebuild container when package.json changes
