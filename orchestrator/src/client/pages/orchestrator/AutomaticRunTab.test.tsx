@@ -1,4 +1,5 @@
 import { createAppSettings } from "@shared/testing/factories.js";
+import type { JobSource } from "@shared/types";
 import {
   fireEvent,
   render,
@@ -7,6 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import type React from "react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
 
@@ -32,6 +34,15 @@ vi.mock("@/lib/user-location", () => ({
 }));
 
 describe("AutomaticRunTab", () => {
+  const openLocationPreferences = () => {
+    const trigger = screen.getByRole("button", {
+      name: "Review and edit location intent",
+    });
+    if (trigger.getAttribute("aria-expanded") !== "true") {
+      fireEvent.click(trigger);
+    }
+  };
+
   const openSourcePicker = () => {
     const trigger = screen.getByRole("button", {
       name: "Review and edit sources",
@@ -217,6 +228,66 @@ describe("AutomaticRunTab", () => {
 
     expect(screen.getByRole("button", { name: "Gradcracker" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "UK Visa Jobs" })).toBeDisabled();
+  });
+
+  it("moves a deselected source to the end of the ready list", async () => {
+    const StatefulTab = () => {
+      const [pipelineSources, setPipelineSources] = useState<JobSource[]>([
+        "linkedin",
+        "indeed",
+      ]);
+
+      return (
+        <AutomaticRunTab
+          open
+          settings={createAppSettings({
+            jobspyCountryIndeed: {
+              value: "united kingdom",
+              default: "united kingdom",
+              override: "united kingdom",
+            },
+            searchCities: {
+              value: "London",
+              default: "",
+              override: "London",
+            },
+          })}
+          enabledSources={["linkedin", "indeed", "glassdoor"]}
+          pipelineSources={pipelineSources}
+          onToggleSource={(source, checked) => {
+            setPipelineSources((current) =>
+              checked
+                ? [...current.filter((value) => value !== source), source]
+                : current.filter((value) => value !== source),
+            );
+          }}
+          onSetPipelineSources={vi.fn()}
+          isPipelineRunning={false}
+          onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+        />
+      );
+    };
+
+    render(<StatefulTab />);
+
+    openSourcePicker();
+    fireEvent.click(screen.getByRole("button", { name: "LinkedIn" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("button", {
+          name: /^(Indeed|Glassdoor|LinkedIn)$/,
+        }),
+      ).toHaveLength(3);
+    });
+
+    expect(
+      screen
+        .getAllByRole("button", {
+          name: /^(Indeed|Glassdoor|LinkedIn)$/,
+        })
+        .map((button) => button.getAttribute("aria-label")),
+    ).toEqual(["Indeed", "Glassdoor", "LinkedIn"]);
   });
 
   it("shows disabled source guidance copy for UK-only source", async () => {
@@ -481,6 +552,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openLocationPreferences();
     expect(screen.getByLabelText("Remote")).toBeChecked();
     expect(screen.getByLabelText("Onsite")).toBeChecked();
     expect(screen.getByLabelText("Hybrid")).not.toBeChecked();
@@ -536,6 +608,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openLocationPreferences();
     fireEvent.click(screen.getByLabelText("Remote"));
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
@@ -597,6 +670,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openLocationPreferences();
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
     fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
@@ -687,6 +761,7 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
+    openLocationPreferences();
     expect(screen.getByText("Work arrangement")).toBeInTheDocument();
     expect(screen.getByText("Location scope")).toBeInTheDocument();
     expect(screen.getByText("Match strictness")).toBeInTheDocument();

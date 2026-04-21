@@ -160,7 +160,7 @@ function getSourceStatus(args: {
     }
 
     return {
-      badgeLabel: "Ready",
+      badgeLabel: "Available",
       detail: "This source is available without a country selection.",
       available: true,
     };
@@ -191,7 +191,7 @@ function getSourceStatus(args: {
     }
 
     return {
-      badgeLabel: "Ready",
+      badgeLabel: "Available",
       detail: "Glassdoor is available for this location intent.",
       available: true,
     };
@@ -214,7 +214,7 @@ function getSourceStatus(args: {
   }
 
   return {
-    badgeLabel: "Ready",
+    badgeLabel: "Available",
     detail: "Available for this location intent.",
     available: true,
   };
@@ -224,15 +224,6 @@ interface SourcePickerRow {
   source: JobSource;
   selected: boolean;
   status: ReturnType<typeof getSourceStatus>;
-}
-
-function summarizeSelectedSources(sources: JobSource[]): string {
-  if (sources.length === 0) return "Choose at least one source for this run.";
-
-  const labels = sources.map((source) => sourceLabel[source]);
-  if (labels.length <= 3) return labels.join(", ");
-
-  return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
 }
 
 function getRadioOptionClassName(selected: boolean): string {
@@ -287,6 +278,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+  const [sourceDisplayOrder, setSourceDisplayOrder] =
+    useState<JobSource[]>(enabledSources);
   const [browserCountrySuggestion, setBrowserCountrySuggestion] = useState<
     string | null
   >(null);
@@ -380,6 +373,23 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     setAdvancedOpen(false);
   }, [open, settings, reset]);
 
+  useEffect(() => {
+    setSourceDisplayOrder((current) => {
+      const filtered = current.filter((source) =>
+        enabledSources.includes(source),
+      );
+      const additions = enabledSources.filter(
+        (source) => !filtered.includes(source),
+      );
+      const next = [...filtered, ...additions];
+
+      return next.length === current.length &&
+        next.every((source, index) => source === current[index])
+        ? current
+        : next;
+    });
+  }, [enabledSources]);
+
   const values = useMemo<AutomaticRunValues>(() => {
     const normalizedCountry = normalizeUiCountryKey(countryInput);
     return {
@@ -469,7 +479,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const countrySelectionInvalid = values.country.length === 0;
   const sourceRows = useMemo<SourcePickerRow[]>(
     () =>
-      enabledSources.flatMap((source) => {
+      sourceDisplayOrder.flatMap((source) => {
         const plan = sourcePlanBySource.get(source);
         if (!plan) return [];
 
@@ -486,8 +496,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       }),
     [
       countrySelectionInvalid,
-      enabledSources,
       pipelineSources,
+      sourceDisplayOrder,
       sourcePlanBySource,
     ],
   );
@@ -502,10 +512,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const unavailableSourceRows = useMemo(
     () => sourceRows.filter((row) => !row.status.available),
     [sourceRows],
-  );
-  const selectedSourceSummary = useMemo(
-    () => summarizeSelectedSources(selectedSourceRows.map((row) => row.source)),
-    [selectedSourceRows],
   );
   const sourceMotionTransition = useMemo(
     () =>
@@ -584,6 +590,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     setValue("workplaceTypes", next, { shouldDirty: true });
   };
+
+  const handleSourceToggle = useCallback(
+    (source: JobSource, checked: boolean) => {
+      setSourceDisplayOrder((current) => [
+        ...current.filter((value) => value !== source),
+        source,
+      ]);
+      onToggleSource(source, checked);
+    },
+    [onToggleSource],
+  );
 
   const applyPreset = (presetId: AutomaticPresetId) => {
     const preset = AUTOMATIC_PRESETS[presetId];
@@ -994,9 +1011,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           ? "Choose sources for this run"
                           : `${selectedSourceRows.length} source${selectedSourceRows.length === 1 ? "" : "s"} selected`}
                       </p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {selectedSourceSummary}
-                      </p>
                     </motion.div>
                     <motion.div
                       layout
@@ -1011,7 +1025,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           sourceRows.filter((row) => row.status.available)
                             .length
                         }{" "}
-                        ready
+                        available
                       </Badge>
                       {unavailableSourceRows.length > 0 ? (
                         <Badge variant="outline" className="rounded-full">
@@ -1064,7 +1078,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                                   title="Included in this run."
                                   className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-primary/15"
                                   onClick={() =>
-                                    onToggleSource(row.source, false)
+                                    handleSourceToggle(row.source, false)
                                   }
                                 >
                                   <span className="min-w-0">
@@ -1091,7 +1105,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           transition={sourceMotionTransition}
                           className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
                         >
-                          Ready to add
+                          Available
                         </motion.p>
                         <motion.div
                           layout
@@ -1113,10 +1127,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                                   variant="ghost"
                                   aria-label={sourceLabel[row.source]}
                                   aria-pressed={false}
-                                  title="Ready for this location setup."
+                                  title="Available for this location setup."
                                   className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-muted/40"
                                   onClick={() =>
-                                    onToggleSource(row.source, true)
+                                    handleSourceToggle(row.source, true)
                                   }
                                 >
                                   <span className="min-w-0">
