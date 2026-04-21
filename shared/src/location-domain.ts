@@ -307,6 +307,8 @@ function createDefaultSupportedCountryKeys(
     case "gradcracker":
     case "ukvisajobs":
       return ["united kingdom"];
+    case "seek":
+      return ["australia", "new zealand"];
     case "glassdoor":
       return [
         "australia",

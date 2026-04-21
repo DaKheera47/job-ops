@@ -1,7 +1,8 @@
 import {
-  formatCountryLabel,
-  getCompatibleSourcesForCountry,
-} from "@shared/location-support.js";
+  createLocationIntentFromLegacyInputs,
+  planLocationSources,
+} from "@shared/location-domain.js";
+import { formatCountryLabel } from "@shared/location-support.js";
 import { parseSearchCitiesSetting } from "@shared/search-cities.js";
 import type {
   AppSettings,
@@ -13,6 +14,24 @@ import type {
   PipelineRunSavedDetails,
 } from "@shared/types";
 import { getEffectiveSettings } from "../services/settings";
+
+type SnapshotLocationIntent = NonNullable<PipelineConfig["locationIntent"]>;
+
+function resolveLocationIntentSnapshot(args: {
+  config: PipelineConfig;
+  settings: AppSettings;
+}): SnapshotLocationIntent {
+  return (
+    args.config.locationIntent ??
+    createLocationIntentFromLegacyInputs({
+      country: args.settings.jobspyCountryIndeed.value,
+      searchCities: parseSearchCitiesSetting(args.settings.searchCities.value),
+      workplaceTypes: args.settings.workplaceTypes.value,
+      searchScope: args.settings.locationSearchScope.value,
+      matchStrictness: args.settings.locationMatchStrictness.value,
+    })
+  );
+}
 
 export function buildRequestedConfigSnapshot(
   config: PipelineConfig,
@@ -31,31 +50,36 @@ export function buildRequestedConfigSnapshot(
 function buildEffectiveConfigSnapshot(args: {
   requestedConfig: PipelineRunRequestedConfig;
   settings: AppSettings;
+  locationIntent: SnapshotLocationIntent;
 }): PipelineRunEffectiveConfig {
-  const country = args.settings.jobspyCountryIndeed.value.trim() || null;
-  const compatibleSources = getCompatibleSourcesForCountry(
-    args.requestedConfig.sources,
-    country,
+  const sourcePlans = planLocationSources({
+    intent: args.locationIntent,
+    sources: args.requestedConfig.sources,
+  });
+  const compatibleSources = args.requestedConfig.sources.filter((source) =>
+    sourcePlans.compatibleSources.includes(source),
   );
-  const skippedSources = args.requestedConfig.sources
-    .filter((source) => !compatibleSources.includes(source))
-    .map((source) => ({
-      source,
-      reason: country
-        ? `Not available for ${formatCountryLabel(country) || country}`
-        : "Not selected at runtime",
-    }));
+  const country = args.locationIntent.selectedCountry;
+  const countryLabel = country ? formatCountryLabel(country) || country : null;
 
   return {
     country,
-    countryLabel: country ? formatCountryLabel(country) || country : null,
-    searchCities: parseSearchCitiesSetting(args.settings.searchCities.value),
+    countryLabel,
+    searchCities: [...args.locationIntent.cityLocations],
     searchTermsCount: args.settings.searchTerms.value.length,
-    workplaceTypes: [...args.settings.workplaceTypes.value],
-    locationSearchScope: args.settings.locationSearchScope.value,
-    locationMatchStrictness: args.settings.locationMatchStrictness.value,
+    workplaceTypes: [...args.locationIntent.workplaceTypes],
+    locationSearchScope: args.locationIntent.searchScope,
+    locationMatchStrictness: args.locationIntent.matchStrictness,
     compatibleSources,
-    skippedSources,
+    skippedSources: args.requestedConfig.sources
+      .filter((source) => !compatibleSources.includes(source))
+      .map((source) => ({
+        source,
+        reason:
+          sourcePlans.plans
+            .find((plan) => plan.source === source)
+            ?.reasons.join(" ") || "Not available for the selected location",
+      })),
     blockedCompanyKeywordsCount:
       args.settings.blockedCompanyKeywords.value.length,
     sourceLimits: {
@@ -87,12 +111,14 @@ export async function buildPipelineRunSavedDetails(
 ): Promise<PipelineRunSavedDetails> {
   const requestedConfig = buildRequestedConfigSnapshot(config);
   const settings = await getEffectiveSettings();
+  const locationIntent = resolveLocationIntentSnapshot({ config, settings });
 
   return {
     requestedConfig,
     effectiveConfig: buildEffectiveConfigSnapshot({
       requestedConfig,
       settings,
+      locationIntent,
     }),
     resultSummary: createPipelineRunResultSummary(),
   };

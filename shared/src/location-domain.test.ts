@@ -224,6 +224,11 @@ describe("location-domain", () => {
       source: "gradcracker",
       supportedCountryKeys: ["united kingdom"],
     });
+    expect(normalizeLocationSourceCapabilities({ source: "seek" })).toEqual({
+      requiresCityLocations: false,
+      source: "seek",
+      supportedCountryKeys: ["australia", "new zealand"],
+    });
     expect(
       normalizeLocationSourceCapabilities({ source: "startupjobs" }),
     ).toEqual({

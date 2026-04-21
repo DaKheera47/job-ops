@@ -56,6 +56,7 @@ export async function simulatePipelineRun(
     minSuitabilityScore: config?.minSuitabilityScore ?? 50,
     sources: config?.sources ?? ["manual"],
     outputDir: "/tmp",
+    locationIntent: config?.locationIntent,
     enableCrawling: config?.enableCrawling ?? true,
     enableScoring: config?.enableScoring ?? true,
     enableImporting: config?.enableImporting ?? true,
