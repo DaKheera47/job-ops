@@ -292,7 +292,10 @@ describe.sequential("Pipeline API routes", () => {
     const adzunaRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sources: ["adzuna"] }),
+      body: JSON.stringify({
+        sources: ["adzuna"],
+        country: "united kingdom",
+      }),
     });
     const adzunaRunBody = await adzunaRunRes.json();
     expect(adzunaRunBody.ok).toBe(true);
@@ -301,8 +304,8 @@ describe.sequential("Pipeline API routes", () => {
       expect.objectContaining({
         sources: ["adzuna"],
         locationIntent: expect.objectContaining({
-          selectedCountry: null,
-          country: null,
+          selectedCountry: "united kingdom",
+          country: "united kingdom",
           cityLocations: [],
           workplaceTypes: [],
           geoScope: "selected_only",

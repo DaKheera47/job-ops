@@ -232,4 +232,56 @@ describe("location-domain", () => {
       supportedCountryKeys: null,
     });
   });
+
+  it("preserves default city requirements when overriding supported countries", () => {
+    expect(
+      normalizeLocationSourceCapabilities({
+        source: "glassdoor",
+        supportedCountryKeys: ["united kingdom"],
+      }),
+    ).toEqual({
+      requiresCityLocations: true,
+      source: "glassdoor",
+      supportedCountryKeys: ["united kingdom"],
+    });
+  });
+
+  it("treats worldwide as an explicit selected country", () => {
+    expect(
+      createLocationIntent({
+        selectedCountry: "worldwide",
+        cityLocations: [],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "exact_only",
+      }),
+    ).toMatchObject({
+      selectedCountry: "worldwide",
+      country: "worldwide",
+    });
+  });
+
+  it("marks country-scoped sources incompatible when no country is selected", () => {
+    const result = planLocationSources({
+      intent: {
+        selectedCountry: null,
+        cityLocations: [],
+        workplaceTypes: ["remote"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "exact_only",
+      },
+      sources: ["adzuna", "startupjobs"],
+    });
+
+    expect(result.compatibleSources).toEqual(["startupjobs"]);
+    expect(result.incompatibleSources).toEqual(["adzuna"]);
+    expect(result.plans[0]).toMatchObject({
+      source: "adzuna",
+      isCompatible: false,
+      canRun: false,
+    });
+    expect(result.plans[0]?.reasons).toContain(
+      "A selected country is required for this source.",
+    );
+  });
 });

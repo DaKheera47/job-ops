@@ -448,12 +448,13 @@ const migrations = [
     jobs_discovered INTEGER NOT NULL DEFAULT 0,
     jobs_processed INTEGER NOT NULL DEFAULT 0,
     error_message TEXT,
+    config_snapshot TEXT,
     requested_config TEXT,
     effective_config TEXT,
     result_summary TEXT
   )`,
-  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, requested_config, effective_config, result_summary)
-   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL
+  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,

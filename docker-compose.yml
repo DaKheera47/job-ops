@@ -31,17 +31,6 @@ services:
     env_file:
       - path: ./.env
         required: false
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
-secrets:
-  github_token:
-    environment: GITHUB_TOKEN
     develop:
       watch:
         # Rebuild container when package.json changes
@@ -78,6 +67,17 @@ secrets:
         - path: ./extractors/jobspy
           target: /app/extractors/jobspy
           action: sync+restart
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+secrets:
+  github_token:
+    environment: GITHUB_TOKEN
 
 # Volumes for data persistence
 volumes:

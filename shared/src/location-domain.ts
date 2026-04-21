@@ -66,7 +66,6 @@ const BROAD_COUNTRY_SENTINELS = new Set([
   "anywhere",
   "global",
   "remote",
-  "worldwide",
 ]);
 
 export interface LocationIntentInput {
@@ -582,18 +581,20 @@ export function getDefaultLocationSourceCapabilities(
 export function normalizeLocationSourceCapabilities(
   value: LocationSourceCapabilitiesInput | LocationSourceCapabilities,
 ): LocationSourceCapabilities {
-  if ("supportedCountryKeys" in value) {
-    return {
-      source: value.source,
-      supportedCountryKeys:
-        value.supportedCountryKeys === null
+  const defaults = getDefaultLocationSourceCapabilities(value.source);
+  return {
+    source: value.source,
+    supportedCountryKeys:
+      "supportedCountryKeys" in value
+        ? value.supportedCountryKeys === null
           ? null
-          : normalizeCountryKeys(value.supportedCountryKeys),
-      requiresCityLocations: value.requiresCityLocations === true,
-    };
-  }
-
-  return getDefaultLocationSourceCapabilities(value.source);
+          : normalizeCountryKeys(value.supportedCountryKeys)
+        : defaults.supportedCountryKeys,
+    requiresCityLocations:
+      "requiresCityLocations" in value
+        ? (value.requiresCityLocations ?? defaults.requiresCityLocations)
+        : defaults.requiresCityLocations,
+  };
 }
 
 export function isLocationSourceCompatible(
@@ -635,7 +636,12 @@ export function planLocationSource(args: {
         : `Selected country ${formatCountryLabel(requestedCountry)} is not supported.`,
     );
   } else {
-    reasons.push("No selected country was provided.");
+    if (capabilities.supportedCountryKeys !== null) {
+      isCompatible = false;
+      reasons.push("A selected country is required for this source.");
+    } else {
+      reasons.push("No selected country was provided.");
+    }
   }
 
   if (allowRemoteWorldwide) {

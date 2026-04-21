@@ -155,7 +155,8 @@ export function inferAutomaticPresetSelection(args: {
 
   if (
     args.topN === AUTOMATIC_PRESETS.balanced.topN &&
-    args.minSuitabilityScore === AUTOMATIC_PRESETS.balanced.minSuitabilityScore &&
+    args.minSuitabilityScore ===
+      AUTOMATIC_PRESETS.balanced.minSuitabilityScore &&
     (!hasRunBudget || args.runBudget === AUTOMATIC_PRESETS.balanced.runBudget)
   ) {
     return "balanced";
@@ -163,7 +164,8 @@ export function inferAutomaticPresetSelection(args: {
 
   if (
     args.topN === AUTOMATIC_PRESETS.detailed.topN &&
-    args.minSuitabilityScore === AUTOMATIC_PRESETS.detailed.minSuitabilityScore &&
+    args.minSuitabilityScore ===
+      AUTOMATIC_PRESETS.detailed.minSuitabilityScore &&
     (!hasRunBudget || args.runBudget === AUTOMATIC_PRESETS.detailed.runBudget)
   ) {
     return "detailed";
@@ -369,7 +371,10 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     const raw = localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof parsed.topN !== "number" || typeof parsed.minSuitabilityScore !== "number") {
+    if (
+      typeof parsed.topN !== "number" ||
+      typeof parsed.minSuitabilityScore !== "number"
+    ) {
       return null;
     }
     const normalized: AutomaticRunMemory = {
@@ -389,7 +394,10 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
       normalized.presetId = parsed.presetId;
     }
 
-    if (typeof parsed.runBudget === "number" && Number.isFinite(parsed.runBudget)) {
+    if (
+      typeof parsed.runBudget === "number" &&
+      Number.isFinite(parsed.runBudget)
+    ) {
       normalized.runBudget = Math.round(parsed.runBudget);
     }
 

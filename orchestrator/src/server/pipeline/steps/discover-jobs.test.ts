@@ -48,6 +48,13 @@ describe("discoverJobsStep", () => {
             title: "Engineer",
             employer: "ACME",
             jobUrl: "https://example.com/job",
+            location: "London, United Kingdom",
+            locationEvidence: {
+              location: "London, United Kingdom",
+              country: "united kingdom",
+              city: "London",
+              source: "location",
+            },
           },
         ],
       }),
@@ -65,6 +72,7 @@ describe("discoverJobsStep", () => {
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
     } as any);
 
     vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
@@ -109,6 +117,7 @@ describe("discoverJobsStep", () => {
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
     } as any);
 
     vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
@@ -572,6 +581,7 @@ describe("discoverJobsStep", () => {
 
     vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
       searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united kingdom",
     } as any);
     vi.mocked(jobsRepo.getAllJobUrls).mockResolvedValue([
       "https://example.com/existing",
