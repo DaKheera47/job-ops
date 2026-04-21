@@ -12,6 +12,7 @@ import {
 import type { JobSource } from "@shared/types";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
+export type AutomaticPresetSelection = AutomaticPresetId | "custom";
 export type WorkplaceType = "remote" | "hybrid" | "onsite";
 export const WORKPLACE_TYPE_OPTIONS: WorkplaceType[] = [
   "remote",
@@ -107,6 +108,8 @@ export const MATCH_STRICTNESS_OPTIONS: Array<{
 export interface AutomaticRunMemory {
   topN: number;
   minSuitabilityScore: number;
+  presetId?: AutomaticPresetSelection;
+  runBudget?: number;
 }
 
 export function normalizeWorkplaceTypes(
@@ -133,6 +136,40 @@ export interface ExtractorLimits {
   startupjobsMaxJobsPerTerm: number;
   workingnomadsMaxJobsPerTerm: number;
   seekMaxJobsPerTerm: number;
+}
+
+export function inferAutomaticPresetSelection(args: {
+  topN: number;
+  minSuitabilityScore: number;
+  runBudget?: number | null;
+}): AutomaticPresetSelection {
+  const hasRunBudget = args.runBudget !== null && args.runBudget !== undefined;
+
+  if (
+    args.topN === AUTOMATIC_PRESETS.fast.topN &&
+    args.minSuitabilityScore === AUTOMATIC_PRESETS.fast.minSuitabilityScore &&
+    (!hasRunBudget || args.runBudget === AUTOMATIC_PRESETS.fast.runBudget)
+  ) {
+    return "fast";
+  }
+
+  if (
+    args.topN === AUTOMATIC_PRESETS.balanced.topN &&
+    args.minSuitabilityScore === AUTOMATIC_PRESETS.balanced.minSuitabilityScore &&
+    (!hasRunBudget || args.runBudget === AUTOMATIC_PRESETS.balanced.runBudget)
+  ) {
+    return "balanced";
+  }
+
+  if (
+    args.topN === AUTOMATIC_PRESETS.detailed.topN &&
+    args.minSuitabilityScore === AUTOMATIC_PRESETS.detailed.minSuitabilityScore &&
+    (!hasRunBudget || args.runBudget === AUTOMATIC_PRESETS.detailed.runBudget)
+  ) {
+    return "detailed";
+  }
+
+  return "custom";
 }
 
 export function deriveExtractorLimits(args: {
@@ -331,20 +368,32 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
   try {
     const raw = localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<AutomaticRunMemory>;
-    if (
-      typeof parsed.topN !== "number" ||
-      typeof parsed.minSuitabilityScore !== "number"
-    ) {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof parsed.topN !== "number" || typeof parsed.minSuitabilityScore !== "number") {
       return null;
     }
-    return {
+    const normalized: AutomaticRunMemory = {
       topN: Math.min(50, Math.max(1, Math.round(parsed.topN))),
       minSuitabilityScore: Math.min(
         100,
         Math.max(0, Math.round(parsed.minSuitabilityScore)),
       ),
     };
+
+    if (
+      parsed.presetId === "fast" ||
+      parsed.presetId === "balanced" ||
+      parsed.presetId === "detailed" ||
+      parsed.presetId === "custom"
+    ) {
+      normalized.presetId = parsed.presetId;
+    }
+
+    if (typeof parsed.runBudget === "number" && Number.isFinite(parsed.runBudget)) {
+      normalized.runBudget = Math.round(parsed.runBudget);
+    }
+
+    return normalized;
   } catch {
     return null;
   }
