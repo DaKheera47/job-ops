@@ -32,6 +32,15 @@ vi.mock("@/lib/user-location", () => ({
 }));
 
 describe("AutomaticRunTab", () => {
+  const openSourcePicker = () => {
+    const trigger = screen.getByRole("button", {
+      name: "Review and edit sources",
+    });
+    if (trigger.getAttribute("aria-expanded") !== "true") {
+      fireEvent.click(trigger);
+    }
+  };
+
   beforeEach(() => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
@@ -204,6 +213,8 @@ describe("AutomaticRunTab", () => {
       expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     });
 
+    openSourcePicker();
+
     expect(screen.getByRole("button", { name: "Gradcracker" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "UK Visa Jobs" })).toBeDisabled();
   });
@@ -233,6 +244,8 @@ describe("AutomaticRunTab", () => {
         onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
       />,
     );
+
+    openSourcePicker();
 
     expect(
       screen.getByTitle(
@@ -272,6 +285,8 @@ describe("AutomaticRunTab", () => {
     await waitFor(() => {
       expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     });
+
+    openSourcePicker();
 
     const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
     expect(glassdoorButton).toBeDisabled();
@@ -315,6 +330,8 @@ describe("AutomaticRunTab", () => {
     await waitFor(() => {
       expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
     });
+
+    openSourcePicker();
 
     const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
     expect(glassdoorButton).toBeDisabled();
@@ -433,6 +450,7 @@ describe("AutomaticRunTab", () => {
     ).not.toBeInTheDocument();
 
     fireEvent.focus(screen.getByLabelText("Cities"));
+    openSourcePicker();
 
     expect(
       screen.getByRole("button", { name: "Remove city London" }),

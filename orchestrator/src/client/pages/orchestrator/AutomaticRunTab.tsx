@@ -218,6 +218,21 @@ function getSourceStatus(args: {
   };
 }
 
+interface SourcePickerRow {
+  source: JobSource;
+  selected: boolean;
+  status: ReturnType<typeof getSourceStatus>;
+}
+
+function summarizeSelectedSources(sources: JobSource[]): string {
+  if (sources.length === 0) return "Choose at least one source for this run.";
+
+  const labels = sources.map((source) => sourceLabel[source]);
+  if (labels.length <= 3) return labels.join(", ");
+
+  return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
+}
+
 function getPresetSelection(values: {
   topN: number;
   minSuitabilityScore: number;
@@ -440,8 +455,47 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => pipelineSources.filter((source) => isSourceAvailableForRun(source)),
     [pipelineSources, isSourceAvailableForRun],
   );
-
   const countrySelectionInvalid = values.country.length === 0;
+  const sourceRows = useMemo<SourcePickerRow[]>(
+    () =>
+      enabledSources.flatMap((source) => {
+        const plan = sourcePlanBySource.get(source);
+        if (!plan) return [];
+
+        return [
+          {
+            source,
+            selected: pipelineSources.includes(source),
+            status: getSourceStatus({
+              countrySelected: !countrySelectionInvalid,
+              plan,
+            }),
+          },
+        ];
+      }),
+    [
+      countrySelectionInvalid,
+      enabledSources,
+      pipelineSources,
+      sourcePlanBySource,
+    ],
+  );
+  const selectedSourceRows = useMemo(
+    () => sourceRows.filter((row) => row.selected && row.status.available),
+    [sourceRows],
+  );
+  const readySourceRows = useMemo(
+    () => sourceRows.filter((row) => !row.selected && row.status.available),
+    [sourceRows],
+  );
+  const unavailableSourceRows = useMemo(
+    () => sourceRows.filter((row) => !row.status.available),
+    [sourceRows],
+  );
+  const selectedSourceSummary = useMemo(
+    () => summarizeSelectedSources(selectedSourceRows.map((row) => row.source)),
+    [selectedSourceRows],
+  );
   const countrySuggestion =
     browserCountrySuggestion && browserCountrySuggestion !== values.country
       ? browserCountrySuggestion
@@ -881,64 +935,153 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         </Card>
 
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <CardTitle>Sources</CardTitle>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="rounded-full">
-                  {pipelineSources.length} selected
-                </Badge>
-                <Badge variant="outline" className="rounded-full">
-                  {compatibleEnabledSources.length} ready
-                </Badge>
-              </div>
-            </div>
+          <CardHeader className="pb-1">
+            <CardTitle>Sources</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {enabledSources.map((source) => {
-                const plan = sourcePlanBySource.get(source);
-                if (!plan) return null;
-                const status = getSourceStatus({
-                  countrySelected: !countrySelectionInvalid,
-                  plan,
-                });
-                const selected = pipelineSources.includes(source);
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="sources" className="border-b-0">
+                <AccordionTrigger
+                  aria-label="Review and edit sources"
+                  className="gap-4 py-2 hover:no-underline"
+                >
+                  <div className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        {selectedSourceRows.length === 0
+                          ? "Choose sources for this run"
+                          : `${selectedSourceRows.length} source${selectedSourceRows.length === 1 ? "" : "s"} selected`}
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {selectedSourceSummary}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      <Badge variant="outline" className="rounded-full">
+                        {selectedSourceRows.length} selected
+                      </Badge>
+                      <Badge variant="outline" className="rounded-full">
+                        {
+                          sourceRows.filter((row) => row.status.available)
+                            .length
+                        }{" "}
+                        ready
+                      </Badge>
+                      {unavailableSourceRows.length > 0 ? (
+                        <Badge variant="outline" className="rounded-full">
+                          {unavailableSourceRows.length} unavailable
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-5 pt-4">
+                  {selectedSourceRows.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Selected
+                      </p>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {selectedSourceRows.map((row) => (
+                          <Button
+                            key={row.source}
+                            type="button"
+                            variant="ghost"
+                            aria-label={sourceLabel[row.source]}
+                            aria-pressed
+                            title="Included in this run."
+                            className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground hover:bg-primary/15"
+                            onClick={() => onToggleSource(row.source, false)}
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold">
+                                {sourceLabel[row.source]}
+                              </span>
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                            >
+                              Selected
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-                return (
-                  <Button
-                    key={source}
-                    type="button"
-                    variant={
-                      selected && status.available ? "default" : "outline"
-                    }
-                    disabled={!status.available}
-                    aria-label={sourceLabel[source]}
-                    aria-pressed={selected}
-                    title={status.detail}
-                    className={`flex h-auto w-full items-start justify-between gap-3 rounded-2xl px-4 py-4 text-left ${
-                      selected ? "border-foreground/20" : ""
-                    }`}
-                    onClick={() => onToggleSource(source, !selected)}
-                  >
-                    <span className="min-w-0 space-y-1">
-                      <span className="block text-sm font-semibold">
-                        {sourceLabel[source]}
-                      </span>
-                      <span className="block text-xs leading-5 opacity-80">
-                        {status.detail}
-                      </span>
-                    </span>
-                    <Badge
-                      variant={status.available ? "secondary" : "outline"}
-                      className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                    >
-                      {status.badgeLabel}
-                    </Badge>
-                  </Button>
-                );
-              })}
-            </div>
+                  {readySourceRows.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Ready to add
+                      </p>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {readySourceRows.map((row) => (
+                          <Button
+                            key={row.source}
+                            type="button"
+                            variant="ghost"
+                            aria-label={sourceLabel[row.source]}
+                            aria-pressed={false}
+                            title="Ready for this location setup."
+                            className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground hover:bg-muted/40"
+                            onClick={() => onToggleSource(row.source, true)}
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold">
+                                {sourceLabel[row.source]}
+                              </span>
+                            </span>
+                            <Badge
+                              variant="secondary"
+                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                            >
+                              Ready
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {unavailableSourceRows.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        Unavailable for this setup
+                      </p>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {unavailableSourceRows.map((row) => (
+                          <Button
+                            key={row.source}
+                            type="button"
+                            variant="ghost"
+                            disabled
+                            aria-label={sourceLabel[row.source]}
+                            title={row.status.detail}
+                            className="flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-border/50 bg-transparent px-3 py-3 text-left text-foreground/80 disabled:pointer-events-none disabled:opacity-100"
+                          >
+                            <span className="min-w-0 space-y-1">
+                              <span className="block text-sm font-semibold">
+                                {sourceLabel[row.source]}
+                              </span>
+                              <span className="block text-xs leading-5 text-muted-foreground">
+                                {row.status.detail}
+                              </span>
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                            >
+                              {row.status.badgeLabel}
+                            </Badge>
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </CardContent>
         </Card>
       </div>
