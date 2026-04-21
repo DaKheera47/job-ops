@@ -235,6 +235,14 @@ function summarizeSelectedSources(sources: JobSource[]): string {
   return `${labels.slice(0, 2).join(", ")} +${labels.length - 2} more`;
 }
 
+function getRadioOptionClassName(selected: boolean): string {
+  return `flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-sm transition-colors ${
+    selected
+      ? "border-border/70 bg-muted/20 text-foreground"
+      : "border-border/60 text-foreground hover:bg-muted/20"
+  }`;
+}
+
 function getPresetSelection(values: {
   topN: number;
   minSuitabilityScore: number;
@@ -665,10 +673,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 >
                   <div className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0 space-y-1">
-                      <p className="text-sm font-semibold text-foreground">
-                        Location intent
+                      <p className="py-0 text-base font-semibold hover:no-underline">
+                        Location preferences
                       </p>
-                      <p className="truncate text-sm text-muted-foreground">
+                      <p className="truncate text-sm text-muted-foreground whitespace-pre-wrap">
                         {locationSummary}
                       </p>
                     </div>
@@ -830,11 +838,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           <label
                             key={option.value}
                             htmlFor={id}
-                            className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
-                              selected
-                                ? "bg-background text-foreground"
-                                : "text-foreground/80 hover:bg-background/70"
-                            }`}
+                            className={getRadioOptionClassName(selected)}
                           >
                             <RadioGroupItem value={option.value} id={id} />
                             <span className="text-sm font-medium">
@@ -861,7 +865,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           },
                         )
                       }
-                      className="flex flex-col gap-2 sm:flex-row"
+                      className="gap-2"
                     >
                       {MATCH_STRICTNESS_OPTIONS.map((option) => {
                         const id = `match-strictness-${option.value}`;
@@ -870,14 +874,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           <label
                             key={option.value}
                             htmlFor={id}
-                            className={`flex cursor-pointer items-center gap-3 rounded-full border px-4 py-2.5 text-sm transition-colors ${
-                              selected
-                                ? "border-foreground/25 bg-background text-foreground"
-                                : "border-border/70 text-foreground/75 hover:border-border hover:text-foreground"
-                            }`}
+                            className={getRadioOptionClassName(selected)}
                           >
                             <RadioGroupItem value={option.value} id={id} />
-                            <span className="font-medium">{option.label}</span>
+                            <span className="text-sm font-medium">
+                              {option.label}
+                            </span>
                           </label>
                         );
                       })}
