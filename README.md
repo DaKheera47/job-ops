@@ -153,6 +153,21 @@ Contributions are welcome — code, docs, or new extractors. Start with [`CONTRI
 
 ---
 
+## Star History
+
+<div align="center">
+
+<a href="https://www.star-history.com/#DaKheera47/job-ops&type=date&legend=top-left">
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&theme=dark&legend=top-left" />
+<source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
+<img alt="Star History Chart" src="https://api.star-history.com/svg?repos=DaKheera47/job-ops&type=date&legend=top-left" />
+</picture>
+</a>
+
+</div>
+
+---
 ## Analytics
 
 JobOps includes anonymous usage analytics (Umami) to help improve the product. To opt out, block `umami.dakheera47.com` in your firewall or DNS.
