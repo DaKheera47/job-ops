@@ -14,6 +14,7 @@ import {
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Info, Loader2, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -100,6 +101,7 @@ const GLASSDOOR_LOCATION_REASON =
 const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
 const MIN_RUN_BUDGET = 50;
 const MAX_RUN_BUDGET = 1000;
+const SOURCE_MOTION_EASE = [0.22, 1, 0.36, 1] as const;
 
 function normalizeUiCountryKey(value: string): string {
   const normalized = normalizeCountryKey(value);
@@ -276,6 +278,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
   const [browserCountrySuggestion, setBrowserCountrySuggestion] = useState<
     string | null
   >(null);
@@ -496,6 +499,23 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => summarizeSelectedSources(selectedSourceRows.map((row) => row.source)),
     [selectedSourceRows],
   );
+  const sourceMotionTransition = useMemo(
+    () =>
+      prefersReducedMotion
+        ? { duration: 0 }
+        : { duration: 0.22, ease: SOURCE_MOTION_EASE },
+    [prefersReducedMotion],
+  );
+  const sourceSectionInitial = prefersReducedMotion
+    ? false
+    : { opacity: 0, y: -8 };
+  const sourceSectionAnimate = { opacity: 1, y: 0 };
+  const sourceRowInitial = prefersReducedMotion
+    ? { opacity: 1 }
+    : { opacity: 0, y: 8, scale: 0.985 };
+  const sourceRowExit = prefersReducedMotion
+    ? { opacity: 0 }
+    : { opacity: 0, y: -6, scale: 0.985 };
   const countrySuggestion =
     browserCountrySuggestion && browserCountrySuggestion !== values.country
       ? browserCountrySuggestion
@@ -945,8 +965,16 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   aria-label="Review and edit sources"
                   className="gap-4 py-2 hover:no-underline"
                 >
-                  <div className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0 space-y-1">
+                  <motion.div
+                    layout
+                    transition={sourceMotionTransition}
+                    className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <motion.div
+                      layout
+                      transition={sourceMotionTransition}
+                      className="min-w-0 space-y-1"
+                    >
                       <p className="text-sm font-semibold text-foreground">
                         {selectedSourceRows.length === 0
                           ? "Choose sources for this run"
@@ -955,8 +983,12 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       <p className="truncate text-sm text-muted-foreground">
                         {selectedSourceSummary}
                       </p>
-                    </div>
-                    <div className="flex shrink-0 flex-wrap gap-2">
+                    </motion.div>
+                    <motion.div
+                      layout
+                      transition={sourceMotionTransition}
+                      className="flex shrink-0 flex-wrap gap-2"
+                    >
                       <Badge variant="outline" className="rounded-full">
                         {selectedSourceRows.length} selected
                       </Badge>
@@ -972,113 +1004,178 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                           {unavailableSourceRows.length} unavailable
                         </Badge>
                       ) : null}
-                    </div>
-                  </div>
+                    </motion.div>
+                  </motion.div>
                 </AccordionTrigger>
-                <AccordionContent className="space-y-5 pt-4">
-                  {selectedSourceRows.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Selected
-                      </p>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {selectedSourceRows.map((row) => (
-                          <Button
-                            key={row.source}
-                            type="button"
-                            variant="ghost"
-                            aria-label={sourceLabel[row.source]}
-                            aria-pressed
-                            title="Included in this run."
-                            className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground hover:bg-primary/15"
-                            onClick={() => onToggleSource(row.source, false)}
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-sm font-semibold">
-                                {sourceLabel[row.source]}
-                              </span>
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                            >
-                              Selected
-                            </Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                <AccordionContent className="pt-4">
+                  <motion.div
+                    initial={sourceSectionInitial}
+                    animate={sourceSectionAnimate}
+                    transition={sourceMotionTransition}
+                    className="space-y-5"
+                  >
+                    {selectedSourceRows.length > 0 ? (
+                      <motion.div
+                        layout
+                        transition={sourceMotionTransition}
+                        className="space-y-2"
+                      >
+                        <motion.p
+                          layout
+                          transition={sourceMotionTransition}
+                          className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                        >
+                          Selected
+                        </motion.p>
+                        <motion.div
+                          layout
+                          transition={sourceMotionTransition}
+                          className="grid gap-2 md:grid-cols-2"
+                        >
+                          <AnimatePresence initial={false} mode="popLayout">
+                            {selectedSourceRows.map((row) => (
+                              <motion.div
+                                key={row.source}
+                                layout
+                                initial={sourceRowInitial}
+                                animate={sourceSectionAnimate}
+                                exit={sourceRowExit}
+                                transition={sourceMotionTransition}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  aria-label={sourceLabel[row.source]}
+                                  aria-pressed
+                                  title="Included in this run."
+                                  className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-primary/15"
+                                  onClick={() =>
+                                    onToggleSource(row.source, false)
+                                  }
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-semibold">
+                                      {sourceLabel[row.source]}
+                                    </span>
+                                  </span>
+                                </Button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </motion.div>
+                    ) : null}
 
-                  {readySourceRows.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Ready to add
-                      </p>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {readySourceRows.map((row) => (
-                          <Button
-                            key={row.source}
-                            type="button"
-                            variant="ghost"
-                            aria-label={sourceLabel[row.source]}
-                            aria-pressed={false}
-                            title="Ready for this location setup."
-                            className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground hover:bg-muted/40"
-                            onClick={() => onToggleSource(row.source, true)}
-                          >
-                            <span className="min-w-0">
-                              <span className="block text-sm font-semibold">
-                                {sourceLabel[row.source]}
-                              </span>
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                            >
-                              Ready
-                            </Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                    {readySourceRows.length > 0 ? (
+                      <motion.div
+                        layout
+                        transition={sourceMotionTransition}
+                        className="space-y-2"
+                      >
+                        <motion.p
+                          layout
+                          transition={sourceMotionTransition}
+                          className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                        >
+                          Ready to add
+                        </motion.p>
+                        <motion.div
+                          layout
+                          transition={sourceMotionTransition}
+                          className="grid gap-2 md:grid-cols-2"
+                        >
+                          <AnimatePresence initial={false} mode="popLayout">
+                            {readySourceRows.map((row) => (
+                              <motion.div
+                                key={row.source}
+                                layout
+                                initial={sourceRowInitial}
+                                animate={sourceSectionAnimate}
+                                exit={sourceRowExit}
+                                transition={sourceMotionTransition}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  aria-label={sourceLabel[row.source]}
+                                  aria-pressed={false}
+                                  title="Ready for this location setup."
+                                  className="flex h-auto w-full items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-muted/40"
+                                  onClick={() =>
+                                    onToggleSource(row.source, true)
+                                  }
+                                >
+                                  <span className="min-w-0">
+                                    <span className="block text-sm font-semibold">
+                                      {sourceLabel[row.source]}
+                                    </span>
+                                  </span>
+                                </Button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </motion.div>
+                    ) : null}
 
-                  {unavailableSourceRows.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                        Unavailable for this setup
-                      </p>
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {unavailableSourceRows.map((row) => (
-                          <Button
-                            key={row.source}
-                            type="button"
-                            variant="ghost"
-                            disabled
-                            aria-label={sourceLabel[row.source]}
-                            title={row.status.detail}
-                            className="flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-border/50 bg-transparent px-3 py-3 text-left text-foreground/80 disabled:pointer-events-none disabled:opacity-100"
-                          >
-                            <span className="min-w-0 space-y-1">
-                              <span className="block text-sm font-semibold">
-                                {sourceLabel[row.source]}
-                              </span>
-                              <span className="block text-xs leading-5 text-muted-foreground">
-                                {row.status.detail}
-                              </span>
-                            </span>
-                            <Badge
-                              variant="outline"
-                              className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
-                            >
-                              {row.status.badgeLabel}
-                            </Badge>
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
+                    {unavailableSourceRows.length > 0 ? (
+                      <motion.div
+                        layout
+                        transition={sourceMotionTransition}
+                        className="space-y-2"
+                      >
+                        <motion.p
+                          layout
+                          transition={sourceMotionTransition}
+                          className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                        >
+                          Currently unavailable
+                        </motion.p>
+                        <motion.div
+                          layout
+                          transition={sourceMotionTransition}
+                          className="grid gap-2 md:grid-cols-2"
+                        >
+                          <AnimatePresence initial={false} mode="popLayout">
+                            {unavailableSourceRows.map((row) => (
+                              <motion.div
+                                key={row.source}
+                                layout
+                                initial={sourceRowInitial}
+                                animate={sourceSectionAnimate}
+                                exit={sourceRowExit}
+                                transition={sourceMotionTransition}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  disabled
+                                  aria-label={sourceLabel[row.source]}
+                                  title={row.status.detail}
+                                  className="flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-border/50 bg-transparent px-3 py-3 text-left text-foreground/80 disabled:pointer-events-none disabled:opacity-100"
+                                >
+                                  <span className="min-w-0 space-y-1">
+                                    <span className="block text-sm font-semibold">
+                                      {sourceLabel[row.source]}
+                                    </span>
+                                    <span className="block text-xs leading-5 text-muted-foreground whitespace-pre-wrap">
+                                      {row.status.detail}
+                                    </span>
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                                  >
+                                    {row.status.badgeLabel}
+                                  </Badge>
+                                </Button>
+                              </motion.div>
+                            ))}
+                          </AnimatePresence>
+                        </motion.div>
+                      </motion.div>
+                    ) : null}
+                  </motion.div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
