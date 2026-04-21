@@ -6,16 +6,13 @@ import * as settingsRepo from "@server/repositories/settings";
 import { asyncPool } from "@server/utils/async-pool";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
 import {
-  createLocationIntent,
-  describeLocationIntent,
-  normalizeLocationEvidence,
-  normalizeLocationMatchStrictness,
-  normalizeLocationSearchScope,
+  buildLocationEvidence as buildSharedLocationEvidence,
+  createLocationIntentFromLegacyInputs,
+  getPrimaryLocationLabel,
   planLocationSource,
 } from "@shared/location-domain.js";
 import { formatCountryLabel } from "@shared/location-support.js";
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
-import { resolveSearchCities } from "@shared/search-cities.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import { type CrawlSource, progressHelpers, updateProgress } from "../progress";
 
@@ -74,36 +71,10 @@ function isBlockedEmployer(
   );
 }
 
-function createLocationIntentFromLegacyInputs(input: {
-  selectedCountry?: string | null;
-  searchCities?: string | string[] | null;
-  searchScope?: string | null;
-  matchStrictness?: string | null;
-  workplaceTypes?: Array<"remote" | "hybrid" | "onsite"> | null;
-}): NonNullable<PipelineConfig["locationIntent"]> {
-  return createLocationIntent({
-    selectedCountry: input.selectedCountry ?? null,
-    cityLocations: Array.isArray(input.searchCities)
-      ? input.searchCities
-      : resolveSearchCities({ single: input.searchCities ?? null }),
-    workplaceTypes: input.workplaceTypes ?? [],
-    geoScope: normalizeLocationSearchScope(input.searchScope ?? null),
-    matchStrictness: normalizeLocationMatchStrictness(
-      input.matchStrictness ?? null,
-    ),
-  });
-}
-
 function getLegacyLocationSelection(
   intent: NonNullable<PipelineConfig["locationIntent"]>,
 ): string {
   return intent.selectedCountry ?? "";
-}
-
-function getPrimaryLocationLabel(
-  intent: NonNullable<PipelineConfig["locationIntent"]>,
-): string {
-  return describeLocationIntent(intent);
 }
 
 function getSourceLocationPlan(
@@ -127,7 +98,7 @@ function buildLocationEvidence(args: {
   sourceNotes?: readonly string[] | null;
 }): CreateJobInput["locationEvidence"] {
   if (!args.location && args.isRemote !== true) return undefined;
-  return normalizeLocationEvidence({
+  return buildSharedLocationEvidence({
     location: args.location ?? (args.isRemote ? "Remote" : null),
     isRemote: args.isRemote ?? null,
     source:

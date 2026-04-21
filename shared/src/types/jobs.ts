@@ -1,17 +1,9 @@
 import type { ExtractorSourceId } from "../extractors";
-import type { LocationMatchResult } from "./location";
+import type { LocationEvidence, LocationMatchResult } from "./location";
 
 export type { LocationEvidenceQuality } from "./location";
 
-export interface JobLocationEvidence {
-  location?: string | null;
-  country?: string | null;
-  city?: string | null;
-  workplaceType?: "remote" | "hybrid" | "onsite" | null;
-  isRemote?: boolean | null;
-  source?: string | null;
-  [index: number]: unknown;
-}
+export type JobLocationEvidence = LocationEvidence;
 
 export type JobStatus =
   | "discovered" // Crawled but not processed

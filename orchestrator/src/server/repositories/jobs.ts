@@ -3,6 +3,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { buildLocationEvidence } from "@shared/location-domain.js";
 import type {
   CreateJobInput,
   CreateJobNoteInput,
@@ -15,6 +16,10 @@ import type {
   UpdateJobInput,
   UpdateJobNoteInput,
 } from "@shared/types";
+import type {
+  LocationEvidence,
+  LocationEvidenceEntry,
+} from "@shared/types/location";
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
@@ -40,24 +45,15 @@ function parseLocationEvidence(
   if (!raw) return null;
 
   try {
-    const parsed = JSON.parse(raw) as Partial<JobLocationEvidence>;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object") {
       return null;
     }
-
-    return {
-      location: typeof parsed.location === "string" ? parsed.location : null,
-      country: typeof parsed.country === "string" ? parsed.country : null,
-      city: typeof parsed.city === "string" ? parsed.city : null,
-      workplaceType:
-        parsed.workplaceType === "remote" ||
-        parsed.workplaceType === "hybrid" ||
-        parsed.workplaceType === "onsite"
-          ? parsed.workplaceType
-          : null,
-      isRemote: typeof parsed.isRemote === "boolean" ? parsed.isRemote : false,
-      source: typeof parsed.source === "string" ? parsed.source : null,
-    };
+    return buildLocationEvidence(
+      Array.isArray(parsed)
+        ? (parsed as readonly LocationEvidenceEntry[])
+        : (parsed as LocationEvidence),
+    );
   } catch {
     return null;
   }
@@ -67,7 +63,7 @@ function serializeLocationEvidence(
   evidence: JobLocationEvidence | null | undefined,
 ): string | null {
   if (!evidence) return null;
-  return JSON.stringify(evidence);
+  return JSON.stringify(buildLocationEvidence(evidence));
 }
 
 /**

@@ -391,13 +391,10 @@ describe("discoverJobsStep", () => {
             title: "Engineer - Zagreb",
             employer: "ACME Croatia",
             location: null,
-            locationEvidence: [
-              {
-                kind: "location",
-                value: "Zagreb, Croatia",
-                sourceField: "location",
-              },
-            ],
+            locationEvidence: {
+              location: "Zagreb, Croatia",
+              country: "croatia",
+            },
             jobUrl: "https://example.com/hr-1",
           },
         ],
@@ -428,10 +425,10 @@ describe("discoverJobsStep", () => {
     });
 
     expect(result.discoveredJobs).toHaveLength(1);
-    expect(result.discoveredJobs[0]?.locationEvidence?.[0]).toEqual(
+    expect(result.discoveredJobs[0]?.locationEvidence).toEqual(
       expect.objectContaining({
-        kind: "location",
-        value: "Zagreb, Croatia",
+        location: "Zagreb, Croatia",
+        country: "croatia",
       }),
     );
   });

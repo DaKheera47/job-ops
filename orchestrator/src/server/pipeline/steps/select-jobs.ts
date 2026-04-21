@@ -1,6 +1,6 @@
 import * as settingsRepo from "@server/repositories/settings";
 import { matchJobLocationIntent } from "@shared/job-matching.js";
-import { createLocationIntent } from "@shared/location-domain.js";
+import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import { resolveSearchCities } from "@shared/search-cities.js";
 import type { PipelineConfig } from "@shared/types";
 import type { ScoredJob } from "./types";
@@ -27,10 +27,10 @@ async function resolveLocationIntent(
   if (mergedConfig.locationIntent) return mergedConfig.locationIntent;
 
   const settings = await settingsRepo.getAllSettings();
-  return createLocationIntent({
+  return createLocationIntentFromLegacyInputs({
     selectedCountry: settings.jobspyCountryIndeed ?? "",
     cityLocations: resolveSearchCities({
-      single: settings.searchCities ?? null,
+      single: settings.searchCities ?? settings.jobspyLocation ?? null,
     }),
     workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
     geoScope: settings.locationSearchScope ?? null,

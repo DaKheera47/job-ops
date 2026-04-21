@@ -94,15 +94,12 @@ function toJsonStringOrNull(value: unknown): string | null {
 
 function buildLocationEvidence(
   location: string | null,
-): JobLocationEvidence[] | undefined {
+): JobLocationEvidence | undefined {
   if (!location) return undefined;
-  return [
-    {
-      kind: "location",
-      value: location,
-      sourceField: "location",
-    },
-  ];
+  return {
+    location,
+    source: "jobspy",
+  };
 }
 
 function toJobSource(site: unknown): JobSource | null {

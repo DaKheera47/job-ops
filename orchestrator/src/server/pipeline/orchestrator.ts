@@ -11,12 +11,7 @@ import { join } from "node:path";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
-import {
-  createLocationIntent,
-  normalizeLocationMatchStrictness,
-  normalizeLocationSearchScope,
-} from "@shared/location-domain.js";
-import { resolveSearchCities } from "@shared/search-cities.js";
+import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type { PipelineConfig } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
@@ -72,30 +67,6 @@ function parseWorkplaceTypes(
   } catch {
     return [];
   }
-}
-
-function createLocationIntentFromLegacyInputs(input: {
-  selectedCountry?: string | null;
-  cityLocations?: string[] | null;
-  workplaceTypes?: Array<"remote" | "hybrid" | "onsite"> | null;
-  geoScope?: string | null;
-  matchStrictness?: string | null;
-  searchScope?: string | null;
-  searchCities?: string | string[] | null;
-}): NonNullable<PipelineConfig["locationIntent"]> {
-  return createLocationIntent({
-    selectedCountry: input.selectedCountry ?? null,
-    cityLocations: Array.isArray(input.searchCities)
-      ? input.searchCities
-      : resolveSearchCities({ single: input.searchCities ?? null }),
-    workplaceTypes: input.workplaceTypes ?? [],
-    geoScope: normalizeLocationSearchScope(
-      input.geoScope ?? input.searchScope ?? null,
-    ),
-    matchStrictness: normalizeLocationMatchStrictness(
-      input.matchStrictness ?? null,
-    ),
-  });
 }
 
 async function resolveLocationIntent(
