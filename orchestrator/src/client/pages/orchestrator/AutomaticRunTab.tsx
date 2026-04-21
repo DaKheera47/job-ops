@@ -652,228 +652,240 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
               </div>
             </div>
             <Separator />
-            <section className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Location intent
-                </p>
-                {countrySuggestion ? (
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-200"
-                  >
-                    Browser suggestion
-                  </Badge>
-                ) : null}
-              </div>
-
-              <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
-                {countrySuggestion ? (
-                  <Alert className="border-sky-500/20 bg-sky-500/5">
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Detected from your browser</AlertTitle>
-                    <AlertDescription>
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm leading-6 text-muted-foreground">
-                          We detected{" "}
-                          <span className="font-medium text-foreground">
-                            {formatCountryLabel(countrySuggestion)}
-                          </span>{" "}
-                          as a helpful starting point. Apply it to unlock
-                          country-specific sources, or choose another country.
-                        </p>
-                        <Button
-                          type="button"
+            <Accordion
+              type="single"
+              collapsible
+              defaultValue="location-intent"
+              className="w-full"
+            >
+              <AccordionItem value="location-intent" className="border-b-0">
+                <AccordionTrigger
+                  aria-label="Review and edit location intent"
+                  className="gap-4 py-2 hover:no-underline"
+                >
+                  <div className="flex w-full flex-col gap-3 text-left sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-semibold text-foreground">
+                        Location intent
+                      </p>
+                      <p className="truncate text-sm text-muted-foreground">
+                        {locationSummary}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {countrySuggestion ? (
+                        <Badge
                           variant="outline"
-                          size="sm"
-                          className="shrink-0"
-                          onClick={() =>
-                            setValue("country", countrySuggestion, {
-                              shouldDirty: true,
-                            })
-                          }
+                          className="rounded-full border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-200"
                         >
-                          Use suggestion
-                        </Button>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
+                          Browser suggestion
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="space-y-4 pt-4">
+                  {countrySuggestion ? (
+                    <Alert className="border-sky-500/20 bg-sky-500/5">
+                      <Info className="h-4 w-4" />
+                      <AlertTitle>Detected from your browser</AlertTitle>
+                      <AlertDescription>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            We detected{" "}
+                            <span className="font-medium text-foreground">
+                              {formatCountryLabel(countrySuggestion)}
+                            </span>{" "}
+                            as a helpful starting point. Apply it to unlock
+                            country-specific sources, or choose another country.
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0"
+                            onClick={() =>
+                              setValue("country", countrySuggestion, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            Use suggestion
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
 
-                <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                  <div className="space-y-2">
-                    <Label className="text-base font-semibold">Country</Label>
-                    <SearchableDropdown
-                      value={values.country}
-                      options={countryOptions}
-                      onValueChange={(country) =>
-                        setValue("country", country, {
-                          shouldDirty: true,
-                        })
-                      }
-                      placeholder="Select country"
-                      searchPlaceholder="Search country..."
-                      emptyText="No matching countries."
-                      triggerClassName="h-10 w-full"
-                      ariaLabel={
-                        values.country
-                          ? formatCountryLabel(values.country)
-                          : "Select country"
-                      }
-                    />
-                    {countrySelectionInvalid ? (
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <div className="space-y-2">
+                      <Label className="text-base font-semibold">Country</Label>
+                      <SearchableDropdown
+                        value={values.country}
+                        options={countryOptions}
+                        onValueChange={(country) =>
+                          setValue("country", country, {
+                            shouldDirty: true,
+                          })
+                        }
+                        placeholder="Select country"
+                        searchPlaceholder="Search country..."
+                        emptyText="No matching countries."
+                        triggerClassName="h-10 w-full"
+                        ariaLabel={
+                          values.country
+                            ? formatCountryLabel(values.country)
+                            : "Select country"
+                        }
+                      />
+                      {countrySelectionInvalid ? (
+                        <p className="text-xs text-destructive">
+                          {countrySuggestion
+                            ? "Select a country or use the browser suggestion."
+                            : "Select a country."}
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="city-locations-input"
+                        className="text-base font-semibold"
+                      >
+                        Cities
+                      </Label>
+                      <TokenizedInput
+                        id="city-locations-input"
+                        values={cityLocations}
+                        draft={cityLocationDraft}
+                        parseInput={parseCityLocationsInput}
+                        onDraftChange={(value) =>
+                          setValue("cityLocationDraft", value)
+                        }
+                        onValuesChange={(value) =>
+                          setValue("cityLocations", value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        placeholder='e.g. "London"'
+                        removeLabelPrefix="Remove city"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Work arrangement
+                    </p>
+                    <div className="flex flex-wrap gap-2 gap-x-4">
+                      {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
+                        const checkboxId = `workplace-type-${workplaceType}`;
+                        const checked = workplaceTypes.includes(workplaceType);
+
+                        return (
+                          <label
+                            key={workplaceType}
+                            htmlFor={checkboxId}
+                            className="flex cursor-pointer items-center gap-3 text-sm transition-colors"
+                          >
+                            <Checkbox
+                              id={checkboxId}
+                              checked={checked}
+                              onCheckedChange={(nextChecked) => {
+                                toggleWorkplaceType(
+                                  workplaceType,
+                                  nextChecked === true,
+                                );
+                              }}
+                            />
+                            {formatWorkplaceTypeLabel(workplaceType)}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {workplaceTypeSelectionInvalid ? (
                       <p className="text-xs text-destructive">
-                        {countrySuggestion
-                          ? "Select a country or use the browser suggestion."
-                          : "Select a country."}
+                        Select at least one workplace type.
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="city-locations-input"
-                      className="text-base font-semibold"
-                    >
-                      Cities
-                    </Label>
-                    <TokenizedInput
-                      id="city-locations-input"
-                      values={cityLocations}
-                      draft={cityLocationDraft}
-                      parseInput={parseCityLocationsInput}
-                      onDraftChange={(value) =>
-                        setValue("cityLocationDraft", value)
-                      }
-                      onValuesChange={(value) =>
-                        setValue("cityLocations", value, {
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Location scope
+                    </p>
+                    <RadioGroup
+                      value={searchScope}
+                      onValueChange={(value) =>
+                        setValue("searchScope", value as LocationSearchScope, {
                           shouldDirty: true,
                         })
                       }
-                      placeholder='e.g. "London"'
-                      removeLabelPrefix="Remove city"
-                    />
+                      className="gap-2"
+                    >
+                      {SEARCH_SCOPE_OPTIONS.map((option) => {
+                        const id = `search-scope-${option.value}`;
+                        const selected = searchScope === option.value;
+                        return (
+                          <label
+                            key={option.value}
+                            htmlFor={id}
+                            className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
+                              selected
+                                ? "bg-background text-foreground"
+                                : "text-foreground/80 hover:bg-background/70"
+                            }`}
+                          >
+                            <RadioGroupItem value={option.value} id={id} />
+                            <span className="text-sm font-medium">
+                              {option.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </RadioGroup>
                   </div>
-                </div>
 
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Work arrangement
-                  </p>
-                  <div className="flex flex-wrap gap-2 gap-x-4">
-                    {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
-                      const checkboxId = `workplace-type-${workplaceType}`;
-                      const checked = workplaceTypes.includes(workplaceType);
-
-                      return (
-                        <label
-                          key={workplaceType}
-                          htmlFor={checkboxId}
-                          className="flex cursor-pointer items-center gap-3 text-sm transition-colors"
-                        >
-                          <Checkbox
-                            id={checkboxId}
-                            checked={checked}
-                            onCheckedChange={(nextChecked) => {
-                              toggleWorkplaceType(
-                                workplaceType,
-                                nextChecked === true,
-                              );
-                            }}
-                          />
-                          {formatWorkplaceTypeLabel(workplaceType)}
-                        </label>
-                      );
-                    })}
-                  </div>
-                  {workplaceTypeSelectionInvalid ? (
-                    <p className="text-xs text-destructive">
-                      Select at least one workplace type.
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      Match strictness
                     </p>
-                  ) : null}
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Location scope
-                  </p>
-                  <RadioGroup
-                    value={searchScope}
-                    onValueChange={(value) =>
-                      setValue("searchScope", value as LocationSearchScope, {
-                        shouldDirty: true,
-                      })
-                    }
-                    className="gap-2"
-                  >
-                    {SEARCH_SCOPE_OPTIONS.map((option) => {
-                      const id = `search-scope-${option.value}`;
-                      const selected = searchScope === option.value;
-                      return (
-                        <label
-                          key={option.value}
-                          htmlFor={id}
-                          className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
-                            selected
-                              ? "bg-background text-foreground"
-                              : "text-foreground/80 hover:bg-background/70"
-                          }`}
-                        >
-                          <RadioGroupItem value={option.value} id={id} />
-                          <span className="text-sm font-medium">
-                            {option.label}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </RadioGroup>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Match strictness
-                  </p>
-                  <RadioGroup
-                    value={matchStrictness}
-                    onValueChange={(value) =>
-                      setValue(
-                        "matchStrictness",
-                        value as LocationMatchStrictness,
-                        {
-                          shouldDirty: true,
-                        },
-                      )
-                    }
-                    className="flex flex-col gap-2 sm:flex-row"
-                  >
-                    {MATCH_STRICTNESS_OPTIONS.map((option) => {
-                      const id = `match-strictness-${option.value}`;
-                      const selected = matchStrictness === option.value;
-                      return (
-                        <label
-                          key={option.value}
-                          htmlFor={id}
-                          className={`flex cursor-pointer items-center gap-3 rounded-full border px-4 py-2.5 text-sm transition-colors ${
-                            selected
-                              ? "border-foreground/25 bg-background text-foreground"
-                              : "border-border/70 text-foreground/75 hover:border-border hover:text-foreground"
-                          }`}
-                        >
-                          <RadioGroupItem value={option.value} id={id} />
-                          <span className="font-medium">{option.label}</span>
-                        </label>
-                      );
-                    })}
-                  </RadioGroup>
-                </div>
-
-                <div className="rounded-2xl border border-border/60 bg-background px-4 py-4">
-                  <p className="text-base font-medium leading-6 text-foreground">
-                    {locationSummary}
-                  </p>
-                </div>
-              </div>
-            </section>
+                    <RadioGroup
+                      value={matchStrictness}
+                      onValueChange={(value) =>
+                        setValue(
+                          "matchStrictness",
+                          value as LocationMatchStrictness,
+                          {
+                            shouldDirty: true,
+                          },
+                        )
+                      }
+                      className="flex flex-col gap-2 sm:flex-row"
+                    >
+                      {MATCH_STRICTNESS_OPTIONS.map((option) => {
+                        const id = `match-strictness-${option.value}`;
+                        const selected = matchStrictness === option.value;
+                        return (
+                          <label
+                            key={option.value}
+                            htmlFor={id}
+                            className={`flex cursor-pointer items-center gap-3 rounded-full border px-4 py-2.5 text-sm transition-colors ${
+                              selected
+                                ? "border-foreground/25 bg-background text-foreground"
+                                : "border-border/70 text-foreground/75 hover:border-border hover:text-foreground"
+                            }`}
+                          >
+                            <RadioGroupItem value={option.value} id={id} />
+                            <span className="font-medium">{option.label}</span>
+                          </label>
+                        );
+                      })}
+                    </RadioGroup>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             <Accordion
               type="single"
