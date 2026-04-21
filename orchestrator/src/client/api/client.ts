@@ -38,6 +38,8 @@ import type {
   ManualJobDraft,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
+  PipelineRun,
+  PipelineRunInsights,
   PipelineStatusResponse,
   PostApplicationAction,
   PostApplicationActionResponse,
@@ -1227,6 +1229,18 @@ export async function updateJobOutcome(
 // Pipeline API
 export async function getPipelineStatus(): Promise<PipelineStatusResponse> {
   return fetchApi<PipelineStatusResponse>("/pipeline/status");
+}
+
+export async function getPipelineRuns(): Promise<PipelineRun[]> {
+  return fetchApi<PipelineRun[]>("/pipeline/runs");
+}
+
+export async function getPipelineRunInsights(
+  id: string,
+): Promise<PipelineRunInsights> {
+  return fetchApi<PipelineRunInsights>(
+    `/pipeline/runs/${encodeURIComponent(id)}/insights`,
+  );
 }
 
 export async function runPipeline(config?: {

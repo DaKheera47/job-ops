@@ -186,6 +186,9 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   jobsProcessed: integer("jobs_processed").notNull().default(0),
   errorMessage: text("error_message"),
   configSnapshot: text("config_snapshot"),
+  requestedConfig: text("requested_config", { mode: "json" }),
+  effectiveConfig: text("effective_config", { mode: "json" }),
+  resultSummary: text("result_summary", { mode: "json" }),
 });
 
 export const jobChatThreads = sqliteTable(

@@ -12,7 +12,7 @@ import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
-import type { PipelineConfig } from "@shared/types";
+import type { PipelineConfig, PipelineRunSavedDetails } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
@@ -26,6 +26,11 @@ import {
 } from "../services/resumeProjects";
 import { generateTailoring } from "../services/summary";
 import { progressHelpers, resetProgress } from "./progress";
+import {
+  buildPipelineRunSavedDetails,
+  createPipelineRunResultSummary,
+  updatePipelineRunResultSummary,
+} from "./run-details";
 import {
   discoverJobsStep,
   importJobsStep,
@@ -125,12 +130,23 @@ export async function runPipeline(
   resetProgress();
   const locationIntent = await resolveLocationIntent(config);
   const mergedConfig = { ...DEFAULT_CONFIG, ...config, locationIntent };
-
-  const pipelineRun = await pipelineRepo.createPipelineRun({
+  const configSnapshot = {
     topN: mergedConfig.topN,
     minSuitabilityScore: mergedConfig.minSuitabilityScore,
     sources: mergedConfig.sources,
     locationIntent,
+  } as const;
+
+  let savedDetails: PipelineRunSavedDetails | null = null;
+  try {
+    savedDetails = await buildPipelineRunSavedDetails(mergedConfig);
+  } catch (error) {
+    logger.warn("Failed to capture pipeline run settings snapshot", { error });
+  }
+
+  const pipelineRun = await pipelineRepo.createPipelineRun({
+    configSnapshot,
+    savedDetails,
   });
   activePipelineRunId = pipelineRun.id;
 
@@ -138,6 +154,16 @@ export async function runPipeline(
     const pipelineLogger = logger.child({ pipelineRunId: pipelineRun.id });
     let jobsDiscovered = 0;
     let jobsProcessed = 0;
+    let resultSummary =
+      savedDetails?.resultSummary ?? createPipelineRunResultSummary();
+    const persistResultSummary = async (
+      update: Parameters<typeof updatePipelineRunResultSummary>[1],
+    ) => {
+      resultSummary = updatePipelineRunResultSummary(resultSummary, update);
+      await pipelineRepo.updatePipelineRun(pipelineRun.id, {
+        resultSummary,
+      });
+    };
     pipelineLogger.info("Starting pipeline run", {
       topN: mergedConfig.topN,
       minSuitabilityScore: mergedConfig.minSuitabilityScore,
@@ -147,38 +173,62 @@ export async function runPipeline(
 
     try {
       ensureNotCancelled();
+      await persistResultSummary({ stage: "started" });
       const profile = await loadProfileStep();
+      await persistResultSummary({ stage: "profile_loaded" });
 
       ensureNotCancelled();
-      const { discoveredJobs } = await discoverJobsStep({
+      await persistResultSummary({ stage: "discovery" });
+      const { discoveredJobs, sourceErrors } = await discoverJobsStep({
         mergedConfig,
         shouldCancel: () => cancelRequestedAt !== null,
+      });
+      await persistResultSummary({
+        stage: "discovery",
+        sourceErrors,
       });
 
       ensureNotCancelled();
       const { created } = await importJobsStep({ discoveredJobs });
       jobsDiscovered = created;
 
+      await persistResultSummary({ stage: "import" });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsDiscovered: created,
       });
 
       ensureNotCancelled();
+      await persistResultSummary({ stage: "scoring" });
       const { unprocessedJobs, scoredJobs } = await scoreJobsStep({
         profile,
         shouldCancel: () => cancelRequestedAt !== null,
       });
+      await persistResultSummary({
+        stage: "scoring",
+        jobsScored: scoredJobs.length,
+      });
 
       ensureNotCancelled();
+      await persistResultSummary({ stage: "selection" });
       const jobsToProcess = await selectJobsStep({
         scoredJobs,
         mergedConfig,
+      });
+      await persistResultSummary({
+        stage: "selection",
+        jobsScored: scoredJobs.length,
+        jobsSelected: jobsToProcess.length,
       });
 
       pipelineLogger.info("Selected jobs for processing", {
         candidates: jobsToProcess.length,
       });
 
+      await persistResultSummary({
+        stage: "processing",
+        jobsScored: scoredJobs.length,
+        jobsSelected: jobsToProcess.length,
+      });
       const { processedCount } = await processJobsStep({
         jobsToProcess,
         processJob,
@@ -186,10 +236,16 @@ export async function runPipeline(
       });
       jobsProcessed = processedCount;
 
+      resultSummary = updatePipelineRunResultSummary(resultSummary, {
+        stage: "completed",
+        jobsScored: scoredJobs.length,
+        jobsSelected: jobsToProcess.length,
+      });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         status: "completed",
         completedAt: new Date().toISOString(),
         jobsProcessed: processedCount,
+        resultSummary,
       });
 
       progressHelpers.complete(created, processedCount);
@@ -219,6 +275,7 @@ export async function runPipeline(
           jobsDiscovered,
           jobsProcessed,
           errorMessage: message,
+          resultSummary,
         });
         progressHelpers.cancelled(message);
         pipelineLogger.info("Pipeline run cancelled", {
@@ -239,6 +296,7 @@ export async function runPipeline(
         status: "failed",
         completedAt: new Date().toISOString(),
         errorMessage: message,
+        resultSummary,
       });
 
       progressHelpers.failed(message);

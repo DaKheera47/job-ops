@@ -27,6 +27,18 @@ To build locally instead:
 docker compose up -d --build
 ```
 
+If GitHub rate limits the Camoufox download during local builds, set an
+optional `GITHUB_TOKEN` in your shell or `.env` first:
+
+```bash
+echo "GITHUB_TOKEN=ghp_your_token_here" >> .env
+docker compose up -d --build
+```
+
+JobOps passes this token to the Docker build as a BuildKit secret only for the
+Camoufox download step. It is not stored in the runtime container
+environment.
+
 ## 2) Access the app and onboard
 
 Open:

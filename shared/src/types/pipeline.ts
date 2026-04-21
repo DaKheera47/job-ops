@@ -1,6 +1,11 @@
 import type { ExtractorSourceId } from "../extractors";
+import type {
+  LocationMatchStrictness,
+  LocationSearchScope,
+} from "../location-preferences";
 import type { Job, JobStatus } from "./jobs";
 import type { LocationIntent } from "./location";
+import type { PdfRenderer } from "./settings";
 
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
@@ -32,10 +37,109 @@ export interface PipelineRun {
   configSnapshot?: PipelineRunConfigSnapshot | null;
 }
 
+export type PipelineRunExecutionStage =
+  | "started"
+  | "profile_loaded"
+  | "discovery"
+  | "import"
+  | "scoring"
+  | "selection"
+  | "processing"
+  | "completed";
+
+export interface PipelineRunRequestedConfig {
+  topN: number;
+  minSuitabilityScore: number;
+  sources: ExtractorSourceId[];
+  enableCrawling: boolean;
+  enableScoring: boolean;
+  enableImporting: boolean;
+  enableAutoTailoring: boolean;
+}
+
+export interface PipelineRunSourceLimitSnapshot {
+  ukvisajobsMaxJobs: number;
+  adzunaMaxJobsPerTerm: number;
+  gradcrackerMaxJobsPerTerm: number;
+  startupjobsMaxJobsPerTerm: number;
+  jobspyResultsWanted: number;
+}
+
+export interface PipelineRunModelSnapshot {
+  scorer: string;
+  tailoring: string;
+  projectSelection: string;
+}
+
+export interface PipelineRunResumeProjectsSnapshot {
+  maxProjects: number;
+  lockedProjectCount: number;
+  aiSelectableProjectCount: number;
+}
+
+export interface PipelineRunSkippedSource {
+  source: ExtractorSourceId;
+  reason: string;
+}
+
+export interface PipelineRunEffectiveConfig {
+  country: string | null;
+  countryLabel: string | null;
+  searchCities: string[];
+  searchTermsCount: number;
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  locationSearchScope: LocationSearchScope;
+  locationMatchStrictness: LocationMatchStrictness;
+  compatibleSources: ExtractorSourceId[];
+  skippedSources: PipelineRunSkippedSource[];
+  blockedCompanyKeywordsCount: number;
+  sourceLimits: PipelineRunSourceLimitSnapshot;
+  autoSkipScoreThreshold: number | null;
+  pdfRenderer: PdfRenderer;
+  models: PipelineRunModelSnapshot;
+  resumeProjects: PipelineRunResumeProjectsSnapshot;
+}
+
+export interface PipelineRunResultSummary {
+  stage: PipelineRunExecutionStage;
+  jobsScored: number | null;
+  jobsSelected: number | null;
+  sourceErrors: string[];
+}
+
+export interface PipelineRunSavedDetails {
+  requestedConfig: PipelineRunRequestedConfig;
+  effectiveConfig: PipelineRunEffectiveConfig;
+  resultSummary: PipelineRunResultSummary;
+}
+
 export interface PipelineStatusResponse {
   isRunning: boolean;
   lastRun: PipelineRun | null;
   nextScheduledRun: string | null;
+}
+
+export type PipelineMetricQuality =
+  | "exact"
+  | "inferred_from_timestamps"
+  | "unavailable";
+
+export interface PipelineRunMetric<T = number | null> {
+  value: T;
+  quality: PipelineMetricQuality;
+}
+
+export interface PipelineRunInsights {
+  run: PipelineRun;
+  exactMetrics: {
+    durationMs: number | null;
+  };
+  savedDetails: PipelineRunSavedDetails | null;
+  inferredMetrics: {
+    jobsCreated: PipelineRunMetric<number | null>;
+    jobsUpdated: PipelineRunMetric<number | null>;
+    jobsProcessed: PipelineRunMetric<number | null>;
+  };
 }
 
 export interface JobsListResponse<TJob = Job> {

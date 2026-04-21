@@ -214,6 +214,7 @@ export const getEnabledSources = (
   const hasAdzunaAuth = Boolean(
     settings.adzunaAppId?.trim() && settings.adzunaAppKeyHint,
   );
+  const hasApifyToken = Boolean(settings.apifyTokenHint);
 
   for (const source of orderedSources) {
     if (source === "gradcracker") {
@@ -226,6 +227,10 @@ export const getEnabledSources = (
     }
     if (source === "adzuna") {
       if (hasAdzunaAuth) enabled.push(source);
+      continue;
+    }
+    if (source === "seek") {
+      if (hasApifyToken) enabled.push(source);
       continue;
     }
     if (source === "hiringcafe") {

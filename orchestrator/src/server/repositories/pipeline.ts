@@ -3,11 +3,49 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { PipelineRun, PipelineRunConfigSnapshot } from "@shared/types";
-import { desc, eq } from "drizzle-orm";
+import type {
+  PipelineRun,
+  PipelineRunConfigSnapshot,
+  PipelineRunInsights,
+  PipelineRunResultSummary,
+  PipelineRunSavedDetails,
+} from "@shared/types";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
-const { pipelineRuns } = schema;
+const { jobs, pipelineRuns } = schema;
+
+function mapRowToPipelineRun(
+  row: typeof schema.pipelineRuns.$inferSelect,
+): PipelineRun {
+  return {
+    id: row.id,
+    startedAt: row.startedAt,
+    completedAt: row.completedAt,
+    status: row.status as PipelineRun["status"],
+    jobsDiscovered: row.jobsDiscovered,
+    jobsProcessed: row.jobsProcessed,
+    errorMessage: row.errorMessage,
+    configSnapshot: parseConfigSnapshot(row.configSnapshot),
+  };
+}
+
+function mapRowToSavedDetails(
+  row: typeof schema.pipelineRuns.$inferSelect,
+): PipelineRunSavedDetails | null {
+  if (!row.requestedConfig || !row.effectiveConfig || !row.resultSummary) {
+    return null;
+  }
+
+  return {
+    requestedConfig:
+      row.requestedConfig as PipelineRunSavedDetails["requestedConfig"],
+    effectiveConfig:
+      row.effectiveConfig as PipelineRunSavedDetails["effectiveConfig"],
+    resultSummary:
+      row.resultSummary as PipelineRunSavedDetails["resultSummary"],
+  };
+}
 
 function serializeConfigSnapshot(
   value: PipelineRunConfigSnapshot | null | undefined,
@@ -30,9 +68,10 @@ function parseConfigSnapshot(
 /**
  * Create a new pipeline run.
  */
-export async function createPipelineRun(
-  configSnapshot?: PipelineRunConfigSnapshot | null,
-): Promise<PipelineRun> {
+export async function createPipelineRun(args?: {
+  configSnapshot?: PipelineRunConfigSnapshot | null;
+  savedDetails?: PipelineRunSavedDetails | null;
+}): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -40,7 +79,10 @@ export async function createPipelineRun(
     id,
     startedAt: now,
     status: "running",
-    configSnapshot: serializeConfigSnapshot(configSnapshot),
+    configSnapshot: serializeConfigSnapshot(args?.configSnapshot ?? null),
+    requestedConfig: args?.savedDetails?.requestedConfig ?? null,
+    effectiveConfig: args?.savedDetails?.effectiveConfig ?? null,
+    resultSummary: args?.savedDetails?.resultSummary ?? null,
   });
 
   return {
@@ -51,7 +93,7 @@ export async function createPipelineRun(
     jobsDiscovered: 0,
     jobsProcessed: 0,
     errorMessage: null,
-    configSnapshot: configSnapshot ?? null,
+    configSnapshot: args?.configSnapshot ?? null,
   };
 }
 
@@ -67,9 +109,10 @@ export async function updatePipelineRun(
     jobsProcessed: number;
     errorMessage: string;
     configSnapshot: PipelineRunConfigSnapshot | null;
+    resultSummary: PipelineRunResultSummary | null;
   }>,
 ): Promise<void> {
-  const { configSnapshot, ...rest } = update;
+  const { configSnapshot, resultSummary, ...rest } = update;
   await db
     .update(pipelineRuns)
     .set({
@@ -78,6 +121,9 @@ export async function updatePipelineRun(
         ? {
             configSnapshot: serializeConfigSnapshot(configSnapshot ?? null),
           }
+        : {}),
+      ...(Object.hasOwn(update, "resultSummary")
+        ? { resultSummary: resultSummary ?? null }
         : {}),
     })
     .where(eq(pipelineRuns.id, id));
@@ -95,16 +141,7 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
 
   if (!row) return null;
 
-  return {
-    id: row.id,
-    startedAt: row.startedAt,
-    completedAt: row.completedAt,
-    status: row.status as PipelineRun["status"],
-    jobsDiscovered: row.jobsDiscovered,
-    jobsProcessed: row.jobsProcessed,
-    errorMessage: row.errorMessage,
-    configSnapshot: parseConfigSnapshot(row.configSnapshot),
-  };
+  return mapRowToPipelineRun(row);
 }
 
 /**
@@ -119,14 +156,104 @@ export async function getRecentPipelineRuns(
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(limit);
 
-  return rows.map((row) => ({
-    id: row.id,
-    startedAt: row.startedAt,
-    completedAt: row.completedAt,
-    status: row.status as PipelineRun["status"],
-    jobsDiscovered: row.jobsDiscovered,
-    jobsProcessed: row.jobsProcessed,
-    errorMessage: row.errorMessage,
-    configSnapshot: parseConfigSnapshot(row.configSnapshot),
-  }));
+  return rows.map(mapRowToPipelineRun);
+}
+
+export async function getPipelineRunById(
+  id: string,
+): Promise<PipelineRun | null> {
+  const [row] = await db
+    .select()
+    .from(pipelineRuns)
+    .where(eq(pipelineRuns.id, id))
+    .limit(1);
+
+  return row ? mapRowToPipelineRun(row) : null;
+}
+
+export async function getPipelineRunInsights(
+  id: string,
+): Promise<PipelineRunInsights | null> {
+  const [row] = await db
+    .select()
+    .from(pipelineRuns)
+    .where(eq(pipelineRuns.id, id))
+    .limit(1);
+  if (!row) return null;
+
+  const run = mapRowToPipelineRun(row);
+  const savedDetails = mapRowToSavedDetails(row);
+
+  const durationMs =
+    run.completedAt == null
+      ? null
+      : Math.max(
+          0,
+          new Date(run.completedAt).getTime() -
+            new Date(run.startedAt).getTime(),
+        );
+
+  if (!run.completedAt) {
+    return {
+      run,
+      exactMetrics: { durationMs },
+      savedDetails,
+      inferredMetrics: {
+        jobsCreated: { value: null, quality: "unavailable" },
+        jobsUpdated: { value: null, quality: "unavailable" },
+        jobsProcessed: { value: null, quality: "unavailable" },
+      },
+    };
+  }
+
+  const countSelection = { count: sql<number>`count(*)` };
+  const [[createdRow], [updatedRow], [processedRow]] = await Promise.all([
+    db
+      .select(countSelection)
+      .from(jobs)
+      .where(
+        and(
+          gte(jobs.createdAt, run.startedAt),
+          lte(jobs.createdAt, run.completedAt),
+        ),
+      ),
+    db
+      .select(countSelection)
+      .from(jobs)
+      .where(
+        and(
+          gte(jobs.updatedAt, run.startedAt),
+          lte(jobs.updatedAt, run.completedAt),
+        ),
+      ),
+    db
+      .select(countSelection)
+      .from(jobs)
+      .where(
+        and(
+          gte(jobs.processedAt, run.startedAt),
+          lte(jobs.processedAt, run.completedAt),
+        ),
+      ),
+  ]);
+
+  return {
+    run,
+    exactMetrics: { durationMs },
+    savedDetails,
+    inferredMetrics: {
+      jobsCreated: {
+        value: createdRow?.count ?? 0,
+        quality: "inferred_from_timestamps",
+      },
+      jobsUpdated: {
+        value: updatedRow?.count ?? 0,
+        quality: "inferred_from_timestamps",
+      },
+      jobsProcessed: {
+        value: processedRow?.count ?? 0,
+        quality: "inferred_from_timestamps",
+      },
+    },
+  };
 }

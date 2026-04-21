@@ -89,7 +89,10 @@ const migrations = [
     jobs_discovered INTEGER NOT NULL DEFAULT 0,
     jobs_processed INTEGER NOT NULL DEFAULT 0,
     error_message TEXT,
-    config_snapshot TEXT
+    config_snapshot TEXT,
+    requested_config TEXT,
+    effective_config TEXT,
+    result_summary TEXT
   )`,
 
   `CREATE TABLE IF NOT EXISTS settings (
@@ -444,10 +447,13 @@ const migrations = [
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
     jobs_discovered INTEGER NOT NULL DEFAULT 0,
     jobs_processed INTEGER NOT NULL DEFAULT 0,
-    error_message TEXT
+    error_message TEXT,
+    requested_config TEXT,
+    effective_config TEXT,
+    result_summary TEXT
   )`,
-  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message)
-   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message
+  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, requested_config, effective_config, result_summary)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
@@ -726,6 +732,9 @@ for (const migration of migrations) {
     const message = error instanceof Error ? error.message : String(error);
     const isDuplicateColumn =
       (migration.toLowerCase().includes("alter table jobs add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table pipeline_runs add column") ||
         migration.toLowerCase().includes("alter table tasks add column") ||
         migration
           .toLowerCase()

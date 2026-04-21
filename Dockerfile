@@ -53,6 +53,7 @@ FROM build-base AS node-deps
 
 # Copy package files for dependency installation.
 COPY package*.json ./
+COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
@@ -63,6 +64,7 @@ COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/seek/package*.json ./extractors/seek/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
 RUN --mount=type=cache,target=/root/.npm \
@@ -70,7 +72,8 @@ RUN --mount=type=cache,target=/root/.npm \
     --no-audit --no-fund --progress=false
 
 # Fetch Camoufox binaries before copying source to keep the download cached.
-RUN npx camoufox-js fetch
+RUN --mount=type=secret,id=github_token,required=false \
+    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM node-deps AS build-sources
 
@@ -86,6 +89,7 @@ COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/seek ./extractors/seek
 
 # ============================================================================
 # PARALLEL BUILD STAGES
@@ -117,6 +121,7 @@ COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
+COPY extractors/seek/package*.json ./extractors/seek/
 
 # Install production Node dependencies only.
 RUN --mount=type=cache,target=/root/.npm \
@@ -170,6 +175,7 @@ COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
+COPY extractors/seek ./extractors/seek
 
 # Create runtime directories.
 RUN mkdir -p /app/data/pdfs /app/codex-home
