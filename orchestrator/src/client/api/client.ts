@@ -33,6 +33,8 @@ import type {
   JobsListResponse,
   JobsRevisionResponse,
   JobTracerLinksResponse,
+  LocationMatchStrictness,
+  LocationSearchScope,
   ManualJobDraft,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
@@ -1231,6 +1233,13 @@ export async function runPipeline(config?: {
   topN?: number;
   minSuitabilityScore?: number;
   sources?: JobSource[];
+  runBudget?: number;
+  searchTerms?: string[];
+  country?: string;
+  cityLocations?: string[];
+  workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
+  searchScope?: LocationSearchScope;
+  matchStrictness?: LocationMatchStrictness;
 }): Promise<{ message: string }> {
   return fetchApi<{ message: string }>("/pipeline/run", {
     method: "POST",

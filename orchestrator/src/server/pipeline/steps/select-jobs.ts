@@ -1,33 +1,40 @@
 import * as settingsRepo from "@server/repositories/settings";
-import { normalizeLocationSearchScope } from "@shared/location-preferences.js";
-import {
-  matchesRequestedCity,
-  matchesRequestedCountry,
-  resolveSearchCities,
-  shouldApplyStrictCityFilter,
-} from "@shared/search-cities.js";
+import { matchJobLocationIntent } from "@shared/job-matching.js";
+import { createLocationIntent } from "@shared/location-domain.js";
+import { resolveSearchCities } from "@shared/search-cities.js";
 import type { PipelineConfig } from "@shared/types";
 import type { ScoredJob } from "./types";
 
-function matchesSelectedLocations(args: {
-  job: ScoredJob;
-  selectedCountry: string;
-  requestedCities: string[];
-}): boolean {
-  const { job, selectedCountry, requestedCities } = args;
-  if (!selectedCountry) return false;
+function parseWorkplaceTypes(
+  raw: string | undefined,
+): Array<"remote" | "hybrid" | "onsite"> {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (value): value is "remote" | "hybrid" | "onsite" =>
+        value === "remote" || value === "hybrid" || value === "onsite",
+    );
+  } catch {
+    return [];
+  }
+}
 
-  const countryMatches = matchesRequestedCountry(
-    job.location ?? undefined,
-    selectedCountry,
-  );
-  if (!countryMatches) return false;
-  if (requestedCities.length === 0) return true;
+async function resolveLocationIntent(
+  mergedConfig: PipelineConfig,
+): Promise<NonNullable<PipelineConfig["locationIntent"]>> {
+  if (mergedConfig.locationIntent) return mergedConfig.locationIntent;
 
-  return requestedCities.some((requestedCity) => {
-    const strict = shouldApplyStrictCityFilter(requestedCity, selectedCountry);
-    if (!strict) return true;
-    return matchesRequestedCity(job.location ?? undefined, requestedCity);
+  const settings = await settingsRepo.getAllSettings();
+  return createLocationIntent({
+    selectedCountry: settings.jobspyCountryIndeed ?? "",
+    cityLocations: resolveSearchCities({
+      single: settings.searchCities ?? null,
+    }),
+    workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
+    geoScope: settings.locationSearchScope ?? null,
+    matchStrictness: settings.locationMatchStrictness ?? null,
   });
 }
 
@@ -35,16 +42,9 @@ export async function selectJobsStep(args: {
   scoredJobs: ScoredJob[];
   mergedConfig: PipelineConfig;
 }): Promise<ScoredJob[]> {
-  const settings = await settingsRepo.getAllSettings();
-  const searchScope = normalizeLocationSearchScope(
-    settings.locationSearchScope,
-  );
-  const selectedCountry = settings.jobspyCountryIndeed ?? "";
-  const requestedCities = resolveSearchCities({
-    single: settings.searchCities ?? settings.jobspyLocation,
-  });
+  const locationIntent = await resolveLocationIntent(args.mergedConfig);
   const prioritizeSelectedLocations =
-    searchScope === "remote_worldwide_prioritize_selected";
+    locationIntent.geoScope === "remote_worldwide_prioritize_selected";
 
   return args.scoredJobs
     .filter(
@@ -57,20 +57,14 @@ export async function selectJobsStep(args: {
       if (scoreDelta !== 0) return scoreDelta;
       if (!prioritizeSelectedLocations) return 0;
 
-      const leftPriority = matchesSelectedLocations({
-        job: left,
-        selectedCountry,
-        requestedCities,
-      })
-        ? 1
-        : 0;
-      const rightPriority = matchesSelectedLocations({
-        job: right,
-        selectedCountry,
-        requestedCities,
-      })
-        ? 1
-        : 0;
+      const leftPriority = matchJobLocationIntent(
+        left,
+        locationIntent,
+      ).priority;
+      const rightPriority = matchJobLocationIntent(
+        right,
+        locationIntent,
+      ).priority;
       return rightPriority - leftPriority;
     })
     .slice(0, args.mergedConfig.topN);

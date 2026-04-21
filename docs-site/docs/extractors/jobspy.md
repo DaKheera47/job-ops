@@ -43,6 +43,7 @@ The service in `orchestrator/src/server/services/jobspy.ts`:
 
 - Normalizes salary ranges
 - Converts empty values to null
+- Emits structured location evidence alongside the legacy `location` string
 - Keeps metadata like skills, ratings, remote flags when available
 - Skips rows with invalid site or missing URL
 

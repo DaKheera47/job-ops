@@ -16,6 +16,7 @@ export const manifest: ExtractorManifest = {
   id: "jobspy",
   displayName: "JobSpy",
   providesSources: ["indeed", "linkedin", "glassdoor"],
+  capabilities: { locationEvidence: true },
   async run(context: ExtractorRuntimeContext) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

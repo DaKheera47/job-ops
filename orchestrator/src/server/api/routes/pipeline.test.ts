@@ -36,14 +36,37 @@ describe.sequential("Pipeline API routes", () => {
     const runRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ topN: 5, sources: ["gradcracker"] }),
+      body: JSON.stringify({
+        topN: 5,
+        minSuitabilityScore: 65,
+        runBudget: 150,
+        searchTerms: ["backend engineer"],
+        country: "united kingdom",
+        cityLocations: ["London"],
+        workplaceTypes: ["remote", "hybrid"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "flexible",
+        sources: ["gradcracker"],
+      }),
     });
     const runBody = await runRes.json();
     expect(runBody.ok).toBe(true);
-    expect(runPipeline).toHaveBeenCalledWith({
-      topN: 5,
-      sources: ["gradcracker"],
-    });
+    expect(runPipeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        topN: 5,
+        minSuitabilityScore: 65,
+        sources: ["gradcracker"],
+        locationIntent: expect.objectContaining({
+          selectedCountry: "united kingdom",
+          country: "united kingdom",
+          cityLocations: ["London"],
+          workplaceTypes: ["remote", "hybrid"],
+          geoScope: "selected_plus_remote_worldwide",
+          searchScope: "selected_plus_remote_worldwide",
+          matchStrictness: "flexible",
+        }),
+      }),
+    );
 
     const glassdoorRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
@@ -51,10 +74,9 @@ describe.sequential("Pipeline API routes", () => {
       body: JSON.stringify({ sources: ["glassdoor"] }),
     });
     const glassdoorRunBody = await glassdoorRunRes.json();
-    expect(glassdoorRunBody.ok).toBe(true);
-    expect(runPipeline).toHaveBeenNthCalledWith(2, {
-      sources: ["glassdoor"],
-    });
+    expect(glassdoorRunRes.status).toBe(400);
+    expect(glassdoorRunBody.ok).toBe(false);
+    expect(glassdoorRunBody.error.message).toContain("incompatible");
 
     const adzunaRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
@@ -63,9 +85,21 @@ describe.sequential("Pipeline API routes", () => {
     });
     const adzunaRunBody = await adzunaRunRes.json();
     expect(adzunaRunBody.ok).toBe(true);
-    expect(runPipeline).toHaveBeenNthCalledWith(3, {
-      sources: ["adzuna"],
-    });
+    expect(runPipeline).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        sources: ["adzuna"],
+        locationIntent: expect.objectContaining({
+          selectedCountry: null,
+          country: null,
+          cityLocations: [],
+          workplaceTypes: [],
+          geoScope: "selected_only",
+          searchScope: "selected_only",
+          matchStrictness: "exact_only",
+        }),
+      }),
+    );
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {

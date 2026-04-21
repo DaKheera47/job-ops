@@ -37,7 +37,7 @@ describe("AutomaticRunTab", () => {
     getDetectedCountryKeyMock.mockReturnValue(null);
   });
 
-  it("uses detected country when location settings are still defaults", () => {
+  it("shows detected country as a suggestion when location settings are still defaults", () => {
     getDetectedCountryKeyMock.mockReturnValueOnce("united states");
 
     render(
@@ -54,8 +54,38 @@ describe("AutomaticRunTab", () => {
     );
 
     expect(
+      screen.getByRole("button", { name: "Select country" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Use suggestion" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Detected from your browser/i)).toBeInTheDocument();
+  });
+
+  it("applies the browser country suggestion when requested", () => {
+    getDetectedCountryKeyMock.mockReturnValueOnce("united states");
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin", "gradcracker", "ukvisajobs"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Use suggestion" }));
+
+    expect(
       screen.getByRole("button", { name: "United States" }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Detected from your browser/i),
+    ).not.toBeInTheDocument();
   });
 
   it("does not default the country picker to United Kingdom", () => {

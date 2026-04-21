@@ -23,11 +23,20 @@ import {
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
+import {
+  createLocationIntent,
+  planLocationSources,
+} from "@shared/location-intelligence.js";
+import {
+  LOCATION_MATCH_STRICTNESS_VALUES,
+  LOCATION_SEARCH_SCOPE_VALUES,
+} from "@shared/location-preferences.js";
 import type { PipelineStatusResponse } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
 export const pipelineRouter = Router();
+const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 
 /**
  * GET /api/pipeline/status - Get pipeline status
@@ -118,11 +127,29 @@ const runPipelineSchema = z.object({
     )
     .min(1)
     .optional(),
+  runBudget: z.number().min(50).max(1000).optional(),
+  searchTerms: z.array(z.string().trim().min(1)).optional(),
+  country: z.string().trim().optional(),
+  cityLocations: z.array(z.string().trim().min(1)).optional(),
+  workplaceTypes: z
+    .array(z.enum(WORKPLACE_TYPE_VALUES))
+    .min(1)
+    .max(3)
+    .optional(),
+  searchScope: z.enum(LOCATION_SEARCH_SCOPE_VALUES).optional(),
+  matchStrictness: z.enum(LOCATION_MATCH_STRICTNESS_VALUES).optional(),
 });
 
 pipelineRouter.post("/run", async (req: Request, res: Response) => {
   try {
     const config = runPipelineSchema.parse(req.body);
+    const locationIntent = createLocationIntent({
+      selectedCountry: config.country,
+      cityLocations: config.cityLocations,
+      workplaceTypes: config.workplaceTypes,
+      geoScope: config.searchScope,
+      matchStrictness: config.matchStrictness,
+    });
     if (config.sources && config.sources.length > 0) {
       let registry: ExtractorRegistry;
       try {
@@ -154,16 +181,47 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
           ),
         );
       }
+
+      const sourcePlans = planLocationSources({
+        intent: locationIntent,
+        sources: config.sources,
+      });
+      if (sourcePlans.incompatibleSources.length > 0) {
+        const incompatible = sourcePlans.plans
+          .filter((plan) => !plan.isCompatible)
+          .map((plan) => ({
+            source: plan.source,
+            reasons: plan.reasons,
+          }));
+
+        return fail(
+          res,
+          badRequest(
+            "Requested sources are incompatible with the selected location setup",
+            { incompatibleSources: incompatible },
+          ),
+        );
+      }
     }
 
     if (isDemoMode()) {
-      const simulated = await simulatePipelineRun(config);
+      const simulated = await simulatePipelineRun({
+        topN: config.topN,
+        minSuitabilityScore: config.minSuitabilityScore,
+        sources: config.sources,
+        locationIntent,
+      });
       return okWithMeta(res, simulated, { simulated: true });
     }
 
     // Start pipeline in background
     runWithRequestContext({}, () => {
-      runPipeline(config).catch((error) => {
+      runPipeline({
+        topN: config.topN,
+        minSuitabilityScore: config.minSuitabilityScore,
+        sources: config.sources,
+        locationIntent,
+      }).catch((error) => {
         logger.error("Background pipeline run failed", error);
       });
     });

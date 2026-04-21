@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import type { JobLocationEvidence } from "@shared/types/jobs";
 import { launchOptions } from "camoufox-js";
 import { parseSearchTerms } from "job-ops-shared/utils/search-terms";
 import {
@@ -170,6 +171,49 @@ function formatCompensationAmount(
   return `${Math.round(max ?? 0)}`;
 }
 
+function buildLocationEvidence(args: {
+  formattedLocation?: string | null;
+  cities: string[];
+  states: string[];
+  countries: string[];
+}): JobLocationEvidence[] | undefined {
+  const evidence: JobLocationEvidence[] = [];
+
+  if (args.formattedLocation) {
+    evidence.push({
+      kind: "location",
+      value: args.formattedLocation,
+      sourceField: "formatted_workplace_location",
+    });
+  }
+
+  for (const city of args.cities) {
+    evidence.push({
+      kind: "city",
+      value: city,
+      sourceField: "workplace_cities",
+    });
+  }
+
+  for (const state of args.states) {
+    evidence.push({
+      kind: "region",
+      value: state,
+      sourceField: "workplace_states",
+    });
+  }
+
+  for (const country of args.countries) {
+    evidence.push({
+      kind: "country",
+      value: country,
+      sourceField: "workplace_countries",
+    });
+  }
+
+  return evidence.length > 0 ? evidence : undefined;
+}
+
 function mapHiringCafeJob(raw: RawHiringCafeJob): ExtractedJob | null {
   const jobInformation = asRecord(raw.job_information);
   const processed = asRecord(raw.v5_processed_job_data);
@@ -202,6 +246,12 @@ function mapHiringCafeJob(raw: RawHiringCafeJob): ExtractedJob | null {
     firstArrayValue(processed?.workplace_states) ??
     firstArrayValue(processed?.workplace_countries) ??
     undefined;
+  const locationEvidence = buildLocationEvidence({
+    formattedLocation: toStringOrNull(processed?.formatted_workplace_location),
+    cities: asStringArray(processed?.workplace_cities),
+    states: asStringArray(processed?.workplace_states),
+    countries: asStringArray(processed?.workplace_countries),
+  });
 
   const commitments = asStringArray(processed?.commitment);
   const jobType = commitments.length > 0 ? commitments.join(", ") : undefined;
@@ -214,6 +264,7 @@ function mapHiringCafeJob(raw: RawHiringCafeJob): ExtractedJob | null {
     jobUrl,
     applicationLink: jobUrl,
     location,
+    locationEvidence,
     salary: formatCompensation(processed),
     datePosted: toStringOrNull(processed?.estimated_publish_date) ?? undefined,
     jobDescription: toStringOrNull(jobInformation?.description) ?? undefined,

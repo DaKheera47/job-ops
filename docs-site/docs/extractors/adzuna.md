@@ -33,6 +33,7 @@ City behavior:
 
 - If **Search cities** are set in Automatic advanced settings, Adzuna runs once per city.
 - City runs use strict post-filtering (`job.location` contains requested city) to avoid broad country-level spillover.
+- The normalized job payload now preserves structured location evidence from Adzuna's `location.display_name` field.
 
 Default controls:
 

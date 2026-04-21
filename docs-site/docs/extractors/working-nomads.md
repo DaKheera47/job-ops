@@ -38,6 +38,7 @@ Defaults and constraints:
 - No new credentials are required.
 - Working Nomads is a remote-only source, so it does not return meaningful hybrid-only or onsite-only results.
 - The upstream JSON search response is broad, so the extractor still applies local filtering for search-term matches and explicit city selection.
+- The normalized job payload now preserves structured location evidence from `location_base`, `location`, and `locations`.
 - Job type is inferred from title and description when the API does not provide an explicit full-time, part-time, or contract field.
 
 ## Common problems

@@ -126,6 +126,7 @@ export type ExtractorHealthStatus = "healthy" | "unhealthy";
 export interface ExtractorHealthResponse {
   source: import("../extractors").ExtractorSourceId;
   manifestId: string;
+  capabilities?: import("./extractors").ExtractorCapabilities;
   status: ExtractorHealthStatus;
   checkedAt: string;
   durationMs: number;

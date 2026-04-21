@@ -53,6 +53,7 @@ export const manifest: ExtractorManifest = {
   displayName: "Adzuna",
   providesSources: ["adzuna"],
   requiredEnvVars: ["ADZUNA_APP_ID", "ADZUNA_APP_KEY"],
+  capabilities: { locationEvidence: true },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

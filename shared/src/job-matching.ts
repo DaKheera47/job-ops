@@ -1,3 +1,9 @@
+import {
+  matchesRequestedCity,
+  matchesRequestedCountry,
+  shouldApplyStrictCityFilter,
+} from "./search-cities.js";
+import type { LocationIntent } from "./types/location";
 import { normalizeWhitespace } from "./utils/string";
 
 const COMPANY_SUFFIXES = [
@@ -74,4 +80,110 @@ export function calculateSimilarity(str1: string, str2: string): number {
   const distance = matrix[s1.length][s2.length];
   const maxLen = Math.max(s1.length, s2.length);
   return Math.round(((maxLen - distance) / maxLen) * 100);
+}
+
+function normalizeLocationCandidate(value: string): string | null {
+  const trimmed = normalizeWhitespace(value);
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+export function getJobLocationCandidates(job: {
+  location?: string | null;
+  locationEvidence?:
+    | Array<{
+        value?: string | null;
+      }>
+    | {
+        location?: string | null;
+        country?: string | null;
+        city?: string | null;
+        workplaceType?: "remote" | "hybrid" | "onsite" | null;
+      }
+    | null;
+}): string[] {
+  const evidenceCandidates = Array.isArray(job.locationEvidence)
+    ? job.locationEvidence.map((item) => item.value)
+    : job.locationEvidence
+      ? [
+          job.locationEvidence.location,
+          job.locationEvidence.country,
+          job.locationEvidence.city,
+          job.locationEvidence.workplaceType,
+        ]
+      : [];
+  const candidates = [job.location, ...evidenceCandidates];
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const normalized = normalizeLocationCandidate(candidate);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(normalized);
+  }
+
+  return out;
+}
+
+export function matchJobLocationIntent(
+  job: {
+    location?: string | null;
+    locationEvidence?: {
+      location?: string | null;
+      country?: string | null;
+      city?: string | null;
+      workplaceType?: "remote" | "hybrid" | "onsite" | null;
+    } | null;
+    isRemote?: boolean | null;
+  },
+  intent: LocationIntent,
+): {
+  matched: boolean;
+  reasonCode: string;
+  priority: 0 | 1;
+} {
+  const candidates = getJobLocationCandidates(job);
+  const selectedCountry = intent.selectedCountry;
+
+  if (!selectedCountry) {
+    return { matched: true, reasonCode: "unfiltered", priority: 0 };
+  }
+
+  const countryMatched = candidates.some((candidate) =>
+    matchesRequestedCountry(candidate, selectedCountry),
+  );
+
+  if (countryMatched) {
+    if (intent.cityLocations.length === 0) {
+      return { matched: true, reasonCode: "selected_location", priority: 1 };
+    }
+
+    const cityMatched = intent.cityLocations.some((requestedCity) => {
+      const strict = shouldApplyStrictCityFilter(
+        requestedCity,
+        selectedCountry,
+      );
+      if (!strict) return true;
+      return candidates.some((candidate) =>
+        matchesRequestedCity(candidate, requestedCity),
+      );
+    });
+
+    if (cityMatched || intent.matchStrictness === "flexible") {
+      return { matched: true, reasonCode: "selected_location", priority: 1 };
+    }
+  }
+
+  if (
+    intent.workplaceTypes.includes("remote") &&
+    intent.geoScope !== "selected_only" &&
+    job.isRemote === true
+  ) {
+    return { matched: true, reasonCode: "remote_worldwide", priority: 0 };
+  }
+
+  return { matched: false, reasonCode: "no_match", priority: 0 };
 }

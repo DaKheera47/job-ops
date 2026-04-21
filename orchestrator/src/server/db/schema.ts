@@ -45,6 +45,7 @@ export const jobs = sqliteTable("jobs", {
   deadline: text("deadline"),
   salary: text("salary"),
   location: text("location"),
+  locationEvidence: text("location_evidence"),
   degreeRequired: text("degree_required"),
   starting: text("starting"),
   jobDescription: text("job_description"),
@@ -184,6 +185,7 @@ export const pipelineRuns = sqliteTable("pipeline_runs", {
   jobsDiscovered: integer("jobs_discovered").notNull().default(0),
   jobsProcessed: integer("jobs_processed").notNull().default(0),
   errorMessage: text("error_message"),
+  configSnapshot: text("config_snapshot"),
 });
 
 export const jobChatThreads = sqliteTable(

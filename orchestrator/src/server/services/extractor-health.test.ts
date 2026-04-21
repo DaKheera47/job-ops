@@ -53,6 +53,7 @@ describe("extractor health service", () => {
       id: "jobspy",
       displayName: "JobSpy",
       providesSources: ["indeed", "linkedin", "glassdoor"],
+      capabilities: { locationEvidence: true },
       run,
     };
     mockGetExtractorRegistry.mockResolvedValue(createRegistry([manifest]));
@@ -63,6 +64,7 @@ describe("extractor health service", () => {
 
     expect(first?.healthy).toBe(true);
     expect(first?.response.cached).toBe(false);
+    expect(first?.response.capabilities?.locationEvidence).toBe(true);
     expect(second?.healthy).toBe(true);
     expect(second?.response.cached).toBe(true);
     expect(run).toHaveBeenCalledTimes(1);

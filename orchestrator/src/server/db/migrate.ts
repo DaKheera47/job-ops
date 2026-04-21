@@ -58,6 +58,7 @@ const migrations = [
     deadline TEXT,
     salary TEXT,
     location TEXT,
+    location_evidence TEXT,
     degree_required TEXT,
     starting TEXT,
     job_description TEXT,
@@ -87,7 +88,8 @@ const migrations = [
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
     jobs_discovered INTEGER NOT NULL DEFAULT 0,
     jobs_processed INTEGER NOT NULL DEFAULT 0,
-    error_message TEXT
+    error_message TEXT,
+    config_snapshot TEXT
   )`,
 
   `CREATE TABLE IF NOT EXISTS settings (
@@ -384,6 +386,7 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN company_reviews_count INTEGER`,
   `ALTER TABLE jobs ADD COLUMN vacancy_count INTEGER`,
   `ALTER TABLE jobs ADD COLUMN work_from_home_type TEXT`,
+  `ALTER TABLE jobs ADD COLUMN location_evidence TEXT`,
   `ALTER TABLE jobs ADD COLUMN selected_project_ids TEXT`,
   `ALTER TABLE jobs ADD COLUMN tailored_headline TEXT`,
   `ALTER TABLE jobs ADD COLUMN tailored_skills TEXT`,
@@ -489,6 +492,7 @@ const migrations = [
     deadline TEXT,
     salary TEXT,
     location TEXT,
+    location_evidence TEXT,
     degree_required TEXT,
     starting TEXT,
     job_description TEXT,
@@ -518,7 +522,7 @@ const migrations = [
     emails, company_industry, company_logo, company_url_direct, company_addresses, company_num_employees,
     company_revenue, company_description, skills, experience_range, company_rating, company_reviews_count,
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
-    deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
+    deadline, salary, location, location_evidence, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
     selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
     ready_at,
@@ -530,7 +534,7 @@ const migrations = [
     emails, company_industry, company_logo, company_url_direct, company_addresses, company_num_employees,
     company_revenue, company_description, skills, experience_range, company_rating, company_reviews_count,
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
-    deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
+    deadline, salary, location, location_evidence, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
     selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
     ready_at,
@@ -647,6 +651,7 @@ const migrations = [
   `ALTER TABLE job_chat_messages ADD COLUMN parent_message_id TEXT`,
   `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
   `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
+  `ALTER TABLE pipeline_runs ADD COLUMN config_snapshot TEXT`,
 
   // Backfill: link existing messages into a linear chain (each message's parent = its predecessor)
   `UPDATE job_chat_messages
@@ -722,6 +727,9 @@ for (const migration of migrations) {
     const isDuplicateColumn =
       (migration.toLowerCase().includes("alter table jobs add column") ||
         migration.toLowerCase().includes("alter table tasks add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table pipeline_runs add column") ||
         migration
           .toLowerCase()
           .includes("alter table post_application_messages add column") ||

@@ -5,7 +5,11 @@ import { dirname, join } from "node:path";
 import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 import { resolveSearchCities } from "@shared/search-cities.js";
-import type { CreateJobInput, JobSource } from "@shared/types/jobs";
+import type {
+  CreateJobInput,
+  JobLocationEvidence,
+  JobSource,
+} from "@shared/types/jobs";
 import {
   toNumberOrNull,
   toStringOrNull,
@@ -86,6 +90,19 @@ function toJsonStringOrNull(value: unknown): string | null {
   } catch {
     return null;
   }
+}
+
+function buildLocationEvidence(
+  location: string | null,
+): JobLocationEvidence[] | undefined {
+  if (!location) return undefined;
+  return [
+    {
+      kind: "location",
+      value: location,
+      sourceField: "location",
+    },
+  ];
 }
 
 function toJobSource(site: unknown): JobSource | null {
@@ -446,6 +463,9 @@ function mapJobSpyRows(
       jobUrl,
       applicationLink: jobUrlDirect ?? jobUrl,
       location: toStringOrNull(row.location) ?? undefined,
+      locationEvidence: buildLocationEvidence(
+        toStringOrNull(row.location) ?? null,
+      ),
       jobDescription: toStringOrNull(row.description) ?? undefined,
       salary: salary ?? undefined,
       jobType: toStringOrNull(row.job_type) ?? undefined,

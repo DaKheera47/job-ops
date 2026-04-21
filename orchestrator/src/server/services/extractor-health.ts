@@ -171,6 +171,7 @@ function getMissingRequiredEnvVars(manifest: ExtractorManifest): string[] {
 function buildResponse(args: {
   source: ExtractorSourceId;
   manifestId: string;
+  capabilities?: ExtractorManifest["capabilities"];
   status: "healthy" | "unhealthy";
   checkedAtMs: number;
   durationMs: number;
@@ -182,6 +183,7 @@ function buildResponse(args: {
   return {
     source: args.source,
     manifestId: args.manifestId,
+    capabilities: args.capabilities,
     status: args.status,
     checkedAt: new Date(args.checkedAtMs).toISOString(),
     durationMs: args.durationMs,
@@ -197,6 +199,7 @@ function buildResponse(args: {
 function createHealthyResult(args: {
   source: ExtractorSourceId;
   manifestId: string;
+  capabilities?: ExtractorManifest["capabilities"];
   checkedAtMs: number;
   durationMs: number;
   jobsValidated: number;
@@ -208,6 +211,7 @@ function createHealthyResult(args: {
     response: buildResponse({
       source: args.source,
       manifestId: args.manifestId,
+      capabilities: args.capabilities,
       status: "healthy",
       checkedAtMs: args.checkedAtMs,
       durationMs: args.durationMs,
@@ -222,6 +226,7 @@ function createHealthyResult(args: {
 function createUnhealthyResult(args: {
   source: ExtractorSourceId;
   manifestId: string;
+  capabilities?: ExtractorManifest["capabilities"];
   checkedAtMs: number;
   durationMs: number;
   jobsValidated?: number;
@@ -235,6 +240,7 @@ function createUnhealthyResult(args: {
     response: buildResponse({
       source: args.source,
       manifestId: args.manifestId,
+      capabilities: args.capabilities,
       status: "unhealthy",
       checkedAtMs: args.checkedAtMs,
       durationMs: args.durationMs,
@@ -273,6 +279,7 @@ async function runFreshHealthCheck(args: {
     return createUnhealthyResult({
       source,
       manifestId: manifest.id,
+      capabilities: manifest.capabilities,
       checkedAtMs,
       durationMs: Date.now() - startMs,
       searchTerm: probeConfig.searchTerm,
@@ -293,6 +300,7 @@ async function runFreshHealthCheck(args: {
       return createUnhealthyResult({
         source,
         manifestId: manifest.id,
+        capabilities: manifest.capabilities,
         checkedAtMs,
         durationMs: Date.now() - startMs,
         jobsReturned: result.jobs.length,
@@ -305,6 +313,7 @@ async function runFreshHealthCheck(args: {
       return createUnhealthyResult({
         source,
         manifestId: manifest.id,
+        capabilities: manifest.capabilities,
         checkedAtMs,
         durationMs: Date.now() - startMs,
         searchTerm: probeConfig.searchTerm,
@@ -317,6 +326,7 @@ async function runFreshHealthCheck(args: {
       return createUnhealthyResult({
         source,
         manifestId: manifest.id,
+        capabilities: manifest.capabilities,
         checkedAtMs,
         durationMs: Date.now() - startMs,
         jobsReturned: result.jobs.length,
@@ -329,6 +339,7 @@ async function runFreshHealthCheck(args: {
     return createHealthyResult({
       source,
       manifestId: manifest.id,
+      capabilities: manifest.capabilities,
       checkedAtMs,
       durationMs: Date.now() - startMs,
       jobsValidated,
@@ -339,6 +350,7 @@ async function runFreshHealthCheck(args: {
     return createUnhealthyResult({
       source,
       manifestId: manifest.id,
+      capabilities: manifest.capabilities,
       checkedAtMs,
       durationMs: Date.now() - startMs,
       searchTerm: probeConfig.searchTerm,

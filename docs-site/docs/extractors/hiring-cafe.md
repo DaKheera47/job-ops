@@ -41,6 +41,7 @@ Defaults and constraints:
 - No new Hiring Cafe settings fields were added.
 - `worldwide` and `usa/ca` run in broad mode without a strict country location filter.
 - Hiring Cafe is enabled by default in source selection.
+- The normalized job payload now preserves structured location evidence from the formatted workplace and city/state/country fields.
 - `HIRING_CAFE_DATE_FETCHED_PAST_N_DAYS` controls recency window when running extractor directly (default `7`).
 - When a city is provided via `searchCities`, Hiring Cafe uses city radius search (default `1` mile) and strict city post-filtering.
 - Workplace type is global to the run and is not configured separately per city in this integration.

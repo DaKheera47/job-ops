@@ -37,6 +37,7 @@ export const manifest: ExtractorManifest = {
   id: "workingnomads",
   displayName: "Working Nomads",
   providesSources: ["workingnomads"],
+  capabilities: { locationEvidence: true },
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };

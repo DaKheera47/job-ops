@@ -4,22 +4,18 @@ import { getExtractorRegistry } from "@server/extractors/registry";
 import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { asyncPool } from "@server/utils/async-pool";
+import { matchJobLocationIntent } from "@shared/job-matching.js";
 import {
+  createLocationIntent,
+  describeLocationIntent,
+  normalizeLocationEvidence,
   normalizeLocationMatchStrictness,
   normalizeLocationSearchScope,
-} from "@shared/location-preferences.js";
-import {
-  formatCountryLabel,
-  isSourceAllowedForCountry,
-  normalizeCountryKey,
-} from "@shared/location-support.js";
+  planLocationSource,
+} from "@shared/location-domain.js";
+import { formatCountryLabel } from "@shared/location-support.js";
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
-import {
-  matchesRequestedCity,
-  matchesRequestedCountry,
-  resolveSearchCities,
-  shouldApplyStrictCityFilter,
-} from "@shared/search-cities.js";
+import { resolveSearchCities } from "@shared/search-cities.js";
 import type { CreateJobInput, PipelineConfig } from "@shared/types";
 import { type CrawlSource, progressHelpers, updateProgress } from "../progress";
 
@@ -50,18 +46,6 @@ function parseBlockedCompanyKeywords(raw: string | undefined): string[] {
   }
 }
 
-function isBlockedEmployer(
-  employer: string | null | undefined,
-  blockedKeywordsLowerCase: string[],
-): boolean {
-  if (!employer) return false;
-  if (blockedKeywordsLowerCase.length === 0) return false;
-  const normalizedEmployer = employer.toLowerCase();
-  return blockedKeywordsLowerCase.some((keyword) =>
-    normalizedEmployer.includes(keyword),
-  );
-}
-
 function parseWorkplaceTypes(
   raw: string | undefined,
 ): Array<"remote" | "hybrid" | "onsite"> {
@@ -78,74 +62,77 @@ function parseWorkplaceTypes(
   }
 }
 
-function matchesSelectedLocations(args: {
-  job: CreateJobInput;
-  selectedCountry: string;
-  requestedCities: string[];
-  matchStrictness: "exact_only" | "flexible";
-}): boolean {
-  const { job, selectedCountry, requestedCities, matchStrictness } = args;
-  if (!selectedCountry) return true;
-
-  const countryMatches = matchesRequestedCountry(
-    job.location ?? undefined,
-    selectedCountry,
+function isBlockedEmployer(
+  employer: string | null | undefined,
+  blockedKeywordsLowerCase: string[],
+): boolean {
+  if (!employer) return false;
+  if (blockedKeywordsLowerCase.length === 0) return false;
+  const normalizedEmployer = employer.toLowerCase();
+  return blockedKeywordsLowerCase.some((keyword) =>
+    normalizedEmployer.includes(keyword),
   );
-  if (!countryMatches) return false;
-  if (requestedCities.length === 0) return true;
-
-  const cityMatches = requestedCities.some((requestedCity) => {
-    const strict = shouldApplyStrictCityFilter(requestedCity, selectedCountry);
-    if (!strict) return true;
-    return matchesRequestedCity(job.location, requestedCity);
-  });
-
-  if (cityMatches) return true;
-  return matchStrictness === "flexible";
 }
 
-function filterJobsByLocationPreferences(args: {
-  jobs: CreateJobInput[];
-  selectedCountry: string;
-  requestedCities: string[];
-  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
-  searchScope:
-    | "selected_only"
-    | "selected_plus_remote_worldwide"
-    | "remote_worldwide_prioritize_selected";
-  matchStrictness: "exact_only" | "flexible";
-}): CreateJobInput[] {
-  const {
-    jobs,
-    selectedCountry,
-    requestedCities,
-    workplaceTypes,
-    searchScope,
-    matchStrictness,
-  } = args;
+function createLocationIntentFromLegacyInputs(input: {
+  selectedCountry?: string | null;
+  searchCities?: string | string[] | null;
+  searchScope?: string | null;
+  matchStrictness?: string | null;
+  workplaceTypes?: Array<"remote" | "hybrid" | "onsite"> | null;
+}): NonNullable<PipelineConfig["locationIntent"]> {
+  return createLocationIntent({
+    selectedCountry: input.selectedCountry ?? null,
+    cityLocations: Array.isArray(input.searchCities)
+      ? input.searchCities
+      : resolveSearchCities({ single: input.searchCities ?? null }),
+    workplaceTypes: input.workplaceTypes ?? [],
+    geoScope: normalizeLocationSearchScope(input.searchScope ?? null),
+    matchStrictness: normalizeLocationMatchStrictness(
+      input.matchStrictness ?? null,
+    ),
+  });
+}
 
-  if (!selectedCountry) return jobs;
+function getLegacyLocationSelection(
+  intent: NonNullable<PipelineConfig["locationIntent"]>,
+): string {
+  return intent.selectedCountry ?? "";
+}
 
-  const allowRemoteWorldwide =
-    workplaceTypes.includes("remote") && searchScope !== "selected_only";
+function getPrimaryLocationLabel(
+  intent: NonNullable<PipelineConfig["locationIntent"]>,
+): string {
+  return describeLocationIntent(intent);
+}
 
-  return jobs.filter((job) => {
-    if (
-      matchesSelectedLocations({
-        job,
-        selectedCountry,
-        requestedCities,
-        matchStrictness,
-      })
-    ) {
-      return true;
-    }
+function getSourceLocationPlan(
+  source: CrawlSource,
+  intent: NonNullable<PipelineConfig["locationIntent"]>,
+): ReturnType<typeof planLocationSource> & {
+  canRun: boolean;
+  warnings: string[];
+} {
+  const plan = planLocationSource({ source, intent });
+  return {
+    ...plan,
+    canRun: plan.isCompatible,
+    warnings: plan.reasons,
+  };
+}
 
-    if (allowRemoteWorldwide && job.isRemote) {
-      return true;
-    }
-
-    return false;
+function buildLocationEvidence(args: {
+  location?: string | null;
+  isRemote?: boolean | null;
+  sourceNotes?: readonly string[] | null;
+}): CreateJobInput["locationEvidence"] {
+  if (!args.location && args.isRemote !== true) return undefined;
+  return normalizeLocationEvidence({
+    location: args.location ?? (args.isRemote ? "Remote" : null),
+    isRemote: args.isRemote ?? null,
+    source:
+      args.sourceNotes?.find((note) => note.startsWith("source:"))?.slice(7) ??
+      null,
   });
 }
 
@@ -178,21 +165,22 @@ export async function discoverJobsStep(args: {
       .filter(Boolean);
   }
 
-  const selectedCountry = normalizeCountryKey(
-    settings.jobspyCountryIndeed ?? "",
-  );
-  const workplaceTypes = parseWorkplaceTypes(settings.workplaceTypes);
-  const searchScope = normalizeLocationSearchScope(
-    settings.locationSearchScope,
-  );
-  const matchStrictness = normalizeLocationMatchStrictness(
-    settings.locationMatchStrictness,
-  );
-  const compatibleSources = selectedCountry
-    ? args.mergedConfig.sources.filter((source) =>
-        isSourceAllowedForCountry(source, selectedCountry),
-      )
-    : args.mergedConfig.sources;
+  const locationIntent =
+    args.mergedConfig.locationIntent ??
+    createLocationIntentFromLegacyInputs({
+      selectedCountry: settings.jobspyCountryIndeed ?? "",
+      searchCities: settings.searchCities ?? settings.jobspyLocation ?? "",
+      workplaceTypes: parseWorkplaceTypes(settings.workplaceTypes),
+      searchScope: settings.locationSearchScope,
+      matchStrictness: settings.locationMatchStrictness,
+    });
+  const sourcePlans = args.mergedConfig.sources.map((source) => ({
+    source,
+    plan: getSourceLocationPlan(source, locationIntent),
+  }));
+  const compatibleSources = sourcePlans
+    .filter(({ plan }) => plan.canRun)
+    .map(({ source }) => source);
   let existingJobUrlsPromise: Promise<string[]> | null = null;
   const getExistingJobUrls = (): Promise<string[]> => {
     if (!existingJobUrlsPromise) {
@@ -200,27 +188,24 @@ export async function discoverJobsStep(args: {
     }
     return existingJobUrlsPromise;
   };
-  const skippedSources = args.mergedConfig.sources.filter(
-    (source) => !compatibleSources.includes(source),
-  );
+  const skippedSources = sourcePlans.filter(({ plan }) => !plan.canRun);
 
-  if (selectedCountry && skippedSources.length > 0) {
-    logger.info("Skipping incompatible sources for selected country", {
+  if (skippedSources.length > 0) {
+    logger.info("Skipping incompatible sources for requested location intent", {
       step: "discover-jobs",
-      country: selectedCountry,
-      countryLabel: formatCountryLabel(selectedCountry),
+      locationIntent,
+      primaryLocation: getPrimaryLocationLabel(locationIntent),
       requestedSources: args.mergedConfig.sources,
-      skippedSources,
+      skippedSources: skippedSources.map(({ source }) => source),
+      warnings: skippedSources.flatMap(({ plan }) => plan.warnings),
     });
   }
 
-  if (
-    selectedCountry &&
-    args.mergedConfig.sources.length > 0 &&
-    compatibleSources.length === 0
-  ) {
+  if (args.mergedConfig.sources.length > 0 && compatibleSources.length === 0) {
     throw new Error(
-      `No compatible sources for selected country: ${formatCountryLabel(selectedCountry)}`,
+      locationIntent.selectedCountry
+        ? `No compatible sources for selected country: ${formatCountryLabel(locationIntent.selectedCountry)}`
+        : `No compatible sources for requested location: ${getPrimaryLocationLabel(locationIntent)}`,
     );
   }
 
@@ -275,7 +260,12 @@ export async function discoverJobsStep(args: {
           selectedSources: grouped.sources,
           settings: filteredSettings,
           searchTerms,
-          selectedCountry,
+          selectedCountry: getLegacyLocationSelection(locationIntent),
+          locationIntent,
+          sourceLocationPlan: getSourceLocationPlan(
+            grouped.sources[0] as CrawlSource,
+            locationIntent,
+          ),
           getExistingJobUrls,
           shouldCancel: args.shouldCancel,
           onProgress: (event) => {
@@ -371,16 +361,24 @@ export async function discoverJobsStep(args: {
     sourceErrors.push(...sourceResult.sourceErrors);
   }
 
-  const requestedCities = resolveSearchCities({
-    single: settings.searchCities ?? settings.jobspyLocation,
-  });
-  const locationFilteredJobs = filterJobsByLocationPreferences({
-    jobs: discoveredJobs,
-    selectedCountry,
-    requestedCities,
-    workplaceTypes,
-    searchScope,
-    matchStrictness,
+  const locationFilterReasonCounts: Record<string, number> = {};
+  const locationFilteredJobs = discoveredJobs.filter((job) => {
+    const evidence =
+      job.locationEvidence ??
+      buildLocationEvidence({
+        location: job.location,
+        isRemote: job.isRemote,
+        sourceNotes: [`source:${job.source}`],
+      });
+    job.locationEvidence = evidence;
+    const match = matchJobLocationIntent(job, locationIntent);
+    if (match.matched) {
+      return true;
+    }
+    const reasonCode = match.reasonCode;
+    locationFilterReasonCounts[reasonCode] =
+      (locationFilterReasonCounts[reasonCode] ?? 0) + 1;
+    return false;
   });
   const locationFilteredOutCount =
     discoveredJobs.length - locationFilteredJobs.length;
@@ -391,12 +389,9 @@ export async function discoverJobsStep(args: {
       {
         step: "discover-jobs",
         droppedCount: locationFilteredOutCount,
-        selectedCountry,
-        requestedCities,
-        searchScope,
-        matchStrictness,
-        allowRemoteWorldwide:
-          workplaceTypes.includes("remote") && searchScope !== "selected_only",
+        locationIntent,
+        primaryLocation: getPrimaryLocationLabel(locationIntent),
+        reasonCounts: locationFilterReasonCounts,
       },
     );
   }

@@ -928,6 +928,13 @@ describe("OrchestratorPage", () => {
       topN: 12,
       minSuitabilityScore: 55,
       sources: ["linkedin"],
+      runBudget: 150,
+      searchTerms: ["backend"],
+      country: "united kingdom",
+      cityLocations: [],
+      workplaceTypes: ["remote", "hybrid", "onsite"],
+      searchScope: "selected_only",
+      matchStrictness: "exact_only",
     });
     expect(setIntervalSpy).not.toHaveBeenCalledWith(expect.any(Function), 5000);
 

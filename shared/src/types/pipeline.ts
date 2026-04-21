@@ -1,15 +1,24 @@
 import type { ExtractorSourceId } from "../extractors";
 import type { Job, JobStatus } from "./jobs";
+import type { LocationIntent } from "./location";
 
 export interface PipelineConfig {
   topN: number; // Number of top jobs to process
   minSuitabilityScore: number; // Minimum score to auto-process
   sources: ExtractorSourceId[]; // Job sources to crawl
   outputDir: string; // Directory for generated PDFs
+  locationIntent?: LocationIntent;
   enableCrawling?: boolean;
   enableScoring?: boolean;
   enableImporting?: boolean;
   enableAutoTailoring?: boolean;
+}
+
+export interface PipelineRunConfigSnapshot {
+  topN: number;
+  minSuitabilityScore: number;
+  sources: ExtractorSourceId[];
+  locationIntent: LocationIntent;
 }
 
 export interface PipelineRun {
@@ -20,6 +29,7 @@ export interface PipelineRun {
   jobsDiscovered: number;
   jobsProcessed: number;
   errorMessage: string | null;
+  configSnapshot?: PipelineRunConfigSnapshot | null;
 }
 
 export interface PipelineStatusResponse {

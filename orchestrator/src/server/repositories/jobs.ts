@@ -8,6 +8,7 @@ import type {
   CreateJobNoteInput,
   Job,
   JobListItem,
+  JobLocationEvidence,
   JobNote,
   JobStatus,
   JobsRevisionResponse,
@@ -31,6 +32,42 @@ type AppliedDuplicateMatchCandidate = {
 function normalizeStatusFilter(statuses?: JobStatus[]): string | null {
   if (!statuses || statuses.length === 0) return null;
   return Array.from(new Set(statuses)).sort().join(",");
+}
+
+function parseLocationEvidence(
+  raw: string | null | undefined,
+): JobLocationEvidence | null {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<JobLocationEvidence>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return null;
+    }
+
+    return {
+      location: typeof parsed.location === "string" ? parsed.location : null,
+      country: typeof parsed.country === "string" ? parsed.country : null,
+      city: typeof parsed.city === "string" ? parsed.city : null,
+      workplaceType:
+        parsed.workplaceType === "remote" ||
+        parsed.workplaceType === "hybrid" ||
+        parsed.workplaceType === "onsite"
+          ? parsed.workplaceType
+          : null,
+      isRemote: typeof parsed.isRemote === "boolean" ? parsed.isRemote : false,
+      source: typeof parsed.source === "string" ? parsed.source : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function serializeLocationEvidence(
+  evidence: JobLocationEvidence | null | undefined,
+): string | null {
+  if (!evidence) return null;
+  return JSON.stringify(evidence);
 }
 
 /**
@@ -307,6 +344,7 @@ async function insertJob(input: CreateJobInput): Promise<Job> {
     deadline: input.deadline ?? null,
     salary: input.salary ?? null,
     location: input.location ?? null,
+    locationEvidence: serializeLocationEvidence(input.locationEvidence),
     degreeRequired: input.degreeRequired ?? null,
     starting: input.starting ?? null,
     jobDescription: input.jobDescription ?? null,
@@ -444,6 +482,7 @@ export async function updateJob(
   input: UpdateJobInput,
 ): Promise<Job | null> {
   const now = new Date().toISOString();
+  const { locationEvidence, ...updateFields } = input;
   const readyAtUpdate =
     input.readyAt !== undefined
       ? { readyAt: input.readyAt }
@@ -460,7 +499,10 @@ export async function updateJob(
   await db
     .update(jobs)
     .set({
-      ...input,
+      ...updateFields,
+      ...(locationEvidence !== undefined
+        ? { locationEvidence: serializeLocationEvidence(locationEvidence) }
+        : {}),
       updatedAt: now,
       ...(input.status === "processing" ? { processedAt: now } : {}),
       ...readyAtUpdate,
@@ -578,6 +620,7 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     deadline: row.deadline,
     salary: row.salary,
     location: row.location,
+    locationEvidence: parseLocationEvidence(row.locationEvidence),
     degreeRequired: row.degreeRequired,
     starting: row.starting,
     jobDescription: row.jobDescription,

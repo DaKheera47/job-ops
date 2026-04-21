@@ -375,6 +375,67 @@ describe("discoverJobsStep", () => {
     expect(result.discoveredJobs[0]?.location).toBe("Zagreb, Croatia");
   });
 
+  it("keeps jobs that only expose structured location evidence", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+
+    const jobspyManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["indeed", "linkedin", "glassdoor"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Engineer - Zagreb",
+            employer: "ACME Croatia",
+            location: null,
+            locationEvidence: [
+              {
+                kind: "location",
+                value: "Zagreb, Croatia",
+                sourceField: "location",
+              },
+            ],
+            jobUrl: "https://example.com/hr-1",
+          },
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "croatia",
+      searchCities: null,
+    } as any);
+
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", jobspyManifest as any]]),
+      manifestBySource: new Map([
+        ["indeed", jobspyManifest as any],
+        ["linkedin", jobspyManifest as any],
+        ["glassdoor", jobspyManifest as any],
+      ]),
+      availableSources: ["indeed", "linkedin", "glassdoor"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: ["linkedin"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(result.discoveredJobs[0]?.locationEvidence?.[0]).toEqual(
+      expect.objectContaining({
+        kind: "location",
+        value: "Zagreb, Croatia",
+      }),
+    );
+  });
+
   it("keeps remote jobs worldwide when scope allows them", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const registryModule = await import("@server/extractors/registry");

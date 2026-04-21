@@ -53,7 +53,14 @@ describe("selectJobsStep", () => {
         id: "zagreb",
         suitabilityScore: 80,
         suitabilityReason: "tie",
-        location: "Zagreb, Croatia",
+        location: null,
+        locationEvidence: [
+          {
+            kind: "location",
+            value: "Zagreb, Croatia",
+            sourceField: "location",
+          },
+        ],
       },
     ] as any;
 

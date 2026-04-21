@@ -4,7 +4,7 @@ import {
   normalizeLocationToken,
   resolveSearchCities,
 } from "@shared/search-cities.js";
-import type { CreateJobInput } from "@shared/types/jobs";
+import type { CreateJobInput, JobLocationEvidence } from "@shared/types/jobs";
 
 const WORKING_NOMADS_SEARCH_URL =
   "https://www.workingnomads.com/jobsapi/_search";
@@ -113,6 +113,40 @@ function inferJobType(text: string, positionType: string | undefined): string {
   }
 
   return "Full-time";
+}
+
+function buildLocationEvidence(args: {
+  locationBase?: string | undefined;
+  legacyLocation?: string | undefined;
+  locations: string[];
+}): JobLocationEvidence[] | undefined {
+  const evidence: JobLocationEvidence[] = [];
+
+  if (args.locationBase) {
+    evidence.push({
+      kind: "location",
+      value: args.locationBase,
+      sourceField: "location_base",
+    });
+  }
+
+  if (args.legacyLocation) {
+    evidence.push({
+      kind: "location",
+      value: args.legacyLocation,
+      sourceField: "location",
+    });
+  }
+
+  for (const location of args.locations) {
+    evidence.push({
+      kind: "location",
+      value: location,
+      sourceField: "locations",
+    });
+  }
+
+  return evidence.length > 0 ? evidence : undefined;
 }
 
 function escapeQueryString(value: string): string {
@@ -521,6 +555,11 @@ function mapWorkingNomadsJob(
     locationBase ??
     legacyLocation ??
     (locations.length > 0 ? locations.join(", ") : "Remote");
+  const locationEvidence = buildLocationEvidence({
+    locationBase,
+    legacyLocation,
+    locations,
+  });
   const category =
     typeof job.category_name === "string" ? job.category_name : undefined;
   const tags = Array.isArray(job.tags)
@@ -553,6 +592,7 @@ function mapWorkingNomadsJob(
     jobUrl,
     applicationLink: applyUrl,
     location,
+    locationEvidence,
     jobDescription: description,
     datePosted: typeof job.pub_date === "string" ? job.pub_date : undefined,
     jobType: inferJobType(

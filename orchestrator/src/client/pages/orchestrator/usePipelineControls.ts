@@ -1,7 +1,10 @@
 import * as api from "@client/api";
 import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import { useSettings } from "@client/hooks/useSettings";
-import { getCompatibleSourcesForCountry } from "@shared/location-support.js";
+import {
+  createLocationIntent,
+  planLocationSources,
+} from "@shared/location-intelligence.js";
 import type { AppSettings, JobSource } from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -97,6 +100,13 @@ export function usePipelineControls(
       topN: number;
       minSuitabilityScore: number;
       sources: JobSource[];
+      runBudget: number;
+      searchTerms: string[];
+      country: string;
+      cityLocations: string[];
+      workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+      searchScope: AutomaticRunValues["searchScope"];
+      matchStrictness: AutomaticRunValues["matchStrictness"];
       analytics?: {
         mode?: string;
         country?: string;
@@ -120,6 +130,13 @@ export function usePipelineControls(
           topN: config.topN,
           minSuitabilityScore: config.minSuitabilityScore,
           sources: config.sources,
+          runBudget: config.runBudget,
+          searchTerms: config.searchTerms,
+          country: config.country,
+          cityLocations: config.cityLocations,
+          workplaceTypes: config.workplaceTypes,
+          searchScope: config.searchScope,
+          matchStrictness: config.matchStrictness,
         });
         toast.message("Pipeline started", {
           description: `Sources: ${config.sources.join(", ")}. This may take a few minutes.`,
@@ -155,13 +172,31 @@ export function usePipelineControls(
 
   const handleSaveAndRunAutomatic = useCallback(
     async (values: AutomaticRunValues) => {
-      const compatibleSources = getCompatibleSourcesForCountry(
-        pipelineSources,
-        values.country,
-      );
+      const locationIntent = createLocationIntent({
+        selectedCountry: values.country,
+        cityLocations: values.cityLocations,
+        workplaceTypes: values.workplaceTypes,
+        searchScope: values.searchScope,
+        matchStrictness: values.matchStrictness,
+      });
+      const sourcePlan = planLocationSources({
+        intent: locationIntent,
+        sources: pipelineSources,
+      });
+      const incompatiblePlans = sourcePlan.plans.filter((plan) => !plan.canRun);
+      const compatibleSources = sourcePlan.compatibleSources as JobSource[];
+
+      if (incompatiblePlans.length > 0) {
+        toast.error(
+          incompatiblePlans[0]?.reasons[0] ??
+            "Some selected sources do not support this location setup.",
+        );
+        return;
+      }
+
       if (compatibleSources.length === 0) {
         toast.error(
-          "No compatible sources for the selected country. Choose another country or source.",
+          "No compatible sources for the selected location setup. Choose another country, city, or source.",
         );
         return;
       }
@@ -187,9 +222,10 @@ export function usePipelineControls(
       });
       await refreshSettings();
       await startPipelineRun({
+        ...values,
+        sources: compatibleSources,
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
-        sources: compatibleSources,
         analytics: {
           mode: "automatic",
           country: values.country,

@@ -173,4 +173,49 @@ describe("API client auth flow", () => {
     expect(api.getCachedAuthHeader()).toBeUndefined();
     expect(redirectToSignIn).toHaveBeenCalledTimes(1);
   });
+
+  it("sends the full automatic run payload to the pipeline API", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch");
+    fetchSpy.mockResolvedValueOnce(
+      createJsonResponse(200, {
+        ok: true,
+        data: { message: "ok" },
+        meta: { requestId: "req-full" },
+      }),
+    );
+
+    await expect(
+      api.runPipeline({
+        topN: 12,
+        minSuitabilityScore: 55,
+        runBudget: 150,
+        searchTerms: ["backend engineer"],
+        country: "united kingdom",
+        cityLocations: ["London"],
+        workplaceTypes: ["remote", "hybrid"],
+        searchScope: "selected_plus_remote_worldwide",
+        matchStrictness: "flexible",
+        sources: ["linkedin"],
+      }),
+    ).resolves.toEqual({ message: "ok" });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/pipeline/run",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          topN: 12,
+          minSuitabilityScore: 55,
+          runBudget: 150,
+          searchTerms: ["backend engineer"],
+          country: "united kingdom",
+          cityLocations: ["London"],
+          workplaceTypes: ["remote", "hybrid"],
+          searchScope: "selected_plus_remote_worldwide",
+          matchStrictness: "flexible",
+          sources: ["linkedin"],
+        }),
+      }),
+    );
+  });
 });

@@ -3,16 +3,36 @@
  */
 
 import { randomUUID } from "node:crypto";
-import type { PipelineRun } from "@shared/types";
+import type { PipelineRun, PipelineRunConfigSnapshot } from "@shared/types";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
 
 const { pipelineRuns } = schema;
 
+function serializeConfigSnapshot(
+  value: PipelineRunConfigSnapshot | null | undefined,
+): string | null {
+  if (!value) return null;
+  return JSON.stringify(value);
+}
+
+function parseConfigSnapshot(
+  value: string | null | undefined,
+): PipelineRunConfigSnapshot | null {
+  if (!value) return null;
+  try {
+    return JSON.parse(value) as PipelineRunConfigSnapshot;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Create a new pipeline run.
  */
-export async function createPipelineRun(): Promise<PipelineRun> {
+export async function createPipelineRun(
+  configSnapshot?: PipelineRunConfigSnapshot | null,
+): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
 
@@ -20,6 +40,7 @@ export async function createPipelineRun(): Promise<PipelineRun> {
     id,
     startedAt: now,
     status: "running",
+    configSnapshot: serializeConfigSnapshot(configSnapshot),
   });
 
   return {
@@ -30,6 +51,7 @@ export async function createPipelineRun(): Promise<PipelineRun> {
     jobsDiscovered: 0,
     jobsProcessed: 0,
     errorMessage: null,
+    configSnapshot: configSnapshot ?? null,
   };
 }
 
@@ -44,9 +66,21 @@ export async function updatePipelineRun(
     jobsDiscovered: number;
     jobsProcessed: number;
     errorMessage: string;
+    configSnapshot: PipelineRunConfigSnapshot | null;
   }>,
 ): Promise<void> {
-  await db.update(pipelineRuns).set(update).where(eq(pipelineRuns.id, id));
+  const { configSnapshot, ...rest } = update;
+  await db
+    .update(pipelineRuns)
+    .set({
+      ...rest,
+      ...(Object.hasOwn(update, "configSnapshot")
+        ? {
+            configSnapshot: serializeConfigSnapshot(configSnapshot ?? null),
+          }
+        : {}),
+    })
+    .where(eq(pipelineRuns.id, id));
 }
 
 /**
@@ -69,6 +103,7 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
     jobsDiscovered: row.jobsDiscovered,
     jobsProcessed: row.jobsProcessed,
     errorMessage: row.errorMessage,
+    configSnapshot: parseConfigSnapshot(row.configSnapshot),
   };
 }
 
@@ -92,5 +127,6 @@ export async function getRecentPipelineRuns(
     jobsDiscovered: row.jobsDiscovered,
     jobsProcessed: row.jobsProcessed,
     errorMessage: row.errorMessage,
+    configSnapshot: parseConfigSnapshot(row.configSnapshot),
   }));
 }
