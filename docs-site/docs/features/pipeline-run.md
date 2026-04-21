@@ -43,6 +43,11 @@ Three presets set defaults for run aggressiveness:
 
 If values are edited manually, the UI shows **Custom**.
 
+The automatic modal remembers the last preset choice and `Max jobs discovered`
+value in this browser. If you picked **Custom**, it reopens in Custom mode with
+the same values. The pipeline run itself still derives per-source caps from the
+saved budget when you start the run.
+
 #### Country and source compatibility
 
 - Country selection affects which sources are available.

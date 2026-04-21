@@ -39,6 +39,7 @@ import { sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
   type AutomaticPresetId,
+  type AutomaticPresetSelection,
   type AutomaticRunValues,
   calculateAutomaticEstimate,
   loadAutomaticRunMemory,
@@ -91,8 +92,6 @@ interface AutomaticRunFormValues {
   searchTerms: string[];
   searchTermDraft: string;
 }
-
-type AutomaticPresetSelection = AutomaticPresetId | "custom";
 
 const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
@@ -234,37 +233,6 @@ function getRadioOptionClassName(selected: boolean): string {
   }`;
 }
 
-function getPresetSelection(values: {
-  topN: number;
-  minSuitabilityScore: number;
-  runBudget: number;
-}): AutomaticPresetSelection {
-  if (
-    values.topN === AUTOMATIC_PRESETS.fast.topN &&
-    values.minSuitabilityScore === AUTOMATIC_PRESETS.fast.minSuitabilityScore &&
-    values.runBudget === AUTOMATIC_PRESETS.fast.runBudget
-  ) {
-    return "fast";
-  }
-  if (
-    values.topN === AUTOMATIC_PRESETS.balanced.topN &&
-    values.minSuitabilityScore ===
-      AUTOMATIC_PRESETS.balanced.minSuitabilityScore &&
-    values.runBudget === AUTOMATIC_PRESETS.balanced.runBudget
-  ) {
-    return "balanced";
-  }
-  if (
-    values.topN === AUTOMATIC_PRESETS.detailed.topN &&
-    values.minSuitabilityScore ===
-      AUTOMATIC_PRESETS.detailed.minSuitabilityScore &&
-    values.runBudget === AUTOMATIC_PRESETS.detailed.runBudget
-  ) {
-    return "detailed";
-  }
-  return "custom";
-}
-
 export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   open,
   settings,
@@ -283,6 +251,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const [browserCountrySuggestion, setBrowserCountrySuggestion] = useState<
     string | null
   >(null);
+  const [selectedPreset, setSelectedPreset] =
+    useState<AutomaticPresetSelection>("custom");
   const { watch, reset, setValue } = useForm<AutomaticRunFormValues>({
     defaultValues: {
       topN: String(DEFAULT_VALUES.topN),
@@ -314,17 +284,28 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   useEffect(() => {
     if (!open) return;
     const memory = loadAutomaticRunMemory();
-    const topN = memory?.topN ?? DEFAULT_VALUES.topN;
-    const minSuitabilityScore =
-      memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
-
-    const rememberedRunBudget = normalizeRunBudget(
+    const fallbackRunBudget = normalizeRunBudget(
       settings?.jobspyResultsWanted?.value ??
         settings?.startupjobsMaxJobsPerTerm?.value ??
         settings?.adzunaMaxJobsPerTerm?.value ??
         settings?.gradcrackerMaxJobsPerTerm?.value ??
         settings?.ukvisajobsMaxJobs?.value ??
         DEFAULT_VALUES.runBudget,
+    );
+    const rememberedPresetValues =
+      memory?.presetId && memory.presetId !== "custom"
+        ? AUTOMATIC_PRESETS[memory.presetId]
+        : null;
+    const rememberedTopN =
+      rememberedPresetValues?.topN ?? memory?.topN ?? DEFAULT_VALUES.topN;
+    const rememberedMinSuitabilityScore =
+      rememberedPresetValues?.minSuitabilityScore ??
+      memory?.minSuitabilityScore ??
+      DEFAULT_VALUES.minSuitabilityScore;
+    const rememberedRunBudget = normalizeRunBudget(
+      rememberedPresetValues?.runBudget ??
+        memory?.runBudget ??
+        fallbackRunBudget,
     );
     const hasExplicitLocationOverride = Boolean(
       settings?.jobspyCountryIndeed?.override ||
@@ -358,8 +339,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
     setBrowserCountrySuggestion(suggestion);
     reset({
-      topN: String(topN),
-      minSuitabilityScore: String(minSuitabilityScore),
+      topN: String(rememberedTopN),
+      minSuitabilityScore: String(rememberedMinSuitabilityScore),
       runBudget: String(rememberedRunBudget),
       country: countryValue,
       cityLocations: rememberedLocations,
@@ -370,6 +351,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
+    setSelectedPreset(memory?.presetId ?? "custom");
     setAdvancedOpen(false);
   }, [open, settings, reset]);
 
@@ -563,10 +545,6 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     [values, compatiblePipelineSources],
   );
 
-  const activePreset = useMemo<AutomaticPresetSelection>(
-    () => getPresetSelection(values),
-    [values],
-  );
   const locationSummary = useMemo(
     () => summarizeLocationPreferences(values),
     [values],
@@ -604,6 +582,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
   const applyPreset = (presetId: AutomaticPresetId) => {
     const preset = AUTOMATIC_PRESETS[presetId];
+    setSelectedPreset(presetId);
     setValue("topN", String(preset.topN), { shouldDirty: true });
     setValue("minSuitabilityScore", String(preset.minSuitabilityScore), {
       shouldDirty: true,
@@ -617,6 +596,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       saveAutomaticRunMemory({
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
+        runBudget: values.runBudget,
+        presetId: selectedPreset,
       });
       await onSaveAndRun(values);
     } finally {
@@ -646,7 +627,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  variant={activePreset === "fast" ? "default" : "outline"}
+                  variant={selectedPreset === "fast" ? "default" : "outline"}
+                  aria-pressed={selectedPreset === "fast"}
                   onClick={() => applyPreset("fast")}
                 >
                   Fast
@@ -654,7 +636,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  variant={activePreset === "balanced" ? "default" : "outline"}
+                  variant={
+                    selectedPreset === "balanced" ? "default" : "outline"
+                  }
+                  aria-pressed={selectedPreset === "balanced"}
                   onClick={() => applyPreset("balanced")}
                 >
                   Balanced
@@ -662,7 +647,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  variant={activePreset === "detailed" ? "default" : "outline"}
+                  variant={
+                    selectedPreset === "detailed" ? "default" : "outline"
+                  }
+                  aria-pressed={selectedPreset === "detailed"}
                   onClick={() => applyPreset("detailed")}
                 >
                   Detailed
@@ -670,7 +658,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 <Button
                   type="button"
                   size="sm"
-                  variant={activePreset === "custom" ? "secondary" : "outline"}
+                  variant={
+                    selectedPreset === "custom" ? "secondary" : "outline"
+                  }
+                  aria-pressed={selectedPreset === "custom"}
+                  onClick={() => setSelectedPreset("custom")}
                 >
                   Custom
                 </Button>
@@ -926,9 +918,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         min={1}
                         max={50}
                         value={topNInput}
-                        onChange={(event) =>
-                          setValue("topN", event.target.value)
-                        }
+                        onChange={(event) => {
+                          setSelectedPreset("custom");
+                          setValue("topN", event.target.value);
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -939,9 +932,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         min={0}
                         max={100}
                         value={minScoreInput}
-                        onChange={(event) =>
-                          setValue("minSuitabilityScore", event.target.value)
-                        }
+                        onChange={(event) => {
+                          setSelectedPreset("custom");
+                          setValue("minSuitabilityScore", event.target.value);
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
@@ -952,9 +946,10 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         min={MIN_RUN_BUDGET}
                         max={MAX_RUN_BUDGET}
                         value={runBudgetInput}
-                        onChange={(event) =>
-                          setValue("runBudget", event.target.value)
-                        }
+                        onChange={(event) => {
+                          setSelectedPreset("custom");
+                          setValue("runBudget", event.target.value);
+                        }}
                       />
                     </div>
                   </div>

@@ -50,6 +50,17 @@ export interface AutomaticEstimate {
   };
 }
 
+function isAutomaticPresetSelection(
+  value: unknown,
+): value is AutomaticPresetSelection {
+  return (
+    value === "custom" ||
+    value === "fast" ||
+    value === "balanced" ||
+    value === "detailed"
+  );
+}
+
 export const AUTOMATIC_PRESETS: Record<
   AutomaticPresetId,
   AutomaticPresetValues
@@ -377,31 +388,60 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     ) {
       return null;
     }
-    const normalized: AutomaticRunMemory = {
-      topN: Math.min(50, Math.max(1, Math.round(parsed.topN))),
-      minSuitabilityScore: Math.min(
-        100,
-        Math.max(0, Math.round(parsed.minSuitabilityScore)),
-      ),
+    const topN = Math.min(50, Math.max(1, Math.round(parsed.topN)));
+    const minSuitabilityScore = Math.min(
+      100,
+      Math.max(0, Math.round(parsed.minSuitabilityScore)),
+    );
+    const runBudget =
+      typeof parsed.runBudget === "number"
+        ? Math.max(50, Math.round(parsed.runBudget))
+        : undefined;
+    const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
+      ? parsed.presetId
+      : null;
+
+    if (explicitPresetId && explicitPresetId !== "custom") {
+      const preset = AUTOMATIC_PRESETS[explicitPresetId];
+      return {
+        topN: preset.topN,
+        minSuitabilityScore: preset.minSuitabilityScore,
+        runBudget: preset.runBudget,
+        presetId: explicitPresetId,
+      };
+    }
+
+    if (explicitPresetId === "custom") {
+      return {
+        topN,
+        minSuitabilityScore,
+        ...(runBudget !== undefined ? { runBudget } : {}),
+        presetId: "custom",
+      };
+    }
+
+    const inferredPresetId = inferAutomaticPresetSelection({
+      topN,
+      minSuitabilityScore,
+      runBudget,
+    });
+
+    if (inferredPresetId !== "custom") {
+      const preset = AUTOMATIC_PRESETS[inferredPresetId];
+      return {
+        topN: preset.topN,
+        minSuitabilityScore: preset.minSuitabilityScore,
+        runBudget: preset.runBudget,
+        presetId: inferredPresetId,
+      };
+    }
+
+    return {
+      topN,
+      minSuitabilityScore,
+      ...(runBudget !== undefined ? { runBudget } : {}),
+      presetId: "custom",
     };
-
-    if (
-      parsed.presetId === "fast" ||
-      parsed.presetId === "balanced" ||
-      parsed.presetId === "detailed" ||
-      parsed.presetId === "custom"
-    ) {
-      normalized.presetId = parsed.presetId;
-    }
-
-    if (
-      typeof parsed.runBudget === "number" &&
-      Number.isFinite(parsed.runBudget)
-    ) {
-      normalized.runBudget = Math.round(parsed.runBudget);
-    }
-
-    return normalized;
   } catch {
     return null;
   }
