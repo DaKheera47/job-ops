@@ -9,6 +9,7 @@ import {
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomaticRunTab } from "./AutomaticRunTab";
+import { AUTOMATIC_PRESETS, RUN_MEMORY_STORAGE_KEY } from "./automatic-run";
 
 const { getDetectedCountryKeyMock } = vi.hoisted(() => ({
   getDetectedCountryKeyMock: vi.fn((): string | null => null),
@@ -31,10 +32,56 @@ vi.mock("@/lib/user-location", () => ({
   getDetectedCountryKey: getDetectedCountryKeyMock,
 }));
 
+function ensureStorage(): Storage {
+  const existing = globalThis.localStorage as Partial<Storage> | undefined;
+  const hasStorageShape =
+    existing &&
+    typeof existing.getItem === "function" &&
+    typeof existing.setItem === "function" &&
+    typeof existing.removeItem === "function" &&
+    typeof existing.clear === "function";
+
+  if (hasStorageShape) {
+    return existing as Storage;
+  }
+
+  const store = new Map<string, string>();
+  const storage: Storage = {
+    get length() {
+      return store.size;
+    },
+    clear() {
+      store.clear();
+    },
+    getItem(key: string) {
+      const value = store.get(key);
+      return value ?? null;
+    },
+    key(index: number) {
+      return Array.from(store.keys())[index] ?? null;
+    },
+    removeItem(key: string) {
+      store.delete(key);
+    },
+    setItem(key: string, value: string) {
+      store.set(key, value);
+    },
+  };
+
+  Object.defineProperty(globalThis, "localStorage", {
+    value: storage,
+    configurable: true,
+    writable: true,
+  });
+
+  return storage;
+}
+
 describe("AutomaticRunTab", () => {
   beforeEach(() => {
     getDetectedCountryKeyMock.mockReset();
     getDetectedCountryKeyMock.mockReturnValue(null);
+    ensureStorage().clear();
   });
 
   it("uses detected country when location settings are still defaults", () => {
@@ -597,6 +644,173 @@ describe("AutomaticRunTab", () => {
         }),
       );
     });
+  });
+
+  it("remembers the balanced preset and its budget across reopen", async () => {
+    const onSaveAndRun = vi.fn().mockResolvedValue(undefined);
+
+    const { unmount } = render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 80,
+            default: 20,
+            override: 80,
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={onSaveAndRun}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+
+    await waitFor(() => {
+      expect(onSaveAndRun).toHaveBeenCalled();
+    });
+
+    expect(
+      JSON.parse(localStorage.getItem(RUN_MEMORY_STORAGE_KEY) ?? "{}"),
+    ).toEqual(
+      expect.objectContaining({
+        presetId: "balanced",
+        runBudget: AUTOMATIC_PRESETS.balanced.runBudget,
+      }),
+    );
+
+    unmount();
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 90,
+            default: 20,
+            override: 90,
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Balanced" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(
+      AUTOMATIC_PRESETS.balanced.runBudget,
+    );
+  });
+
+  it("remembers custom mode even when the values match Balanced", async () => {
+    const onSaveAndRun = vi.fn().mockResolvedValue(undefined);
+
+    const { unmount } = render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 80,
+            default: 20,
+            override: 80,
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={onSaveAndRun}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+
+    await waitFor(() => {
+      expect(onSaveAndRun).toHaveBeenCalled();
+    });
+
+    expect(
+      JSON.parse(localStorage.getItem(RUN_MEMORY_STORAGE_KEY) ?? "{}"),
+    ).toEqual(
+      expect.objectContaining({
+        presetId: "custom",
+        runBudget: AUTOMATIC_PRESETS.balanced.runBudget,
+      }),
+    );
+
+    unmount();
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 90,
+            default: 20,
+            override: 90,
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Custom" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(
+      AUTOMATIC_PRESETS.balanced.runBudget,
+    );
   });
 
   it("shows the new location preference controls and a live summary", () => {

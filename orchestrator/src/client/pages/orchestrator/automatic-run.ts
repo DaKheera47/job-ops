@@ -12,6 +12,7 @@ import {
 import type { JobSource } from "@shared/types";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
+export type AutomaticPresetSelection = AutomaticPresetId | "custom";
 export type WorkplaceType = "remote" | "hybrid" | "onsite";
 export const WORKPLACE_TYPE_OPTIONS: WorkplaceType[] = [
   "remote",
@@ -47,6 +48,17 @@ export interface AutomaticEstimate {
     min: number;
     max: number;
   };
+}
+
+function isAutomaticPresetSelection(
+  value: unknown,
+): value is AutomaticPresetSelection {
+  return (
+    value === "custom" ||
+    value === "fast" ||
+    value === "balanced" ||
+    value === "detailed"
+  );
 }
 
 export const AUTOMATIC_PRESETS: Record<
@@ -107,6 +119,28 @@ export const MATCH_STRICTNESS_OPTIONS: Array<{
 export interface AutomaticRunMemory {
   topN: number;
   minSuitabilityScore: number;
+  runBudget?: number;
+  presetId?: AutomaticPresetSelection;
+}
+
+export function inferAutomaticPresetSelection(values: {
+  topN: number;
+  minSuitabilityScore: number;
+  runBudget?: number;
+}): AutomaticPresetSelection {
+  const matchesPreset = (presetId: AutomaticPresetId) => {
+    const preset = AUTOMATIC_PRESETS[presetId];
+    return (
+      values.topN === preset.topN &&
+      values.minSuitabilityScore === preset.minSuitabilityScore &&
+      (values.runBudget === undefined || values.runBudget === preset.runBudget)
+    );
+  };
+
+  if (matchesPreset("fast")) return "fast";
+  if (matchesPreset("balanced")) return "balanced";
+  if (matchesPreset("detailed")) return "detailed";
+  return "custom";
 }
 
 export function normalizeWorkplaceTypes(
@@ -338,12 +372,59 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     ) {
       return null;
     }
+    const topN = Math.min(50, Math.max(1, Math.round(parsed.topN)));
+    const minSuitabilityScore = Math.min(
+      100,
+      Math.max(0, Math.round(parsed.minSuitabilityScore)),
+    );
+    const runBudget =
+      typeof parsed.runBudget === "number"
+        ? Math.max(50, Math.round(parsed.runBudget))
+        : undefined;
+    const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
+      ? parsed.presetId
+      : null;
+
+    if (explicitPresetId && explicitPresetId !== "custom") {
+      const preset = AUTOMATIC_PRESETS[explicitPresetId];
+      return {
+        topN: preset.topN,
+        minSuitabilityScore: preset.minSuitabilityScore,
+        runBudget: preset.runBudget,
+        presetId: explicitPresetId,
+      };
+    }
+
+    if (explicitPresetId === "custom") {
+      return {
+        topN,
+        minSuitabilityScore,
+        ...(runBudget !== undefined ? { runBudget } : {}),
+        presetId: "custom",
+      };
+    }
+
+    const inferredPresetId = inferAutomaticPresetSelection({
+      topN,
+      minSuitabilityScore,
+      runBudget,
+    });
+
+    if (inferredPresetId !== "custom") {
+      const preset = AUTOMATIC_PRESETS[inferredPresetId];
+      return {
+        topN: preset.topN,
+        minSuitabilityScore: preset.minSuitabilityScore,
+        runBudget: preset.runBudget,
+        presetId: inferredPresetId,
+      };
+    }
+
     return {
-      topN: Math.min(50, Math.max(1, Math.round(parsed.topN))),
-      minSuitabilityScore: Math.min(
-        100,
-        Math.max(0, Math.round(parsed.minSuitabilityScore)),
-      ),
+      topN,
+      minSuitabilityScore,
+      ...(runBudget !== undefined ? { runBudget } : {}),
+      presetId: "custom",
     };
   } catch {
     return null;
