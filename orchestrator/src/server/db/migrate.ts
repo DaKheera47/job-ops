@@ -18,6 +18,18 @@ if (!existsSync(dataDir)) {
 
 const sqlite = new Database(DB_PATH);
 
+function tableHasColumn(tableName: string, columnName: string): boolean {
+  const columns = sqlite
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{ name: string }>;
+  return columns.some((column) => column.name === columnName);
+}
+
+const pipelineRunsHasConfigSnapshot = tableHasColumn(
+  "pipeline_runs",
+  "config_snapshot",
+);
+
 const migrations = [
   `CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
@@ -453,8 +465,12 @@ const migrations = [
     effective_config TEXT,
     result_summary TEXT
   )`,
-  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+  pipelineRunsHasConfigSnapshot
+    ? `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
    SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
+   FROM pipeline_runs`
+    : `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL, NULL
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,

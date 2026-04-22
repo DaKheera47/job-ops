@@ -1,11 +1,12 @@
-import umami from "@umami/node";
+import umamiModule from "@umami/node";
 
 import { logger } from "./logger";
 import { sanitizeUnknown } from "./sanitize";
 
 const UMAMI_HOST_URL = "https://umami.dakheera47.com";
 const UMAMI_WEBSITE_ID = "0dc42ed1-87c3-4ac0-9409-5a9b9588fe66";
-const UMAMI_USER_AGENT = "job-ops-server-analytics/1.0";
+const UMAMI_FALLBACK_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36";
 const DISALLOWED_KEY_PARTS = [
   "query",
   "url",
@@ -19,6 +20,41 @@ const DISALLOWED_KEY_PARTS = [
 
 type Primitive = string | number | boolean | null;
 type AnalyticsPayload = Record<string, Primitive>;
+type UmamiClient = {
+  init: (options: {
+    websiteId: string;
+    hostUrl: string;
+    userAgent?: string;
+  }) => void;
+  track: (payload: {
+    hostname: string;
+    url: string;
+    name: string;
+    data?: AnalyticsPayload;
+  }) => Promise<Response>;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUmamiClient(value: unknown): value is UmamiClient {
+  if (!isRecord(value)) return false;
+  return typeof value.init === "function" && typeof value.track === "function";
+}
+
+function getUmamiClient(): UmamiClient {
+  if (isUmamiClient(umamiModule)) return umamiModule;
+
+  const moduleRecord = umamiModule as Record<string, unknown>;
+  const defaultExport = moduleRecord.default;
+
+  if (isUmamiClient(defaultExport)) {
+    return defaultExport;
+  }
+
+  throw new TypeError("Invalid @umami/node client export");
+}
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -86,11 +122,12 @@ export async function trackServerProductEvent(
   data?: Record<string, unknown>,
   options?: {
     requestOrigin?: string | null;
+    requestUserAgent?: string | null;
     urlPath?: string;
   },
-): Promise<void> {
-  if (process.env.NODE_ENV === "test") return;
-  if (typeof fetch !== "function") return;
+): Promise<boolean> {
+  if (process.env.NODE_ENV === "test") return false;
+  if (typeof fetch !== "function") return false;
 
   const sanitized = sanitizeAnalyticsPayload(data);
   const page = buildPagePayload({
@@ -99,10 +136,11 @@ export async function trackServerProductEvent(
   });
 
   try {
+    const umami = getUmamiClient();
     umami.init({
       websiteId: UMAMI_WEBSITE_ID,
       hostUrl: UMAMI_HOST_URL,
-      userAgent: UMAMI_USER_AGENT,
+      userAgent: options?.requestUserAgent?.trim() || UMAMI_FALLBACK_USER_AGENT,
     });
     const response = await umami.track({
       hostname: page.hostname,
@@ -118,7 +156,10 @@ export async function trackServerProductEvent(
         requestOrigin: options?.requestOrigin ?? null,
         urlPath: options?.urlPath ?? "/",
       });
+      return false;
     }
+
+    return true;
   } catch (error) {
     logger.warn("Server product analytics request errored", {
       event,
@@ -126,5 +167,6 @@ export async function trackServerProductEvent(
       urlPath: options?.urlPath ?? "/",
       error: sanitizeUnknown(error),
     });
+    return false;
   }
 }
