@@ -17,6 +17,7 @@ import {
 } from "./services/backup/index";
 import { initializeDemoModeServices } from "./services/demo-mode";
 import { applyStoredEnvOverrides } from "./services/envSettings";
+import { initializeHistoricalServerEventReplaySafely } from "./services/historical-product-analytics";
 import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
 
 const AUTH_SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
@@ -149,6 +150,7 @@ async function startServer() {
       });
     }
 
+    void initializeHistoricalServerEventReplaySafely();
     void initializeActivationAnalyticsSafely();
   });
 }

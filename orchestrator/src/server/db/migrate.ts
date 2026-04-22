@@ -118,9 +118,28 @@ const migrations = [
     id TEXT PRIMARY KEY,
     distinct_id TEXT NOT NULL,
     installed_at TEXT NOT NULL,
+    raw_event_replay_version INTEGER NOT NULL DEFAULT 0,
+    raw_event_replay_completed_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_server_event_replays (
+    event_key TEXT PRIMARY KEY,
+    event_name TEXT NOT NULL,
+    occurred_at INTEGER NOT NULL,
+    payload TEXT NOT NULL,
+    claimed_at INTEGER,
+    reported_at INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_server_event_replays_event_name
+    ON analytics_server_event_replays(event_name)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_server_event_replays_occurred_at
+    ON analytics_server_event_replays(occurred_at)`,
 
   `CREATE TABLE IF NOT EXISTS analytics_milestones (
     milestone TEXT PRIMARY KEY,
@@ -695,6 +714,8 @@ const migrations = [
   `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
   `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
   `ALTER TABLE pipeline_runs ADD COLUMN config_snapshot TEXT`,
+  `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_version INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_completed_at TEXT`,
 
   // Backfill: link existing messages into a linear chain (each message's parent = its predecessor)
   `UPDATE job_chat_messages
@@ -787,7 +808,10 @@ for (const migration of migrations) {
           .includes("alter table job_chat_messages add column") ||
         migration
           .toLowerCase()
-          .includes("alter table job_chat_threads add column")) &&
+          .includes("alter table job_chat_threads add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table analytics_install_state add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
     if (isDuplicateColumn) {

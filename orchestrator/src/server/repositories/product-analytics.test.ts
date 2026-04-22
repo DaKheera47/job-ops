@@ -172,4 +172,151 @@ describe.sequential("product analytics repository", () => {
     expect(candidates.activation_first_offer).toBe(1_704_240_000_000);
     expect(candidates.activation_first_acceptance).toBe(1_704_240_000_000);
   });
+
+  it("replays historical server events once and records replay state", async () => {
+    const { db, schema } = await import("@server/db");
+    const repo = await import("./product-analytics");
+
+    const cutoffMs = Date.parse("2026-02-01T00:00:00.000Z");
+
+    await db.insert(schema.jobs).values({
+      id: "job-1",
+      source: "manual",
+      title: "Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job-1",
+      discoveredAt: "2026-01-01T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    await db.insert(schema.pipelineRuns).values({
+      id: "run-1",
+      startedAt: "2026-01-02T00:00:00.000Z",
+      status: "completed",
+      jobsDiscovered: 10,
+      jobsProcessed: 8,
+    });
+    await db.insert(schema.stageEvents).values([
+      {
+        id: "stage-applied",
+        applicationId: "job-1",
+        title: "Applied",
+        fromStage: null,
+        toStage: "applied",
+        occurredAt: 1_704_067_200,
+        metadata: { eventLabel: "Applied", actor: "system" },
+      },
+      {
+        id: "stage-screen",
+        applicationId: "job-1",
+        title: "Recruiter Screen",
+        fromStage: "applied",
+        toStage: "recruiter_screen",
+        occurredAt: 1_704_153_600,
+        metadata: { actor: "system" },
+      },
+      {
+        id: "stage-interview",
+        applicationId: "job-1",
+        title: "Technical Interview",
+        fromStage: "recruiter_screen",
+        toStage: "technical_interview",
+        occurredAt: 1_704_240_000,
+        metadata: { actor: "user" },
+      },
+      {
+        id: "stage-offer",
+        applicationId: "job-1",
+        title: "Offer",
+        fromStage: "technical_interview",
+        toStage: "offer",
+        occurredAt: 1_704_326_400,
+        metadata: { actor: "system" },
+        outcome: "offer_accepted",
+      },
+    ]);
+    await db.insert(schema.postApplicationMessages).values({
+      id: "msg-1",
+      provider: "gmail",
+      accountKey: "default",
+      externalMessageId: "external-1",
+      fromAddress: "noreply@example.com",
+      subject: "Matched",
+      receivedAt: 1_704_067_200_000,
+      snippet: "",
+      relevanceDecision: "relevant",
+      messageType: "other",
+      processingStatus: "auto_linked",
+      matchedJobId: "job-1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    await db.insert(schema.tracerLinks).values({
+      id: "tracer-1",
+      token: "token-1",
+      jobId: "job-1",
+      sourcePath: "/jobs/job-1",
+      sourceLabel: "Role",
+      destinationUrl: "https://example.com/redirect",
+      destinationUrlHash: "hash-1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    await db.insert(schema.tracerClickEvents).values({
+      id: "click-1",
+      tracerLinkId: "tracer-1",
+      clickedAt: 1_704_067_200,
+      isLikelyBot: false,
+      deviceType: "desktop",
+      uaFamily: "chrome",
+      osFamily: "mac",
+      referrerHost: "mail.example.com",
+    });
+
+    const candidates = await repo.getHistoricalServerEventReplayCandidates({
+      cutoffMs,
+    });
+
+    const candidateCounts = candidates.reduce(
+      (counts, candidate) => {
+        counts[candidate.eventName] = (counts[candidate.eventName] ?? 0) + 1;
+        return counts;
+      },
+      {} as Record<string, number>,
+    );
+
+    expect(candidateCounts).toEqual({
+      jobs_pipeline_run_started: 1,
+      application_marked_applied: 1,
+      application_stage_reached: 3,
+      application_positive_response_detected: 3,
+      application_interview_stage_reached: 1,
+      application_offer_detected: 1,
+      application_accepted: 1,
+      tracking_email_matched: 1,
+      tracer_human_click_recorded: 1,
+    });
+
+    const firstCandidate = candidates[0];
+    expect(firstCandidate).toBeTruthy();
+
+    if (!firstCandidate) {
+      throw new Error("Expected replay candidates to be generated");
+    }
+
+    const claimed = await repo.claimAnalyticsServerEventReplay({
+      eventKey: firstCandidate.eventKey,
+      eventName: firstCandidate.eventName,
+      occurredAt: firstCandidate.occurredAt,
+      payload: firstCandidate.data,
+    });
+    expect(claimed).toBe(true);
+
+    await repo.markAnalyticsServerEventReplayDelivered(firstCandidate.eventKey);
+    await repo.markAnalyticsRawEventReplayCompleted({ version: 1 });
+
+    const state = await repo.getAnalyticsRawEventReplayState();
+    expect(state.rawEventReplayVersion).toBe(1);
+    expect(state.rawEventReplayCompletedAt).toBeTruthy();
+  });
 });
