@@ -149,39 +149,50 @@ export async function trackCanonicalActivationEvent(
   data?: Record<string, unknown>,
   options?: TrackActivationEventOptions,
 ): Promise<boolean> {
-  if (process.env.NODE_ENV === "test") {
+  try {
+    if (process.env.NODE_ENV === "test") {
+      return false;
+    }
+
+    const requestContext = getRequestContext();
+    const sessionId =
+      options?.sessionId ?? requestContext?.analyticsSessionId ?? null;
+    const requestUserAgent =
+      options?.requestUserAgent ?? requestContext?.requestUserAgent ?? null;
+    const occurredAtMs = toEpochMs(options?.occurredAt);
+    const delivered = await trackServerProductEvent(event, data, {
+      occurredAt: occurredAtMs,
+      requestOrigin: options?.requestOrigin,
+      requestUserAgent,
+      sessionId,
+      urlPath: options?.urlPath,
+    });
+
+    await maybeReportMilestone({
+      milestone: CANONICAL_EVENT_TO_MILESTONE[event],
+      occurredAtMs,
+      requestOrigin: options?.requestOrigin,
+      requestUserAgent,
+      sessionId,
+      urlPath: options?.urlPath ?? "/overview",
+    });
+
+    return delivered;
+  } catch (error) {
+    logger.warn("Failed to track canonical activation event", {
+      error,
+      event,
+      urlPath: options?.urlPath,
+    });
     return false;
   }
-
-  const requestContext = getRequestContext();
-  const sessionId =
-    options?.sessionId ?? requestContext?.analyticsSessionId ?? null;
-  const requestUserAgent =
-    options?.requestUserAgent ?? requestContext?.requestUserAgent ?? null;
-  const occurredAtMs = toEpochMs(options?.occurredAt);
-  const delivered = await trackServerProductEvent(event, data, {
-    occurredAt: occurredAtMs,
-    requestOrigin: options?.requestOrigin,
-    requestUserAgent,
-    sessionId,
-    urlPath: options?.urlPath,
-  });
-
-  await maybeReportMilestone({
-    milestone: CANONICAL_EVENT_TO_MILESTONE[event],
-    occurredAtMs,
-    requestOrigin: options?.requestOrigin,
-    requestUserAgent,
-    sessionId,
-    urlPath: options?.urlPath ?? "/overview",
-  });
-
-  return delivered;
 }
 
 export async function initializeActivationAnalytics(): Promise<void> {
   const installState = await getOrCreateAnalyticsInstallState();
-  await reconcileActivationMilestonesFromHistory();
+  await reconcileActivationMilestonesFromHistorySafely({
+    route: "startup",
+  });
 
   const pendingMilestones = (await listPendingActivationMilestones()).sort(
     (left, right) => left.firstSeenAt - right.firstSeenAt,
@@ -253,5 +264,18 @@ export async function initializeActivationAnalyticsSafely(): Promise<void> {
     await initializeActivationAnalytics();
   } catch (error) {
     logger.warn("Failed to initialize activation analytics", { error });
+  }
+}
+
+export async function reconcileActivationMilestonesFromHistorySafely(
+  context?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await reconcileActivationMilestonesFromHistory();
+  } catch (error) {
+    logger.warn("Failed to reconcile activation milestones from history", {
+      ...context,
+      error,
+    });
   }
 }

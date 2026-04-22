@@ -77,6 +77,9 @@ vi.mock("@server/services/activation-funnel", () => ({
   reconcileActivationMilestonesFromHistory: vi
     .fn()
     .mockResolvedValue(undefined),
+  reconcileActivationMilestonesFromHistorySafely: vi
+    .fn()
+    .mockResolvedValue(undefined),
 }));
 
 vi.mock("@server/services/visa-sponsors/index", () => ({

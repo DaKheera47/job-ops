@@ -21,7 +21,7 @@ import {
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import {
-  reconcileActivationMilestonesFromHistory,
+  reconcileActivationMilestonesFromHistorySafely,
   trackCanonicalActivationEvent,
 } from "@server/services/activation-funnel";
 import {
@@ -1274,8 +1274,13 @@ jobsRouter.post("/:id/stages", async (req: Request, res: Response) => {
       input.metadata ?? null,
       input.outcome ?? null,
     );
-    await reconcileActivationMilestonesFromHistory();
     ok(res, event);
+    queueMicrotask(() => {
+      void reconcileActivationMilestonesFromHistorySafely({
+        route: "POST /api/jobs/:id/stages",
+        jobId: req.params.id,
+      });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(res, badRequest(error.message, error.flatten()));
@@ -1293,8 +1298,14 @@ jobsRouter.patch(
     try {
       const input = updateStageEventSchema.parse(req.body);
       updateStageEvent(req.params.eventId, input);
-      await reconcileActivationMilestonesFromHistory();
       ok(res, null);
+      queueMicrotask(() => {
+        void reconcileActivationMilestonesFromHistorySafely({
+          route: "PATCH /api/jobs/:id/events/:eventId",
+          jobId: req.params.id,
+          eventId: req.params.eventId,
+        });
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return fail(res, badRequest(error.message, error.flatten()));
@@ -1312,8 +1323,14 @@ jobsRouter.delete(
   async (req: Request, res: Response) => {
     try {
       deleteStageEvent(req.params.eventId);
-      await reconcileActivationMilestonesFromHistory();
       ok(res, null);
+      queueMicrotask(() => {
+        void reconcileActivationMilestonesFromHistorySafely({
+          route: "DELETE /api/jobs/:id/events/:eventId",
+          jobId: req.params.id,
+          eventId: req.params.eventId,
+        });
+      });
     } catch (error) {
       fail(res, toAppError(error));
     }
@@ -1349,9 +1366,14 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
       requestOrigin: resolveRequestOrigin(req),
       source: "jobs_outcome_route",
     });
-    await reconcileActivationMilestonesFromHistory();
 
     ok(res, job);
+    queueMicrotask(() => {
+      void reconcileActivationMilestonesFromHistorySafely({
+        route: "PATCH /api/jobs/:id/outcome",
+        jobId: req.params.id,
+      });
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return fail(res, badRequest(error.message, error.flatten()));
@@ -1438,15 +1460,20 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       requestOrigin: resolveRequestOrigin(req),
       source: "jobs_patch_route",
     });
+    ok(res, job);
     if (
       Object.hasOwn(input, "appliedAt") ||
       Object.hasOwn(input, "closedAt") ||
       Object.hasOwn(input, "outcome")
     ) {
-      await reconcileActivationMilestonesFromHistory();
+      queueMicrotask(() => {
+        void reconcileActivationMilestonesFromHistorySafely({
+          route: "PATCH /api/jobs/:id",
+          jobId: req.params.id,
+          updatedFields: Object.keys(input),
+        });
+      });
     }
-
-    ok(res, job);
   } catch (error) {
     const err =
       error instanceof z.ZodError
