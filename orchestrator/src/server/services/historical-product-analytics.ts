@@ -45,9 +45,15 @@ export async function initializeHistoricalServerEventReplay(): Promise<void> {
   const candidates = await getHistoricalServerEventReplayCandidates({
     cutoffMs: replayCutoffMs,
   });
+  const replayCandidates = candidates.filter((candidate) => {
+    return !(
+      candidate.eventName === "application_marked_applied" &&
+      candidate.data?.source === "mark_applied"
+    );
+  });
   let allDelivered = true;
 
-  for (const candidate of candidates) {
+  for (const candidate of replayCandidates) {
     const claimed = await claimAnalyticsServerEventReplay({
       eventKey: candidate.eventKey,
       eventName: candidate.eventName,
@@ -86,7 +92,7 @@ export async function initializeHistoricalServerEventReplay(): Promise<void> {
   }
 
   const hasPendingRows = await hasPendingAnalyticsServerEventReplays(
-    candidates.map((candidate) => candidate.eventKey),
+    replayCandidates.map((candidate) => candidate.eventKey),
   );
 
   if (allDelivered && !hasPendingRows) {

@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
+import { sanitizeUnknown } from "@infra/sanitize";
 import { getRequestContext } from "@server/infra/request-context";
 import {
   ACTIVATION_MILESTONES,
@@ -180,7 +181,7 @@ export async function trackCanonicalActivationEvent(
     return delivered;
   } catch (error) {
     logger.warn("Failed to track canonical activation event", {
-      error,
+      error: sanitizeUnknown(error),
       event,
       urlPath: options?.urlPath,
     });

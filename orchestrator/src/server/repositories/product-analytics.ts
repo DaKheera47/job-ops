@@ -699,7 +699,7 @@ export async function getHistoricalServerEventReplayCandidates(args: {
         buildReplayCandidate({
           eventKey: `application_stage_reached:${row.id}`,
           eventName: "application_stage_reached",
-          occurredAt: row.occurredAt,
+          occurredAt: row.occurredAt * 1000,
           urlPath: "/applications/in-progress",
           data: toPrimitiveRecord({
             stage: String(row.toStage),

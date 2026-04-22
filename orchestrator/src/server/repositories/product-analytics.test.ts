@@ -297,6 +297,12 @@ describe.sequential("product analytics repository", () => {
       tracer_human_click_recorded: 1,
     });
 
+    const stageCandidate = candidates.find(
+      (candidate) =>
+        candidate.eventKey === "application_stage_reached:stage-screen",
+    );
+    expect(stageCandidate?.occurredAt).toBe(1_704_153_600_000);
+
     const firstCandidate = candidates[0];
     expect(firstCandidate).toBeTruthy();
 
