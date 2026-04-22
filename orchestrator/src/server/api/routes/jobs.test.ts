@@ -1487,6 +1487,15 @@ describe.sequential("Jobs API routes", () => {
       expect(body1.ok).toBe(true);
       expect(body1.data.toStage).toBe("applied");
       const eventId = body1.data.id;
+      expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+        "application_marked_applied",
+        {
+          source: "system",
+        },
+        expect.objectContaining({
+          occurredAt: body1.data.occurredAt * 1000,
+        }),
+      );
 
       // 2. Transition to recruiter_screen with metadata
       await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {

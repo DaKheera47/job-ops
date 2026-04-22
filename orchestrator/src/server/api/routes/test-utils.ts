@@ -74,6 +74,9 @@ vi.mock("@server/services/activation-funnel", () => ({
   trackCanonicalActivationEvent: vi.fn().mockResolvedValue(true),
   initializeActivationAnalytics: vi.fn().mockResolvedValue(undefined),
   initializeActivationAnalyticsSafely: vi.fn().mockResolvedValue(undefined),
+  reconcileActivationMilestonesFromHistory: vi
+    .fn()
+    .mockResolvedValue(undefined),
 }));
 
 vi.mock("@server/services/visa-sponsors/index", () => ({

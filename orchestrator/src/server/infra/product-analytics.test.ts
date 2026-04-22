@@ -70,6 +70,7 @@ describe("server product analytics", () => {
         requestOrigin: "https://app.jobops.example",
         requestUserAgent:
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        occurredAt: 1_711_929_600_000,
         sessionId: "session-123",
         urlPath: "/applications/in-progress",
       },
@@ -85,6 +86,7 @@ describe("server product analytics", () => {
     });
     expect(getMockUmami().track).toHaveBeenCalledWith({
       id: "install-distinct-id",
+      timestamp: 1_711_929_600,
       hostname: "jobops.example",
       url: "/applications/in-progress",
       name: "application_offer_detected",
@@ -167,6 +169,7 @@ describe("server product analytics", () => {
       undefined,
       {
         requestOrigin: "https://app.jobops.example",
+        occurredAt: 1_711_929_600_000,
         sessionId: "session-commonjs",
         urlPath: "/jobs",
       },
@@ -176,6 +179,7 @@ describe("server product analytics", () => {
     expect(runtimeUmami.init).toHaveBeenCalledTimes(1);
     expect(runtimeUmami.track).toHaveBeenCalledWith({
       id: "install-distinct-id",
+      timestamp: 1_711_929_600,
       hostname: "jobops.example",
       url: "/jobs",
       name: "application_marked_applied",

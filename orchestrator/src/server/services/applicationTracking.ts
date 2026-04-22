@@ -392,11 +392,27 @@ function maybeTrackStageAnalytics(
 ): void {
   const stageChanged = event.fromStage !== event.toStage;
   const isNoteEvent = metadata?.eventType === "note";
-  if (!stageChanged || isNoteEvent || event.toStage === "applied") {
+  if (!stageChanged || isNoteEvent) {
     return;
   }
 
   const source = classifyStageAnalyticsSource(metadata, event.toStage);
+  if (event.toStage === "applied") {
+    if (source !== "mark_applied") {
+      void trackCanonicalActivationEvent(
+        "application_marked_applied",
+        {
+          source,
+        },
+        {
+          occurredAt: event.occurredAt * 1000,
+          urlPath: "/applications/in-progress",
+        },
+      );
+    }
+    return;
+  }
+
   const enteredPositiveResponse =
     POSITIVE_RESPONSE_STAGES.has(event.toStage) &&
     (event.fromStage === null || event.fromStage === "applied");

@@ -229,6 +229,37 @@ export async function recordActivationMilestone(args: {
   return { milestone: existing, change: "unchanged" };
 }
 
+export async function setActivationMilestoneFromHistory(args: {
+  milestone: ActivationMilestone;
+  firstSeenAt: number;
+}): Promise<MilestoneRow> {
+  const now = new Date().toISOString();
+
+  await db
+    .update(analyticsMilestones)
+    .set({
+      firstSeenAt: args.firstSeenAt,
+      firstSessionId: null,
+      updatedAt: now,
+    })
+    .where(eq(analyticsMilestones.milestone, args.milestone));
+
+  const updated = await getActivationMilestone(args.milestone);
+  if (!updated) {
+    throw new Error(`Failed to sync milestone '${args.milestone}'`);
+  }
+
+  return updated;
+}
+
+export async function deleteActivationMilestone(
+  milestone: ActivationMilestone,
+): Promise<void> {
+  await db
+    .delete(analyticsMilestones)
+    .where(eq(analyticsMilestones.milestone, milestone));
+}
+
 export async function markActivationMilestoneReported(
   milestone: ActivationMilestone,
 ): Promise<void> {

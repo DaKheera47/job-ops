@@ -30,6 +30,7 @@ type UmamiClient = {
   }) => void;
   track: (payload: {
     id?: string;
+    timestamp?: number;
     hostname: string;
     url: string;
     name: string;
@@ -120,6 +121,27 @@ function buildPagePayload(args: {
   };
 }
 
+function toUnixTimestampSeconds(
+  value: Date | number | string | null | undefined,
+): number | null {
+  if (value === null || value === undefined) return null;
+
+  let epochMs: number | null = null;
+  if (value instanceof Date) {
+    epochMs = value.getTime();
+  } else if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    epochMs = value < 1_000_000_000_000 ? value * 1000 : value;
+  } else if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Date.parse(value);
+    if (!Number.isFinite(parsed)) return null;
+    epochMs = parsed;
+  }
+
+  if (epochMs === null || !Number.isFinite(epochMs)) return null;
+  return Math.floor(epochMs / 1000);
+}
+
 export async function trackServerProductEvent(
   event: string,
   data?: Record<string, unknown>,
@@ -148,6 +170,7 @@ export async function trackServerProductEvent(
     requestOrigin: options?.requestOrigin,
     urlPath: options?.urlPath,
   });
+  const timestamp = toUnixTimestampSeconds(options?.occurredAt);
 
   try {
     const installState = options?.distinctId
@@ -164,6 +187,7 @@ export async function trackServerProductEvent(
     });
     const response = await umami.track({
       id: installState.distinctId,
+      ...(timestamp !== null ? { timestamp } : {}),
       hostname: page.hostname,
       url: page.url,
       name: event,

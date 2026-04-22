@@ -65,6 +65,38 @@ describe.sequential("product analytics repository", () => {
     expect(backfilled.milestone.firstSessionId).toBe("session-earlier");
   });
 
+  it("can sync milestones to corrected historical timestamps and delete stale ones", async () => {
+    const repo = await import("./product-analytics");
+
+    await repo.recordActivationMilestone({
+      milestone: "activation_first_offer",
+      firstSeenAt: 5_000,
+      sessionId: "session-offer",
+    });
+    await repo.recordActivationMilestone({
+      milestone: "activation_first_acceptance",
+      firstSeenAt: 6_000,
+      sessionId: "session-acceptance",
+    });
+
+    await repo.setActivationMilestoneFromHistory({
+      milestone: "activation_first_offer",
+      firstSeenAt: 7_000,
+    });
+    await repo.deleteActivationMilestone("activation_first_acceptance");
+
+    const updatedOffer = await repo.getActivationMilestone(
+      "activation_first_offer",
+    );
+    const deletedAcceptance = await repo.getActivationMilestone(
+      "activation_first_acceptance",
+    );
+
+    expect(updatedOffer?.firstSeenAt).toBe(7_000);
+    expect(updatedOffer?.firstSessionId).toBeNull();
+    expect(deletedAcceptance).toBeNull();
+  });
+
   it("derives historical funnel candidates from existing data", async () => {
     const { db, schema } = await import("@server/db");
     const repo = await import("./product-analytics");

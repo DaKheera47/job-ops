@@ -20,7 +20,10 @@ import {
 } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
-import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
+import {
+  reconcileActivationMilestonesFromHistory,
+  trackCanonicalActivationEvent,
+} from "@server/services/activation-funnel";
 import {
   deleteStageEvent,
   getStageEvents,
@@ -1271,6 +1274,7 @@ jobsRouter.post("/:id/stages", async (req: Request, res: Response) => {
       input.metadata ?? null,
       input.outcome ?? null,
     );
+    await reconcileActivationMilestonesFromHistory();
     ok(res, event);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -1289,6 +1293,7 @@ jobsRouter.patch(
     try {
       const input = updateStageEventSchema.parse(req.body);
       updateStageEvent(req.params.eventId, input);
+      await reconcileActivationMilestonesFromHistory();
       ok(res, null);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1307,6 +1312,7 @@ jobsRouter.delete(
   async (req: Request, res: Response) => {
     try {
       deleteStageEvent(req.params.eventId);
+      await reconcileActivationMilestonesFromHistory();
       ok(res, null);
     } catch (error) {
       fail(res, toAppError(error));
@@ -1343,6 +1349,7 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
       requestOrigin: resolveRequestOrigin(req),
       source: "jobs_outcome_route",
     });
+    await reconcileActivationMilestonesFromHistory();
 
     ok(res, job);
   } catch (error) {
@@ -1431,6 +1438,13 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       requestOrigin: resolveRequestOrigin(req),
       source: "jobs_patch_route",
     });
+    if (
+      Object.hasOwn(input, "appliedAt") ||
+      Object.hasOwn(input, "closedAt") ||
+      Object.hasOwn(input, "outcome")
+    ) {
+      await reconcileActivationMilestonesFromHistory();
+    }
 
     ok(res, job);
   } catch (error) {

@@ -2,12 +2,16 @@ import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { getRequestContext } from "@server/infra/request-context";
 import {
+  ACTIVATION_MILESTONES,
   type ActivationMilestone,
+  deleteActivationMilestone,
   getHistoricalActivationMilestoneCandidates,
   getOrCreateAnalyticsInstallState,
+  listActivationMilestones,
   listPendingActivationMilestones,
   markActivationMilestoneReported,
   recordActivationMilestone,
+  setActivationMilestoneFromHistory,
 } from "@server/repositories/product-analytics";
 
 const CANONICAL_EVENT_TO_MILESTONE = {
@@ -177,22 +181,7 @@ export async function trackCanonicalActivationEvent(
 
 export async function initializeActivationAnalytics(): Promise<void> {
   const installState = await getOrCreateAnalyticsInstallState();
-  const historicalCandidates =
-    await getHistoricalActivationMilestoneCandidates();
-
-  for (const milestone of Object.keys(
-    historicalCandidates,
-  ) as ActivationMilestone[]) {
-    const occurredAtMs = historicalCandidates[milestone];
-    if (typeof occurredAtMs !== "number" || !Number.isFinite(occurredAtMs)) {
-      continue;
-    }
-    await recordActivationMilestone({
-      milestone,
-      firstSeenAt: occurredAtMs,
-      sessionId: null,
-    });
-  }
+  await reconcileActivationMilestonesFromHistory();
 
   const pendingMilestones = (await listPendingActivationMilestones()).sort(
     (left, right) => left.firstSeenAt - right.firstSeenAt,
@@ -213,6 +202,48 @@ export async function initializeActivationAnalytics(): Promise<void> {
       await markActivationMilestoneReported(
         pending.milestone as ActivationMilestone,
       );
+    }
+  }
+}
+
+export async function reconcileActivationMilestonesFromHistory(): Promise<void> {
+  const historicalCandidates =
+    await getHistoricalActivationMilestoneCandidates();
+  const existingMilestones = new Map(
+    (await listActivationMilestones()).map((milestone) => [
+      milestone.milestone as ActivationMilestone,
+      milestone,
+    ]),
+  );
+
+  for (const milestone of ACTIVATION_MILESTONES) {
+    const occurredAtMs = historicalCandidates[milestone];
+    const existing = existingMilestones.get(milestone) ?? null;
+
+    if (typeof occurredAtMs === "number" && Number.isFinite(occurredAtMs)) {
+      if (!existing) {
+        await recordActivationMilestone({
+          milestone,
+          firstSeenAt: occurredAtMs,
+          sessionId: null,
+        });
+        continue;
+      }
+
+      if (
+        existing.firstSeenAt !== occurredAtMs ||
+        existing.firstSessionId !== null
+      ) {
+        await setActivationMilestoneFromHistory({
+          milestone,
+          firstSeenAt: occurredAtMs,
+        });
+      }
+      continue;
+    }
+
+    if (existing) {
+      await deleteActivationMilestone(milestone);
     }
   }
 }
