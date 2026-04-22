@@ -282,6 +282,31 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const analyticsInstallState = sqliteTable("analytics_install_state", {
+  id: text("id").primaryKey(),
+  distinctId: text("distinct_id").notNull(),
+  installedAt: text("installed_at").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const analyticsMilestones = sqliteTable(
+  "analytics_milestones",
+  {
+    milestone: text("milestone").primaryKey(),
+    firstSeenAt: integer("first_seen_at", { mode: "number" }).notNull(),
+    firstSessionId: text("first_session_id"),
+    reportedAt: text("reported_at"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    firstSeenAtIndex: index("idx_analytics_milestones_first_seen_at").on(
+      table.firstSeenAt,
+    ),
+  }),
+);
+
 export const authSessions = sqliteTable(
   "auth_sessions",
   {
@@ -536,6 +561,12 @@ export type JobChatRunRow = typeof jobChatRuns.$inferSelect;
 export type NewJobChatRunRow = typeof jobChatRuns.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;
 export type NewSettingsRow = typeof settings.$inferInsert;
+export type AnalyticsInstallStateRow =
+  typeof analyticsInstallState.$inferSelect;
+export type NewAnalyticsInstallStateRow =
+  typeof analyticsInstallState.$inferInsert;
+export type AnalyticsMilestoneRow = typeof analyticsMilestones.$inferSelect;
+export type NewAnalyticsMilestoneRow = typeof analyticsMilestones.$inferInsert;
 export type DesignResumeDocumentRow = typeof designResumeDocuments.$inferSelect;
 export type NewDesignResumeDocumentRow =
   typeof designResumeDocuments.$inferInsert;

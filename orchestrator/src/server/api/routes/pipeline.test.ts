@@ -9,6 +9,7 @@ describe.sequential("Pipeline API routes", () => {
   let tempDir: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     ({ server, baseUrl, closeDb, tempDir } = await startServer());
   });
 
@@ -236,6 +237,9 @@ describe.sequential("Pipeline API routes", () => {
   });
 
   it("validates pipeline run payloads", async () => {
+    const { trackCanonicalActivationEvent } = await import(
+      "@server/services/activation-funnel"
+    );
     const badRun = await fetch(`${baseUrl}/api/pipeline/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -276,6 +280,20 @@ describe.sequential("Pipeline API routes", () => {
           searchScope: "selected_plus_remote_worldwide",
           matchStrictness: "flexible",
         }),
+      }),
+    );
+    expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+      "jobs_pipeline_run_started",
+      expect.objectContaining({
+        source_count: 1,
+        top_n: 5,
+        min_suitability_score: 65,
+        country: "united kingdom",
+        has_city_locations: true,
+        search_terms_count: 1,
+      }),
+      expect.objectContaining({
+        urlPath: "/jobs",
       }),
     );
 

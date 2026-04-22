@@ -20,6 +20,7 @@ import {
 } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
+import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
 import {
   deleteStageEvent,
   getStageEvents,
@@ -51,6 +52,7 @@ import {
   type JobActionResult,
   type JobActionStreamEvent,
   type JobListItem,
+  type JobOutcome,
   type JobStatus,
   type JobsListResponse,
   type JobsRevisionResponse,
@@ -289,6 +291,34 @@ function resolveRequestOrigin(req: Request): string | null {
 
   if (!host || !protocol) return null;
   return `${protocol}://${host}`;
+}
+
+function trackApplicationAcceptedIfNeeded(args: {
+  closedAt?: number | null;
+  nextOutcome: JobOutcome | null;
+  previousOutcome: JobOutcome | null;
+  requestOrigin?: string | null;
+  source: string;
+}): void {
+  if (
+    args.nextOutcome !== "offer_accepted" ||
+    args.previousOutcome === "offer_accepted"
+  ) {
+    return;
+  }
+
+  void trackCanonicalActivationEvent(
+    "application_accepted",
+    {
+      source: args.source,
+    },
+    {
+      occurredAt:
+        typeof args.closedAt === "number" ? args.closedAt * 1000 : Date.now(),
+      requestOrigin: args.requestOrigin ?? null,
+      urlPath: "/applications/in-progress",
+    },
+  );
 }
 
 function mapErrorForResult(error: unknown): {
@@ -1290,6 +1320,10 @@ jobsRouter.delete(
 jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
   try {
     const input = updateOutcomeSchema.parse(req.body);
+    const currentJob = await jobsRepo.getJobById(req.params.id);
+    if (!currentJob) {
+      return fail(res, notFound("Job not found"));
+    }
     const closedAt = input.outcome
       ? (input.closedAt ?? Math.floor(Date.now() / 1000))
       : null;
@@ -1301,6 +1335,14 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
     if (!job) {
       return fail(res, notFound("Job not found"));
     }
+
+    trackApplicationAcceptedIfNeeded({
+      closedAt: job.closedAt,
+      nextOutcome: job.outcome,
+      previousOutcome: currentJob.outcome,
+      requestOrigin: resolveRequestOrigin(req),
+      source: "jobs_outcome_route",
+    });
 
     ok(res, job);
   } catch (error) {
@@ -1380,6 +1422,14 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       route: "PATCH /api/jobs/:id",
       jobId: req.params.id,
       updatedFields: Object.keys(input),
+    });
+
+    trackApplicationAcceptedIfNeeded({
+      closedAt: job.closedAt,
+      nextOutcome: job.outcome,
+      previousOutcome: currentJob.outcome,
+      requestOrigin: resolveRequestOrigin(req),
+      source: "jobs_patch_route",
     });
 
     ok(res, job);
@@ -1698,7 +1748,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
     });
 
     if (updatedJob) {
-      void trackServerProductEvent(
+      void trackCanonicalActivationEvent(
         "application_marked_applied",
         {
           source: "jobs_apply_route",
@@ -1709,6 +1759,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
             updatedJob.sponsorMatchScore >= 50,
         },
         {
+          occurredAt: appliedAtDate,
           requestOrigin: resolveRequestOrigin(req),
           urlPath: "/jobs",
         },

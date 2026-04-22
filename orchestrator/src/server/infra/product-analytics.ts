@@ -1,6 +1,8 @@
+import { getOrCreateAnalyticsInstallState } from "@server/repositories/product-analytics";
 import umamiModule from "@umami/node";
 
 import { logger } from "./logger";
+import { getRequestContext } from "./request-context";
 import { sanitizeUnknown } from "./sanitize";
 
 const UMAMI_HOST_URL = "https://umami.dakheera47.com";
@@ -27,6 +29,7 @@ type UmamiClient = {
     userAgent?: string;
   }) => void;
   track: (payload: {
+    id?: string;
     hostname: string;
     url: string;
     name: string;
@@ -121,28 +124,46 @@ export async function trackServerProductEvent(
   event: string,
   data?: Record<string, unknown>,
   options?: {
+    distinctId?: string | null;
+    occurredAt?: Date | number | string | null;
     requestOrigin?: string | null;
     requestUserAgent?: string | null;
+    sessionId?: string | null;
     urlPath?: string;
   },
 ): Promise<boolean> {
   if (process.env.NODE_ENV === "test") return false;
   if (typeof fetch !== "function") return false;
 
-  const sanitized = sanitizeAnalyticsPayload(data);
+  const requestContext = getRequestContext();
+  const sessionId =
+    options?.sessionId?.trim() ||
+    requestContext?.analyticsSessionId?.trim() ||
+    null;
+  const sanitized = sanitizeAnalyticsPayload({
+    ...(data ?? {}),
+    ...(sessionId ? { sessionId } : {}),
+  });
   const page = buildPagePayload({
     requestOrigin: options?.requestOrigin,
     urlPath: options?.urlPath,
   });
 
   try {
+    const installState = options?.distinctId
+      ? { distinctId: options.distinctId }
+      : await getOrCreateAnalyticsInstallState();
     const umami = getUmamiClient();
     umami.init({
       websiteId: UMAMI_WEBSITE_ID,
       hostUrl: UMAMI_HOST_URL,
-      userAgent: options?.requestUserAgent?.trim() || UMAMI_FALLBACK_USER_AGENT,
+      userAgent:
+        options?.requestUserAgent?.trim() ||
+        requestContext?.requestUserAgent?.trim() ||
+        UMAMI_FALLBACK_USER_AGENT,
     });
     const response = await umami.track({
+      id: installState.distinctId,
       hostname: page.hostname,
       url: page.url,
       name: event,

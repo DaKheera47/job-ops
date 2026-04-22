@@ -16,6 +16,16 @@ vi.mock("./logger", () => ({
   },
 }));
 
+vi.mock("@server/repositories/product-analytics", () => ({
+  getOrCreateAnalyticsInstallState: vi.fn().mockResolvedValue({
+    id: "default",
+    distinctId: "install-distinct-id",
+    installedAt: "2026-02-20T00:00:00.000Z",
+    createdAt: "2026-02-20T00:00:00.000Z",
+    updatedAt: "2026-02-20T00:00:00.000Z",
+  }),
+}));
+
 describe("server product analytics", () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL;
@@ -60,6 +70,7 @@ describe("server product analytics", () => {
         requestOrigin: "https://app.jobops.example",
         requestUserAgent:
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
+        sessionId: "session-123",
         urlPath: "/applications/in-progress",
       },
     );
@@ -73,12 +84,14 @@ describe("server product analytics", () => {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36",
     });
     expect(getMockUmami().track).toHaveBeenCalledWith({
+      id: "install-distinct-id",
       hostname: "jobops.example",
       url: "/applications/in-progress",
       name: "application_offer_detected",
       data: {
         source: "tracking_inbox_auto",
         stage: "offer",
+        sessionId: "session-123",
       },
     });
     expect(logger.warn).not.toHaveBeenCalled();
@@ -154,12 +167,21 @@ describe("server product analytics", () => {
       undefined,
       {
         requestOrigin: "https://app.jobops.example",
+        sessionId: "session-commonjs",
         urlPath: "/jobs",
       },
     );
 
     expect(delivered).toBe(true);
     expect(runtimeUmami.init).toHaveBeenCalledTimes(1);
-    expect(runtimeUmami.track).toHaveBeenCalledTimes(1);
+    expect(runtimeUmami.track).toHaveBeenCalledWith({
+      id: "install-distinct-id",
+      hostname: "jobops.example",
+      url: "/jobs",
+      name: "application_marked_applied",
+      data: {
+        sessionId: "session-commonjs",
+      },
+    });
   });
 });

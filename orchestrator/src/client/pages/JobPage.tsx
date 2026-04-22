@@ -63,7 +63,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { trackProductEvent } from "@/lib/analytics";
 import {
   cn,
   copyTextToClipboard,
@@ -664,12 +663,6 @@ export const JobPage: React.FC = () => {
       await invalidateJobData(queryClient, job.id);
       pendingEventRef.current = null;
       setEditingEvent(null);
-      if (values.stage !== "no_change" && effectiveStage !== "applied") {
-        trackProductEvent("manual_stage_transition_logged", {
-          source: "job_page",
-          to_stage: effectiveStage,
-        });
-      }
       toast.success(eventId ? "Event updated" : "Event logged");
 
       if (effectiveStage === "offer") {

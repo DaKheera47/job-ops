@@ -114,6 +114,26 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 
+  `CREATE TABLE IF NOT EXISTS analytics_install_state (
+    id TEXT PRIMARY KEY,
+    distinct_id TEXT NOT NULL,
+    installed_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_milestones (
+    milestone TEXT PRIMARY KEY,
+    first_seen_at INTEGER NOT NULL,
+    first_session_id TEXT,
+    reported_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_milestones_first_seen_at
+    ON analytics_milestones(first_seen_at)`,
+
   `CREATE TABLE IF NOT EXISTS auth_sessions (
     id TEXT PRIMARY KEY,
     subject TEXT NOT NULL,

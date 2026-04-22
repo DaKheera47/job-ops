@@ -11,6 +11,7 @@ describe.sequential("Jobs API routes", () => {
   let tempDir: string;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     ({ server, baseUrl, closeDb, tempDir } = await startServer());
   });
 
@@ -1261,6 +1262,9 @@ describe.sequential("Jobs API routes", () => {
 
   it("applies a job", async () => {
     const { createJob } = await import("@server/repositories/jobs");
+    const { trackCanonicalActivationEvent } = await import(
+      "@server/services/activation-funnel"
+    );
     const job = await createJob({
       source: "manual",
       title: "Test Role",
@@ -1276,6 +1280,15 @@ describe.sequential("Jobs API routes", () => {
     expect(body.ok).toBe(true);
     expect(body.data.status).toBe("applied");
     expect(body.data.appliedAt).toBeTruthy();
+    expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+      "application_marked_applied",
+      expect.objectContaining({
+        source: "jobs_apply_route",
+      }),
+      expect.objectContaining({
+        urlPath: "/jobs",
+      }),
+    );
   });
 
   it("rescoring a job updates the suitability fields", async () => {
@@ -1461,6 +1474,9 @@ describe.sequential("Jobs API routes", () => {
     });
 
     it("transitions stages and retrieves events", async () => {
+      const { trackCanonicalActivationEvent } = await import(
+        "@server/services/activation-funnel"
+      );
       // 1. Initial transition to applied
       const trans1 = await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
         method: "POST",
@@ -1490,6 +1506,15 @@ describe.sequential("Jobs API routes", () => {
       expect(eventsBody.data[0].toStage).toBe("applied");
       expect(eventsBody.data[1].toStage).toBe("recruiter_screen");
       expect(eventsBody.data[1].metadata.note).toBe("Called by recruiter");
+      expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+        "application_positive_response_detected",
+        expect.objectContaining({
+          stage: "recruiter_screen",
+        }),
+        expect.objectContaining({
+          occurredAt: eventsBody.data[1].occurredAt * 1000,
+        }),
+      );
 
       // 4. Patch an event
       const patchRes = await fetch(
@@ -1518,6 +1543,40 @@ describe.sequential("Jobs API routes", () => {
       const eventsRes3 = await fetch(`${baseUrl}/api/jobs/${jobId}/events`);
       const eventsBody3 = await eventsRes3.json();
       expect(eventsBody3.data).toHaveLength(1);
+    });
+
+    it("tracks offer stages as offer and acceptance backend events", async () => {
+      const { trackCanonicalActivationEvent } = await import(
+        "@server/services/activation-funnel"
+      );
+
+      const res = await fetch(`${baseUrl}/api/jobs/${jobId}/stages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toStage: "offer", occurredAt: 1_713_456_700 }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+        "application_offer_detected",
+        {
+          source: "system",
+        },
+        expect.objectContaining({
+          occurredAt: 1_713_456_700_000,
+        }),
+      );
+      expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+        "application_accepted",
+        {
+          source: "system",
+        },
+        expect.objectContaining({
+          occurredAt: 1_713_456_700_000,
+        }),
+      );
     });
 
     it("manages application tasks", async () => {
@@ -1567,6 +1626,9 @@ describe.sequential("Jobs API routes", () => {
     });
 
     it("updates job outcome", async () => {
+      const { trackCanonicalActivationEvent } = await import(
+        "@server/services/activation-funnel"
+      );
       const res = await fetch(`${baseUrl}/api/jobs/${jobId}/outcome`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1576,6 +1638,41 @@ describe.sequential("Jobs API routes", () => {
       expect(body.ok).toBe(true);
       expect(body.data.outcome).toBe("rejected");
       expect(body.data.closedAt).toBeTruthy();
+      expect(trackCanonicalActivationEvent).not.toHaveBeenCalledWith(
+        "application_accepted",
+        expect.anything(),
+        expect.anything(),
+      );
+    });
+
+    it("tracks accepted outcomes as a canonical backend event", async () => {
+      const { trackCanonicalActivationEvent } = await import(
+        "@server/services/activation-funnel"
+      );
+
+      const res = await fetch(`${baseUrl}/api/jobs/${jobId}/outcome`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          outcome: "offer_accepted",
+          closedAt: 1_713_456_789,
+        }),
+      });
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.ok).toBe(true);
+      expect(body.data.outcome).toBe("offer_accepted");
+      expect(trackCanonicalActivationEvent).toHaveBeenCalledWith(
+        "application_accepted",
+        {
+          source: "jobs_outcome_route",
+        },
+        expect.objectContaining({
+          occurredAt: 1_713_456_789_000,
+          urlPath: "/applications/in-progress",
+        }),
+      );
     });
   });
 });

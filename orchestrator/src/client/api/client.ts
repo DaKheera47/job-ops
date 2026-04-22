@@ -63,7 +63,11 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
-import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
+import {
+  bucketQueryLength,
+  getAnalyticsRequestHeaders,
+  trackProductEvent,
+} from "@/lib/analytics";
 import { showDemoBlockedToast, showDemoSimulatedToast } from "@/lib/demo-toast";
 
 const API_BASE = "/api";
@@ -466,6 +470,7 @@ async function fetchAndParse<T>(
 }> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...getAnalyticsRequestHeaders(),
     ...normalizeHeaders(options?.headers),
   };
   if (authHeader) headers.Authorization = authHeader;
@@ -721,6 +726,7 @@ async function streamSseEvents<TEvent>(
 ): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    ...getAnalyticsRequestHeaders(),
   };
   const streamAuth = getAuthHeader();
   if (streamAuth) {

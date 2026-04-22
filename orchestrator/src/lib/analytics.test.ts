@@ -1,6 +1,7 @@
 import {
   __resetAnalyticsTestState,
   bucketQueryLength,
+  getAnalyticsRequestHeaders,
   trackEvent,
   trackProductEvent,
 } from "./analytics";
@@ -14,6 +15,7 @@ describe("analytics", () => {
     track.mockReset();
     __resetAnalyticsTestState();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     (globalThis as any).__APP_VERSION__ = "abc1234-dev";
     Object.defineProperty(window, "umami", {
       configurable: true,
@@ -89,5 +91,16 @@ describe("analytics", () => {
     expect(bucketQueryLength("")).toBe("0");
     expect(bucketQueryLength("abc")).toBe("1_3");
     expect(bucketQueryLength("hello world")).toBe("11_30");
+  });
+
+  it("provides a stable analytics session header for API requests", () => {
+    const firstHeaders = getAnalyticsRequestHeaders();
+    const secondHeaders = getAnalyticsRequestHeaders();
+
+    expect(firstHeaders["x-jobops-analytics-session-id"]).toBeTruthy();
+    expect(secondHeaders).toEqual(firstHeaders);
+    expect(
+      window.sessionStorage.getItem("jobops.analytics.session_id.v1"),
+    ).toBe(firstHeaders["x-jobops-analytics-session-id"]);
   });
 });
