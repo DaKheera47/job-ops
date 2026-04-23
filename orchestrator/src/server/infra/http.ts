@@ -78,13 +78,19 @@ export function asyncRoute(
 export function requestContextMiddleware(): RequestHandler {
   return (req, res, next) => {
     const requestIdHeader = req.header("x-request-id")?.trim();
+    const analyticsSessionId =
+      req.header("x-jobops-analytics-session-id")?.trim() || undefined;
+    const requestUserAgent = req.header("user-agent")?.trim() || undefined;
     const requestId =
       requestIdHeader && requestIdHeader.length > 0
         ? requestIdHeader
         : crypto.randomUUID();
 
     res.setHeader("x-request-id", requestId);
-    runWithRequestContext({ requestId }, () => next());
+    runWithRequestContext(
+      { requestId, analyticsSessionId, requestUserAgent },
+      () => next(),
+    );
   };
 }
 

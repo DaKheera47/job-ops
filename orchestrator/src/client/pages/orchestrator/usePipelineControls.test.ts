@@ -44,9 +44,8 @@ describe("usePipelineControls", () => {
     });
 
     expect(trackProductEvent).toHaveBeenCalledWith(
-      "jobs_pipeline_run_started",
+      "jobs_manual_import_completed",
       {
-        mode: "manual_import",
         manual_import_source: "fetched_url",
         manual_import_source_host: "jobs.example.com",
       },

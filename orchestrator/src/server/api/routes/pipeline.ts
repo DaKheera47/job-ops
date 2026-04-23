@@ -22,6 +22,7 @@ import {
   subscribeToProgress,
 } from "@server/pipeline/index";
 import * as pipelineRepo from "@server/repositories/pipeline";
+import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
@@ -38,6 +39,36 @@ import { z } from "zod";
 
 export const pipelineRouter = Router();
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
+
+function resolveRequestOrigin(req: Request): string | null {
+  const configuredBaseUrl = process.env.JOBOPS_PUBLIC_BASE_URL?.trim();
+  if (configuredBaseUrl) {
+    try {
+      const parsed = new URL(configuredBaseUrl);
+      if (parsed.protocol && parsed.host) {
+        return `${parsed.protocol}//${parsed.host}`;
+      }
+    } catch {
+      // Ignore invalid env and fall back to request-derived origin.
+    }
+  }
+
+  const trustProxy = Boolean(req.app?.get("trust proxy"));
+  let protocol = (req.protocol || "").trim();
+  let host = (req.header("host") || "").trim();
+
+  if (trustProxy) {
+    const forwardedProto =
+      req.header("x-forwarded-proto")?.split(",")[0]?.trim() ?? "";
+    const forwardedHost =
+      req.header("x-forwarded-host")?.split(",")[0]?.trim() ?? "";
+    if (forwardedProto) protocol = forwardedProto;
+    if (forwardedHost) host = forwardedHost;
+  }
+
+  if (!host || !protocol) return null;
+  return `${protocol}://${host}`;
+}
 
 /**
  * GET /api/pipeline/status - Get pipeline status
@@ -251,6 +282,23 @@ pipelineRouter.post("/run", async (req: Request, res: Response) => {
         logger.error("Background pipeline run failed", error);
       });
     });
+    void trackCanonicalActivationEvent(
+      "jobs_pipeline_run_started",
+      {
+        source_count: config.sources?.length,
+        top_n: config.topN,
+        min_suitability_score: config.minSuitabilityScore,
+        country: config.country,
+        has_city_locations: Array.isArray(config.cityLocations)
+          ? config.cityLocations.length > 0
+          : false,
+        search_terms_count: config.searchTerms?.length,
+      },
+      {
+        requestOrigin: resolveRequestOrigin(req),
+        urlPath: "/jobs",
+      },
+    );
     ok(res, { message: "Pipeline started" });
   } catch (error) {
     if (error instanceof z.ZodError) {

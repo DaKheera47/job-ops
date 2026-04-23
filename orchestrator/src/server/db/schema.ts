@@ -282,6 +282,57 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const analyticsInstallState = sqliteTable("analytics_install_state", {
+  id: text("id").primaryKey(),
+  distinctId: text("distinct_id").notNull(),
+  installedAt: text("installed_at").notNull(),
+  rawEventReplayVersion: integer("raw_event_replay_version")
+    .notNull()
+    .default(0),
+  rawEventReplayCompletedAt: text("raw_event_replay_completed_at"),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const analyticsMilestones = sqliteTable(
+  "analytics_milestones",
+  {
+    milestone: text("milestone").primaryKey(),
+    firstSeenAt: integer("first_seen_at", { mode: "number" }).notNull(),
+    firstSessionId: text("first_session_id"),
+    reportedAt: text("reported_at"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    firstSeenAtIndex: index("idx_analytics_milestones_first_seen_at").on(
+      table.firstSeenAt,
+    ),
+  }),
+);
+
+export const analyticsServerEventReplays = sqliteTable(
+  "analytics_server_event_replays",
+  {
+    eventKey: text("event_key").primaryKey(),
+    eventName: text("event_name").notNull(),
+    occurredAt: integer("occurred_at", { mode: "number" }).notNull(),
+    payload: text("payload", { mode: "json" }).notNull(),
+    claimedAt: integer("claimed_at", { mode: "number" }),
+    reportedAt: integer("reported_at", { mode: "number" }),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    eventNameIndex: index("idx_analytics_server_event_replays_event_name").on(
+      table.eventName,
+    ),
+    occurredAtIndex: index("idx_analytics_server_event_replays_occurred_at").on(
+      table.occurredAt,
+    ),
+  }),
+);
+
 export const authSessions = sqliteTable(
   "auth_sessions",
   {
@@ -536,6 +587,16 @@ export type JobChatRunRow = typeof jobChatRuns.$inferSelect;
 export type NewJobChatRunRow = typeof jobChatRuns.$inferInsert;
 export type SettingsRow = typeof settings.$inferSelect;
 export type NewSettingsRow = typeof settings.$inferInsert;
+export type AnalyticsInstallStateRow =
+  typeof analyticsInstallState.$inferSelect;
+export type NewAnalyticsInstallStateRow =
+  typeof analyticsInstallState.$inferInsert;
+export type AnalyticsMilestoneRow = typeof analyticsMilestones.$inferSelect;
+export type NewAnalyticsMilestoneRow = typeof analyticsMilestones.$inferInsert;
+export type AnalyticsServerEventReplayRow =
+  typeof analyticsServerEventReplays.$inferSelect;
+export type NewAnalyticsServerEventReplayRow =
+  typeof analyticsServerEventReplays.$inferInsert;
 export type DesignResumeDocumentRow = typeof designResumeDocuments.$inferSelect;
 export type NewDesignResumeDocumentRow =
   typeof designResumeDocuments.$inferInsert;

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { trackServerProductEvent } from "@infra/product-analytics";
+import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
 import type {
   ApplicationStage,
   ApplicationTask,
@@ -121,7 +122,7 @@ export function transitionStage(
   const now = Math.floor(Date.now() / 1000);
   const timestamp = occurredAt ?? now;
 
-  const event = db.transaction((tx) => {
+  const { event, previousOutcome } = db.transaction((tx) => {
     const job = tx.select().from(jobs).where(eq(jobs.id, applicationId)).get();
     if (!job) {
       throw new Error("Job not found");
@@ -180,19 +181,22 @@ export function transitionStage(
     tx.update(jobs).set(updates).where(eq(jobs.id, applicationId)).run();
 
     return {
-      id: eventId,
-      applicationId,
-      title: parsedMetadata?.eventLabel ?? finalToStage,
-      groupId: parsedMetadata?.groupId ?? null,
-      fromStage,
-      toStage: finalToStage,
-      occurredAt: timestamp,
-      metadata: parsedMetadata,
-      outcome: outcome ?? null,
+      event: {
+        id: eventId,
+        applicationId,
+        title: parsedMetadata?.eventLabel ?? finalToStage,
+        groupId: parsedMetadata?.groupId ?? null,
+        fromStage,
+        toStage: finalToStage,
+        occurredAt: timestamp,
+        metadata: parsedMetadata,
+        outcome: outcome ?? null,
+      },
+      previousOutcome: (job.outcome as JobOutcome | null) ?? null,
     };
   });
 
-  maybeTrackStageAnalytics(event, parsedMetadata);
+  maybeTrackStageAnalytics(event, parsedMetadata, previousOutcome);
   return event;
 }
 
@@ -384,14 +388,31 @@ function classifyStageAnalyticsSource(
 function maybeTrackStageAnalytics(
   event: StageEvent,
   metadata: StageEventMetadata | null,
+  previousOutcome: JobOutcome | null,
 ): void {
   const stageChanged = event.fromStage !== event.toStage;
   const isNoteEvent = metadata?.eventType === "note";
-  if (!stageChanged || isNoteEvent || event.toStage === "applied") {
+  if (!stageChanged || isNoteEvent) {
     return;
   }
 
   const source = classifyStageAnalyticsSource(metadata, event.toStage);
+  if (event.toStage === "applied") {
+    if (source !== "mark_applied") {
+      void trackCanonicalActivationEvent(
+        "application_marked_applied",
+        {
+          source,
+        },
+        {
+          occurredAt: event.occurredAt * 1000,
+          urlPath: "/applications/in-progress",
+        },
+      );
+    }
+    return;
+  }
+
   const enteredPositiveResponse =
     POSITIVE_RESPONSE_STAGES.has(event.toStage) &&
     (event.fromStage === null || event.fromStage === "applied");
@@ -410,34 +431,59 @@ function maybeTrackStageAnalytics(
   );
 
   if (enteredPositiveResponse) {
-    void trackServerProductEvent(
+    void trackCanonicalActivationEvent(
       "application_positive_response_detected",
       {
         stage: event.toStage,
         source,
       },
-      { urlPath: "/applications/in-progress" },
+      {
+        occurredAt: event.occurredAt * 1000,
+        urlPath: "/applications/in-progress",
+      },
     );
   }
 
   if (enteredInterview) {
-    void trackServerProductEvent(
+    void trackCanonicalActivationEvent(
       "application_interview_stage_reached",
       {
         stage: event.toStage,
         source,
       },
-      { urlPath: "/applications/in-progress" },
+      {
+        occurredAt: event.occurredAt * 1000,
+        urlPath: "/applications/in-progress",
+      },
     );
   }
 
   if (event.toStage === "offer") {
-    void trackServerProductEvent(
+    void trackCanonicalActivationEvent(
       "application_offer_detected",
       {
         source,
       },
-      { urlPath: "/applications/in-progress" },
+      {
+        occurredAt: event.occurredAt * 1000,
+        urlPath: "/applications/in-progress",
+      },
+    );
+  }
+
+  if (
+    previousOutcome !== "offer_accepted" &&
+    (event.outcome === "offer_accepted" || event.toStage === "offer")
+  ) {
+    void trackCanonicalActivationEvent(
+      "application_accepted",
+      {
+        source,
+      },
+      {
+        occurredAt: event.occurredAt * 1000,
+        urlPath: "/applications/in-progress",
+      },
     );
   }
 }
