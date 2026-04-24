@@ -1,7 +1,7 @@
 import type { Job } from "@shared/types";
-import { PanelRightOpen } from "lucide-react";
+import { Maximize2, Minimize2, PanelRightOpen } from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -19,11 +19,71 @@ type GhostwriterDrawerProps = {
   triggerClassName?: string;
 };
 
+type DisplayMode = "drawer" | "fullscreen";
+
+const DESKTOP_MEDIA_QUERY = "(min-width: 1024px)";
+const DISPLAY_MODE_STORAGE_KEY = "jobops.ghostwriter.display-mode.v1";
+
+function getIsDesktopViewport(): boolean {
+  if (typeof window === "undefined") return false;
+  if (typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+}
+
+function getStoredDisplayMode(): DisplayMode {
+  if (typeof window === "undefined") return "drawer";
+  try {
+    const value = window.localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
+    return value === "fullscreen" ? "fullscreen" : "drawer";
+  } catch {
+    return "drawer";
+  }
+}
+
 export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
   job,
   triggerClassName,
 }) => {
   const [open, setOpen] = useState(false);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() =>
+    getStoredDisplayMode(),
+  );
+  const [isDesktop, setIsDesktop] = useState(() => getIsDesktopViewport());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const handleChange = () => setIsDesktop(media.matches);
+    handleChange();
+    if (media.addEventListener) {
+      media.addEventListener("change", handleChange);
+      return () => media.removeEventListener("change", handleChange);
+    }
+    media.addListener(handleChange);
+    return () => media.removeListener(handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, displayMode);
+    } catch {
+      // Ignore storage failures and continue with in-memory mode.
+    }
+  }, [displayMode]);
+
+  const isFullscreen = isDesktop && displayMode === "fullscreen";
+  const panelClassName = useMemo(
+    () =>
+      cn(
+        "flex w-full flex-col p-0",
+        isFullscreen
+          ? "inset-0 h-dvh w-screen max-w-none sm:max-w-none border-0 rounded-none shadow-none"
+          : "sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]",
+      ),
+    [isFullscreen],
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -39,16 +99,45 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
         </Button>
       </SheetTrigger>
 
-      <SheetContent
-        side="right"
-        className="flex w-full flex-col p-0 sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]"
-      >
+      <SheetContent side="right" className={panelClassName}>
         <div className="border-b border-border/50 p-4">
           <SheetHeader>
-            <SheetTitle>Ghostwriter</SheetTitle>
-            <SheetDescription>
-              {job && `${job.title} at ${job.employer}.`}
-            </SheetDescription>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <SheetTitle>Ghostwriter</SheetTitle>
+                <SheetDescription>
+                  {job && `${job.title} at ${job.employer}.`}
+                </SheetDescription>
+              </div>
+              {isDesktop && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() =>
+                    setDisplayMode((current) =>
+                      current === "fullscreen" ? "drawer" : "fullscreen",
+                    )
+                  }
+                  aria-label={
+                    isFullscreen
+                      ? "Restore Ghostwriter drawer"
+                      : "Open Ghostwriter pop-up"
+                  }
+                  title={
+                    isFullscreen
+                      ? "Restore Ghostwriter drawer"
+                      : "Open Ghostwriter pop-up"
+                  }
+                >
+                  {isFullscreen ? (
+                    <Minimize2 className="h-4 w-4" />
+                  ) : (
+                    <Maximize2 className="h-4 w-4" />
+                  )}
+                </Button>
+              )}
+            </div>
           </SheetHeader>
         </div>
 

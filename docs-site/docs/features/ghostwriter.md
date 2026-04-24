@@ -16,7 +16,7 @@ Ghostwriter uses:
 - global writing style settings
 - the configurable Ghostwriter system prompt template from Settings
 
-The UI behavior is one persistent conversation per job, shown in the right-side drawer from job details.
+The UI behavior is one persistent conversation per job, shown in the right-side drawer from job details, with an optional desktop pop-up mode for focused writing.
 
 ## Why it exists
 
@@ -34,9 +34,10 @@ Typical use cases:
 
 1. Open a job in `discovered` or `ready`.
 2. Open the Ghostwriter drawer.
-3. Enter your prompt and stream a response.
-4. Use the `Copy` button on any completed Ghostwriter reply to copy the full output.
-5. Stop or regenerate responses when needed.
+3. On desktop, use the header expand button to open pop-up mode and the restore button to return to drawer mode.
+4. Enter your prompt and stream a response.
+5. Use the `Copy` button on any completed Ghostwriter reply to copy the full output.
+6. Stop or regenerate responses when needed.
 
 ### Writing style settings impact
 
@@ -100,6 +101,11 @@ Compatibility thread endpoints remain, but UI behavior is one thread per job.
 
 - Update profile data and relevant project details used by Ghostwriter context.
 - Regenerate after updating job notes/description.
+
+### I need more reading space for long drafts
+
+- On desktop, switch Ghostwriter to pop-up mode with the header expand button.
+- Use restore when you want to return to the right-side drawer layout.
 
 ### I need to reuse a reply outside JobOps
 
