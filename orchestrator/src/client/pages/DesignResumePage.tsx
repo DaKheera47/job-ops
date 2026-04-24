@@ -259,7 +259,10 @@ export const DesignResumePage: React.FC = () => {
     } catch (importError) {
       setSaveState("error");
       toast.error(
-        formatUserFacingError(importError, "Failed to import your resume file."),
+        formatUserFacingError(
+          importError,
+          "Failed to import your resume file.",
+        ),
       );
     } finally {
       setResumeImporting(false);

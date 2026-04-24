@@ -20,7 +20,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "network",
     secondaryField: "username",
     fields: [
-      { key: "icon", label: "Icon", type: "icon", groupWithNext: true },
+      {
+        key: "icon",
+        label: "Icon",
+        type: "text",
+        placeholder: "e.g. tabler:brand-linkedin (Iconify icon name)",
+      },
       { key: "network", label: "Network", type: "text" },
       { key: "username", label: "Username", type: "text" },
       {
@@ -210,7 +215,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "name",
     secondaryField: "icon",
     fields: [
-      { key: "icon", label: "Icon", type: "icon", groupWithNext: true },
+      {
+        key: "icon",
+        label: "Icon",
+        type: "text",
+        placeholder: "e.g. tabler:brand-python (Iconify icon name)",
+      },
       { key: "name", label: "Name", type: "text" },
       { key: "keywords", label: "Keywords", type: "tags" },
     ],

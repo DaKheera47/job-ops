@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
 
 export type ItemFieldType =
@@ -23,8 +22,7 @@ export type ItemFieldType =
   | "textarea"
   | "richtext"
   | "tags"
-  | "toggle"
-  | "icon";
+  | "toggle";
 
 export type ItemFieldConfig = {
   key: string;
@@ -32,7 +30,6 @@ export type ItemFieldConfig = {
   type: ItemFieldType;
   placeholder?: string;
   required?: boolean;
-  groupWithNext?: boolean;
   min?: number;
   step?: number;
 };
@@ -276,60 +273,6 @@ function renderFields(
             checked={value as boolean}
             onCheckedChange={(checked) => updateField(field.key, checked)}
           />
-        </div>,
-      );
-      i++;
-      continue;
-    }
-
-    // Icon field grouped with the next text field
-    if (field.type === "icon" && field.groupWithNext && i + 1 < fields.length) {
-      const nextField = fields[i + 1];
-      if (!nextField) {
-        i++;
-        continue;
-      }
-      const nextValue = coerceDraftValue(
-        nextField,
-        getValue(draft, nextField.key),
-      );
-      const nextFieldId = fieldIdForPath(nextField.key);
-      const iconNode = (
-        <IconPickerField
-          id={fieldId}
-          value={value as string}
-          onChange={(next) => updateField(field.key, next)}
-        />
-      );
-      nodes.push(
-        renderTextField(
-          nextField,
-          nextValue as string | number,
-          fieldErrors,
-          updateField,
-          setFieldErrors,
-          nextFieldId,
-          iconNode,
-        ),
-      );
-      i += 2;
-      continue;
-    }
-
-    // Standalone icon field
-    if (field.type === "icon") {
-      nodes.push(
-        <div key={field.key} className="grid gap-2">
-          <label className="text-sm font-medium" htmlFor={fieldId}>
-            {field.label}
-          </label>
-          <div>
-            <IconPickerField
-              id={fieldId}
-              value={value as string}
-              onChange={(next) => updateField(field.key, next)}
-            />
-          </div>
         </div>,
       );
       i++;
