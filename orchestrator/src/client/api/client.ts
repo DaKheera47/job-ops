@@ -63,12 +63,12 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
+import { formatUserFacingError } from "@/client/lib/error-format";
 import {
   bucketQueryLength,
   getAnalyticsRequestHeaders,
   trackProductEvent,
 } from "@/lib/analytics";
-import { formatUserFacingError } from "@/client/lib/error-format";
 import { showDemoBlockedToast, showDemoSimulatedToast } from "@/lib/demo-toast";
 
 const API_BASE = "/api";
@@ -464,9 +464,12 @@ function toApiError<T>(
       },
     );
   }
-  return new ApiClientError(formatUserFacingError(parsed, "API request failed"), {
-    status: response.status,
-  });
+  return new ApiClientError(
+    formatUserFacingError(parsed, "API request failed"),
+    {
+      status: response.status,
+    },
+  );
 }
 
 async function fetchAndParse<T>(

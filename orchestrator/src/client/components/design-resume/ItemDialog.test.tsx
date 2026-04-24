@@ -43,4 +43,34 @@ describe("ItemDialog", () => {
       }),
     );
   });
+
+  it("trims text input values before saving", () => {
+    const onSave = vi.fn();
+    const fields: ItemFieldConfig[] = [
+      { key: "name", label: "Name", type: "text" },
+    ];
+
+    render(
+      <ItemDialog
+        open
+        title="Edit item"
+        description="Dialog description"
+        item={{ id: "item-2", name: "" }}
+        fields={fields}
+        onOpenChange={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Name"), {
+      target: { value: "  Python  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save item" }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Python",
+      }),
+    );
+  });
 });

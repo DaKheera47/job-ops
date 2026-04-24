@@ -170,7 +170,7 @@ export const referenceItemSchema = baseItemSchema.extend({
 
 export const skillItemSchema = baseItemSchema.extend({
   icon: iconSchema,
-  name: z.string().min(1),
+  name: z.string().trim().min(1),
   proficiency: z.string(),
   level: z.number().min(0).max(5).catch(0),
   keywords: z.array(z.string()).catch([]),

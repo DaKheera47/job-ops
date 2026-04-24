@@ -22,6 +22,16 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -47,6 +57,47 @@ import {
 import { formatUserFacingError } from "../lib/error-format";
 import { queryKeys } from "../lib/queryKeys";
 
+function toTrimmedText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function sanitizeDesignResumeForSave(
+  resumeJson: DesignResumeJson,
+): DesignResumeJson {
+  const next = structuredClone(resumeJson) as DesignResumeJson;
+  const sections = (asRecord(next.sections) ?? {}) as Record<string, unknown>;
+  const skillsSection = (asRecord(sections.skills) ?? null) as Record<
+    string,
+    unknown
+  > | null;
+  if (!skillsSection) return next;
+
+  const rawItems = asArray(skillsSection.items).map(
+    (entry) => asRecord(entry) ?? {},
+  ) as Record<string, unknown>[];
+
+  const sanitizedItems = rawItems
+    .map((item) => {
+      const normalized = structuredClone(item) as Record<string, unknown>;
+      const normalizedKeywords = asArray(item.keywords)
+        .map((keyword) => toTrimmedText(keyword))
+        .filter(Boolean);
+      normalized.name = toTrimmedText(item.name);
+      normalized.icon = toTrimmedText(item.icon);
+      normalized.proficiency = toTrimmedText(item.proficiency);
+      normalized.keywords = normalizedKeywords;
+      return normalized;
+    })
+    .filter((item) => toTrimmedText(item.name).length > 0);
+
+  sections.skills = {
+    ...skillsSection,
+    items: sanitizedItems,
+  };
+  next.sections = sections as DesignResumeJson["sections"];
+  return next;
+}
+
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
@@ -66,6 +117,7 @@ export const DesignResumePage: React.FC = () => {
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [rendererUpdating, setRendererUpdating] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [reImportConfirmOpen, setReImportConfirmOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const editVersionRef = useRef(0);
@@ -95,7 +147,7 @@ export const DesignResumePage: React.FC = () => {
     const timer = window.setTimeout(async () => {
       const editVersionAtStart = editVersionRef.current;
       const baseRevision = draft.revision;
-      const documentSnapshot = structuredClone(draft.resumeJson);
+      const documentSnapshot = sanitizeDesignResumeForSave(draft.resumeJson);
 
       try {
         setSaveState("saving");
@@ -161,7 +213,7 @@ export const DesignResumePage: React.FC = () => {
 
       const editVersionAtStart = editVersionRef.current;
       const baseRevision = draft.revision;
-      const documentSnapshot = structuredClone(draft.resumeJson);
+      const documentSnapshot = sanitizeDesignResumeForSave(draft.resumeJson);
 
       setSaveState("saving");
       const updated = await api.updateDesignResume({
@@ -259,7 +311,10 @@ export const DesignResumePage: React.FC = () => {
     } catch (importError) {
       setSaveState("error");
       toast.error(
-        formatUserFacingError(importError, "Failed to import your resume file."),
+        formatUserFacingError(
+          importError,
+          "Failed to import your resume file.",
+        ),
       );
     } finally {
       setResumeImporting(false);
@@ -497,7 +552,15 @@ export const DesignResumePage: React.FC = () => {
                 {resumeImporting ? "Importing File" : "Import File"}
               </Button>
 
-              <Button type="button" variant="outline" onClick={handleImport}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={
+                  status?.exists
+                    ? () => setReImportConfirmOpen(true)
+                    : handleImport
+                }
+              >
                 <Import className="mr-2 h-4 w-4" />
                 {status?.exists ? "Re-import RxResume" : "Import RxResume"}
               </Button>
@@ -543,7 +606,13 @@ export const DesignResumePage: React.FC = () => {
                   <Import className="mr-2 h-4 w-4" />
                   {resumeImporting ? "Importing File" : "Import File"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleImport()}>
+                <DropdownMenuItem
+                  onSelect={
+                    status?.exists
+                      ? () => setReImportConfirmOpen(true)
+                      : () => handleImport()
+                  }
+                >
                   <Import className="mr-2 h-4 w-4" />
                   {status?.exists ? "Re-import RxResume" : "Import RxResume"}
                 </DropdownMenuItem>
@@ -697,6 +766,35 @@ export const DesignResumePage: React.FC = () => {
           }
         />
       ) : null}
+
+      <AlertDialog
+        open={reImportConfirmOpen}
+        onOpenChange={setReImportConfirmOpen}
+      >
+        <AlertDialogContent className="border-border/70 bg-background/95 backdrop-blur-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-import from RxResume?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your current Design Resume with the latest data
+              from RxResume. Any edits you've made here will be permanently
+              overwritten and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-[#F1703E] text-white hover:bg-[#d96336] focus-visible:ring-[#F1703E]"
+              onClick={() => {
+                setReImportConfirmOpen(false);
+                void handleImport();
+              }}
+            >
+              <Import className="mr-2 h-4 w-4" />
+              Re-import
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

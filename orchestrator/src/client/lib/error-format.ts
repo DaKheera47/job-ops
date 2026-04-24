@@ -28,11 +28,11 @@ function toFriendlyFieldLabel(path: string): string | null {
     return "application link";
   }
   if (/^sections\.skills\.items\.\d+\.name$/.test(path)) return "skill name";
-  if (/^sections\.projects\.items\.\d+\.name$/.test(path)) return "project name";
+  if (/^sections\.projects\.items\.\d+\.name$/.test(path))
+    return "project name";
 
-  const sectionMatch = /^sections\.([a-z-]+)\.items\.\d+\.([a-zA-Z0-9_-]+)$/.exec(
-    path,
-  );
+  const sectionMatch =
+    /^sections\.([a-z-]+)\.items\.\d+\.([a-zA-Z0-9_-]+)$/.exec(path);
   if (sectionMatch) {
     const section = normalizeSectionName(sectionMatch[1] ?? "item");
     const field = (sectionMatch[2] ?? "field")
@@ -64,7 +64,7 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
   }
 
   if (/^sections\.skills\.items\.\d+\.name$/.test(path)) {
-    return "Please enter a skill name before continuing.";
+    return "Please enter a skill (e.g., Python, SQL).";
   }
 
   if (issue.code === "invalid_string" && issue.validation === "url") {
@@ -76,7 +76,11 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
       : "Please enter a valid URL.";
   }
 
-  if (issue.code === "too_small" && issue.type === "string" && issue.minimum === 1) {
+  if (
+    issue.code === "too_small" &&
+    issue.type === "string" &&
+    issue.minimum === 1
+  ) {
     if (label) {
       return `Please enter a ${label} before continuing.`;
     }
@@ -100,9 +104,8 @@ function parseIssuesFromJsonMessage(message: string): ZodLikeIssue[] | null {
   try {
     const parsed = JSON.parse(trimmed) as unknown;
     if (Array.isArray(parsed)) {
-      return parsed.filter(
-        (entry): entry is ZodLikeIssue =>
-          Boolean(entry && typeof entry === "object"),
+      return parsed.filter((entry): entry is ZodLikeIssue =>
+        Boolean(entry && typeof entry === "object"),
       );
     }
     if (
@@ -111,9 +114,8 @@ function parseIssuesFromJsonMessage(message: string): ZodLikeIssue[] | null {
       Array.isArray((parsed as { issues?: unknown[] }).issues)
     ) {
       const issues = (parsed as { issues: unknown[] }).issues;
-      return issues.filter(
-        (entry): entry is ZodLikeIssue =>
-          Boolean(entry && typeof entry === "object"),
+      return issues.filter((entry): entry is ZodLikeIssue =>
+        Boolean(entry && typeof entry === "object"),
       );
     }
   } catch {
@@ -143,16 +145,14 @@ function parseIssuesFromDetails(details: unknown): ZodLikeIssue[] | null {
   const detailsRecord = details as Record<string, unknown>;
 
   if (Array.isArray(detailsRecord.issues)) {
-    return detailsRecord.issues.filter(
-      (entry): entry is ZodLikeIssue =>
-        Boolean(entry && typeof entry === "object"),
+    return detailsRecord.issues.filter((entry): entry is ZodLikeIssue =>
+      Boolean(entry && typeof entry === "object"),
     );
   }
 
   if (Array.isArray(detailsRecord)) {
-    return (detailsRecord as unknown[]).filter(
-      (entry): entry is ZodLikeIssue =>
-        Boolean(entry && typeof entry === "object"),
+    return (detailsRecord as unknown[]).filter((entry): entry is ZodLikeIssue =>
+      Boolean(entry && typeof entry === "object"),
     );
   }
 
@@ -186,7 +186,8 @@ function extractRawErrorMessage(error: unknown): string {
 
 function extractErrorDetails(error: unknown): unknown {
   if (!error || typeof error !== "object") return null;
-  if ("details" in error) return (error as { details?: unknown }).details ?? null;
+  if ("details" in error)
+    return (error as { details?: unknown }).details ?? null;
   return null;
 }
 
@@ -234,4 +235,3 @@ export function formatUserFacingError(
 
   return message;
 }
-

@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
 
 export type ItemFieldType =
@@ -22,13 +23,16 @@ export type ItemFieldType =
   | "textarea"
   | "richtext"
   | "tags"
-  | "toggle";
+  | "toggle"
+  | "icon";
 
 export type ItemFieldConfig = {
   key: string;
   label: string;
   type: ItemFieldType;
   placeholder?: string;
+  required?: boolean;
+  groupWithNext?: boolean;
   min?: number;
   step?: number;
 };
@@ -96,6 +100,257 @@ function parseTagInput(input: string): string[] {
     .filter(Boolean);
 }
 
+function normalizeDraftForSave(
+  draft: Record<string, unknown>,
+  fields: ItemFieldConfig[],
+): Record<string, unknown> {
+  let next = structuredClone(draft) as Record<string, unknown>;
+  for (const field of fields) {
+    const currentValue = getValue(next, field.key);
+    if (field.type === "text" || field.type === "textarea") {
+      if (typeof currentValue === "string") {
+        next = setValue(next, field.key, currentValue.trim());
+      }
+      continue;
+    }
+    if (field.type === "tags" && Array.isArray(currentValue)) {
+      const normalizedTags = currentValue
+        .map((entry) => String(entry).trim())
+        .filter(Boolean);
+      next = setValue(next, field.key, normalizedTags);
+    }
+  }
+  return next;
+}
+
+function renderTextField(
+  field: ItemFieldConfig,
+  value: string | number,
+  fieldErrors: Record<string, string>,
+  updateField: (path: string, value: unknown) => void,
+  setFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  fieldId: string,
+  iconPrefix?: React.ReactNode,
+) {
+  return (
+    <div key={field.key} className="grid gap-2">
+      <label className="text-sm font-medium" htmlFor={fieldId}>
+        {field.label}
+        {field.required ? <span className="ml-1 text-rose-400">*</span> : null}
+      </label>
+      <div className={iconPrefix ? "flex items-center gap-2" : undefined}>
+        {iconPrefix}
+        <Input
+          id={fieldId}
+          type={field.type === "number" ? "number" : "text"}
+          value={
+            field.type === "number"
+              ? String(value as number)
+              : (value as string)
+          }
+          min={field.min}
+          step={field.step}
+          placeholder={field.placeholder}
+          onChange={(event) => {
+            if (fieldErrors[field.key]) {
+              setFieldErrors((current) => {
+                const next = { ...current };
+                delete next[field.key];
+                return next;
+              });
+            }
+            updateField(
+              field.key,
+              field.type === "number"
+                ? Number(event.currentTarget.value || 0)
+                : event.currentTarget.value,
+            );
+          }}
+          className={
+            fieldErrors[field.key]
+              ? "border-rose-500 bg-background/60"
+              : "bg-background/60"
+          }
+        />
+      </div>
+      {fieldErrors[field.key] ? (
+        <p className="text-xs text-rose-400">{fieldErrors[field.key]}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function renderFields(
+  fields: ItemFieldConfig[],
+  draft: Record<string, unknown>,
+  tagDrafts: Record<string, string>,
+  fieldErrors: Record<string, string>,
+  updateField: (path: string, value: unknown) => void,
+  setTagDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  setFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+): React.ReactNode[] {
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+  while (i < fields.length) {
+    const field = fields[i];
+    if (!field) break;
+    const value = coerceDraftValue(field, getValue(draft, field.key));
+    const fieldId = fieldIdForPath(field.key);
+
+    if (field.type === "richtext") {
+      nodes.push(
+        <div key={field.key} className="grid gap-2">
+          <span className="text-sm font-medium">{field.label}</span>
+          <RichTextEditor
+            value={value as string}
+            onChange={(next) => updateField(field.key, next)}
+            placeholder={field.placeholder}
+          />
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    if (field.type === "textarea") {
+      nodes.push(
+        <div key={field.key} className="grid gap-2">
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <Textarea
+            id={fieldId}
+            value={value as string}
+            placeholder={field.placeholder}
+            onChange={(event) =>
+              updateField(field.key, event.currentTarget.value)
+            }
+            className="min-h-[110px] bg-background/60"
+          />
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    if (field.type === "tags") {
+      nodes.push(
+        <div key={field.key} className="grid gap-2">
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <TokenizedInput
+            id={fieldId}
+            values={value as string[]}
+            draft={tagDrafts[field.key] ?? ""}
+            parseInput={parseTagInput}
+            onDraftChange={(next) =>
+              setTagDrafts((current) => ({ ...current, [field.key]: next }))
+            }
+            onValuesChange={(next) => updateField(field.key, next)}
+            placeholder={field.placeholder ?? "Add a value"}
+            helperText="Press Enter, comma, or paste a list to add items."
+            removeLabelPrefix="Remove tag"
+          />
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    if (field.type === "toggle") {
+      nodes.push(
+        <div
+          key={field.key}
+          className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3"
+        >
+          <div>
+            <div className="text-sm font-medium">{field.label}</div>
+            {field.placeholder ? (
+              <div className="text-xs text-muted-foreground">
+                {field.placeholder}
+              </div>
+            ) : null}
+          </div>
+          <Switch
+            checked={value as boolean}
+            onCheckedChange={(checked) => updateField(field.key, checked)}
+          />
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    // Icon field grouped with the next text field
+    if (field.type === "icon" && field.groupWithNext && i + 1 < fields.length) {
+      const nextField = fields[i + 1];
+      if (!nextField) {
+        i++;
+        continue;
+      }
+      const nextValue = coerceDraftValue(
+        nextField,
+        getValue(draft, nextField.key),
+      );
+      const nextFieldId = fieldIdForPath(nextField.key);
+      const iconNode = (
+        <IconPickerField
+          id={fieldId}
+          value={value as string}
+          onChange={(next) => updateField(field.key, next)}
+        />
+      );
+      nodes.push(
+        renderTextField(
+          nextField,
+          nextValue as string | number,
+          fieldErrors,
+          updateField,
+          setFieldErrors,
+          nextFieldId,
+          iconNode,
+        ),
+      );
+      i += 2;
+      continue;
+    }
+
+    // Standalone icon field
+    if (field.type === "icon") {
+      nodes.push(
+        <div key={field.key} className="grid gap-2">
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <div>
+            <IconPickerField
+              id={fieldId}
+              value={value as string}
+              onChange={(next) => updateField(field.key, next)}
+            />
+          </div>
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    nodes.push(
+      renderTextField(
+        field,
+        value as string | number,
+        fieldErrors,
+        updateField,
+        setFieldErrors,
+        fieldId,
+      ),
+    );
+    i++;
+  }
+  return nodes;
+}
+
 export function ItemDialog({
   open,
   title,
@@ -119,10 +374,12 @@ export function ItemDialog({
   );
   const [draft, setDraft] = useState<Record<string, unknown>>(initialDraft);
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setDraft(initialDraft);
     setTagDrafts({});
+    setFieldErrors({});
   }, [initialDraft]);
 
   const updateField = (path: string, value: unknown) => {
@@ -138,120 +395,15 @@ export function ItemDialog({
         </DialogHeader>
 
         <div className="grid gap-4">
-          {fields.map((field) => {
-            const value = coerceDraftValue(field, getValue(draft, field.key));
-            const fieldId = fieldIdForPath(field.key);
-            if (field.type === "richtext") {
-              return (
-                <div key={field.key} className="grid gap-2">
-                  <span className="text-sm font-medium">{field.label}</span>
-                  <RichTextEditor
-                    value={value as string}
-                    onChange={(next) => updateField(field.key, next)}
-                    placeholder={field.placeholder}
-                  />
-                </div>
-              );
-            }
-
-            if (field.type === "textarea") {
-              return (
-                <div key={field.key} className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor={fieldId}>
-                    {field.label}
-                  </label>
-                  <Textarea
-                    id={fieldId}
-                    value={value as string}
-                    placeholder={field.placeholder}
-                    onChange={(event) =>
-                      updateField(field.key, event.currentTarget.value)
-                    }
-                    className="min-h-[110px] bg-background/60"
-                  />
-                </div>
-              );
-            }
-
-            if (field.type === "tags") {
-              return (
-                <div key={field.key} className="grid gap-2">
-                  <label className="text-sm font-medium" htmlFor={fieldId}>
-                    {field.label}
-                  </label>
-                  <TokenizedInput
-                    id={fieldId}
-                    values={value as string[]}
-                    draft={tagDrafts[field.key] ?? ""}
-                    parseInput={parseTagInput}
-                    onDraftChange={(next) =>
-                      setTagDrafts((current) => ({
-                        ...current,
-                        [field.key]: next,
-                      }))
-                    }
-                    onValuesChange={(next) => updateField(field.key, next)}
-                    placeholder={field.placeholder ?? "Add a value"}
-                    helperText="Press Enter, comma, or paste a list to add items."
-                    removeLabelPrefix="Remove tag"
-                  />
-                </div>
-              );
-            }
-
-            if (field.type === "toggle") {
-              return (
-                <div
-                  key={field.key}
-                  className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3"
-                >
-                  <div>
-                    <div className="text-sm font-medium">{field.label}</div>
-                    {field.placeholder ? (
-                      <div className="text-xs text-muted-foreground">
-                        {field.placeholder}
-                      </div>
-                    ) : null}
-                  </div>
-                  <Switch
-                    checked={value as boolean}
-                    onCheckedChange={(checked) =>
-                      updateField(field.key, checked)
-                    }
-                  />
-                </div>
-              );
-            }
-
-            return (
-              <div key={field.key} className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor={fieldId}>
-                  {field.label}
-                </label>
-                <Input
-                  id={fieldId}
-                  type={field.type === "number" ? "number" : "text"}
-                  value={
-                    field.type === "number"
-                      ? String(value as number)
-                      : (value as string)
-                  }
-                  min={field.min}
-                  step={field.step}
-                  placeholder={field.placeholder}
-                  onChange={(event) =>
-                    updateField(
-                      field.key,
-                      field.type === "number"
-                        ? Number(event.currentTarget.value || 0)
-                        : event.currentTarget.value,
-                    )
-                  }
-                  className="bg-background/60"
-                />
-              </div>
-            );
-          })}
+          {renderFields(
+            fields,
+            draft,
+            tagDrafts,
+            fieldErrors,
+            updateField,
+            setTagDrafts,
+            setFieldErrors,
+          )}
         </div>
 
         <DialogFooter className="items-center justify-between gap-3 sm:justify-between">
@@ -279,7 +431,25 @@ export function ItemDialog({
             <Button
               type="button"
               onClick={() => {
-                onSave(draft);
+                const normalized = normalizeDraftForSave(draft, fields);
+                const errors: Record<string, string> = {};
+                for (const field of fields) {
+                  if (!field.required) continue;
+                  const val = getValue(normalized, field.key);
+                  if (
+                    (typeof val === "string" && val.trim() === "") ||
+                    val === undefined ||
+                    val === null
+                  ) {
+                    errors[field.key] = `${field.label} is required.`;
+                  }
+                }
+                if (Object.keys(errors).length > 0) {
+                  setFieldErrors(errors);
+                  return;
+                }
+                setFieldErrors({});
+                onSave(normalized);
                 onOpenChange(false);
               }}
             >
