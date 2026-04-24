@@ -22,6 +22,16 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -63,6 +73,7 @@ export const DesignResumePage: React.FC = () => {
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [pictureUploading, setPictureUploading] = useState(false);
   const [resumeImporting, setResumeImporting] = useState(false);
+  const [showReimportConfirm, setShowReimportConfirm] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [rendererUpdating, setRendererUpdating] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -235,6 +246,14 @@ export const DesignResumePage: React.FC = () => {
       toast.error(
         formatUserFacingError(importError, "Failed to import your resume."),
       );
+    }
+  };
+
+  const handleImportWithConfirm = () => {
+    if (status?.exists) {
+      setShowReimportConfirm(true);
+    } else {
+      void handleImport();
     }
   };
 
@@ -500,7 +519,11 @@ export const DesignResumePage: React.FC = () => {
                 {resumeImporting ? "Importing File" : "Import File"}
               </Button>
 
-              <Button type="button" variant="outline" onClick={handleImport}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleImportWithConfirm}
+              >
                 <Import className="mr-2 h-4 w-4" />
                 {status?.exists ? "Re-import RxResume" : "Import RxResume"}
               </Button>
@@ -546,7 +569,7 @@ export const DesignResumePage: React.FC = () => {
                   <Import className="mr-2 h-4 w-4" />
                   {resumeImporting ? "Importing File" : "Import File"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleImport()}>
+                <DropdownMenuItem onSelect={() => handleImportWithConfirm()}>
                   <Import className="mr-2 h-4 w-4" />
                   {status?.exists ? "Re-import RxResume" : "Import RxResume"}
                 </DropdownMenuItem>
@@ -700,6 +723,35 @@ export const DesignResumePage: React.FC = () => {
           }
         />
       ) : null}
+
+      <AlertDialog
+        open={showReimportConfirm}
+        onOpenChange={setShowReimportConfirm}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-import from RxResume?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will replace your current Design Resume with the latest data
+              from RxResume. Any edits you've made here will be permanently
+              overwritten and cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-[#F1703E] text-white hover:bg-[#d9612f]"
+              onClick={() => {
+                setShowReimportConfirm(false);
+                void handleImport();
+              }}
+            >
+              <Import className="mr-2 h-4 w-4" />
+              Re-import
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

@@ -28,6 +28,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@iconify-json/tabler": "^1.2.33",
+    "@iconify/react": "^6.0.2",
     "@paralleldrive/cuid2": "^3.0.6",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
