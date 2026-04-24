@@ -44,6 +44,7 @@ import {
   getDesignResumeDialogItem,
   makeDownload,
 } from "../components/design-resume/utils";
+import { formatUserFacingError } from "../lib/error-format";
 import { queryKeys } from "../lib/queryKeys";
 
 export const DesignResumePage: React.FC = () => {
@@ -129,9 +130,7 @@ export const DesignResumePage: React.FC = () => {
       } catch (saveError) {
         setSaveState("error");
         toast.error(
-          saveError instanceof Error
-            ? saveError.message
-            : "Failed to save Design Resume.",
+          formatUserFacingError(saveError, "Failed to save Design Resume."),
         );
       }
     }, 700);
@@ -234,9 +233,7 @@ export const DesignResumePage: React.FC = () => {
     } catch (importError) {
       setSaveState("error");
       toast.error(
-        importError instanceof Error
-          ? importError.message
-          : "Failed to import your resume.",
+        formatUserFacingError(importError, "Failed to import your resume."),
       );
     }
   };
@@ -262,9 +259,7 @@ export const DesignResumePage: React.FC = () => {
     } catch (importError) {
       setSaveState("error");
       toast.error(
-        importError instanceof Error
-          ? importError.message
-          : "Failed to import your resume file.",
+        formatUserFacingError(importError, "Failed to import your resume file."),
       );
     } finally {
       setResumeImporting(false);
@@ -281,9 +276,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Exported your resume JSON.");
     } catch (exportError) {
       toast.error(
-        exportError instanceof Error
-          ? exportError.message
-          : "Failed to export Design Resume.",
+        formatUserFacingError(exportError, "Failed to export Design Resume."),
       );
     }
   };
@@ -299,9 +292,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Your PDF is ready.");
     } catch (downloadError) {
       toast.error(
-        downloadError instanceof Error
-          ? downloadError.message
-          : "Failed to generate a PDF.",
+        formatUserFacingError(downloadError, "Failed to generate a PDF."),
       );
     } finally {
       setPdfDownloading(false);
@@ -339,9 +330,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Picture uploaded.");
     } catch (uploadError) {
       toast.error(
-        uploadError instanceof Error
-          ? uploadError.message
-          : "Failed to upload picture.",
+        formatUserFacingError(uploadError, "Failed to upload picture."),
       );
     } finally {
       setPictureUploading(false);
@@ -378,9 +367,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Picture removed.");
     } catch (deleteError) {
       toast.error(
-        deleteError instanceof Error
-          ? deleteError.message
-          : "Failed to delete picture.",
+        formatUserFacingError(deleteError, "Failed to delete picture."),
       );
     }
   };
@@ -401,9 +388,10 @@ export const DesignResumePage: React.FC = () => {
       );
     } catch (updateError) {
       toast.error(
-        updateError instanceof Error
-          ? updateError.message
-          : "Failed to update the resume template.",
+        formatUserFacingError(
+          updateError,
+          "Failed to update the resume template.",
+        ),
       );
     } finally {
       setRendererUpdating(false);
@@ -600,9 +588,10 @@ export const DesignResumePage: React.FC = () => {
                 </Button>
                 {error ? (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
-                    {error instanceof Error
-                      ? error.message
-                      : "Unable to load Design Resume."}
+                    {formatUserFacingError(
+                      error,
+                      "Unable to load Design Resume.",
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -668,6 +657,8 @@ export const DesignResumePage: React.FC = () => {
                 ...sections,
                 [dialogState.definition.key]: {
                   ...section,
+                  // Ensure the edited section is visible in rendered output.
+                  hidden: false,
                   items: nextItems,
                 },
               } as DesignResumeJson["sections"];
@@ -694,6 +685,8 @@ export const DesignResumePage: React.FC = () => {
                       ...sections,
                       [dialogState.definition.key]: {
                         ...section,
+                        // Keep section visible after inline list edits.
+                        hidden: false,
                         items,
                       },
                     } as DesignResumeJson["sections"];

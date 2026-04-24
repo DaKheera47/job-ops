@@ -140,6 +140,18 @@ export function useTailoringDraft({
     setSavedTracerLinksEnabled(next.tracerLinksEnabled);
   }, []);
 
+  const loadCatalog = useCallback(async (silently = false) => {
+    if (!silently) setIsCatalogLoading(true);
+    try {
+      const nextCatalog = await api.getResumeProjectsCatalog();
+      setCatalog(nextCatalog);
+    } catch {
+      if (!silently) setCatalog([]);
+    } finally {
+      if (!silently) setIsCatalogLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     onDirtyChange?.(isDirty);
   }, [isDirty, onDirtyChange]);
@@ -149,13 +161,19 @@ export function useTailoringDraft({
   }, [onDirtyChange]);
 
   useEffect(() => {
-    setIsCatalogLoading(true);
-    api
-      .getResumeProjectsCatalog()
-      .then(setCatalog)
-      .catch(() => setCatalog([]))
-      .finally(() => setIsCatalogLoading(false));
-  }, []);
+    void loadCatalog(false);
+
+    const refreshCatalog = () => {
+      void loadCatalog(true);
+    };
+
+    window.addEventListener("focus", refreshCatalog);
+    document.addEventListener("visibilitychange", refreshCatalog);
+    return () => {
+      window.removeEventListener("focus", refreshCatalog);
+      document.removeEventListener("visibilitychange", refreshCatalog);
+    };
+  }, [loadCatalog]);
 
   useEffect(() => {
     jobRef.current = job;

@@ -96,10 +96,32 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
   }, []);
 
-  // Load project catalog once
-  useEffect(() => {
-    api.getResumeProjectsCatalog().then(setCatalog).catch(console.error);
+  const loadCatalog = useCallback(async (silently = false) => {
+    try {
+      const nextCatalog = await api.getResumeProjectsCatalog();
+      setCatalog(nextCatalog);
+    } catch (error) {
+      if (!silently) {
+        console.error(error);
+      }
+    }
   }, []);
+
+  // Load and refresh project catalog
+  useEffect(() => {
+    void loadCatalog(false);
+
+    const refreshCatalog = () => {
+      void loadCatalog(true);
+    };
+
+    window.addEventListener("focus", refreshCatalog);
+    document.addEventListener("visibilitychange", refreshCatalog);
+    return () => {
+      window.removeEventListener("focus", refreshCatalog);
+      document.removeEventListener("visibilitychange", refreshCatalog);
+    };
+  }, [loadCatalog]);
 
   // Reset mode when job changes
   useEffect(() => {

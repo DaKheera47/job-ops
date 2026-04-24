@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
+import { formatUserFacingError } from "@/client/lib/error-format";
 
 /**
  * Shows a toast when a React Query `error` becomes non-null.
@@ -17,7 +18,7 @@ export function useQueryErrorToast(error: unknown, fallback: string): void {
       lastKeyRef.current = null;
       return;
     }
-    const message = error instanceof Error ? error.message : fallback;
+    const message = formatUserFacingError(error, fallback);
     if (lastKeyRef.current === message) return;
     lastKeyRef.current = message;
     toast.error(message);

@@ -68,6 +68,7 @@ import {
   getAnalyticsRequestHeaders,
   trackProductEvent,
 } from "@/lib/analytics";
+import { formatUserFacingError } from "@/client/lib/error-format";
 import { showDemoBlockedToast, showDemoSimulatedToast } from "@/lib/demo-toast";
 
 const API_BASE = "/api";
@@ -81,10 +82,9 @@ class ApiClientError extends Error {
     message: string,
     options?: { requestId?: string; status?: number; code?: string },
   ) {
-    const requestId = options?.requestId;
-    super(requestId ? `${message} (requestId: ${requestId})` : message);
+    super(message);
     this.name = "ApiClientError";
-    this.requestId = requestId;
+    this.requestId = options?.requestId;
     this.status = options?.status;
     this.code = options?.code;
   }
@@ -436,11 +436,20 @@ function toApiError<T>(
 ): ApiClientError {
   if ("ok" in parsed) {
     if (!parsed.ok) {
-      return new ApiClientError(parsed.error.message || "API request failed", {
-        requestId: parsed.meta?.requestId,
-        status: response.status,
-        code: parsed.error.code,
-      });
+      return new ApiClientError(
+        formatUserFacingError(
+          {
+            message: parsed.error.message || "API request failed",
+            details: parsed.error.details,
+          },
+          "API request failed",
+        ),
+        {
+          requestId: parsed.meta?.requestId,
+          status: response.status,
+          code: parsed.error.code,
+        },
+      );
     }
     return new ApiClientError("API request failed", {
       requestId: parsed.meta?.requestId,
@@ -448,16 +457,16 @@ function toApiError<T>(
     });
   }
   if (parsed.success) {
-    return new ApiClientError(parsed.message || "API request failed", {
-      status: response.status,
-    });
+    return new ApiClientError(
+      formatUserFacingError(parsed.message || "API request failed"),
+      {
+        status: response.status,
+      },
+    );
   }
-  return new ApiClientError(
-    parsed.error || parsed.message || "API request failed",
-    {
-      status: response.status,
-    },
-  );
+  return new ApiClientError(formatUserFacingError(parsed, "API request failed"), {
+    status: response.status,
+  });
 }
 
 async function fetchAndParse<T>(
@@ -761,7 +770,13 @@ async function streamSseEvents<TEvent>(
       const payload = await response.json();
       const parsed = normalizeApiResponse(payload);
       if ("ok" in parsed && !parsed.ok) {
-        errorMessage = parsed.error.message || errorMessage;
+        errorMessage = formatUserFacingError(
+          {
+            message: parsed.error.message || errorMessage,
+            details: parsed.error.details,
+          },
+          errorMessage,
+        );
       }
     } catch {
       // ignore parse errors; keep status-based message
@@ -1146,7 +1161,7 @@ function getSingleJobFromActionResult(
     throw new ApiClientError("Job action did not return a result for the job");
   }
   if (!result.ok) {
-    throw new ApiClientError(result.error.message, {
+    throw new ApiClientError(formatUserFacingError(result.error.message), {
       code: result.error.code,
     });
   }
@@ -1580,18 +1595,8 @@ export async function getProfileProjects(): Promise<
 export async function getResumeProjectsCatalog(): Promise<
   ResumeProjectCatalogItem[]
 > {
-  try {
-    const settings = await getSettings();
-    if (settings.rxresumeBaseResumeId) {
-      return await getRxResumeProjects(
-        settings.rxresumeBaseResumeId,
-        undefined,
-      );
-    }
-  } catch {
-    // fall through to profile-based projects
-  }
-
+  // Always resolve from /profile/projects so local Design Resume edits
+  // propagate to active and future application tailoring flows.
   return getProfileProjects();
 }
 

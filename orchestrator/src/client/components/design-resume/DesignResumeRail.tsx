@@ -124,6 +124,8 @@ export function DesignResumeRail({
         ...currentSections,
         [sectionKey]: {
           ...(asRecord(currentSections[sectionKey]) ?? {}),
+          // Keep edited sections visible in preview/PDF when items are managed here.
+          hidden: false,
           items: nextItems,
         },
       } as DesignResumeJson["sections"];
