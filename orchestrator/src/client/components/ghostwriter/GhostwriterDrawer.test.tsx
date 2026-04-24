@@ -50,6 +50,12 @@ vi.mock("@/components/ui/sheet", async () => {
         onClick: () => onOpenChange(true),
       });
     },
+    SheetClose: ({ children }: { children: React.ReactElement }) => {
+      const { onOpenChange } = useSheetContext();
+      return ReactModule.cloneElement(children, {
+        onClick: () => onOpenChange(false),
+      });
+    },
     SheetContent: ({
       className,
       children,

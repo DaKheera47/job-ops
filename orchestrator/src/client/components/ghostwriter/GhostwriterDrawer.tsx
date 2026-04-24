@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -81,6 +82,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
         isFullscreen
           ? "inset-0 h-dvh w-screen max-w-none sm:max-w-none border-0 rounded-none shadow-none"
           : "sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]",
+        "[&>button]:hidden",
       ),
     [isFullscreen],
   );
@@ -102,41 +104,54 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
       <SheetContent side="right" className={panelClassName}>
         <div className="border-b border-border/50 p-4">
           <SheetHeader>
-            <div className="flex items-start justify-between gap-2">
+            <div className="flex items-start justify-between gap-2 w-full max-w-6xl mx-auto">
               <div className="min-w-0">
                 <SheetTitle>Ghostwriter</SheetTitle>
                 <SheetDescription>
                   {job && `${job.title} at ${job.employer}.`}
                 </SheetDescription>
               </div>
-              {isDesktop && (
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 shrink-0"
-                  onClick={() =>
-                    setDisplayMode((current) =>
-                      current === "fullscreen" ? "drawer" : "fullscreen",
-                    )
-                  }
-                  aria-label={
-                    isFullscreen
-                      ? "Restore Ghostwriter drawer"
-                      : "Open Ghostwriter pop-up"
-                  }
-                  title={
-                    isFullscreen
-                      ? "Restore Ghostwriter drawer"
-                      : "Open Ghostwriter pop-up"
-                  }
-                >
-                  {isFullscreen ? (
-                    <Minimize2 className="h-4 w-4" />
-                  ) : (
-                    <Maximize2 className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
+              <div className="flex shrink-0 items-center gap-1 rounded-md border border-border/60 bg-background/70 p-1">
+                {isDesktop && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() =>
+                      setDisplayMode((current) =>
+                        current === "fullscreen" ? "drawer" : "fullscreen",
+                      )
+                    }
+                    aria-label={
+                      isFullscreen
+                        ? "Restore Ghostwriter drawer"
+                        : "Open Ghostwriter pop-up"
+                    }
+                    title={
+                      isFullscreen
+                        ? "Restore Ghostwriter drawer"
+                        : "Open Ghostwriter pop-up"
+                    }
+                  >
+                    {isFullscreen ? (
+                      <Minimize2 className="h-4 w-4" />
+                    ) : (
+                      <Maximize2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+                <SheetClose asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    aria-label="Close Ghostwriter"
+                    title="Close Ghostwriter"
+                  >
+                    <span className="text-base leading-none">×</span>
+                  </Button>
+                </SheetClose>
+              </div>
             </div>
           </SheetHeader>
         </div>

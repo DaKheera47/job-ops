@@ -369,7 +369,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   }, [job.id]);
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col">
+    <div className="flex h-full min-h-0 flex-1 flex-col max-w-6xl mx-auto">
       <div
         ref={messageListRef}
         className="min-h-0 flex-1 overflow-y-auto border-b border-border/50 pb-3 pr-1"
