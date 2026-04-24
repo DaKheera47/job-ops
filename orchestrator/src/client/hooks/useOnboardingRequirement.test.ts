@@ -149,6 +149,80 @@ describe("useOnboardingRequirement", () => {
     expect(result.current.complete).toBe(false);
   });
 
+  it("revalidates when validation inputs change after an earlier failure", async () => {
+    const validateLlm = vi.mocked(api.validateLlm);
+    validateLlm
+      .mockResolvedValueOnce({
+        valid: false,
+        message: "LM Studio is unreachable",
+      })
+      .mockResolvedValue({
+        valid: true,
+        message: null,
+      });
+
+    let currentSettings: any = {
+      llmProvider: { value: "lmstudio", default: "lmstudio", override: null },
+      llmBaseUrl: {
+        value: "http://localhost:1234",
+        default: "",
+        override: null,
+      },
+      pdfRenderer: {
+        value: "latex",
+        default: "rxresume",
+        override: null,
+      },
+      searchTerms: {
+        value: ["Platform Engineer"],
+        default: ["web developer"],
+        override: ["Platform Engineer"],
+      },
+      rxresumeUrl: null,
+      basicAuthActive: false,
+      onboardingBasicAuthDecision: "skipped",
+    };
+
+    vi.mocked(useSettings).mockImplementation(() => ({
+      settings: currentSettings,
+      isLoading: false,
+      refreshSettings: vi.fn(),
+      error: null,
+      showSponsorInfo: true,
+      renderMarkdownInJobDescriptions: true,
+    }));
+
+    const { result, rerender } = renderHookWithQueryClient(() =>
+      useOnboardingRequirement(),
+    );
+
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+    expect(result.current.complete).toBe(false);
+
+    currentSettings = {
+      ...currentSettings,
+      llmBaseUrl: {
+        value: "http://localhost:1235",
+        default: "",
+        override: "http://localhost:1235",
+      },
+    };
+    rerender();
+
+    await waitFor(() => {
+      expect(validateLlm).toHaveBeenCalledWith({
+        provider: "lmstudio",
+        baseUrl: "http://localhost:1235",
+      });
+    });
+    await waitFor(() => {
+      expect(result.current.checking).toBe(false);
+    });
+    expect(result.current.complete).toBe(true);
+  });
+
   it("does not require Reactive Resume when LaTeX rendering and a local resume are ready", async () => {
     vi.mocked(api.validateRxresume).mockResolvedValue({
       valid: false,

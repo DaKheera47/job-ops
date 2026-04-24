@@ -520,6 +520,10 @@ describe("OnboardingPage", () => {
   });
 
   it("lets the user skip basic auth and finish onboarding", async () => {
+    vi.mocked(useOnboardingRequirement).mockReturnValue({
+      checking: false,
+      complete: false,
+    });
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -537,7 +541,13 @@ describe("OnboardingPage", () => {
         ...currentSettings,
         onboardingBasicAuthDecision: "skipped",
       };
-      return currentSettings;
+      return {
+        ...currentSettings,
+        searchTerms: {
+          ...currentSettings.searchTerms,
+          override: null,
+        },
+      };
     });
 
     renderPage();
@@ -1251,6 +1261,13 @@ describe("OnboardingPage", () => {
           },
         }) as any,
     );
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...update,
+      };
+      return currentSettings;
+    });
     vi.mocked(api.validateResumeConfig).mockResolvedValue({
       valid: false,
       message: "Choose a template resume to finish this step.",
@@ -1279,6 +1296,15 @@ describe("OnboardingPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Template resume")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Enter v5 API key"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Upload a PDF or DOCX resume"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /confirm resume template/i }),
+      ).toBeInTheDocument();
     });
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
   });

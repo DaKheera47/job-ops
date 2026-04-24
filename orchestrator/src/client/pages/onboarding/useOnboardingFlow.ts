@@ -74,6 +74,7 @@ export function useOnboardingFlow() {
   >(null);
   const [searchTermsStale, setSearchTermsStale] = useState(false);
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
+  const resumeSetupModeTouchedRef = useRef(false);
   const searchTermsOverrideKeyRef = useRef<string | null>(null);
   const autoSuggestionAttemptedRef = useRef(false);
 
@@ -133,7 +134,9 @@ export function useOnboardingFlow() {
           : "enable",
     );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
-    setResumeSetupMode(selectedId ? "rxresume" : "upload");
+    if (!resumeSetupModeTouchedRef.current) {
+      setResumeSetupMode(selectedId ? "rxresume" : "upload");
+    }
     if (searchTermsOverrideKeyRef.current !== searchTermsOverrideKey) {
       searchTermsOverrideKeyRef.current = searchTermsOverrideKey;
       setSearchTermsSaved(hasExplicitSearchTermsOverride);
@@ -540,6 +543,11 @@ export function useOnboardingFlow() {
     [setValue],
   );
 
+  const handleResumeSetupModeChange = useCallback((mode: ResumeSetupMode) => {
+    resumeSetupModeTouchedRef.current = true;
+    setResumeSetupMode(mode);
+  }, []);
+
   const markSearchTermsStale = useCallback(() => {
     const currentTerms = getValues().searchTerms;
     if (currentTerms.length === 0 && !hasSavedSearchTermsInSession) return;
@@ -810,6 +818,7 @@ export function useOnboardingFlow() {
     isValidatingBaseResume;
 
   const currentCopy = currentStep ? STEP_COPY[currentStep] : STEP_COPY.llm;
+  const baseResumeValue = watch("rxresumeBaseResumeId");
 
   const primaryLabel =
     currentStep === "llm"
@@ -819,7 +828,9 @@ export function useOnboardingFlow() {
       : currentStep === "baseresume"
         ? resumeSetupMode === "rxresume"
           ? rxresumeValidation.valid
-            ? "Recheck Reactive Resume"
+            ? baseResumeValue
+              ? "Recheck Reactive Resume"
+              : "Confirm Resume Template"
             : "Connect Reactive Resume"
           : baseResumeValidation.valid
             ? "Recheck resume"
@@ -836,7 +847,7 @@ export function useOnboardingFlow() {
 
   return {
     baseResumeValidation,
-    baseResumeValue: watch("rxresumeBaseResumeId"),
+    baseResumeValue,
     basicAuthChoice,
     canGoBack,
     complete,
@@ -852,11 +863,13 @@ export function useOnboardingFlow() {
     isRxResumeSelfHosted,
     hasSavedSearchTermsInSession,
     llmKeyHint,
+    llmValidated,
     llmValidation,
     primaryLabel,
     progressValue,
     resumeSetupMode,
     rxresumeValidation,
+    searchTermsComplete,
     searchTermsSource,
     searchTermsStale,
     selectedProvider,
@@ -866,7 +879,7 @@ export function useOnboardingFlow() {
     watch,
     setCurrentStep,
     setBasicAuthChoice,
-    setResumeSetupMode,
+    setResumeSetupMode: handleResumeSetupModeChange,
     setValue,
     setBaseResumeId,
     handleRegenerateSearchTerms: async () => {

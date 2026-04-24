@@ -71,8 +71,10 @@ export const OnboardingPage: React.FC = () => {
                     isOnboardingComplete({
                       demoMode: flow.demoMode,
                       settings: savedSettings,
-                      llmValid: flow.llmValidation.valid,
+                      llmValid: flow.llmValidated,
                       baseResumeValid: flow.baseResumeValidation.valid,
+                      searchTermsValid: flow.searchTermsComplete,
+                      completedStepId: flow.currentStep,
                     })
                   ) {
                     navigate("/jobs/ready", { replace: true });
