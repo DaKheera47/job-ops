@@ -84,9 +84,7 @@ describe("OrchestratorFilters", () => {
     fireEvent.pointerMove(discoveredTab);
 
     expect(
-      await screen.findAllByText(
-        "Jobs that match your search but haven't been tailored yet",
-      ),
+      await screen.findAllByText("Jobs searched, ready to be tailored"),
     ).toHaveLength(2);
   });
 
