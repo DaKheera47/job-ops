@@ -203,6 +203,9 @@ describe("API client auth flow", () => {
       "/api/pipeline/run",
       expect.objectContaining({
         method: "POST",
+        headers: expect.objectContaining({
+          "x-jobops-analytics-session-id": expect.any(String),
+        }),
         body: JSON.stringify({
           topN: 12,
           minSuitabilityScore: 55,

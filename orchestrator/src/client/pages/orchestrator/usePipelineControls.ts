@@ -107,25 +107,10 @@ export function usePipelineControls(
       workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
       searchScope: AutomaticRunValues["searchScope"];
       matchStrictness: AutomaticRunValues["matchStrictness"];
-      analytics?: {
-        mode?: string;
-        country?: string;
-        hasCityLocations?: boolean;
-        searchTermsCount?: number;
-      };
     }) => {
       try {
         setIsPipelineRunning(true);
         setIsCancelling(false);
-        trackProductEvent("jobs_pipeline_run_started", {
-          mode: config.analytics?.mode ?? "automatic",
-          source_count: config.sources.length,
-          top_n: config.topN,
-          min_suitability_score: config.minSuitabilityScore,
-          country: config.analytics?.country,
-          has_city_locations: config.analytics?.hasCityLocations,
-          search_terms_count: config.analytics?.searchTermsCount,
-        });
         await api.runPipeline({
           topN: config.topN,
           minSuitabilityScore: config.minSuitabilityScore,
@@ -227,12 +212,6 @@ export function usePipelineControls(
         sources: compatibleSources,
         topN: values.topN,
         minSuitabilityScore: values.minSuitabilityScore,
-        analytics: {
-          mode: "automatic",
-          country: values.country,
-          hasCityLocations: values.cityLocations.length > 0,
-          searchTermsCount: values.searchTerms.length,
-        },
       });
       setIsRunModeModalOpen(false);
     },
@@ -241,8 +220,7 @@ export function usePipelineControls(
 
   const handleManualImported = useCallback(
     async (imported: ManualImportResult) => {
-      trackProductEvent("jobs_pipeline_run_started", {
-        mode: "manual_import",
+      trackProductEvent("jobs_manual_import_completed", {
         manual_import_source: imported.source,
         manual_import_source_host: imported.sourceHost ?? undefined,
       });

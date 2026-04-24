@@ -18,14 +18,14 @@ if (!existsSync(dataDir)) {
 
 const sqlite = new Database(DB_PATH);
 
-function hasTableColumn(tableName: string, columnName: string): boolean {
+function tableHasColumn(tableName: string, columnName: string): boolean {
   const columns = sqlite
     .prepare(`PRAGMA table_info(${tableName})`)
     .all() as Array<{ name: string }>;
   return columns.some((column) => column.name === columnName);
 }
 
-const pipelineRunsHasConfigSnapshot = hasTableColumn(
+const pipelineRunsHasConfigSnapshot = tableHasColumn(
   "pipeline_runs",
   "config_snapshot",
 );
@@ -113,6 +113,45 @@ const migrations = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_install_state (
+    id TEXT PRIMARY KEY,
+    distinct_id TEXT NOT NULL,
+    installed_at TEXT NOT NULL,
+    raw_event_replay_version INTEGER NOT NULL DEFAULT 0,
+    raw_event_replay_completed_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_server_event_replays (
+    event_key TEXT PRIMARY KEY,
+    event_name TEXT NOT NULL,
+    occurred_at INTEGER NOT NULL,
+    payload TEXT NOT NULL,
+    claimed_at INTEGER,
+    reported_at INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_server_event_replays_event_name
+    ON analytics_server_event_replays(event_name)`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_server_event_replays_occurred_at
+    ON analytics_server_event_replays(occurred_at)`,
+
+  `CREATE TABLE IF NOT EXISTS analytics_milestones (
+    milestone TEXT PRIMARY KEY,
+    first_seen_at INTEGER NOT NULL,
+    first_session_id TEXT,
+    reported_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE INDEX IF NOT EXISTS idx_analytics_milestones_first_seen_at
+    ON analytics_milestones(first_seen_at)`,
 
   `CREATE TABLE IF NOT EXISTS auth_sessions (
     id TEXT PRIMARY KEY,
@@ -465,8 +504,12 @@ const migrations = [
     effective_config TEXT,
     result_summary TEXT
   )`,
-  `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
-   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, ${pipelineRunsHasConfigSnapshot ? "config_snapshot" : "NULL"}, NULL, NULL, NULL
+  pipelineRunsHasConfigSnapshot
+    ? `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
+   FROM pipeline_runs`
+    : `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL, NULL
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
@@ -671,6 +714,8 @@ const migrations = [
   `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
   `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
   `ALTER TABLE pipeline_runs ADD COLUMN config_snapshot TEXT`,
+  `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_version INTEGER NOT NULL DEFAULT 0`,
+  `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_completed_at TEXT`,
 
   // Backfill: link existing messages into a linear chain (each message's parent = its predecessor)
   `UPDATE job_chat_messages
@@ -763,7 +808,10 @@ for (const migration of migrations) {
           .includes("alter table job_chat_messages add column") ||
         migration
           .toLowerCase()
-          .includes("alter table job_chat_threads add column")) &&
+          .includes("alter table job_chat_threads add column") ||
+        migration
+          .toLowerCase()
+          .includes("alter table analytics_install_state add column")) &&
       message.toLowerCase().includes("duplicate column name");
 
     if (isDuplicateColumn) {

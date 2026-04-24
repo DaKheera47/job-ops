@@ -4,7 +4,7 @@ import { useSettings } from "@client/hooks/useSettings";
 import { isOnboardingComplete } from "@client/lib/onboarding";
 import { normalizeLlmProvider } from "@client/pages/settings/utils";
 import type { ValidationResult } from "@shared/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const EMPTY_VALIDATION_STATE: ValidationResult & { checked: boolean } = {
   valid: false,
@@ -24,12 +24,31 @@ export function useOnboardingRequirement() {
   const [baseResumeValidation, setBaseResumeValidation] = useState(
     EMPTY_VALIDATION_STATE,
   );
+  const validationInputsKeyRef = useRef<string | null>(null);
 
   const selectedProvider = normalizeLlmProvider(settings?.llmProvider?.value);
   const shouldValidateRxresume = Boolean(
     settings?.pdfRenderer?.value === "rxresume" ||
       settings?.rxresumeBaseResumeId,
   );
+  const validationInputsKey = JSON.stringify({
+    provider: selectedProvider,
+    llmBaseUrl: settings?.llmBaseUrl?.value || null,
+    pdfRenderer: settings?.pdfRenderer?.value || null,
+    rxresumeBaseResumeId: settings?.rxresumeBaseResumeId || null,
+    rxresumeUrl: settings?.rxresumeUrl || null,
+  });
+
+  useEffect(() => {
+    if (validationInputsKeyRef.current === validationInputsKey) {
+      return;
+    }
+    validationInputsKeyRef.current = validationInputsKey;
+    setLlmValidation(EMPTY_VALIDATION_STATE);
+    setRxresumeValidation(EMPTY_VALIDATION_STATE);
+    setBaseResumeValidation(EMPTY_VALIDATION_STATE);
+  }, [validationInputsKey]);
+
   const runValidations = useCallback(async () => {
     if (!settings) return;
 

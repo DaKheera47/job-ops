@@ -46,6 +46,10 @@ type ProductEventMap = {
     status: "completed" | "failed" | "cancelled";
     had_error_message: boolean;
   };
+  jobs_manual_import_completed: {
+    manual_import_source: "pasted_description" | "fetched_url";
+    manual_import_source_host?: string;
+  };
   jobs_bulk_action_started: {
     action: string;
     selected_count: number;
@@ -152,6 +156,16 @@ function generateAnalyticsUserId() {
   return `anon_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
 }
 
+function generateAnalyticsSessionId() {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `session_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
 function getAnalyticsUserId(): string | null {
   if (typeof window === "undefined") return null;
   if (cachedAnalyticsUserId) return cachedAnalyticsUserId;
@@ -180,10 +194,43 @@ function getAnalyticsAppVersion(): string | null {
   }
 }
 
+export function getAnalyticsSessionId(): string | null {
+  if (typeof window === "undefined") return null;
+  if (cachedAnalyticsSessionId) return cachedAnalyticsSessionId;
+
+  try {
+    const existing = window.sessionStorage.getItem(
+      ANALYTICS_SESSION_ID_STORAGE_KEY,
+    );
+    if (existing) {
+      cachedAnalyticsSessionId = existing;
+      return existing;
+    }
+
+    const next = generateAnalyticsSessionId();
+    window.sessionStorage.setItem(ANALYTICS_SESSION_ID_STORAGE_KEY, next);
+    cachedAnalyticsSessionId = next;
+    return next;
+  } catch {
+    return null;
+  }
+}
+
+export function getAnalyticsRequestHeaders(): Record<string, string> {
+  const sessionId = getAnalyticsSessionId();
+  return sessionId
+    ? {
+        "x-jobops-analytics-session-id": sessionId,
+      }
+    : {};
+}
+
 const DEDUPE_WINDOW_MS = 3_000;
 const ANALYTICS_USER_ID_STORAGE_KEY = "jobops.analytics.user_id.v1";
+const ANALYTICS_SESSION_ID_STORAGE_KEY = "jobops.analytics.session_id.v1";
 const recentEventCache = new Map<string, number>();
 let cachedAnalyticsUserId: string | null = null;
+let cachedAnalyticsSessionId: string | null = null;
 const DISALLOWED_KEY_PARTS = [
   "query",
   "url",
@@ -290,4 +337,5 @@ export function bucketQueryLength(value: string | number): string {
 export function __resetAnalyticsTestState() {
   recentEventCache.clear();
   cachedAnalyticsUserId = null;
+  cachedAnalyticsSessionId = null;
 }

@@ -520,6 +520,10 @@ describe("OnboardingPage", () => {
   });
 
   it("lets the user skip basic auth and finish onboarding", async () => {
+    vi.mocked(useOnboardingRequirement).mockReturnValue({
+      checking: false,
+      complete: false,
+    });
     vi.mocked(api.validateLlm).mockResolvedValue({
       valid: true,
       message: null,
@@ -537,7 +541,13 @@ describe("OnboardingPage", () => {
         ...currentSettings,
         onboardingBasicAuthDecision: "skipped",
       };
-      return currentSettings;
+      return {
+        ...currentSettings,
+        searchTerms: {
+          ...currentSettings.searchTerms,
+          override: null,
+        },
+      };
     });
 
     renderPage();
@@ -562,6 +572,140 @@ describe("OnboardingPage", () => {
     });
     expect(api.updateSettings).toHaveBeenCalledWith({
       onboardingBasicAuthDecision: "skipped",
+    });
+  });
+
+  it("lets the user enable basic auth and finish onboarding", async () => {
+    vi.mocked(useOnboardingRequirement).mockReturnValue({
+      checking: false,
+      complete: false,
+    });
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("enableBasicAuth" in update || "basicAuthUser" in update
+          ? {
+              basicAuthActive: true,
+              onboardingBasicAuthDecision: "enabled",
+              basicAuthUser:
+                update.basicAuthUser ?? currentSettings.basicAuthUser,
+            }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should use."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /basic auth/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Secure your workspace")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByLabelText(/lock it down/i));
+    fireEvent.change(screen.getByLabelText(/username/i), {
+      target: { value: "jobops-admin" },
+    });
+    fireEvent.change(screen.getByLabelText(/password/i), {
+      target: { value: "correct horse battery staple" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /enable authentication/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("ready page")).toBeInTheDocument();
+    });
+    expect(api.updateSettings).toHaveBeenCalledWith({
+      enableBasicAuth: true,
+      basicAuthUser: "jobops-admin",
+      basicAuthPassword: "correct horse battery staple",
+      onboardingBasicAuthDecision: "enabled",
+    });
+  });
+
+  it("redirects when search terms are the last missing step", async () => {
+    vi.mocked(useOnboardingRequirement).mockReturnValue({
+      checking: false,
+      complete: false,
+    });
+    currentSettings = {
+      ...baseSettings,
+      onboardingBasicAuthDecision: "skipped",
+      searchTerms: {
+        value: ["web developer"],
+        default: ["web developer"],
+        override: null,
+      },
+    };
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...("searchTerms" in update
+          ? {
+              searchTerms: {
+                value: update.searchTerms,
+                default: ["web developer"],
+                override: update.searchTerms,
+              },
+            }
+          : {}),
+      };
+      return currentSettings;
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should use."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /search terms/i }));
+
+    await waitFor(() => {
+      expect(api.suggestOnboardingSearchTerms).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /save search terms/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("ready page")).toBeInTheDocument();
+    });
+    expect(api.updateSettings).toHaveBeenCalledWith({
+      searchTerms: ["Platform Engineer", "Backend Engineer"],
     });
   });
 
@@ -1117,6 +1261,13 @@ describe("OnboardingPage", () => {
           },
         }) as any,
     );
+    vi.mocked(api.updateSettings).mockImplementation(async (update) => {
+      currentSettings = {
+        ...currentSettings,
+        ...update,
+      };
+      return currentSettings;
+    });
     vi.mocked(api.validateResumeConfig).mockResolvedValue({
       valid: false,
       message: "Choose a template resume to finish this step.",
@@ -1145,6 +1296,15 @@ describe("OnboardingPage", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Template resume")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Enter v5 API key"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Upload a PDF or DOCX resume"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /confirm resume template/i }),
+      ).toBeInTheDocument();
     });
     expect(screen.getByText("Base resume selection")).toBeInTheDocument();
   });

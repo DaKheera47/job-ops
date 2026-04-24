@@ -1,5 +1,7 @@
 import type { AppSettings } from "@shared/types";
 
+type OnboardingStepId = "llm" | "baseresume" | "searchterms" | "basicauth";
+
 export function hasCompletedBasicAuthOnboarding(
   settings: AppSettings | null | undefined,
 ): boolean {
@@ -23,16 +25,23 @@ export function isOnboardingComplete(input: {
   llmValid: boolean;
   baseResumeValid: boolean;
   searchTermsValid?: boolean;
+  completedStepId?: OnboardingStepId | null;
 }): boolean {
   if (input.demoMode) return true;
   if (!input.settings) return false;
 
+  const llmValid = input.completedStepId === "llm" ? true : input.llmValid;
+  const baseResumeValid =
+    input.completedStepId === "baseresume" ? true : input.baseResumeValid;
   const searchTermsValid =
-    input.searchTermsValid ?? hasSavedSearchTermsOnboarding(input.settings);
+    input.completedStepId === "searchterms"
+      ? true
+      : (input.searchTermsValid ??
+        hasSavedSearchTermsOnboarding(input.settings));
 
   return Boolean(
-    input.llmValid &&
-      input.baseResumeValid &&
+    llmValid &&
+      baseResumeValid &&
       searchTermsValid &&
       hasCompletedBasicAuthOnboarding(input.settings),
   );
