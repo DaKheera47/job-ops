@@ -383,14 +383,14 @@ export function useOnboardingFlow() {
 
     if (requiresLlmKey && !apiKeyValue && !hasLlmKey) {
       toast.info("Add your LLM API key to continue");
-      return false;
+      return null;
     }
 
     const validation = await validateLlm();
 
     if (!validation.valid) {
       toast.error(validation.message || "LLM validation failed");
-      return false;
+      return null;
     }
 
     const update: Partial<UpdateSettingsInput> = {
@@ -418,12 +418,12 @@ export function useOnboardingFlow() {
             ? `Default for ${providerConfig.label}: ${defaultModel}.`
             : "You can fine-tune models later in Settings.",
       });
-      return true;
+      return nextSettings;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save LLM settings",
       );
-      return false;
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -455,11 +455,12 @@ export function useOnboardingFlow() {
       toast.info("Almost there", {
         description: `Missing: ${missing.join(", ")}`,
       });
-      return false;
+      return null;
     }
 
     try {
       setIsValidatingRxresume(true);
+      let nextSettings: AppSettings | null = null;
       const result = await validateAndMaybePersistRxResumeMode({
         stored: storedRxResume,
         draft: draftCredentials,
@@ -467,7 +468,7 @@ export function useOnboardingFlow() {
         persist: async (update: Parameters<typeof api.updateSettings>[0]) => {
           setIsSaving(true);
           try {
-            const nextSettings = await api.updateSettings({
+            nextSettings = await api.updateSettings({
               ...update,
               pdfRenderer: "rxresume",
               rxresumeBaseResumeId: values.rxresumeBaseResumeId,
@@ -491,14 +492,14 @@ export function useOnboardingFlow() {
       setRxresumeValidation(toValidationState(result.validation));
       if (!result.validation.valid) {
         toast.error(result.validation.message || "RxResume validation failed");
-        return false;
+        return null;
       }
 
       setValue("rxresumeApiKey", "");
       const resumeValidation = await validateBaseResume();
       if (resumeValidation.valid) {
         toast.success("Reactive Resume connected");
-        return true;
+        return nextSettings ?? settings;
       }
 
       toast.info("Reactive Resume connected", {
@@ -506,14 +507,14 @@ export function useOnboardingFlow() {
           resumeValidation.message ||
           "Choose a template resume to finish this step.",
       });
-      return false;
+      return nextSettings ?? settings;
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Failed to save RxResume credentials",
       );
-      return false;
+      return null;
     } finally {
       setIsValidatingRxresume(false);
       setIsSaving(false);
@@ -521,6 +522,7 @@ export function useOnboardingFlow() {
   }, [
     getValues,
     isRxResumeSelfHosted,
+    settings,
     setValue,
     storedRxResume,
     syncSettingsCache,
@@ -601,18 +603,18 @@ export function useOnboardingFlow() {
       const validation = await validateBaseResume();
       if (!validation.valid) {
         toast.error(validation.message || "Base resume validation failed");
-        return false;
+        return null;
       }
 
       toast.success("Resume source is ready");
-      return true;
+      return settings ?? null;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to validate resume",
       );
-      return false;
+      return null;
     }
-  }, [validateBaseResume]);
+  }, [settings, validateBaseResume]);
 
   const handleImportResumeFile = useCallback(
     async (file: File) => {
@@ -683,7 +685,7 @@ export function useOnboardingFlow() {
 
     if (nextTerms.length === 0) {
       toast.info("Add at least one job title to continue");
-      return false;
+      return null;
     }
 
     try {
@@ -698,12 +700,12 @@ export function useOnboardingFlow() {
       setHasSavedSearchTermsInSession(true);
       setSearchTermsStale(false);
       toast.success("Search terms saved");
-      return true;
+      return nextSettings;
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save search terms",
       );
-      return false;
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -718,14 +720,14 @@ export function useOnboardingFlow() {
         });
         syncSettingsCache(nextSettings);
         toast.success("Authentication skipped for now");
-        return true;
+        return nextSettings;
       } catch (error) {
         toast.error(
           error instanceof Error
             ? error.message
             : "Failed to save onboarding progress",
         );
-        return false;
+        return null;
       } finally {
         setIsSaving(false);
       }
@@ -733,7 +735,7 @@ export function useOnboardingFlow() {
 
     if (basicAuthChoice !== "enable") {
       toast.info("Choose whether to enable authentication or skip it for now");
-      return false;
+      return null;
     }
 
     const { basicAuthUser, basicAuthPassword } = getValues();
@@ -742,7 +744,7 @@ export function useOnboardingFlow() {
 
     if (!normalizedUser || !normalizedPassword) {
       toast.info("Enter both a username and password to enable authentication");
-      return false;
+      return null;
     }
 
     try {
@@ -756,38 +758,34 @@ export function useOnboardingFlow() {
       syncSettingsCache(nextSettings);
       setValue("basicAuthPassword", "");
       toast.success("Authentication enabled");
-      return true;
+      return nextSettings;
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
           : "Failed to save authentication credentials",
       );
-      return false;
+      return null;
     } finally {
       setIsSaving(false);
     }
   }, [basicAuthChoice, getValues, setValue, syncSettingsCache]);
 
   const handlePrimaryAction = useCallback(async () => {
-    if (!currentStep) return;
+    if (!currentStep) return null;
     if (currentStep === "llm") {
-      await handleSaveLlm();
-      return;
+      return await handleSaveLlm();
     }
     if (currentStep === "baseresume") {
       if (resumeSetupMode === "rxresume") {
-        await handleSaveRxresume();
-        return;
+        return await handleSaveRxresume();
       }
-      await handleSaveBaseResume();
-      return;
+      return await handleSaveBaseResume();
     }
     if (currentStep === "searchterms") {
-      await handleSaveSearchTerms();
-      return;
+      return await handleSaveSearchTerms();
     }
-    await handleCompleteBasicAuth();
+    return await handleCompleteBasicAuth();
   }, [
     currentStep,
     handleCompleteBasicAuth,

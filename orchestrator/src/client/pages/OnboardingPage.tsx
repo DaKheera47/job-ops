@@ -1,8 +1,9 @@
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useOnboardingRequirement } from "@client/hooks/useOnboardingRequirement";
+import { isOnboardingComplete } from "@client/lib/onboarding";
 import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import type React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import { useOnboardingFlow } from "./onboarding/useOnboardingFlow";
 export const OnboardingPage: React.FC = () => {
   const flow = useOnboardingFlow();
   const onboardingRequirement = useOnboardingRequirement();
+  const navigate = useNavigate();
 
   if (flow.demoMode) {
     return <Navigate to="/jobs/ready" replace />;
@@ -60,9 +62,21 @@ export const OnboardingPage: React.FC = () => {
             ) : (
               <form
                 className="flex min-h-[32rem] flex-col"
-                onSubmit={(event) => {
+                onSubmit={async (event) => {
                   event.preventDefault();
-                  void flow.handlePrimaryAction();
+                  const savedSettings = await flow.handlePrimaryAction();
+
+                  if (
+                    savedSettings &&
+                    isOnboardingComplete({
+                      demoMode: flow.demoMode,
+                      settings: savedSettings,
+                      llmValid: flow.llmValidation.valid,
+                      baseResumeValid: flow.baseResumeValidation.valid,
+                    })
+                  ) {
+                    navigate("/jobs/ready", { replace: true });
+                  }
                 }}
               >
                 <CardHeader className="space-y-4 border-b border-border/60">
