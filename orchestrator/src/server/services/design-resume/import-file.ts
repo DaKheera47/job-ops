@@ -14,6 +14,7 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
+import JSZip from "jszip";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
 import { parseErrorMessage, truncate } from "../llm/utils/string";
 import { replaceCurrentDesignResumeDocument } from "./index";
@@ -49,7 +50,7 @@ const SYSTEM_PROMPT = `
 You extract a resume into a single JSON object.
 
 Rules:
-- Extract only information explicitly present in the attached file.
+- Extract only information explicitly present in the provided resume input.
 - Do not guess, infer, summarize, embellish, or invent missing values.
 - Preserve the source language and wording as closely as possible.
 - Return JSON only. Do not wrap it in markdown or prose.
@@ -485,11 +486,88 @@ function buildUserPrompt(): string {
   };
 
   return `
-The resume file is attached.
+The resume input is provided in the request.
 Return the final JSON object only.
 
 Use this exact target shape and keys:
 ${JSON.stringify(template, null, 2)}
+`.trim();
+}
+
+function decodeXmlEntities(value: string): string {
+  return value.replace(
+    /&(?:#x([0-9a-fA-F]+)|#([0-9]+)|amp|lt|gt|quot|apos);/g,
+    (match, hex, dec) => {
+      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
+      if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
+      switch (match) {
+        case "&amp;":
+          return "&";
+        case "&lt;":
+          return "<";
+        case "&gt;":
+          return ">";
+        case "&quot;":
+          return '"';
+        case "&apos;":
+          return "'";
+        default:
+          return match;
+      }
+    },
+  );
+}
+
+function normalizeDocxXmlText(xml: string): string {
+  return decodeXmlEntities(
+    xml
+      .replace(/<w:tab\b[^>]*\/>/g, "\t")
+      .replace(/<w:br\b[^>]*\/>/g, "\n")
+      .replace(/<w:cr\b[^>]*\/>/g, "\n")
+      .replace(/<\/w:p>/g, "\n")
+      .replace(/<\/w:tr>/g, "\n")
+      .replace(/<\/w:tc>/g, "\t")
+      .replace(/<w:t\b[^>]*>/g, "")
+      .replace(/<\/w:t>/g, "")
+      .replace(/<[^>]+>/g, ""),
+  )
+    .replace(/\r\n?/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function extractDocxText(decoded: Buffer): Promise<string> {
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(decoded);
+  } catch {
+    throw badRequest("Resume DOCX file could not be read.");
+  }
+
+  const documentXml = zip.file("word/document.xml");
+  if (!documentXml) {
+    throw badRequest("Resume DOCX file is missing document content.");
+  }
+
+  const xml = await documentXml.async("string");
+  const text = normalizeDocxXmlText(xml);
+  if (!text) {
+    throw badRequest("Resume DOCX file did not contain readable text.");
+  }
+
+  return text;
+}
+
+function buildDocxPrompt(documentText: string, fileName: string): string {
+  return `
+The resume file was uploaded as DOCX and converted locally to plain text before extraction.
+File name: ${fileName}
+
+Extracted resume text:
+${documentText}
+
+${buildUserPrompt()}
 `.trim();
 }
 
@@ -662,7 +740,7 @@ function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, or Gemini to import PDF or DOCX resumes directly.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, or Gemini to import resumes. DOCX files are converted to text locally before extraction.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -691,6 +769,7 @@ async function extractWithOpenAi(args: {
   mediaType: SupportedImportMediaType;
   fileName: string;
   dataBase64: string;
+  documentText?: string | null;
   requestId: string | undefined;
 }): Promise<string> {
   const url = joinUrl(
@@ -717,17 +796,24 @@ async function extractWithOpenAi(args: {
         },
         {
           role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: buildUserPrompt(),
-            },
-            {
-              type: "input_file",
-              filename: args.fileName,
-              file_data: buildDataUrl(args.mediaType, args.dataBase64),
-            },
-          ],
+          content: args.documentText
+            ? [
+                {
+                  type: "input_text",
+                  text: buildDocxPrompt(args.documentText, args.fileName),
+                },
+              ]
+            : [
+                {
+                  type: "input_text",
+                  text: buildUserPrompt(),
+                },
+                {
+                  type: "input_file",
+                  filename: args.fileName,
+                  file_data: buildDataUrl(args.mediaType, args.dataBase64),
+                },
+              ],
         },
       ],
     }),
@@ -762,6 +848,7 @@ async function extractWithOpenRouter(args: {
   mediaType: SupportedImportMediaType;
   fileName: string;
   dataBase64: string;
+  documentText?: string | null;
   requestId: string | undefined;
 }): Promise<string> {
   const url = joinUrl(
@@ -787,19 +874,21 @@ async function extractWithOpenRouter(args: {
         },
         {
           role: "user",
-          content: [
-            {
-              type: "text",
-              text: buildUserPrompt(),
-            },
-            {
-              type: "file",
-              file: {
-                filename: args.fileName,
-                file_data: buildDataUrl(args.mediaType, args.dataBase64),
-              },
-            },
-          ],
+          content: args.documentText
+            ? buildDocxPrompt(args.documentText, args.fileName)
+            : [
+                {
+                  type: "text",
+                  text: buildUserPrompt(),
+                },
+                {
+                  type: "file",
+                  file: {
+                    filename: args.fileName,
+                    file_data: buildDataUrl(args.mediaType, args.dataBase64),
+                  },
+                },
+              ],
         },
       ],
       ...(args.mediaType === "application/pdf"
@@ -847,6 +936,8 @@ async function extractWithGemini(args: {
   model: string;
   mediaType: SupportedImportMediaType;
   dataBase64: string;
+  documentText?: string | null;
+  fileName: string;
   requestId: string | undefined;
 }): Promise<string> {
   const model = normalizeGeminiModelName(args.model);
@@ -865,17 +956,23 @@ async function extractWithGemini(args: {
       contents: [
         {
           role: "user",
-          parts: [
-            {
-              text: buildUserPrompt(),
-            },
-            {
-              inlineData: {
-                mimeType: args.mediaType,
-                data: args.dataBase64,
-              },
-            },
-          ],
+          parts: args.documentText
+            ? [
+                {
+                  text: buildDocxPrompt(args.documentText, args.fileName),
+                },
+              ]
+            : [
+                {
+                  text: buildUserPrompt(),
+                },
+                {
+                  inlineData: {
+                    mimeType: args.mediaType,
+                    data: args.dataBase64,
+                  },
+                },
+              ],
         },
       ],
       generationConfig: {
@@ -914,6 +1011,7 @@ async function extractResumeFromProvider(args: {
   mediaType: SupportedImportMediaType;
   fileName: string;
   dataBase64: string;
+  documentText?: string | null;
   requestId: string | undefined;
 }): Promise<string> {
   if (args.provider === "openai") {
@@ -961,6 +1059,8 @@ export async function importDesignResumeFromFile(
   }
 
   try {
+    const documentText =
+      mediaType === DOCX_MIME ? await extractDocxText(decoded) : null;
     const rawText = await extractResumeFromProvider({
       provider,
       apiKey: runtime.apiKey,
@@ -969,6 +1069,7 @@ export async function importDesignResumeFromFile(
       mediaType,
       fileName,
       dataBase64: normalizedBase64,
+      documentText,
       requestId,
     });
     const parsed = parseImportedResumeJson(rawText);

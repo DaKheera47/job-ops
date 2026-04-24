@@ -1,5 +1,6 @@
 import { AppError } from "@infra/errors";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
+import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildDefaultReactiveResumeDocument } from "../rxresume/document";
 
@@ -37,6 +38,34 @@ function makeResumeDocument(
     updatedAt: "2026-04-11T00:00:00.000Z",
     assets: [],
   };
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+async function makeDocxBase64(text: string): Promise<string> {
+  const zip = new JSZip();
+  zip.file(
+    "word/document.xml",
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r>
+        <w:t>${escapeXml(text)}</w:t>
+      </w:r>
+    </w:p>
+  </w:body>
+</w:document>`,
+  );
+  const buffer = await zip.generateAsync({ type: "nodebuffer" });
+  return buffer.toString("base64");
 }
 
 describe("importDesignResumeFromFile", () => {
@@ -124,6 +153,66 @@ describe("importDesignResumeFromFile", () => {
       hidden: false,
     });
     expect(result.title).toBe("Taylor Resume");
+  });
+
+  it("extracts DOCX text locally before sending it to Gemini", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "gemini",
+      model: "google/gemini-3-flash-preview",
+      baseUrl: null,
+      apiKey: "gemini-test",
+    });
+
+    const docxBase64 = await makeDocxBase64("Taylor Quinn\nSenior Engineer");
+
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [{ text: '{"basics":{"name":"Taylor Quinn"}}' }],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.docx",
+      mediaType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      dataBase64: docxBase64,
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent",
+      ),
+      expect.any(Object),
+    );
+
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    const body =
+      fetchCall?.[1] && "body" in fetchCall[1] ? fetchCall[1].body : "";
+    const parsedBody = JSON.parse(String(body)) as Record<string, unknown>;
+
+    expect(JSON.stringify(parsedBody)).not.toContain("inlineData");
+    expect(JSON.stringify(parsedBody)).not.toContain("input_file");
+
+    const contents = parsedBody.contents as Array<{
+      parts?: Array<{ text?: string }>;
+    }>;
+    expect(contents[0]?.parts?.[0]?.text).toContain(
+      "The resume file was uploaded as DOCX",
+    );
+    expect(contents[0]?.parts?.[0]?.text).toContain("Taylor Quinn");
+    expect(contents[0]?.parts?.[0]?.text).toContain("Senior Engineer");
   });
 
   it("accepts supported media types even when the file name has no extension", async () => {
