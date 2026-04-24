@@ -145,6 +145,41 @@ describe("JobHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows contextual tooltips for discovered, tracer off, and suitability score", () => {
+    const jobWithTooltips = {
+      ...mockJob,
+      tracerLinksEnabled: false,
+      suitabilityScore: 45,
+    };
+
+    renderWithRouter(<JobHeader job={jobWithTooltips} />);
+
+    expect(
+      screen.getByText("Found by the pipeline. Not tailored yet."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Tracer links are turned off for this job, so click tracking will not be recorded.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Suitability score: 45/100. Higher is better."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a tooltip for ready jobs", () => {
+    const readyJob = {
+      ...mockJob,
+      status: "ready" as const,
+    };
+
+    renderWithRouter(<JobHeader job={readyJob} />);
+
+    expect(
+      screen.getByText("Tailored and ready to apply."),
+    ).toBeInTheDocument();
+  });
+
   it("hides sponsor info when showSponsorInfo is false", () => {
     (useSettings as any).mockReturnValue({
       showSponsorInfo: false,
