@@ -66,6 +66,7 @@
     "framer-motion": "^12.34.3",
     "html-to-text": "^9.0.5",
     "jsdom": "^25.0.1",
+    "jsonrepair": "^3.14.0",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
     "lucide-react": "^0.561.0",

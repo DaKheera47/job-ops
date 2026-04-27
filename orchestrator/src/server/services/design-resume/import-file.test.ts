@@ -215,6 +215,106 @@ describe("importDesignResumeFromFile", () => {
     expect(contents[0]?.parts?.[0]?.text).toContain("Senior Engineer");
   });
 
+  it("repairs Gemini JSON with unescaped quotes inside description fields", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "gemini",
+      model: "gemini-2.5-flash-lite",
+      baseUrl: null,
+      apiKey: "gemini-test",
+    });
+
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `{"basics":{"name":"Taylor Quinn"},"sections":{"experience":{"items":[{"company":"Acme","position":"Engineer","description":"<ul><li>Led the "Employer Line" program.</li></ul>"}]}}}`,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    const savedInput =
+      designResumeService.replaceCurrentDesignResumeDocument.mock.calls[0]?.[0];
+    const experienceItems =
+      savedInput?.resumeJson?.sections?.experience?.items ?? [];
+
+    expect(experienceItems).toHaveLength(1);
+    expect(experienceItems[0]).toMatchObject({
+      company: "Acme",
+      position: "Engineer",
+      description: '<ul><li>Led the "Employer Line" program.</li></ul>',
+    });
+  });
+
+  it("ignores Gemini thought parts when extracting resume JSON", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "gemini",
+      model: "gemini-2.5-flash-lite",
+      baseUrl: null,
+      apiKey: "gemini-test",
+    });
+
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    thought: true,
+                    text: 'I should return {"not":"this"}',
+                  },
+                  {
+                    text: '{"basics":{"name":"Taylor Quinn"}}',
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(
+      designResumeService.replaceCurrentDesignResumeDocument,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
+          basics: expect.objectContaining({ name: "Taylor Quinn" }),
+        }),
+      }),
+    );
+  });
+
   it("accepts supported media types even when the file name has no extension", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(

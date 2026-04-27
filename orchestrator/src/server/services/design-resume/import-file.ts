@@ -14,6 +14,7 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
+import { jsonrepair } from "jsonrepair";
 import JSZip from "jszip";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
 import { parseErrorMessage, truncate } from "../llm/utils/string";
@@ -610,6 +611,7 @@ function extractGeminiText(response: unknown): string | null {
   const firstCandidate = asRecord(candidates[0]);
   const parts = asArray(asRecord(firstCandidate?.content)?.parts);
   const text = parts
+    .filter((part) => !asRecord(part)?.thought)
     .map((part) => trimText(asRecord(part)?.text))
     .filter(Boolean)
     .join("");
@@ -645,10 +647,14 @@ function parseImportedResumeJson(content: string): unknown {
 
   try {
     return JSON.parse(repaired) as unknown;
-  } catch (error) {
-    throw badRequest(
-      `Imported resume did not produce valid JSON. ${error instanceof Error ? error.message : "Unknown parsing error."}`,
-    );
+  } catch {
+    try {
+      return JSON.parse(jsonrepair(repaired)) as unknown;
+    } catch (error) {
+      throw badRequest(
+        `Imported resume did not produce valid JSON. ${error instanceof Error ? error.message : "Unknown parsing error."}`,
+      );
+    }
   }
 }
 
