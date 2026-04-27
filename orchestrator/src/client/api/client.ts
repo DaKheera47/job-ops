@@ -132,8 +132,8 @@ export type AuthUser = {
   displayName: string | null;
   isSystemAdmin: boolean;
   isDisabled: boolean;
-  tenantId: string;
-  tenantName: string;
+  workspaceId: string;
+  workspaceName: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -401,30 +401,30 @@ export function hasAuthenticatedSession(): boolean {
   return Boolean(cachedAuthToken);
 }
 
-export async function listAccountUsers(): Promise<AuthUser[]> {
-  const result = await fetchApi<{ users: AuthUser[] }>("/accounts/users");
+export async function listWorkspaceUsers(): Promise<AuthUser[]> {
+  const result = await fetchApi<{ users: AuthUser[] }>("/workspaces/users");
   return result.users;
 }
 
-export async function createAccountUser(input: {
+export async function createWorkspaceUser(input: {
   username: string;
   password: string;
   displayName?: string;
   isSystemAdmin?: boolean;
 }): Promise<AuthUser> {
-  const result = await fetchApi<{ user: AuthUser }>("/accounts/users", {
+  const result = await fetchApi<{ user: AuthUser }>("/workspaces/users", {
     method: "POST",
     body: JSON.stringify(input),
   });
   return result.user;
 }
 
-export async function setAccountUserDisabled(
+export async function setWorkspaceUserDisabled(
   userId: string,
   isDisabled: boolean,
 ): Promise<AuthUser> {
   const result = await fetchApi<{ user: AuthUser }>(
-    `/accounts/users/${encodeURIComponent(userId)}/disabled`,
+    `/workspaces/users/${encodeURIComponent(userId)}/disabled`,
     {
       method: "PATCH",
       body: JSON.stringify({ isDisabled }),
@@ -433,12 +433,12 @@ export async function setAccountUserDisabled(
   return result.user;
 }
 
-export async function resetAccountUserPassword(
+export async function resetWorkspaceUserPassword(
   userId: string,
   password: string,
 ): Promise<void> {
   await fetchApi<{ userId: string }>(
-    `/accounts/users/${encodeURIComponent(userId)}/reset-password`,
+    `/workspaces/users/${encodeURIComponent(userId)}/reset-password`,
     {
       method: "POST",
       body: JSON.stringify({ password }),
@@ -447,7 +447,7 @@ export async function resetAccountUserPassword(
 }
 
 export async function changeOwnPassword(password: string): Promise<void> {
-  await fetchApi<{ userId: string }>("/accounts/me/password", {
+  await fetchApi<{ userId: string }>("/workspaces/me/password", {
     method: "POST",
     body: JSON.stringify({ password }),
   });

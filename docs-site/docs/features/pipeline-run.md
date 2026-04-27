@@ -119,7 +119,7 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 
 ### Adzuna is not selectable
 
-- Set `Adzuna App ID` and `Adzuna App Key` in **Settings > Environment & Accounts**.
+- Set `Adzuna App ID` and `Adzuna App Key` in **Settings > Environment & Workspaces**.
 - Verify the selected country is one of Adzuna's supported markets.
 
 ### Run takes longer than expected

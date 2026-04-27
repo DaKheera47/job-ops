@@ -22,7 +22,7 @@ type EnvironmentSettingsSectionProps = {
   layoutMode?: "accordion" | "panel";
 };
 
-const accountUsersQueryKey = ["accounts", "users"] as const;
+const workspaceUsersQueryKey = ["workspaces", "users"] as const;
 const currentAuthUserQueryKey = ["auth", "me"] as const;
 
 function AccountManagementSection() {
@@ -40,18 +40,18 @@ function AccountManagementSection() {
     retry: false,
   });
   const usersQuery = useQuery({
-    queryKey: accountUsersQueryKey,
-    queryFn: api.listAccountUsers,
+    queryKey: workspaceUsersQueryKey,
+    queryFn: api.listWorkspaceUsers,
     enabled: meQuery.data?.isSystemAdmin === true,
   });
 
   const createUserMutation = useMutation({
-    mutationFn: api.createAccountUser,
+    mutationFn: api.createWorkspaceUser,
     onSuccess: async () => {
       setUsername("");
       setDisplayName("");
       setPassword("");
-      await queryClient.invalidateQueries({ queryKey: accountUsersQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workspaceUsersQueryKey });
       toast.success("User created");
     },
     onError: (error) => {
@@ -63,9 +63,9 @@ function AccountManagementSection() {
 
   const disableUserMutation = useMutation({
     mutationFn: (input: { userId: string; isDisabled: boolean }) =>
-      api.setAccountUserDisabled(input.userId, input.isDisabled),
+      api.setWorkspaceUserDisabled(input.userId, input.isDisabled),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: accountUsersQueryKey });
+      await queryClient.invalidateQueries({ queryKey: workspaceUsersQueryKey });
       toast.success("User updated");
     },
     onError: (error) => {
@@ -77,7 +77,7 @@ function AccountManagementSection() {
 
   const resetPasswordMutation = useMutation({
     mutationFn: (input: { userId: string; password: string }) =>
-      api.resetAccountUserPassword(input.userId, input.password),
+      api.resetWorkspaceUserPassword(input.userId, input.password),
     onSuccess: async (_data, variables) => {
       setResetPasswordByUserId((current) => ({
         ...current,
@@ -108,9 +108,9 @@ function AccountManagementSection() {
   return (
     <div className="space-y-5">
       <div className="space-y-1">
-        <div className="text-sm font-semibold">User Accounts</div>
+        <div className="text-sm font-semibold">Workspace Users</div>
         <p className="text-sm text-muted-foreground">
-          Each account gets a private workspace with isolated jobs and settings.
+          Each user gets a private workspace with isolated jobs and settings.
         </p>
       </div>
 
@@ -174,7 +174,7 @@ function AccountManagementSection() {
                   ) : null}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {user.tenantName}
+                  {user.workspaceName}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -253,7 +253,7 @@ export const EnvironmentSettingsSection: React.FC<
   return (
     <SettingsSectionFrame
       mode={layoutMode}
-      title="Environment & Accounts"
+      title="Environment & Workspaces"
       value="environment"
     >
       <div className="space-y-8">

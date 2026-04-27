@@ -109,7 +109,7 @@ authRouter.post(
     const { token, expiresIn } = await signToken({
       sub: user.id,
       userId: user.id,
-      tenantId: user.tenantId,
+      tenantId: user.workspaceId,
       username: user.username,
       isSystemAdmin: user.isSystemAdmin,
     });

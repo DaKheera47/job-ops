@@ -71,7 +71,7 @@ describe.sequential("Tenant isolation", () => {
 
     const adminToken = await login(baseUrl, "admin", "secret");
 
-    const createAdamRes = await fetch(`${baseUrl}/api/accounts/users`, {
+    const createAdamRes = await fetch(`${baseUrl}/api/workspaces/users`, {
       method: "POST",
       headers: authHeaders(adminToken),
       body: JSON.stringify({

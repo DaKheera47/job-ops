@@ -142,7 +142,7 @@ type SettingsGroupId =
   | "ai"
   | "scoring"
   | "integrations"
-  | "accounts"
+  | "workspaces"
   | "display"
   | "backups"
   | "danger";
@@ -224,12 +224,12 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    id: "accounts",
-    label: "Accounts & Security",
+    id: "workspaces",
+    label: "Workspaces & Security",
     items: [
       {
         id: "environment",
-        label: "Accounts & Access",
+        label: "Workspace Access",
         description: "Service credentials and authentication protection.",
         searchTerms: ["security", "auth", "adzuna", "ukvisajobs"],
       },

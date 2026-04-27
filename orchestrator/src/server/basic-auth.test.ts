@@ -159,8 +159,8 @@ describe.sequential("Auth read-only enforcement", () => {
       displayName: null,
       isSystemAdmin: false,
       isDisabled: false,
-      tenantId: "tenant-1",
-      tenantName: "Tenant 1",
+      workspaceId: "tenant-1",
+      workspaceName: "Tenant 1",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -198,8 +198,8 @@ describe.sequential("Auth read-only enforcement", () => {
       displayName: null,
       isSystemAdmin: true,
       isDisabled: true,
-      tenantId: "tenant-1",
-      tenantName: "Tenant 1",
+      workspaceId: "tenant-1",
+      workspaceName: "Tenant 1",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });

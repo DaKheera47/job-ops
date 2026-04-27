@@ -149,12 +149,12 @@ export function createAuthGuard() {
     try {
       const payload = await verifyToken(token);
       const user = await usersRepo.getUserById(payload.userId);
-      if (!user || user.isDisabled || user.tenantId !== payload.tenantId) {
+      if (!user || user.isDisabled || user.workspaceId !== payload.tenantId) {
         return null;
       }
       return {
         userId: user.id,
-        tenantId: user.tenantId,
+        tenantId: user.workspaceId,
         username: user.username,
         isSystemAdmin: user.isSystemAdmin,
       };

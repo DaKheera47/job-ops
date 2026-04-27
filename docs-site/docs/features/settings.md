@@ -1,7 +1,7 @@
 ---
 id: settings
 title: Settings
-description: Configure models, webhooks, accounts, backup behavior, scoring, and safety controls.
+description: Configure models, webhooks, workspaces, backup behavior, scoring, and safety controls.
 sidebar_position: 2
 ---
 
@@ -17,7 +17,7 @@ It lets you configure:
 - Webhook destinations and secret
 - Display and writing-style defaults
 - Editable prompt templates for core AI workflows
-- Service credentials and workspace accounts
+- Service credentials and workspace users
 - Reactive Resume project selection
 - Tracer Links readiness verification
 - Backup and scoring rules
@@ -168,7 +168,7 @@ Readiness requires:
 - successful reachability of `<public-base-url>/health`
 - non-localhost/non-private host setup for public redirect usage
 
-### Environment & Accounts
+### Environment & Workspaces
 
 - Configure service accounts:
   - RxResume API key
@@ -252,9 +252,9 @@ curl -X POST "http://localhost:3001/api/backups"
 - In the **Model** section, the field preview and **Resolved config** update immediately when you choose a model, but the change only applies to future actions after you click **Save**.
 - Prompt-template changes only affect new Ghostwriter runs, new tailoring generations, and new scoring runs after you save.
 
-### I do not see user account controls
+### I do not see workspace user controls
 
-- Account management is shown only to system admins.
+- Workspace user management is shown only to system admins.
 - The first user created during first-run setup or legacy migration is the system admin.
 - Normal users can use their private workspace settings, but cannot create users, reset other passwords, or manage backups.
 

@@ -25,7 +25,7 @@ Adzuna provides stable API discovery for countries that are not covered by UK-on
 1. Create an Adzuna developer account.
 2. Open [Adzuna Access Details](https://developer.adzuna.com/admin/access_details).
 3. Copy your **App ID** and **App Key**.
-4. In Job Ops, open **Settings** and paste them into `Adzuna App ID` and `Adzuna App Key` under **Environment & Accounts**.
+4. In Job Ops, open **Settings** and paste them into `Adzuna App ID` and `Adzuna App Key` under **Environment & Workspaces**.
 5. In **Pipeline Run** (Automatic tab), select a compatible country and enable **Adzuna** in Sources.
 6. Start the run; Adzuna progress appears in the existing crawl progress stream.
 

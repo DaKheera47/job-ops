@@ -5,7 +5,7 @@ import * as usersRepo from "@server/repositories/users";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
-export const accountsRouter = Router();
+export const workspacesRouter = Router();
 
 const createUserSchema = z.object({
   username: z.string().trim().min(1).max(120),
@@ -32,7 +32,7 @@ function requireSystemAdmin(res: Response): boolean {
   return false;
 }
 
-accountsRouter.get(
+workspacesRouter.get(
   "/users",
   asyncRoute(async (_req: Request, res: Response) => {
     if (!requireSystemAdmin(res)) return;
@@ -40,7 +40,7 @@ accountsRouter.get(
   }),
 );
 
-accountsRouter.post(
+workspacesRouter.post(
   "/users",
   asyncRoute(async (req: Request, res: Response) => {
     if (!requireSystemAdmin(res)) return;
@@ -60,7 +60,7 @@ accountsRouter.post(
   }),
 );
 
-accountsRouter.patch(
+workspacesRouter.patch(
   "/users/:id/disabled",
   asyncRoute(async (req: Request, res: Response) => {
     if (!requireSystemAdmin(res)) return;
@@ -76,7 +76,7 @@ accountsRouter.patch(
       return;
     }
     if (userId === getUserId() && parsed.data.isDisabled) {
-      fail(res, badRequest("You cannot disable your own account"));
+      fail(res, badRequest("You cannot disable your own user"));
       return;
     }
 
@@ -92,7 +92,7 @@ accountsRouter.patch(
   }),
 );
 
-accountsRouter.post(
+workspacesRouter.post(
   "/users/:id/reset-password",
   asyncRoute(async (req: Request, res: Response) => {
     if (!requireSystemAdmin(res)) return;
@@ -121,7 +121,7 @@ accountsRouter.post(
   }),
 );
 
-accountsRouter.post(
+workspacesRouter.post(
   "/me/password",
   asyncRoute(async (req: Request, res: Response) => {
     const userId = getUserId();
