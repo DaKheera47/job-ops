@@ -76,6 +76,18 @@ describe("OrchestratorFilters", () => {
     expect(props.onOpenCommandBar).toHaveBeenCalled();
   });
 
+  it("shows contextual tab descriptions on hover", async () => {
+    renderFilters();
+
+    const discoveredTab = screen.getByRole("tab", { name: /discovered/i });
+    fireEvent.pointerOver(discoveredTab);
+    fireEvent.pointerMove(discoveredTab);
+
+    expect(
+      await screen.findAllByText("Jobs searched, ready to be tailored"),
+    ).toHaveLength(2);
+  });
+
   it("updates source, sponsor, salary range, and sort from the drawer", async () => {
     const { props } = renderFilters();
 

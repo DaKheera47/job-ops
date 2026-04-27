@@ -33,12 +33,15 @@ interface JobHeaderProps {
   onCheckSponsor?: () => Promise<void>;
 }
 
-const ScoreMeter: React.FC<{ score: number | null }> = ({ score }) => {
+const ScoreMeter: React.FC<{
+  score: number | null;
+  tooltip?: React.ReactNode;
+}> = ({ score, tooltip }) => {
   if (score == null) {
     return <span className="text-[10px] text-muted-foreground/60">-</span>;
   }
 
-  return (
+  const content = (
     <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
       <div className="h-1 w-12 rounded-full bg-muted/30">
         <div
@@ -48,6 +51,21 @@ const ScoreMeter: React.FC<{ score: number | null }> = ({ score }) => {
       </div>
       <span className="tabular-nums">{score}</span>
     </div>
+  );
+
+  if (!tooltip) {
+    return content;
+  }
+
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent side="top" className="max-w-xs">
+          {tooltip}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -198,6 +216,24 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   const { pathname } = useLocation();
   const isJobPage = pathname.startsWith("/job/");
   const deadline = formatDate(job.deadline);
+  const jobStatusTooltip =
+    job.status === "discovered" ? (
+      <p className="text-xs">Found by the pipeline. Not tailored yet.</p>
+    ) : job.status === "ready" ? (
+      <p className="text-xs">Tailored and ready to apply.</p>
+    ) : undefined;
+  const tracerStatusTooltip = !job.tracerLinksEnabled ? (
+    <p className="text-xs">
+      Tracer links are turned off for this job, so click tracking will not be
+      recorded.
+    </p>
+  ) : undefined;
+  const scoreTooltip =
+    job.suitabilityScore == null ? undefined : (
+      <p className="text-xs">
+        Suitability score: {job.suitabilityScore}/100. Higher is better.
+      </p>
+    );
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -273,10 +309,16 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           <StatusIndicator
             dotColor={jobStatus.dotColor}
             label={jobStatus.label}
+            tooltip={jobStatusTooltip}
+            tooltipClassName="max-w-xs"
+            className={jobStatusTooltip ? "cursor-help" : undefined}
           />
           <StatusIndicator
             dotColor={tracerStatus.dotColor}
             label={tracerStatus.label}
+            tooltip={tracerStatusTooltip}
+            tooltipClassName="max-w-xs"
+            className={tracerStatusTooltip ? "cursor-help" : undefined}
           />
           <AppliedDuplicatePill match={job.appliedDuplicateMatch} />
           {showSponsorInfo && (
@@ -287,7 +329,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             />
           )}
         </div>
-        <ScoreMeter score={job.suitabilityScore} />
+        <ScoreMeter score={job.suitabilityScore} tooltip={scoreTooltip} />
       </div>
     </div>
   );

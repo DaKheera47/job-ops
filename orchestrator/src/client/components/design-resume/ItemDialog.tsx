@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
 
 export type ItemFieldType =
@@ -22,7 +23,8 @@ export type ItemFieldType =
   | "textarea"
   | "richtext"
   | "tags"
-  | "toggle";
+  | "toggle"
+  | "icon";
 
 export type ItemFieldConfig = {
   key: string;
@@ -32,6 +34,8 @@ export type ItemFieldConfig = {
   required?: boolean;
   min?: number;
   step?: number;
+  /** When true on an icon field, render it inline to the left of the next field with no separate label */
+  groupWithNext?: boolean;
 };
 
 type ItemDialogProps = {
@@ -135,8 +139,44 @@ function renderTextField(
         {field.label}
         {field.required ? <span className="ml-1 text-rose-400">*</span> : null}
       </label>
-      <div className={iconPrefix ? "flex items-center gap-2" : undefined}>
-        {iconPrefix}
+      {iconPrefix ? (
+        <div
+          className={`flex items-stretch overflow-hidden rounded-md border ${fieldErrors[field.key] ? "border-rose-500" : "border-input"} bg-background/60 focus-within:ring-1 focus-within:ring-ring`}
+        >
+          {/* icon square — borderless, flush left */}
+          <div className="flex shrink-0 items-center border-r border-input">
+            {iconPrefix}
+          </div>
+          <input
+            id={fieldId}
+            type={field.type === "number" ? "number" : "text"}
+            value={
+              field.type === "number"
+                ? String(value as number)
+                : (value as string)
+            }
+            min={field.min}
+            step={field.step}
+            placeholder={field.placeholder}
+            onChange={(event) => {
+              if (fieldErrors[field.key]) {
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next[field.key];
+                  return next;
+                });
+              }
+              updateField(
+                field.key,
+                field.type === "number"
+                  ? Number(event.currentTarget.value || 0)
+                  : event.currentTarget.value,
+              );
+            }}
+            className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
+          />
+        </div>
+      ) : (
         <Input
           id={fieldId}
           type={field.type === "number" ? "number" : "text"}
@@ -169,7 +209,7 @@ function renderTextField(
               : "bg-background/60"
           }
         />
-      </div>
+      )}
       {fieldErrors[field.key] ? (
         <p className="text-xs text-rose-400">{fieldErrors[field.key]}</p>
       ) : null}
@@ -272,6 +312,55 @@ function renderFields(
           <Switch
             checked={value as boolean}
             onCheckedChange={(checked) => updateField(field.key, checked)}
+          />
+        </div>,
+      );
+      i++;
+      continue;
+    }
+
+    // Icon picker — grouped inline to the left of the next field (no separate label)
+    if (field.type === "icon" && field.groupWithNext && i + 1 < fields.length) {
+      const nextField = fields[i + 1];
+      if (nextField) {
+        const nextValue = coerceDraftValue(
+          nextField,
+          getValue(draft, nextField.key),
+        );
+        const nextFieldId = fieldIdForPath(nextField.key);
+        const iconNode = (
+          <IconPickerField
+            value={value as string}
+            onChange={(next) => updateField(field.key, next)}
+          />
+        );
+        nodes.push(
+          renderTextField(
+            nextField,
+            nextValue as string | number,
+            fieldErrors,
+            updateField,
+            setFieldErrors,
+            nextFieldId,
+            iconNode,
+          ),
+        );
+        i += 2;
+        continue;
+      }
+    }
+
+    // Icon picker — standalone (with label)
+    if (field.type === "icon") {
+      nodes.push(
+        <div key={field.key} className="grid gap-2">
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <IconPickerField
+            id={fieldId}
+            value={value as string}
+            onChange={(next) => updateField(field.key, next)}
           />
         </div>,
       );
