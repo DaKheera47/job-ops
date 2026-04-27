@@ -17,6 +17,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  loadRememberedAuthUsers,
+  rememberAuthUser,
+} from "../lib/remembered-auth-users";
 
 function resolveNextPath(rawNext: string | null): string {
   if (!rawNext || !rawNext.startsWith("/")) return "/jobs/ready";
@@ -35,10 +39,22 @@ export function SignInPage() {
   const [setupRequired, setSetupRequired] = useState(false);
   const [isBusy, setIsBusy] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rememberedUsers, setRememberedUsers] = useState(() =>
+    loadRememberedAuthUsers(),
+  );
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
     return resolveNextPath(params.get("next"));
+  }, [location.search]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const rememberedUsername = params.get("user")?.trim();
+    if (rememberedUsername) {
+      setUsername(rememberedUsername);
+      setPassword("");
+    }
   }, [location.search]);
 
   useEffect(() => {
@@ -82,13 +98,24 @@ export function SignInPage() {
 
     try {
       if (setupRequired) {
-        await setupFirstAdmin({
+        const user = await setupFirstAdmin({
           username: normalizedUsername,
           password,
           displayName: displayName.trim() || normalizedUsername,
         });
+        setRememberedUsers(
+          rememberAuthUser({
+            username: user.username,
+            displayName: user.displayName,
+          }),
+        );
       } else {
         await signInWithCredentials(normalizedUsername, password);
+        setRememberedUsers(
+          rememberAuthUser({
+            username: normalizedUsername,
+          }),
+        );
       }
       navigate(nextPath, { replace: true });
     } catch (error) {
@@ -112,6 +139,38 @@ export function SignInPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {!setupRequired && rememberedUsers.length > 0 ? (
+              <div className="mb-5 space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Remembered on this browser
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {rememberedUsers.map((user) => (
+                    <Button
+                      key={user.username}
+                      type="button"
+                      variant={
+                        username.trim() === user.username
+                          ? "secondary"
+                          : "outline"
+                      }
+                      size="sm"
+                      className="h-8 max-w-full px-2.5"
+                      disabled={isBusy}
+                      onClick={() => {
+                        setUsername(user.username);
+                        setPassword("");
+                        setErrorMessage(null);
+                      }}
+                    >
+                      <span className="truncate">
+                        {user.displayName ?? user.username}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <form className="space-y-4" onSubmit={handleSubmit}>
               {setupRequired ? (
                 <div className="space-y-2">

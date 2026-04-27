@@ -2,11 +2,17 @@
  * Shared layout components for consistent page structure.
  */
 
-import { ExternalLink, type LucideIcon, Menu } from "lucide-react";
+import { logout } from "@client/api";
+import {
+  ExternalLink,
+  LogOut,
+  type LucideIcon,
+  Menu,
+  UserRound,
+} from "lucide-react";
 import type React from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,8 +30,25 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useVersionCheck } from "../hooks/useVersionCheck";
+import {
+  loadRememberedAuthUsers,
+  type RememberedAuthUser,
+} from "../lib/remembered-auth-users";
 import { isNavActive, NAV_LINKS } from "./navigation";
 import { StatusBadgeIndicator } from "./StatusIndicator";
+
+const buildSignInPath = (username: string, nextPath: string): string => {
+  const params = new URLSearchParams();
+  params.set("user", username);
+  if (
+    nextPath &&
+    nextPath !== "/sign-in" &&
+    !nextPath.startsWith("/sign-in?")
+  ) {
+    params.set("next", nextPath);
+  }
+  return `/sign-in?${params.toString()}`;
+};
 
 // ============================================================================
 // Page Header
@@ -57,9 +80,18 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [internalNavOpen, setInternalNavOpen] = useState(false);
+  const [rememberedUsers, setRememberedUsers] = useState<RememberedAuthUser[]>(
+    () => loadRememberedAuthUsers(),
+  );
   const navOpen = controlledNavOpen ?? internalNavOpen;
   const setNavOpen = onNavOpenChange ?? setInternalNavOpen;
   const { version, updateAvailable } = useVersionCheck();
+
+  useEffect(() => {
+    if (navOpen) {
+      setRememberedUsers(loadRememberedAuthUsers());
+    }
+  }, [navOpen]);
 
   const handleNavClick = (to: string, activePaths?: string[]) => {
     if (isNavActive(location.pathname, to, activePaths)) {
@@ -68,6 +100,17 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     }
     setNavOpen(false);
     setTimeout(() => navigate(to), 150);
+  };
+
+  const handleRememberedUserClick = async (username: string) => {
+    setNavOpen(false);
+    await logout({ redirect: false });
+    navigate(buildSignInPath(username, location.pathname), { replace: true });
+  };
+
+  const handleSignOut = async () => {
+    setNavOpen(false);
+    await logout();
   };
 
   return (
@@ -103,8 +146,55 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                   </button>
                 ))}
               </nav>
-              {showVersionFooter && (
-                <div className="mt-auto pt-6 pb-2">
+              <div className="mt-auto space-y-4 pt-6 pb-2">
+                <div className="space-y-2 border-t border-border/60 pt-4">
+                  <div className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Remembered
+                  </div>
+                  {rememberedUsers.length > 0 ? (
+                    <div className="space-y-1">
+                      {rememberedUsers.map((user) => (
+                        <button
+                          key={user.username}
+                          type="button"
+                          onClick={() =>
+                            void handleRememberedUserClick(user.username)
+                          }
+                          className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
+                        >
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                            <UserRound className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium">
+                              {user.displayName ?? user.username}
+                            </span>
+                            {user.displayName ? (
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {user.username}
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="px-1 text-xs text-muted-foreground">
+                      Sign in once to remember a username here.
+                    </p>
+                  )}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void handleSignOut()}
+                    className="h-8 w-full justify-start gap-2 px-2 text-xs"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    <span>Sign out</span>
+                  </Button>
+                </div>
+                {showVersionFooter && (
                   <TooltipProvider>
                     <div className="flex flex-col items-start gap-2">
                       <a
@@ -140,8 +230,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
                       </Button>
                     </div>
                   </TooltipProvider>
-                </div>
-              )}
+                )}
+              </div>
             </SheetContent>
           </Sheet>
 

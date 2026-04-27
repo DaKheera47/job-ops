@@ -174,6 +174,23 @@ describe("API client auth flow", () => {
     expect(redirectToSignIn).toHaveBeenCalledTimes(1);
   });
 
+  it("can logout without redirecting for account switching", async () => {
+    api.__setAuthTokenForTests("switch-token");
+
+    vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      createJsonResponse(200, {
+        ok: true,
+        data: { message: "Logged out" },
+        meta: { requestId: "req-1" },
+      }),
+    );
+
+    await api.logout({ redirect: false });
+
+    expect(api.getCachedAuthHeader()).toBeUndefined();
+    expect(redirectToSignIn).not.toHaveBeenCalled();
+  });
+
   it("sends the full automatic run payload to the pipeline API", async () => {
     const fetchSpy = vi.spyOn(global, "fetch");
     fetchSpy.mockResolvedValueOnce(

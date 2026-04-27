@@ -374,7 +374,9 @@ export async function recoverAuthHeaderAfterUnauthorized(): Promise<
   return recoverAuthSessionFromUnauthorized();
 }
 
-export async function logout(): Promise<void> {
+export async function logout(
+  options: { redirect?: boolean } = {},
+): Promise<void> {
   if (cachedAuthToken) {
     try {
       await fetch("/api/auth/logout", {
@@ -386,7 +388,9 @@ export async function logout(): Promise<void> {
     }
   }
   clearAuthSession();
-  redirectToSignIn();
+  if (options.redirect ?? true) {
+    redirectToSignIn();
+  }
 }
 
 export function getCachedAuthHeader(): string | undefined {

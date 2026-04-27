@@ -34,6 +34,7 @@ import {
 describe("SignInPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     vi.mocked(getAuthBootstrapStatus).mockResolvedValue({
       setupRequired: false,
     });
@@ -80,5 +81,40 @@ describe("SignInPage", () => {
       expect(signInWithCredentials).toHaveBeenCalledWith("admin", "secret");
       expect(screen.getByText("ready-page")).toBeInTheDocument();
     });
+  });
+
+  it("prefills a remembered username but still requires a password", async () => {
+    localStorage.setItem(
+      "jobops.rememberedAuthUsers",
+      JSON.stringify([
+        {
+          username: "remembered-admin",
+          displayName: null,
+          rememberedAt: Date.now(),
+        },
+      ]),
+    );
+
+    render(
+      <MemoryRouter initialEntries={["/sign-in?user=remembered-admin"]}>
+        <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(restoreAuthSessionFromLegacyCredentials).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByLabelText("Username")).toHaveValue("remembered-admin");
+    expect(screen.getByLabelText("Password")).toHaveValue("");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Enter both username and password.",
+    );
+    expect(signInWithCredentials).not.toHaveBeenCalled();
   });
 });
