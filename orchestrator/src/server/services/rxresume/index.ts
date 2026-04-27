@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { getSetting } from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { pickProjectIdsForJob } from "@server/services/projectSelection";
 import { resolveResumeProjectsSettings } from "@server/services/resumeProjects";
 import {
@@ -212,13 +213,13 @@ async function readV5Credentials(overrides?: ResolveModeOptions["v5"]) {
     overrideValue: overrides?.apiKey,
     hasOverride: hasOverrideKey(overrides, "apiKey"),
     storedValue: storedApiKey,
-    envValue: process.env.RXRESUME_API_KEY,
+    envValue: getOriginalEnvValue("RXRESUME_API_KEY"),
   });
   const baseUrl = resolveOverrideValue({
     overrideValue: overrides?.baseUrl,
     hasOverride: hasOverrideKey(overrides, "baseUrl"),
     storedValue: storedBaseUrl,
-    envValue: process.env.RXRESUME_URL,
+    envValue: getOriginalEnvValue("RXRESUME_URL"),
     fallback: "https://rxresu.me",
   });
 

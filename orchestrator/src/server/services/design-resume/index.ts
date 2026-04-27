@@ -15,6 +15,7 @@ import {
   parseV5ResumeData,
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema/v5";
+import { getActiveTenantId } from "@server/tenancy/context";
 import type {
   DesignResumeAsset,
   DesignResumeDocument,
@@ -34,6 +35,10 @@ const LEGACY_REIMPORT_MESSAGE =
   "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
 const INVALID_V5_PREFIX =
   "Design Resume must be a valid Reactive Resume v5 document.";
+
+function buildTenantScopedDesignResumeDocumentId(): string {
+  return `${DESIGN_RESUME_DEFAULT_ID}_${getActiveTenantId()}`;
+}
 
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
@@ -374,7 +379,7 @@ export async function replaceCurrentDesignResumeDocument(input: {
   const existingDocument = await getCurrentDesignResumeOrNullOnLegacy();
   const importedAt = input.importedAt ?? new Date().toISOString();
   const saved = await designResumeRepo.upsertDesignResumeDocument({
-    id: DESIGN_RESUME_DEFAULT_ID,
+    id: existingDocument?.id ?? buildTenantScopedDesignResumeDocumentId(),
     title: buildDocumentTitle(input.resumeJson),
     resumeJson: input.resumeJson,
     revision: 1,

@@ -16,6 +16,10 @@ describe("manual job inference", () => {
     process.env = { ...originalEnv, OPENROUTER_API_KEY: "test-key" };
     global.fetch = vi.fn();
     vi.mocked(settingsRepo.getSetting).mockResolvedValue(null);
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      llmProvider: "openrouter",
+      llmApiKey: "test-key",
+    });
   });
 
   afterEach(() => {
@@ -26,6 +30,7 @@ describe("manual job inference", () => {
 
   it("returns a warning when the API key is missing", async () => {
     delete process.env.OPENROUTER_API_KEY;
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
 
     const result = await inferManualJobDetails("JD text");
 

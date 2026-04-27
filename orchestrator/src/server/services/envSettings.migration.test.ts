@@ -31,7 +31,7 @@ describe.sequential("envSettings overrides", () => {
     process.env = { ...originalEnv };
   });
 
-  it("applies stored llmApiKey override to process env", async () => {
+  it("keeps stored llmApiKey overrides out of process env", async () => {
     const settingsRepo = await import("../repositories/settings");
     const { applyStoredEnvOverrides } = await import("./envSettings");
 
@@ -40,10 +40,10 @@ describe.sequential("envSettings overrides", () => {
     await applyStoredEnvOverrides();
 
     expect(await settingsRepo.getSetting("llmApiKey")).toBe("sk-db-override");
-    expect(process.env.LLM_API_KEY).toBe("sk-db-override");
+    expect(process.env.LLM_API_KEY).toBe("sk-env-default");
   });
 
-  it("restores default env value when override is explicitly cleared", async () => {
+  it("leaves process env unchanged when override is explicitly cleared", async () => {
     const settingsRepo = await import("../repositories/settings");
     const { applyStoredEnvOverrides } = await import("./envSettings");
 

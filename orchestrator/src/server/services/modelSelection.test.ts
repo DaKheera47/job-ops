@@ -28,7 +28,9 @@ describe("Model Selection Logic", () => {
       MODEL: "env-model",
     };
 
-    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      llmApiKey: "test-key",
+    });
     vi.mocked(settingsRepo.getSetting).mockResolvedValue(null);
     vi.mocked(getEffectiveSettings).mockResolvedValue({
       model: { value: "env-model", default: "env-model", override: null },

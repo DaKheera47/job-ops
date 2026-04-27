@@ -1,7 +1,9 @@
 import type { ResumeProfile } from "@shared/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const callJsonMock = vi.fn();
+const { callJsonMock } = vi.hoisted(() => ({
+  callJsonMock: vi.fn(),
+}));
 
 vi.mock("./llm/service", () => ({
   LlmService: class {
@@ -10,6 +12,9 @@ vi.mock("./llm/service", () => ({
 }));
 
 vi.mock("@server/services/modelSelection", () => ({
+  createConfiguredLlmService: vi.fn().mockResolvedValue({
+    callJson: callJsonMock,
+  }),
   resolveLlmModel: vi.fn().mockResolvedValue("test-model"),
 }));
 

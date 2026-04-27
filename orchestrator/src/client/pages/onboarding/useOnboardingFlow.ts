@@ -249,12 +249,20 @@ export function useOnboardingFlow() {
     async (options?: { markChecked?: boolean }) => {
       setIsValidatingRxresume(true);
       try {
+        const preserveBlankFields = isRxResumeSelfHosted
+          ? undefined
+          : (["baseUrl"] as const);
         const result = await validateAndMaybePersistRxResumeMode({
           stored: storedRxResume,
           draft: getRxResumeCredentialDrafts({
             ...getValues(),
             rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
           }),
+          validationPayloadOptions: preserveBlankFields
+            ? {
+                preserveBlankFields: [...preserveBlankFields],
+              }
+            : undefined,
           validate: api.validateRxresume,
           getPrecheckMessage: () =>
             "v5 API key required. Add a v5 API key, then test again.",
@@ -464,9 +472,17 @@ export function useOnboardingFlow() {
     try {
       setIsValidatingRxresume(true);
       let nextSettings: AppSettings | null = null;
+      const preserveBlankFields = isRxResumeSelfHosted
+        ? undefined
+        : (["baseUrl"] as const);
       const result = await validateAndMaybePersistRxResumeMode({
         stored: storedRxResume,
         draft: draftCredentials,
+        validationPayloadOptions: preserveBlankFields
+          ? {
+              preserveBlankFields: [...preserveBlankFields],
+            }
+          : undefined,
         validate: api.validateRxresume,
         persist: async (update: Parameters<typeof api.updateSettings>[0]) => {
           setIsSaving(true);

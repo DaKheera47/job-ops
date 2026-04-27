@@ -275,6 +275,103 @@ describe("importDesignResumeFromFile", () => {
     );
   });
 
+  it("uses the OpenRouter PDF parser instead of requiring native file input", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "openrouter",
+      model: "google/gemini-3-flash-preview",
+      baseUrl: null,
+      apiKey: "or-test",
+    });
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: `{"basics":{"name":"Taylor Quinn"}}`,
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    const fetchCall = vi.mocked(fetch).mock.calls[0];
+    const body =
+      fetchCall?.[1] && "body" in fetchCall[1] ? fetchCall[1].body : "";
+    expect(String(body)).toContain('"engine":"cloudflare-ai"');
+    expect(String(body)).not.toContain('"engine":"native"');
+  });
+
+  it("retries OpenRouter PDF extraction with a fallback parser engine", async () => {
+    modelSelection.resolveLlmRuntimeSettings.mockResolvedValueOnce({
+      provider: "openrouter",
+      model: "google/gemini-3-flash-preview",
+      baseUrl: null,
+      apiKey: "or-test",
+    });
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              message: "PDF parser could not process this document.",
+            },
+          }),
+          {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: `{"basics":{"name":"Taylor Quinn"}}`,
+                },
+              },
+            ],
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+
+    await importDesignResumeFromFile({
+      fileName: "resume.pdf",
+      mediaType: "application/pdf",
+      dataBase64: Buffer.from("pdf-data").toString("base64"),
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const firstCall = vi.mocked(fetch).mock.calls[0];
+    const secondCall = vi.mocked(fetch).mock.calls[1];
+    const firstInit = firstCall?.[1];
+    const secondInit = secondCall?.[1];
+    const firstBody =
+      firstInit && "body" in firstInit ? String(firstInit.body) : "";
+    const secondBody =
+      secondInit && "body" in secondInit ? String(secondInit.body) : "";
+
+    expect(firstBody).toContain('"engine":"cloudflare-ai"');
+    expect(secondBody).toContain('"engine":"mistral-ocr"');
+  });
+
   it("allows a base64 payload exactly at the 10 MB limit", async () => {
     vi.mocked(fetch).mockResolvedValue(
       new Response(

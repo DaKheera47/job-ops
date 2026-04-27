@@ -5,10 +5,9 @@
 import { logger } from "@infra/logger";
 import { getDefaultPromptTemplate } from "@shared/prompt-template-definitions.js";
 import type { Job } from "@shared/types";
-import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { stripMarkdownCodeFences } from "./llm/utils/json";
-import { resolveLlmModel } from "./modelSelection";
+import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import { renderPromptTemplate } from "./prompt-templates";
 import { getEffectiveSettings } from "./settings";
 
@@ -103,7 +102,7 @@ export async function scoreJobSuitability(
       getDefaultPromptTemplate("scoringPromptTemplate"),
   });
 
-  const llm = new LlmService();
+  const llm = await createConfiguredLlmService();
   const result = await llm.callJson<{ score: number; reason: string }>({
     model,
     messages: [{ role: "user", content: prompt }],

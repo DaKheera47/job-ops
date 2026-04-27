@@ -4,9 +4,8 @@
 
 import { logger } from "@infra/logger";
 import type { ResumeProfile } from "@shared/types";
-import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
-import { resolveLlmModel } from "./modelSelection";
+import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import {
   getWritingLanguageLabel,
   resolveWritingOutputLanguage,
@@ -91,7 +90,7 @@ export async function generateTailoring(
     writingStyle,
   );
 
-  const llm = new LlmService();
+  const llm = await createConfiguredLlmService();
   const result = await llm.callJson<TailoredData>({
     model,
     messages: [{ role: "user", content: prompt }],

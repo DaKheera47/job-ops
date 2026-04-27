@@ -1,6 +1,8 @@
-import { LlmService } from "@server/services/llm/service";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
-import { resolveLlmModel } from "@server/services/modelSelection";
+import {
+  createConfiguredLlmService,
+  resolveLlmModel,
+} from "@server/services/modelSelection";
 import {
   messageTypeFromStageTarget,
   normalizeStageTarget,
@@ -160,7 +162,7 @@ ${llmEmailText}`,
     },
   ];
 
-  const llm = new LlmService();
+  const llm = await createConfiguredLlmService();
   const result = await llm.callJson<{
     bestMatchIndex: number | null;
     confidence: number;

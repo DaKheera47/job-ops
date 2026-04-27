@@ -1,4 +1,6 @@
 import * as settingsRepo from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
+import { LlmService } from "@server/services/llm/service";
 import { getEffectiveSettings } from "@server/services/settings";
 import { getDefaultModelForProvider } from "@shared/settings-registry";
 
@@ -25,8 +27,9 @@ function resolveDefaultModelFromSettings(
   return (
     readStringSettingValue(settings?.model) ??
     getDefaultModelForProvider(
-      readStringSettingValue(settings?.llmProvider) ?? process.env.LLM_PROVIDER,
-      process.env.MODEL,
+      readStringSettingValue(settings?.llmProvider) ??
+        getOriginalEnvValue("LLM_PROVIDER"),
+      getOriginalEnvValue("MODEL"),
     )
   );
 }
@@ -86,6 +89,15 @@ export async function resolveLlmRuntimeSettings(
     model,
     provider: readStringSettingValue(settings?.llmProvider),
     baseUrl: readStringSettingValue(settings?.llmBaseUrl),
-    apiKey: overrides?.llmApiKey || process.env.LLM_API_KEY || null,
+    apiKey: overrides?.llmApiKey || getOriginalEnvValue("LLM_API_KEY") || null,
   };
+}
+
+export async function createConfiguredLlmService(): Promise<LlmService> {
+  const runtime = await resolveLlmRuntimeSettings();
+  return new LlmService({
+    provider: runtime.provider,
+    baseUrl: runtime.baseUrl,
+    apiKey: runtime.apiKey,
+  });
 }

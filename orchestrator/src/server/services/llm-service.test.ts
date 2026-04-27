@@ -41,7 +41,7 @@ describe("LlmService", () => {
   it("returns error when API key is missing", async () => {
     delete process.env.OPENROUTER_API_KEY;
 
-    const llm = new LlmService();
+    const llm = new LlmService({ provider: "openrouter" });
     const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
@@ -66,10 +66,13 @@ describe("LlmService", () => {
       }),
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
 
-    // Backwards-compat: OPENROUTER_API_KEY should be copied to LLM_API_KEY.
-    expect(process.env.LLM_API_KEY).toBe("test-api-key");
+    // Backwards-compat should not mutate the process-wide environment.
+    expect(process.env.LLM_API_KEY).toBeUndefined();
 
     const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
@@ -91,7 +94,10 @@ describe("LlmService", () => {
       text: async () => "Internal Server Error",
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
     const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
@@ -112,7 +118,10 @@ describe("LlmService", () => {
       }),
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
     const result = await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
@@ -133,7 +142,10 @@ describe("LlmService", () => {
       }),
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
     await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test prompt" }],
@@ -157,7 +169,10 @@ describe("LlmService", () => {
       }),
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
     await llm.callJson({
       model: "test-model",
       messages: [{ role: "user", content: "test prompt" }],
@@ -198,7 +213,10 @@ describe("LlmService", () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "openrouter",
+      apiKey: "test-api-key",
+    });
     const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
@@ -254,7 +272,7 @@ describe("LlmService", () => {
       } as Response;
     });
 
-    const llm = new LlmService();
+    const llm = new LlmService({ provider: "lmstudio" });
     const result = await llm.callJson<{ value: string; count: number }>({
       model: "test-model",
       messages: [{ role: "user", content: "test" }],
@@ -279,7 +297,10 @@ describe("LlmService", () => {
       json: async () => ({ models: [] }),
     } as Response);
 
-    const llm = new LlmService();
+    const llm = new LlmService({
+      provider: "gemini",
+      apiKey: "AIza-valid-gemini-key",
+    });
     const result = await llm.validateCredentials();
 
     expect(result.valid).toBe(true);

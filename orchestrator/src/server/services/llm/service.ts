@@ -1,4 +1,5 @@
 import { logger } from "@infra/logger";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { toStringOrNull } from "@shared/utils/type-conversion";
 import { CodexClient } from "./codex/client";
 import {
@@ -37,10 +38,10 @@ export class LlmService {
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
       toStringOrNull(options.baseUrl) ||
-      toStringOrNull(process.env.LLM_BASE_URL) ||
+      toStringOrNull(getOriginalEnvValue("LLM_BASE_URL")) ||
       null;
     const resolvedProvider = normalizeProvider(
-      options.provider ?? process.env.LLM_PROVIDER ?? null,
+      options.provider ?? getOriginalEnvValue("LLM_PROVIDER") ?? null,
       normalizedBaseUrl,
     );
 
@@ -49,7 +50,7 @@ export class LlmService {
 
     let apiKey =
       toStringOrNull(options.apiKey) ||
-      toStringOrNull(process.env.LLM_API_KEY) ||
+      toStringOrNull(getOriginalEnvValue("LLM_API_KEY")) ||
       null;
 
     // Backwards-compat migration: OPENROUTER_API_KEY -> LLM_API_KEY.
@@ -57,14 +58,15 @@ export class LlmService {
     if (
       !apiKey &&
       resolvedProvider === "openrouter" &&
-      toStringOrNull(process.env.OPENROUTER_API_KEY)
+      toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
     ) {
       logger.warn(
         "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
       );
-      const migrated = toStringOrNull(process.env.OPENROUTER_API_KEY);
+      const migrated = toStringOrNull(
+        getOriginalEnvValue("OPENROUTER_API_KEY"),
+      );
       if (migrated) {
-        process.env.LLM_API_KEY = migrated;
         apiKey = migrated;
       }
     }

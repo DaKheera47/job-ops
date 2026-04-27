@@ -45,9 +45,15 @@ describe("rxresume v5 endpoints", () => {
   it("normalizes base URL and calls /api/openapi", async () => {
     const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
     vi.stubGlobal("fetch", mockFetch);
-    vi.stubEnv("RXRESUME_API_KEY", "test-key");
 
-    await fetchRxResume("/resumes", {}, { baseUrl: "https://rxresu.me/api" });
+    await fetchRxResume(
+      "/resumes",
+      {},
+      {
+        baseUrl: "https://rxresu.me/api",
+        apiKey: "test-key",
+      },
+    );
 
     expect(mockFetch).toHaveBeenCalledWith(
       "https://rxresu.me/api/openapi/resumes",
@@ -70,16 +76,14 @@ describe("rxresume v5 endpoints", () => {
         jsonResponse({ url: "https://rxresu.me/storage/resume-123.pdf" }),
       );
     vi.stubGlobal("fetch", mockFetch);
-    vi.stubEnv("RXRESUME_API_KEY", "test-key");
 
-    await listResumes({ baseUrl: "https://rxresu.me" });
-    await getResume("resume-123", { baseUrl: "https://rxresu.me" });
-    await importResume(
-      { data: sampleResume, name: "Imported Resume" },
-      { baseUrl: "https://rxresu.me" },
-    );
-    await deleteResume("resume-123", { baseUrl: "https://rxresu.me" });
-    await exportResumePdf("resume-123", { baseUrl: "https://rxresu.me" });
+    const config = { baseUrl: "https://rxresu.me", apiKey: "test-key" };
+
+    await listResumes(config);
+    await getResume("resume-123", config);
+    await importResume({ data: sampleResume, name: "Imported Resume" }, config);
+    await deleteResume("resume-123", config);
+    await exportResumePdf("resume-123", config);
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -123,12 +127,11 @@ describe("rxresume v5 endpoints", () => {
       .fn()
       .mockResolvedValue(jsonResponse(errorPayload, false, 400));
     vi.stubGlobal("fetch", mockFetch);
-    vi.stubEnv("RXRESUME_API_KEY", "test-key");
 
     await expect(
       importResume(
         { data: sampleResume, name: "Imported Resume" },
-        { baseUrl: "https://rxresu.me" },
+        { baseUrl: "https://rxresu.me", apiKey: "test-key" },
       ),
     ).rejects.toThrow("Reactive Resume API error (400)");
 

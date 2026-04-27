@@ -37,6 +37,9 @@ vi.mock("@server/services/rxresume", () => ({
 vi.mock("@server/services/tracer-links", () => ({
   resolveTracerPublicBaseUrl: vi.fn(() => null),
 }));
+vi.mock("@server/tenancy/context", () => ({
+  getActiveTenantId: vi.fn(() => "tenant-test-2"),
+}));
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
   default: {
@@ -56,6 +59,7 @@ import {
   getCurrentDesignResumeOrNullOnLegacy,
   importDesignResumeFromReactiveResume,
   readDesignResumeAssetContent,
+  replaceCurrentDesignResumeDocument,
   updateCurrentDesignResume,
   uploadDesignResumePicture,
 } from "./design-resume";
@@ -125,6 +129,23 @@ describe("design resume service", () => {
         ],
       }),
     ).rejects.toThrow("Invalid array patch path");
+  });
+
+  it("uses a tenant-scoped design resume id on first import for a tenant", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(null);
+
+    await replaceCurrentDesignResumeDocument({
+      importedAt: "2026-04-11T00:00:00.000Z",
+      resumeJson: makeValidResumeJson(),
+      sourceResumeId: null,
+      sourceMode: null,
+    });
+
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "primary_tenant-test-2",
+      }),
+    );
   });
 
   it("preserves an explicit picture hidden flag during updates", async () => {

@@ -7,7 +7,6 @@ vi.mock("@server/repositories/settings", () => ({
 }));
 
 vi.mock("@server/services/envSettings", () => ({
-  applyEnvValue: vi.fn(),
   normalizeEnvInput: (value: string | null | undefined) => {
     const trimmed = value?.trim();
     return trimmed ? trimmed : null;
@@ -28,9 +27,8 @@ describe("applySettingsUpdates", () => {
     vi.clearAllMocks();
   });
 
-  it("applies representative handlers and env side effects", async () => {
+  it("applies representative handlers without mutating process env", async () => {
     const settingsRepo = await import("@server/repositories/settings");
-    const envSettings = await import("@server/services/envSettings");
 
     const plan = await applySettingsUpdates({
       model: "gpt-4o-mini",
@@ -53,18 +51,6 @@ describe("applySettingsUpdates", () => {
         ["adzunaAppId", "app-id"],
         ["adzunaAppKey", "app-key"],
       ]),
-    );
-    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
-      "LLM_PROVIDER",
-      "openai",
-    );
-    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
-      "ADZUNA_APP_ID",
-      "app-id",
-    );
-    expect(envSettings.applyEnvValue).toHaveBeenCalledWith(
-      "ADZUNA_APP_KEY",
-      "app-key",
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
     expect(plan.shouldClearRxResumeCaches).toBe(false);

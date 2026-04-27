@@ -12,6 +12,7 @@ import { getRequestId } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { setBackupSettings } from "@server/services/backup/index";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
   disconnectCodexAuth,
   getCodexDeviceAuthSnapshot,
@@ -192,13 +193,21 @@ async function resolveLlmConfig(input: {
     input.baseUrl !== undefined && input.baseUrl !== null;
   const baseUrl = usesBaseUrl
     ? hasExplicitBaseUrlOverride
-      ? input.baseUrl?.trim() || getDefaultValidationBaseUrl(provider)
-      : storedBaseUrl?.trim() || getDefaultValidationBaseUrl(provider)
+      ? input.baseUrl?.trim() ||
+        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        getDefaultValidationBaseUrl(provider)
+      : storedBaseUrl?.trim() ||
+        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        getDefaultValidationBaseUrl(provider)
     : undefined;
 
   return {
     provider,
-    apiKey: input.apiKey?.trim() || storedApiKey?.trim() || null,
+    apiKey:
+      input.apiKey?.trim() ||
+      storedApiKey?.trim() ||
+      getOriginalEnvValue("LLM_API_KEY")?.trim() ||
+      null,
     baseUrl,
   };
 }

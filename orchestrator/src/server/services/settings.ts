@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import * as settingsRepo from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
   getDefaultModelForProvider,
   settingsRegistry,
@@ -91,7 +92,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const resolvedModelDefault =
     normalizeModelForProviderCompatibility(
       effectiveLlmProvider,
-      getDefaultModelForProvider(effectiveLlmProvider, process.env.MODEL),
+      getDefaultModelForProvider(
+        effectiveLlmProvider,
+        getOriginalEnvValue("MODEL"),
+      ),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
   const rxresumeBaseResumeId = resolveRxResumeBaseResumeId({
@@ -170,7 +174,8 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         const provider =
           effectiveLlmProvider ?? settingsRegistry.llmProvider.default();
         defaultValue =
-          process.env.LLM_BASE_URL || resolveDefaultLlmBaseUrl(provider);
+          getOriginalEnvValue("LLM_BASE_URL") ||
+          resolveDefaultLlmBaseUrl(provider);
       }
 
       if (key === "resumeProjects") {

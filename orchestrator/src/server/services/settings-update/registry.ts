@@ -1,6 +1,6 @@
 import type { SettingKey } from "@server/repositories/settings";
 import * as settingsRepo from "@server/repositories/settings";
-import { applyEnvValue, normalizeEnvInput } from "@server/services/envSettings";
+import { normalizeEnvInput } from "@server/services/envSettings";
 import { getProfile } from "@server/services/profile";
 import {
   extractProjectsFromProfile,
@@ -86,7 +86,6 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
   const targetKey =
     def.kind === "alias" ? (def.target as SettingKey) : (key as SettingKey);
   const isBackup = key.startsWith("backup");
-  const hasEnvKey = "envKey" in def && !!def.envKey;
 
   // Special case for resumeProjects
   if (key === "resumeProjects") {
@@ -133,13 +132,6 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
       serialized = normalizeEnvInput(value as string);
     }
 
-    const sideEffect = hasEnvKey
-      ? () => {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          // biome-ignore lint/suspicious/noExplicitAny: def is constrained by kind
-          applyEnvValue((def as any).envKey, serialized);
-        }
-      : undefined;
     const deferred: DeferredSideEffect[] = [];
     if (isBackup) {
       deferred.push("refreshBackupScheduler");
@@ -157,7 +149,7 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
 
     return result({
       actions: [
-        persistAction(targetKey, serialized, sideEffect),
+        persistAction(targetKey, serialized),
         ...legacyKeysToClear.map((legacyKey) => persistAction(legacyKey, null)),
       ],
       deferred,

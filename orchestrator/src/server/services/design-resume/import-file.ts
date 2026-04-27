@@ -745,20 +745,49 @@ function buildCapabilityErrorMessage(provider: string): string {
 
 function isFileCapabilityError(message: string): boolean {
   const normalized = message.toLowerCase();
-  return [
+  const fileSignal = [
     "input file",
     "input-file",
-    "pdf",
-    "document",
-    "inline_data",
-    "inline data",
     "input_file",
     "file_data",
     "file data",
+    "inline_data",
+    "inline data",
+    "attachment",
+    "attached file",
+  ].some((pattern) => normalized.includes(pattern));
+  const capabilitySignal = [
+    "does not support",
+    "not support",
     "unsupported",
-    "vision",
+    "not available",
+    "native file support",
     "native",
     "modality",
+  ].some((pattern) => normalized.includes(pattern));
+  return fileSignal && capabilitySignal;
+}
+
+function shouldRetryOpenRouterPdfWithAlternateEngine(input: {
+  status: number;
+  message: string;
+}): boolean {
+  if (input.status < 400 || input.status >= 500) {
+    return false;
+  }
+
+  const normalized = input.message.toLowerCase();
+  return [
+    "file",
+    "pdf",
+    "document",
+    "attachment",
+    "parser",
+    "plugin",
+    "input_file",
+    "file_data",
+    "inline_data",
+    "native",
   ].some((pattern) => normalized.includes(pattern));
 }
 
@@ -855,79 +884,105 @@ async function extractWithOpenRouter(args: {
     args.baseUrl || "https://openrouter.ai",
     "/api/v1/chat/completions",
   );
-  const response = await fetch(url, {
-    method: "POST",
-    headers: buildHeaders({
-      apiKey: args.apiKey,
-      provider: "openrouter",
-    }),
-    body: JSON.stringify({
-      model: args.model,
-      stream: false,
-      response_format: {
-        type: "json_object",
-      },
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
+  const pdfEngines =
+    args.mediaType === "application/pdf"
+      ? (["cloudflare-ai", "mistral-ocr", null] as const)
+      : ([null] as const);
+
+  let lastError: AppError | null = null;
+  for (const engine of pdfEngines) {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: buildHeaders({
+        apiKey: args.apiKey,
+        provider: "openrouter",
+      }),
+      body: JSON.stringify({
+        model: args.model,
+        stream: false,
+        response_format: {
+          type: "json_object",
         },
-        {
-          role: "user",
-          content: args.documentText
-            ? buildDocxPrompt(args.documentText, args.fileName)
-            : [
+        messages: [
+          {
+            role: "system",
+            content: SYSTEM_PROMPT,
+          },
+          {
+            role: "user",
+            content: args.documentText
+              ? buildDocxPrompt(args.documentText, args.fileName)
+              : [
+                  {
+                    type: "text",
+                    text: buildUserPrompt(),
+                  },
+                  {
+                    type: "file",
+                    file: {
+                      filename: args.fileName,
+                      file_data: buildDataUrl(args.mediaType, args.dataBase64),
+                    },
+                  },
+                ],
+          },
+        ],
+        ...(args.mediaType === "application/pdf" && engine
+          ? {
+              plugins: [
                 {
-                  type: "text",
-                  text: buildUserPrompt(),
-                },
-                {
-                  type: "file",
-                  file: {
-                    filename: args.fileName,
-                    file_data: buildDataUrl(args.mediaType, args.dataBase64),
+                  id: "file-parser",
+                  pdf: {
+                    engine,
                   },
                 },
               ],
-        },
-      ],
-      ...(args.mediaType === "application/pdf"
-        ? {
-            plugins: [
-              {
-                id: "file-parser",
-                pdf: {
-                  engine: "native",
-                },
-              },
-            ],
-          }
-        : {}),
-    }),
-    signal: AbortSignal.timeout(OPENROUTER_DEFAULT_TIMEOUT_MS),
-  });
-
-  if (!response.ok) {
-    const detail = parseErrorMessage(await getResponseDetail(response));
-    throw new AppError({
-      status: response.status >= 500 ? 502 : 503,
-      message: detail || `OpenRouter returned ${response.status}.`,
-      details: {
-        provider: "openrouter",
-        model: args.model,
-        requestId: args.requestId ?? null,
-      },
+            }
+          : {}),
+      }),
+      signal: AbortSignal.timeout(OPENROUTER_DEFAULT_TIMEOUT_MS),
     });
+
+    if (!response.ok) {
+      const detail = parseErrorMessage(await getResponseDetail(response));
+      const appError = new AppError({
+        status: response.status >= 500 ? 502 : 503,
+        message: detail || `OpenRouter returned ${response.status}.`,
+        details: {
+          provider: "openrouter",
+          model: args.model,
+          requestId: args.requestId ?? null,
+          pdfEngine: engine,
+        },
+      });
+
+      lastError = appError;
+      if (
+        args.mediaType !== "application/pdf" ||
+        !shouldRetryOpenRouterPdfWithAlternateEngine({
+          status: response.status,
+          message: appError.message,
+        })
+      ) {
+        throw appError;
+      }
+      continue;
+    }
+
+    const payload = await response.json();
+    const text = extractChatCompletionText(payload);
+    if (!text) {
+      throw upstreamError(
+        "OpenRouter returned an empty response for resume import.",
+      );
+    }
+    return text;
   }
 
-  const payload = await response.json();
-  const text = extractChatCompletionText(payload);
-  if (!text) {
-    throw upstreamError(
-      "OpenRouter returned an empty response for resume import.",
-    );
-  }
-  return text;
+  throw (
+    lastError ??
+    upstreamError("OpenRouter returned an empty response for resume import.")
+  );
 }
 
 async function extractWithGemini(args: {

@@ -1,6 +1,7 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
 import { logger } from "@infra/logger";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { parseV5ResumeData } from "./schema/v5";
 
 type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
@@ -74,7 +75,7 @@ async function executeWithKeyRetries(
   options: RequestInit,
   apiKeyOverride?: string,
 ): Promise<unknown> {
-  const rawApiKey = apiKeyOverride ?? process.env.RXRESUME_API_KEY;
+  const rawApiKey = apiKeyOverride ?? getOriginalEnvValue("RXRESUME_API_KEY");
   if (!rawApiKey) {
     throw new Error("RXRESUME_API_KEY not configured in environment");
   }
@@ -153,7 +154,9 @@ export async function fetchRxResume(
   config?: RxResumeApiConfig,
 ): Promise<unknown> {
   const baseUrl =
-    config?.baseUrl ?? process.env.RXRESUME_URL ?? "https://rxresu.me";
+    config?.baseUrl ??
+    getOriginalEnvValue("RXRESUME_URL") ??
+    "https://rxresu.me";
   const url = `${cleanBaseUrl(baseUrl)}/api/openapi${path}`;
   return executeWithKeyRetries(url, options, config?.apiKey);
 }

@@ -106,6 +106,9 @@ export const buildRxResumeSettingsUpdate = (
 type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
+  validationPayloadOptions?: {
+    preserveBlankFields?: Array<keyof RxResumeCredentialDrafts>;
+  };
   validate: (
     payload: ReturnType<typeof toRxResumeValidationPayload>,
   ) => Promise<ValidationResult>;
@@ -131,6 +134,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   const {
     stored,
     draft,
+    validationPayloadOptions,
     validate,
     persist,
     persistOnSuccess = false,
@@ -164,7 +168,9 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
 
   let validation: ValidationResult;
   try {
-    validation = await validate(toRxResumeValidationPayload(draft));
+    validation = await validate(
+      toRxResumeValidationPayload(draft, validationPayloadOptions),
+    );
   } catch (error) {
     return {
       validation: {

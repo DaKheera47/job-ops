@@ -1,5 +1,6 @@
 import { createJob } from "@shared/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as settingsRepo from "../repositories/settings";
 import { pickProjectIdsForJob } from "./projectSelection";
 import { scoreJobSuitability } from "./scorer";
 
@@ -30,6 +31,10 @@ describe("AI Service Resilience", () => {
     global.fetch = vi.fn();
     delete process.env.LLM_API_KEY;
     process.env.OPENROUTER_API_KEY = "mock-key"; // Ensure logic tries to call API
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      llmProvider: "openrouter",
+      llmApiKey: "mock-key",
+    });
   });
 
   afterEach(() => {
@@ -63,6 +68,7 @@ describe("AI Service Resilience", () => {
 
     it("should fallback to mock scoring if API Key is missing", async () => {
       delete process.env.OPENROUTER_API_KEY;
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
 
       // Should NOT call fetch
       const result = await scoreJobSuitability(mockJob, mockProfile);

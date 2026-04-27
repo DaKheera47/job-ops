@@ -3,6 +3,7 @@ import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
 import { getDesignResumeStatus } from "@server/services/design-resume";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { LlmService } from "@server/services/llm/service";
 import { suggestOnboardingSearchTerms } from "@server/services/onboarding-search-terms";
 import {
@@ -54,10 +55,17 @@ async function validateLlm(options: {
   const resolvedBaseUrl = shouldUseBaseUrl
     ? hasExplicitBaseUrlOverride
       ? options.baseUrl?.trim() ||
+        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
         getDefaultValidationBaseUrl(normalizedProvider)
-      : storedBaseUrl?.trim() || undefined
+      : storedBaseUrl?.trim() ||
+        getOriginalEnvValue("LLM_BASE_URL")?.trim() ||
+        undefined
     : undefined;
-  const resolvedApiKey = options.apiKey?.trim() || storedApiKey?.trim() || null;
+  const resolvedApiKey =
+    options.apiKey?.trim() ||
+    storedApiKey?.trim() ||
+    getOriginalEnvValue("LLM_API_KEY")?.trim() ||
+    null;
 
   logger.debug("LLM onboarding validation resolved config", {
     provider: normalizedProvider ?? null,
@@ -151,10 +159,10 @@ async function validateRxresume(options?: {
   const resolvedBaseUrl =
     options?.baseUrl !== undefined && options?.baseUrl !== null
       ? options.baseUrl.trim() ||
-        process.env.RXRESUME_URL?.trim() ||
+        getOriginalEnvValue("RXRESUME_URL")?.trim() ||
         "https://rxresu.me"
       : storedBaseUrl?.trim() ||
-        process.env.RXRESUME_URL?.trim() ||
+        getOriginalEnvValue("RXRESUME_URL")?.trim() ||
         "https://rxresu.me";
 
   if (hasExplicitV5Input && !requestApiKey) {

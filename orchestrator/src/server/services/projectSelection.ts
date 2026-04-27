@@ -2,9 +2,8 @@
  * Service for AI-powered project selection for resumes.
  */
 
-import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
-import { resolveLlmModel } from "./modelSelection";
+import { createConfiguredLlmService, resolveLlmModel } from "./modelSelection";
 import type { ResumeProjectSelectionItem } from "./resumeProjects";
 
 /** JSON schema for project selection response */
@@ -43,7 +42,7 @@ export async function pickProjectIdsForJob(args: {
     desiredCount,
   });
 
-  const llm = new LlmService();
+  const llm = await createConfiguredLlmService();
   const result = await llm.callJson<{ selectedProjectIds: string[] }>({
     model,
     messages: [{ role: "user", content: prompt }],

@@ -5,6 +5,10 @@ import type { AppSettings } from "@shared/types";
 
 const envDefaults: Record<string, string | undefined> = { ...process.env };
 
+export function getOriginalEnvValue(envKey: string): string | undefined {
+  return envDefaults[envKey];
+}
+
 export function normalizeEnvInput(
   value: string | null | undefined,
 ): string | null {
@@ -12,41 +16,9 @@ export function normalizeEnvInput(
   return trimmed ? trimmed : null;
 }
 
-export function applyEnvValue(envKey: string, value: string | null): void {
-  if (value === null) {
-    const fallback = envDefaults[envKey];
-    if (fallback === undefined) {
-      delete process.env[envKey];
-    } else {
-      process.env[envKey] = fallback;
-    }
-    return;
-  }
-
-  process.env[envKey] = value;
-}
-
 export async function applyStoredEnvOverrides(): Promise<void> {
-  const safeGetSetting = async (key: SettingKey): Promise<string | null> => {
-    try {
-      return await settingsRepo.getSetting(key);
-    } catch (error) {
-      const msg = String((error as Error)?.message ?? error);
-      if (msg.includes("no such table") && msg.includes("settings")) {
-        return null;
-      }
-      throw error;
-    }
-  };
-
-  const tasks = Object.entries(settingsRegistry).map(async ([key, def]) => {
-    if (!("envKey" in def) || !def.envKey) return;
-    const override = await safeGetSetting(key as SettingKey);
-    if (override === null) return;
-    applyEnvValue(def.envKey, normalizeEnvInput(override));
-  });
-
-  await Promise.all(tasks);
+  // Settings are tenant-scoped. Applying stored overrides to process.env would
+  // leak one tenant's credentials into every other tenant in this Node process.
 }
 
 export async function getEnvSettingsData(
@@ -60,7 +32,7 @@ export async function getEnvSettingsData(
     if (!("envKey" in def) || !def.envKey) continue;
 
     const override = activeOverrides[key as SettingKey] ?? null;
-    const rawValue = override ?? process.env[def.envKey];
+    const rawValue = override ?? getOriginalEnvValue(def.envKey);
 
     if (def.kind === "secret") {
       const hintKey = `${key}Hint` as keyof AppSettings;
@@ -80,10 +52,11 @@ export async function getEnvSettingsData(
   }
 
   const basicAuthUser = normalizeEnvInput(
-    activeOverrides.basicAuthUser ?? process.env.BASIC_AUTH_USER,
+    activeOverrides.basicAuthUser ?? getOriginalEnvValue("BASIC_AUTH_USER"),
   );
   const basicAuthPassword = normalizeEnvInput(
-    activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD,
+    activeOverrides.basicAuthPassword ??
+      getOriginalEnvValue("BASIC_AUTH_PASSWORD"),
   );
   const basicAuthActive = Boolean(basicAuthUser && basicAuthPassword);
 

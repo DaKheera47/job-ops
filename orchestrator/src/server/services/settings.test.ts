@@ -11,6 +11,7 @@ vi.mock("./design-resume", () => ({
 
 vi.mock("./envSettings", () => ({
   getEnvSettingsData: vi.fn(),
+  getOriginalEnvValue: vi.fn(),
 }));
 
 vi.mock("./profile", () => ({
