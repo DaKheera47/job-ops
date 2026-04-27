@@ -1036,6 +1036,21 @@ export const JobPage: React.FC = () => {
           </div>
         </div>
       )}
+      {job?.jobDescription && (
+        <Card className="border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
+              Job description
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <JobDescriptionMarkdown
+              description={getRenderableJobDescription(job.jobDescription)}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card className="border-border/50">
