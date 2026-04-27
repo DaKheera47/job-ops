@@ -114,6 +114,23 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
+  it("allows webhook trigger without JWT auth guard", async () => {
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "POST",
+      path: "/api/webhook/trigger",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(countUsers).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
   it("blocks POST/PATCH/DELETE without auth when authentication is enabled", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 

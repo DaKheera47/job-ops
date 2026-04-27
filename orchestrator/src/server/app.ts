@@ -174,6 +174,11 @@ export function createAuthGuard() {
       normalizedPath === "/api/visa-sponsors/search"
     )
       return true;
+    if (
+      normalizedMethod === "POST" &&
+      normalizedPath === "/api/webhook/trigger"
+    )
+      return true;
 
     // Auth endpoints must be accessible without existing auth.
     if (

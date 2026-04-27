@@ -992,7 +992,8 @@ function seedLegacyOwnerFromBasicAuth(): void {
     .get() as { count: number };
   if (existing.count > 0) return;
 
-  const username = (process.env.BASIC_AUTH_USER || "").trim();
+  const rawUsername = (process.env.BASIC_AUTH_USER || "").trim();
+  const username = rawUsername.toLowerCase();
   const password = (process.env.BASIC_AUTH_PASSWORD || "").trim();
   if (!username || !password) return;
 
@@ -1006,7 +1007,15 @@ function seedLegacyOwnerFromBasicAuth(): void {
       `INSERT INTO users(id, username, display_name, password_hash, password_salt, is_system_admin, is_disabled, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?)`,
     )
-    .run(userId, username, username, passwordHash, passwordSalt, now, now);
+    .run(
+      userId,
+      username,
+      rawUsername || username,
+      passwordHash,
+      passwordSalt,
+      now,
+      now,
+    );
 
   sqlite
     .prepare(
