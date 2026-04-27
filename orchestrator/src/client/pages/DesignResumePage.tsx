@@ -22,6 +22,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,7 +33,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
