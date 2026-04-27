@@ -202,8 +202,9 @@ export function createAuthGuard() {
     // OPTIONS is always exempt for CORS preflight.
     if (method.toUpperCase() === "OPTIONS") return false;
 
-    // Analytics contains PII (IPs, click tracking) — always require auth.
+    // Analytics and per-job tracer details are workspace-private.
     if (path.startsWith("/api/tracer-links/analytics")) return true;
+    if (path.startsWith("/api/tracer-links/jobs")) return true;
 
     // Allow public read access to other tracer link routes.
     if (path.startsWith("/api/tracer-links")) {

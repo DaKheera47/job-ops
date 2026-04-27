@@ -41,7 +41,7 @@ import {
   simulateSummarizeJob,
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
-import { getPdfPath } from "@server/services/pdf";
+import { getPdfPath, pdfExists } from "@server/services/pdf";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -1612,7 +1612,7 @@ jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
 
 jobsRouter.get("/:id/pdf", async (req: Request, res: Response) => {
   const currentJob = await jobsRepo.getJobById(req.params.id);
-  if (!currentJob || !currentJob.pdfPath) {
+  if (!currentJob || !(await pdfExists(req.params.id))) {
     fail(res, notFound("PDF not found"));
     return;
   }
