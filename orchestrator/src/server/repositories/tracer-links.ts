@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db";
+import { getActiveTenantId } from "../tenancy/context";
 
 const { jobs, tracerClickEvents, tracerLinks } = schema;
 const TRACE_CODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -70,7 +71,11 @@ function isUniqueConstraintError(error: unknown): boolean {
 }
 
 function buildEventFilters(args: AnalyticsFilterArgs) {
+  const tenantId = getActiveTenantId();
   const filters = [];
+
+  filters.push(eq(tracerLinks.tenantId, tenantId));
+  filters.push(eq(tracerClickEvents.tenantId, tenantId));
 
   if (typeof args.from === "number") {
     filters.push(gte(tracerClickEvents.clickedAt, args.from));
@@ -101,12 +106,14 @@ export async function getOrCreateTracerLink(args: {
 }): Promise<typeof tracerLinks.$inferSelect> {
   const now = new Date().toISOString();
   const slugPrefix = normalizeSlugPrefix(args.slugPrefix);
+  const tenantId = getActiveTenantId();
 
   const [existing] = await db
     .select()
     .from(tracerLinks)
     .where(
       and(
+        eq(tracerLinks.tenantId, tenantId),
         eq(tracerLinks.jobId, args.jobId),
         eq(tracerLinks.sourcePath, args.sourcePath),
         eq(tracerLinks.destinationUrlHash, args.destinationUrlHash),
@@ -132,6 +139,7 @@ export async function getOrCreateTracerLink(args: {
         .insert(tracerLinks)
         .values({
           id: createId(),
+          tenantId,
           token,
           jobId: args.jobId,
           sourcePath: args.sourcePath,
@@ -144,6 +152,7 @@ export async function getOrCreateTracerLink(args: {
         })
         .onConflictDoNothing({
           target: [
+            tracerLinks.tenantId,
             tracerLinks.jobId,
             tracerLinks.sourcePath,
             tracerLinks.destinationUrlHash,
@@ -160,7 +169,9 @@ export async function getOrCreateTracerLink(args: {
       const [created] = await db
         .select()
         .from(tracerLinks)
-        .where(eq(tracerLinks.token, token))
+        .where(
+          and(eq(tracerLinks.tenantId, tenantId), eq(tracerLinks.token, token)),
+        )
         .limit(1);
       if (created) return created;
     }
@@ -170,6 +181,7 @@ export async function getOrCreateTracerLink(args: {
       .from(tracerLinks)
       .where(
         and(
+          eq(tracerLinks.tenantId, tenantId),
           eq(tracerLinks.jobId, args.jobId),
           eq(tracerLinks.sourcePath, args.sourcePath),
           eq(tracerLinks.destinationUrlHash, args.destinationUrlHash),
@@ -191,12 +203,14 @@ export async function findActiveTracerLinkByToken(token: string): Promise<{
   destinationUrl: string;
   sourcePath: string;
   sourceLabel: string;
+  tenantId: string;
 } | null> {
   const [row] = await db
     .select({
       id: tracerLinks.id,
       token: tracerLinks.token,
       jobId: tracerLinks.jobId,
+      tenantId: tracerLinks.tenantId,
       destinationUrl: tracerLinks.destinationUrl,
       sourcePath: tracerLinks.sourcePath,
       sourceLabel: tracerLinks.sourceLabel,
@@ -220,8 +234,15 @@ export async function insertTracerClickEvent(args: {
   ipHash: string | null;
   uniqueFingerprintHash: string | null;
 }): Promise<void> {
+  const [link] = await db
+    .select({ tenantId: tracerLinks.tenantId })
+    .from(tracerLinks)
+    .where(eq(tracerLinks.id, args.tracerLinkId))
+    .limit(1);
+
   await db.insert(tracerClickEvents).values({
     id: createId(),
+    tenantId: link?.tenantId ?? getActiveTenantId(),
     tracerLinkId: args.tracerLinkId,
     clickedAt: args.clickedAt,
     requestId: args.requestId,
@@ -239,6 +260,7 @@ export async function listTracerLinkStatsByJob(
   jobId: string,
   args: Omit<AnalyticsFilterArgs, "jobId"> = {},
 ): Promise<TracerLinkStatsRow[]> {
+  const tenantId = getActiveTenantId();
   const joinFilters = [];
   if (typeof args.from === "number") {
     joinFilters.push(gte(tracerClickEvents.clickedAt, args.from));
@@ -270,7 +292,9 @@ export async function listTracerLinkStatsByJob(
       tracerClickEvents,
       and(eq(tracerLinks.id, tracerClickEvents.tracerLinkId), ...joinFilters),
     )
-    .where(eq(tracerLinks.jobId, jobId))
+    .where(
+      and(eq(tracerLinks.tenantId, tenantId), eq(tracerLinks.jobId, jobId)),
+    )
     .groupBy(tracerLinks.id)
     .orderBy(
       desc(sql`count(${tracerClickEvents.id})`),

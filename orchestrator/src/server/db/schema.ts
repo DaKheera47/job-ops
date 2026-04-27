@@ -28,94 +28,176 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-export const jobs = sqliteTable("jobs", {
+export const users = sqliteTable(
+  "users",
+  {
+    id: text("id").primaryKey(),
+    username: text("username").notNull(),
+    displayName: text("display_name"),
+    passwordHash: text("password_hash").notNull(),
+    passwordSalt: text("password_salt").notNull(),
+    isSystemAdmin: integer("is_system_admin", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isDisabled: integer("is_disabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    usernameUnique: uniqueIndex("idx_users_username_unique").on(table.username),
+  }),
+);
+
+export const tenants = sqliteTable("tenants", {
   id: text("id").primaryKey(),
-
-  // From crawler
-  source: text("source").notNull().default("gradcracker"),
-  sourceJobId: text("source_job_id"),
-  jobUrlDirect: text("job_url_direct"),
-  datePosted: text("date_posted"),
-  title: text("title").notNull(),
-  employer: text("employer").notNull(),
-  employerUrl: text("employer_url"),
-  jobUrl: text("job_url").notNull().unique(),
-  applicationLink: text("application_link"),
-  disciplines: text("disciplines"),
-  deadline: text("deadline"),
-  salary: text("salary"),
-  location: text("location"),
-  locationEvidence: text("location_evidence"),
-  degreeRequired: text("degree_required"),
-  starting: text("starting"),
-  jobDescription: text("job_description"),
-
-  // JobSpy fields (nullable for other sources)
-  jobType: text("job_type"),
-  salarySource: text("salary_source"),
-  salaryInterval: text("salary_interval"),
-  salaryMinAmount: real("salary_min_amount"),
-  salaryMaxAmount: real("salary_max_amount"),
-  salaryCurrency: text("salary_currency"),
-  isRemote: integer("is_remote", { mode: "boolean" }),
-  jobLevel: text("job_level"),
-  jobFunction: text("job_function"),
-  listingType: text("listing_type"),
-  emails: text("emails"),
-  companyIndustry: text("company_industry"),
-  companyLogo: text("company_logo"),
-  companyUrlDirect: text("company_url_direct"),
-  companyAddresses: text("company_addresses"),
-  companyNumEmployees: text("company_num_employees"),
-  companyRevenue: text("company_revenue"),
-  companyDescription: text("company_description"),
-  skills: text("skills"),
-  experienceRange: text("experience_range"),
-  companyRating: real("company_rating"),
-  companyReviewsCount: integer("company_reviews_count"),
-  vacancyCount: integer("vacancy_count"),
-  workFromHomeType: text("work_from_home_type"),
-
-  // Orchestrator enrichments
-  status: text("status", {
-    enum: [
-      "discovered",
-      "processing",
-      "ready",
-      "applied",
-      "in_progress",
-      "skipped",
-      "expired",
-    ],
-  })
-    .notNull()
-    .default("discovered"),
-  outcome: text("outcome", { enum: APPLICATION_OUTCOMES }),
-  closedAt: integer("closed_at", { mode: "number" }),
-  suitabilityScore: real("suitability_score"),
-  suitabilityReason: text("suitability_reason"),
-  tailoredSummary: text("tailored_summary"),
-  tailoredHeadline: text("tailored_headline"),
-  tailoredSkills: text("tailored_skills"),
-  selectedProjectIds: text("selected_project_ids"),
-  pdfPath: text("pdf_path"),
-  tracerLinksEnabled: integer("tracer_links_enabled", { mode: "boolean" })
-    .notNull()
-    .default(false),
-  sponsorMatchScore: real("sponsor_match_score"),
-  sponsorMatchNames: text("sponsor_match_names"),
-
-  // Timestamps
-  discoveredAt: text("discovered_at").notNull().default(sql`(datetime('now'))`),
-  processedAt: text("processed_at"),
-  readyAt: text("ready_at"),
-  appliedAt: text("applied_at"),
+  name: text("name").notNull(),
+  slug: text("slug").notNull().unique(),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const tenantMemberships = sqliteTable(
+  "tenant_memberships",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    role: text("role", { enum: ["owner", "member"] })
+      .notNull()
+      .default("owner"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    userTenantUnique: uniqueIndex("idx_tenant_memberships_user_tenant").on(
+      table.userId,
+      table.tenantId,
+    ),
+    tenantIndex: index("idx_tenant_memberships_tenant_id").on(table.tenantId),
+  }),
+);
+
+export const jobs = sqliteTable(
+  "jobs",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+
+    // From crawler
+    source: text("source").notNull().default("gradcracker"),
+    sourceJobId: text("source_job_id"),
+    jobUrlDirect: text("job_url_direct"),
+    datePosted: text("date_posted"),
+    title: text("title").notNull(),
+    employer: text("employer").notNull(),
+    employerUrl: text("employer_url"),
+    jobUrl: text("job_url").notNull(),
+    applicationLink: text("application_link"),
+    disciplines: text("disciplines"),
+    deadline: text("deadline"),
+    salary: text("salary"),
+    location: text("location"),
+    locationEvidence: text("location_evidence"),
+    degreeRequired: text("degree_required"),
+    starting: text("starting"),
+    jobDescription: text("job_description"),
+
+    // JobSpy fields (nullable for other sources)
+    jobType: text("job_type"),
+    salarySource: text("salary_source"),
+    salaryInterval: text("salary_interval"),
+    salaryMinAmount: real("salary_min_amount"),
+    salaryMaxAmount: real("salary_max_amount"),
+    salaryCurrency: text("salary_currency"),
+    isRemote: integer("is_remote", { mode: "boolean" }),
+    jobLevel: text("job_level"),
+    jobFunction: text("job_function"),
+    listingType: text("listing_type"),
+    emails: text("emails"),
+    companyIndustry: text("company_industry"),
+    companyLogo: text("company_logo"),
+    companyUrlDirect: text("company_url_direct"),
+    companyAddresses: text("company_addresses"),
+    companyNumEmployees: text("company_num_employees"),
+    companyRevenue: text("company_revenue"),
+    companyDescription: text("company_description"),
+    skills: text("skills"),
+    experienceRange: text("experience_range"),
+    companyRating: real("company_rating"),
+    companyReviewsCount: integer("company_reviews_count"),
+    vacancyCount: integer("vacancy_count"),
+    workFromHomeType: text("work_from_home_type"),
+
+    // Orchestrator enrichments
+    status: text("status", {
+      enum: [
+        "discovered",
+        "processing",
+        "ready",
+        "applied",
+        "in_progress",
+        "skipped",
+        "expired",
+      ],
+    })
+      .notNull()
+      .default("discovered"),
+    outcome: text("outcome", { enum: APPLICATION_OUTCOMES }),
+    closedAt: integer("closed_at", { mode: "number" }),
+    suitabilityScore: real("suitability_score"),
+    suitabilityReason: text("suitability_reason"),
+    tailoredSummary: text("tailored_summary"),
+    tailoredHeadline: text("tailored_headline"),
+    tailoredSkills: text("tailored_skills"),
+    selectedProjectIds: text("selected_project_ids"),
+    pdfPath: text("pdf_path"),
+    tracerLinksEnabled: integer("tracer_links_enabled", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    sponsorMatchScore: real("sponsor_match_score"),
+    sponsorMatchNames: text("sponsor_match_names"),
+
+    // Timestamps
+    discoveredAt: text("discovered_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+    processedAt: text("processed_at"),
+    readyAt: text("ready_at"),
+    appliedAt: text("applied_at"),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantJobUrlUnique: uniqueIndex("idx_jobs_tenant_job_url_unique").on(
+      table.tenantId,
+      table.jobUrl,
+    ),
+    tenantStatusIndex: index("idx_jobs_tenant_status").on(
+      table.tenantId,
+      table.status,
+    ),
+    tenantDiscoveredAtIndex: index("idx_jobs_tenant_discovered_at").on(
+      table.tenantId,
+      table.discoveredAt,
+    ),
+  }),
+);
+
 export const stageEvents = sqliteTable("stage_events", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .default("tenant_default")
+    .references(() => tenants.id, { onDelete: "cascade" }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -130,6 +212,10 @@ export const stageEvents = sqliteTable("stage_events", {
 
 export const tasks = sqliteTable("tasks", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .default("tenant_default")
+    .references(() => tenants.id, { onDelete: "cascade" }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -146,6 +232,10 @@ export const jobNotes = sqliteTable(
   "job_notes",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -164,6 +254,10 @@ export const jobNotes = sqliteTable(
 
 export const interviews = sqliteTable("interviews", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .default("tenant_default")
+    .references(() => tenants.id, { onDelete: "cascade" }),
   applicationId: text("application_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -175,6 +269,10 @@ export const interviews = sqliteTable("interviews", {
 
 export const pipelineRuns = sqliteTable("pipeline_runs", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .default("tenant_default")
+    .references(() => tenants.id, { onDelete: "cascade" }),
   startedAt: text("started_at").notNull().default(sql`(datetime('now'))`),
   completedAt: text("completed_at"),
   status: text("status", {
@@ -195,6 +293,10 @@ export const jobChatThreads = sqliteTable(
   "job_chat_threads",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     jobId: text("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
@@ -216,6 +318,10 @@ export const jobChatMessages = sqliteTable(
   "job_chat_messages",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     threadId: text("thread_id")
       .notNull()
       .references(() => jobChatThreads.id, { onDelete: "cascade" }),
@@ -248,6 +354,10 @@ export const jobChatRuns = sqliteTable(
   "job_chat_runs",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     threadId: text("thread_id")
       .notNull()
       .references(() => jobChatThreads.id, { onDelete: "cascade" }),
@@ -275,12 +385,25 @@ export const jobChatRuns = sqliteTable(
   }),
 );
 
-export const settings = sqliteTable("settings", {
-  key: text("key").primaryKey(),
-  value: text("value").notNull(),
-  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
-});
+export const settings = sqliteTable(
+  "settings",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    value: text("value").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    tenantKeyUnique: uniqueIndex("idx_settings_tenant_key_unique").on(
+      table.tenantId,
+      table.key,
+    ),
+  }),
+);
 
 export const analyticsInstallState = sqliteTable("analytics_install_state", {
   id: text("id").primaryKey(),
@@ -337,7 +460,11 @@ export const authSessions = sqliteTable(
   "auth_sessions",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id").references(() => tenants.id, {
+      onDelete: "cascade",
+    }),
     subject: text("subject").notNull(),
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     expiresAt: integer("expires_at", { mode: "number" }).notNull(),
     revokedAt: integer("revoked_at", { mode: "number" }),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
@@ -351,6 +478,10 @@ export const authSessions = sqliteTable(
 
 export const designResumeDocuments = sqliteTable("design_resume_documents", {
   id: text("id").primaryKey(),
+  tenantId: text("tenant_id")
+    .notNull()
+    .default("tenant_default")
+    .references(() => tenants.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   resumeJson: text("resume_json", { mode: "json" }).notNull(),
   revision: integer("revision").notNull().default(1),
@@ -365,6 +496,10 @@ export const designResumeAssets = sqliteTable(
   "design_resume_assets",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     documentId: text("document_id")
       .notNull()
       .references(() => designResumeDocuments.id, { onDelete: "cascade" }),
@@ -389,6 +524,10 @@ export const postApplicationIntegrations = sqliteTable(
   "post_application_integrations",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     displayName: text("display_name"),
@@ -404,8 +543,8 @@ export const postApplicationIntegrations = sqliteTable(
   },
   (table) => ({
     providerAccountUnique: uniqueIndex(
-      "idx_post_app_integrations_provider_account_unique",
-    ).on(table.provider, table.accountKey),
+      "idx_post_app_integrations_tenant_provider_account_unique",
+    ).on(table.tenantId, table.provider, table.accountKey),
   }),
 );
 
@@ -413,6 +552,10 @@ export const postApplicationSyncRuns = sqliteTable(
   "post_application_sync_runs",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     integrationId: text("integration_id").references(
@@ -447,6 +590,10 @@ export const postApplicationMessages = sqliteTable(
   "post_application_messages",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     provider: text("provider", { enum: POST_APPLICATION_PROVIDERS }).notNull(),
     accountKey: text("account_key").notNull().default("default"),
     integrationId: text("integration_id").references(
@@ -500,8 +647,13 @@ export const postApplicationMessages = sqliteTable(
   },
   (table) => ({
     providerAccountExternalMessageUnique: uniqueIndex(
-      "idx_post_app_messages_provider_account_external_unique",
-    ).on(table.provider, table.accountKey, table.externalMessageId),
+      "idx_post_app_messages_tenant_provider_account_external_unique",
+    ).on(
+      table.tenantId,
+      table.provider,
+      table.accountKey,
+      table.externalMessageId,
+    ),
     providerAccountReviewStatusIndex: index(
       "idx_post_app_messages_provider_account_processing_status",
     ).on(table.provider, table.accountKey, table.processingStatus),
@@ -512,6 +664,10 @@ export const tracerLinks = sqliteTable(
   "tracer_links",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     token: text("token").notNull().unique(),
     jobId: text("job_id")
       .notNull()
@@ -526,8 +682,13 @@ export const tracerLinks = sqliteTable(
   },
   (table) => ({
     jobPathDestinationUnique: uniqueIndex(
-      "idx_tracer_links_job_source_destination_unique",
-    ).on(table.jobId, table.sourcePath, table.destinationUrlHash),
+      "idx_tracer_links_tenant_job_source_destination_unique",
+    ).on(
+      table.tenantId,
+      table.jobId,
+      table.sourcePath,
+      table.destinationUrlHash,
+    ),
     jobIndex: index("idx_tracer_links_job_id").on(table.jobId),
   }),
 );
@@ -536,6 +697,10 @@ export const tracerClickEvents = sqliteTable(
   "tracer_click_events",
   {
     id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
     tracerLinkId: text("tracer_link_id")
       .notNull()
       .references(() => tracerLinks.id, { onDelete: "cascade" }),
@@ -567,6 +732,12 @@ export const tracerClickEvents = sqliteTable(
   }),
 );
 
+export type UserRow = typeof users.$inferSelect;
+export type NewUserRow = typeof users.$inferInsert;
+export type TenantRow = typeof tenants.$inferSelect;
+export type NewTenantRow = typeof tenants.$inferInsert;
+export type TenantMembershipRow = typeof tenantMemberships.$inferSelect;
+export type NewTenantMembershipRow = typeof tenantMemberships.$inferInsert;
 export type JobRow = typeof jobs.$inferSelect;
 export type NewJobRow = typeof jobs.$inferInsert;
 export type StageEventRow = typeof stageEvents.$inferSelect;

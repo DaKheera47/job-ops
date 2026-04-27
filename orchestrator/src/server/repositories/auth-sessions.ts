@@ -6,12 +6,16 @@ const { authSessions } = schema;
 export async function createAuthSession(args: {
   id: string;
   subject: string;
+  userId: string;
+  tenantId: string;
   expiresAt: number;
 }): Promise<void> {
   const now = new Date().toISOString();
   await db.insert(authSessions).values({
     id: args.id,
     subject: args.subject,
+    userId: args.userId,
+    tenantId: args.tenantId,
     expiresAt: args.expiresAt,
     revokedAt: null,
     createdAt: now,
@@ -22,6 +26,8 @@ export async function createAuthSession(args: {
 export async function getAuthSession(id: string): Promise<{
   id: string;
   subject: string;
+  userId: string | null;
+  tenantId: string | null;
   expiresAt: number;
   revokedAt: number | null;
 } | null> {
@@ -29,6 +35,8 @@ export async function getAuthSession(id: string): Promise<{
     .select({
       id: authSessions.id,
       subject: authSessions.subject,
+      userId: authSessions.userId,
+      tenantId: authSessions.tenantId,
       expiresAt: authSessions.expiresAt,
       revokedAt: authSessions.revokedAt,
     })

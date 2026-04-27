@@ -13,6 +13,7 @@ import type {
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db, schema } from "../db/index";
+import { getActiveTenantId } from "../tenancy/context";
 
 const { jobs, stageEvents, tasks } = schema;
 
@@ -61,10 +62,16 @@ export const stageEventMetadataSchema = z
 export async function getStageEvents(
   applicationId: string,
 ): Promise<StageEvent[]> {
+  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(stageEvents)
-    .where(eq(stageEvents.applicationId, applicationId))
+    .where(
+      and(
+        eq(stageEvents.tenantId, tenantId),
+        eq(stageEvents.applicationId, applicationId),
+      ),
+    )
     .orderBy(asc(stageEvents.occurredAt));
 
   return rows.map((row) => ({
@@ -84,13 +91,18 @@ export async function getTasks(
   applicationId: string,
   includeCompleted = false,
 ): Promise<ApplicationTask[]> {
+  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(tasks)
     .where(
       includeCompleted
-        ? eq(tasks.applicationId, applicationId)
+        ? and(
+            eq(tasks.tenantId, tenantId),
+            eq(tasks.applicationId, applicationId),
+          )
         : and(
+            eq(tasks.tenantId, tenantId),
             eq(tasks.applicationId, applicationId),
             eq(tasks.isCompleted, false),
           ),
@@ -121,9 +133,14 @@ export function transitionStage(
 
   const now = Math.floor(Date.now() / 1000);
   const timestamp = occurredAt ?? now;
+  const tenantId = getActiveTenantId();
 
   const { event, previousOutcome } = db.transaction((tx) => {
-    const job = tx.select().from(jobs).where(eq(jobs.id, applicationId)).get();
+    const job = tx
+      .select()
+      .from(jobs)
+      .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, applicationId)))
+      .get();
     if (!job) {
       throw new Error("Job not found");
     }
@@ -131,7 +148,12 @@ export function transitionStage(
     const lastEvent = tx
       .select()
       .from(stageEvents)
-      .where(eq(stageEvents.applicationId, applicationId))
+      .where(
+        and(
+          eq(stageEvents.tenantId, tenantId),
+          eq(stageEvents.applicationId, applicationId),
+        ),
+      )
       .orderBy(desc(stageEvents.occurredAt))
       .limit(1)
       .get();
@@ -146,6 +168,7 @@ export function transitionStage(
     tx.insert(stageEvents)
       .values({
         id: eventId,
+        tenantId,
         applicationId,
         title: parsedMetadata?.eventLabel ?? finalToStage,
         groupId: parsedMetadata?.groupId ?? null,
@@ -178,7 +201,10 @@ export function transitionStage(
       updates.closedAt = timestamp;
     }
 
-    tx.update(jobs).set(updates).where(eq(jobs.id, applicationId)).run();
+    tx.update(jobs)
+      .set(updates)
+      .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, applicationId)))
+      .run();
 
     return {
       event: {
@@ -214,12 +240,15 @@ export function updateStageEvent(
     ? stageEventMetadataSchema.parse(metadata)
     : undefined;
   const hasOutcome = Object.hasOwn(payload, "outcome");
+  const tenantId = getActiveTenantId();
 
   db.transaction((tx) => {
     const event = tx
       .select()
       .from(stageEvents)
-      .where(eq(stageEvents.id, eventId))
+      .where(
+        and(eq(stageEvents.tenantId, tenantId), eq(stageEvents.id, eventId)),
+      )
       .get();
     if (!event) throw new Error("Event not found");
 
@@ -239,14 +268,21 @@ export function updateStageEvent(
 
     tx.update(stageEvents)
       .set(updates)
-      .where(eq(stageEvents.id, eventId))
+      .where(
+        and(eq(stageEvents.tenantId, tenantId), eq(stageEvents.id, eventId)),
+      )
       .run();
 
     // If this was the latest event, update the job status
     const lastEvent = tx
       .select()
       .from(stageEvents)
-      .where(eq(stageEvents.applicationId, event.applicationId))
+      .where(
+        and(
+          eq(stageEvents.tenantId, tenantId),
+          eq(stageEvents.applicationId, event.applicationId),
+        ),
+      )
       .orderBy(desc(stageEvents.occurredAt))
       .limit(1)
       .get();
@@ -255,7 +291,9 @@ export function updateStageEvent(
       const job = tx
         .select()
         .from(jobs)
-        .where(eq(jobs.id, event.applicationId))
+        .where(
+          and(eq(jobs.tenantId, tenantId), eq(jobs.id, event.applicationId)),
+        )
         .get();
       if (!job) throw new Error("Job not found");
 
@@ -277,28 +315,42 @@ export function updateStageEvent(
           closedAt,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(jobs.id, event.applicationId))
+        .where(
+          and(eq(jobs.tenantId, tenantId), eq(jobs.id, event.applicationId)),
+        )
         .run();
     }
   });
 }
 
 export function deleteStageEvent(eventId: string): void {
+  const tenantId = getActiveTenantId();
   db.transaction((tx) => {
     const event = tx
       .select()
       .from(stageEvents)
-      .where(eq(stageEvents.id, eventId))
+      .where(
+        and(eq(stageEvents.tenantId, tenantId), eq(stageEvents.id, eventId)),
+      )
       .get();
     if (!event) return;
 
-    tx.delete(stageEvents).where(eq(stageEvents.id, eventId)).run();
+    tx.delete(stageEvents)
+      .where(
+        and(eq(stageEvents.tenantId, tenantId), eq(stageEvents.id, eventId)),
+      )
+      .run();
 
     // Update job status based on the new latest event
     const lastEvent = tx
       .select()
       .from(stageEvents)
-      .where(eq(stageEvents.applicationId, event.applicationId))
+      .where(
+        and(
+          eq(stageEvents.tenantId, tenantId),
+          eq(stageEvents.applicationId, event.applicationId),
+        ),
+      )
       .orderBy(desc(stageEvents.occurredAt))
       .limit(1)
       .get();
@@ -307,7 +359,9 @@ export function deleteStageEvent(eventId: string): void {
       const job = tx
         .select()
         .from(jobs)
-        .where(eq(jobs.id, event.applicationId))
+        .where(
+          and(eq(jobs.tenantId, tenantId), eq(jobs.id, event.applicationId)),
+        )
         .get();
       if (!job) throw new Error("Job not found");
 
@@ -329,7 +383,9 @@ export function deleteStageEvent(eventId: string): void {
           closedAt,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(jobs.id, event.applicationId))
+        .where(
+          and(eq(jobs.tenantId, tenantId), eq(jobs.id, event.applicationId)),
+        )
         .run();
     } else {
       // If no events left, maybe revert to discovered?
@@ -342,7 +398,9 @@ export function deleteStageEvent(eventId: string): void {
           closedAt: null,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(jobs.id, event.applicationId))
+        .where(
+          and(eq(jobs.tenantId, tenantId), eq(jobs.id, event.applicationId)),
+        )
         .run();
     }
   });

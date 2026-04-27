@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { createDesignResumePdfObjectUrl } from "@client/lib/private-pdf";
 import type { DesignResumeDocument, PdfRenderer } from "@shared/types";
 import { FileText, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -26,6 +27,7 @@ export function DesignResumePdfPreview({
   const [isFrameLoading, setIsFrameLoading] = useState(false);
   const requestSequence = useRef(0);
   const lastLoadedKey = useRef<string | null>(null);
+  const pdfObjectUrlRef = useRef<string | null>(null);
 
   const revisionKey = useMemo(
     () => `${draft.id}:${draft.revision}:${pdfRenderer}`,
@@ -56,9 +58,17 @@ export function DesignResumePdfPreview({
 
     void api
       .generateDesignResumePdf()
-      .then((generated) => {
-        if (requestSequence.current !== requestId) return;
-        setPdfUrl(`${generated.pdfUrl}#toolbar=0&navpanes=0&view=FitH`);
+      .then(async () => createDesignResumePdfObjectUrl())
+      .then((objectUrl) => {
+        if (requestSequence.current !== requestId) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        if (pdfObjectUrlRef.current) {
+          URL.revokeObjectURL(pdfObjectUrlRef.current);
+        }
+        pdfObjectUrlRef.current = objectUrl;
+        setPdfUrl(`${objectUrl}#toolbar=0&navpanes=0&view=FitH`);
         setPreviewState("ready");
       })
       .catch((error: unknown) => {
@@ -73,6 +83,14 @@ export function DesignResumePdfPreview({
         setIsFrameLoading(false);
       });
   }, [isDirty, isUpdatingRenderer, revisionKey, saveState]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfObjectUrlRef.current) {
+        URL.revokeObjectURL(pdfObjectUrlRef.current);
+      }
+    };
+  }, []);
 
   const showLoader =
     previewState === "loading" ||

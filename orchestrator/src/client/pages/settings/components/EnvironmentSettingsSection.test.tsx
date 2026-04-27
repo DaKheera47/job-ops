@@ -1,10 +1,17 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Accordion } from "@/components/ui/accordion";
 import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
 
 const EnvironmentSettingsHarness = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
   const methods = useForm<UpdateSettingsInput>({
     defaultValues: {
       ukvisajobsEmail: "visa@example.com",
@@ -19,29 +26,31 @@ const EnvironmentSettingsHarness = () => {
   });
 
   return (
-    <FormProvider {...methods}>
-      <Accordion type="multiple" defaultValue={["environment"]}>
-        <EnvironmentSettingsSection
-          values={{
-            readable: {
-              ukvisajobsEmail: "visa@example.com",
-              adzunaAppId: "adzuna-id",
-              basicAuthUser: "admin",
-              basicAuthPassword: "super-secret",
-            },
-            private: {
-              ukvisajobsPasswordHint: "pass",
-              adzunaAppKeyHint: "adzu",
-              basicAuthPasswordHint: "abcd",
-              webhookSecretHint: "sec-",
-            },
-            basicAuthActive: true,
-          }}
-          isLoading={false}
-          isSaving={false}
-        />
-      </Accordion>
-    </FormProvider>
+    <QueryClientProvider client={queryClient}>
+      <FormProvider {...methods}>
+        <Accordion type="multiple" defaultValue={["environment"]}>
+          <EnvironmentSettingsSection
+            values={{
+              readable: {
+                ukvisajobsEmail: "visa@example.com",
+                adzunaAppId: "adzuna-id",
+                basicAuthUser: "admin",
+                basicAuthPassword: "super-secret",
+              },
+              private: {
+                ukvisajobsPasswordHint: "pass",
+                adzunaAppKeyHint: "adzu",
+                basicAuthPasswordHint: "abcd",
+                webhookSecretHint: "sec-",
+              },
+              basicAuthActive: true,
+            }}
+            isLoading={false}
+            isSaving={false}
+          />
+        </Accordion>
+      </FormProvider>
+    </QueryClientProvider>
   );
 };
 

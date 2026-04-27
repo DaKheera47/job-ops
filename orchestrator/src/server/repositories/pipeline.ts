@@ -12,6 +12,7 @@ import type {
 } from "@shared/types";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
+import { getActiveTenantId } from "../tenancy/context";
 
 const { jobs, pipelineRuns } = schema;
 
@@ -74,9 +75,11 @@ export async function createPipelineRun(args?: {
 }): Promise<PipelineRun> {
   const id = randomUUID();
   const now = new Date().toISOString();
+  const tenantId = getActiveTenantId();
 
   await db.insert(pipelineRuns).values({
     id,
+    tenantId,
     startedAt: now,
     status: "running",
     configSnapshot: serializeConfigSnapshot(args?.configSnapshot ?? null),
@@ -113,6 +116,7 @@ export async function updatePipelineRun(
   }>,
 ): Promise<void> {
   const { configSnapshot, resultSummary, ...rest } = update;
+  const tenantId = getActiveTenantId();
   await db
     .update(pipelineRuns)
     .set({
@@ -126,16 +130,18 @@ export async function updatePipelineRun(
         ? { resultSummary: resultSummary ?? null }
         : {}),
     })
-    .where(eq(pipelineRuns.id, id));
+    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)));
 }
 
 /**
  * Get the latest pipeline run.
  */
 export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
+    .where(eq(pipelineRuns.tenantId, tenantId))
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(1);
 
@@ -150,9 +156,11 @@ export async function getLatestPipelineRun(): Promise<PipelineRun | null> {
 export async function getRecentPipelineRuns(
   limit: number = 10,
 ): Promise<PipelineRun[]> {
+  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(pipelineRuns)
+    .where(eq(pipelineRuns.tenantId, tenantId))
     .orderBy(desc(pipelineRuns.startedAt))
     .limit(limit);
 
@@ -162,10 +170,11 @@ export async function getRecentPipelineRuns(
 export async function getPipelineRunById(
   id: string,
 ): Promise<PipelineRun | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
-    .where(eq(pipelineRuns.id, id))
+    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)))
     .limit(1);
 
   return row ? mapRowToPipelineRun(row) : null;
@@ -174,10 +183,11 @@ export async function getPipelineRunById(
 export async function getPipelineRunInsights(
   id: string,
 ): Promise<PipelineRunInsights | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(pipelineRuns)
-    .where(eq(pipelineRuns.id, id))
+    .where(and(eq(pipelineRuns.tenantId, tenantId), eq(pipelineRuns.id, id)))
     .limit(1);
   if (!row) return null;
 
@@ -215,6 +225,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.createdAt, run.startedAt),
           lte(jobs.createdAt, run.completedAt),
+          eq(jobs.tenantId, tenantId),
         ),
       ),
     db
@@ -224,6 +235,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.updatedAt, run.startedAt),
           lte(jobs.updatedAt, run.completedAt),
+          eq(jobs.tenantId, tenantId),
         ),
       ),
     db
@@ -233,6 +245,7 @@ export async function getPipelineRunInsights(
         and(
           gte(jobs.processedAt, run.startedAt),
           lte(jobs.processedAt, run.completedAt),
+          eq(jobs.tenantId, tenantId),
         ),
       ),
   ]);

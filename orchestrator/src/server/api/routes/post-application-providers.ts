@@ -3,6 +3,7 @@ import { badRequest, serviceUnavailable, upstreamError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { executePostApplicationProviderAction } from "@server/services/post-application/providers";
+import { getActiveTenantId } from "@server/tenancy/context";
 import {
   POST_APPLICATION_PROVIDER_ACTIONS,
   POST_APPLICATION_PROVIDERS,
@@ -43,7 +44,12 @@ export const postApplicationProvidersRouter = Router();
 const GMAIL_OAUTH_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 const oauthStateStore = new Map<
   string,
-  { accountKey: string; redirectUri: string; createdAt: number }
+  {
+    accountKey: string;
+    tenantId: string;
+    redirectUri: string;
+    createdAt: number;
+  }
 >();
 
 function getOauthStateTtlMs(): number {
@@ -93,7 +99,12 @@ function enforceOauthStateStoreLimit(): void {
 
 function setOauthState(
   state: string,
-  entry: { accountKey: string; redirectUri: string; createdAt: number },
+  entry: {
+    accountKey: string;
+    tenantId: string;
+    redirectUri: string;
+    createdAt: number;
+  },
 ): void {
   cleanupOauthState();
   enforceOauthStateStoreLimit();
@@ -228,6 +239,7 @@ postApplicationProvidersRouter.get(
 
       setOauthState(state, {
         accountKey,
+        tenantId: getActiveTenantId(),
         redirectUri: oauth.redirectUri,
         createdAt: Date.now(),
       });
@@ -275,6 +287,10 @@ postApplicationProvidersRouter.post(
 
       if (oauthState.accountKey !== accountKey) {
         fail(res, badRequest("OAuth state/account mismatch."));
+        return;
+      }
+      if (oauthState.tenantId !== getActiveTenantId()) {
+        fail(res, badRequest("OAuth state/workspace mismatch."));
         return;
       }
 

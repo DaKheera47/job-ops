@@ -51,6 +51,7 @@ import {
   markdownToEditorHtml as markdownToTipTapHtml,
   editorHtmlToMarkdown as tipTapHtmlToMarkdown,
 } from "@/client/lib/jobNoteContent";
+import { openJobPdf } from "@/client/lib/private-pdf";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -819,9 +820,6 @@ export const JobPage: React.FC = () => {
   const canTrackStages = job?.status === "in_progress";
   const canLogEvents = canTrackStages && !isClosedStage;
   const jobLink = job ? job.applicationLink || job.jobUrl : null;
-  const pdfHref = job?.pdfPath
-    ? `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`
-    : null;
   const isBusy = activeAction !== null;
   const isDiscovered = job?.status === "discovered";
   const isReady = job?.status === "ready";
@@ -958,17 +956,23 @@ export const JobPage: React.FC = () => {
                 </Button>
               )}
 
-              {pdfHref && (
+              {job?.pdfPath && (
                 <Button
-                  asChild
                   size="sm"
                   variant="outline"
                   className="h-9 border-border/60 bg-background/30"
+                  onClick={() => {
+                    void openJobPdf(job.id).catch((error) => {
+                      toast.error(
+                        error instanceof Error
+                          ? error.message
+                          : "Could not open PDF",
+                      );
+                    });
+                  }}
                 >
-                  <a href={pdfHref} target="_blank" rel="noopener noreferrer">
-                    <FileText className="mr-1.5 h-3.5 w-3.5" />
-                    View PDF
-                  </a>
+                  <FileText className="mr-1.5 h-3.5 w-3.5" />
+                  View PDF
                 </Button>
               )}
 

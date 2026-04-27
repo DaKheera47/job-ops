@@ -13,6 +13,7 @@ import {
   normalizeStageTarget,
   stageTargetFromMessageType,
 } from "../services/post-application/stage-target";
+import { getActiveTenantId } from "../tenancy/context";
 
 const { postApplicationMessages } = schema;
 
@@ -129,6 +130,7 @@ export async function getPostApplicationMessageByExternalId(
   accountKey: string,
   externalMessageId: string,
 ): Promise<PostApplicationMessage | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(postApplicationMessages)
@@ -137,6 +139,7 @@ export async function getPostApplicationMessageByExternalId(
         eq(postApplicationMessages.provider, provider),
         eq(postApplicationMessages.accountKey, accountKey),
         eq(postApplicationMessages.externalMessageId, externalMessageId),
+        eq(postApplicationMessages.tenantId, tenantId),
       ),
     );
   return row ? mapRowToPostApplicationMessage(row) : null;
@@ -145,10 +148,16 @@ export async function getPostApplicationMessageByExternalId(
 export async function getPostApplicationMessageById(
   id: string,
 ): Promise<PostApplicationMessage | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(postApplicationMessages)
-    .where(eq(postApplicationMessages.id, id));
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, id),
+      ),
+    );
   return row ? mapRowToPostApplicationMessage(row) : null;
 }
 
@@ -164,6 +173,7 @@ export async function upsertPostApplicationMessage(
     suggestedStageTarget: stageTarget,
   };
   const nowIso = new Date().toISOString();
+  const tenantId = getActiveTenantId();
   const existing =
     input.existingMessage ??
     (await getPostApplicationMessageByExternalId(
@@ -210,7 +220,12 @@ export async function upsertPostApplicationMessage(
         errorMessage: input.errorMessage ?? null,
         updatedAt: nowIso,
       })
-      .where(eq(postApplicationMessages.id, existing.id));
+      .where(
+        and(
+          eq(postApplicationMessages.tenantId, tenantId),
+          eq(postApplicationMessages.id, existing.id),
+        ),
+      );
 
     const updated = await getPostApplicationMessageByExternalId(
       input.provider,
@@ -233,6 +248,7 @@ export async function upsertPostApplicationMessage(
   const id = randomUUID();
   await db.insert(postApplicationMessages).values({
     id,
+    tenantId,
     provider: input.provider,
     accountKey: input.accountKey,
     integrationId: input.integrationId,
@@ -285,6 +301,7 @@ export async function updatePostApplicationMessageSuggestion(
   input: UpdatePostApplicationMessageSuggestionInput,
 ): Promise<PostApplicationMessage | null> {
   const nowIso = new Date().toISOString();
+  const tenantId = getActiveTenantId();
   await db
     .update(postApplicationMessages)
     .set({
@@ -295,12 +312,22 @@ export async function updatePostApplicationMessageSuggestion(
       processingStatus: input.processingStatus,
       updatedAt: nowIso,
     })
-    .where(eq(postApplicationMessages.id, input.id));
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, input.id),
+      ),
+    );
 
   const [row] = await db
     .select()
     .from(postApplicationMessages)
-    .where(eq(postApplicationMessages.id, input.id));
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, input.id),
+      ),
+    );
   return row ? mapRowToPostApplicationMessage(row) : null;
 }
 
@@ -310,6 +337,7 @@ export async function listPostApplicationMessagesByProcessingStatus(
   processingStatus: PostApplicationProcessingStatus,
   limit = 50,
 ): Promise<PostApplicationMessage[]> {
+  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(postApplicationMessages)
@@ -318,6 +346,7 @@ export async function listPostApplicationMessagesByProcessingStatus(
         eq(postApplicationMessages.provider, provider),
         eq(postApplicationMessages.accountKey, accountKey),
         eq(postApplicationMessages.processingStatus, processingStatus),
+        eq(postApplicationMessages.tenantId, tenantId),
       ),
     )
     .orderBy(desc(postApplicationMessages.receivedAt))
@@ -332,6 +361,7 @@ export async function listPostApplicationMessagesBySyncRun(
   syncRunId: string,
   limit = 300,
 ): Promise<PostApplicationMessage[]> {
+  const tenantId = getActiveTenantId();
   const rows = await db
     .select()
     .from(postApplicationMessages)
@@ -340,6 +370,7 @@ export async function listPostApplicationMessagesBySyncRun(
         eq(postApplicationMessages.provider, provider),
         eq(postApplicationMessages.accountKey, accountKey),
         eq(postApplicationMessages.syncRunId, syncRunId),
+        eq(postApplicationMessages.tenantId, tenantId),
       ),
     )
     .orderBy(desc(postApplicationMessages.receivedAt))
@@ -353,6 +384,7 @@ export async function updatePostApplicationMessageDecision(
 ): Promise<PostApplicationMessage | null> {
   const decidedAt = input.decidedAt ?? Date.now();
   const nowIso = new Date(decidedAt).toISOString();
+  const tenantId = getActiveTenantId();
 
   await db
     .update(postApplicationMessages)
@@ -363,11 +395,21 @@ export async function updatePostApplicationMessageDecision(
       decidedBy: input.decidedBy ?? null,
       updatedAt: nowIso,
     })
-    .where(eq(postApplicationMessages.id, input.id));
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, input.id),
+      ),
+    );
 
   const [row] = await db
     .select()
     .from(postApplicationMessages)
-    .where(eq(postApplicationMessages.id, input.id));
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.id, input.id),
+      ),
+    );
   return row ? mapRowToPostApplicationMessage(row) : null;
 }

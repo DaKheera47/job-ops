@@ -94,7 +94,13 @@ function getJwtExpirySeconds(): number {
     : DEFAULT_EXPIRY_SECONDS;
 }
 
-export async function signToken(sub: string): Promise<{
+export async function signToken(args: {
+  sub: string;
+  userId: string;
+  tenantId: string;
+  username: string;
+  isSystemAdmin: boolean;
+}): Promise<{
   token: string;
   expiresIn: number;
 }> {
@@ -105,15 +111,27 @@ export async function signToken(sub: string): Promise<{
 
   await authSessionsRepo.createAuthSession({
     id: jti,
-    subject: sub,
+    subject: args.sub,
+    userId: args.userId,
+    tenantId: args.tenantId,
     expiresAt,
   });
 
-  const token = jwt.sign({ sub }, secret, {
-    algorithm: "HS256",
-    expiresIn,
-    jwtid: jti,
-  });
+  const token = jwt.sign(
+    {
+      sub: args.sub,
+      userId: args.userId,
+      tenantId: args.tenantId,
+      username: args.username,
+      isSystemAdmin: args.isSystemAdmin,
+    },
+    secret,
+    {
+      algorithm: "HS256",
+      expiresIn,
+      jwtid: jti,
+    },
+  );
 
   return { token, expiresIn };
 }
@@ -122,13 +140,24 @@ export async function verifyToken(token: string): Promise<{
   sub: string;
   jti: string;
   exp: number;
+  userId: string;
+  tenantId: string;
+  username: string;
+  isSystemAdmin: boolean;
 }> {
   const secret = await getJwtSecret();
   const payload = jwt.verify(token, secret, {
     algorithms: ["HS256"],
   }) as jwt.JwtPayload;
 
-  if (!payload.sub || !payload.jti || !payload.exp) {
+  if (
+    !payload.sub ||
+    !payload.jti ||
+    !payload.exp ||
+    typeof payload.userId !== "string" ||
+    typeof payload.tenantId !== "string" ||
+    typeof payload.username !== "string"
+  ) {
     throw new Error("Token missing required claims");
   }
 
@@ -138,7 +167,9 @@ export async function verifyToken(token: string): Promise<{
     !session ||
     session.revokedAt !== null ||
     session.expiresAt <= now ||
-    session.subject !== payload.sub
+    session.subject !== payload.sub ||
+    session.userId !== payload.userId ||
+    session.tenantId !== payload.tenantId
   ) {
     throw new Error("Token has been revoked");
   }
@@ -147,6 +178,10 @@ export async function verifyToken(token: string): Promise<{
     sub: payload.sub,
     jti: payload.jti,
     exp: payload.exp,
+    userId: payload.userId,
+    tenantId: payload.tenantId,
+    username: payload.username,
+    isSystemAdmin: payload.isSystemAdmin === true,
   };
 }
 

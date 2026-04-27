@@ -1,6 +1,8 @@
 import {
+  getAuthBootstrapStatus,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
+  setupFirstAdmin,
   signInWithCredentials,
 } from "@client/api";
 import type { FormEvent } from "react";
@@ -28,7 +30,9 @@ export function SignInPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [setupRequired, setSetupRequired] = useState(false);
   const [isBusy, setIsBusy] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -42,6 +46,11 @@ export function SignInPage() {
 
     void (async () => {
       try {
+        const bootstrap = await getAuthBootstrapStatus();
+        if (cancelled) return;
+        setSetupRequired(bootstrap.setupRequired);
+        if (bootstrap.setupRequired) return;
+
         const restored = await restoreAuthSessionFromLegacyCredentials();
         if (cancelled) return;
         if (restored || hasAuthenticatedSession()) {
@@ -72,7 +81,15 @@ export function SignInPage() {
     setErrorMessage(null);
 
     try {
-      await signInWithCredentials(normalizedUsername, password);
+      if (setupRequired) {
+        await setupFirstAdmin({
+          username: normalizedUsername,
+          password,
+          displayName: displayName.trim() || normalizedUsername,
+        });
+      } else {
+        await signInWithCredentials(normalizedUsername, password);
+      }
       navigate(nextPath, { replace: true });
     } catch (error) {
       setErrorMessage(
@@ -89,12 +106,33 @@ export function SignInPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl tracking-tight">Sign in</CardTitle>
             <CardDescription>
-              Enter the application credentials configured for this JobOps
-              instance.
+              {setupRequired
+                ? "Create the first system admin for this JobOps instance."
+                : "Enter your JobOps username and password."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handleSubmit}>
+              {setupRequired ? (
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium"
+                    htmlFor="auth-display-name"
+                  >
+                    Name
+                  </label>
+                  <Input
+                    id="auth-display-name"
+                    autoComplete="name"
+                    value={displayName}
+                    onChange={(event) =>
+                      setDisplayName(event.currentTarget.value)
+                    }
+                    placeholder="Your name"
+                    disabled={isBusy}
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="auth-username">
                   Username
@@ -128,7 +166,13 @@ export function SignInPage() {
                 </p>
               ) : null}
               <Button className="w-full" type="submit" disabled={isBusy}>
-                {isBusy ? "Signing in..." : "Sign in"}
+                {isBusy
+                  ? setupRequired
+                    ? "Creating account..."
+                    : "Signing in..."
+                  : setupRequired
+                    ? "Create workspace"
+                    : "Sign in"}
               </Button>
             </form>
           </CardContent>

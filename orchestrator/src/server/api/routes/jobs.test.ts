@@ -624,7 +624,12 @@ describe.sequential("Jobs API routes", () => {
       }),
     });
     const body = await res.json();
-    const storedPath = join(tempDir, "pdfs", `resume_${job.id}.pdf`);
+    const storedPath = join(
+      tempDir,
+      "pdfs",
+      "tenant_default",
+      `resume_${job.id}.pdf`,
+    );
 
     expect(res.status).toBe(201);
     expect(body.ok).toBe(true);

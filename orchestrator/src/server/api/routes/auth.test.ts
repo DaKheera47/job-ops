@@ -14,6 +14,7 @@ describe.sequential("Auth routes", () => {
     BASIC_AUTH_USER: "admin",
     BASIC_AUTH_PASSWORD: "secret",
     JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+    JOBOPS_TEST_AUTH_BYPASS: "0",
   };
 
   afterEach(async () => {
@@ -80,6 +81,7 @@ describe.sequential("Auth routes", () => {
         env: {
           BASIC_AUTH_USER: "admin",
           BASIC_AUTH_PASSWORD: "secret",
+          JOBOPS_TEST_AUTH_BYPASS: "0",
         },
       }));
 

@@ -32,6 +32,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { JobDescriptionMarkdown } from "@/client/components/JobDescriptionMarkdown";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
+import { downloadJobPdf, openJobPdf } from "@/client/lib/private-pdf";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -352,9 +353,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const selectedJobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
     : "#";
-  const selectedPdfHref = selectedJob
-    ? `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`
-    : "#";
   const canApply = selectedJob?.status === "ready";
   const canMoveToInProgress = selectedJob?.status === "applied";
   const canProcess = selectedJob
@@ -368,6 +366,27 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const isProcessingSelected = selectedJob
     ? processingJobId === selectedJob.id || selectedJob.status === "processing"
     : false;
+  const selectedPdfFilename = selectedJob
+    ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`
+    : "resume.pdf";
+
+  const handleOpenPdf = useCallback(() => {
+    if (!selectedJob) return;
+    void openJobPdf(selectedJob.id).catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Could not open PDF",
+      );
+    });
+  }, [selectedJob]);
+
+  const handleDownloadPdf = useCallback(() => {
+    if (!selectedJob) return;
+    void downloadJobPdf(selectedJob.id, selectedPdfFilename).catch((error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Could not download PDF",
+      );
+    });
+  }, [selectedJob, selectedPdfFilename]);
 
   if (activeTab === "discovered") {
     return (
@@ -444,19 +463,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         {showReadyPdf &&
           (selectedHasPdf ? (
             <Button
-              asChild
               size="sm"
               variant="ghost"
               className="h-8 gap-1.5 text-xs"
+              onClick={handleOpenPdf}
             >
-              <a
-                href={selectedPdfHref}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <FileText className="h-3.5 w-3.5" />
-                PDF
-              </a>
+              <FileText className="h-3.5 w-3.5" />
+              PDF
             </Button>
           ) : (
             <Button
@@ -549,25 +562,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             {selectedHasPdf && (
               <>
                 {!showReadyPdf && (
-                  <DropdownMenuItem asChild>
-                    <a
-                      href={selectedPdfHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      View PDF
-                    </a>
+                  <DropdownMenuItem onSelect={handleOpenPdf}>
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    View PDF
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem asChild>
-                  <a
-                    href={selectedPdfHref}
-                    download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Download PDF
-                  </a>
+                <DropdownMenuItem onSelect={handleDownloadPdf}>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Download PDF
                 </DropdownMenuItem>
               </>
             )}

@@ -41,6 +41,8 @@ Two backup types exist:
 
 ## Configure backups
 
+Backup management is restricted to system admins. Normal workspace users cannot list, create, or delete backups.
+
 In **Settings → Backup**:
 
 1. Enable automatic backups.

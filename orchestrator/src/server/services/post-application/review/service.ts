@@ -21,6 +21,7 @@ import {
   resolveStageTransitionForTarget,
   stageTargetFromMessageType,
 } from "@server/services/post-application/stage-target";
+import { getActiveTenantId } from "@server/tenancy/context";
 import type {
   ApplicationStage,
   PostApplicationActionRequest,
@@ -108,6 +109,7 @@ export async function approvePostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
+  const tenantId = getActiveTenantId();
   const updated = db.transaction((tx) => {
     let stageEventId: string | null = null;
     const decidedAtIso = new Date(decidedAt).toISOString();
@@ -124,6 +126,7 @@ export async function approvePostApplicationInboxItem(args: {
       .where(
         and(
           eq(postApplicationMessages.id, message.id),
+          eq(postApplicationMessages.tenantId, tenantId),
           eq(postApplicationMessages.processingStatus, "pending_user"),
         ),
       )
@@ -168,7 +171,12 @@ export async function approvePostApplicationInboxItem(args: {
           messagesApproved: sql`${postApplicationSyncRuns.messagesApproved} + 1`,
           updatedAt: decidedAtIso,
         })
-        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .where(
+          and(
+            eq(postApplicationSyncRuns.id, message.syncRunId),
+            eq(postApplicationSyncRuns.tenantId, tenantId),
+          ),
+        )
         .run();
     }
 
@@ -220,6 +228,7 @@ export async function denyPostApplicationInboxItem(args: {
   }
 
   const decidedAt = Date.now();
+  const tenantId = getActiveTenantId();
   db.transaction((tx) => {
     const decidedAtIso = new Date(decidedAt).toISOString();
     const messageUpdateResult = tx
@@ -234,6 +243,7 @@ export async function denyPostApplicationInboxItem(args: {
       .where(
         and(
           eq(postApplicationMessages.id, message.id),
+          eq(postApplicationMessages.tenantId, tenantId),
           eq(postApplicationMessages.processingStatus, "pending_user"),
         ),
       )
@@ -250,7 +260,12 @@ export async function denyPostApplicationInboxItem(args: {
           messagesDenied: sql`${postApplicationSyncRuns.messagesDenied} + 1`,
           updatedAt: decidedAtIso,
         })
-        .where(eq(postApplicationSyncRuns.id, message.syncRunId))
+        .where(
+          and(
+            eq(postApplicationSyncRuns.id, message.syncRunId),
+            eq(postApplicationSyncRuns.tenantId, tenantId),
+          ),
+        )
         .run();
     }
   });

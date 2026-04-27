@@ -54,6 +54,21 @@ vi.mock("../api", () => ({
   getBackups: vi.fn().mockResolvedValue({ backups: [], nextScheduled: null }),
   createManualBackup: vi.fn(),
   deleteBackup: vi.fn(),
+  getCurrentAuthUser: vi.fn().mockResolvedValue({
+    id: "user-1",
+    username: "test",
+    displayName: null,
+    isSystemAdmin: false,
+    isDisabled: false,
+    tenantId: "tenant_default",
+    tenantName: "JobOps",
+    createdAt: "2026-04-27T00:00:00.000Z",
+    updatedAt: "2026-04-27T00:00:00.000Z",
+  }),
+  listAccountUsers: vi.fn().mockResolvedValue([]),
+  createAccountUser: vi.fn(),
+  setAccountUserDisabled: vi.fn(),
+  resetAccountUserPassword: vi.fn(),
 }));
 
 vi.mock("sonner", () => ({

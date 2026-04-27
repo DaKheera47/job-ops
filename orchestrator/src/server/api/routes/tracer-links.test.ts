@@ -230,6 +230,7 @@ describe.sequential("Tracer links routes", () => {
         BASIC_AUTH_USER: "admin",
         BASIC_AUTH_PASSWORD: "secret",
         JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
       },
     }));
 

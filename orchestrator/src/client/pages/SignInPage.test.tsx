@@ -4,22 +4,53 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SignInPage } from "./SignInPage";
 
 vi.mock("@client/api", () => ({
+  getAuthBootstrapStatus: vi.fn(async () => ({
+    setupRequired: false,
+  })),
   hasAuthenticatedSession: vi.fn(() => false),
   restoreAuthSessionFromLegacyCredentials: vi.fn(async () => false),
+  setupFirstAdmin: vi.fn(async () => ({
+    id: "user-1",
+    username: "admin",
+    displayName: null,
+    isSystemAdmin: true,
+    isDisabled: false,
+    tenantId: "tenant_default",
+    tenantName: "JobOps",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })),
   signInWithCredentials: vi.fn(async () => undefined),
 }));
 
 import {
+  getAuthBootstrapStatus,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
+  setupFirstAdmin,
   signInWithCredentials,
 } from "@client/api";
 
 describe("SignInPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getAuthBootstrapStatus).mockResolvedValue({
+      setupRequired: false,
+    });
     vi.mocked(hasAuthenticatedSession).mockReturnValue(false);
     vi.mocked(restoreAuthSessionFromLegacyCredentials).mockResolvedValue(false);
+    const authUser = {
+      id: "user-1",
+      username: "admin",
+      displayName: null,
+      isSystemAdmin: true,
+      isDisabled: false,
+      tenantId: "tenant_default",
+      tenantName: "JobOps",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    vi.mocked(setupFirstAdmin).mockResolvedValue(authUser);
     vi.mocked(signInWithCredentials).mockResolvedValue(undefined);
   });
 

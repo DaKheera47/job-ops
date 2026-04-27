@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { badRequest } from "@infra/errors";
-import { getDataDir } from "@server/config/dataDir";
+import { getTenantJobPdfPath, getTenantPdfDir } from "./pdf-storage";
 
 type UploadJobPdfInput = {
   jobId: string;
@@ -115,8 +115,8 @@ export async function uploadJobPdf(input: UploadJobPdfInput): Promise<{
   const decoded = decodeBase64Payload(input.dataBase64);
   assertPdfSignature(decoded);
 
-  const pdfDir = join(getDataDir(), "pdfs");
-  const outputPath = join(pdfDir, `resume_${input.jobId}.pdf`);
+  const pdfDir = getTenantPdfDir();
+  const outputPath = getTenantJobPdfPath(input.jobId);
   const tempPath = join(pdfDir, `resume_${input.jobId}.${randomUUID()}.tmp`);
 
   await mkdir(pdfDir, { recursive: true });

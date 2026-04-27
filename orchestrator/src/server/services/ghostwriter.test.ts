@@ -40,6 +40,7 @@ vi.mock("@infra/logger", () => ({
 
 vi.mock("@infra/request-context", () => ({
   getRequestId: mocks.getRequestId,
+  getTenantId: vi.fn(() => "tenant_default"),
 }));
 
 vi.mock("./ghostwriter-context", () => ({

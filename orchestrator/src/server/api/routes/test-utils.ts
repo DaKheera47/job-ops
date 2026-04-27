@@ -172,6 +172,7 @@ export async function startServer(options?: {
     ...nextEnv,
     DATA_DIR: tempDir,
     NODE_ENV: "test",
+    JOBOPS_TEST_AUTH_BYPASS: "1",
     MODEL: "test-model",
     JOBSPY_SEARCH_TERMS: "alpha|beta",
     ...envOverrides,

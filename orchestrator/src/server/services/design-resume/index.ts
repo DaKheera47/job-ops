@@ -328,8 +328,9 @@ function validatePatchedDocument(
 function isMissingDesignResumeTableError(error: unknown): boolean {
   const message = String((error as Error)?.message ?? error);
   return (
-    message.includes("no such table") &&
-    message.includes("design_resume_documents")
+    (message.includes("no such table") &&
+      message.includes("design_resume_documents")) ||
+    (message.includes("no such column") && message.includes("tenant_id"))
   );
 }
 

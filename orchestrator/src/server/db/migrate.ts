@@ -2,6 +2,7 @@
  * Database migration script - creates tables if they don't exist.
  */
 
+import { randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
@@ -17,6 +18,13 @@ if (!existsSync(dataDir)) {
 }
 
 const sqlite = new Database(DB_PATH);
+const DEFAULT_TENANT_ID = "tenant_default";
+const DEFAULT_TENANT_NAME = "JobOps";
+const DEFAULT_TENANT_SLUG = "default";
+
+function sqlString(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
 
 function tableHasColumn(tableName: string, columnName: string): boolean {
   const columns = sqlite
@@ -25,14 +33,78 @@ function tableHasColumn(tableName: string, columnName: string): boolean {
   return columns.some((column) => column.name === columnName);
 }
 
+function tableExists(tableName: string): boolean {
+  const row = sqlite
+    .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(tableName);
+  return Boolean(row);
+}
+
+function addTenantColumn(tableName: string): void {
+  if (!tableExists(tableName) || tableHasColumn(tableName, "tenant_id")) {
+    return;
+  }
+  sqlite.exec(
+    `ALTER TABLE ${tableName} ADD COLUMN tenant_id TEXT NOT NULL DEFAULT ${sqlString(DEFAULT_TENANT_ID)}`,
+  );
+}
+
+function hashPasswordSync(password: string): {
+  passwordHash: string;
+  passwordSalt: string;
+} {
+  const passwordSalt = randomBytes(16).toString("base64url");
+  const passwordHash = scryptSync(password, passwordSalt, 64).toString(
+    "base64url",
+  );
+  return { passwordHash, passwordSalt };
+}
+
 const pipelineRunsHasConfigSnapshot = tableHasColumn(
   "pipeline_runs",
   "config_snapshot",
 );
+const pipelineRunsHasTenantId = tableHasColumn("pipeline_runs", "tenant_id");
 
 const migrations = [
+  `CREATE TABLE IF NOT EXISTS tenants (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `INSERT OR IGNORE INTO tenants(id, name, slug, created_at, updated_at)
+   VALUES (${sqlString(DEFAULT_TENANT_ID)}, ${sqlString(DEFAULT_TENANT_NAME)}, ${sqlString(DEFAULT_TENANT_SLUG)}, datetime('now'), datetime('now'))`,
+
+  `CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    username TEXT NOT NULL UNIQUE,
+    display_name TEXT,
+    password_hash TEXT NOT NULL,
+    password_salt TEXT NOT NULL,
+    is_system_admin INTEGER NOT NULL DEFAULT 0,
+    is_disabled INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS tenant_memberships (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    tenant_id TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'owner' CHECK(role IN ('owner', 'member')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
+    UNIQUE(user_id, tenant_id)
+  )`,
+
   `CREATE TABLE IF NOT EXISTS jobs (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     source TEXT NOT NULL DEFAULT 'gradcracker',
     source_job_id TEXT,
     job_url_direct TEXT,
@@ -64,7 +136,7 @@ const migrations = [
     title TEXT NOT NULL,
     employer TEXT NOT NULL,
     employer_url TEXT,
-    job_url TEXT NOT NULL UNIQUE,
+    job_url TEXT NOT NULL,
     application_link TEXT,
     disciplines TEXT,
     deadline TEXT,
@@ -95,6 +167,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS pipeline_runs (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT,
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
@@ -108,10 +181,12 @@ const migrations = [
   )`,
 
   `CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    key TEXT NOT NULL,
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tenant_id, key)
   )`,
 
   `CREATE TABLE IF NOT EXISTS analytics_install_state (
@@ -156,6 +231,8 @@ const migrations = [
   `CREATE TABLE IF NOT EXISTS auth_sessions (
     id TEXT PRIMARY KEY,
     subject TEXT NOT NULL,
+    user_id TEXT,
+    tenant_id TEXT,
     expires_at INTEGER NOT NULL,
     revoked_at INTEGER,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -170,6 +247,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS design_resume_documents (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     title TEXT NOT NULL,
     resume_json TEXT NOT NULL,
     revision INTEGER NOT NULL DEFAULT 1,
@@ -182,6 +260,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS design_resume_assets (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     document_id TEXT NOT NULL,
     kind TEXT NOT NULL DEFAULT 'picture' CHECK(kind IN ('picture')),
     original_name TEXT NOT NULL,
@@ -198,6 +277,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS job_chat_threads (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     job_id TEXT NOT NULL,
     title TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -209,6 +289,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS job_chat_messages (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     thread_id TEXT NOT NULL,
     job_id TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('system', 'user', 'assistant', 'tool')),
@@ -228,6 +309,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS job_chat_runs (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     thread_id TEXT NOT NULL,
     job_id TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'cancelled', 'failed')),
@@ -246,6 +328,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS stage_events (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     application_id TEXT NOT NULL,
     title TEXT NOT NULL DEFAULT '',
     group_id TEXT,
@@ -259,6 +342,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS tasks (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     application_id TEXT NOT NULL,
     type TEXT NOT NULL,
     title TEXT NOT NULL DEFAULT '',
@@ -270,6 +354,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS job_notes (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     job_id TEXT NOT NULL,
     title TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -283,6 +368,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS interviews (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     application_id TEXT NOT NULL,
     scheduled_at INTEGER NOT NULL,
     duration_mins INTEGER,
@@ -293,6 +379,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS post_application_integrations (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     display_name TEXT,
@@ -303,11 +390,12 @@ const migrations = [
     last_error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(provider, account_key)
+    UNIQUE(tenant_id, provider, account_key)
   )`,
 
   `CREATE TABLE IF NOT EXISTS post_application_sync_runs (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
@@ -330,6 +418,7 @@ const migrations = [
 
   `CREATE TABLE IF NOT EXISTS post_application_messages (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     provider TEXT NOT NULL CHECK(provider IN ('gmail', 'imap')),
     account_key TEXT NOT NULL DEFAULT 'default',
     integration_id TEXT,
@@ -361,11 +450,12 @@ const migrations = [
     FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL,
     FOREIGN KEY (sync_run_id) REFERENCES post_application_sync_runs(id) ON DELETE SET NULL,
     FOREIGN KEY (matched_job_id) REFERENCES jobs(id) ON DELETE SET NULL,
-    UNIQUE(provider, account_key, external_message_id)
+    UNIQUE(tenant_id, provider, account_key, external_message_id)
   )`,
 
   `CREATE TABLE IF NOT EXISTS tracer_links (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     token TEXT NOT NULL UNIQUE,
     job_id TEXT NOT NULL,
     source_path TEXT NOT NULL,
@@ -376,11 +466,12 @@ const migrations = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
-    UNIQUE(job_id, source_path, destination_url_hash)
+    UNIQUE(tenant_id, job_id, source_path, destination_url_hash)
   )`,
 
   `CREATE TABLE IF NOT EXISTS tracer_click_events (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     tracer_link_id TEXT NOT NULL,
     clicked_at INTEGER NOT NULL,
     request_id TEXT,
@@ -493,6 +584,7 @@ const migrations = [
   // Ensure pipeline_runs status supports "cancelled" for existing databases.
   `CREATE TABLE IF NOT EXISTS pipeline_runs_new (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     started_at TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT,
     status TEXT NOT NULL DEFAULT 'running' CHECK(status IN ('running', 'completed', 'failed', 'cancelled')),
@@ -505,11 +597,11 @@ const migrations = [
     result_summary TEXT
   )`,
   pipelineRunsHasConfigSnapshot
-    ? `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
-   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
+    ? `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, ${pipelineRunsHasTenantId ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, NULL, NULL, NULL
    FROM pipeline_runs`
-    : `INSERT OR REPLACE INTO pipeline_runs_new (id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
-   SELECT id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL, NULL
+    : `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
+   SELECT id, ${sqlString(DEFAULT_TENANT_ID)}, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, NULL, NULL, NULL, NULL
    FROM pipeline_runs`,
   `DROP TABLE IF EXISTS pipeline_runs`,
   `ALTER TABLE pipeline_runs_new RENAME TO pipeline_runs`,
@@ -517,6 +609,7 @@ const migrations = [
   // Ensure jobs status supports "in_progress" for existing databases.
   `CREATE TABLE IF NOT EXISTS jobs_new (
     id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
     source TEXT NOT NULL DEFAULT 'gradcracker',
     source_job_id TEXT,
     job_url_direct TEXT,
@@ -548,7 +641,7 @@ const migrations = [
     title TEXT NOT NULL,
     employer TEXT NOT NULL,
     employer_url TEXT,
-    job_url TEXT NOT NULL UNIQUE,
+    job_url TEXT NOT NULL,
     application_link TEXT,
     disciplines TEXT,
     deadline TEXT,
@@ -579,7 +672,7 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `INSERT OR REPLACE INTO jobs_new (
-    id, source, source_job_id, job_url_direct, date_posted, job_type, salary_source, salary_interval,
+    id, tenant_id, source, source_job_id, job_url_direct, date_posted, job_type, salary_source, salary_interval,
     salary_min_amount, salary_max_amount, salary_currency, is_remote, job_level, job_function, listing_type,
     emails, company_industry, company_logo, company_url_direct, company_addresses, company_num_employees,
     company_revenue, company_description, skills, experience_range, company_rating, company_reviews_count,
@@ -591,7 +684,7 @@ const migrations = [
     applied_at, created_at, updated_at
   )
   SELECT
-    id, source, source_job_id, job_url_direct, date_posted, job_type, salary_source, salary_interval,
+    id, ${tableHasColumn("jobs", "tenant_id") ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, source, source_job_id, job_url_direct, date_posted, job_type, salary_source, salary_interval,
     salary_min_amount, salary_max_amount, salary_currency, is_remote, job_level, job_function, listing_type,
     emails, company_industry, company_logo, company_url_direct, company_addresses, company_num_employees,
     company_revenue, company_description, skills, experience_range, company_rating, company_reviews_count,
@@ -607,6 +700,8 @@ const migrations = [
   `PRAGMA foreign_keys = ON`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_job_url_unique ON jobs(tenant_id, job_url)`,
+  `CREATE INDEX IF NOT EXISTS idx_jobs_tenant_status ON jobs(tenant_id, status)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_discovered_at ON jobs(discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_jobs_status_discovered_at ON jobs(status, discovered_at)`,
   `CREATE INDEX IF NOT EXISTS idx_pipeline_runs_started_at ON pipeline_runs(started_at)`,
@@ -841,6 +936,101 @@ for (const migration of migrations) {
     process.exit(1);
   }
 }
+
+function ensureTenantColumns(): void {
+  for (const tableName of [
+    "stage_events",
+    "tasks",
+    "job_notes",
+    "interviews",
+    "job_chat_threads",
+    "job_chat_messages",
+    "job_chat_runs",
+    "design_resume_documents",
+    "design_resume_assets",
+    "post_application_integrations",
+    "post_application_sync_runs",
+    "post_application_messages",
+    "tracer_links",
+    "tracer_click_events",
+    "auth_sessions",
+  ]) {
+    addTenantColumn(tableName);
+  }
+
+  if (
+    tableExists("auth_sessions") &&
+    !tableHasColumn("auth_sessions", "user_id")
+  ) {
+    sqlite.exec("ALTER TABLE auth_sessions ADD COLUMN user_id TEXT");
+  }
+}
+
+function rebuildSettingsTable(): void {
+  if (!tableExists("settings")) return;
+
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS settings_new (
+    tenant_id TEXT NOT NULL DEFAULT 'tenant_default',
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tenant_id, key)
+  )`);
+
+  const hasTenantId = tableHasColumn("settings", "tenant_id");
+  sqlite.exec(`INSERT OR REPLACE INTO settings_new(tenant_id, key, value, created_at, updated_at)
+    SELECT ${hasTenantId ? `COALESCE(tenant_id, ${sqlString(DEFAULT_TENANT_ID)})` : sqlString(DEFAULT_TENANT_ID)}, key, value, created_at, updated_at
+    FROM settings`);
+  sqlite.exec("DROP TABLE IF EXISTS settings");
+  sqlite.exec("ALTER TABLE settings_new RENAME TO settings");
+}
+
+function seedLegacyOwnerFromBasicAuth(): void {
+  const existing = sqlite
+    .prepare("SELECT count(*) AS count FROM users")
+    .get() as { count: number };
+  if (existing.count > 0) return;
+
+  const username = (process.env.BASIC_AUTH_USER || "").trim();
+  const password = (process.env.BASIC_AUTH_PASSWORD || "").trim();
+  if (!username || !password) return;
+
+  const now = new Date().toISOString();
+  const userId = randomUUID();
+  const membershipId = randomUUID();
+  const { passwordHash, passwordSalt } = hashPasswordSync(password);
+
+  sqlite
+    .prepare(
+      `INSERT INTO users(id, username, display_name, password_hash, password_salt, is_system_admin, is_disabled, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?)`,
+    )
+    .run(userId, username, username, passwordHash, passwordSalt, now, now);
+
+  sqlite
+    .prepare(
+      `INSERT OR IGNORE INTO tenant_memberships(id, user_id, tenant_id, role, created_at, updated_at)
+       VALUES (?, ?, ?, 'owner', ?, ?)`,
+    )
+    .run(membershipId, userId, DEFAULT_TENANT_ID, now, now);
+
+  sqlite.exec("DELETE FROM auth_sessions");
+}
+
+console.log("🔐 Applying tenancy compatibility migrations...");
+ensureTenantColumns();
+rebuildSettingsTable();
+sqlite.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key_unique ON settings(tenant_id, key)",
+);
+sqlite.exec(
+  "CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_tenant_job_url_unique ON jobs(tenant_id, job_url)",
+);
+sqlite.exec(
+  "CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id)",
+);
+seedLegacyOwnerFromBasicAuth();
 
 sqlite.close();
 console.log("🎉 Database migrations complete!");

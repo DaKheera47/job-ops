@@ -6,6 +6,7 @@ import type {
 } from "@shared/types";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
+import { getActiveTenantId } from "../tenancy/context";
 
 const { postApplicationIntegrations } = schema;
 
@@ -56,6 +57,7 @@ export async function getPostApplicationIntegration(
   provider: PostApplicationProvider,
   accountKey: string,
 ): Promise<PostApplicationIntegration | null> {
+  const tenantId = getActiveTenantId();
   const [row] = await db
     .select()
     .from(postApplicationIntegrations)
@@ -63,6 +65,7 @@ export async function getPostApplicationIntegration(
       and(
         eq(postApplicationIntegrations.provider, provider),
         eq(postApplicationIntegrations.accountKey, accountKey),
+        eq(postApplicationIntegrations.tenantId, tenantId),
       ),
     );
 
@@ -74,6 +77,7 @@ export async function upsertConnectedPostApplicationIntegration(
 ): Promise<PostApplicationIntegration> {
   const nowEpoch = Date.now();
   const nowIso = new Date(nowEpoch).toISOString();
+  const tenantId = getActiveTenantId();
   const existing = await getPostApplicationIntegration(
     input.provider,
     input.accountKey,
@@ -107,6 +111,7 @@ export async function upsertConnectedPostApplicationIntegration(
   const id = randomUUID();
   await db.insert(postApplicationIntegrations).values({
     id,
+    tenantId,
     provider: input.provider,
     accountKey: input.accountKey,
     displayName: input.displayName ?? null,

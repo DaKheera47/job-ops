@@ -12,6 +12,7 @@ import {
 } from "@server/services/design-resume";
 import { importDesignResumeFromFile } from "@server/services/design-resume/import-file";
 import { generateDesignResumePdf } from "@server/services/pdf";
+import { getTenantDesignResumePdfPath } from "@server/services/pdf-storage";
 import { clearProfileCache } from "@server/services/profile";
 import type { DesignResumeJson, DesignResumePatchRequest } from "@shared/types";
 import { type Request, type Response, Router } from "express";
@@ -285,6 +286,19 @@ designResumeRouter.post(
         requestOrigin: resolveRequestOrigin(req),
       }),
     );
+  }),
+);
+
+designResumeRouter.get(
+  "/pdf",
+  asyncRoute(async (_req: Request, res: Response) => {
+    const pdfPath = getTenantDesignResumePdfPath();
+    res.setHeader("Cache-Control", "private, max-age=60");
+    res.sendFile(pdfPath, (error) => {
+      if (error) {
+        fail(res, notFound("Design Resume PDF not found"));
+      }
+    });
   }),
 );
 

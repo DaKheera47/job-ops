@@ -1,6 +1,7 @@
-import { badRequest, notFound } from "@infra/errors";
+import { badRequest, forbidden, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
+import { isSystemAdmin } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import {
   createBackup,
@@ -12,12 +13,19 @@ import { type Request, type Response, Router } from "express";
 
 export const backupRouter = Router();
 
+function requireSystemAdmin(res: Response): boolean {
+  if (isSystemAdmin()) return true;
+  fail(res, forbidden("System admin access is required"));
+  return false;
+}
+
 /**
  * GET /api/backups - List all backups with metadata
  */
 backupRouter.get(
   "/",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
     try {
       const backups = await listBackups();
       const nextScheduled = getNextBackupTime();
@@ -38,6 +46,7 @@ backupRouter.get(
 backupRouter.post(
   "/",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
     try {
       if (isDemoMode()) {
         return sendDemoBlocked(
@@ -72,6 +81,7 @@ backupRouter.post(
 backupRouter.delete(
   "/:filename",
   asyncRoute(async (req: Request, res: Response) => {
+    if (!requireSystemAdmin(res)) return;
     try {
       if (isDemoMode()) {
         return sendDemoBlocked(
