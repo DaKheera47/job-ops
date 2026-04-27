@@ -148,11 +148,15 @@ export function createAuthGuard() {
     const token = authHeader.slice("Bearer ".length).trim();
     try {
       const payload = await verifyToken(token);
+      const user = await usersRepo.getUserById(payload.userId);
+      if (!user || user.isDisabled || user.tenantId !== payload.tenantId) {
+        return null;
+      }
       return {
-        userId: payload.userId,
-        tenantId: payload.tenantId,
-        username: payload.username,
-        isSystemAdmin: payload.isSystemAdmin,
+        userId: user.id,
+        tenantId: user.tenantId,
+        username: user.username,
+        isSystemAdmin: user.isSystemAdmin,
       };
     } catch {
       return null;

@@ -212,6 +212,70 @@ export async function createPrivateWorkspaceUser(input: {
   return user;
 }
 
+export async function createInitialSystemAdmin(input: {
+  username: string;
+  password: string;
+  displayName?: string | null;
+}): Promise<PublicUser | null> {
+  const now = new Date().toISOString();
+  const username = normalizeUsername(input.username);
+  const userId = randomUUID();
+  const { passwordHash, passwordSalt } = await hashPassword(input.password);
+
+  const created = db.transaction((tx) => {
+    const existing = tx
+      .select({ count: sql<number>`count(*)`.as("count") })
+      .from(users)
+      .get();
+    if ((existing?.count ?? 0) > 0) {
+      return false;
+    }
+
+    tx.insert(tenants)
+      .values({
+        id: DEFAULT_TENANT_ID,
+        name: DEFAULT_TENANT_NAME,
+        slug: "default",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .run();
+
+    tx.insert(users)
+      .values({
+        id: userId,
+        username,
+        displayName: input.displayName?.trim() || null,
+        passwordHash,
+        passwordSalt,
+        isSystemAdmin: true,
+        isDisabled: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    tx.insert(tenantMemberships)
+      .values({
+        id: randomUUID(),
+        userId,
+        tenantId: DEFAULT_TENANT_ID,
+        role: "owner",
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+
+    return true;
+  });
+
+  if (!created) return null;
+  const user = await getUserById(userId);
+  if (!user) throw new Error("Failed to load created user");
+  return user;
+}
+
 export async function setUserDisabled(
   id: string,
   isDisabled: boolean,

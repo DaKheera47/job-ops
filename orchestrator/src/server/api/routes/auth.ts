@@ -96,13 +96,15 @@ authRouter.post(
       return;
     }
 
-    const user = await usersRepo.createPrivateWorkspaceUser({
+    const user = await usersRepo.createInitialSystemAdmin({
       username: parsed.data.username,
       password: parsed.data.password,
       displayName: parsed.data.displayName ?? parsed.data.username,
-      isSystemAdmin: true,
-      useDefaultTenant: true,
     });
+    if (!user) {
+      fail(res, badRequest("Initial setup has already been completed"));
+      return;
+    }
 
     const { token, expiresIn } = await signToken({
       sub: user.id,

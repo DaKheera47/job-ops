@@ -8,10 +8,11 @@ vi.mock("@server/auth/jwt", () => ({
 
 vi.mock("@server/repositories/users", () => ({
   countUsers: vi.fn(),
+  getUserById: vi.fn(),
 }));
 
 import { verifyToken } from "@server/auth/jwt";
-import { countUsers } from "@server/repositories/users";
+import { countUsers, getUserById } from "@server/repositories/users";
 
 const originalEnv = { ...process.env };
 
@@ -152,6 +153,17 @@ describe.sequential("Auth read-only enforcement", () => {
       username: "user",
       isSystemAdmin: false,
     });
+    vi.mocked(getUserById).mockResolvedValue({
+      id: "user-1",
+      username: "user",
+      displayName: null,
+      isSystemAdmin: false,
+      isDisabled: false,
+      tenantId: "tenant-1",
+      tenantName: "Tenant 1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
     const { middleware } = createAuthGuard();
     const req = createMockRequest({
@@ -167,6 +179,45 @@ describe.sequential("Auth read-only enforcement", () => {
 
     expect(next).toHaveBeenCalledOnce();
     expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("rejects a valid token after the user is disabled", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+    vi.mocked(verifyToken).mockResolvedValue({
+      sub: "user",
+      jti: "session-1",
+      exp: Math.floor(Date.now() / 1000) + 60,
+      userId: "user-1",
+      tenantId: "tenant-1",
+      username: "user",
+      isSystemAdmin: true,
+    });
+    vi.mocked(getUserById).mockResolvedValue({
+      id: "user-1",
+      username: "user",
+      displayName: null,
+      isSystemAdmin: true,
+      isDisabled: true,
+      tenantId: "tenant-1",
+      tenantName: "Tenant 1",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/jobs",
+      authorization: buildBearerHeader(),
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
   });
 
   it("requires initial setup before private APIs are usable", async () => {
