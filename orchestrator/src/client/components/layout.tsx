@@ -16,6 +16,14 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -148,51 +156,57 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
               </nav>
               <div className="mt-auto space-y-4 pt-6 pb-2">
                 <div className="space-y-2 border-t border-border/60 pt-4">
-                  <div className="px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                    Remembered
-                  </div>
-                  {rememberedUsers.length > 0 ? (
-                    <div className="space-y-1">
-                      {rememberedUsers.map((user) => (
-                        <button
-                          key={user.username}
-                          type="button"
-                          onClick={() =>
-                            void handleRememberedUserClick(user.username)
-                          }
-                          className="flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                        >
-                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                            <UserRound className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="min-w-0">
-                            <span className="block truncate font-medium">
-                              {user.displayName ?? user.username}
-                            </span>
-                            {user.displayName ? (
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {user.username}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-full justify-start gap-2 px-2 text-xs"
+                      >
+                        <UserRound className="h-3.5 w-3.5" />
+                        <span>Account</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuLabel>Remembered</DropdownMenuLabel>
+                      {rememberedUsers.length > 0 ? (
+                        rememberedUsers.map((user) => (
+                          <DropdownMenuItem
+                            key={user.username}
+                            onSelect={() =>
+                              void handleRememberedUserClick(user.username)
+                            }
+                            className="flex min-w-0 items-start gap-2"
+                          >
+                            <UserRound className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium">
+                                {user.displayName ?? user.username}
                               </span>
-                            ) : null}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="px-1 text-xs text-muted-foreground">
-                      Sign in once to remember a username here.
-                    </p>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void handleSignOut()}
-                    className="h-8 w-full justify-start gap-2 px-2 text-xs"
-                  >
-                    <LogOut className="h-3.5 w-3.5" />
-                    <span>Sign out</span>
-                  </Button>
+                              {user.displayName ? (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {user.username}
+                                </span>
+                              ) : null}
+                            </span>
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <DropdownMenuItem disabled>
+                          Sign in once to remember a username here.
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => void handleSignOut()}
+                        className="gap-2"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        <span>Sign out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 {showVersionFooter && (
                   <TooltipProvider>
