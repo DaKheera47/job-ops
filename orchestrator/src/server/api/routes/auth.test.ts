@@ -132,6 +132,22 @@ describe.sequential("Auth routes", () => {
     });
   });
 
+  describe("POST /api/auth/setup", () => {
+    beforeEach(async () => {
+      ({ server, baseUrl, closeDb, tempDir } = await startServer());
+    });
+
+    it("rejects a short first-admin password", async () => {
+      const res = await fetch(`${baseUrl}/api/auth/setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "short" }),
+      });
+
+      expect(res.status).toBe(400);
+    });
+  });
+
   describe("POST /api/auth/logout", () => {
     beforeEach(async () => {
       ({ server, baseUrl, closeDb, tempDir } = await startServer({

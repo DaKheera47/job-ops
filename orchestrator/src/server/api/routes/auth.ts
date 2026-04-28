@@ -13,6 +13,7 @@ const loginSchema = z.object({
 });
 
 const setupSchema = loginSchema.extend({
+  password: z.string().min(8).max(500),
   displayName: z.string().trim().min(1).max(120).optional(),
 });
 

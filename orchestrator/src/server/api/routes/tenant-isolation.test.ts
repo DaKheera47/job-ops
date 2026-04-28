@@ -158,4 +158,45 @@ describe.sequential("Tenant isolation", () => {
     expect(body.error.code).toBe("CONFLICT");
     expect(body.error.message).toContain("Username already exists");
   });
+
+  it("revokes existing sessions when an admin resets a user password", async () => {
+    const adminToken = await login(baseUrl, "admin", "secret");
+
+    const createRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: authHeaders(adminToken),
+      body: JSON.stringify({
+        username: "adam",
+        displayName: "Adam",
+        password: "adam-secret",
+      }),
+    });
+    expect(createRes.status).toBe(201);
+    const created = (await createRes.json()) as {
+      data: { user: { id: string } };
+    };
+
+    const adamToken = await login(baseUrl, "adam", "adam-secret");
+
+    const resetRes = await fetch(
+      `${baseUrl}/api/workspaces/users/${created.data.user.id}/reset-password`,
+      {
+        method: "POST",
+        headers: authHeaders(adminToken),
+        body: JSON.stringify({ password: "adam-secret-2" }),
+      },
+    );
+    expect(resetRes.status).toBe(200);
+
+    const oldSessionRes = await fetch(`${baseUrl}/api/jobs`, {
+      headers: { Authorization: `Bearer ${adamToken}` },
+    });
+    expect(oldSessionRes.status).toBe(401);
+
+    const newToken = await login(baseUrl, "adam", "adam-secret-2");
+    const newSessionRes = await fetch(`${baseUrl}/api/jobs`, {
+      headers: { Authorization: `Bearer ${newToken}` },
+    });
+    expect(newSessionRes.status).toBe(200);
+  });
 });

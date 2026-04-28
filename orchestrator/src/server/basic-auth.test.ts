@@ -115,10 +115,47 @@ describe.sequential("Auth read-only enforcement", () => {
   });
 
   it("allows webhook trigger without JWT auth guard", async () => {
+    process.env.WEBHOOK_SECRET = "configured-webhook-secret";
     const { middleware } = createAuthGuard();
     const req = createMockRequest({
       method: "POST",
       path: "/api/webhook/trigger",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(countUsers).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("requires JWT auth for webhook trigger when no webhook secret is configured", async () => {
+    delete process.env.WEBHOOK_SECRET;
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "POST",
+      path: "/api/webhook/trigger",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("allows Umami stats beacons without JWT auth", async () => {
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "POST",
+      path: "/stats/api/send",
     });
     const res = createMockResponse();
     const next = vi.fn() as NextFunction;

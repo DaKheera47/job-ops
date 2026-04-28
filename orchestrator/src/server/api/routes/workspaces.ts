@@ -1,6 +1,7 @@
 import { badRequest, conflict, forbidden, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { getUserId, isSystemAdmin } from "@infra/request-context";
+import * as authSessionsRepo from "@server/repositories/auth-sessions";
 import * as usersRepo from "@server/repositories/users";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -131,6 +132,7 @@ workspacesRouter.post(
       id: userId,
       password: parsed.data.password,
     });
+    await authSessionsRepo.revokeAuthSessionsForUser(userId);
     ok(res, { userId });
   }),
 );

@@ -178,7 +178,7 @@ export function createAuthGuard() {
       normalizedMethod === "POST" &&
       normalizedPath === "/api/webhook/trigger"
     )
-      return true;
+      return Boolean(process.env.WEBHOOK_SECRET?.trim());
 
     // Auth endpoints must be accessible without existing auth.
     if (
@@ -201,6 +201,10 @@ export function createAuthGuard() {
     if (isPublicReadOnlyRoute(method, path)) return false;
     // OPTIONS is always exempt for CORS preflight.
     if (method.toUpperCase() === "OPTIONS") return false;
+
+    // Umami's public script posts browser beacons to /stats/api/send. The
+    // proxy route still validates method/path before forwarding.
+    if (isStatsRoute(path)) return false;
 
     // Analytics and per-job tracer details are workspace-private.
     if (path.startsWith("/api/tracer-links/analytics")) return true;

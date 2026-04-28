@@ -57,6 +57,17 @@ export async function revokeAuthSession(id: string): Promise<void> {
     .where(eq(authSessions.id, id));
 }
 
+export async function revokeAuthSessionsForUser(userId: string): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  await db
+    .update(authSessions)
+    .set({
+      revokedAt: now,
+      updatedAt: new Date(now * 1000).toISOString(),
+    })
+    .where(eq(authSessions.userId, userId));
+}
+
 export async function deleteExpiredOrRevokedAuthSessions(): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   await db
