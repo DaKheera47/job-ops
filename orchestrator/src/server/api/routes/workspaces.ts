@@ -1,4 +1,4 @@
-import { badRequest, forbidden, notFound } from "@infra/errors";
+import { badRequest, conflict, forbidden, notFound } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { getUserId, isSystemAdmin } from "@infra/request-context";
 import * as usersRepo from "@server/repositories/users";
@@ -32,6 +32,11 @@ function requireSystemAdmin(res: Response): boolean {
   return false;
 }
 
+function isUsernameConflictError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /UNIQUE constraint failed: users\.username/i.test(error.message);
+}
+
 workspacesRouter.get(
   "/users",
   asyncRoute(async (_req: Request, res: Response) => {
@@ -50,13 +55,22 @@ workspacesRouter.post(
       return;
     }
 
-    const user = await usersRepo.createPrivateWorkspaceUser({
-      username: parsed.data.username,
-      password: parsed.data.password,
-      displayName: parsed.data.displayName ?? parsed.data.username,
-      isSystemAdmin: parsed.data.isSystemAdmin ?? false,
-    });
-    ok(res, { user }, 201);
+    try {
+      const user = await usersRepo.createPrivateWorkspaceUser({
+        username: parsed.data.username,
+        password: parsed.data.password,
+        displayName: parsed.data.displayName ?? parsed.data.username,
+        isSystemAdmin: parsed.data.isSystemAdmin ?? false,
+      });
+      ok(res, { user }, 201);
+      return;
+    } catch (error) {
+      if (isUsernameConflictError(error)) {
+        fail(res, conflict("Username already exists"));
+        return;
+      }
+      throw error;
+    }
   }),
 );
 

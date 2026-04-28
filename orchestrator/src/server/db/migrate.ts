@@ -162,7 +162,8 @@ const migrations = [
     ready_at TEXT,
     applied_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS pipeline_runs (
@@ -177,7 +178,8 @@ const migrations = [
     config_snapshot TEXT,
     requested_config TEXT,
     effective_config TEXT,
-    result_summary TEXT
+    result_summary TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS settings (
@@ -186,7 +188,8 @@ const migrations = [
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(tenant_id, key)
+    UNIQUE(tenant_id, key),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS analytics_install_state (
@@ -236,7 +239,9 @@ const migrations = [
     expires_at INTEGER NOT NULL,
     revoked_at INTEGER,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at
@@ -255,7 +260,8 @@ const migrations = [
     source_mode TEXT CHECK(source_mode IN ('v4', 'v5')),
     imported_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS design_resume_assets (
@@ -269,6 +275,7 @@ const migrations = [
     storage_path TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (document_id) REFERENCES design_resume_documents(id) ON DELETE CASCADE
   )`,
 
@@ -284,6 +291,7 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_message_at TEXT,
     active_root_message_id TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -303,6 +311,7 @@ const migrations = [
     active_child_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (thread_id) REFERENCES job_chat_threads(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
@@ -322,6 +331,7 @@ const migrations = [
     request_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (thread_id) REFERENCES job_chat_threads(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
@@ -337,6 +347,7 @@ const migrations = [
     occurred_at INTEGER NOT NULL,
     metadata TEXT,
     outcome TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -349,6 +360,7 @@ const migrations = [
     due_date INTEGER,
     is_completed INTEGER NOT NULL DEFAULT 0,
     notes TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -360,6 +372,7 @@ const migrations = [
     content TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -374,6 +387,7 @@ const migrations = [
     duration_mins INTEGER,
     type TEXT NOT NULL,
     outcome TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (application_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
 
@@ -390,7 +404,8 @@ const migrations = [
     last_error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(tenant_id, provider, account_key)
+    UNIQUE(tenant_id, provider, account_key),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
 
   `CREATE TABLE IF NOT EXISTS post_application_sync_runs (
@@ -413,6 +428,7 @@ const migrations = [
     error_message TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL
   )`,
 
@@ -447,6 +463,7 @@ const migrations = [
     error_message TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (integration_id) REFERENCES post_application_integrations(id) ON DELETE SET NULL,
     FOREIGN KEY (sync_run_id) REFERENCES post_application_sync_runs(id) ON DELETE SET NULL,
     FOREIGN KEY (matched_job_id) REFERENCES jobs(id) ON DELETE SET NULL,
@@ -465,6 +482,7 @@ const migrations = [
     is_active INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE,
     UNIQUE(tenant_id, job_id, source_path, destination_url_hash)
   )`,
@@ -482,6 +500,7 @@ const migrations = [
     referrer_host TEXT,
     ip_hash TEXT,
     unique_fingerprint_hash TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (tracer_link_id) REFERENCES tracer_links(id) ON DELETE CASCADE
   )`,
 
@@ -594,7 +613,8 @@ const migrations = [
     config_snapshot TEXT,
     requested_config TEXT,
     effective_config TEXT,
-    result_summary TEXT
+    result_summary TEXT,
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
   pipelineRunsHasConfigSnapshot
     ? `INSERT OR REPLACE INTO pipeline_runs_new (id, tenant_id, started_at, completed_at, status, jobs_discovered, jobs_processed, error_message, config_snapshot, requested_config, effective_config, result_summary)
@@ -669,7 +689,8 @@ const migrations = [
     ready_at TEXT,
     applied_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`,
   `INSERT OR REPLACE INTO jobs_new (
     id, tenant_id, source, source_job_id, job_url_direct, date_posted, job_type, salary_source, salary_interval,
@@ -975,7 +996,8 @@ function rebuildSettingsTable(): void {
     value TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(tenant_id, key)
+    UNIQUE(tenant_id, key),
+    FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
   )`);
 
   const hasTenantId = tableHasColumn("settings", "tenant_id");

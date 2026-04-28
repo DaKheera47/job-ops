@@ -127,4 +127,35 @@ describe.sequential("Tenant isolation", () => {
     });
     expect(adamPdf.status).toBe(404);
   });
+
+  it("returns 409 when creating a duplicate workspace username", async () => {
+    const adminToken = await login(baseUrl, "admin", "secret");
+
+    const firstRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: authHeaders(adminToken),
+      body: JSON.stringify({
+        username: "adam",
+        displayName: "Adam",
+        password: "adam-secret",
+      }),
+    });
+    expect(firstRes.status).toBe(201);
+
+    const secondRes = await fetch(`${baseUrl}/api/workspaces/users`, {
+      method: "POST",
+      headers: authHeaders(adminToken),
+      body: JSON.stringify({
+        username: " Adam ",
+        displayName: "Adam Clone",
+        password: "adam-secret-2",
+      }),
+    });
+    const body = await secondRes.json();
+
+    expect(secondRes.status).toBe(409);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("CONFLICT");
+    expect(body.error.message).toContain("Username already exists");
+  });
 });
