@@ -4,6 +4,7 @@
 
 import { createJob } from "@shared/testing/factories";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 const {
   getEffectiveSettingsMock,
   getSettingMock,
@@ -450,9 +451,9 @@ describe("salary penalty", () => {
       } as any);
 
       callJsonMock.mockResolvedValue({
-          success: true,
-          data: { score: 80, reason: "Good match" },
-        });
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
 
       const job = createJob({
         id: "test-job-1",
@@ -495,9 +496,9 @@ describe("salary penalty", () => {
       } as any);
 
       callJsonMock.mockResolvedValue({
-          success: true,
-          data: { score: 80, reason: "Good match" },
-        });
+        success: true,
+        data: { score: 80, reason: "Good match" },
+      });
 
       await scoreJobSuitability(
         createJob({
