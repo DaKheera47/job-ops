@@ -33,9 +33,7 @@ RUN npm install -g resumed puppeteer
 
 # Install JSON Resume themes
 RUN npm install -g \
-    jsonresume-theme-even \
-    jsonresume-theme-community-garden \
-    jsonresume-theme-californian-warm
+    jsonresume-theme-stackoverflow
 
 WORKDIR /app
 
