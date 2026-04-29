@@ -1,4 +1,15 @@
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { DesignResumeSection } from "./DesignResumeSection";
 import type { ItemDefinition } from "./definitions";
@@ -19,6 +30,29 @@ export function DesignResumeListSection({
   onEdit,
   onUpdateItems,
 }: DesignResumeListSectionProps) {
+  const [pendingRemovalIndex, setPendingRemovalIndex] = useState<number | null>(
+    null,
+  );
+  const pendingRemovalItem = useMemo(
+    () =>
+      pendingRemovalIndex == null ? null : (items[pendingRemovalIndex] ?? null),
+    [items, pendingRemovalIndex],
+  );
+  const pendingRemovalLabel = toText(
+    pendingRemovalItem
+      ? getByPath(pendingRemovalItem, definition.primaryField)
+      : null,
+    "this item",
+  );
+
+  const confirmRemoval = () => {
+    if (pendingRemovalIndex == null) return;
+    onUpdateItems(
+      items.filter((_, currentIndex) => currentIndex !== pendingRemovalIndex),
+    );
+    setPendingRemovalIndex(null);
+  };
+
   return (
     <DesignResumeSection
       value={definition.key}
@@ -123,11 +157,7 @@ export function DesignResumeListSection({
                   type="button"
                   variant="ghost"
                   className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                  onClick={() =>
-                    onUpdateItems(
-                      items.filter((_, currentIndex) => currentIndex !== index),
-                    )
-                  }
+                  onClick={() => setPendingRemovalIndex(index)}
                 >
                   Remove
                 </Button>
@@ -136,6 +166,35 @@ export function DesignResumeListSection({
           ))
         )}
       </div>
+
+      <AlertDialog
+        open={pendingRemovalIndex != null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemovalIndex(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Remove {definition.singularTitle.toLowerCase()}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {pendingRemovalLabel} from your Design Resume.
+              You can add it again later, but this change will be saved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmRemoval}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DesignResumeSection>
   );
 }
