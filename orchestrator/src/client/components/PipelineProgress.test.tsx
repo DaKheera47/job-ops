@@ -18,6 +18,14 @@ const sseMock = vi.hoisted(() => ({
   subscribeToEventSource: vi.fn(),
 }));
 
+const apiMock = vi.hoisted(() => ({
+  getPipelineProgressSnapshot: vi.fn(),
+}));
+
+vi.mock("@client/api", () => ({
+  getPipelineProgressSnapshot: apiMock.getPipelineProgressSnapshot,
+}));
+
 vi.mock("@/client/lib/sse", () => ({
   subscribeToEventSource: sseMock.subscribeToEventSource,
 }));
@@ -49,6 +57,7 @@ const baseProgress = {
 
 describe("PipelineProgress", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     sseMock.instances.length = 0;
     sseMock.subscribeToEventSource.mockReset();
     sseMock.subscribeToEventSource.mockImplementation(
@@ -62,10 +71,13 @@ describe("PipelineProgress", () => {
         return instance.unsubscribe;
       },
     );
+    apiMock.getPipelineProgressSnapshot.mockReset();
+    apiMock.getPipelineProgressSnapshot.mockResolvedValue(baseProgress);
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   const getSse = () => {
@@ -119,5 +131,41 @@ describe("PipelineProgress", () => {
 
     expect(screen.queryByText("0/0")).not.toBeInTheDocument();
     expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("falls back to snapshot polling when SSE does not open", async () => {
+    render(<PipelineProgress isRunning />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Updating…")).toBeInTheDocument();
+    expect(screen.getByText(baseProgress.message)).toBeInTheDocument();
+  });
+
+  it("stops snapshot polling after a terminal snapshot state", async () => {
+    apiMock.getPipelineProgressSnapshot.mockResolvedValueOnce({
+      ...baseProgress,
+      step: "failed",
+      message: "Pipeline failed",
+      error: "Boom",
+    });
+
+    render(<PipelineProgress isRunning />);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1500);
+    });
+
+    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Pipeline failed")).toBeInTheDocument();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2500);
+    });
+
+    expect(apiMock.getPipelineProgressSnapshot).toHaveBeenCalledTimes(1);
   });
 });

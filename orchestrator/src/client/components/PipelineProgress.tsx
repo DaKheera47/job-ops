@@ -2,10 +2,12 @@
  * Live pipeline progress display component.
  */
 
+import { getPipelineProgressSnapshot } from "@client/api";
 import {
   sourceLabel as getSourceLabel,
   isExtractorSourceId,
 } from "@shared/extractors";
+import type { PipelineProgressState } from "@shared/types";
 import { Loader2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -16,50 +18,11 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-interface PipelineProgress {
-  step:
-    | "idle"
-    | "crawling"
-    | "importing"
-    | "scoring"
-    | "processing"
-    | "completed"
-    | "cancelled"
-    | "failed";
-  message: string;
-  detail?: string;
-  crawlingSource: string | null;
-  crawlingSourcesCompleted: number;
-  crawlingSourcesTotal: number;
-  crawlingTermsProcessed: number;
-  crawlingTermsTotal: number;
-  crawlingListPagesProcessed: number;
-  crawlingListPagesTotal: number;
-  crawlingJobCardsFound: number;
-  crawlingJobPagesEnqueued: number;
-  crawlingJobPagesSkipped: number;
-  crawlingJobPagesProcessed: number;
-  crawlingPhase?: "list" | "job";
-  crawlingCurrentUrl?: string;
-  jobsDiscovered: number;
-  jobsScored: number;
-  jobsProcessed: number;
-  totalToProcess: number;
-  currentJob?: {
-    id: string;
-    title: string;
-    employer: string;
-  };
-  error?: string;
-  startedAt?: string;
-  completedAt?: string;
-}
-
 interface PipelineProgressProps {
   isRunning: boolean;
 }
 
-const stepLabels: Record<PipelineProgress["step"], string> = {
+const stepLabels: Record<PipelineProgressState["step"], string> = {
   idle: "Ready",
   crawling: "Crawling",
   importing: "Importing",
@@ -70,7 +33,7 @@ const stepLabels: Record<PipelineProgress["step"], string> = {
   failed: "Failed",
 };
 
-const stepBadgeClasses: Record<PipelineProgress["step"], string> = {
+const stepBadgeClasses: Record<PipelineProgressState["step"], string> = {
   idle: "bg-muted text-muted-foreground border-border",
   crawling: "bg-sky-500/10 text-sky-400 border-sky-500/20",
   importing: "bg-sky-500/10 text-sky-400 border-sky-500/20",
@@ -84,6 +47,14 @@ const stepBadgeClasses: Record<PipelineProgress["step"], string> = {
 const clamp = (value: number, min: number, max: number) =>
   Math.max(min, Math.min(max, value));
 
+const SSE_FALLBACK_TIMEOUT_MS = 1500;
+const SNAPSHOT_POLL_INTERVAL_MS = 2000;
+const TERMINAL_STEPS: ReadonlySet<PipelineProgressState["step"]> = new Set([
+  "completed",
+  "cancelled",
+  "failed",
+]);
+
 function resolveSourceLabel(source: string): string {
   if (source === "jobspy") return "JobSpy";
   if (isExtractorSourceId(source)) return getSourceLabel(source);
@@ -93,8 +64,10 @@ function resolveSourceLabel(source: string): string {
 export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   isRunning,
 }) => {
-  const [progress, setProgress] = useState<PipelineProgress | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [progress, setProgress] = useState<PipelineProgressState | null>(null);
+  const [transport, setTransport] = useState<"connecting" | "live" | "polling">(
+    "connecting",
+  );
 
   const percentage = useMemo(() => {
     if (!progress) return 0;
@@ -157,28 +130,89 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   useEffect(() => {
     if (!isRunning) {
       setProgress(null);
-      setIsConnected(false);
+      setTransport("connecting");
       return;
     }
 
-    const unsubscribe = subscribeToEventSource<PipelineProgress>(
+    let isActive = true;
+    let hasOpened = false;
+    let isPolling = false;
+    let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+    let fallbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const stopPolling = () => {
+      isPolling = false;
+      if (pollIntervalId) {
+        clearInterval(pollIntervalId);
+        pollIntervalId = null;
+      }
+    };
+
+    const fetchSnapshot = async () => {
+      try {
+        const snapshot = await getPipelineProgressSnapshot();
+        if (!isActive) return;
+        setProgress(snapshot);
+        if (isPolling) {
+          setTransport("polling");
+        }
+        if (TERMINAL_STEPS.has(snapshot.step)) {
+          stopPolling();
+        }
+      } catch {
+        if (!isActive) return;
+      }
+    };
+
+    const startPolling = () => {
+      if (!isActive || isPolling) return;
+      isPolling = true;
+      setTransport((current) => (current === "live" ? current : "polling"));
+      void fetchSnapshot();
+      pollIntervalId = setInterval(() => {
+        void fetchSnapshot();
+      }, SNAPSHOT_POLL_INTERVAL_MS);
+    };
+
+    const unsubscribe = subscribeToEventSource<PipelineProgressState>(
       "/api/pipeline/progress",
       {
         onOpen: () => {
-          setIsConnected(true);
+          if (!isActive) return;
+          hasOpened = true;
+          stopPolling();
+          setTransport("live");
         },
         onMessage: (payload) => {
+          if (!isActive) return;
           setProgress(payload);
+          if (TERMINAL_STEPS.has(payload.step)) {
+            stopPolling();
+          }
         },
         onError: () => {
-          setIsConnected(false);
+          if (!isActive) return;
+          if (hasOpened) {
+            setTransport("polling");
+          }
+          startPolling();
         },
       },
     );
 
+    fallbackTimeoutId = setTimeout(() => {
+      if (!isActive || hasOpened) return;
+      startPolling();
+    }, SSE_FALLBACK_TIMEOUT_MS);
+
     return () => {
+      isActive = false;
+      if (fallbackTimeoutId) {
+        clearTimeout(fallbackTimeoutId);
+      }
+      stopPolling();
       unsubscribe();
-      setIsConnected(false);
+      setTransport("connecting");
     };
   }, [isRunning]);
 
@@ -226,7 +260,11 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
               {stepLabels[step]}
             </Badge>
             <span className="truncate text-xs text-muted-foreground">
-              {isConnected ? "Live" : "Connecting…"}
+              {transport === "live"
+                ? "Live"
+                : transport === "polling"
+                  ? "Updating…"
+                  : "Connecting…"}
             </span>
           </div>
 

@@ -48,6 +48,45 @@ describe("pipeline client helpers", () => {
     );
   });
 
+  it("fetches the current pipeline progress snapshot", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      createJsonResponse(200, {
+        ok: true,
+        data: {
+          step: "crawling",
+          message: "Fetching jobs from sources...",
+          crawlingSource: "linkedin",
+          crawlingSourcesCompleted: 0,
+          crawlingSourcesTotal: 2,
+          crawlingTermsProcessed: 1,
+          crawlingTermsTotal: 4,
+          crawlingListPagesProcessed: 3,
+          crawlingListPagesTotal: 10,
+          crawlingJobCardsFound: 12,
+          crawlingJobPagesEnqueued: 5,
+          crawlingJobPagesSkipped: 1,
+          crawlingJobPagesProcessed: 2,
+          jobsDiscovered: 8,
+          jobsScored: 0,
+          jobsProcessed: 0,
+          totalToProcess: 0,
+        },
+        meta: { requestId: "req-progress" },
+      }),
+    );
+
+    await expect(api.getPipelineProgressSnapshot()).resolves.toEqual(
+      expect.objectContaining({
+        step: "crawling",
+        message: "Fetching jobs from sources...",
+      }),
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/pipeline/progress/snapshot",
+      expect.any(Object),
+    );
+  });
+
   it("fetches pipeline run insights for a specific run", async () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
       createJsonResponse(200, {

@@ -1,6 +1,11 @@
 import * as api from "@client/api";
 import { subscribeToEventSource } from "@client/lib/sse";
-import type { Job, JobListItem, JobStatus } from "@shared/types";
+import type {
+  Job,
+  JobListItem,
+  JobStatus,
+  PipelineProgressStep,
+} from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -18,16 +23,6 @@ const initialStats: Record<JobStatus, number> = {
 
 const isDocumentVisible = () =>
   typeof document === "undefined" || document.visibilityState === "visible";
-
-type PipelineProgressStep =
-  | "idle"
-  | "crawling"
-  | "importing"
-  | "scoring"
-  | "processing"
-  | "completed"
-  | "cancelled"
-  | "failed";
 
 type PipelineProgressEvent = {
   step: PipelineProgressStep;

@@ -119,6 +119,49 @@ export interface PipelineStatusResponse {
   nextScheduledRun: string | null;
 }
 
+export type PipelineProgressStep =
+  | "idle"
+  | "crawling"
+  | "importing"
+  | "scoring"
+  | "processing"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export interface PipelineProgressCurrentJob {
+  id: string;
+  title: string;
+  employer: string;
+}
+
+export interface PipelineProgressState {
+  step: PipelineProgressStep;
+  message: string;
+  detail?: string;
+  crawlingSource: string | null;
+  crawlingSourcesCompleted: number;
+  crawlingSourcesTotal: number;
+  crawlingTermsProcessed: number;
+  crawlingTermsTotal: number;
+  crawlingListPagesProcessed: number;
+  crawlingListPagesTotal: number;
+  crawlingJobCardsFound: number;
+  crawlingJobPagesEnqueued: number;
+  crawlingJobPagesSkipped: number;
+  crawlingJobPagesProcessed: number;
+  crawlingPhase?: "list" | "job";
+  crawlingCurrentUrl?: string;
+  jobsDiscovered: number;
+  jobsScored: number;
+  jobsProcessed: number;
+  totalToProcess: number;
+  currentJob?: PipelineProgressCurrentJob;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
 export type PipelineMetricQuality =
   | "exact"
   | "inferred_from_timestamps"

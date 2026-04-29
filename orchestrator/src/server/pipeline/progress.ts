@@ -1,52 +1,19 @@
 import { logger } from "@infra/logger";
 import { getActiveTenantId } from "@server/tenancy/context";
+import type {
+  PipelineProgressState,
+  PipelineProgressStep,
+} from "@shared/types";
 
 /**
  * Pipeline progress tracking with Server-Sent Events.
  */
 
-export type PipelineStep =
-  | "idle"
-  | "crawling"
-  | "importing"
-  | "scoring"
-  | "processing"
-  | "completed"
-  | "cancelled"
-  | "failed";
+export type PipelineStep = PipelineProgressStep;
 
 export type CrawlSource = string;
 
-export interface PipelineProgress {
-  step: PipelineStep;
-  message: string;
-  detail?: string;
-  crawlingSource: CrawlSource | null;
-  crawlingSourcesCompleted: number;
-  crawlingSourcesTotal: number;
-  crawlingTermsProcessed: number;
-  crawlingTermsTotal: number;
-  crawlingListPagesProcessed: number;
-  crawlingListPagesTotal: number;
-  crawlingJobCardsFound: number;
-  crawlingJobPagesEnqueued: number;
-  crawlingJobPagesSkipped: number;
-  crawlingJobPagesProcessed: number;
-  crawlingPhase?: "list" | "job";
-  crawlingCurrentUrl?: string;
-  jobsDiscovered: number;
-  jobsScored: number;
-  jobsProcessed: number;
-  totalToProcess: number;
-  currentJob?: {
-    id: string;
-    title: string;
-    employer: string;
-  };
-  error?: string;
-  startedAt?: string;
-  completedAt?: string;
-}
+export type PipelineProgress = PipelineProgressState;
 
 // Event emitter for progress updates
 type ProgressListener = (progress: PipelineProgress) => void;

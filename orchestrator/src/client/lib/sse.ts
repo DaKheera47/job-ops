@@ -9,6 +9,8 @@ interface EventSourceSubscriptionHandlers<T> {
   onError?: () => void;
 }
 
+const FRAME_DELIMITER = /\r?\n\r?\n/;
+
 function parseSseFrame(frame: string): string | null {
   const dataLines: string[] = [];
   for (const line of frame.split(/\r?\n/)) {
@@ -18,6 +20,33 @@ function parseSseFrame(frame: string): string | null {
     }
   }
   return dataLines.length > 0 ? dataLines.join("\n") : null;
+}
+
+function emitParsedFrame<T>(
+  frame: string,
+  handlers: EventSourceSubscriptionHandlers<T>,
+): void {
+  const data = parseSseFrame(frame);
+  if (!data) return;
+
+  try {
+    handlers.onMessage(JSON.parse(data) as T);
+  } catch {
+    // Ignore malformed events to keep stream resilient.
+  }
+}
+
+function readNextFrame(buffer: string): {
+  frame: string;
+  remainder: string;
+} | null {
+  const match = FRAME_DELIMITER.exec(buffer);
+  if (!match || typeof match.index !== "number") return null;
+
+  const separator = match[0];
+  const frame = buffer.slice(0, match.index);
+  const remainder = buffer.slice(match.index + separator.length);
+  return { frame, remainder };
 }
 
 export function subscribeToEventSource<T>(
@@ -65,25 +94,23 @@ export function subscribeToEventSource<T>(
         try {
           while (!isClosed) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              buffer += decoder.decode();
+              break;
+            }
             buffer += decoder.decode(value, { stream: true });
 
-            let separatorIndex = buffer.indexOf("\n\n");
-            while (separatorIndex !== -1) {
-              const frame = buffer.slice(0, separatorIndex);
-              buffer = buffer.slice(separatorIndex + 2);
-
-              const data = parseSseFrame(frame);
-              if (data) {
-                try {
-                  handlers.onMessage(JSON.parse(data) as T);
-                } catch {
-                  // Ignore malformed events to keep stream resilient.
-                }
-              }
-
-              separatorIndex = buffer.indexOf("\n\n");
+            let parsedFrame = readNextFrame(buffer);
+            while (parsedFrame) {
+              emitParsedFrame(parsedFrame.frame, handlers);
+              buffer = parsedFrame.remainder;
+              parsedFrame = readNextFrame(buffer);
             }
+          }
+
+          const trailingFrame = buffer.trim();
+          if (trailingFrame.length > 0) {
+            emitParsedFrame(trailingFrame, handlers);
           }
         } finally {
           try {

@@ -25,6 +25,56 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.data.lastRun).toBeNull();
   });
 
+  it("returns the current pipeline progress snapshot in the API envelope", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/progress/snapshot`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBeTruthy();
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        step: "idle",
+        message: "Ready",
+      }),
+    );
+  });
+
+  it("requires auth for the pipeline progress snapshot when auth is enabled", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        BASIC_AUTH_USER: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+        JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+      },
+    }));
+
+    const unauthorizedRes = await fetch(
+      `${baseUrl}/api/pipeline/progress/snapshot`,
+    );
+    expect(unauthorizedRes.status).toBe(401);
+
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "secret" }),
+    });
+    const loginBody = await loginRes.json();
+
+    const authorizedRes = await fetch(
+      `${baseUrl}/api/pipeline/progress/snapshot`,
+      {
+        headers: { Authorization: `Bearer ${loginBody.data.token}` },
+      },
+    );
+    const authorizedBody = await authorizedRes.json();
+
+    expect(authorizedRes.status).toBe(200);
+    expect(authorizedBody.ok).toBe(true);
+    expect(authorizedBody.meta.requestId).toBeTruthy();
+  });
+
   it("returns recent pipeline runs in the API envelope", async () => {
     const { db, schema } = await import("@server/db");
 

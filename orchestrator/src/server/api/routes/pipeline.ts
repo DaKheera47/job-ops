@@ -17,6 +17,7 @@ import {
 } from "@server/extractors/registry";
 import {
   getPipelineStatus,
+  getProgress,
   requestPipelineCancel,
   runPipeline,
   subscribeToProgress,
@@ -33,7 +34,10 @@ import {
   LOCATION_MATCH_STRICTNESS_VALUES,
   LOCATION_SEARCH_SCOPE_VALUES,
 } from "@shared/location-preferences.js";
-import type { PipelineStatusResponse } from "@shared/types";
+import type {
+  PipelineProgressState,
+  PipelineStatusResponse,
+} from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -82,6 +86,25 @@ pipelineRouter.get("/status", async (_req: Request, res: Response) => {
       lastRun,
       nextScheduledRun: null,
     };
+    ok(res, data);
+  } catch (error) {
+    fail(
+      res,
+      new AppError({
+        status: 500,
+        code: "INTERNAL_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+    );
+  }
+});
+
+/**
+ * GET /api/pipeline/progress/snapshot - Get the current pipeline progress state
+ */
+pipelineRouter.get("/progress/snapshot", (_req: Request, res: Response) => {
+  try {
+    const data: PipelineProgressState = getProgress();
     ok(res, data);
   } catch (error) {
     fail(

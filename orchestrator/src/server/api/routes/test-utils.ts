@@ -41,6 +41,7 @@ vi.mock("@server/pipeline/index", () => {
     summarizeJob: vi.fn().mockResolvedValue({ success: true }),
     generateFinalPdf: vi.fn().mockResolvedValue({ success: true }),
     getPipelineStatus: vi.fn(() => ({ isRunning: false })),
+    getProgress: vi.fn(() => ({ ...progress })),
     requestPipelineCancel: vi.fn(() => ({
       accepted: false,
       pipelineRunId: null,
