@@ -46,6 +46,7 @@ describe.sequential("Pipeline API routes", () => {
       env: {
         BASIC_AUTH_USER: "admin",
         BASIC_AUTH_PASSWORD: "secret",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
         JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
       },
     }));
