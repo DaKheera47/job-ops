@@ -1,9 +1,5 @@
 import * as api from "@client/api";
-import {
-  FitAssessment,
-  JobHeader,
-  TailoredSummary,
-} from "@client/components";
+import { JobHeader, TailoredSummary } from "@client/components";
 import { GhostwriterDrawer } from "@client/components/ghostwriter/GhostwriterDrawer";
 import { JobDescriptionMarkdown } from "@client/components/JobDescriptionMarkdown";
 import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
@@ -20,7 +16,11 @@ import { useSettings } from "@client/hooks/useSettings";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@client/lib/jobDescription";
 import { downloadJobPdf, openJobPdf } from "@client/lib/private-pdf";
-import type { Job, JobListItem, ResumeProjectCatalogItem } from "@shared/types.js";
+import type {
+  Job,
+  JobListItem,
+  ResumeProjectCatalogItem,
+} from "@shared/types.js";
 import {
   CheckCircle2,
   Copy,
@@ -72,19 +72,82 @@ type InspectorTab = "brief" | "tailoring" | "apply";
 
 const tabCopy: Record<
   InspectorTab,
-  { label: string; description: string }
+  {
+    label: string;
+    description: string;
+    dotClassName: string;
+    activeClassName: string;
+  }
 > = {
   brief: {
     label: "Brief",
     description: "Read the role, fit, and raw job description.",
+    dotClassName: "bg-sky-500/70",
+    activeClassName:
+      "data-[state=active]:border-sky-400/35 data-[state=active]:bg-sky-500/10 data-[state=active]:text-sky-100",
   },
   tailoring: {
     label: "Tailoring",
     description: "Shape the resume material for this job.",
+    dotClassName: "bg-amber-500/70",
+    activeClassName:
+      "data-[state=active]:border-amber-400/35 data-[state=active]:bg-amber-500/10 data-[state=active]:text-amber-100",
   },
   apply: {
     label: "Apply",
     description: "Use the generated kit, Ghostwriter, and final actions.",
+    dotClassName: "bg-emerald-500/70",
+    activeClassName:
+      "data-[state=active]:border-emerald-400/35 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-100",
+  },
+};
+
+const statusTone: Record<
+  Job["status"],
+  {
+    shell: string;
+    eyebrow: string;
+    icon: string;
+    button?: string;
+  }
+> = {
+  discovered: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-sky-500/70",
+    button: "bg-orange-500 text-white hover:bg-orange-400",
+  },
+  processing: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-amber-500/70",
+  },
+  ready: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-emerald-500/70",
+    button: "bg-emerald-600 text-white hover:bg-emerald-500",
+  },
+  applied: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-teal-500/70",
+    button: "bg-teal-600 text-white hover:bg-teal-500",
+  },
+  in_progress: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-cyan-500/70",
+  },
+  skipped: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-rose-500/70",
+  },
+  expired: {
+    shell: "border-border/45 bg-muted/10",
+    eyebrow: "text-muted-foreground",
+    icon: "bg-slate-500/70",
   },
 };
 
@@ -118,20 +181,89 @@ const getJobStageNote = (job: Job): string => {
   return "Archived or inactive job. The details remain available for reference.";
 };
 
-const Stat: React.FC<{ label: string; value?: string | null }> = ({
-  label,
-  value,
-}) => {
+const Stat: React.FC<{
+  label: string;
+  value?: string | null;
+  tone?: "blue" | "green" | "neutral";
+}> = ({ label, value, tone = "neutral" }) => {
   if (!value) return null;
+  const toneClassName =
+    tone === "blue"
+      ? "border-sky-400/10 bg-muted/5"
+      : tone === "green"
+        ? "border-emerald-400/10 bg-muted/5"
+        : "border-border/35 bg-muted/5";
   return (
-    <div className="min-w-0 rounded-md border border-border/40 bg-muted/10 px-3 py-2">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
+    <div className={cn("min-w-0 rounded-md border px-3 py-2", toneClassName)}>
+      <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/60">
         {label}
       </div>
-      <div className="mt-1 truncate text-xs text-foreground/85">{value}</div>
+      <div className="mt-1 truncate text-xs font-medium text-foreground/85">
+        {value}
+      </div>
     </div>
   );
 };
+
+const FitSignal: React.FC<{ job: Job }> = ({ job }) => {
+  if (!job.suitabilityReason) return null;
+
+  const score = job.suitabilityScore ?? 0;
+  const isStrong = score >= 75;
+  const isRisk = score > 0 && score < 55;
+  const toneClassName = isStrong
+    ? "border-emerald-400/20 bg-muted/5"
+    : isRisk
+      ? "border-rose-400/25 bg-muted/5"
+      : "border-amber-400/25 bg-muted/5";
+  const label = isStrong ? "Strong fit" : isRisk ? "Fit risk" : "Fit check";
+  const iconClassName = isStrong
+    ? "text-emerald-300"
+    : isRisk
+      ? "text-rose-300"
+      : "text-amber-300";
+
+  return (
+    <div className={cn("rounded-lg border px-3 py-3", toneClassName)}>
+      <div
+        className={cn(
+          "mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide",
+          iconClassName,
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        {label}
+        {job.suitabilityScore != null ? (
+          <span className="ml-auto text-[10px] tabular-nums opacity-80">
+            {job.suitabilityScore}/100
+          </span>
+        ) : null}
+      </div>
+      <p className="text-sm leading-relaxed text-foreground/85">
+        {job.suitabilityReason}
+      </p>
+    </div>
+  );
+};
+
+const KitStatus: React.FC<{ label: string; ready: boolean }> = ({
+  label,
+  ready,
+}) => (
+  <div className="flex items-center justify-between gap-3 rounded-md border border-border/35 bg-background/30 px-3 py-2">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        ready
+          ? "bg-emerald-500/10 text-emerald-300"
+          : "bg-amber-500/10 text-amber-300",
+      )}
+    >
+      {ready ? "Ready" : "Missing"}
+    </span>
+  </div>
+);
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   activeTab: _activeTab,
@@ -331,12 +463,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       return;
     }
     setInspectorTab("brief");
-  }, [
-    handleJobMoved,
-    markAsAppliedMutation,
-    onJobUpdated,
-    selectedJob,
-  ]);
+  }, [handleJobMoved, markAsAppliedMutation, onJobUpdated, selectedJob]);
 
   const handleSkip = useCallback(async () => {
     if (!selectedJob) return;
@@ -420,6 +547,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     selectedJob.status === "processing";
   const canGenerate = ["discovered", "ready"].includes(selectedJob.status);
   const canSkip = ["discovered", "ready"].includes(selectedJob.status);
+  const tone = statusTone[selectedJob.status];
 
   return (
     <div className="flex min-h-[520px] flex-col gap-4">
@@ -432,10 +560,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           }}
         />
 
-        <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-lg border p-3",
+            tone.shell,
+          )}
+        >
+          <div className={cn("absolute inset-y-0 left-0 w-1", tone.icon)} />
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+              <div
+                className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wide",
+                  tone.eyebrow,
+                )}
+              >
                 Next step
               </div>
               <p className="mt-1 text-xs text-foreground/80">
@@ -447,7 +586,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 size="sm"
                 onClick={() => void handlePrimaryAction()}
                 disabled={primaryBusy || selectedJob.status === "processing"}
-                className="h-9 gap-1.5 px-3 text-xs"
+                className={cn("h-9 gap-1.5 px-3 text-xs", tone.button)}
               >
                 {primaryBusy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -489,7 +628,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
-                      void copyTextToClipboard(formatJobForWebhook(selectedJob));
+                      void copyTextToClipboard(
+                        formatJobForWebhook(selectedJob),
+                      );
                       toast.success("Copied job info");
                     }}
                   >
@@ -572,38 +713,49 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         onValueChange={(value) => setInspectorTab(value as InspectorTab)}
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg bg-muted/20 p-1 text-xs">
+        <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg border border-border/35 bg-background/30 p-1 text-xs">
           {Object.entries(tabCopy).map(([value, copy]) => (
-            <TabsTrigger key={value} value={value} className="text-xs">
-              {copy.label}
+            <TabsTrigger
+              key={value}
+              value={value}
+              className={cn(
+                "h-9 gap-2 border border-transparent text-xs text-muted-foreground data-[state=active]:shadow-none",
+                copy.activeClassName,
+              )}
+            >
+              <span
+                className={cn("h-1.5 w-1.5 rounded-full", copy.dotClassName)}
+              />
+              <span>{copy.label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <div className="mt-2 text-[10px] text-muted-foreground/70">
+        <div className="mt-2 border-l border-border/50 pl-2 text-[10px] text-muted-foreground/65">
           {tabCopy[inspectorTab].description}
         </div>
 
         <TabsContent value="brief" className="min-h-0 flex-1 space-y-4 pt-3">
           <div className="grid gap-2 sm:grid-cols-2">
-            <Stat label="Location" value={selectedJob.location} />
-            <Stat label="Salary" value={selectedJob.salary} />
+            <Stat label="Location" value={selectedJob.location} tone="blue" />
+            <Stat label="Salary" value={selectedJob.salary} tone="green" />
             <Stat label="Level" value={selectedJob.jobLevel} />
             <Stat label="Function" value={selectedJob.jobFunction} />
             <Stat label="Type" value={selectedJob.jobType} />
             <Stat label="Discipline" value={selectedJob.disciplines} />
           </div>
 
-          <FitAssessment job={selectedJob} />
+          <FitSignal job={selectedJob} />
           <TailoredSummary job={selectedJob} />
 
-          <div className="rounded-lg border border-border/50 bg-muted/10">
-            <div className="flex items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
-              <div>
-                <div className="text-xs font-semibold text-foreground/90">
+          <div className="overflow-hidden rounded-lg border border-border/45 bg-muted/5">
+            <div className="flex items-center justify-between gap-2 border-b border-border/35 bg-muted/5 px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 text-xs font-semibold text-foreground/90">
+                  <FileText className="h-3.5 w-3.5 text-sky-400/80" />
                   Job description
                 </div>
-                <p className="text-[10px] text-muted-foreground/70">
+                <p className="mt-0.5 text-[10px] text-muted-foreground/65">
                   The source material for deciding, tailoring, and applying.
                 </p>
               </div>
@@ -613,7 +765,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs"
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         void copyTextToClipboard(
                           selectedJob.jobDescription || "",
@@ -627,7 +779,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs"
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => setIsEditingDescription(true)}
                     >
                       <Edit2 className="mr-1.5 h-3.5 w-3.5" />
@@ -639,7 +791,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs"
+                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         setIsEditingDescription(false);
                         setEditedDescription(selectedJob.jobDescription || "");
@@ -650,6 +802,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     </Button>
                     <Button
                       size="sm"
+                      variant="secondary"
                       className="h-8 px-2 text-xs"
                       onClick={() => void handleSaveDescription()}
                       disabled={isSavingDescription}
@@ -666,18 +819,18 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </div>
             </div>
 
-            <div className="max-h-[420px] overflow-y-auto p-3 text-sm text-muted-foreground">
+            <div className="max-h-[420px] overflow-y-auto bg-background/20 p-4 text-sm text-foreground/75">
               {isEditingDescription ? (
                 <Textarea
                   value={editedDescription}
                   onChange={(event) => setEditedDescription(event.target.value)}
-                  className="min-h-[360px] font-mono text-sm leading-relaxed focus-visible:ring-1"
+                  className="min-h-[360px] bg-background/70 font-mono text-sm leading-relaxed focus-visible:ring-1"
                   placeholder="Enter job description..."
                 />
               ) : renderMarkdownInJobDescriptions ? (
                 <JobDescriptionMarkdown description={description} />
               ) : (
-                <div className="whitespace-pre-wrap leading-relaxed">
+                <div className="whitespace-pre-wrap leading-7">
                   {description}
                 </div>
               )}
@@ -701,16 +854,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <div className="grid gap-2 sm:grid-cols-2">
             <GhostwriterDrawer
               job={selectedJob}
-              triggerClassName="h-10 w-full justify-center gap-1.5 px-2 text-xs"
+              triggerClassName="h-10 w-full justify-center gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
             />
             <OpenJobListingButton
               href={jobLink}
-              className="h-10 w-full px-2 text-xs"
+              className="h-10 w-full border-border/35 bg-background/35 px-2 text-xs"
               shortcut="o"
             />
             <Button
               variant="outline"
-              className="h-10 w-full gap-1.5 px-2 text-xs"
+              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
               onClick={handleDownloadPdf}
               disabled={!selectedJob.pdfPath}
             >
@@ -720,7 +873,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </Button>
             <Button
               variant="outline"
-              className="h-10 w-full gap-1.5 px-2 text-xs"
+              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
               onClick={handleOpenPdf}
               disabled={!selectedJob.pdfPath}
             >
@@ -729,9 +882,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </Button>
           </div>
 
-          <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
+          <div className="rounded-lg border border-border/45 bg-muted/5 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground/90">
-              <FolderKanban className="h-3.5 w-3.5 text-muted-foreground" />
+              <FolderKanban className="h-3.5 w-3.5 text-amber-400/80" />
               Selected projects
             </div>
             {selectedProjects.length > 0 ? (
@@ -739,7 +892,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 {selectedProjects.map((project) => (
                   <span
                     key={project}
-                    className="rounded-md border border-border/50 bg-background/50 px-2 py-1 text-[11px] text-muted-foreground"
+                    className="rounded-md border border-border/35 bg-background/40 px-2 py-1 text-[11px] text-muted-foreground"
                   >
                     {project}
                   </span>
@@ -753,29 +906,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             )}
           </div>
 
-          <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
-            <div className="mb-3 text-xs font-semibold text-foreground/90">
+          <div className="rounded-lg border border-border/45 bg-muted/5 p-3">
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-foreground/90">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400/80" />
               Application kit
             </div>
-            <div className="space-y-2 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between gap-3">
-                <span>Tailored summary</span>
-                <span className="text-foreground/80">
-                  {selectedJob.tailoredSummary ? "Ready" : "Missing"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>Tailored skills</span>
-                <span className="text-foreground/80">
-                  {selectedJob.tailoredSkills ? "Ready" : "Missing"}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span>PDF</span>
-                <span className="text-foreground/80">
-                  {selectedJob.pdfPath ? "Attached" : "Not generated"}
-                </span>
-              </div>
+            <div className="space-y-2">
+              <KitStatus
+                label="Tailored summary"
+                ready={Boolean(selectedJob.tailoredSummary)}
+              />
+              <KitStatus
+                label="Tailored skills"
+                ready={Boolean(selectedJob.tailoredSkills)}
+              />
+              <KitStatus label="PDF" ready={Boolean(selectedJob.pdfPath)} />
             </div>
           </div>
 
@@ -783,7 +928,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             {canGenerate && (
               <Button
                 variant="outline"
-                className="h-10 flex-1 gap-1.5 text-xs"
+                className="h-10 flex-1 gap-1.5 border-border/35 bg-background/35 text-xs"
                 onClick={() => void handleProcess()}
                 disabled={isProcessing}
               >
@@ -801,13 +946,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               className={cn(
                 buttonVariants({ variant: "default" }),
                 "h-10 flex-1 gap-1.5 text-xs",
+                tone.button,
               )}
               onClick={() => void handlePrimaryAction()}
               disabled={
                 primaryBusy ||
-                !["ready", "applied", "discovered"].includes(
-                  selectedJob.status,
-                )
+                !["ready", "applied", "discovered"].includes(selectedJob.status)
               }
             >
               {primaryBusy ? (
