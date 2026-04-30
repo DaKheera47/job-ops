@@ -431,6 +431,29 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.data.challenges).toEqual([]);
   });
 
+  it("prepares the challenge viewer lazily", async () => {
+    const { ensureChallengeViewer } = await import(
+      "@server/services/challenge-viewer"
+    );
+    vi.mocked(ensureChallengeViewer).mockResolvedValueOnce({
+      available: true,
+    });
+
+    const res = await fetch(`${baseUrl}/api/pipeline/challenge-viewer`, {
+      method: "POST",
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual({
+      available: true,
+      viewerUrl: "http://localhost:6080/vnc.html",
+      reason: null,
+    });
+    expect(ensureChallengeViewer).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects solve-challenge with invalid payload", async () => {
     const res = await fetch(`${baseUrl}/api/pipeline/solve-challenge`, {
       method: "POST",

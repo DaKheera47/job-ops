@@ -76,14 +76,18 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
   const handleSolveChallenge = useCallback(async (extractorId: string) => {
     setSolvingExtractor(extractorId);
     try {
-      // Open noVNC viewer so the user can see and click the CF challenge.
-      // In Docker, the solver renders Firefox on a virtual display exposed
-      // via noVNC on port 6080. Locally (non-Docker) this tab won't connect
-      // but that's fine - the solver opens a native window instead.
-      // The tab opens BEFORE the POST because the solver blocks until
-      // the challenge is resolved or times out (up to 5 minutes).
-      const vncUrl = `${window.location.protocol}//${window.location.hostname}:6080/vnc.html?autoconnect=true`;
-      window.open(vncUrl, "_blank", "noopener");
+      const viewerRes = await fetch("/api/pipeline/challenge-viewer", {
+        method: "POST",
+      });
+      if (viewerRes.ok) {
+        const viewerPayload = (await viewerRes.json()) as {
+          data?: { available?: boolean; viewerUrl?: string | null };
+        };
+        const viewerUrl = viewerPayload.data?.viewerUrl;
+        if (viewerPayload.data?.available && viewerUrl) {
+          window.open(viewerUrl, "_blank", "noopener");
+        }
+      }
 
       const res = await fetch("/api/pipeline/solve-challenge", {
         method: "POST",

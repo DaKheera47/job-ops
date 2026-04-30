@@ -27,6 +27,10 @@ import {
 } from "@server/pipeline/index";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { trackCanonicalActivationEvent } from "@server/services/activation-funnel";
+import {
+  buildChallengeViewerUrl,
+  ensureChallengeViewer,
+} from "@server/services/challenge-viewer";
 import { simulatePipelineRun } from "@server/services/demo-simulator";
 import { PIPELINE_EXTRACTOR_SOURCE_IDS } from "@shared/extractors";
 import {
@@ -391,6 +395,39 @@ pipelineRouter.get("/challenges", (_req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/pipeline/challenge-viewer - Lazily starts the noVNC challenge
+ * viewer when the server is running in Docker/Linux, and returns the URL the
+ * browser client should open before invoking the blocking solve endpoint.
+ */
+pipelineRouter.post(
+  "/challenge-viewer",
+  async (req: Request, res: Response) => {
+    try {
+      const status = await ensureChallengeViewer();
+      ok(res, {
+        available: status.available,
+        viewerUrl: status.available
+          ? buildChallengeViewerUrl({
+              protocol: `${req.protocol}:`,
+              hostname: req.hostname,
+            })
+          : null,
+        reason: status.available ? null : status.reason,
+      });
+    } catch (error) {
+      logger.warn("Challenge viewer failed to start", {
+        route: "/api/pipeline/challenge-viewer",
+        error,
+      });
+      fail(
+        res,
+        serviceUnavailable("Challenge viewer is unavailable on this server"),
+      );
+    }
+  },
+);
+
+/**
  * POST /api/pipeline/solve-challenge - Opens a headed browser for a human to
  * solve a Cloudflare challenge.
  *
@@ -441,6 +478,8 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
     // Dynamic import: browser-utils pulls in playwright which is heavy.
     // A top-level import would slow down every server startup even though
     // most pipeline runs never hit a challenge.
+    await ensureChallengeViewer();
+
     const { solveChallenge } = await import("browser-utils");
     const result = await solveChallenge(
       challengeUrl,

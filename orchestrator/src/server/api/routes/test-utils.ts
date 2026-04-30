@@ -85,6 +85,13 @@ vi.mock("@server/services/activation-funnel", () => ({
     .mockResolvedValue(undefined),
 }));
 
+vi.mock("@server/services/challenge-viewer", () => ({
+  ensureChallengeViewer: vi
+    .fn()
+    .mockResolvedValue({ available: false, reason: "not a container" }),
+  buildChallengeViewerUrl: vi.fn(() => "http://localhost:6080/vnc.html"),
+}));
+
 vi.mock("@server/services/visa-sponsors/index", () => ({
   getStatus: vi.fn(),
   searchSponsors: vi.fn(),
