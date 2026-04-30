@@ -2,7 +2,9 @@ import type { ResumeProfile } from "@shared/types";
 import { describe, expect, it } from "vitest";
 import {
   detectProfileLanguage,
+  detectReactiveResumeV5Language,
   resolveWritingOutputLanguage,
+  resolveWritingOutputLanguageForResumeJson,
 } from "./output-language";
 
 describe("resolveWritingOutputLanguage", () => {
@@ -64,6 +66,119 @@ describe("resolveWritingOutputLanguage", () => {
     });
 
     expect(result).toEqual({
+      language: "english",
+      source: "fallback",
+    });
+  });
+
+  it.each([
+    [
+      "german",
+      {
+        basics: {
+          headline: "Plattformingenieur",
+        },
+        summary: {
+          content:
+            "Ich entwickle Plattformen und übernehme Verantwortung für zuverlässige Lieferung.",
+        },
+        sections: {
+          experience: {
+            items: [
+              {
+                hidden: false,
+                position: "Entwicklung",
+                description:
+                  "Erfahrung mit verteilten Systemen und Zusammenarbeit mit Produktteams.",
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      "french",
+      {
+        basics: {
+          headline: "Ingénieur plateforme",
+        },
+        summary: {
+          content:
+            "Je construis des systèmes fiables avec une expérience forte dans le développement.",
+        },
+        sections: {
+          projects: {
+            items: [
+              {
+                hidden: false,
+                name: "Plateforme interne",
+                description:
+                  "Responsable des APIs et du développement pour les équipes produit.",
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      "spanish",
+      {
+        basics: {
+          headline: "Ingeniera de plataforma",
+        },
+        summary: {
+          content:
+            "Lideré el desarrollo de sistemas y tengo experiencia con APIs para los equipos.",
+        },
+        sections: {
+          skills: {
+            items: [
+              {
+                hidden: false,
+                name: "Desarrollo",
+                keywords: ["responsable", "experiencia", "integración"],
+              },
+            ],
+          },
+        },
+      },
+    ],
+  ] as const)("detects %s from Reactive Resume v5 JSON", (language, resumeJson) => {
+    expect(detectReactiveResumeV5Language(resumeJson)).toBe(language);
+  });
+
+  it("resolves v5 resume language using writing language settings", () => {
+    const resumeJson = {
+      basics: {
+        headline: "Senior Engineer",
+      },
+      summary: {
+        content: "Short profile.",
+      },
+    };
+
+    expect(
+      resolveWritingOutputLanguageForResumeJson({
+        style: {
+          languageMode: "manual",
+          manualLanguage: "french",
+        },
+        resumeJson,
+      }),
+    ).toEqual({
+      language: "french",
+      source: "manual",
+    });
+
+    expect(
+      resolveWritingOutputLanguageForResumeJson({
+        style: {
+          languageMode: "match-resume",
+          manualLanguage: "french",
+        },
+        resumeJson,
+      }),
+    ).toEqual({
       language: "english",
       source: "fallback",
     });

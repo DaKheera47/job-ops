@@ -108,6 +108,82 @@ function collectProfileLanguageSample(profile: ResumeProfile): string {
   return segments.join("\n");
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function toText(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function collectReactiveResumeV5LanguageSample(
+  resumeJson: Record<string, unknown>,
+): string {
+  const segments: string[] = [];
+
+  const add = (value: unknown): void => {
+    const text = toText(value).trim();
+    if (!text) return;
+    segments.push(text);
+  };
+
+  const basics = asRecord(resumeJson.basics);
+  const summary = asRecord(resumeJson.summary);
+  const sections = asRecord(resumeJson.sections);
+
+  add(basics?.headline);
+  add(summary?.content);
+
+  const experience = asRecord(sections?.experience);
+  for (const rawItem of asArray(experience?.items)) {
+    const item = asRecord(rawItem);
+    if (!item || item.hidden === true) continue;
+    add(item.position);
+    add(item.description);
+    for (const rawRole of asArray(item.roles)) {
+      const role = asRecord(rawRole);
+      if (!role) continue;
+      add(role.position);
+      add(role.description);
+    }
+  }
+
+  const education = asRecord(sections?.education);
+  for (const rawItem of asArray(education?.items)) {
+    const item = asRecord(rawItem);
+    if (!item || item.hidden === true) continue;
+    add(item.degree);
+    add(item.area);
+    add(item.description);
+  }
+
+  const projects = asRecord(sections?.projects);
+  for (const rawItem of asArray(projects?.items)) {
+    const item = asRecord(rawItem);
+    if (!item || item.hidden === true) continue;
+    add(item.name);
+    add(item.description);
+  }
+
+  const skills = asRecord(sections?.skills);
+  for (const rawItem of asArray(skills?.items)) {
+    const item = asRecord(rawItem);
+    if (!item || item.hidden === true) continue;
+    add(item.name);
+    for (const keyword of asArray(item.keywords)) {
+      add(keyword);
+    }
+  }
+
+  return segments.join("\n");
+}
+
 function scoreLanguageSample(
   sample: string,
   language: ChatStyleManualLanguage,
@@ -134,7 +210,20 @@ function scoreLanguageSample(
 export function detectProfileLanguage(
   profile: ResumeProfile,
 ): ChatStyleManualLanguage | null {
-  const sample = collectProfileLanguageSample(profile);
+  return detectLanguageFromSample(collectProfileLanguageSample(profile));
+}
+
+export function detectReactiveResumeV5Language(
+  resumeJson: Record<string, unknown>,
+): ChatStyleManualLanguage | null {
+  return detectLanguageFromSample(
+    collectReactiveResumeV5LanguageSample(resumeJson),
+  );
+}
+
+function detectLanguageFromSample(
+  sample: string,
+): ChatStyleManualLanguage | null {
   if (!sample.trim()) {
     return null;
   }
@@ -174,6 +263,31 @@ export function resolveWritingOutputLanguage(args: {
   }
 
   const detectedLanguage = detectProfileLanguage(args.profile);
+  if (detectedLanguage) {
+    return {
+      language: detectedLanguage,
+      source: "detected",
+    };
+  }
+
+  return {
+    language: "english",
+    source: "fallback",
+  };
+}
+
+export function resolveWritingOutputLanguageForResumeJson(args: {
+  style: WritingLanguageConfig;
+  resumeJson: Record<string, unknown>;
+}): ResolvedWritingLanguage {
+  if (args.style.languageMode === "manual") {
+    return {
+      language: args.style.manualLanguage,
+      source: "manual",
+    };
+  }
+
+  const detectedLanguage = detectReactiveResumeV5Language(args.resumeJson);
   if (detectedLanguage) {
     return {
       language: detectedLanguage,

@@ -1,3 +1,5 @@
+import type { ChatStyleManualLanguage } from "@shared/types";
+
 export interface LatexResumeContactItem {
   text: string;
   url?: string | null;
@@ -19,6 +21,14 @@ export interface LatexResumeSkillGroup {
   keywords: string[];
 }
 
+export interface LatexResumeSectionTitles {
+  summary: string;
+  experience: string;
+  education: string;
+  projects: string;
+  skills: string;
+}
+
 export interface LatexResumeDocument {
   name: string;
   headline?: string | null;
@@ -28,6 +38,7 @@ export interface LatexResumeDocument {
   education: LatexResumeEntry[];
   projects: LatexResumeEntry[];
   skillGroups: LatexResumeSkillGroup[];
+  sectionTitles?: LatexResumeSectionTitles;
 }
 
 export interface RenderResumePdfArgs {
@@ -38,4 +49,8 @@ export interface RenderResumePdfArgs {
 
 export interface ResumeRenderer {
   render(args: RenderResumePdfArgs): Promise<void>;
+}
+
+export interface NormalizeResumeJsonToLatexDocumentOptions {
+  language?: ChatStyleManualLanguage;
 }

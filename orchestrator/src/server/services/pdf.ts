@@ -11,6 +11,7 @@ import { getSetting } from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResume } from "./design-resume";
+import { resolveWritingOutputLanguageForResumeJson } from "./output-language";
 import {
   getLegacyJobPdfPath,
   getTenantDesignResumePdfPath,
@@ -32,6 +33,7 @@ import {
   prepareReactiveResumeV5DocumentForExternalUse,
 } from "./rxresume/document";
 import { parseV5ResumeData } from "./rxresume/schema/v5";
+import { getWritingStyle } from "./writing-style";
 
 export interface PdfResult {
   success: boolean;
@@ -73,6 +75,14 @@ async function resolvePdfRenderer(): Promise<PdfRenderer> {
     settingsRegistry.pdfRenderer.parse(storedValue ?? undefined) ??
     settingsRegistry.pdfRenderer.default()
   );
+}
+
+async function resolveLatexResumeLanguage(resumeJson: Record<string, unknown>) {
+  const writingStyle = await getWritingStyle();
+  return resolveWritingOutputLanguageForResumeJson({
+    style: writingStyle,
+    resumeJson,
+  }).language;
 }
 
 async function downloadRxResumePdf(
@@ -306,10 +316,12 @@ export async function generatePdf(
 
     const outputPath = getTenantJobPdfPath(jobId);
     if (renderer === "latex") {
+      const language = await resolveLatexResumeLanguage(preparedResume.data);
       await renderResumePdf({
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
+        language,
       });
     } else {
       await renderRxResumePdf({
@@ -354,10 +366,12 @@ export async function generateDesignResumePdf(options?: {
   });
 
   if (renderer === "latex") {
+    const language = await resolveLatexResumeLanguage(designResume.data);
     await renderResumePdf({
       resumeJson: designResume.data,
       outputPath,
       jobId: "design-resume",
+      language,
     });
   } else {
     await renderRxResumePdf({

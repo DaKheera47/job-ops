@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  buildLatexDocument,
   getLatexTemplatePath,
   getTectonicBinary,
   readLatexTemplate,
@@ -76,6 +77,58 @@ describe("latex resume renderer", () => {
     } else {
       process.env.TECTONIC_BIN = previous;
     }
+  });
+
+  it("defaults LaTeX section titles to English", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        sectionTitles: undefined,
+      },
+      "__NAME__\n__HEADLINE_BLOCK__\n__CONTACT_BLOCK__\n__BODY__",
+    );
+
+    expect(latex).toContain("\\section{Summary}");
+    expect(latex).toContain("\\section{Experience}");
+    expect(latex).toContain("\\section{Technical Skills}");
+  });
+
+  it("renders localized LaTeX section titles", () => {
+    const latex = buildLatexDocument(
+      {
+        ...baseDocument,
+        education: [
+          {
+            title: "University",
+            subtitle: "MSc",
+            date: "2020",
+            bullets: ["Studied distributed systems"],
+          },
+        ],
+        projects: [
+          {
+            title: "Platform",
+            subtitle: "TypeScript",
+            date: "2024",
+            bullets: ["Built deployment tooling"],
+          },
+        ],
+        sectionTitles: {
+          summary: "Resumen",
+          experience: "Experiencia",
+          education: "Educación",
+          projects: "Proyectos",
+          skills: "Habilidades técnicas",
+        },
+      },
+      "__NAME__\n__HEADLINE_BLOCK__\n__CONTACT_BLOCK__\n__BODY__",
+    );
+
+    expect(latex).toContain("\\section{Resumen}");
+    expect(latex).toContain("\\section{Experiencia}");
+    expect(latex).toContain("\\section{Educación}");
+    expect(latex).toContain("\\section{Proyectos}");
+    expect(latex).toContain("\\section{Habilidades técnicas}");
   });
 
   it("fails with a helpful error when tectonic is unavailable", async () => {

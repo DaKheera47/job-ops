@@ -3,218 +3,227 @@ import { generatePdf } from "./pdf";
 import * as projectSelection from "./projectSelection";
 
 // Define mock data in hoisted block
-const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
-  vi.hoisted(() => {
-    const profile = {
-      $schema: "https://rxresu.me/schema.json",
-      version: "5.0.0",
-      picture: {
-        hidden: true,
+const {
+  currentLanguageSettings,
+  currentPdfRenderer,
+  mocks,
+  mockProfile,
+  mockResumeRenderer,
+} = vi.hoisted(() => {
+  const profile = {
+    $schema: "https://rxresu.me/schema.json",
+    version: "5.0.0",
+    picture: {
+      hidden: true,
+      url: "",
+      size: 96,
+      rotation: 0,
+      aspectRatio: 1,
+      borderRadius: 0,
+      borderColor: "#000000",
+      borderWidth: 0,
+      shadowColor: "#000000",
+      shadowWidth: 0,
+    },
+    basics: {
+      name: "",
+      headline: "Original Headline",
+      email: "",
+      phone: "",
+      location: "",
+      website: {
         url: "",
-        size: 96,
-        rotation: 0,
-        aspectRatio: 1,
-        borderRadius: 0,
-        borderColor: "#000000",
-        borderWidth: 0,
-        shadowColor: "#000000",
-        shadowWidth: 0,
+        label: "",
       },
-      basics: {
-        name: "",
-        headline: "Original Headline",
-        email: "",
-        phone: "",
-        location: "",
-        website: {
-          url: "",
-          label: "",
-        },
-        customFields: [],
-      },
-      summary: {
-        title: "Summary",
+      customFields: [],
+    },
+    summary: {
+      title: "Summary",
+      columns: 1,
+      hidden: false,
+      content: "Original Summary",
+    },
+    sections: {
+      profiles: { title: "Profiles", columns: 1, hidden: false, items: [] },
+      experience: {
+        title: "Experience",
         columns: 1,
         hidden: false,
-        content: "Original Summary",
+        items: [],
       },
-      sections: {
-        profiles: { title: "Profiles", columns: 1, hidden: false, items: [] },
-        experience: {
-          title: "Experience",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        education: {
-          title: "Education",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        projects: {
-          title: "Projects",
-          columns: 1,
-          hidden: false,
-          items: [
-            {
-              id: "p1",
-              hidden: false,
-              name: "Project 1",
-              period: "",
-              website: { url: "", label: "" },
-              description: "",
-              options: { showLinkInTitle: false },
-            },
-            {
-              id: "p2",
-              hidden: false,
-              name: "Project 2",
-              period: "",
-              website: { url: "", label: "" },
-              description: "",
-              options: { showLinkInTitle: false },
-            },
-          ],
-        },
-        skills: {
-          title: "Skills",
-          columns: 1,
-          hidden: false,
-          items: [
-            {
-              id: "skill-1",
-              hidden: false,
-              icon: "",
-              name: "Original Skill",
-              proficiency: "",
-              level: 0,
-              keywords: [],
-            },
-          ],
-        },
-        languages: {
-          title: "Languages",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        interests: {
-          title: "Interests",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        awards: { title: "Awards", columns: 1, hidden: false, items: [] },
-        certifications: {
-          title: "Certifications",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        publications: {
-          title: "Publications",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        volunteer: {
-          title: "Volunteer",
-          columns: 1,
-          hidden: false,
-          items: [],
-        },
-        references: {
-          title: "References",
-          columns: 1,
-          hidden: false,
-          items: [],
+      education: {
+        title: "Education",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      projects: {
+        title: "Projects",
+        columns: 1,
+        hidden: false,
+        items: [
+          {
+            id: "p1",
+            hidden: false,
+            name: "Project 1",
+            period: "",
+            website: { url: "", label: "" },
+            description: "",
+            options: { showLinkInTitle: false },
+          },
+          {
+            id: "p2",
+            hidden: false,
+            name: "Project 2",
+            period: "",
+            website: { url: "", label: "" },
+            description: "",
+            options: { showLinkInTitle: false },
+          },
+        ],
+      },
+      skills: {
+        title: "Skills",
+        columns: 1,
+        hidden: false,
+        items: [
+          {
+            id: "skill-1",
+            hidden: false,
+            icon: "",
+            name: "Original Skill",
+            proficiency: "",
+            level: 0,
+            keywords: [],
+          },
+        ],
+      },
+      languages: {
+        title: "Languages",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      interests: {
+        title: "Interests",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      awards: { title: "Awards", columns: 1, hidden: false, items: [] },
+      certifications: {
+        title: "Certifications",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      publications: {
+        title: "Publications",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      volunteer: {
+        title: "Volunteer",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+      references: {
+        title: "References",
+        columns: 1,
+        hidden: false,
+        items: [],
+      },
+    },
+    customSections: [],
+    metadata: {
+      template: "rhyhorn",
+      layout: {
+        sidebarWidth: 220,
+        pages: [
+          {
+            fullWidth: false,
+            main: ["summary", "experience", "education", "projects"],
+            sidebar: ["profiles", "skills", "languages"],
+          },
+        ],
+      },
+      css: {
+        enabled: false,
+        value: "",
+      },
+      page: {
+        gapX: 18,
+        gapY: 18,
+        marginX: 18,
+        marginY: 18,
+        format: "a4",
+        locale: "en",
+        hideIcons: false,
+        options: {
+          breakLine: true,
+          pageNumbers: true,
         },
       },
-      customSections: [],
-      metadata: {
-        template: "rhyhorn",
-        layout: {
-          sidebarWidth: 220,
-          pages: [
-            {
-              fullWidth: false,
-              main: ["summary", "experience", "education", "projects"],
-              sidebar: ["profiles", "skills", "languages"],
-            },
-          ],
+      design: {
+        level: {
+          icon: "circle",
+          type: "hidden",
         },
-        css: {
-          enabled: false,
-          value: "",
+        colors: {
+          background: "#ffffff",
+          text: "#000000",
+          primary: "#2563eb",
         },
-        page: {
-          gapX: 18,
-          gapY: 18,
-          marginX: 18,
-          marginY: 18,
-          format: "a4",
-          locale: "en",
-          hideIcons: false,
-          options: {
-            breakLine: true,
-            pageNumbers: true,
-          },
-        },
-        design: {
-          level: {
-            icon: "circle",
-            type: "hidden",
-          },
-          colors: {
-            background: "#ffffff",
-            text: "#000000",
-            primary: "#2563eb",
-          },
-        },
-        typography: {
-          body: {
-            fontFamily: "Inter",
-            fontWeights: ["regular"],
-            fontSize: 14,
-            lineHeight: 1.5,
-          },
-          heading: {
-            fontFamily: "Inter",
-            fontWeights: ["600"],
-            fontSize: 14,
-            lineHeight: 1.25,
-          },
-        },
-        notes: "",
       },
-    };
+      typography: {
+        body: {
+          fontFamily: "Inter",
+          fontWeights: ["regular"],
+          fontSize: 14,
+          lineHeight: 1.5,
+        },
+        heading: {
+          fontFamily: "Inter",
+          fontWeights: ["600"],
+          fontSize: 14,
+          lineHeight: 1.25,
+        },
+      },
+      notes: "",
+    },
+  };
 
-    let lastResumeArgs: any = null;
-    const renderer = {
-      renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
-        lastResumeArgs = JSON.parse(JSON.stringify(args));
-      }),
-      getLastResumeJson: () => lastResumeArgs?.resumeJson ?? null,
-      getLastResumeArgs: () => lastResumeArgs,
-      clearLastResumeJson: () => {
-        lastResumeArgs = null;
-      },
-    };
+  let lastResumeArgs: any = null;
+  const renderer = {
+    renderResumePdf: vi.fn().mockImplementation(async (args: any) => {
+      lastResumeArgs = JSON.parse(JSON.stringify(args));
+    }),
+    getLastResumeJson: () => lastResumeArgs?.resumeJson ?? null,
+    getLastResumeArgs: () => lastResumeArgs,
+    clearLastResumeJson: () => {
+      lastResumeArgs = null;
+    },
+  };
 
-    return {
-      currentPdfRenderer: { value: "latex" as "latex" | "rxresume" },
-      mockProfile: profile,
-      mocks: {
-        readFile: vi.fn(),
-        writeFile: vi.fn(),
-        mkdir: vi.fn().mockResolvedValue(undefined),
-        access: vi.fn().mockResolvedValue(undefined),
-        unlink: vi.fn().mockResolvedValue(undefined),
-      },
-      mockResumeRenderer: renderer,
-    };
-  });
+  return {
+    currentLanguageSettings: {
+      mode: "manual" as "manual" | "match-resume",
+      manual: "english" as "english" | "german" | "french" | "spanish",
+    },
+    currentPdfRenderer: { value: "latex" as "latex" | "rxresume" },
+    mockProfile: profile,
+    mocks: {
+      readFile: vi.fn(),
+      writeFile: vi.fn(),
+      mkdir: vi.fn().mockResolvedValue(undefined),
+      access: vi.fn().mockResolvedValue(undefined),
+      unlink: vi.fn().mockResolvedValue(undefined),
+    },
+    mockResumeRenderer: renderer,
+  };
+});
 
 // Configure base mock implementations
 mocks.readFile.mockResolvedValue(JSON.stringify(mockProfile));
@@ -271,6 +280,12 @@ vi.mock("node:fs", () => ({
 vi.mock("../repositories/settings", () => ({
   getSetting: vi.fn().mockImplementation((key: string) => {
     if (key === "pdfRenderer") return Promise.resolve(currentPdfRenderer.value);
+    if (key === "chatStyleLanguageMode") {
+      return Promise.resolve(currentLanguageSettings.mode);
+    }
+    if (key === "chatStyleManualLanguage") {
+      return Promise.resolve(currentLanguageSettings.manual);
+    }
     if (key === "rxresumeEmail") return Promise.resolve("test@example.com");
     if (key === "rxresumePassword") return Promise.resolve("testpassword");
     return Promise.resolve(null);
@@ -403,6 +418,10 @@ describe("PDF Service Tailoring Logic", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     currentPdfRenderer.value = "latex";
+    currentLanguageSettings.mode = "manual";
+    currentLanguageSettings.manual = "english";
+    mockProfile.summary.content = "Original Summary";
+    mockProfile.sections.projects.items[0].description = "";
     mocks.readFile.mockResolvedValue(JSON.stringify(mockProfile));
     mockResumeRenderer.clearLastResumeJson();
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
@@ -514,8 +533,40 @@ describe("PDF Service Tailoring Logic", () => {
     );
   });
 
+  it("passes the manual output language to the local LaTeX renderer", async () => {
+    currentLanguageSettings.mode = "manual";
+    currentLanguageSettings.manual = "spanish";
+
+    await generatePdf("job-spanish-latex", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-spanish-latex",
+        language: "spanish",
+      }),
+    );
+  });
+
+  it("detects the resume language for local LaTeX rendering", async () => {
+    currentLanguageSettings.mode = "match-resume";
+    mockProfile.summary.content =
+      "Je construis des systèmes fiables avec une expérience forte dans le développement.";
+    mockProfile.sections.projects.items[0].description =
+      "Responsable des APIs et du développement pour les équipes produit.";
+
+    await generatePdf("job-french-latex", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-french-latex",
+        language: "french",
+      }),
+    );
+  });
+
   it("uses the RxResume export flow when the renderer setting is rxresume", async () => {
     currentPdfRenderer.value = "rxresume";
+    currentLanguageSettings.manual = "german";
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       arrayBuffer: async () => new TextEncoder().encode("pdf-bytes").buffer,

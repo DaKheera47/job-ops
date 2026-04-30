@@ -1,8 +1,54 @@
 import { buildDesignResumeJakeDocument } from "@shared/design-resume-jake";
-import type { LatexResumeDocument } from "./types";
+import type { ChatStyleManualLanguage } from "@shared/types";
+import type {
+  LatexResumeDocument,
+  LatexResumeSectionTitles,
+  NormalizeResumeJsonToLatexDocumentOptions,
+} from "./types";
+
+const LATEX_RESUME_SECTION_TITLES: Record<
+  ChatStyleManualLanguage,
+  LatexResumeSectionTitles
+> = {
+  english: {
+    summary: "Summary",
+    experience: "Experience",
+    education: "Education",
+    projects: "Projects",
+    skills: "Technical Skills",
+  },
+  german: {
+    summary: "Zusammenfassung",
+    experience: "Berufserfahrung",
+    education: "Ausbildung",
+    projects: "Projekte",
+    skills: "Fachliche Kenntnisse",
+  },
+  french: {
+    summary: "Résumé",
+    experience: "Expérience",
+    education: "Formation",
+    projects: "Projets",
+    skills: "Compétences techniques",
+  },
+  spanish: {
+    summary: "Resumen",
+    experience: "Experiencia",
+    education: "Educación",
+    projects: "Proyectos",
+    skills: "Habilidades técnicas",
+  },
+};
+
+export function getLatexResumeSectionTitles(
+  language: ChatStyleManualLanguage = "english",
+): LatexResumeSectionTitles {
+  return LATEX_RESUME_SECTION_TITLES[language];
+}
 
 export function normalizeResumeJsonToLatexDocument(
   resumeJson: Record<string, unknown>,
+  options: NormalizeResumeJsonToLatexDocumentOptions = {},
 ): LatexResumeDocument {
   const document = buildDesignResumeJakeDocument(resumeJson);
 
@@ -38,5 +84,6 @@ export function normalizeResumeJsonToLatexDocument(
       name: group.name,
       keywords: group.keywords,
     })),
+    sectionTitles: getLatexResumeSectionTitles(options.language),
   };
 }

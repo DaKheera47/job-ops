@@ -94,6 +94,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output
 - If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
 - Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
+- When using the local LaTeX PDF renderer, fixed resume section titles follow the resolved output language
 - Summary max words: optional cap on AI-generated summary length (empty = no limit)
 - Max keywords per skill: optional cap on keywords per skill category in tailoring (empty = no limit)
 - These numeric limits override any similar constraints written in the Constraints text field
@@ -120,6 +121,7 @@ Defaults and constraints:
 - `Match Resume` is best when your base resume is already written in the language you want to preserve.
 - If JobOps cannot determine a reliable resume/profile language, it safely uses English.
 - The generated resume content follows the resolved language, but ATS-sensitive headline and job-title wording stays exact so matching and parsing remain safer.
+- The local LaTeX PDF renderer uses the resolved language for fixed section headings such as Summary, Experience, Education, Projects, and Technical Skills.
 
 ### Prompt Templates
 
