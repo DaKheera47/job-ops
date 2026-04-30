@@ -594,10 +594,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button
-              variant="outline"
               onClick={handleSummarizeEditor}
               disabled={isSummarizing || isGeneratingPdf}
-              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+              className="h-10 w-full gap-1.5 px-2 text-xs"
             >
               {isSummarizing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
