@@ -5,7 +5,7 @@
 
 import { existsSync } from "node:fs";
 import { access, mkdir, writeFile } from "node:fs/promises";
-import { notFound } from "@infra/errors";
+import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
@@ -37,6 +37,7 @@ export interface PdfResult {
   success: boolean;
   pdfPath?: string;
   error?: string;
+  errorCode?: AppErrorCode;
 }
 
 export interface TailoredPdfContent {
@@ -132,6 +133,25 @@ async function renderRxResumePdf(args: {
       }
     }
   }
+}
+
+function classifyPdfGenerationError(error: unknown): AppErrorCode {
+  if (error instanceof AppError) {
+    return error.code;
+  }
+
+  if (
+    error instanceof Error &&
+    /Reactive Resume|RxResume/i.test(error.message)
+  ) {
+    return "UPSTREAM_ERROR";
+  }
+
+  if (error instanceof Error && error.name === "AbortError") {
+    return "REQUEST_TIMEOUT";
+  }
+
+  return "INTERNAL_ERROR";
 }
 
 async function resolveDesignResumeForRenderer(args: {
@@ -325,7 +345,11 @@ export async function generatePdf(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     logger.error("PDF generation failed", { jobId, renderer, error });
-    return { success: false, error: message };
+    return {
+      success: false,
+      error: message,
+      errorCode: classifyPdfGenerationError(error),
+    };
   }
 }
 

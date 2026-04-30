@@ -8,12 +8,17 @@
  */
 
 import { join } from "node:path";
+import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import { getActiveTenantId } from "@server/tenancy/context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
-import type { PipelineConfig, PipelineRunSavedDetails } from "@shared/types";
+import type {
+  JobStatus,
+  PipelineConfig,
+  PipelineRunSavedDetails,
+} from "@shared/types";
 import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
@@ -581,16 +586,21 @@ export async function generateFinalPdf(
 ): Promise<{
   success: boolean;
   error?: string;
+  errorCode?: AppErrorCode;
 }> {
   return runWithRequestContext({ jobId }, async () => {
     const jobLogger = logger.child({ jobId });
     jobLogger.info("Generating final PDF");
+    let jobStatusToRestore: JobStatus | null = null;
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
+      jobStatusToRestore = job.status;
 
-      // Mark as processing
-      await jobsRepo.updateJob(job.id, { status: "processing" });
+      // Ready jobs already have a usable PDF; keep them visible while regenerating.
+      if (job.status !== "ready") {
+        await jobsRepo.updateJob(job.id, { status: "processing" });
+      }
 
       const pdfResult = await generatePdf(
         job.id,
@@ -610,9 +620,18 @@ export async function generateFinalPdf(
       );
 
       if (!pdfResult.success) {
-        // Revert status if failed
-        await jobsRepo.updateJob(job.id, { status: "discovered" });
-        return { success: false, error: pdfResult.error };
+        await jobsRepo.updateJob(job.id, { status: job.status });
+        const preservedPdfMessage =
+          job.status === "ready" && job.pdfPath
+            ? " Your previous resume PDF is still available."
+            : "";
+        return {
+          success: false,
+          error: `PDF generation failed.${preservedPdfMessage}${
+            pdfResult.error ? ` ${pdfResult.error}` : ""
+          }`,
+          errorCode: pdfResult.errorCode,
+        };
       }
 
       await jobsRepo.updateJob(job.id, {
@@ -654,6 +673,16 @@ export async function generateFinalPdf(
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      if (jobStatusToRestore) {
+        try {
+          await jobsRepo.updateJob(jobId, { status: jobStatusToRestore });
+        } catch (restoreError) {
+          jobLogger.warn("Failed to restore job status after PDF error", {
+            restoreStatus: jobStatusToRestore,
+            error: restoreError,
+          });
+        }
+      }
       jobLogger.error("PDF generation failed", error);
       return { success: false, error: message };
     }

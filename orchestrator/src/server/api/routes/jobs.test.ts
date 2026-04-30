@@ -885,6 +885,38 @@ describe.sequential("Jobs API routes", () => {
     }
   });
 
+  it("returns an upstream error when Reactive Resume PDF generation fails", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const { generateFinalPdf } = await import("@server/pipeline/index");
+    const job = await createJob({
+      source: "manual",
+      title: "PDF Failure Test",
+      employer: "Example Co",
+      jobUrl: "https://example.com/job/pdf-failure-test",
+      jobDescription: "Test description",
+    });
+
+    vi.mocked(generateFinalPdf).mockResolvedValueOnce({
+      success: false,
+      error:
+        "PDF generation failed. Your previous resume PDF is still available. Reactive Resume API error (500): Failed to generate PDF",
+      errorCode: "UPSTREAM_ERROR",
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}/generate-pdf`, {
+      method: "POST",
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(502);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("UPSTREAM_ERROR");
+    expect(body.error.message).toContain(
+      "Your previous resume PDF is still available",
+    );
+    expect(typeof body.meta.requestId).toBe("string");
+  });
+
   it("returns 409 when patching to a duplicate job URL", async () => {
     const { createJob } = await import("@server/repositories/jobs");
     const first = await createJob({

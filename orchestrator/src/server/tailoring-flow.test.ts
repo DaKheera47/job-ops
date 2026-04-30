@@ -96,4 +96,65 @@ describe("Tailoring Flow", () => {
       }),
     );
   });
+
+  it("keeps ready jobs ready when PDF regeneration fails", async () => {
+    const readyJob = {
+      id: "job-ready-789",
+      jobDescription: "Senior Product Engineer",
+      status: "ready",
+      pdfPath: "data/pdfs/resume_job-ready-789.pdf",
+      tailoredSummary: "Existing tailored summary.",
+      tailoredHeadline: "Existing headline",
+      tailoredSkills: JSON.stringify(["React"]),
+      selectedProjectIds: "project-a",
+    };
+
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue(readyJob as any);
+    vi.mocked(pdfService.generatePdf).mockResolvedValue({
+      success: false,
+      error: "Reactive Resume API error (500): Failed to generate PDF",
+      errorCode: "UPSTREAM_ERROR",
+    });
+
+    const result = await generateFinalPdf("job-ready-789");
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "PDF generation failed. Your previous resume PDF is still available. Reactive Resume API error (500): Failed to generate PDF",
+      errorCode: "UPSTREAM_ERROR",
+    });
+    expect(jobsRepo.updateJob).toHaveBeenCalledTimes(1);
+    expect(jobsRepo.updateJob).toHaveBeenCalledWith("job-ready-789", {
+      status: "ready",
+    });
+  });
+
+  it("restores the previous status when generation throws before rendering", async () => {
+    const discoveredJob = {
+      id: "job-discovered-bad-skills",
+      jobDescription: "Backend Developer",
+      status: "discovered",
+      tailoredSummary: "Summary",
+      tailoredHeadline: "Headline",
+      tailoredSkills: "{",
+    };
+
+    vi.mocked(jobsRepo.getJobById).mockResolvedValue(discoveredJob as any);
+
+    const result = await generateFinalPdf("job-discovered-bad-skills");
+
+    expect(result.success).toBe(false);
+    expect(pdfService.generatePdf).not.toHaveBeenCalled();
+    expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(
+      1,
+      "job-discovered-bad-skills",
+      { status: "processing" },
+    );
+    expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(
+      2,
+      "job-discovered-bad-skills",
+      { status: "discovered" },
+    );
+  });
 });

@@ -351,6 +351,37 @@ function mapErrorForResult(error: unknown): {
   };
 }
 
+const STATUS_BY_APP_ERROR_CODE: Record<AppErrorCode, number> = {
+  INVALID_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  REQUEST_TIMEOUT: 408,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  SERVICE_UNAVAILABLE: 503,
+  UPSTREAM_ERROR: 502,
+  INTERNAL_ERROR: 500,
+};
+
+function appErrorFromPipelineFailure(
+  result: { error?: string; errorCode?: AppErrorCode },
+  fallbackMessage: string,
+): AppError {
+  const code =
+    result.errorCode ?? (result.error === "Job not found" ? "NOT_FOUND" : null);
+
+  if (!code) {
+    return badRequest(result.error ?? fallbackMessage);
+  }
+
+  return new AppError({
+    status: STATUS_BY_APP_ERROR_CODE[code],
+    code,
+    message: result.error ?? fallbackMessage,
+  });
+}
+
 type JobActionExecutionOptions = {
   getProfileForRescore?: () => Promise<Record<string, unknown>>;
   forceMoveToReady?: boolean;
@@ -529,24 +560,14 @@ async function executeJobActionForJob(
 function mapJobActionFailure(
   failure: Extract<JobActionResult, { ok: false }>,
 ): AppError {
-  const statusByCode: Record<AppErrorCode, number> = {
-    INVALID_REQUEST: 400,
-    UNAUTHORIZED: 401,
-    FORBIDDEN: 403,
-    NOT_FOUND: 404,
-    REQUEST_TIMEOUT: 408,
-    CONFLICT: 409,
-    UNPROCESSABLE_ENTITY: 422,
-    SERVICE_UNAVAILABLE: 503,
-    UPSTREAM_ERROR: 502,
-    INTERNAL_ERROR: 500,
-  };
   const code = (
-    failure.error.code in statusByCode ? failure.error.code : "INTERNAL_ERROR"
+    failure.error.code in STATUS_BY_APP_ERROR_CODE
+      ? failure.error.code
+      : "INTERNAL_ERROR"
   ) as AppErrorCode;
 
   return new AppError({
-    status: statusByCode[code],
+    status: STATUS_BY_APP_ERROR_CODE[code],
     code,
     message: failure.error.message,
   });
@@ -1756,7 +1777,7 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
     if (!result.success) {
       return fail(
         res,
-        badRequest(result.error ?? "Failed to generate a resume PDF"),
+        appErrorFromPipelineFailure(result, "Failed to generate a resume PDF"),
       );
     }
 
