@@ -6,11 +6,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { getLatexResumeSectionTitles } from "./document";
 import type {
   LatexResumeContactItem,
   LatexResumeDocument,
   LatexResumeEntry,
-  LatexResumeSectionTitles,
   ResumeRenderer,
 } from "./types";
 
@@ -48,13 +48,6 @@ function resolveTemplatePath(): string {
 const TEMPLATE_PATH = resolveTemplatePath();
 const TECTONIC_TIMEOUT_MS = 120_000;
 const OUTPUT_FILENAME = "resume.pdf";
-const DEFAULT_SECTION_TITLES: LatexResumeSectionTitles = {
-  summary: "Summary",
-  experience: "Experience",
-  education: "Education",
-  projects: "Projects",
-  skills: "Technical Skills",
-};
 
 function normalizeText(value: string): string {
   return value
@@ -142,7 +135,7 @@ function renderProjectEntry(entry: LatexResumeEntry): string {
 
 function renderSummarySection(document: LatexResumeDocument): string {
   if (!document.summary) return "";
-  const titles = document.sectionTitles ?? DEFAULT_SECTION_TITLES;
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   return [
     `\\section{${escapeForCommand(titles.summary)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
@@ -176,7 +169,7 @@ function renderEntrySection(args: {
 
 function renderSkillsSection(document: LatexResumeDocument): string {
   if (document.skillGroups.length === 0) return "";
-  const titles = document.sectionTitles ?? DEFAULT_SECTION_TITLES;
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const items = document.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
@@ -205,7 +198,7 @@ export function buildLatexDocument(
   document: LatexResumeDocument,
   template: string,
 ): string {
-  const titles = document.sectionTitles ?? DEFAULT_SECTION_TITLES;
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
