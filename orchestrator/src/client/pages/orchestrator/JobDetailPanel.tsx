@@ -901,16 +901,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
               <GhostwriterDrawer
                 job={selectedJob}
-                triggerClassName="h-10 w-full justify-center gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                triggerClassName="h-10 w-full justify-center gap-1.5 px-2 text-xs"
               />
               <OpenJobListingButton
                 href={jobLink}
-                className="h-10 w-full border-border/35 bg-background/35 px-2 text-xs"
+                className="h-10 w-full px-2 text-xs"
                 shortcut="o"
               />
               <Button
                 variant="outline"
-                className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                className="h-10 w-full gap-1.5 px-2 text-xs"
                 onClick={handleDownloadPdf}
                 disabled={!selectedJob.pdfPath}
               >
@@ -920,7 +920,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </Button>
               <Button
                 variant="outline"
-                className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                className="h-10 w-full gap-1.5 px-2 text-xs"
                 onClick={handleOpenPdf}
                 disabled={!selectedJob.pdfPath}
               >
@@ -930,7 +930,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               {canGenerate && (
                 <Button
                   variant="outline"
-                  className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                  className="h-10 w-full gap-1.5 px-2 text-xs"
                   onClick={() => void handleProcess()}
                   disabled={isProcessing}
                 >
