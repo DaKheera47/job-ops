@@ -626,7 +626,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              AI Summarize
+              Draft Content
             </Button>
             <Button
               onClick={handleGeneratePdf}

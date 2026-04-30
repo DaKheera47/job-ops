@@ -276,7 +276,7 @@ describe("TailoringEditor", () => {
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "AI Summarize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Draft Content" }));
 
     await waitFor(() => ensureAccordionOpen("Headline"));
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
