@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { join } from "node:path";
 import {
   AppError,
   badRequest,
@@ -11,6 +11,7 @@ import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
+import { getDataDir } from "@server/config/dataDir";
 import { isDemoMode } from "@server/config/demo";
 import {
   type ExtractorRegistry,
@@ -465,14 +466,9 @@ pipelineRouter.post("/solve-challenge", async (req: Request, res: Response) => {
       url: challengeUrl,
     });
 
-    // Resolve the extractor's storage directory so cookies are saved where
-    // the extractor reads them from on the next headless run.
-    // Convention: each Playwright extractor stores cookies at
-    // extractors/<id>/storage/<id>-cookies.json  (see browser-utils/cookies.ts)
-    const storageDir = resolve(
-      process.cwd(),
-      `../extractors/${body.extractorId}/storage`,
-    );
+    // Cookies are runtime state, so keep them with the database/PDFs under
+    // DATA_DIR rather than under extractor source directories.
+    const storageDir = join(getDataDir(), "cloudflare-cookies");
 
     // Dynamic import: browser-utils pulls in playwright which is heavy.
     // A top-level import would slow down every server startup even though

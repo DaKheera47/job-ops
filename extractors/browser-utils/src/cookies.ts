@@ -14,6 +14,8 @@ const PERSIST_COOKIE_NAMES = new Set([
   "cf_chl_prog",
   "__cflb",
 ]);
+const DEFAULT_COOKIE_STORAGE_DIR = "./storage";
+const DATA_DIR_COOKIE_STORAGE_DIRNAME = "cloudflare-cookies";
 
 interface PersistedCookieJar {
   extractorId: string;
@@ -25,6 +27,15 @@ interface PersistedCookieJar {
 export interface CookieJarInfo {
   hasCookies: boolean;
   userAgent?: string;
+}
+
+export function getCloudflareCookieStorageDir(storageDir?: string): string {
+  if (storageDir) return storageDir;
+
+  const dataDir = (process.env.DATA_DIR || "").trim();
+  if (dataDir) return join(dataDir, DATA_DIR_COOKIE_STORAGE_DIRNAME);
+
+  return DEFAULT_COOKIE_STORAGE_DIR;
 }
 
 function cookiePath(storageDir: string, extractorId: string): string {
@@ -44,13 +55,14 @@ function isExpired(cookie: Cookie): boolean {
  *
  * @param context - Playwright browser context to extract cookies from
  * @param extractorId - Unique extractor name (used as filename prefix)
- * @param storageDir - Directory to store cookie files (default: ./storage)
+ * @param storageDir - Directory to store cookie files (default: DATA_DIR/cloudflare-cookies when DATA_DIR is set, otherwise ./storage)
  */
 export async function saveCookies(
   context: BrowserContext,
   extractorId: string,
-  storageDir = "./storage",
+  storageDir?: string,
 ): Promise<void> {
+  const resolvedStorageDir = getCloudflareCookieStorageDir(storageDir);
   const allCookies = await context.cookies();
 
   // Keep CF-related cookies plus any with "session" or "auth" in the name
@@ -80,7 +92,7 @@ export async function saveCookies(
     userAgent,
   };
 
-  const path = cookiePath(storageDir, extractorId);
+  const path = cookiePath(resolvedStorageDir, extractorId);
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, JSON.stringify(jar, null, 2));
 }
@@ -94,15 +106,18 @@ export async function saveCookies(
  *
  * @param context - Playwright browser context to inject cookies into
  * @param extractorId - Must match the ID used when saving
- * @param storageDir - Directory where cookie files are stored (default: ./storage)
+ * @param storageDir - Directory where cookie files are stored (default: DATA_DIR/cloudflare-cookies when DATA_DIR is set, otherwise ./storage)
  * @returns Number of cookies loaded (0 if no saved cookies or all expired)
  */
 export async function loadCookies(
   context: BrowserContext,
   extractorId: string,
-  storageDir = "./storage",
+  storageDir?: string,
 ): Promise<number> {
-  const path = cookiePath(storageDir, extractorId);
+  const path = cookiePath(
+    getCloudflareCookieStorageDir(storageDir),
+    extractorId,
+  );
 
   let jar: PersistedCookieJar;
   try {
@@ -127,9 +142,12 @@ export async function loadCookies(
  */
 export async function readCookieJar(
   extractorId: string,
-  storageDir = "./storage",
+  storageDir?: string,
 ): Promise<CookieJarInfo> {
-  const path = cookiePath(storageDir, extractorId);
+  const path = cookiePath(
+    getCloudflareCookieStorageDir(storageDir),
+    extractorId,
+  );
 
   let jar: PersistedCookieJar;
   try {
@@ -149,9 +167,12 @@ export async function readCookieJar(
  */
 export async function invalidateCookies(
   extractorId: string,
-  storageDir = "./storage",
+  storageDir?: string,
 ): Promise<void> {
-  const path = cookiePath(storageDir, extractorId);
+  const path = cookiePath(
+    getCloudflareCookieStorageDir(storageDir),
+    extractorId,
+  );
   try {
     await unlink(path);
   } catch {

@@ -18,6 +18,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   createLaunchOptions,
+  getCloudflareCookieStorageDir,
   invalidateCookies,
   loadCookies,
   navigateWithChallenge,
@@ -346,7 +347,7 @@ async function loginWithBrowser(
   const { firefox } = await import("playwright");
   const headless = process.env.UKVISAJOBS_HEADLESS !== "false";
   const EXTRACTOR_ID = "ukvisajobs";
-  const STORAGE_DIR = join(__dirname, "../storage");
+  const STORAGE_DIR = getCloudflareCookieStorageDir();
 
   // Read saved UA before launching - CF ties cf_clearance to the UA that
   // solved the challenge, so we must reuse it.

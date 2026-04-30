@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { JobLocationEvidence } from "@shared/types/jobs";
 import {
   createLaunchOptions,
+  getCloudflareCookieStorageDir,
   invalidateCookies,
   loadCookies,
   navigateWithRetry,
@@ -630,7 +631,7 @@ async function run(): Promise<void> {
   );
 
   const EXTRACTOR_ID = "hiringcafe";
-  const STORAGE_DIR = join(__dirname, "../storage");
+  const STORAGE_DIR = getCloudflareCookieStorageDir();
 
   // Read saved UA before launching - CF ties cf_clearance to the UA that
   // solved the challenge, so we must reuse it. Playwright requires UA at

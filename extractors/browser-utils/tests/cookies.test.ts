@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  getCloudflareCookieStorageDir,
   invalidateCookies,
   readCookieJar,
   saveCookies,
@@ -49,6 +50,32 @@ function writeCookieJar(
 }
 
 describe("cookies", () => {
+  const originalDataDir = process.env.DATA_DIR;
+
+  afterEach(() => {
+    if (originalDataDir === undefined) {
+      delete process.env.DATA_DIR;
+    } else {
+      process.env.DATA_DIR = originalDataDir;
+    }
+  });
+
+  describe("getCloudflareCookieStorageDir", () => {
+    it("stores cookies under DATA_DIR when configured", () => {
+      process.env.DATA_DIR = "/tmp/job-ops-data";
+      expect(getCloudflareCookieStorageDir()).toBe(
+        join("/tmp/job-ops-data", "cloudflare-cookies"),
+      );
+    });
+
+    it("uses explicit storage dirs for direct callers", () => {
+      process.env.DATA_DIR = "/tmp/job-ops-data";
+      expect(getCloudflareCookieStorageDir("/tmp/custom-cookies")).toBe(
+        "/tmp/custom-cookies",
+      );
+    });
+  });
+
   describe("readCookieJar", () => {
     it("returns hasCookies false when no file exists", async () => {
       const dir = storageDir();

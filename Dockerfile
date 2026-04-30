@@ -187,7 +187,7 @@ COPY extractors/seek ./extractors/seek
 COPY extractors/browser-utils ./extractors/browser-utils
 
 # Create runtime directories.
-RUN mkdir -p /app/data/pdfs /app/codex-home
+RUN mkdir -p /app/data/pdfs /app/data/cloudflare-cookies /app/codex-home
 
 ENV DISPLAY=:99
 ENV NOVNC_PORT=6080

@@ -120,6 +120,7 @@ flowchart TD
 
 - SQLite DB: `data/jobs.db`
 - Generated PDFs: `data/pdfs/`
+- Cloudflare challenge cookies: `data/cloudflare-cookies/`
 
 ## Public demo mode
 

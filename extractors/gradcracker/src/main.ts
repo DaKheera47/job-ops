@@ -2,6 +2,7 @@
 
 import {
   createLaunchOptions,
+  getCloudflareCookieStorageDir,
   invalidateCookies,
   isChallengePage,
   loadCookies,
@@ -67,7 +68,7 @@ const startUrls = gradcrackerUrls.map(({ url, role }) => ({
 initJobOpsProgress(startUrls.length);
 
 const EXTRACTOR_ID = "gradcracker";
-const STORAGE_DIR = "./storage";
+const STORAGE_DIR = getCloudflareCookieStorageDir();
 
 // Read saved UA before launching - CF ties cf_clearance to the UA that
 // solved the challenge, so we must reuse it.

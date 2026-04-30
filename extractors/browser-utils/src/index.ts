@@ -19,6 +19,7 @@ export {
 } from "./challenge.js";
 export {
   type CookieJarInfo,
+  getCloudflareCookieStorageDir,
   invalidateCookies,
   loadCookies,
   readCookieJar,

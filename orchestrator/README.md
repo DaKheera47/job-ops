@@ -18,7 +18,7 @@ orchestrator/
 │   │   ├── components/   # UI components
 │   │   └── styles/       # CSS design system
 │   └── shared/           # Shared types
-├── data/                 # SQLite DB + generated PDFs (gitignored)
+├── data/                 # SQLite DB, generated PDFs, and runtime cookies (gitignored)
 └── public/               # Static assets
 ```
 

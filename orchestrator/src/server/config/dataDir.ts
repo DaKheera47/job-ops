@@ -25,10 +25,12 @@ export function getDataDir(): string {
   for (const candidate of candidates) {
     if (existsSync(candidate)) {
       cachedDir = resolve(candidate);
+      process.env.DATA_DIR = cachedDir;
       return cachedDir;
     }
   }
 
   cachedDir = resolve(join(cwd, "data"));
+  process.env.DATA_DIR = cachedDir;
   return cachedDir;
 }
