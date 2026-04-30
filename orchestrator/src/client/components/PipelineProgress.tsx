@@ -79,14 +79,26 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
 
   const handleSolveChallenge = useCallback(async (extractorId: string) => {
     setSolvingExtractor(extractorId);
+    const viewerWindow = window.open("about:blank", "_blank");
+    if (viewerWindow) {
+      viewerWindow.opener = null;
+    }
+
     try {
       const viewer = await prepareChallengeViewer();
       if (viewer.available && viewer.viewerUrl) {
-        window.open(viewer.viewerUrl, "_blank", "noopener");
+        if (viewerWindow) {
+          viewerWindow.location.href = viewer.viewerUrl;
+        } else {
+          window.open(viewer.viewerUrl, "_blank", "noopener");
+        }
+      } else {
+        viewerWindow?.close();
       }
 
       await solvePipelineChallenge(extractorId);
     } catch (err) {
+      viewerWindow?.close();
       console.error("Solve challenge request failed:", err);
     } finally {
       setSolvingExtractor(null);

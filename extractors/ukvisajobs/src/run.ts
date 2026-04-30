@@ -414,7 +414,7 @@ export async function runUkVisaJobs(
       }
     }
 
-    if (challengeRequired && allJobs.length === 0) {
+    if (challengeRequired) {
       return { success: false, jobs: [], challengeRequired };
     }
     return { success: true, jobs: allJobs };
