@@ -162,6 +162,15 @@ const getPrimaryAction = (job: Job): string => {
   return "Review Job";
 };
 
+const getDefaultInspectorTab = (
+  job: Job | null,
+  activeTab: FilterTab,
+): InspectorTab => {
+  if (!job) return "brief";
+  if (activeTab === "ready" || job.status === "ready") return "apply";
+  return "brief";
+};
+
 const getJobStageNote = (job: Job): string => {
   if (job.status === "ready") {
     return "Ready to apply. Review the brief, use the application kit, then mark it applied.";
@@ -266,7 +275,7 @@ const KitStatus: React.FC<{ label: string; ready: boolean }> = ({
 );
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
-  activeTab: _activeTab,
+  activeTab,
   activeJobs,
   selectedJob,
   onSelectJobId,
@@ -284,7 +293,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
   const uploadPdfInputRef = useRef<HTMLInputElement | null>(null);
-  const previousSelectedJobIdRef = useRef<string | null>(null);
+  const previousSelectionKeyRef = useRef<string | null>(null);
   const markAsAppliedMutation = useMarkAsAppliedMutation();
   const skipJobMutation = useSkipJobMutation();
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
@@ -327,14 +336,15 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
   useEffect(() => {
     const currentJobId = selectedJob?.id ?? null;
-    if (previousSelectedJobIdRef.current === currentJobId) return;
-    previousSelectedJobIdRef.current = currentJobId;
-    setInspectorTab("brief");
+    const currentSelectionKey = `${activeTab}:${currentJobId ?? ""}`;
+    if (previousSelectionKeyRef.current === currentSelectionKey) return;
+    previousSelectionKeyRef.current = currentSelectionKey;
+    setInspectorTab(getDefaultInspectorTab(selectedJob, activeTab));
     setIsEditingDescription(false);
     setEditedDescription(selectedJob?.jobDescription || "");
     setIsEditDetailsOpen(false);
     onPauseRefreshChange?.(false);
-  }, [selectedJob, onPauseRefreshChange]);
+  }, [activeTab, selectedJob, onPauseRefreshChange]);
 
   useEffect(() => {
     if (!selectedJob || isEditingDescription) return;
