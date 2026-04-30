@@ -164,7 +164,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   }, [props.job.id, savePayload, applyIncomingDraft]);
 
   // Note: Auto-save removed.
-  // Editor mode: user must explicitly save via the "Save Selection" button to persist changes.
+  // Editor mode: user must explicitly save to persist changes.
   // Tailor mode: there is no explicit save action; changes only persist when the user finalizes
   // or otherwise completes the tailoring flow. This prevents race conditions and simplifies state.
 
@@ -403,32 +403,48 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   if (editorProps) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Editor
-          </h3>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <div className="space-y-3 pb-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground/85">
+              Tailoring
+            </h3>
+            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+              Save edits, draft resume content, or generate the PDF.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             <Button
-              size="sm"
+              variant="outline"
+              onClick={() => void saveChanges()}
+              disabled={isSaving || isSummarizing || isGeneratingPdf}
+              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+            >
+              {isSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="mr-2 h-4 w-4" />
+              )}
+              Save
+            </Button>
+            <Button
               variant="outline"
               onClick={handleSummarizeEditor}
               disabled={isSummarizing || isGeneratingPdf || isSaving}
-              className="w-full sm:w-auto"
+              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
             >
               {isSummarizing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              AI Summarize
+              Draft Content
             </Button>
             <Button
-              size="sm"
               onClick={handleGeneratePdf}
               disabled={
                 isSummarizing || isGeneratingPdf || isSaving || !summary
               }
-              className="w-full sm:w-auto"
+              className="h-10 w-full gap-1.5 px-2 text-xs"
             >
               {isGeneratingPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -442,22 +458,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
         <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
           <TailoringSections {...tailoringSectionsProps} />
-
-          <div className="flex justify-end border-t pt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void saveChanges()}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              Save Selection
-            </Button>
-          </div>
         </div>
       </div>
     );

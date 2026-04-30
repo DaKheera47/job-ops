@@ -40,7 +40,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -882,35 +882,62 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="apply" className="min-h-0 flex-1 space-y-4 pt-3">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <GhostwriterDrawer
-              job={selectedJob}
-              triggerClassName="h-10 w-full justify-center gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
-            />
-            <OpenJobListingButton
-              href={jobLink}
-              className="h-10 w-full border-border/35 bg-background/35 px-2 text-xs"
-              shortcut="o"
-            />
-            <Button
-              variant="outline"
-              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
-              onClick={handleDownloadPdf}
-              disabled={!selectedJob.pdfPath}
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-              <KbdHint shortcut="d" className="ml-auto" />
-            </Button>
-            <Button
-              variant="outline"
-              className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
-              onClick={handleOpenPdf}
-              disabled={!selectedJob.pdfPath}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              View PDF
-            </Button>
+          <div className="space-y-3 pb-1">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground/85">
+                Application kit
+              </h3>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+                Open, write, and use the generated materials for this job.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <GhostwriterDrawer
+                job={selectedJob}
+                triggerClassName="h-10 w-full justify-center gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+              />
+              <OpenJobListingButton
+                href={jobLink}
+                className="h-10 w-full border-border/35 bg-background/35 px-2 text-xs"
+                shortcut="o"
+              />
+              <Button
+                variant="outline"
+                className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                onClick={handleDownloadPdf}
+                disabled={!selectedJob.pdfPath}
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
+                <KbdHint shortcut="d" className="ml-auto" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                onClick={handleOpenPdf}
+                disabled={!selectedJob.pdfPath}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                View PDF
+              </Button>
+              {canGenerate && (
+                <Button
+                  variant="outline"
+                  className="h-10 w-full gap-1.5 border-border/35 bg-background/35 px-2 text-xs"
+                  onClick={() => void handleProcess()}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCcw className="h-3.5 w-3.5" />
+                  )}
+                  {selectedJob.status === "ready"
+                    ? "Regenerate PDF"
+                    : "Generate PDF"}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="rounded-lg border border-border/45 bg-muted/5 p-3">
@@ -953,45 +980,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               />
               <KitStatus label="PDF" ready={Boolean(selectedJob.pdfPath)} />
             </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row">
-            {canGenerate && (
-              <Button
-                variant="outline"
-                className="h-10 flex-1 gap-1.5 border-border/35 bg-background/35 text-xs"
-                onClick={() => void handleProcess()}
-                disabled={isProcessing}
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCcw className="h-3.5 w-3.5" />
-                )}
-                {selectedJob.status === "ready"
-                  ? "Regenerate PDF"
-                  : "Generate PDF"}
-              </Button>
-            )}
-            <Button
-              className={cn(
-                buttonVariants({ variant: "default" }),
-                "h-10 flex-1 gap-1.5 text-xs",
-                tone.button,
-              )}
-              onClick={() => void handlePrimaryAction()}
-              disabled={
-                primaryBusy ||
-                !["ready", "applied", "discovered"].includes(selectedJob.status)
-              }
-            >
-              {primaryBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5" />
-              )}
-              {getPrimaryAction(selectedJob)}
-            </Button>
           </div>
         </TabsContent>
       </Tabs>
