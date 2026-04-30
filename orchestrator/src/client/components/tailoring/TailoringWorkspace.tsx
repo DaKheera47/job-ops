@@ -619,6 +619,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             <Button
               onClick={handleSummarizeEditor}
               disabled={isSummarizing || isGeneratingPdf}
+              variant="outline"
               className="h-10 w-full gap-1.5 px-2 text-xs"
             >
               {isSummarizing ? (
