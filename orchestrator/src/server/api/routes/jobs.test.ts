@@ -187,9 +187,16 @@ describe.sequential("Jobs API routes", () => {
       jobDescription: "Reposted description",
     });
 
+    const repostedDiscoveredAtMs = Date.parse(repostedJob.discoveredAt);
+    const appliedAt = new Date(
+      Number.isFinite(repostedDiscoveredAtMs)
+        ? repostedDiscoveredAtMs - 24 * 60 * 60 * 1000
+        : Date.now() - 24 * 60 * 60 * 1000,
+    ).toISOString();
+
     await updateJob(appliedJob.id, {
       status: "applied",
-      appliedAt: "2026-04-01T10:00:00.000Z",
+      appliedAt,
     });
     await updateJob(repostedJob.id, { status: "ready" });
 
