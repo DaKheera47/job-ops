@@ -186,7 +186,6 @@ describe.sequential("Jobs API routes", () => {
       jobUrl: "https://example.com/job/reposted",
       jobDescription: "Reposted description",
     });
-
     const repostedDiscoveredAtMs = Date.parse(repostedJob.discoveredAt);
     const appliedAt = new Date(
       Number.isFinite(repostedDiscoveredAtMs)

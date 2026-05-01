@@ -383,6 +383,40 @@ describe.sequential("Pipeline API routes", () => {
         }),
       }),
     );
+
+    const naukriRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sources: ["naukri"],
+        country: "india",
+      }),
+    });
+    const naukriRunBody = await naukriRunRes.json();
+    expect(naukriRunBody.ok).toBe(true);
+    expect(runPipeline).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        sources: ["naukri"],
+        locationIntent: expect.objectContaining({
+          selectedCountry: "india",
+          country: "india",
+        }),
+      }),
+    );
+
+    const blockedNaukriRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sources: ["naukri"],
+        country: "united kingdom",
+      }),
+    });
+    const blockedNaukriBody = await blockedNaukriRes.json();
+    expect(blockedNaukriRes.status).toBe(400);
+    expect(blockedNaukriBody.ok).toBe(false);
+    expect(blockedNaukriBody.error.message).toContain("incompatible");
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {
