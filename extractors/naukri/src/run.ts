@@ -1,4 +1,4 @@
-import type { CreateJobInput } from "@shared/types/jobs";
+import type { CreateJobInput, JobLocationEvidence } from "@shared/types/jobs";
 import {
   toNumberOrNull,
   toStringOrNull,
@@ -296,6 +296,16 @@ export function mapNaukriJob(row: NaukriRawJob): CreateJobInput | null {
   const reviewsCount = toNumberOrNull(ambitionBoxData?.ReviewsCount);
   const tagsAndSkills = toStringOrNull(row.tagsAndSkills);
   const salary = getSalaryLabel(row);
+  const location = getPlaceholder(row.placeholders, "location");
+  const locationEvidence: JobLocationEvidence = {
+    rawLocation: location ?? null,
+    location: location ? `${location}, India` : "India",
+    countryKey: "india",
+    country: "india",
+    evidenceQuality: location ? "approximate" : "weak",
+    source: "naukri",
+    sourceNotes: ["Naukri is scoped to India in this extractor."],
+  };
 
   return {
     source: "naukri",
@@ -306,7 +316,8 @@ export function mapNaukriJob(row: NaukriRawJob): CreateJobInput | null {
     jobUrl,
     applicationLink: applyUrl,
     salary,
-    location: getPlaceholder(row.placeholders, "location"),
+    location,
+    locationEvidence,
     datePosted: parseDatePosted(row.createdDate),
     jobDescription: toStringOrNull(row.jobDescription) ?? undefined,
     skills: tagsAndSkills ?? undefined,

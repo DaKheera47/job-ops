@@ -71,6 +71,15 @@ describe("naukri extractor mapping", () => {
         applicationLink:
           "https://www.naukri.com/cloudgateway-apply/apply-services/v0/apply/saveCompanyApply?id=&file=270426502000&logstr=srprestapi",
         location: "Pune",
+        locationEvidence: {
+          rawLocation: "Pune",
+          location: "Pune, India",
+          countryKey: "india",
+          country: "india",
+          evidenceQuality: "approximate",
+          source: "naukri",
+          sourceNotes: ["Naukri is scoped to India in this extractor."],
+        },
         datePosted: "2026-04-27T11:08:34.000Z",
         jobDescription: "Production systems",
         skills: "Core Java,Unit testing",

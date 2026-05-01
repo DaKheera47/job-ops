@@ -67,6 +67,9 @@ services:
         - path: ./extractors/jobspy
           target: /app/extractors/jobspy
           action: sync+restart
+        - path: ./extractors/naukri
+          target: /app/extractors/naukri
+          action: sync+restart
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
