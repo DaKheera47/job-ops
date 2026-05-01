@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   AppError,
   badRequest,
@@ -31,7 +30,7 @@ const manualJobImportSchema = z.object({
   job: z.object({
     title: z.string().trim().min(1).max(500),
     employer: z.string().trim().min(1).max(500),
-    jobUrl: z.string().trim().url().max(2000).optional(),
+    jobUrl: z.string().trim().url().max(2000),
     applicationLink: z.string().trim().url().max(2000).optional(),
     location: z.string().trim().max(200).optional(),
     salary: z.string().trim().max(200).optional(),
@@ -261,16 +260,11 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
     const input = manualJobImportSchema.parse(req.body ?? {});
     const job = input.job;
 
-    const jobUrl =
-      cleanOptional(job.jobUrl) ||
-      cleanOptional(job.applicationLink) ||
-      `manual://${randomUUID()}`;
-
     const createdJob = await jobsRepo.createJob({
       source: "manual",
       title: job.title.trim(),
       employer: job.employer.trim(),
-      jobUrl,
+      jobUrl: job.jobUrl.trim(),
       applicationLink: cleanOptional(job.applicationLink) ?? undefined,
       location: cleanOptional(job.location) ?? undefined,
       salary: cleanOptional(job.salary) ?? undefined,

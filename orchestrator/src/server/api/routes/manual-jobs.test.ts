@@ -79,7 +79,7 @@ describe.sequential("Manual jobs API routes", () => {
     expect(body.data.job.title).toBe("Backend Engineer");
   });
 
-  it("imports manual jobs and generates a fallback URL", async () => {
+  it("imports manual jobs with a required job URL", async () => {
     const { processJob } = await import("@server/pipeline/index");
     const { scoreJobSuitability } = await import("@server/services/scorer");
     vi.mocked(scoreJobSuitability).mockResolvedValue({
@@ -94,6 +94,7 @@ describe.sequential("Manual jobs API routes", () => {
         job: {
           title: "Backend Engineer",
           employer: "Acme",
+          jobUrl: "https://example.com/jobs/backend-engineer",
           jobDescription: "Great role",
         },
       }),
@@ -101,10 +102,26 @@ describe.sequential("Manual jobs API routes", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.source).toBe("manual");
-    expect(body.data.jobUrl).toMatch(/^manual:\/\//);
+    expect(body.data.jobUrl).toBe("https://example.com/jobs/backend-engineer");
     expect(vi.mocked(processJob)).toHaveBeenCalledWith(body.data.id, {
       analyticsOrigin: "manual_job_create",
     });
     await new Promise((resolve) => setTimeout(resolve, 25));
+  });
+
+  it("rejects manual imports without a job URL", async () => {
+    const res = await fetch(`${baseUrl}/api/manual-jobs/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        job: {
+          title: "Backend Engineer",
+          employer: "Acme",
+          jobDescription: "Great role",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(400);
   });
 });

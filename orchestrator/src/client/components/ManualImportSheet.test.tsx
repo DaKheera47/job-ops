@@ -31,6 +31,7 @@ describe("ManualImportSheet", () => {
       job: {
         title: "Backend Engineer",
         employer: "Acme Labs",
+        jobUrl: "https://example.com/jobs/backend-engineer",
         location: "London, UK",
       },
     });
@@ -73,6 +74,7 @@ describe("ManualImportSheet", () => {
       job: expect.objectContaining({
         title: "Backend Engineer",
         employer: "Acme Labs",
+        jobUrl: "https://example.com/jobs/backend-engineer",
         location: "London, UK",
         salary: "120k",
         jobDescription: rawDescription.trim(),
@@ -83,7 +85,7 @@ describe("ManualImportSheet", () => {
       expect(onImported).toHaveBeenCalledWith({
         jobId: "job-1",
         source: "pasted_description",
-        sourceHost: null,
+        sourceHost: "example.com",
       }),
     );
     expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -130,6 +132,12 @@ describe("ManualImportSheet", () => {
       target: { value: "Acme Labs" },
     });
 
+    expect(importButton).toBeDisabled();
+
+    fireEvent.change(screen.getAllByPlaceholderText("https://...")[0], {
+      target: { value: "https://example.com/jobs/qa-engineer" },
+    });
+
     await waitFor(() => expect(importButton).toBeEnabled());
   });
 
@@ -166,6 +174,7 @@ describe("ManualImportSheet", () => {
       job: {
         title: "Backend Engineer",
         employer: "Acme Labs",
+        jobUrl: "https://example.com/jobs/backend-engineer",
       },
     });
     vi.mocked(api.importManualJob).mockRejectedValue(

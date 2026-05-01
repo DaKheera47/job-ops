@@ -121,6 +121,14 @@ const REQUIRED_REVIEW_FIELDS: ReviewFieldConfig[] = [
     required: true,
     multiline: true,
   },
+  {
+    id: "draft-jobUrl",
+    key: "jobUrl",
+    label: "Job URL",
+    placeholder: "https://...",
+    icon: Link2,
+    required: true,
+  },
 ];
 
 const OTHER_REVIEW_FIELDS: ReviewFieldConfig[] = [
@@ -186,13 +194,6 @@ const OTHER_REVIEW_FIELDS: ReviewFieldConfig[] = [
     label: "Starting",
     placeholder: "e.g. September 2026",
     icon: Calendar,
-  },
-  {
-    id: "draft-jobUrl",
-    key: "jobUrl",
-    label: "Job URL",
-    placeholder: "https://...",
-    icon: Link2,
   },
   {
     id: "draft-applicationLink",
@@ -268,6 +269,7 @@ interface ManualImportFlowProps {
   active: boolean;
   onImported: (result: ManualImportResult) => void | Promise<void>;
   onClose: () => void;
+  showReviewIntro?: boolean;
 }
 
 function getSourceHost(value: string): string | null {
@@ -291,6 +293,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   active,
   onImported,
   onClose,
+  showReviewIntro = true,
 }) => {
   const [step, setStep] = useState<ManualImportStep>("paste");
   const [rawDescription, setRawDescription] = useState("");
@@ -336,6 +339,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     return (
       draft.title.trim().length > 0 &&
       draft.employer.trim().length > 0 &&
+      draft.jobUrl.trim().length > 0 &&
       draft.jobDescription.trim().length > 0
     );
   }, [draft, step]);
@@ -588,20 +592,22 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
               </div>
             )}
 
-            <div className="space-y-2">
-              <h3 className="text-2xl font-semibold tracking-tight">
-                Review job details
-              </h3>
-              <p className="max-w-lg text-sm leading-6 text-muted-foreground">
-                AI extracted these from the job description. Review anything
-                missing or odd before importing.
-              </p>
-            </div>
+            {showReviewIntro && (
+              <div className="space-y-2">
+                <h3 className="text-2xl font-semibold tracking-tight">
+                  Review job details
+                </h3>
+                <p className="max-w-lg text-sm leading-6 text-muted-foreground">
+                  AI extracted these from the job description. Review anything
+                  missing or odd before importing.
+                </p>
+              </div>
+            )}
 
             <ReviewSection
               icon={CheckCircle2}
               title="Required"
-              description="Title, employer, and description are needed to import."
+              description="Title, employer, job URL, and description are needed to import."
             >
               <div className="divide-y divide-border/70">
                 {REQUIRED_REVIEW_FIELDS.map((field) => (
@@ -622,7 +628,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
               title="Other details"
               description="Useful if available; blank fields can be added later."
             >
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid gap-x-4 sm:grid-cols-2">
                 {OTHER_REVIEW_FIELDS.map((field) => (
                   <ReviewField
                     key={field.id}
@@ -700,9 +706,7 @@ const ReviewField: React.FC<{
   return (
     <div
       className={
-        compact
-          ? "rounded-lg border border-border/70 bg-background/35 p-3"
-          : "py-3 first:pt-0 last:pb-0"
+        compact ? "border-border/60 border-b py-3" : "py-3 first:pt-0 last:pb-0"
       }
     >
       <div className="flex gap-3">
@@ -726,7 +730,7 @@ const ReviewField: React.FC<{
               value={value}
               onChange={(event) => onChange(event.target.value)}
               placeholder={field.placeholder}
-              className="min-h-[150px] resize-y border-border/70 bg-background/70 font-mono text-sm leading-relaxed"
+              className="min-h-[150px] resize-y border-border/70 bg-background/60 font-mono text-sm leading-relaxed"
             />
           ) : (
             <Input
@@ -734,7 +738,7 @@ const ReviewField: React.FC<{
               value={value}
               onChange={(event) => onChange(event.target.value)}
               placeholder={field.placeholder}
-              className="h-9 border-border/70 bg-background/70 text-sm"
+              className="h-9 border-border/70 bg-background/60 text-sm"
             />
           )}
         </div>
