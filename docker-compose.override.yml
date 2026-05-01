@@ -1,27 +1,10 @@
 # =============================================================================
 # Docker Compose Override for Local Development
 # =============================================================================
-# This file provides "Live Reload" capabilities. 
-# When you edit code on your host, the containers will update instantly.
-# Use with: podman-compose up
+# This file overrides the base docker-compose.yml for local development
+# with the resumed CLI and themes. Use with: podman-compose up
 # =============================================================================
 
 services:
   job-ops:
-    # Use the local build for development
     image: job-ops:local
-    volumes:
-      # Mount source code for live-reloading (overrides the bundled code)
-      - ./orchestrator/src:/app/orchestrator/src:Z
-      - ./shared:/app/shared:Z
-      - ./extractors:/app/extractors:Z
-
-  tailoring-service:
-    # Use the local build for development
-    image: job-ops-tailoring:local
-    volumes:
-      # Mount Python source for live-reloading
-      - ./tailoring-service/src:/app/src:Z
-    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-    environment:
-      - NODE_ENV=development

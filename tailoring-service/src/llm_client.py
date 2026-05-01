@@ -5,9 +5,8 @@ import logging
 import os
 from typing import Any, TypeVar
 
-import google.genai as genai
+from google import genai
 from google.genai import types
-
 from pydantic import BaseModel
 
 logger = logging.getLogger("tailoring-service.llm")

@@ -14,15 +14,8 @@ class TailoringCache:
     def __init__(self, db_path: str | None = None):
         db_path = db_path or os.getenv("CACHE_PATH", "./data/cache.db")
         self.db_path = Path(db_path)
-        
-        try:
-            # Attempt to create the directory and initialize the DB
-            self.db_path.parent.mkdir(parents=True, exist_ok=True)
-            self._init_db()
-        except (PermissionError, sqlite3.OperationalError):
-            # Fallback to /tmp if host-mounted folder permissions block us
-            self.db_path = Path("/tmp/cache.db")
-            self._init_db()
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
 
     def _init_db(self) -> None:
         """Initialize the cache database."""

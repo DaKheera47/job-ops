@@ -16,26 +16,24 @@ RUN pip install --no-cache-dir \
     instructor>=1.6.0 \
     prefect>=3.0.0 \
     pydantic>=2.9.0 \
+    google-generativeai>=0.8.0 \
     httpx>=0.27.0 \
     python-dotenv>=1.0.0 \
     diskcache>=5.6.0
 
-# FORCE REINSTALL with cache busting
-RUN pip install --no-cache-dir --upgrade --force-reinstall google-genai>=1.2.0
-
 # Copy source code
 COPY src/ ./src/
-
-# Create data directory and ensure it is writable
-RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Set environment variables
 ENV PYTHONPATH=/app/src
 ENV PYTHONUNBUFFERED=1
-ENV CACHE_PATH=/tmp/cache.db
 
 # Expose port
 EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
 # Run the application
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]

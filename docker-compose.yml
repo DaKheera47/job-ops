@@ -13,9 +13,11 @@ services:
       - "3005:3001"
     volumes:
       # Persist database and generated PDFs
-      - ./data:/app/data:Z
+      - ./data:/app/data
+      # Persist master resume JSON for JSON Resume tailoring
+      - ./master-resume.json:/app/data/master-resume.json
       # Persist Codex login/session data for app-server provider
-      - codex-home:/app/codex-home:Z
+      - codex-home:/app/codex-home
     environment:
       # Server config
       - NODE_ENV=production
@@ -87,7 +89,9 @@ services:
       - "8000:8000"
     volumes:
       # Share data directory for cache
-      - ./data:/data:Z
+      - ./data:/data
+      # Share master resume
+      - ./master-resume.json:/data/master-resume.json
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - CACHE_PATH=/data/cache.db
