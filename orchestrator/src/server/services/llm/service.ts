@@ -144,6 +144,10 @@ export class LlmService {
       return { valid: false, message: "LLM API key is missing." };
     }
 
+    if (this.provider === "anthropic") {
+      return this.validateAnthropicCredentials();
+    }
+
     const urls = this.strategy.getValidationUrls({
       baseUrl: this.baseUrl,
       apiKey: this.apiKey,
@@ -194,6 +198,47 @@ export class LlmService {
       valid: false,
       message: lastMessage || "LLM provider validation failed.",
     };
+  }
+
+  private async validateAnthropicCredentials(): Promise<LlmValidationResult> {
+    try {
+      const { url, headers, body } = this.strategy.buildRequest({
+        mode: "text",
+        baseUrl: this.baseUrl,
+        apiKey: this.apiKey,
+        model: "claude-haiku-4-5",
+        messages: [{ role: "user", content: "Say OK" }],
+        jsonSchema: { name: "test", schema: { type: "object", properties: {}, required: [], additionalProperties: false } },
+      });
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        return { valid: true, message: null };
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        return {
+          valid: false,
+          message: "Invalid API key. Check the key and try again.",
+        };
+      }
+
+      const detail = await getResponseDetail(response);
+      return {
+        valid: false,
+        message: detail || `Anthropic returned ${response.status}.`,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        message: error instanceof Error ? error.message : "Validation failed.",
+      };
+    }
   }
 
   async listModels(): Promise<string[]> {
@@ -452,6 +497,7 @@ export class LlmService {
       .map((entry) => entry.name?.trim() || entry.model?.trim() || "")
       .filter(Boolean);
   }
+
 }
 
 function normalizeProvider(
@@ -473,6 +519,7 @@ function normalizeProvider(
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
+  if (normalized === "anthropic") return "anthropic";
   if (normalized && normalized !== "openrouter") {
     logger.warn("Unknown LLM provider, defaulting to openrouter", {
       normalized,
@@ -503,6 +550,7 @@ function normalizeGeminiModelName(value: string): string {
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "openai") return "gpt-5.4-mini";
   if (provider === "gemini") return "google/gemini-3-flash-preview";
+  if (provider === "anthropic") return "claude-sonnet-4-6";
   return null;
 }
 

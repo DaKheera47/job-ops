@@ -2,6 +2,9 @@
 .env
 *.env.local
 
+# GNAI CA certificates (copied by scripts/gnai-token.sh)
+gnai-ca-certs.pem
+
 # Dependencies
 node_modules/
 **/node_modules/
