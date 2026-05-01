@@ -27,6 +27,7 @@ describe.sequential("Jobs tailoring PATCH route", () => {
         job: {
           title: "Backend Engineer",
           employer: "Acme",
+          jobUrl: "https://example.com/jobs/backend-engineer",
           jobDescription: "Build backend systems",
         },
       }),
