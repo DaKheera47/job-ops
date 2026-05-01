@@ -46,7 +46,7 @@ describe("ManualImportSheet", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText(
-        "Paste the full job description here, or enter a URL above to fetch it...",
+        "Paste the full job description here, or fetch it from a URL above...",
       ),
       { target: { value: rawDescription } },
     );
@@ -109,7 +109,7 @@ describe("ManualImportSheet", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText(
-        "Paste the full job description here, or enter a URL above to fetch it...",
+        "Paste the full job description here, or fetch it from a URL above...",
       ),
       { target: { value: rawDescription } },
     );
@@ -146,7 +146,7 @@ describe("ManualImportSheet", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText(
-        "Paste the full job description here, or enter a URL above to fetch it...",
+        "Paste the full job description here, or fetch it from a URL above...",
       ),
       { target: { value: rawDescription } },
     );
@@ -184,7 +184,7 @@ describe("ManualImportSheet", () => {
 
     fireEvent.change(
       screen.getByPlaceholderText(
-        "Paste the full job description here, or enter a URL above to fetch it...",
+        "Paste the full job description here, or fetch it from a URL above...",
       ),
       { target: { value: "Backend Engineer role." } },
     );
@@ -202,72 +202,69 @@ describe("ManualImportSheet", () => {
   });
 
   describe("URL fetch functionality", () => {
-    it("shows Paste button when URL field is empty, Fetch when URL is entered", async () => {
+    it("treats URL fetch as optional and only enables analyze when description is filled", async () => {
       render(
         <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
       );
 
-      // Initially should show Paste button
-      expect(
-        screen.getByRole("button", { name: /paste/i }),
-      ).toBeInTheDocument();
+      const fetchButton = screen.getByRole("button", { name: /fetch/i });
+      const analyzeButton = screen.getByRole("button", { name: /analyze jd/i });
 
-      // Enter a URL
+      expect(fetchButton).toBeDisabled();
+      expect(analyzeButton).toBeDisabled();
+
       fireEvent.change(
         screen.getByPlaceholderText("https://example.com/job-posting"),
         { target: { value: "https://example.com/job" } },
       );
 
-      // Should now show Fetch button
-      expect(
-        screen.getByRole("button", { name: /fetch/i }),
-      ).toBeInTheDocument();
+      expect(fetchButton).toBeEnabled();
+      expect(analyzeButton).toBeDisabled();
+
+      fireEvent.change(
+        screen.getByPlaceholderText(
+          "Paste the full job description here, or fetch it from a URL above...",
+        ),
+        { target: { value: "Software Engineer role at Acme Corp" } },
+      );
+
+      expect(analyzeButton).toBeEnabled();
     });
 
-    it("fetches URL and proceeds to review on successful fetch", async () => {
+    it("fetches URL content into the job description without analyzing", async () => {
       vi.mocked(api.fetchJobFromUrl).mockResolvedValue({
         content: "Software Engineer role at Acme Corp",
         url: "https://example.com/job",
       });
-      vi.mocked(api.inferManualJob).mockResolvedValue({
-        job: {
-          title: "Software Engineer",
-          employer: "Acme Corp",
-          location: "Remote",
-          jobDescription: "Great opportunity to join our team.",
-        },
-      });
 
       render(
         <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
       );
 
-      // Enter a URL
       fireEvent.change(
         screen.getByPlaceholderText("https://example.com/job-posting"),
         { target: { value: "https://example.com/job" } },
       );
 
-      // Click Fetch
       fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
 
-      // Should show loading state then review
-      await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
+      await screen.findByText(
+        "Fetched the page text. Review it below, then analyze.",
+      );
 
       expect(api.fetchJobFromUrl).toHaveBeenCalledWith({
         url: "https://example.com/job",
       });
-      expect(api.inferManualJob).toHaveBeenCalledWith({
-        jobDescription: "Software Engineer role at Acme Corp",
-      });
+      expect(api.inferManualJob).not.toHaveBeenCalled();
 
-      // Check inferred values are shown
       expect(
-        screen.getByPlaceholderText("e.g. Junior Backend Engineer"),
-      ).toHaveValue("Software Engineer");
-      expect(screen.getByPlaceholderText("e.g. Acme Labs")).toHaveValue(
-        "Acme Corp",
-      );
+        screen.getByPlaceholderText(
+          "Paste the full job description here, or fetch it from a URL above...",
+        ),
+      ).toHaveValue("Software Engineer role at Acme Corp");
+      expect(
+        screen.queryByPlaceholderText("e.g. Junior Backend Engineer"),
+      ).not.toBeInTheDocument();
     });
 
     it("preserves fetched URL in the job URL field", async () => {
@@ -291,6 +288,11 @@ describe("ManualImportSheet", () => {
         { target: { value: "https://example.com/job" } },
       );
       fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
+
+      await screen.findByText(
+        "Fetched the page text. Review it below, then analyze.",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
 
       await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
 
@@ -329,6 +331,11 @@ describe("ManualImportSheet", () => {
       );
       fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
 
+      await screen.findByText(
+        "Fetched the page text. Review it below, then analyze.",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+
       await screen.findByPlaceholderText("e.g. Junior Backend Engineer");
       fireEvent.click(screen.getByRole("button", { name: /import job/i }));
 
@@ -361,7 +368,7 @@ describe("ManualImportSheet", () => {
       // Should still be on paste step
       expect(
         screen.getByPlaceholderText(
-          "Paste the full job description here, or enter a URL above to fetch it...",
+          "Paste the full job description here, or fetch it from a URL above...",
         ),
       ).toBeInTheDocument();
     });
@@ -385,12 +392,17 @@ describe("ManualImportSheet", () => {
       );
       fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
 
+      await screen.findByText(
+        "Fetched the page text. Review it below, then analyze.",
+      );
+      fireEvent.click(screen.getByRole("button", { name: /analyze jd/i }));
+
       await screen.findByText("Inference failed");
 
       // Should be back on paste step
       expect(
         screen.getByPlaceholderText(
-          "Paste the full job description here, or enter a URL above to fetch it...",
+          "Paste the full job description here, or fetch it from a URL above...",
         ),
       ).toBeInTheDocument();
     });

@@ -1,12 +1,6 @@
 import * as api from "@client/api";
 import type { ManualJobDraft } from "@shared/types.js";
-import {
-  ArrowLeft,
-  ClipboardPaste,
-  Link,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { ArrowDown, ArrowLeft, Link, Loader2, Sparkles } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -144,10 +138,12 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   const [draft, setDraft] = useState<ManualJobDraftState>(emptyDraft);
   const [warning, setWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fetchNotice, setFetchNotice] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importSource, setImportSource] =
     useState<ManualImportTrackingSource>("pasted_description");
   const [importSourceHost, setImportSourceHost] = useState<string | null>(null);
+  const [fetchedSourceUrl, setFetchedSourceUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (active) return;
@@ -158,15 +154,18 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setDraft(emptyDraft);
     setWarning(null);
     setError(null);
+    setFetchNotice(null);
     setIsImporting(false);
     setImportSource("pasted_description");
     setImportSourceHost(null);
+    setFetchedSourceUrl(null);
   }, [active]);
 
   const stepIndex = STEP_INDEX_BY_ID[step];
   const stepLabel = STEP_LABEL_BY_ID[step];
 
-  const canAnalyze = rawDescription.trim().length > 0 && step !== "loading";
+  const canAnalyze =
+    rawDescription.trim().length > 0 && step !== "loading" && !isFetching;
   const canFetch =
     fetchUrl.trim().length > 0 && !isFetching && step === "paste";
   const canImport = useMemo(() => {
@@ -184,34 +183,26 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     try {
       setError(null);
       setWarning(null);
+      setFetchNotice(null);
       setIsFetching(true);
 
       const fetchResponse = await api.fetchJobFromUrl({ url: fetchUrl.trim() });
       const fetchedContent = fetchResponse.content;
       const fetchedUrl = fetchResponse.url;
 
-      setIsFetching(false);
-      setStep("loading");
-      const inferResponse = await api.inferManualJob({
-        jobDescription: fetchedContent,
-      });
-      const normalized = normalizeDraft(inferResponse.job);
-
-      if (!normalized.jobUrl) {
-        normalized.jobUrl = fetchedUrl;
-      }
-
-      setDraft(normalized);
-      setWarning(inferResponse.warning ?? null);
+      setRawDescription(fetchedContent);
+      setFetchedSourceUrl(fetchedUrl);
       setImportSource("fetched_url");
       setImportSourceHost(getSourceHost(fetchedUrl));
-      setStep("review");
+      setFetchUrl(fetchedUrl);
+      setFetchNotice("Fetched the page text. Review it below, then analyze.");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to fetch URL";
       setError(message);
-      setIsFetching(false);
       setStep("paste");
+    } finally {
+      setIsFetching(false);
     }
   };
 
@@ -229,14 +220,16 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
         jobDescription: rawDescription,
       });
       const normalized = normalizeDraft(response.job, rawDescription.trim());
-      if (draft.jobUrl && !normalized.jobUrl) {
-        normalized.jobUrl = draft.jobUrl;
+      if (fetchedSourceUrl && !normalized.jobUrl) {
+        normalized.jobUrl = fetchedSourceUrl;
       }
       setDraft(normalized);
       setWarning(response.warning ?? null);
-      setImportSource("pasted_description");
+      setImportSource(fetchedSourceUrl ? "fetched_url" : "pasted_description");
       setImportSourceHost(
-        getSourceHost(draft.jobUrl) ?? getSourceHost(draft.applicationLink),
+        getSourceHost(fetchedSourceUrl ?? "") ??
+          getSourceHost(normalized.jobUrl) ??
+          getSourceHost(normalized.applicationLink),
       );
       setStep("review");
     } catch (err) {
@@ -299,12 +292,17 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
         {step === "paste" && (
           <div className="space-y-4">
             <div className="space-y-2">
-              <label
-                htmlFor="fetch-url"
-                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-              >
-                Job URL (optional)
-              </label>
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="fetch-url"
+                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  Job URL
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  Optional helper
+                </span>
+              </div>
               <div className="flex gap-2">
                 <Input
                   id="fetch-url"
@@ -322,34 +320,29 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={isFetching}
+                  disabled={!canFetch}
                   className="gap-2 shrink-0"
-                  onClick={async () => {
-                    if (fetchUrl.trim()) {
-                      await handleFetch();
-                    } else {
-                      try {
-                        const text = await navigator.clipboard.readText();
-                        if (text) setFetchUrl(text.trim());
-                      } catch {
-                        // Clipboard access denied
-                      }
-                    }
-                  }}
+                  onClick={() => void handleFetch()}
                 >
                   {isFetching ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : fetchUrl.trim() ? (
-                    <Link className="h-4 w-4" />
                   ) : (
-                    <ClipboardPaste className="h-4 w-4" />
+                    <Link className="h-4 w-4" />
                   )}
-                  {isFetching
-                    ? "Fetching..."
-                    : fetchUrl.trim()
-                      ? "Fetch"
-                      : "Paste"}
+                  {isFetching ? "Fetching..." : "Fetch"}
                 </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Fetch tries to copy the job text into the description field. If
+                the site blocks simple fetching, paste the description manually.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center text-muted-foreground">
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-wide">
+                <span className="h-px w-10 bg-border" />
+                <ArrowDown className="h-3.5 w-3.5" />
+                <span className="h-px w-10 bg-border" />
               </div>
             </div>
 
@@ -363,11 +356,25 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
               <Textarea
                 id="raw-description"
                 value={rawDescription}
-                onChange={(event) => setRawDescription(event.target.value)}
-                placeholder="Paste the full job description here, or enter a URL above to fetch it..."
+                onChange={(event) => {
+                  setRawDescription(event.target.value);
+                  setFetchNotice(null);
+                  if (!event.target.value.trim()) {
+                    setFetchedSourceUrl(null);
+                    setImportSource("pasted_description");
+                    setImportSourceHost(null);
+                  }
+                }}
+                placeholder="Paste the full job description here, or fetch it from a URL above..."
                 className="min-h-[200px] font-mono text-sm leading-relaxed"
               />
             </div>
+
+            {fetchNotice && (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                {fetchNotice}
+              </div>
+            )}
 
             {error && (
               <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -376,20 +383,12 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
             )}
 
             <Button
-              onClick={
-                fetchUrl.trim()
-                  ? () => void handleFetch()
-                  : () => void handleAnalyze()
-              }
-              disabled={isFetching || (!canFetch && !canAnalyze)}
+              onClick={() => void handleAnalyze()}
+              disabled={!canAnalyze}
               className="w-full h-10 gap-2"
             >
-              {isFetching ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {isFetching ? "Fetching..." : "Analyze JD"}
+              <Sparkles className="h-4 w-4" />
+              Analyze JD
             </Button>
           </div>
         )}
