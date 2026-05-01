@@ -972,6 +972,20 @@ export const JobPage: React.FC = () => {
                 </Button>
               )}
 
+              {job?.coverLetter && (
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="h-9 border-border/60 bg-background/30"
+                >
+                  <a href={`/api/jobs/${job.id}/cover-letter/pdf`} target="_blank" rel="noopener noreferrer">
+                    <FileText className="mr-1.5 h-3.5 w-3.5" />
+                    View Cover Letter
+                  </a>
+                </Button>
+              )}
+
               <Button
                 size="sm"
                 variant="outline"

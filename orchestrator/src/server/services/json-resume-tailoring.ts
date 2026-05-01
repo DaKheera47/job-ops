@@ -47,6 +47,7 @@ export interface JsonResumeTailoringInput {
 
 export interface JsonResumeTailoringOutput {
   tailoredResumeJson: Record<string, unknown>;
+  coverLetter?: string;
   metadata: {
     pageCount: number;
     selectedSkills: string[];
@@ -393,6 +394,7 @@ async function callPythonTailoringService(
         success: true,
         data: {
           tailoredResumeJson: result.data.tailoredResumeJson,
+          coverLetter: result.coverLetter,
           metadata: {
             pageCount: result.data.metadata?.pageCount ?? 2,
             selectedSkills: result.data.metadata?.selectedSkills ?? [],

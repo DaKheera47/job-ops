@@ -41,6 +41,8 @@ import {
   simulateSummarizeJob,
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
+import { generateCoverLetterPdf } from "@server/services/pdf";
+import { generateCoverLetterPdf } from "@server/services/pdf";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -1748,6 +1750,39 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
     ok(res, job);
+  } catch (error) {
+    fail(res, toAppError(error));
+  }
+});
+
+/**
+ * GET /api/jobs/:id/cover-letter/pdf - Download generated cover letter PDF
+ */
+jobsRouter.get("/:id/cover-letter/pdf", async (req: Request, res: Response) => {
+  try {
+    const job = await jobsRepo.getJobById(req.params.id);
+    if (!job) {
+      return fail(res, notFound("Job not found"));
+    }
+
+    if (!job.coverLetter) {
+      return fail(res, badRequest("Cover letter has not been generated for this job"));
+    }
+
+    const result = await generateCoverLetterPdf(job.id, job.coverLetter);
+
+    if (!result.success || !result.pdfPath) {
+      return fail(
+        res,
+        new AppError({
+          status: 500,
+          code: "INTERNAL_ERROR",
+          message: result.error ?? "Failed to generate cover letter PDF",
+        })
+      );
+    }
+
+    res.download(result.pdfPath, `cover_letter_${job.employer.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
   } catch (error) {
     fail(res, toAppError(error));
   }

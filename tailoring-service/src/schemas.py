@@ -117,6 +117,7 @@ class TailorResponse(BaseModel):
 
     success: bool
     data: dict[str, Any] | None = None
+    coverLetter: str | None = None
     error: str | None = None
 
 
@@ -151,3 +152,11 @@ class SupportingOutput(BaseModel):
     skills: list[Skill] | None = Field(None, description="Skills with proof points")
     certificates: list[Certification] | None = Field(None, description="Selected certificates")
     metadata: Metadata | None = Field(None, description="Metadata about the tailoring")
+
+
+class CoverLetterOutput(BaseModel):
+    """Output schema for cover letter generation."""
+
+    cover_letter: str = Field(
+        ..., description="Professional 3-4 paragraph cover letter in markdown format."
+    )

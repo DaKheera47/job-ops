@@ -364,6 +364,7 @@ export async function summarizeJob(
 
       // 1. Generate Complete JSON Resume Tailoring
       let tailoredResumeJson = job.tailoredResumeJson;
+      let coverLetter = job.coverLetter;
 
       if (!tailoredResumeJson || options?.force) {
         jobLogger.info("Generating complete JSON Resume tailoring");
@@ -388,6 +389,7 @@ export async function summarizeJob(
             tailoredResumeJson = JSON.stringify(
               tailoringResult.data.tailoredResumeJson,
             );
+            coverLetter = tailoringResult.data.coverLetter ?? coverLetter;
           } else if (options?.force || !tailoredResumeJson) {
             return {
               success: false,
@@ -451,6 +453,7 @@ export async function summarizeJob(
         tailoredSkills: undefined, // Deprecated field - using tailoredResumeJson instead
         selectedProjectIds: selectedProjectIds ?? undefined,
         tailoredResumeJson: tailoredResumeJson ?? undefined,
+        coverLetter: coverLetter ?? undefined,
       });
 
       return { success: true };

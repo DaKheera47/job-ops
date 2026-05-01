@@ -148,3 +148,31 @@ OUTPUT FORMAT:
   "certificates": [{{"name": "...", "issuer": "..."}}],
   "metadata": {{"pageCount": {max_pages}, "selectedSkills": [...]}}
 }}"""
+
+def cover_letter_prompt(
+    job_description: str,
+    master_resume_json: str,
+    output_language: str,
+    tone: str,
+    formality: str,
+) -> str:
+    """Generate prompt for cover letter creation."""
+    return f"""You are an expert career coach and executive resume writer drafting a tailored cover letter.
+
+JOB DESCRIPTION (JD):
+{job_description}
+
+MY MASTER RESUME:
+{master_resume_json}
+
+INSTRUCTIONS:
+1. Write a compelling 3-4 paragraph cover letter targeting the role described in the JD.
+2. The letter should explicitly draw connections between the JD requirements and the specific experiences/achievements in the master resume.
+3. Keep the language {tone} and {formality}.
+4. Output MUST be purely in markdown format without any extra conversational filler.
+5. Do NOT include placeholder addresses like "[Company Address]". Just start with a professional greeting.
+6. The letter MUST be written in {output_language}.
+7. You must return ONLY the markdown string inside the JSON structure.
+
+Return the cover letter exactly as requested.
+"""

@@ -15,8 +15,8 @@ from compact import (
     filter_resume_for_work,
 )
 from llm_client import LLMClient
-from prompts import summary_prompt, supporting_prompt, work_prompt
-from schemas import SummaryOutput, SupportingOutput, WorkOutput, WritingStyle
+from prompts import cover_letter_prompt, summary_prompt, supporting_prompt, work_prompt
+from schemas import CoverLetterOutput, SummaryOutput, SupportingOutput, WorkOutput, WritingStyle
 
 # Initialize cache
 cache = TailoringCache()
@@ -150,7 +150,7 @@ async def generate_supporting(
     constraints: dict[str, Any],
     generated_summary: str,
     generated_work: list[dict[str, Any]],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
     """Generate tailored supporting sections."""
     # Check cache first
     cached = cache.get(
@@ -207,13 +207,39 @@ async def generate_supporting(
     return output
 
 
+
+@task(retries=3, retry_delay_seconds=[2, 4, 8])
+async def generate_cover_letter(
+    job_description: str,
+    master_resume: dict[str, Any],
+    writing_style: WritingStyle,
+) -> str:
+    """Generate tailored cover letter."""
+    # Generate prompt
+    prompt = cover_letter_prompt(
+        job_description=job_description,
+        master_resume_json=json.dumps(master_resume),
+        output_language=writing_style.manualLanguage,
+        tone=writing_style.tone,
+        formality=writing_style.formality,
+    )
+    
+    # Call LLM
+    client = LLMClient()
+    result = await client.generate_structured(prompt, CoverLetterOutput)
+    
+    # Log the LLM output for debugging
+    logger.info(f"LLM generated cover letter: {len(result.cover_letter)} chars")
+    
+    return result.cover_letter
+
 @flow(name="tailor_resume", log_prints=True)
 async def tailor_resume_flow(
     job_description: str,
     master_resume: dict[str, Any],
     writing_style: WritingStyle,
     constraints: dict[str, Any],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
     """Complete resume tailoring flow - 3 sequential LLM calls."""
     # Step 1: Generate summary
     summary = await generate_summary(
@@ -239,6 +265,14 @@ async def tailor_resume_flow(
         generated_summary=summary,
         generated_work=work,
     )
+    
+    # Step 4: Generate cover letter
+    cover_letter = await generate_cover_letter(
+        job_description=job_description,
+        master_resume=master_resume,
+        writing_style=writing_style,
+    )
+
     
     # Convert Pydantic models to dicts for merging
     # Handle both Pydantic models (from LLM) and dicts (from cache)
@@ -270,7 +304,7 @@ async def tailor_resume_flow(
     work_count = len(tailored_resume.get("work", []))
     logger.info(f"Tailoring complete: summary='{summary_preview}...', work_entries={work_count}")
     
-    return tailored_resume
+    return tailored_resume, cover_letter
 
 
 def merge_with_static(
@@ -278,7 +312,7 @@ def merge_with_static(
     summary: str,
     work: list[dict[str, Any]],
     supporting: dict[str, Any],
-) -> dict[str, Any]:
+) -> tuple[dict[str, Any], str]:
     """Merge dynamic LLM output with static master resume data."""
     result = dict(master_resume)
     if "basics" in result and isinstance(result["basics"], dict):

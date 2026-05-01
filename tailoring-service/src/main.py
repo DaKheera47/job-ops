@@ -135,7 +135,7 @@ async def tailor_resume(request: TailorRequest, req: Request):
     try:
         # Run the Prefect flow
         start_time = time.time()
-        result = await tailor_resume_flow(
+        result, cover_letter = await tailor_resume_flow(
             job_description=request.jobDescription,
             master_resume=request.masterResumeJson,
             writing_style=request.writingStyle,
@@ -196,6 +196,7 @@ async def tailor_resume(request: TailorRequest, req: Request):
                     "proofPoints": proof_points,
                 },
             },
+            coverLetter=cover_letter,
         )
     
     except Exception as e:

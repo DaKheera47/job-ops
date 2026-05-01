@@ -4,6 +4,8 @@
  */
 
 import { spawn } from "node:child_process";
+import { marked } from "marked";
+import puppeteer from "puppeteer";
 import { existsSync } from "node:fs";
 import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -535,4 +537,74 @@ export async function pdfExists(jobId: string): Promise<boolean> {
  */
 export function getPdfPath(jobId: string): string {
   return join(OUTPUT_DIR, `resume_${jobId}.pdf`);
+}
+
+/**
+ * Generate a Cover Letter PDF from markdown content.
+ */
+export async function generateCoverLetterPdf(jobId: string, markdown: string): Promise<PdfResult> {
+  try {
+    await ensureOutputDir();
+    const outputPath = join(OUTPUT_DIR, `cover_letter_${jobId}.pdf`);
+
+    const htmlContent = await marked.parse(markdown);
+
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+              font-size: 11pt;
+              line-height: 1.5;
+              color: #333;
+              margin: 0;
+              padding: 0;
+            }
+            .content {
+              padding: 40px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            p { margin-bottom: 1em; }
+          </style>
+        </head>
+        <body>
+          <div class="content">
+            ${htmlContent}
+          </div>
+        </body>
+      </html>
+    `;
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+    const page = await browser.newPage();
+    await page.setContent(fullHtml, { waitUntil: "networkidle0" });
+    
+    await page.pdf({
+      path: outputPath,
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "20px",
+        right: "20px",
+        bottom: "20px",
+        left: "20px",
+      }
+    });
+
+    await browser.close();
+
+    logger.info("Cover letter PDF generated successfully", { jobId, outputPath });
+    return { success: true, pdfPath: outputPath };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    logger.error("Cover letter PDF generation failed", { jobId, error });
+    return { success: false, error: message };
+  }
 }
