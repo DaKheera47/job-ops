@@ -36,6 +36,21 @@ describe.sequential("Manual jobs API routes", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("rejects known blocked autofetch domains", async () => {
+      const res = await fetch(`${baseUrl}/api/manual-jobs/fetch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "https://www.linkedin.com/jobs/view/123" }),
+      });
+
+      expect(res.status).toBe(422);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toContain(
+        "Auto-fetch is not supported for LinkedIn links",
+      );
+    });
   });
 
   it("infers manual jobs and rejects empty payloads", async () => {

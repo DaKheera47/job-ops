@@ -350,7 +350,9 @@ describe("ManualImportSheet", () => {
 
     it("shows error and returns to paste step when fetch fails", async () => {
       vi.mocked(api.fetchJobFromUrl).mockRejectedValue(
-        new Error("Failed to fetch URL"),
+        new Error(
+          "Couldn't fetch this URL automatically. Paste the job description manually.",
+        ),
       );
 
       render(
@@ -363,7 +365,9 @@ describe("ManualImportSheet", () => {
       );
       fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
 
-      await screen.findByText("Failed to fetch URL");
+      await screen.findByText(
+        "Couldn't fetch this URL automatically. Paste the job description manually.",
+      );
 
       // Should still be on paste step
       expect(
@@ -371,6 +375,23 @@ describe("ManualImportSheet", () => {
           "Paste the full job description here, or fetch it from a URL above...",
         ),
       ).toBeInTheDocument();
+    });
+
+    it("rejects blocked autofetch domains before calling the API", async () => {
+      render(
+        <ManualImportSheet open onOpenChange={vi.fn()} onImported={vi.fn()} />,
+      );
+
+      fireEvent.change(
+        screen.getByPlaceholderText("https://example.com/job-posting"),
+        { target: { value: "https://www.linkedin.com/jobs/view/123" } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: /fetch/i }));
+
+      await screen.findByText(
+        "Auto-fetch is not supported for LinkedIn links. Paste the job description manually.",
+      );
+      expect(api.fetchJobFromUrl).not.toHaveBeenCalled();
     });
 
     it("shows error when inference fails after fetch", async () => {

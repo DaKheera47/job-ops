@@ -65,6 +65,22 @@ const STEP_LABEL_BY_ID: Record<ManualImportStep, string> = {
   review: "Review & import",
 };
 
+const BLOCKED_AUTOFETCH_HOSTS: Array<{
+  label: string;
+  match: (hostname: string) => boolean;
+}> = [
+  {
+    label: "LinkedIn",
+    match: (hostname) =>
+      hostname === "linkedin.com" || hostname.endsWith(".linkedin.com"),
+  },
+  {
+    label: "Indeed",
+    match: (hostname) =>
+      hostname === "indeed.com" || hostname.includes("indeed."),
+  },
+];
+
 const normalizeDraft = (
   draft?: ManualJobDraft | null,
   jd?: string,
@@ -126,6 +142,13 @@ function getSourceHost(value: string): string | null {
   }
 }
 
+function getBlockedAutofetchLabel(value: string): string | null {
+  const host = getSourceHost(value)?.toLowerCase();
+  if (!host) return null;
+  const blocked = BLOCKED_AUTOFETCH_HOSTS.find((entry) => entry.match(host));
+  return blocked?.label ?? null;
+}
+
 export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   active,
   onImported,
@@ -178,7 +201,17 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   }, [draft, step]);
 
   const handleFetch = async () => {
-    if (!fetchUrl.trim()) return;
+    const trimmedUrl = fetchUrl.trim();
+    if (!trimmedUrl) return;
+    const blockedLabel = getBlockedAutofetchLabel(trimmedUrl);
+    if (blockedLabel) {
+      setError(
+        `Auto-fetch is not supported for ${blockedLabel} links. Paste the job description manually.`,
+      );
+      setWarning(null);
+      setFetchNotice(null);
+      return;
+    }
 
     try {
       setError(null);
@@ -186,7 +219,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       setFetchNotice(null);
       setIsFetching(true);
 
-      const fetchResponse = await api.fetchJobFromUrl({ url: fetchUrl.trim() });
+      const fetchResponse = await api.fetchJobFromUrl({ url: trimmedUrl });
       const fetchedContent = fetchResponse.content;
       const fetchedUrl = fetchResponse.url;
 
@@ -198,7 +231,9 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       setFetchNotice("Fetched the page text. Review it below, then analyze.");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to fetch URL";
+        err instanceof Error
+          ? err.message
+          : "Couldn't fetch this URL automatically. Paste the job description manually.";
       setError(message);
       setStep("paste");
     } finally {
