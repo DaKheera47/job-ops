@@ -7,6 +7,8 @@ import {
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getRequestId } from "@server/infra/request-context";
+import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
+import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
 import { normalizeReactiveResumeV5Document } from "@server/services/rxresume/document";
 import {
@@ -14,8 +16,6 @@ import {
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
-import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
-import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { jsonrepair } from "jsonrepair";
 import JSZip from "jszip";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";

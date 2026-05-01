@@ -314,8 +314,12 @@ describe("settingsRegistry helpers", () => {
     });
 
     it("accepts gemini_cli including hyphenated alias", () => {
-      expect(settingsRegistry.llmProvider.parse("gemini_cli")).toBe("gemini_cli");
-      expect(settingsRegistry.llmProvider.parse("gemini-cli")).toBe("gemini_cli");
+      expect(settingsRegistry.llmProvider.parse("gemini_cli")).toBe(
+        "gemini_cli",
+      );
+      expect(settingsRegistry.llmProvider.parse("gemini-cli")).toBe(
+        "gemini_cli",
+      );
     });
 
     it("uses provider-specific default models", () => {
