@@ -247,10 +247,13 @@ export async function ensureChallengeViewer(): Promise<ViewerStatus> {
   return startPromise;
 }
 
-export function createChallengeViewerSession(): { token: string } {
+export function createChallengeViewerSession(
+  options?: { ttlMs?: number },
+): { token: string } {
   pruneExpiredViewerTokens();
   const token = randomBytes(32).toString("base64url");
-  viewerTokens.set(token, Date.now() + VIEWER_TOKEN_TTL_MS);
+  const ttl = options?.ttlMs ?? VIEWER_TOKEN_TTL_MS;
+  viewerTokens.set(token, Date.now() + ttl);
   return { token };
 }
 

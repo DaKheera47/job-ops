@@ -2079,3 +2079,45 @@ export async function deleteBackup(filename: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// --- LinkedIn Auto-Apply ---
+
+export async function getLinkedInSessionStatus(): Promise<{
+  authenticated: boolean;
+  lastVerifiedAt: string | null;
+  profileName?: string;
+}> {
+  return fetchApi("/linkedin-apply/session/status");
+}
+
+export async function startLinkedInLogin(): Promise<{ viewerUrl: string }> {
+  return fetchApi("/linkedin-apply/session/login", { method: "POST" });
+}
+
+export async function verifyLinkedInSession(): Promise<{
+  valid: boolean;
+  profileName?: string;
+}> {
+  return fetchApi("/linkedin-apply/session/verify", { method: "POST" });
+}
+
+export async function logoutLinkedIn(): Promise<void> {
+  await fetchApi<void>("/linkedin-apply/session/logout", { method: "POST" });
+}
+
+export async function startEasyApply(
+  jobId: string,
+  options?: { autoSubmit?: boolean },
+): Promise<{ started: boolean; viewerUrl: string | null }> {
+  return fetchApi(`/linkedin-apply/jobs/${jobId}/easy-apply`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(options ?? {}),
+  });
+}
+
+export async function cancelEasyApply(jobId: string): Promise<void> {
+  await fetchApi<void>(`/linkedin-apply/jobs/${jobId}/easy-apply/cancel`, {
+    method: "POST",
+  });
+}
