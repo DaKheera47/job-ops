@@ -744,6 +744,31 @@ export const settingsRegistry = {
     schema: z.string().trim().max(2000),
   },
 
+  // --- Telegram Bot ---
+  telegramBotToken: {
+    kind: "secret" as const,
+    envKey: "TELEGRAM_BOT_TOKEN",
+    schema: z.string().trim().max(200),
+  },
+  telegramAuthorizedChatIds: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(500),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  telegramNotificationsEnabled: {
+    kind: "typed" as const,
+    schema: z.preprocess(
+      (v) => (v === "1" || v === "true" ? true : v === "0" || v === "false" ? false : v),
+      z.boolean(),
+    ),
+    default: (): boolean => true,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+
   // --- Aliases ---
   jobspyLocation: {
     kind: "alias" as const,
