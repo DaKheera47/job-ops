@@ -394,12 +394,14 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         {!isCatalogLoading && catalog.length > 0 && (
           <AccordionItem value="projects" className={sectionClass}>
             <AccordionTrigger className={triggerClass}>
-              Selected Projects
-              {selectedIds.size > 3 ? (
-                <span className="ml-1 text-muted-foreground/70">
-                  ({selectedIds.size})
-                </span>
-              ) : null}
+              <span className="inline-flex items-center gap-1">
+                <span>Selected Projects</span>
+                {selectedIds.size > 3 ? (
+                  <span className="text-muted-foreground/70">
+                    ({selectedIds.size})
+                  </span>
+                ) : null}
+              </span>
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3 pt-1">
               <ProjectSelector
