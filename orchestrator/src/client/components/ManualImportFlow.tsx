@@ -1,6 +1,25 @@
 import * as api from "@client/api";
 import type { ManualJobDraft } from "@shared/types.js";
-import { ArrowDown, ArrowLeft, Link, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckCircle2,
+  CircleAlert,
+  DollarSign,
+  FileText,
+  GraduationCap,
+  Link,
+  Link2,
+  ListChecks,
+  Loader2,
+  MapPin,
+  Sparkles,
+  Tag,
+  Users,
+} from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -37,6 +56,18 @@ type ManualJobDraftState = {
   starting: string;
 };
 
+type DraftFieldKey = keyof ManualJobDraftState;
+
+type ReviewFieldConfig = {
+  id: string;
+  key: DraftFieldKey;
+  label: string;
+  placeholder: string;
+  icon: React.ComponentType<{ className?: string }>;
+  required?: boolean;
+  multiline?: boolean;
+};
+
 const emptyDraft: ManualJobDraftState = {
   title: "",
   employer: "",
@@ -63,6 +94,114 @@ const STEP_LABEL_BY_ID: Record<ManualImportProgressStep, string> = {
   paste: "Add JD",
   review: "Review & import",
 };
+
+const REQUIRED_REVIEW_FIELDS: ReviewFieldConfig[] = [
+  {
+    id: "draft-title",
+    key: "title",
+    label: "Title",
+    placeholder: "e.g. Junior Backend Engineer",
+    icon: Tag,
+    required: true,
+  },
+  {
+    id: "draft-employer",
+    key: "employer",
+    label: "Employer",
+    placeholder: "e.g. Acme Labs",
+    icon: Building2,
+    required: true,
+  },
+  {
+    id: "draft-jobDescription",
+    key: "jobDescription",
+    label: "Description",
+    placeholder: "Paste the job description...",
+    icon: FileText,
+    required: true,
+    multiline: true,
+  },
+];
+
+const OTHER_REVIEW_FIELDS: ReviewFieldConfig[] = [
+  {
+    id: "draft-location",
+    key: "location",
+    label: "Location",
+    placeholder: "e.g. London, UK",
+    icon: MapPin,
+  },
+  {
+    id: "draft-salary",
+    key: "salary",
+    label: "Salary",
+    placeholder: "e.g. GBP 45k-55k",
+    icon: DollarSign,
+  },
+  {
+    id: "draft-jobType",
+    key: "jobType",
+    label: "Job type",
+    placeholder: "e.g. Full-time",
+    icon: Briefcase,
+  },
+  {
+    id: "draft-jobLevel",
+    key: "jobLevel",
+    label: "Job level",
+    placeholder: "e.g. Graduate",
+    icon: ListChecks,
+  },
+  {
+    id: "draft-jobFunction",
+    key: "jobFunction",
+    label: "Job function",
+    placeholder: "e.g. Software Engineering",
+    icon: Users,
+  },
+  {
+    id: "draft-disciplines",
+    key: "disciplines",
+    label: "Disciplines",
+    placeholder: "e.g. Computer Science",
+    icon: ListChecks,
+  },
+  {
+    id: "draft-deadline",
+    key: "deadline",
+    label: "Deadline",
+    placeholder: "e.g. 30 Sep 2025",
+    icon: Calendar,
+  },
+  {
+    id: "draft-degreeRequired",
+    key: "degreeRequired",
+    label: "Degree required",
+    placeholder: "e.g. BSc or MSc",
+    icon: GraduationCap,
+  },
+  {
+    id: "draft-starting",
+    key: "starting",
+    label: "Starting",
+    placeholder: "e.g. September 2026",
+    icon: Calendar,
+  },
+  {
+    id: "draft-jobUrl",
+    key: "jobUrl",
+    label: "Job URL",
+    placeholder: "https://...",
+    icon: Link2,
+  },
+  {
+    id: "draft-applicationLink",
+    key: "applicationLink",
+    label: "Application URL",
+    placeholder: "https://...",
+    icon: Link,
+  },
+];
 
 const BLOCKED_AUTOFETCH_HOSTS: Array<{
   label: string;
@@ -442,182 +581,85 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
         )}
 
         {step === "review" && (
-          <div className="space-y-4 pb-4">
+          <div className="space-y-5 pb-4">
             {warning && (
               <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
                 {warning}
               </div>
             )}
 
-            <div className="flex items-center justify-between">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-semibold tracking-tight">
+                Review job details
+              </h3>
+              <p className="max-w-lg text-sm leading-6 text-muted-foreground">
+                AI extracted these from the job description. Review anything
+                missing or odd before importing.
+              </p>
+            </div>
+
+            <ReviewSection
+              icon={CheckCircle2}
+              title="Required"
+              description="Title, employer, and description are needed to import."
+            >
+              <div className="divide-y divide-border/70">
+                {REQUIRED_REVIEW_FIELDS.map((field) => (
+                  <ReviewField
+                    key={field.id}
+                    field={field}
+                    value={draft[field.key]}
+                    onChange={(value) =>
+                      setDraft((prev) => ({ ...prev, [field.key]: value }))
+                    }
+                  />
+                ))}
+              </div>
+            </ReviewSection>
+
+            <ReviewSection
+              icon={CircleAlert}
+              title="Other details"
+              description="Useful if available; blank fields can be added later."
+            >
+              <div className="grid gap-2 sm:grid-cols-2">
+                {OTHER_REVIEW_FIELDS.map((field) => (
+                  <ReviewField
+                    key={field.id}
+                    field={field}
+                    value={draft[field.key]}
+                    onChange={(value) =>
+                      setDraft((prev) => ({ ...prev, [field.key]: value }))
+                    }
+                    compact
+                  />
+                ))}
+              </div>
+            </ReviewSection>
+
+            <div className="sticky bottom-0 -mx-1 flex gap-3 border-t border-border/70 bg-background/95 px-1 py-4 backdrop-blur">
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
+                variant="outline"
                 onClick={() => setStep("paste")}
-                className="gap-1 text-xs text-muted-foreground hover:text-foreground"
+                className="h-11 flex-1 gap-2"
               >
-                <ArrowLeft className="h-3.5 w-3.5" />
+                <ArrowLeft className="h-4 w-4" />
                 Edit JD
               </Button>
-              <span className="text-[11px] text-muted-foreground">
-                Required: title, employer, description
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <FieldInput
-                id="draft-title"
-                label="Title *"
-                value={draft.title}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, title: value }))
-                }
-                placeholder="e.g. Junior Backend Engineer"
-              />
-              <FieldInput
-                id="draft-employer"
-                label="Employer *"
-                value={draft.employer}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, employer: value }))
-                }
-                placeholder="e.g. Acme Labs"
-              />
-              <FieldInput
-                id="draft-location"
-                label="Location"
-                value={draft.location}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, location: value }))
-                }
-                placeholder="e.g. London, UK"
-              />
-              <FieldInput
-                id="draft-salary"
-                label="Salary"
-                value={draft.salary}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, salary: value }))
-                }
-                placeholder="e.g. GBP 45k-55k"
-              />
-              <FieldInput
-                id="draft-deadline"
-                label="Deadline"
-                value={draft.deadline}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, deadline: value }))
-                }
-                placeholder="e.g. 30 Sep 2025"
-              />
-              <FieldInput
-                id="draft-jobType"
-                label="Job type"
-                value={draft.jobType}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, jobType: value }))
-                }
-                placeholder="e.g. Full-time"
-              />
-              <FieldInput
-                id="draft-jobLevel"
-                label="Job level"
-                value={draft.jobLevel}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, jobLevel: value }))
-                }
-                placeholder="e.g. Graduate"
-              />
-              <FieldInput
-                id="draft-jobFunction"
-                label="Job function"
-                value={draft.jobFunction}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, jobFunction: value }))
-                }
-                placeholder="e.g. Software Engineering"
-              />
-              <FieldInput
-                id="draft-disciplines"
-                label="Disciplines"
-                value={draft.disciplines}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, disciplines: value }))
-                }
-                placeholder="e.g. Computer Science"
-              />
-              <FieldInput
-                id="draft-degreeRequired"
-                label="Degree required"
-                value={draft.degreeRequired}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, degreeRequired: value }))
-                }
-                placeholder="e.g. BSc or MSc"
-              />
-              <FieldInput
-                id="draft-starting"
-                label="Starting"
-                value={draft.starting}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, starting: value }))
-                }
-                placeholder="e.g. September 2026"
-              />
-              <FieldInput
-                id="draft-jobUrl"
-                label="Job URL"
-                value={draft.jobUrl}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, jobUrl: value }))
-                }
-                placeholder="https://..."
-              />
-              <FieldInput
-                id="draft-applicationLink"
-                label="Application URL"
-                value={draft.applicationLink}
-                onChange={(value) =>
-                  setDraft((prev) => ({ ...prev, applicationLink: value }))
-                }
-                placeholder="https://..."
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label
-                htmlFor="draft-jobDescription"
-                className="text-xs font-medium text-muted-foreground"
+              <Button
+                onClick={() => void handleImport()}
+                disabled={!canImport || isImporting}
+                className="h-11 flex-1 gap-2"
               >
-                Job description *
-              </label>
-              <Textarea
-                id="draft-jobDescription"
-                value={draft.jobDescription}
-                onChange={(event) =>
-                  setDraft((prev) => ({
-                    ...prev,
-                    jobDescription: event.target.value,
-                  }))
-                }
-                placeholder="Paste the job description..."
-                className="min-h-[180px] font-mono text-sm leading-relaxed"
-              />
+                {isImporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                {isImporting ? "Importing..." : "Import job"}
+              </Button>
             </div>
-
-            <Button
-              onClick={() => void handleImport()}
-              disabled={!canImport || isImporting}
-              className="w-full h-10 gap-2"
-            >
-              {isImporting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {isImporting ? "Importing..." : "Import job"}
-            </Button>
           </div>
         )}
       </div>
@@ -625,22 +667,107 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
   );
 };
 
-const FieldInput: React.FC<{
-  id: string;
-  label: string;
+const ReviewSection: React.FC<{
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}> = ({ icon: Icon, title, description, children }) => (
+  <section className="rounded-xl border border-border/80 bg-card/45 p-3 shadow-sm">
+    <div className="mb-3 flex items-start gap-3">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </span>
+      <div className="min-w-0">
+        <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+        <p className="text-xs leading-5 text-muted-foreground">{description}</p>
+      </div>
+    </div>
+    {children}
+  </section>
+);
+
+const ReviewField: React.FC<{
+  field: ReviewFieldConfig;
   value: string;
   onChange: (value: string) => void;
-  placeholder: string;
-}> = ({ id, label, value, onChange, placeholder }) => (
-  <div className="space-y-1">
-    <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
-      {label}
-    </label>
-    <Input
-      id={id}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      placeholder={placeholder}
-    />
-  </div>
-);
+  compact?: boolean;
+}> = ({ field, value, onChange, compact = false }) => {
+  const hasValue = value.trim().length > 0;
+  const needsReview = Boolean(field.required) && !hasValue;
+  const Icon = field.icon;
+
+  return (
+    <div
+      className={
+        compact
+          ? "rounded-lg border border-border/70 bg-background/35 p-3"
+          : "py-3 first:pt-0 last:pb-0"
+      }
+    >
+      <div className="flex gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/55 text-muted-foreground">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <label
+              htmlFor={field.id}
+              className="text-xs font-medium text-muted-foreground"
+            >
+              {field.label}
+              {field.required ? " *" : ""}
+            </label>
+            <ReviewStatusBadge hasValue={hasValue} needsReview={needsReview} />
+          </div>
+          {field.multiline ? (
+            <Textarea
+              id={field.id}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={field.placeholder}
+              className="min-h-[150px] resize-y border-border/70 bg-background/70 font-mono text-sm leading-relaxed"
+            />
+          ) : (
+            <Input
+              id={field.id}
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              placeholder={field.placeholder}
+              className="h-9 border-border/70 bg-background/70 text-sm"
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ReviewStatusBadge: React.FC<{
+  hasValue: boolean;
+  needsReview: boolean;
+}> = ({ hasValue, needsReview }) => {
+  if (needsReview) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-medium text-amber-200">
+        <CircleAlert className="h-3 w-3" />
+        Review
+      </span>
+    );
+  }
+
+  if (hasValue) {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-[11px] font-medium text-emerald-200">
+        <CheckCircle2 className="h-3 w-3" />
+        Looks good
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full border border-border bg-muted/40 px-2 py-1 text-[11px] font-medium text-muted-foreground">
+      Add
+    </span>
+  );
+};
