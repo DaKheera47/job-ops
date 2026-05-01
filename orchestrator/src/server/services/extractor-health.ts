@@ -113,6 +113,13 @@ const HEALTH_PROBE_CONFIG_BY_SOURCE: Record<
       seekMaxJobsPerTerm: "1",
     },
   },
+  naukri: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: "india",
+    settings: {
+      naukriMaxJobsPerTerm: "1",
+    },
+  },
   manual: {
     searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
     selectedCountry: DEFAULT_HEALTH_SELECTED_COUNTRY,

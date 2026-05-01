@@ -87,6 +87,7 @@ function buildEffectiveConfigSnapshot(args: {
       adzunaMaxJobsPerTerm: args.settings.adzunaMaxJobsPerTerm.value,
       gradcrackerMaxJobsPerTerm: args.settings.gradcrackerMaxJobsPerTerm.value,
       startupjobsMaxJobsPerTerm: args.settings.startupjobsMaxJobsPerTerm.value,
+      naukriMaxJobsPerTerm: args.settings.naukriMaxJobsPerTerm.value,
       jobspyResultsWanted: args.settings.jobspyResultsWanted.value,
     },
     autoSkipScoreThreshold: args.settings.autoSkipScoreThreshold.value,

@@ -55,6 +55,8 @@ describe("location-support", () => {
     expect(isSourceAllowedForCountry("glassdoor", "japan")).toBe(false);
     expect(isSourceAllowedForCountry("adzuna", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("adzuna", "japan")).toBe(false);
+    expect(isSourceAllowedForCountry("naukri", "india")).toBe(true);
+    expect(isSourceAllowedForCountry("naukri", "united kingdom")).toBe(false);
     expect(isSourceAllowedForCountry("startupjobs", "united states")).toBe(
       true,
     );
@@ -70,6 +72,7 @@ describe("location-support", () => {
           "glassdoor",
           "ukvisajobs",
           "adzuna",
+          "naukri",
           "startupjobs",
           "linkedin",
         ],

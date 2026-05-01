@@ -203,6 +203,7 @@ export function usePipelineControls(
         adzunaMaxJobsPerTerm: limits.adzunaMaxJobsPerTerm,
         startupjobsMaxJobsPerTerm: limits.startupjobsMaxJobsPerTerm,
         seekMaxJobsPerTerm: limits.seekMaxJobsPerTerm,
+        naukriMaxJobsPerTerm: limits.naukriMaxJobsPerTerm,
         jobspyCountryIndeed: values.country,
         searchCities,
       });

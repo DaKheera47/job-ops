@@ -309,6 +309,8 @@ function createDefaultSupportedCountryKeys(
       return ["united kingdom"];
     case "seek":
       return ["australia", "new zealand"];
+    case "naukri":
+      return ["india"];
     case "glassdoor":
       return [
         "australia",

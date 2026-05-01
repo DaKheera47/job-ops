@@ -36,6 +36,10 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(withoutToken)).not.toContain("seek");
   });
 
+  it("enables naukri without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("naukri");
+  });
+
   it("counts processing jobs in ready and discovered tabs", () => {
     const jobs = [
       createJob({ id: "ready", status: "ready", closedAt: null }),

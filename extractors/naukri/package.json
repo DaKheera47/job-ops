@@ -1,12 +1,29 @@
 {
   "name": "naukri-extractor",
-  "version": "1.0.0",
-  "main": "main.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Naukri extractor - fetches jobs from naukri.com",
+  "main": "src/main.ts",
+  "dependencies": {
+    "browser-utils": "^0.0.1",
+    "camoufox-js": "^0.9.2",
+    "job-ops-shared": "^1.0.0",
+    "playwright": "^1.57.0",
+    "tsx": "^4.4.0"
   },
-  "author": "DaKheera47",
   "devDependencies": {
-    "@types/node": "^25.6.0"
-  }
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "optionalDependencies": {
+    "impit-linux-x64-gnu": "^0.1.0"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "start:dev": "tsx src/main.ts",
+    "check:types": "tsc --noEmit",
+    "get-binaries": "camoufox-js fetch"
+  },
+  "author": "",
+  "license": "SEE LICENSE IN ../../LICENSE"
 }

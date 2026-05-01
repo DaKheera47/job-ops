@@ -259,6 +259,7 @@ export const DEMO_SOURCE_BASE_URLS: Record<JobSource, string> = {
   workingnomads: "https://www.workingnomads.com",
   golangjobs: "https://www.golangjobs.tech",
   seek: "https://www.seek.com.au",
+  naukri: "https://www.naukri.com",
   manual: "https://example.com",
 };
 
