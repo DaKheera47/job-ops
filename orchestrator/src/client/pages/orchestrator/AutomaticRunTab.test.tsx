@@ -277,6 +277,43 @@ describe("AutomaticRunTab", () => {
     expect(screen.getByRole("button", { name: "UK Visa Jobs" })).toBeDisabled();
   });
 
+  it("disables and prunes Naukri outside India", async () => {
+    const onSetPipelineSources = vi.fn();
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          searchTerms: {
+            value: ["backend engineer"],
+            default: ["backend engineer"],
+            override: null,
+          },
+          jobspyCountryIndeed: {
+            value: "united kingdom",
+            default: "united kingdom",
+            override: "united kingdom",
+          },
+          searchCities: { value: "", default: "", override: null },
+        })}
+        enabledSources={["linkedin", "naukri"]}
+        pipelineSources={["linkedin", "naukri"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={onSetPipelineSources}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(onSetPipelineSources).toHaveBeenCalledWith(["linkedin"]);
+    });
+
+    openSourcePicker();
+
+    expect(screen.getByRole("button", { name: "Naukri" })).toBeDisabled();
+  });
+
   it("moves a deselected source to the end of the ready list", async () => {
     const StatefulTab = () => {
       const [pipelineSources, setPipelineSources] = useState<JobSource[]>([

@@ -186,10 +186,13 @@ describe.sequential("Jobs API routes", () => {
       jobUrl: "https://example.com/job/reposted",
       jobDescription: "Reposted description",
     });
+    const appliedAtWithinDuplicateWindow = new Date(
+      Date.parse(repostedJob.discoveredAt) - 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     await updateJob(appliedJob.id, {
       status: "applied",
-      appliedAt: "2026-04-01T10:00:00.000Z",
+      appliedAt: appliedAtWithinDuplicateWindow,
     });
     await updateJob(repostedJob.id, { status: "ready" });
 

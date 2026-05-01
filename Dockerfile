@@ -60,6 +60,7 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
@@ -86,6 +87,7 @@ COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
+COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
@@ -124,6 +126,7 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
@@ -179,6 +182,7 @@ COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
 COPY extractors/jobspy ./extractors/jobspy
+COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs

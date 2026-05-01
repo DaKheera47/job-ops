@@ -797,9 +797,26 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   The source material for deciding, tailoring, and applying.
                 </p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap justify-end gap-1">
                 {!isEditingDescription ? (
                   <>
+                    {selectedJob.jobUrl ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        asChild
+                      >
+                        <a
+                          href={selectedJob.jobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                          View job
+                        </a>
+                      </Button>
+                    ) : null}
                     <Button
                       size="sm"
                       variant="ghost"

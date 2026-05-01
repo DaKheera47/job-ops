@@ -915,6 +915,7 @@ describe("OrchestratorPage", () => {
         workplaceTypes: ["remote", "hybrid", "onsite"],
         jobspyResultsWanted: 150,
         gradcrackerMaxJobsPerTerm: 150,
+        naukriMaxJobsPerTerm: 150,
         ukvisajobsMaxJobs: 150,
         adzunaMaxJobsPerTerm: 150,
         startupjobsMaxJobsPerTerm: 150,

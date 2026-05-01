@@ -25,4 +25,12 @@ describe("extractor source catalog", () => {
       expect(EXTRACTOR_SOURCE_METADATA[source].label.length).toBeGreaterThan(0);
     }
   });
+
+  it("includes naukri as a pipeline source", () => {
+    expect(isExtractorSourceId("naukri")).toBe(true);
+    expect(EXTRACTOR_SOURCE_METADATA.naukri).toMatchObject({
+      label: "Naukri",
+      category: "pipeline",
+    });
+  });
 });

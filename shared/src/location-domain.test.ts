@@ -229,6 +229,11 @@ describe("location-domain", () => {
       source: "seek",
       supportedCountryKeys: ["australia", "new zealand"],
     });
+    expect(normalizeLocationSourceCapabilities({ source: "naukri" })).toEqual({
+      requiresCityLocations: false,
+      source: "naukri",
+      supportedCountryKeys: ["india"],
+    });
     expect(
       normalizeLocationSourceCapabilities({ source: "startupjobs" }),
     ).toEqual({

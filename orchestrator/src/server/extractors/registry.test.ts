@@ -47,6 +47,7 @@ describe("extractor registry", () => {
 
     vi.mocked(discovery.discoverManifestPaths).mockResolvedValue([
       "/tmp/jobspy.ts",
+      "/tmp/naukri.ts",
       "/tmp/ukvisajobs.ts",
     ]);
     vi.mocked(discovery.loadManifestFromFile).mockImplementation(
@@ -57,13 +58,16 @@ describe("extractor registry", () => {
               ["indeed", "linkedin", "glassdoor"],
               "JobSpy",
             )
-          : makeManifest("ukvisajobs", ["ukvisajobs"], "UK Visa Jobs"),
+          : path === "/tmp/naukri.ts"
+            ? makeManifest("naukri", ["naukri"], "Naukri")
+            : makeManifest("ukvisajobs", ["ukvisajobs"], "UK Visa Jobs"),
     );
 
     const registry = await registryModule.initializeExtractorRegistry();
 
-    expect(registry.manifests.size).toBe(2);
+    expect(registry.manifests.size).toBe(3);
     expect(registry.manifestBySource.get("linkedin")?.id).toBe("jobspy");
+    expect(registry.manifestBySource.get("naukri")?.id).toBe("naukri");
     expect(registry.manifestBySource.get("ukvisajobs")?.id).toBe("ukvisajobs");
   });
 
