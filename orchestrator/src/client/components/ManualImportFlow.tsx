@@ -10,6 +10,7 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -269,9 +270,7 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       });
       onClose();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to import job";
-      toast.error(message);
+      showErrorToast(err, "Failed to import job");
     } finally {
       setIsImporting(false);
     }

@@ -54,6 +54,8 @@ import {
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import {
   Accordion,
@@ -807,11 +809,7 @@ export const SettingsPage: React.FC = () => {
       })
       .catch((error) => {
         if (!isMounted || error.name === "AbortError") return;
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load RxResume projects";
-        toast.error(message);
+        showErrorToast(error, "Failed to load RxResume projects");
         setRxResumeProjectsOverride(null);
       })
       .finally(() => {
@@ -848,9 +846,7 @@ export const SettingsPage: React.FC = () => {
       toast.success("Backup created successfully");
       await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create backup";
-      toast.error(message);
+      showErrorToast(error, "Failed to create backup");
     } finally {
       setIsCreatingBackup(false);
     }
@@ -869,9 +865,7 @@ export const SettingsPage: React.FC = () => {
       toast.success("Backup deleted successfully");
       await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete backup";
-      toast.error(message);
+      showErrorToast(error, "Failed to delete backup");
     } finally {
       setIsDeletingBackup(false);
     }
@@ -891,11 +885,7 @@ export const SettingsPage: React.FC = () => {
         );
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to verify tracer-link readiness";
-      toast.error(message);
+      showErrorToast(error, "Failed to verify tracer-link readiness");
     }
   }, [refreshReadiness]);
 
@@ -926,9 +916,9 @@ export const SettingsPage: React.FC = () => {
         skipPrecheck: silent,
         getPrecheckMessage: (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
         getValidationErrorMessage: (error) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
+          formatUserFacingError(error, "RxResume validation failed"),
         getPersistErrorMessage: (error) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
+          formatUserFacingError(error, "RxResume validation failed"),
       });
 
       setRxResumeValidationStatus(result.validation);
@@ -1227,9 +1217,7 @@ export const SettingsPage: React.FC = () => {
         toast.info(rxResumeSaveWarningMessage);
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save settings";
-      toast.error(message);
+      showErrorToast(error, "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
@@ -1243,9 +1231,7 @@ export const SettingsPage: React.FC = () => {
         description: `Deleted ${result.jobsDeleted} jobs.`,
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to clear database";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear database");
     } finally {
       setIsSaving(false);
     }
@@ -1279,9 +1265,7 @@ export const SettingsPage: React.FC = () => {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to clear jobs";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear jobs");
     } finally {
       setIsSaving(false);
     }
@@ -1302,11 +1286,7 @@ export const SettingsPage: React.FC = () => {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to clear jobs by score";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear jobs by score");
     } finally {
       setIsSaving(false);
     }
@@ -1329,9 +1309,7 @@ export const SettingsPage: React.FC = () => {
       reset(mapSettingsToForm(updated));
       toast.success("Reset to default");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reset settings";
-      toast.error(message);
+      showErrorToast(error, "Failed to reset settings");
     } finally {
       setIsSaving(false);
     }

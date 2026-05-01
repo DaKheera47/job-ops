@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
@@ -85,9 +86,7 @@ export const MessageList: React.FC<MessageListProps> = ({
         copiedTimeoutRef.current = null;
       }, 2000);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to copy response";
-      toast.error(message);
+      showErrorToast(error, "Failed to copy response");
     }
   };
 

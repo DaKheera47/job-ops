@@ -40,6 +40,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -379,9 +380,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       setIsEditingDescription(false);
       await onJobUpdated();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to update description";
-      toast.error(message);
+      showErrorToast(error, "Failed to update description");
     } finally {
       setIsSavingDescription(false);
     }
@@ -429,9 +428,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       }
       await onJobUpdated();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to process job";
-      toast.error(message);
+      showErrorToast(error, "Failed to process job");
     } finally {
       setIsProcessing(false);
     }
@@ -459,9 +456,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         handleJobMoved(selectedJob.id);
         await onJobUpdated();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to mark as applied";
-        toast.error(message);
+        showErrorToast(error, "Failed to mark as applied");
       } finally {
         setIsApplying(false);
       }
@@ -480,11 +475,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         toast.success("Moved to in progress");
         await onJobUpdated();
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to move to in progress";
-        toast.error(message);
+        showErrorToast(error, "Failed to move to in progress");
       } finally {
         setIsMoving(false);
       }
@@ -507,26 +498,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       handleJobMoved(selectedJob.id);
       await onJobUpdated();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to skip";
-      toast.error(message);
+      showErrorToast(error, "Failed to skip");
     }
   }, [handleJobMoved, onJobUpdated, selectedJob, skipJobMutation]);
 
   const handleOpenPdf = useCallback(() => {
     if (!selectedJob) return;
     void openJobPdf(selectedJob.id).catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Could not open PDF",
-      );
+      showErrorToast(error, "Could not open PDF");
     });
   }, [selectedJob]);
 
   const handleDownloadPdf = useCallback(() => {
     if (!selectedJob) return;
     void downloadJobPdf(selectedJob.id, selectedPdfFilename).catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Could not download PDF",
-      );
+      showErrorToast(error, "Could not download PDF");
     });
   }, [selectedJob, selectedPdfFilename]);
 
@@ -539,9 +525,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         toast.success(selectedJob.pdfPath ? "PDF replaced" : "PDF attached");
         await onJobUpdated();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to upload PDF";
-        toast.error(message);
+        showErrorToast(error, "Failed to upload PDF");
       } finally {
         setIsUploadingPdf(false);
         if (uploadPdfInputRef.current) {

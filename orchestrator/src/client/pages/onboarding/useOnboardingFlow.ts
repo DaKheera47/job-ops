@@ -29,6 +29,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { EMPTY_VALIDATION_STATE, STEP_COPY } from "./content";
 import type {
   BasicAuthChoice,
@@ -203,8 +205,7 @@ export function useOnboardingFlow() {
       } catch (error) {
         const result = {
           valid: false,
-          message:
-            error instanceof Error ? error.message : "LLM validation failed",
+          message: formatUserFacingError(error, "LLM validation failed"),
         };
         setLlmValidation(toValidationState(result, options));
         return result;
@@ -431,9 +432,7 @@ export function useOnboardingFlow() {
       });
       return nextSettings;
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save LLM settings",
-      );
+      showErrorToast(error, "Failed to save LLM settings");
       return null;
     } finally {
       setIsSaving(false);
@@ -501,11 +500,9 @@ export function useOnboardingFlow() {
         getPrecheckMessage: () =>
           "v5 API key required. Add a v5 API key, then test again.",
         getValidationErrorMessage: (error: unknown) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
+          formatUserFacingError(error, "RxResume validation failed"),
         getPersistErrorMessage: (error: unknown) =>
-          error instanceof Error
-            ? error.message
-            : "Failed to save RxResume credentials",
+          formatUserFacingError(error, "Failed to save RxResume credentials"),
       });
 
       setRxresumeValidation(toValidationState(result.validation));
@@ -633,9 +630,7 @@ export function useOnboardingFlow() {
       toast.success("Resume source is ready");
       return settings ?? null;
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to validate resume",
-      );
+      showErrorToast(error, "Failed to validate resume");
       return null;
     }
   }, [settings, validateBaseResume]);
@@ -726,9 +721,7 @@ export function useOnboardingFlow() {
       toast.success("Search terms saved");
       return nextSettings;
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to save search terms",
-      );
+      showErrorToast(error, "Failed to save search terms");
       return null;
     } finally {
       setIsSaving(false);

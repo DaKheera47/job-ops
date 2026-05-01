@@ -8,7 +8,7 @@ import type {
 } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 
 const initialStats: Record<JobStatus, number> = {
@@ -178,11 +178,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
           setSelectedJob(fullJob);
         }
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load selected job details";
-        toast.error(message);
+        showErrorToast(error, "Failed to load selected job details");
       }
     },
     [queryClient, selectedJobId],
@@ -202,9 +198,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         lastRevisionRef.current = data.revision;
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load jobs";
-      toast.error(message);
+      showErrorToast(error, "Failed to load jobs");
     } finally {
       pendingLoadCountRef.current = Math.max(
         0,

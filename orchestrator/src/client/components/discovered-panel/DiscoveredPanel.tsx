@@ -5,6 +5,7 @@ import type { Job } from "@shared/types.js";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { trackProductEvent } from "@/lib/analytics";
 import { JobDetailsEditDrawer } from "../JobDetailsEditDrawer";
 import { DecideMode } from "./DecideMode";
@@ -77,9 +78,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
         from_status: job.status,
         to_status: "skipped",
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to skip job";
-      toast.error(message);
+      showErrorToast(error, "Failed to skip job");
     } finally {
       setIsSkipping(false);
     }
@@ -110,9 +109,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
         from_status: job.status,
         to_status: "ready",
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to finalize job";
-      toast.error(message);
+      showErrorToast(error, "Failed to finalize job");
     } finally {
       setIsFinalizing(false);
     }

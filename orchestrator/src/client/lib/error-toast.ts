@@ -6,5 +6,8 @@ export function showErrorToast(
   fallback?: string,
   options?: ExternalToast,
 ): string | number {
-  return toast.error(formatUserFacingError(error, fallback), options);
+  const message = formatUserFacingError(error, fallback);
+  return options === undefined
+    ? toast.error(message)
+    : toast.error(message, options);
 }

@@ -8,6 +8,7 @@ import {
 import type { AppSettings, JobSource } from "@shared/types.js";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { trackProductEvent } from "@/lib/analytics";
 import type { AutomaticRunValues } from "./automatic-run";
 import {
@@ -129,9 +130,7 @@ export function usePipelineControls(
       } catch (error) {
         setIsPipelineRunning(false);
         setIsCancelling(false);
-        const message =
-          error instanceof Error ? error.message : "Failed to start pipeline";
-        toast.error(message);
+        showErrorToast(error, "Failed to start pipeline");
       }
     },
     [setIsPipelineRunning],
@@ -149,9 +148,7 @@ export function usePipelineControls(
       toast.message(result.message);
     } catch (error) {
       setIsCancelling(false);
-      const message =
-        error instanceof Error ? error.message : "Failed to cancel pipeline";
-      toast.error(message);
+      showErrorToast(error, "Failed to cancel pipeline");
     }
   }, [isCancelling, isPipelineRunning]);
 
