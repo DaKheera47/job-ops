@@ -16,6 +16,8 @@ import { JobDetailPanel } from "./orchestrator/JobDetailPanel";
 import { JobListPanel } from "./orchestrator/JobListPanel";
 import { OrchestratorFilters } from "./orchestrator/OrchestratorFilters";
 import { OrchestratorHeader } from "./orchestrator/OrchestratorHeader";
+import { BatchApplyButton } from "@client/components/linkedin-apply/BatchApplyButton";
+import { BatchApplyProgress } from "@client/components/linkedin-apply/BatchApplyProgress";
 import { OrchestratorSummary } from "./orchestrator/OrchestratorSummary";
 import { RunModeModal } from "./orchestrator/RunModeModal";
 import { useFilteredJobs } from "./orchestrator/useFilteredJobs";
@@ -417,6 +419,18 @@ export const OrchestratorPage: React.FC = () => {
           isPipelineRunning={isPipelineRunning}
         />
 
+        {activeTab === "ready" && (() => {
+          const linkedInReadyCount = filteredJobs.filter(
+            (j) => j.source === "linkedin" && j.status === "ready",
+          ).length;
+          return linkedInReadyCount > 0 ? (
+            <div className="flex items-center gap-3">
+              <BatchApplyButton linkedInReadyCount={linkedInReadyCount} />
+              <BatchApplyProgress />
+            </div>
+          ) : null;
+        })()}
+
         {/* Main content: tabs/filters -> list/detail */}
         <section className="space-y-4">
           <JobCommandBar
@@ -489,6 +503,13 @@ export const OrchestratorPage: React.FC = () => {
         canMoveSelected={canMoveSelected}
         canSkipSelected={canSkipSelected}
         canRescoreSelected={canRescoreSelected}
+        canAutoApplySelected={(() => {
+          const selected = filteredJobs.filter((j) => selectedJobIds.has(j.id));
+          return selected.some((j) => j.source === "linkedin" && j.status === "ready");
+        })()}
+        selectedLinkedInReadyIds={filteredJobs
+          .filter((j) => selectedJobIds.has(j.id) && j.source === "linkedin" && j.status === "ready")
+          .map((j) => j.id)}
         jobActionInFlight={jobActionInFlight !== null}
         onMoveToReady={() => void runJobAction("move_to_ready")}
         onSkipSelected={() => void runJobAction("skip")}

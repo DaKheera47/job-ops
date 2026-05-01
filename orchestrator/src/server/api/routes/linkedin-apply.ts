@@ -5,6 +5,13 @@ import { getProfile } from "@server/services/profile";
 import { type Request, type Response, Router } from "express";
 import * as jobsRepo from "../../repositories/jobs";
 import {
+  cancelBatchApply,
+  getBatchProgress,
+  isBatchRunning,
+  startBatchApply,
+  subscribeToBatchProgress,
+} from "../../services/linkedin-auto-apply/batch";
+import {
   cancelEasyApply,
   getLinkedInApplyProgress,
   getLinkedInSessionStatus,
@@ -170,3 +177,65 @@ linkedInApplyRouter.get(
     });
   },
 );
+
+// --- Batch Apply endpoints ---
+
+linkedInApplyRouter.post("/batch-apply", async (req: Request, res: Response) => {
+  if (isBatchRunning()) {
+    throw badRequest("Batch apply is already running");
+  }
+
+  let jobIds: string[];
+
+  if (req.body?.filter === "all_ready_linkedin") {
+    const allJobs = await jobsRepo.getJobListItems(["ready"]);
+    jobIds = allJobs
+      .filter((j) => j.source === "linkedin")
+      .map((j) => j.id);
+  } else if (Array.isArray(req.body?.jobIds)) {
+    jobIds = req.body.jobIds;
+  } else {
+    throw badRequest("Provide jobIds array or filter: 'all_ready_linkedin'");
+  }
+
+  if (jobIds.length === 0) {
+    throw badRequest("No LinkedIn ready jobs found");
+  }
+
+  // Start in background
+  startBatchApply(jobIds).catch((error) => {
+    logger.error("Batch apply background error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+
+  res.json({ started: true, totalJobs: jobIds.length });
+});
+
+linkedInApplyRouter.post("/batch-apply/cancel", (_req: Request, res: Response) => {
+  cancelBatchApply();
+  res.json({ cancelled: true });
+});
+
+linkedInApplyRouter.get("/batch-apply/progress", (req: Request, res: Response) => {
+  setupSse(res, { disableBuffering: true, flushHeaders: true });
+  const stopHeartbeat = startSseHeartbeat(res);
+
+  const current = getBatchProgress();
+  writeSseData(res, current);
+
+  const unsubscribe = subscribeToBatchProgress((progress) => {
+    writeSseData(res, progress);
+
+    if (!progress.running) {
+      stopHeartbeat();
+      unsubscribe();
+      res.end();
+    }
+  });
+
+  req.on("close", () => {
+    stopHeartbeat();
+    unsubscribe();
+  });
+});

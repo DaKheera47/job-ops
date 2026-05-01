@@ -2121,3 +2121,19 @@ export async function cancelEasyApply(jobId: string): Promise<void> {
     method: "POST",
   });
 }
+
+export async function startBatchApply(
+  input: { jobIds: string[] } | { filter: "all_ready_linkedin" },
+): Promise<{ started: boolean; totalJobs: number }> {
+  return fetchApi("/linkedin-apply/batch-apply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function cancelBatchApply(): Promise<void> {
+  await fetchApi<void>("/linkedin-apply/batch-apply/cancel", {
+    method: "POST",
+  });
+}

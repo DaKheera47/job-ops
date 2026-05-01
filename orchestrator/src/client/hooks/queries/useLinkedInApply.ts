@@ -1,6 +1,10 @@
 import * as api from "@client/api";
 import { subscribeToEventSource } from "@client/lib/sse";
-import type { LinkedInApplyProgress, LinkedInSessionStatus } from "@shared/types";
+import type {
+  LinkedInApplyProgress,
+  LinkedInBatchApplyProgress,
+  LinkedInSessionStatus,
+} from "@shared/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { queryKeys } from "@/client/lib/queryKeys";
@@ -81,6 +85,58 @@ export function useCancelEasyApplyMutation() {
   return useMutation({
     mutationFn: (jobId: string) => api.cancelEasyApply(jobId),
   });
+}
+
+export function useBatchApplyMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: { jobIds: string[] } | { filter: "all_ready_linkedin" }) =>
+      api.startBatchApply(input),
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+    },
+  });
+}
+
+export function useCancelBatchApplyMutation() {
+  return useMutation({
+    mutationFn: api.cancelBatchApply,
+  });
+}
+
+export function useBatchApplyProgress(): LinkedInBatchApplyProgress | null {
+  const [progress, setProgress] = useState<LinkedInBatchApplyProgress | null>(null);
+  const queryClient = useQueryClient();
+  const unsubRef = useRef<(() => void) | null>(null);
+
+  const cleanup = useCallback(() => {
+    if (unsubRef.current) {
+      unsubRef.current();
+      unsubRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    cleanup();
+
+    unsubRef.current = subscribeToEventSource<LinkedInBatchApplyProgress>(
+      "/api/linkedin-apply/batch-apply/progress",
+      {
+        onMessage: (data) => {
+          setProgress(data);
+          if (!data.running) {
+            queryClient.invalidateQueries({ queryKey: queryKeys.jobs.all });
+          }
+        },
+        onError: () => {},
+      },
+    );
+
+    return cleanup;
+  }, [queryClient, cleanup]);
+
+  return progress;
 }
 
 export function useLinkedInApplyProgress(

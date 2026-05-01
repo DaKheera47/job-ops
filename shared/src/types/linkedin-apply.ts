@@ -27,3 +27,27 @@ export interface LinkedInSessionStatus {
   lastVerifiedAt: string | null;
   profileName?: string;
 }
+
+export type BatchJobResultStatus =
+  | "pending"
+  | "applying"
+  | "applied"
+  | "failed"
+  | "manual_required"
+  | "skipped";
+
+export interface BatchJobResult {
+  jobId: string;
+  jobTitle: string;
+  employer: string;
+  status: BatchJobResultStatus;
+  error?: string;
+}
+
+export interface LinkedInBatchApplyProgress {
+  running: boolean;
+  currentIndex: number;
+  totalJobs: number;
+  results: BatchJobResult[];
+  viewerUrl?: string;
+}

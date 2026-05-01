@@ -614,6 +614,52 @@ export const settingsRegistry = {
     },
   },
 
+  // --- Pipeline Scheduling ---
+  pipelineScheduleEnabled: {
+    kind: "typed" as const,
+    schema: z.preprocess(
+      (v) => (v === "1" || v === "true" ? true : v === "0" || v === "false" ? false : v),
+      z.boolean(),
+    ),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  pipelineScheduleHour: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(23),
+    default: (): number => 8,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineTopN: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(100),
+    default: (): number => 10,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineMinScore: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(100),
+    default: (): number => 50,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineAutoSkipBelow: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(100),
+    default: (): number | null => null,
+    parse: (raw: string | undefined): number | null => {
+      if (!raw || raw === "null" || raw === "") return null;
+      const parsed = parseInt(raw, 10);
+      return Number.isNaN(parsed) ? null : Math.min(100, Math.max(0, parsed));
+    },
+    serialize: (value: number | null | undefined): string | null => {
+      return value === null || value === undefined ? null : String(value);
+    },
+  },
+
   // --- Model Variants ---
   modelScorer: {
     kind: "model" as const,
