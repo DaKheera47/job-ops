@@ -55,6 +55,38 @@ describe("error-format", () => {
     );
   });
 
+  it("maps zod issue JSON with a requestId suffix to a friendly message", () => {
+    const raw = `${JSON.stringify([
+      {
+        validation: "url",
+        code: "invalid_string",
+        message: "Invalid url",
+        path: ["job", "jobUrl"],
+      },
+    ])} (requestId: 541baba5-26cf-4e23-8e8b-5bd9f7a5f68e)`;
+
+    expect(formatUserFacingError(new Error(raw))).toBe(
+      "Please enter a valid job URL.",
+    );
+  });
+
+  it("maps direct zod-like error objects to a friendly message", () => {
+    const error = {
+      name: "ZodError",
+      message: "Validation failed",
+      issues: [
+        {
+          format: "url",
+          code: "invalid_format",
+          message: "Invalid URL",
+          path: ["jobUrl"],
+        },
+      ],
+    };
+
+    expect(formatUserFacingError(error)).toBe("Please enter a valid job URL.");
+  });
+
   it("uses error details payload when message is generic", () => {
     const error = {
       message: "Validation failed",
@@ -73,6 +105,43 @@ describe("error-format", () => {
     expect(formatUserFacingError(error)).toBe(
       "Please enter a valid application link URL.",
     );
+  });
+
+  it("uses nested API error details payload when message is generic", () => {
+    const error = {
+      ok: false,
+      error: {
+        code: "INVALID_REQUEST",
+        message: "Validation failed",
+        details: {
+          issues: [
+            {
+              validation: "url",
+              code: "invalid_string",
+              message: "Invalid url",
+              path: ["job", "jobUrl"],
+            },
+          ],
+        },
+      },
+      meta: { requestId: "541baba5-26cf-4e23-8e8b-5bd9f7a5f68e" },
+    };
+
+    expect(formatUserFacingError(error)).toBe("Please enter a valid job URL.");
+  });
+
+  it("uses flattened zod field errors when available", () => {
+    const error = {
+      message: "Validation failed",
+      details: {
+        formErrors: [],
+        fieldErrors: {
+          jobUrl: ["Invalid url"],
+        },
+      },
+    };
+
+    expect(formatUserFacingError(error)).toBe("Please enter a valid job URL.");
   });
 
   it("falls back to generic message for unparseable JSON errors", () => {

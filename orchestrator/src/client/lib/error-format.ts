@@ -1,5 +1,6 @@
 type ZodLikeIssue = {
   code?: string;
+  format?: string;
   minimum?: number;
   expected?: string;
   received?: string;
@@ -24,6 +25,7 @@ function normalizeSectionName(section: string): string {
 function toFriendlyFieldLabel(path: string): string | null {
   if (!path) return null;
   if (path === "jobDescription") return "job description";
+  if (path === "job.jobUrl" || path === "jobUrl") return "job URL";
   if (path === "applicationLink" || path === "job.applicationLink") {
     return "application link";
   }
@@ -67,7 +69,13 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
     return "Please enter a skill (e.g., Python, SQL).";
   }
 
-  if (issue.code === "invalid_string" && issue.validation === "url") {
+  const normalizedIssueMessage = issue.message?.toLowerCase() ?? "";
+  const isInvalidUrl =
+    (issue.code === "invalid_string" && issue.validation === "url") ||
+    (issue.code === "invalid_format" && issue.format === "url") ||
+    /\binvalid\s+url\b/.test(normalizedIssueMessage);
+
+  if (isInvalidUrl) {
     if (label === "application link") {
       return "Please enter a valid application link URL.";
     }
@@ -97,32 +105,35 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
   return null;
 }
 
+function toZodLikeIssues(value: unknown): ZodLikeIssue[] | null {
+  if (Array.isArray(value)) {
+    const issues = value.filter((entry): entry is ZodLikeIssue =>
+      Boolean(entry && typeof entry === "object"),
+    );
+    return issues.length > 0 ? issues : null;
+  }
+
+  if (
+    value &&
+    typeof value === "object" &&
+    Array.isArray((value as { issues?: unknown }).issues)
+  ) {
+    return toZodLikeIssues((value as { issues: unknown[] }).issues);
+  }
+
+  return null;
+}
+
 function parseIssuesFromJsonMessage(message: string): ZodLikeIssue[] | null {
   const trimmed = message.trim();
   if (!(trimmed.startsWith("[") || trimmed.startsWith("{"))) return null;
 
   try {
     const parsed = JSON.parse(trimmed) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed.filter((entry): entry is ZodLikeIssue =>
-        Boolean(entry && typeof entry === "object"),
-      );
-    }
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      Array.isArray((parsed as { issues?: unknown[] }).issues)
-    ) {
-      const issues = (parsed as { issues: unknown[] }).issues;
-      return issues.filter((entry): entry is ZodLikeIssue =>
-        Boolean(entry && typeof entry === "object"),
-      );
-    }
+    return toZodLikeIssues(parsed);
   } catch {
     return null;
   }
-
-  return null;
 }
 
 function parseIssueFromValidationMessage(message: string): ZodLikeIssue | null {
@@ -142,19 +153,10 @@ function parseIssueFromValidationMessage(message: string): ZodLikeIssue | null {
 function parseIssuesFromDetails(details: unknown): ZodLikeIssue[] | null {
   if (!details || typeof details !== "object") return null;
 
+  const directIssues = toZodLikeIssues(details);
+  if (directIssues) return directIssues;
+
   const detailsRecord = details as Record<string, unknown>;
-
-  if (Array.isArray(detailsRecord.issues)) {
-    return detailsRecord.issues.filter((entry): entry is ZodLikeIssue =>
-      Boolean(entry && typeof entry === "object"),
-    );
-  }
-
-  if (Array.isArray(detailsRecord)) {
-    return (detailsRecord as unknown[]).filter((entry): entry is ZodLikeIssue =>
-      Boolean(entry && typeof entry === "object"),
-    );
-  }
 
   if (
     detailsRecord.fieldErrors &&
@@ -181,6 +183,13 @@ function extractRawErrorMessage(error: unknown): string {
     const maybeMessage = (error as { message?: unknown }).message;
     if (typeof maybeMessage === "string") return maybeMessage;
   }
+  if (error && typeof error === "object" && "error" in error) {
+    const nestedError = (error as { error?: unknown }).error;
+    if (nestedError && typeof nestedError === "object") {
+      const maybeMessage = (nestedError as { message?: unknown }).message;
+      if (typeof maybeMessage === "string") return maybeMessage;
+    }
+  }
   return "";
 }
 
@@ -188,6 +197,16 @@ function extractErrorDetails(error: unknown): unknown {
   if (!error || typeof error !== "object") return null;
   if ("details" in error)
     return (error as { details?: unknown }).details ?? null;
+  if ("error" in error) {
+    const nestedError = (error as { error?: unknown }).error;
+    if (
+      nestedError &&
+      typeof nestedError === "object" &&
+      "details" in nestedError
+    ) {
+      return (nestedError as { details?: unknown }).details ?? null;
+    }
+  }
   return null;
 }
 
@@ -201,6 +220,19 @@ export function formatUserFacingError(
 ): string {
   const raw = extractRawErrorMessage(error);
   const details = extractErrorDetails(error);
+
+  const directIssues = toZodLikeIssues(error);
+  if (directIssues && directIssues.length > 0) {
+    const friendly = toFriendlyIssueMessage(directIssues[0]);
+    if (friendly) return friendly;
+  }
+
+  const detailIssues = parseIssuesFromDetails(details);
+  if (detailIssues && detailIssues.length > 0) {
+    const friendly = toFriendlyIssueMessage(detailIssues[0]);
+    if (friendly) return friendly;
+  }
+
   if (!raw) return fallback;
 
   const message = stripRequestIdFromMessage(raw);
@@ -209,12 +241,6 @@ export function formatUserFacingError(
   const jsonIssues = parseIssuesFromJsonMessage(message);
   if (jsonIssues && jsonIssues.length > 0) {
     const friendly = toFriendlyIssueMessage(jsonIssues[0]);
-    if (friendly) return friendly;
-  }
-
-  const detailIssues = parseIssuesFromDetails(details);
-  if (detailIssues && detailIssues.length > 0) {
-    const friendly = toFriendlyIssueMessage(detailIssues[0]);
     if (friendly) return friendly;
   }
 
