@@ -1,4 +1,5 @@
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
+import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
   getLlmProviderConfig,
@@ -52,6 +53,8 @@ export const LlmConnectionStep: React.FC<{
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
+  const isGeminiCliProvider =
+    providerConfig.normalizedProvider === "gemini_cli";
 
   return (
     <div className="space-y-6">
@@ -86,6 +89,7 @@ export const LlmConnectionStep: React.FC<{
             {providerConfig.providerHint}
           </p>
           {isCodexProvider ? <CodexAuthPanel isBusy={isBusy} /> : null}
+          {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
         </div>
 
         {showBaseUrl ? (

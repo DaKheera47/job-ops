@@ -1,5 +1,6 @@
 import * as api from "@client/api";
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
+import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { ModelValues } from "@client/pages/settings/types";
@@ -85,6 +86,8 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
   const providerConfig = getLlmProviderConfig(selectedProvider);
   const { showApiKey, showBaseUrl } = providerConfig;
   const isCodexProvider = providerConfig.normalizedProvider === "codex";
+  const isGeminiCliProvider =
+    providerConfig.normalizedProvider === "gemini_cli";
 
   const llmBaseUrlValue = watch("llmBaseUrl");
   const llmApiKeyValue = watch("llmApiKey") ?? "";
@@ -278,6 +281,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
               {isCodexProvider ? (
                 <CodexAuthPanel isBusy={isLoading || isSaving} />
               ) : null}
+              {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
             </div>
             {showBaseUrl && (
               <SettingsInput

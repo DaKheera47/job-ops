@@ -107,10 +107,12 @@ describe("Backup Service", () => {
     });
 
     it("should add a suffix when manual backup name collides", async () => {
+      const prevTz = process.env.TZ;
+      process.env.TZ = "UTC";
       // Only fake Date to keep async I/O (used by better-sqlite3 backup) real.
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
-        vi.setSystemTime(new Date("2026-01-15T12:30:45Z"));
+        vi.setSystemTime(new Date("2026-01-15T12:30:45.000Z"));
 
         const first = await backup.createBackup("manual");
         const second = await backup.createBackup("manual");
@@ -120,6 +122,11 @@ describe("Backup Service", () => {
         expect(fs.existsSync(path.join(tempDir, second))).toBe(true);
       } finally {
         vi.useRealTimers();
+        if (prevTz === undefined) {
+          delete process.env.TZ;
+        } else {
+          process.env.TZ = prevTz;
+        }
       }
     });
 

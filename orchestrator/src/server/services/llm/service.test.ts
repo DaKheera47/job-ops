@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodexClient } from "./codex/client";
+import { GeminiCliClient } from "./gemini-cli/client";
 import { LlmService } from "./service";
 
 describe("LlmService provider normalization", () => {
@@ -43,6 +44,15 @@ describe("LlmService provider normalization", () => {
     });
 
     expect(llm.getProvider()).toBe("codex");
+    expect(llm.getBaseUrl()).toBe("");
+  });
+
+  it("supports gemini_cli provider normalization", () => {
+    const llm = new LlmService({
+      provider: "gemini-cli",
+    });
+
+    expect(llm.getProvider()).toBe("gemini_cli");
     expect(llm.getBaseUrl()).toBe("");
   });
 
@@ -98,5 +108,25 @@ describe("LlmService provider normalization", () => {
 
     expect(models).toEqual(["gpt-5", "o4-mini"]);
     expect(listSpy).toHaveBeenCalledOnce();
+  });
+
+  it("delegates gemini_cli credential validation to the Gemini CLI client", async () => {
+    const validateSpy = vi
+      .spyOn(GeminiCliClient.prototype, "validateCredentials")
+      .mockResolvedValue({ valid: true, message: null });
+
+    const llm = new LlmService({ provider: "gemini_cli" });
+    const result = await llm.validateCredentials();
+
+    expect(result).toEqual({ valid: true, message: null });
+    expect(validateSpy).toHaveBeenCalledOnce();
+  });
+
+  it("returns curated models for gemini_cli", async () => {
+    const llm = new LlmService({ provider: "gemini_cli" });
+    const models = await llm.listModels();
+
+    expect(models[0]).toBe("google/gemini-3-flash-preview");
+    expect(models.length).toBeGreaterThan(1);
   });
 });

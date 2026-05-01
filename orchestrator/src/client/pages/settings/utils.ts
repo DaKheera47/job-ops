@@ -26,6 +26,7 @@ export const LLM_PROVIDERS = [
   "openai",
   "openai_compatible",
   "gemini",
+  "gemini_cli",
   "codex",
 ] as const;
 
@@ -33,6 +34,7 @@ export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
 export const LLM_MODEL_SUGGESTION_PROVIDERS = [
   "openai",
   "gemini",
+  "gemini_cli",
   "ollama",
 ] as const;
 
@@ -43,6 +45,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openai: "OpenAI",
   openai_compatible: "OpenAI-compatible",
   gemini: "Gemini",
+  gemini_cli: "Gemini (CLI)",
   codex: "Codex",
 };
 
@@ -68,6 +71,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   openai_compatible:
     "Use a bearer token with any chat-completions-compatible endpoint.",
   gemini: "Gemini uses the native AI Studio API and requires a key.",
+  gemini_cli:
+    "Gemini (CLI) runs the official Google Gemini CLI on this host using your OAuth session or CLI API key — no JobOps LLM key.",
   codex:
     "Codex runs through a local app-server process and uses your Codex login session.",
 };
@@ -92,6 +97,9 @@ const PROVIDER_KEY_HELPERS: Record<
   gemini: {
     text: "Create a key at aistudio.google.com/api-keys",
     href: "https://aistudio.google.com/app/apikey",
+  },
+  gemini_cli: {
+    text: "Authenticate with the Gemini CLI (gemini login / OAuth); see docs link below",
   },
   codex: { text: "No API key required when Codex is authenticated locally" },
 };
