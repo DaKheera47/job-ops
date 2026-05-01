@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 type ManualImportStep = "paste" | "loading" | "review";
+type ManualImportProgressStep = "paste" | "review";
 
 export type ManualImportTrackingSource = "pasted_description" | "fetched_url";
 
@@ -53,15 +54,13 @@ const emptyDraft: ManualJobDraftState = {
   starting: "",
 };
 
-const STEP_INDEX_BY_ID: Record<ManualImportStep, number> = {
+const STEP_INDEX_BY_ID: Record<ManualImportProgressStep, number> = {
   paste: 0,
-  loading: 1,
-  review: 2,
+  review: 1,
 };
 
-const STEP_LABEL_BY_ID: Record<ManualImportStep, string> = {
-  paste: "Paste JD",
-  loading: "Infer details",
+const STEP_LABEL_BY_ID: Record<ManualImportProgressStep, string> = {
+  paste: "Add JD",
   review: "Review & import",
 };
 
@@ -184,8 +183,10 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
     setFetchedSourceUrl(null);
   }, [active]);
 
-  const stepIndex = STEP_INDEX_BY_ID[step];
-  const stepLabel = STEP_LABEL_BY_ID[step];
+  const progressStep: ManualImportProgressStep =
+    step === "review" ? "review" : "paste";
+  const stepIndex = STEP_INDEX_BY_ID[progressStep];
+  const stepLabel = STEP_LABEL_BY_ID[progressStep];
 
   const canAnalyze =
     rawDescription.trim().length > 0 && step !== "loading" && !isFetching;
@@ -310,13 +311,13 @@ export const ManualImportFlow: React.FC<ManualImportFlowProps> = ({
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Step {stepIndex + 1} of 3</span>
+            <span>Step {stepIndex + 1} of 2</span>
             <span>{stepLabel}</span>
           </div>
           <div className="h-1 rounded-full bg-muted/40">
             <div
               className="h-1 rounded-full bg-primary/60 transition-all"
-              style={{ width: `${((stepIndex + 1) / 3) * 100}%` }}
+              style={{ width: `${((stepIndex + 1) / 2) * 100}%` }}
             />
           </div>
         </div>
