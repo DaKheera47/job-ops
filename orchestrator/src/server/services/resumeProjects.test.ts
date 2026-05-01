@@ -60,6 +60,29 @@ describe("Resume Projects Logic", () => {
       expect(selectionItems).toHaveLength(2);
       expect(selectionItems[0].summaryText).toBe("Desc 1");
     });
+
+    it("should strip html from catalog descriptions", () => {
+      const profile = {
+        sections: {
+          projects: {
+            items: [
+              {
+                id: "p1",
+                name: "Proj 1",
+                description:
+                  "<ul><li><p><strong>Built analytics</strong> using FastAPI.</p></li></ul>",
+                date: "2024",
+                visible: true,
+              },
+            ],
+          },
+        },
+      } as any;
+
+      const { catalog } = rp.extractProjectsFromProfile(profile);
+
+      expect(catalog[0].description).toBe("Built analytics using FastAPI.");
+    });
   });
 
   describe("normalizeResumeProjectsSettings", () => {

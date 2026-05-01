@@ -193,7 +193,9 @@ export function extractProjectsFromResume(resumeData: RecordLike): {
 
     const name = typeof item.name === "string" ? item.name : id;
     const description =
-      typeof item.description === "string" ? item.description : "";
+      typeof item.description === "string"
+        ? stripHtmlTags(item.description)
+        : "";
     const date = typeof item.period === "string" ? item.period : "";
 
     const isVisibleInBase = !(typeof item.hidden === "boolean"

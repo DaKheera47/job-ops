@@ -2,7 +2,7 @@ import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import { AlertTriangle } from "lucide-react";
 import type React from "react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { cn, stripHtml } from "@/lib/utils";
 
 interface ProjectSelectorProps {
   catalog: ResumeProjectCatalogItem[];
@@ -38,33 +38,37 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
             Loading projects...
           </div>
         ) : (
-          catalog.map((project) => (
-            <label
-              key={project.id}
-              htmlFor={`project-${project.id}`}
-              className={cn(
-                "flex items-start gap-2.5 rounded-lg border p-2.5 text-xs transition-colors cursor-pointer",
-                selectedIds.has(project.id)
-                  ? "border-primary/40 bg-primary/5"
-                  : "border-border/40 bg-muted/5 hover:bg-muted/10",
-                disabled && "opacity-50 cursor-not-allowed",
-              )}
-            >
-              <Checkbox
-                id={`project-${project.id}`}
-                checked={selectedIds.has(project.id)}
-                onCheckedChange={() => onToggle(project.id)}
-                disabled={disabled}
-                className="mt-0.5"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{project.name}</div>
-                <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
-                  {project.description}
+          catalog.map((project) => {
+            const description = stripHtml(project.description);
+
+            return (
+              <label
+                key={project.id}
+                htmlFor={`project-${project.id}`}
+                className={cn(
+                  "flex items-start gap-2.5 rounded-lg border p-2.5 text-xs transition-colors cursor-pointer",
+                  selectedIds.has(project.id)
+                    ? "border-primary/40 bg-primary/5"
+                    : "border-border/40 bg-muted/5 hover:bg-muted/10",
+                  disabled && "opacity-50 cursor-not-allowed",
+                )}
+              >
+                <Checkbox
+                  id={`project-${project.id}`}
+                  checked={selectedIds.has(project.id)}
+                  onCheckedChange={() => onToggle(project.id)}
+                  disabled={disabled}
+                  className="mt-0.5"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate">{project.name}</div>
+                  <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                    {description}
+                  </div>
                 </div>
-              </div>
-            </label>
-          ))
+              </label>
+            );
+          })
         )}
       </div>
     </div>
