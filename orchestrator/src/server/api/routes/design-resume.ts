@@ -9,6 +9,7 @@ import {
   readDesignResumeAssetContent,
   updateCurrentDesignResume,
   uploadDesignResumePicture,
+  uploadDesignResumePictureFile,
 } from "@server/services/design-resume";
 import { importDesignResumeFromFile } from "@server/services/design-resume/import-file";
 import { generateDesignResumePdf } from "@server/services/pdf";
@@ -164,6 +165,22 @@ const uploadSchema = pictureMutationSchema.extend({
   dataUrl: z.string().trim().min(1),
 });
 
+const rawUploadHeadersSchema = z.object({
+  fileName: z
+    .string()
+    .trim()
+    .min(1)
+    .max(255)
+    .transform((value) => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }),
+  baseRevision: z.coerce.number().int().min(1).optional(),
+});
+
 const importFileSchema = z.object({
   fileName: z.string().trim().min(1).max(255),
   mediaType: z.string().trim().min(1).max(200).optional(),
@@ -229,6 +246,22 @@ designResumeRouter.patch(
 designResumeRouter.post(
   "/assets",
   asyncRoute(async (req: Request, res: Response) => {
+    if (Buffer.isBuffer(req.body)) {
+      const input = rawUploadHeadersSchema.parse({
+        fileName: req.header("x-file-name"),
+        baseRevision: req.header("x-base-revision"),
+      });
+      const document = await uploadDesignResumePictureFile({
+        fileName: input.fileName,
+        mimeType: req.header("content-type"),
+        data: req.body,
+        baseRevision: input.baseRevision,
+      });
+      clearProfileCache();
+      ok(res, document, 201);
+      return;
+    }
+
     const input = uploadSchema.parse(req.body);
     const document = await uploadDesignResumePicture({
       fileName: input.fileName,

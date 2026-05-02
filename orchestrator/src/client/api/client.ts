@@ -1839,6 +1839,23 @@ export async function uploadDesignResumePicture(input: {
   });
 }
 
+export async function uploadDesignResumePictureFile(input: {
+  file: File;
+  baseRevision?: number;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets", {
+    method: "POST",
+    headers: {
+      "Content-Type": input.file.type || "application/octet-stream",
+      "x-file-name": encodeURIComponent(input.file.name || "picture"),
+      ...(input.baseRevision
+        ? { "x-base-revision": String(input.baseRevision) }
+        : {}),
+    },
+    body: await input.file.arrayBuffer(),
+  });
+}
+
 export async function deleteDesignResumePicture(input?: {
   baseRevision?: number;
   document?: DesignResumeJson;

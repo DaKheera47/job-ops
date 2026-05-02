@@ -194,6 +194,11 @@ export function createAuthGuard() {
       normalizedPath === "/api/auth/bootstrap-status"
     )
       return true;
+    if (
+      ["GET", "HEAD"].includes(normalizedMethod) &&
+      /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
+    )
+      return true;
 
     return false;
   }
@@ -326,6 +331,18 @@ export function createApp() {
   });
   app.use(requestContextMiddleware());
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
+  app.use(
+    "/api/design-resume/assets",
+    express.raw({
+      limit: "10mb",
+      type: [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "application/octet-stream",
+      ],
+    }),
+  );
   // Resume file import sends base64 JSON payloads, which expand beyond the raw
   // file size. Scope the larger JSON limit to that endpoint only.
   app.use("/api/design-resume/import/file", express.json({ limit: "15mb" }));

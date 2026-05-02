@@ -1,5 +1,5 @@
 import type { DesignResumeJson } from "@shared/types";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildDefaultReactiveResumeDocument } from "./rxresume/document";
 
 const repo = vi.hoisted(() => ({
@@ -70,6 +70,7 @@ import {
   replaceCurrentDesignResumeDocument,
   updateCurrentDesignResume,
   uploadDesignResumePicture,
+  uploadDesignResumePictureFile,
 } from "./design-resume";
 
 function makeDocumentRow(overrides?: Partial<Record<string, unknown>>) {
@@ -100,6 +101,10 @@ function makeValidResumeJson(
 }
 
 describe("design resume service", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     repo.getLatestDesignResumeDocument.mockResolvedValue(makeDocumentRow());
@@ -158,7 +163,18 @@ describe("design resume service", () => {
     );
   });
 
-  it("stores Reactive Resume relative picture URLs as absolute upstream URLs", async () => {
+  it("localizes Reactive Resume relative picture URLs into design resume assets", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: {
+          get: (name: string) =>
+            name.toLowerCase() === "content-type" ? "image/webp" : null,
+        },
+        arrayBuffer: async () => Buffer.from("webp-bytes").buffer,
+      }),
+    );
     const upstreamResume = makeValidResumeJson({
       picture: {
         ...(buildDefaultReactiveResumeDocument().picture as Record<
@@ -181,9 +197,20 @@ describe("design resume service", () => {
     const result = await importDesignResumeFromReactiveResume();
 
     expect(result.resumeJson.picture.url).toBe(
-      "https://resume.example.com/uploads/profile-photo.png",
+      "/api/design-resume/assets/asset-1/content",
     );
     expect(result.resumeJson.picture.hidden).toBe(false);
+    expect(fetch).toHaveBeenCalledWith(
+      "https://resume.example.com/uploads/profile-photo.png",
+      expect.any(Object),
+    );
+    expect(repo.insertDesignResumeAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "asset-1",
+        kind: "picture",
+        mimeType: "image/webp",
+      }),
+    );
   });
 
   it("preserves an explicit picture hidden flag during updates", async () => {
@@ -488,6 +515,33 @@ describe("design resume service", () => {
           summary: expect.objectContaining({
             content: "Unsaved summary edit",
           }),
+          picture: expect.objectContaining({
+            url: "/api/design-resume/assets/asset-1/content",
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("accepts raw picture uploads up to 10 MB", async () => {
+    const data = Buffer.alloc(10 * 1024 * 1024, 0);
+
+    await uploadDesignResumePictureFile({
+      fileName: "photo.webp",
+      mimeType: "image/webp",
+      data,
+      baseRevision: 1,
+    });
+
+    expect(repo.insertDesignResumeAsset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        byteSize: 10 * 1024 * 1024,
+        mimeType: "image/webp",
+      }),
+    );
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
           picture: expect.objectContaining({
             url: "/api/design-resume/assets/asset-1/content",
           }),

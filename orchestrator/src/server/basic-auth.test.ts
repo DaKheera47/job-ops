@@ -99,6 +99,24 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it("allows Design Resume asset content without auth for PDF rendering", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/design-resume/assets/asset-1/content",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
   it("allows OPTIONS preflight without auth even for API routes", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 

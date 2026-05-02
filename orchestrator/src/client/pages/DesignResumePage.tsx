@@ -313,13 +313,10 @@ export const DesignResumePage: React.FC = () => {
       const latestDraft = await ensureLatestPersistedDraft();
       if (!latestDraft) return;
 
-      const dataUrl = await fileToDataUrl(file);
       const editVersionAtStart = editVersionRef.current;
-      const updated = await api.uploadDesignResumePicture({
-        fileName: file.name,
-        dataUrl,
+      const updated = await api.uploadDesignResumePictureFile({
+        file,
         baseRevision: latestDraft.revision,
-        document: latestDraft.resumeJson,
       });
       if (editVersionRef.current === editVersionAtStart) {
         setDesignResume(updated);
