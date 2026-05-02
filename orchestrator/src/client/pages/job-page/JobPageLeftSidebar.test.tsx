@@ -4,11 +4,13 @@ import { describe, expect, it } from "vitest";
 import { createJob } from "../../../../../shared/src/testing/factories";
 import { JobPageLeftSidebar } from "./JobPageLeftSidebar";
 
-const renderSidebar = (score: number | null) =>
+type JobOverrides = Parameters<typeof createJob>[0];
+
+const renderSidebar = (jobOverrides: JobOverrides = {}) =>
   render(
     <MemoryRouter>
       <JobPageLeftSidebar
-        job={createJob({ suitabilityScore: score })}
+        job={createJob(jobOverrides)}
         activeMemoryView="overview"
         baseJobPath="/job/job-1"
         selectedProjects={[]}
@@ -24,7 +26,7 @@ describe("JobPageLeftSidebar score ring", () => {
     [59, "border-slate-500/55"],
     [null, "border-border/60"],
   ])("uses the expected band for score %s", (score, expectedClass) => {
-    renderSidebar(score);
+    renderSidebar({ suitabilityScore: score });
 
     const ring = screen.getByRole("img", {
       name:
@@ -37,5 +39,21 @@ describe("JobPageLeftSidebar score ring", () => {
     expect(
       within(ring).getByText(score === null ? "—" : String(score)),
     ).toBeInTheDocument();
+  });
+});
+
+describe("JobPageLeftSidebar application details", () => {
+  it("hides the applied row when the job has not been applied to yet", () => {
+    renderSidebar({ appliedAt: null });
+
+    expect(screen.queryByText("Applied")).not.toBeInTheDocument();
+    expect(screen.queryByText("Not marked")).not.toBeInTheDocument();
+  });
+
+  it("shows the applied row when the job has an applied timestamp", () => {
+    renderSidebar({ appliedAt: "2026-05-01T22:17:00.000Z" });
+
+    expect(screen.getByText("Applied")).toBeInTheDocument();
+    expect(screen.getByText(/1 May 2026/)).toBeInTheDocument();
   });
 });

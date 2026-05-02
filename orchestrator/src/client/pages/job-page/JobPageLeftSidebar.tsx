@@ -151,14 +151,14 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
             {formatDateTime(job.discoveredAt) ?? job.discoveredAt}
           </span>
         </div>
-        <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-          <span className="text-muted-foreground">Applied</span>
-          <span className="text-right font-medium">
-            {job.appliedAt
-              ? (formatDateTime(job.appliedAt) ?? job.appliedAt)
-              : "Not marked"}
-          </span>
-        </div>
+        {job.appliedAt && (
+          <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+            <span className="text-muted-foreground">Applied</span>
+            <span className="text-right font-medium">
+              {formatDateTime(job.appliedAt) ?? job.appliedAt}
+            </span>
+          </div>
+        )}
         <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
           <span className="text-muted-foreground">Outcome</span>
           <span className="text-right font-medium">
