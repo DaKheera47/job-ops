@@ -515,8 +515,8 @@ export const JobPage: React.FC = () => {
   }, [job, jobPageBackTo, navigate]);
   const pageGridClass =
     activeMemoryView === "overview"
-      ? "grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]"
-      : "grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]";
+      ? "grid items-start gap-4 grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]"
+      : "grid items-start gap-4 grid-cols-1 xl:grid-cols-[18rem_minmax(0,1fr)]";
 
   if (!id) {
     return null;

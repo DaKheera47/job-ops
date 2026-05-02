@@ -121,7 +121,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
 }) => (
   <aside className="space-y-4 xl:sticky xl:top-5">
     <section className="rounded-xl border border-border/50 bg-card/85 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex gap-4 flex-row items-start justify-between">
         <div className="min-w-0 space-y-1">
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
             Application dossier
