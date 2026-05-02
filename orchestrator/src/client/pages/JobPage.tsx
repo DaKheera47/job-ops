@@ -12,24 +12,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
 import {
   ArrowLeft,
-  CalendarClock,
-  CheckCircle2,
   ClipboardList,
-  Copy,
   DollarSign,
-  Edit2,
   ExternalLink,
   FileText,
-  FolderKanban,
   MessageSquareText,
-  MoreHorizontal,
-  PlusCircle,
-  RefreshCcw,
-  Send,
   Sparkles,
-  Trash2,
   Upload,
-  XCircle,
 } from "lucide-react";
 import React from "react";
 import {
@@ -39,44 +28,25 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { toast } from "sonner";
-import { RichTextEditor } from "@/client/components/design-resume/RichTextEditor";
 import { JobDescriptionMarkdown } from "@/client/components/JobDescriptionMarkdown";
 import { invalidateJobData } from "@/client/hooks/queries/invalidate";
 import {
   useCheckSponsorMutation,
-  useCreateJobNoteMutation,
-  useDeleteJobNoteMutation,
   useGenerateJobPdfMutation,
   useMarkAsAppliedMutation,
   useRescoreJobMutation,
   useSkipJobMutation,
   useUpdateJobMutation,
-  useUpdateJobNoteMutation,
 } from "@/client/hooks/queries/useJobMutations";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
-import {
-  markdownToEditorHtml as markdownToTipTapHtml,
-  editorHtmlToMarkdown as tipTapHtmlToMarkdown,
-} from "@/client/lib/jobNoteContent";
 import { openJobPdf } from "@/client/lib/private-pdf";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  cn,
   copyTextToClipboard,
   formatDateTime,
   formatJobForWebhook,
@@ -91,13 +61,13 @@ import {
   LogEventModal,
 } from "../components/LogEventModal";
 import { JobTimeline } from "./job/Timeline";
-
-type JobMemoryView =
-  | "overview"
-  | "note"
-  | "documents"
-  | "timeline"
-  | "ghostwriter";
+import { JobNotesCard } from "./job-page/JobNotesCard";
+import {
+  type JobMemoryView,
+  JobPageLeftSidebar,
+} from "./job-page/JobPageLeftSidebar";
+import { JobPageRightSidebar } from "./job-page/JobPageRightSidebar";
+import { OverviewGhostwriterComposer } from "./job-page/OverviewGhostwriterComposer";
 
 const normalizeMemoryView = (view: string | undefined): JobMemoryView => {
   if (view === "notes" || view === "note") return "note";
@@ -123,510 +93,6 @@ const parseSelectedProjectIds = (value: string | null | undefined) =>
     ?.split(",")
     .map((id) => id.trim())
     .filter(Boolean) ?? [];
-
-const getGhostwriterSuggestions = (job: Job, hasNotes: boolean) => [
-  hasNotes
-    ? "Summarize the latest interview notes."
-    : "What should I remember if a recruiter calls?",
-  `What should I know before speaking with ${job.employer}?`,
-];
-
-const OverviewGhostwriterComposer: React.FC<{
-  job: Job;
-  baseJobPath: string;
-  hasNotes: boolean;
-}> = ({ job, baseJobPath, hasNotes }) => {
-  const navigate = useNavigate();
-  const [prompt, setPrompt] = React.useState("");
-  const suggestions = React.useMemo(
-    () => getGhostwriterSuggestions(job, hasNotes),
-    [hasNotes, job],
-  );
-
-  const submitPrompt = React.useCallback(() => {
-    const content = prompt.trim();
-    if (!content) return;
-    navigate(
-      `${baseJobPath}/ghostwriter?prompt=${encodeURIComponent(content)}`,
-    );
-  }, [baseJobPath, navigate, prompt]);
-
-  return (
-    <section className="rounded-xl border border-border/50 bg-card/85 p-4">
-        <div className="flex items-start gap-3">
-          <Sparkles className="mt-1.5 h-4 w-4 shrink-0 text-primary" />
-          <Textarea
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                submitPrompt();
-              }
-            }}
-            placeholder="Ask Ghostwriter anything about this application..."
-            className="min-h-[30px] resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 md:text-sm"
-          />
-        </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50">
-          <div className="mt-3 flex flex-wrap gap-2">
-            {suggestions.map((suggestion) => (
-              <Button
-                key={suggestion}
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-auto px-3 py-1.5 text-left text-xs"
-                onClick={() => setPrompt(suggestion)}
-              >
-                {suggestion}
-              </Button>
-            ))}
-          </div>
-
-          <Button
-            size="sm"
-            onClick={submitPrompt}
-            disabled={!prompt.trim()}
-            className="mt-3"
-          >
-            <Send className="mr-1.5 h-3.5 w-3.5" />
-            Go
-          </Button>
-        </div>
-    </section>
-  );
-};
-
-const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
-  const [editorState, setEditorState] = React.useState<
-    { mode: "create" } | { mode: "edit"; noteId: string } | null
-  >(null);
-  const [selectedNoteId, setSelectedNoteId] = React.useState<string | null>(
-    null,
-  );
-  const [draftTitle, setDraftTitle] = React.useState("");
-  const [draftContent, setDraftContent] = React.useState("");
-  const [editorError, setEditorError] = React.useState<string | null>(null);
-  const [noteToDelete, setNoteToDelete] = React.useState<JobNote | null>(null);
-
-  const notesQuery = useQuery<JobNote[]>({
-    queryKey: queryKeys.jobs.notes(jobId),
-    queryFn: () => api.getJobNotes(jobId),
-    enabled: Boolean(jobId),
-  });
-  const createNoteMutation = useCreateJobNoteMutation();
-  const updateNoteMutation = useUpdateJobNoteMutation();
-  const deleteNoteMutation = useDeleteJobNoteMutation();
-
-  useQueryErrorToast(
-    notesQuery.error,
-    "Failed to load notes. Please try again.",
-  );
-
-  const notes = React.useMemo(
-    () => sortNotesByUpdatedAtDesc(notesQuery.data ?? []),
-    [notesQuery.data],
-  );
-  const selectedNote = React.useMemo(
-    () => notes.find((note) => note.id === selectedNoteId) ?? notes[0] ?? null,
-    [notes, selectedNoteId],
-  );
-  const isSaving = createNoteMutation.isPending || updateNoteMutation.isPending;
-  const isDeleting = deleteNoteMutation.isPending;
-
-  const resetEditor = React.useCallback(() => {
-    setEditorState(null);
-    setDraftTitle("");
-    setDraftContent("");
-    setEditorError(null);
-  }, []);
-
-  const openCreateEditor = React.useCallback(() => {
-    setEditorState({ mode: "create" });
-    setSelectedNoteId(null);
-    setDraftTitle("");
-    setDraftContent("");
-    setEditorError(null);
-  }, []);
-
-  const openEditEditor = React.useCallback((note: JobNote) => {
-    setEditorState({ mode: "edit", noteId: note.id });
-    setDraftTitle(note.title);
-    setDraftContent(markdownToTipTapHtml(note.content));
-    setEditorError(null);
-    setSelectedNoteId(note.id);
-  }, []);
-
-  const confirmDeleteNote = React.useCallback((note: JobNote) => {
-    setNoteToDelete(note);
-  }, []);
-
-  const saveNote = React.useCallback(async () => {
-    const title = draftTitle.trim();
-    const content = tipTapHtmlToMarkdown(draftContent).trim();
-
-    if (!title || !content) {
-      setEditorError("Title and note content are required.");
-      return;
-    }
-
-    try {
-      const savedNote =
-        editorState?.mode === "edit"
-          ? await updateNoteMutation.mutateAsync({
-              jobId,
-              noteId: editorState.noteId,
-              input: { title, content },
-            })
-          : await createNoteMutation.mutateAsync({
-              jobId,
-              input: { title, content },
-            });
-
-      toast.success("Note saved");
-      setSelectedNoteId(savedNote.id);
-      resetEditor();
-    } catch (error) {
-      showErrorToast(error, "Failed to save note");
-    }
-  }, [
-    createNoteMutation,
-    draftContent,
-    draftTitle,
-    editorState,
-    jobId,
-    resetEditor,
-    updateNoteMutation,
-  ]);
-
-  const handleDeleteNote = React.useCallback(async () => {
-    if (!noteToDelete) return;
-
-    try {
-      await deleteNoteMutation.mutateAsync({
-        jobId,
-        noteId: noteToDelete.id,
-      });
-      toast.success("Note deleted");
-      if (selectedNoteId === noteToDelete.id) {
-        const nextNote = notes.find((note) => note.id !== noteToDelete.id);
-        setSelectedNoteId(nextNote?.id ?? null);
-      }
-      if (
-        editorState?.mode === "edit" &&
-        editorState.noteId === noteToDelete.id
-      ) {
-        resetEditor();
-      }
-    } catch (error) {
-      showErrorToast(error, "Failed to delete note");
-    } finally {
-      setNoteToDelete(null);
-    }
-  }, [
-    deleteNoteMutation,
-    editorState,
-    jobId,
-    noteToDelete,
-    notes,
-    resetEditor,
-    selectedNoteId,
-  ]);
-
-  const canEditOtherNotes = editorState === null;
-
-  React.useEffect(() => {
-    if (editorState) return;
-    if (notes.length === 0) {
-      setSelectedNoteId(null);
-      return;
-    }
-
-    if (!selectedNoteId || !notes.some((note) => note.id === selectedNoteId)) {
-      setSelectedNoteId(notes[0]?.id ?? null);
-    }
-  }, [editorState, notes, selectedNoteId]);
-
-  const startViewingNote = React.useCallback(
-    (note: JobNote) => {
-      if (editorState) return;
-      setSelectedNoteId(note.id);
-    },
-    [editorState],
-  );
-
-  const selectedTimestamp = selectedNote
-    ? (formatDateTime(selectedNote.updatedAt) ?? selectedNote.updatedAt)
-    : null;
-
-  return (
-    <section data-testid="job-notes-section" className="w-full">
-      <Card className="border-border/50">
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <FileText className="h-4 w-4" />
-              Notes
-            </CardTitle>
-            {!editorState && (
-              <Button size="sm" variant="outline" onClick={openCreateEditor}>
-                <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
-                Add note
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 lg:grid-cols-[minmax(14rem,0.7fr)_minmax(0,1.3fr)]">
-            <aside data-testid="job-notes-list" className="space-y-3">
-              {!editorState && notesQuery.isLoading && notes.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
-                  Loading notes...
-                </div>
-              )}
-
-              {!editorState && !notesQuery.isLoading && notes.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border/60 bg-muted/10 p-4 text-sm text-muted-foreground">
-                  No notes yet. Capture reminders, interview prep, or links in
-                  markdown.
-                </div>
-              )}
-
-              {notes.length > 0 && (
-                <div className="space-y-2">
-                  {notes.map((note) => {
-                    const noteTimestamp =
-                      formatDateTime(note.updatedAt) ?? note.updatedAt;
-                    const isSelected = note.id === selectedNoteId;
-                    return (
-                      <Button
-                        key={note.id}
-                        type="button"
-                        variant="ghost"
-                        className={cn(
-                          "h-auto w-full justify-start whitespace-normal rounded-xl border px-4 py-3 text-left font-normal transition",
-                          isSelected
-                            ? "border-primary/40 bg-primary/5 shadow-sm"
-                            : "border-border/60 bg-background/70 hover:border-border hover:bg-muted/40",
-                          editorState && "cursor-default opacity-70",
-                        )}
-                        onClick={() => startViewingNote(note)}
-                        disabled={Boolean(editorState)}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold">
-                              {note.title}
-                            </div>
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              Updated {noteTimestamp}
-                            </div>
-                          </div>
-                          {isSelected && !editorState && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              Selected
-                            </Badge>
-                          )}
-                        </div>
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
-            </aside>
-
-            <div
-              data-testid="job-notes-detail"
-              className="min-w-0 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm"
-            >
-              {editorState ? (
-                <form
-                  className="space-y-4"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void saveNote();
-                  }}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
-                        {editorState.mode === "create"
-                          ? "New note"
-                          : "Editing note"}
-                      </div>
-                      <div className="mt-1 text-lg font-semibold">
-                        {editorState.mode === "create"
-                          ? "Draft a note"
-                          : draftTitle || selectedNote?.title || "Edit note"}
-                      </div>
-                    </div>
-                    {editorState.mode === "edit" && selectedNote && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Updated {selectedTimestamp}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="job-note-title"
-                      className="text-[10px] uppercase tracking-wide text-muted-foreground"
-                    >
-                      Title
-                    </label>
-                    <Input
-                      id="job-note-title"
-                      autoFocus
-                      value={draftTitle}
-                      onChange={(event) => {
-                        setDraftTitle(event.target.value);
-                        setEditorError(null);
-                      }}
-                      placeholder="Why I am applying"
-                      disabled={isSaving || isDeleting}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        Content
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        TipTap editor
-                      </div>
-                    </div>
-                    <RichTextEditor
-                      key={
-                        editorState.mode === "edit"
-                          ? editorState.noteId
-                          : "create-note"
-                      }
-                      value={draftContent}
-                      onChange={(next) => {
-                        setDraftContent(next);
-                        setEditorError(null);
-                      }}
-                      placeholder="Capture answers, reminders, interview notes, and useful links."
-                      className="bg-background/20"
-                    />
-                  </div>
-
-                  {editorError && (
-                    <div className="text-sm text-destructive">
-                      {editorError}
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button type="submit" disabled={isSaving || isDeleting}>
-                      {isSaving ? "Saving..." : "Save note"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={resetEditor}
-                      disabled={isSaving || isDeleting}
-                    >
-                      Cancel
-                    </Button>
-                    {editorState.mode === "edit" && selectedNote && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => confirmDeleteNote(selectedNote)}
-                        disabled={isSaving || isDeleting}
-                      >
-                        Delete note
-                      </Button>
-                    )}
-                  </div>
-                </form>
-              ) : selectedNote ? (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-lg font-semibold">
-                        {selectedNote.title}
-                      </div>
-                      <div className="mt-1 text-sm text-muted-foreground">
-                        Updated {selectedTimestamp}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        onClick={() => openEditEditor(selectedNote)}
-                        disabled={!canEditOtherNotes}
-                        aria-label="Edit note"
-                        title="Edit note"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => confirmDeleteNote(selectedNote)}
-                        disabled={!canEditOtherNotes}
-                        aria-label="Delete note"
-                        title="Delete note"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-border/60 bg-card/70 p-4">
-                    <JobDescriptionMarkdown
-                      description={getRenderableJobDescription(
-                        selectedNote.content,
-                      )}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex min-h-[280px] flex-col items-start justify-between gap-4 rounded-xl border border-dashed border-border/60 bg-background/60 p-5">
-                  <div className="space-y-2">
-                    <div className="text-lg font-semibold">
-                      No note selected
-                    </div>
-                    <div className="max-w-xl text-sm text-muted-foreground">
-                      Notes you add here can hold interview answers, contact
-                      details, and application-specific reminders. Select a note
-                      on the left or create a new one to get started.
-                    </div>
-                  </div>
-                  {!editorState && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={openCreateEditor}
-                    >
-                      <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
-                      Add note
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <ConfirmDelete
-        isOpen={noteToDelete !== null}
-        onClose={() => setNoteToDelete(null)}
-        onConfirm={() => void handleDeleteNote()}
-        title="Delete note?"
-        description="This will permanently delete this note from the job."
-      />
-    </section>
-  );
-};
 
 export const JobPage: React.FC = () => {
   const { id, view } = useParams<{ id: string; view?: string }>();
@@ -716,6 +182,10 @@ export const JobPage: React.FC = () => {
           projectId,
       ),
     [catalog, selectedProjectIds],
+  );
+  const sourceLabel = React.useMemo(
+    () => formatSourceLabel(job?.source ?? ""),
+    [job?.source],
   );
 
   React.useEffect(() => {
@@ -1025,118 +495,13 @@ export const JobPage: React.FC = () => {
 
       {job && (
         <div className="grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]">
-          <aside className="space-y-4 xl:sticky xl:top-5">
-            <section className="rounded-xl border border-border/50 bg-card/85 p-4">
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                  Application dossier
-                </div>
-                <h1 className="text-2xl font-semibold leading-tight">
-                  {job.employer}
-                </h1>
-                <div className="text-sm text-muted-foreground">{job.title}</div>
-              </div>
-
-              <div className="mt-5 space-y-3 text-sm">
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Source</span>
-                  <span className="text-right font-medium">
-                    {formatSourceLabel(job.source)}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Location</span>
-                  <span className="text-right font-medium">
-                    {job.location || "Unknown"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Found</span>
-                  <span className="text-right font-medium">
-                    {formatDateTime(job.discoveredAt) ?? job.discoveredAt}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Applied</span>
-                  <span className="text-right font-medium">
-                    {job.appliedAt
-                      ? (formatDateTime(job.appliedAt) ?? job.appliedAt)
-                      : "Not marked"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Outcome</span>
-                  <span className="text-right font-medium">
-                    {job.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
-                  </span>
-                </div>
-                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
-                  <span className="text-muted-foreground">Projects Chosen</span>
-                  <span className="text-right font-medium">
-                    {selectedProjects.length > 0
-                      ? selectedProjects.length
-                      : "No projects"}
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/70 p-3">
-              <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                Links
-              </div>
-              <div className="space-y-1">
-                {[
-                  {
-                    id: "overview" as const,
-                    label: "Overview",
-                    path: baseJobPath,
-                    icon: FolderKanban,
-                  },
-                  {
-                    id: "note" as const,
-                    label: "Notes",
-                    path: `${baseJobPath}/note`,
-                    icon: MessageSquareText,
-                  },
-                  {
-                    id: "documents" as const,
-                    label: "Documents",
-                    path: `${baseJobPath}/documents`,
-                    icon: FileText,
-                  },
-                  {
-                    id: "timeline" as const,
-                    label: "Timeline",
-                    path: `${baseJobPath}/timeline`,
-                    icon: ClipboardList,
-                  },
-                  {
-                    id: "ghostwriter" as const,
-                    label: "Ghostwriter",
-                    path: `${baseJobPath}/ghostwriter`,
-                    icon: Sparkles,
-                  },
-                ].map(({ id: linkView, label, path, icon: Icon }) => (
-                  <Button
-                    asChild
-                    key={linkView}
-                    variant={activeMemoryView === linkView ? "outline" : "ghost"}
-                    className={cn(
-                      "h-9 w-full justify-between px-2 text-left text-sm",
-                    )}
-                  >
-                    <Link to={path}>
-                      <span className="flex min-w-0 items-center gap-2">
-                        <Icon className="h-4 w-4 shrink-0" />
-                        <span className="truncate">{label}</span>
-                      </span>
-                    </Link>
-                  </Button>
-                ))}
-              </div>
-            </section>
-          </aside>
+          <JobPageLeftSidebar
+            job={job}
+            activeMemoryView={activeMemoryView}
+            baseJobPath={baseJobPath}
+            selectedProjects={selectedProjects}
+            sourceLabel={sourceLabel}
+          />
 
           <div className="space-y-4">
             {activeMemoryView === "overview" && (
@@ -1438,216 +803,37 @@ export const JobPage: React.FC = () => {
             )}
           </div>
 
-          <aside className="space-y-4 xl:sticky xl:top-5">
-            <section className="rounded-xl border border-border/50 bg-card/85 p-3">
-              <div className="mb-3 flex items-center gap-2 px-1 text-sm font-semibold">
-                Actions
-              </div>
-              <div className="space-y-2">
-                {jobLink && (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <a href={jobLink} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      Open Job Listing
-                    </a>
-                  </Button>
-                )}
-
-                {isDiscovered && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => navigate(`/jobs/discovered/${job.id}`)}
-                    disabled={isBusy}
-                  >
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Start Tailoring
-                  </Button>
-                )}
-
-                {isReady && (
-                  <Button
-                    size="sm"
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => void handleMarkApplied()}
-                    disabled={isBusy}
-                  >
-                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                    Mark Applied
-                  </Button>
-                )}
-
-                {isApplied && (
-                  <Button
-                    size="sm"
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => void handleMoveToInProgress()}
-                    disabled={isBusy}
-                  >
-                    <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
-                    Move to In Progress
-                  </Button>
-                )}
-
-                {isInProgress && (
-                  <Button
-                    size="sm"
-                    className="w-full justify-start"
-                    variant="outline"
-                    onClick={() => setIsLogModalOpen(true)}
-                    disabled={!canLogEvents || isBusy}
-                  >
-                    <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
-                    Log Event
-                  </Button>
-                )}
-
-                {isReady && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 w-full justify-start"
-                    onClick={() => navigate(`/jobs/ready/${job.id}`)}
-                    disabled={isBusy}
-                  >
-                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                    Edit Tailoring
-                  </Button>
-                )}
-
-                {job.pdfPath && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 w-full justify-start"
-                    onClick={() => {
-                      void openJobPdf(job.id).catch((error) => {
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Could not open PDF",
-                        );
-                      });
-                    }}
-                  >
-                    <FileText className="mr-1.5 h-3.5 w-3.5" />
-                    View PDF
-                  </Button>
-                )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-9 w-full justify-start"
-                  onClick={() => uploadPdfInputRef.current?.click()}
-                  disabled={isUploadingPdf}
-                >
-                  <Upload className="mr-1.5 h-3.5 w-3.5" />
-                  {isUploadingPdf
-                    ? "Uploading PDF"
-                    : job.pdfPath
-                      ? "Replace PDF"
-                      : "Upload PDF"}
-                </Button>
-
-                {isReady && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 w-full justify-start"
-                    onClick={() => void handleRegeneratePdf()}
-                    disabled={isBusy}
-                  >
-                    <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
-                    Regenerate PDF
-                  </Button>
-                )}
-
-                {(isReady || isDiscovered) && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-9 w-full justify-start"
-                    onClick={() => void handleSkip()}
-                    disabled={isBusy}
-                  >
-                    <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                    Skip Job
-                  </Button>
-                )}
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-9 w-full justify-start text-muted-foreground"
-                    >
-                      <MoreHorizontal className="mr-1.5 h-3.5 w-3.5" />
-                      More actions
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={openEditDetails}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => void handleCopyJobInfo()}>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy job info
-                    </DropdownMenuItem>
-                    {(isReady || isDiscovered) && (
-                      <DropdownMenuItem onSelect={() => void handleRescore()}>
-                        <RefreshCcw className="mr-2 h-4 w-4" />
-                        Recalculate match
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onSelect={() => void handleCheckSponsor()}
-                    >
-                      Check sponsorship status
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </section>
-
-            {tasks.length > 0 && (
-              <section className="rounded-xl border border-border/50 bg-card/70 p-4">
-                <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                  <CalendarClock className="h-4 w-4" />
-                  Upcoming tasks
-                </div>
-                <div className="space-y-3">
-                  {tasks.map((task) => (
-                    <div key={task.id} className="space-y-1">
-                      <div className="text-sm font-medium">{task.title}</div>
-                      {task.notes && (
-                        <div className="text-xs text-muted-foreground">
-                          {task.notes}
-                        </div>
-                      )}
-                      <Badge
-                        variant="outline"
-                        className="text-[10px] uppercase tracking-wide"
-                      >
-                        {formatTimestamp(task.dueDate)}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </aside>
+          <JobPageRightSidebar
+            job={job}
+            tasks={tasks}
+            jobLink={jobLink}
+            isDiscovered={Boolean(isDiscovered)}
+            isReady={Boolean(isReady)}
+            isApplied={Boolean(isApplied)}
+            isInProgress={Boolean(isInProgress)}
+            canLogEvents={canLogEvents}
+            isBusy={isBusy}
+            isUploadingPdf={isUploadingPdf}
+            onStartTailoring={() => navigate(`/jobs/discovered/${job.id}`)}
+            onMarkApplied={() => void handleMarkApplied()}
+            onMoveToInProgress={() => void handleMoveToInProgress()}
+            onOpenLogEvent={() => setIsLogModalOpen(true)}
+            onEditTailoring={() => navigate(`/jobs/ready/${job.id}`)}
+            onViewPdf={() => {
+              void openJobPdf(job.id).catch((error) => {
+                toast.error(
+                  error instanceof Error ? error.message : "Could not open PDF",
+                );
+              });
+            }}
+            onUploadPdf={() => uploadPdfInputRef.current?.click()}
+            onRegeneratePdf={() => void handleRegeneratePdf()}
+            onSkip={() => void handleSkip()}
+            onOpenEditDetails={openEditDetails}
+            onCopyJobInfo={() => void handleCopyJobInfo()}
+            onRescore={() => void handleRescore()}
+            onCheckSponsor={() => void handleCheckSponsor()}
+          />
         </div>
       )}
 
