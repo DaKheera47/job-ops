@@ -4,6 +4,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const getGhostwriterSuggestions = (job: Job, hasNotes: boolean) => [
   hasNotes
@@ -52,7 +53,7 @@ export const OverviewGhostwriterComposer: React.FC<
             }
           }}
           placeholder="Ask Ghostwriter anything about this application..."
-          className="min-h-[30px] resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 md:text-sm"
+          className="min-h-[30px] resize-none border-0 bg-transparent px-0 py-1 text-xs shadow-none focus-visible:ring-0 md:text-sm"
         />
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50">
@@ -63,7 +64,7 @@ export const OverviewGhostwriterComposer: React.FC<
               type="button"
               size="sm"
               variant="outline"
-              className="h-auto px-3 py-1.5 text-left text-xs"
+              className={"h-auto md:px-3 md:py-1.5 text-left hidden md:inline-flex"}
               onClick={() => setPrompt(suggestion)}
             >
               {suggestion}
