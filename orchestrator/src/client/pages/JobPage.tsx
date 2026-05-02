@@ -31,7 +31,7 @@ import {
   XCircle,
 } from "lucide-react";
 import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { RichTextEditor } from "@/client/components/design-resume/RichTextEditor";
 import { JobDescriptionMarkdown } from "@/client/components/JobDescriptionMarkdown";
@@ -85,7 +85,20 @@ import {
 } from "../components/LogEventModal";
 import { JobTimeline } from "./job/Timeline";
 
-type JobMemoryView = "notes" | "documents" | "timeline" | "ghostwriter";
+type JobMemoryView =
+  | "overview"
+  | "note"
+  | "documents"
+  | "timeline"
+  | "ghostwriter";
+
+const normalizeMemoryView = (view: string | undefined): JobMemoryView => {
+  if (view === "notes" || view === "note") return "note";
+  if (view === "documents" || view === "timeline" || view === "ghostwriter") {
+    return view;
+  }
+  return "overview";
+};
 
 const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
   [...notes].sort(
@@ -534,7 +547,7 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
 };
 
 export const JobPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, view } = useParams<{ id: string; view?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
@@ -542,8 +555,6 @@ export const JobPage: React.FC = () => {
   const [isEditDetailsOpen, setIsEditDetailsOpen] = React.useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = React.useState(false);
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
-  const [activeMemoryView, setActiveMemoryView] =
-    React.useState<JobMemoryView>("notes");
   const [eventToDelete, setEventToDelete] = React.useState<string | null>(null);
   const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
     null,
@@ -565,6 +576,11 @@ export const JobPage: React.FC = () => {
     queryFn: () => (id ? api.getJobStageEvents(id) : Promise.resolve([])),
     enabled: Boolean(id),
   });
+  const notesQuery = useQuery<JobNote[]>({
+    queryKey: queryKeys.jobs.notes(id ?? ""),
+    queryFn: () => (id ? api.getJobNotes(id) : Promise.resolve([])),
+    enabled: Boolean(id),
+  });
   const tasksQuery = useQuery<ApplicationTask[]>({
     queryKey: ["jobs", "tasks", id ?? null] as const,
     queryFn: () => (id ? api.getJobTasks(id) : Promise.resolve([])),
@@ -580,6 +596,10 @@ export const JobPage: React.FC = () => {
     "Failed to load job timeline. Please try again.",
   );
   useQueryErrorToast(
+    notesQuery.error,
+    "Failed to load notes. Please try again.",
+  );
+  useQueryErrorToast(
     tasksQuery.error,
     "Failed to load job tasks. Please try again.",
   );
@@ -593,9 +613,14 @@ export const JobPage: React.FC = () => {
 
   const job = jobQuery.data ?? null;
   const events = mergeEvents(eventsQuery.data ?? [], pendingEventRef.current);
+  const notes = React.useMemo(
+    () => sortNotesByUpdatedAtDesc(notesQuery.data ?? []),
+    [notesQuery.data],
+  );
   const tasks = tasksQuery.data ?? [];
   const isLoading =
     jobQuery.isLoading || eventsQuery.isLoading || tasksQuery.isLoading;
+  const activeMemoryView = normalizeMemoryView(view);
   const selectedProjectIds = React.useMemo(
     () => parseSelectedProjectIds(job?.selectedProjectIds),
     [job?.selectedProjectIds],
@@ -873,6 +898,13 @@ export const JobPage: React.FC = () => {
   const isReady = job?.status === "ready";
   const isApplied = job?.status === "applied";
   const isInProgress = job?.status === "in_progress";
+  const baseJobPath = id ? `/job/${id}` : "";
+  const latestNote = notes[0] ?? null;
+  const latestEvent = events.at(-1) ?? null;
+  const latestEventTitle =
+    latestEvent?.metadata?.eventLabel || latestEvent?.title || null;
+  const jobDescriptionPreview = summarizeMemoryText(job?.jobDescription, 260);
+  const latestNotePreview = summarizeMemoryText(latestNote?.content, 180);
 
   if (!id) {
     return null;
@@ -983,54 +1015,261 @@ export const JobPage: React.FC = () => {
               <div className="space-y-1">
                 {[
                   {
-                    id: "notes" as const,
+                    id: "overview" as const,
+                    label: "Overview",
+                    path: baseJobPath,
+                    icon: FolderKanban,
+                  },
+                  {
+                    id: "note" as const,
                     label: "Notes",
+                    path: `${baseJobPath}/note`,
                     icon: MessageSquareText,
                   },
                   {
                     id: "documents" as const,
                     label: "Documents",
+                    path: `${baseJobPath}/documents`,
                     icon: FileText,
                   },
                   {
                     id: "timeline" as const,
                     label: "Timeline",
+                    path: `${baseJobPath}/timeline`,
                     icon: ClipboardList,
                   },
                   {
                     id: "ghostwriter" as const,
                     label: "Ghostwriter",
+                    path: `${baseJobPath}/ghostwriter`,
                     icon: Sparkles,
                   },
-                ].map(({ id: view, label, icon: Icon }) => (
-                  <button
-                    key={view}
-                    type="button"
+                ].map(({ id: linkView, label, path, icon: Icon }) => (
+                  <Link
+                    to={path}
+                    key={linkView}
                     className={cn(
                       "flex h-9 w-full items-center justify-between rounded-md px-2 text-left text-sm transition",
-                      activeMemoryView === view
+                      activeMemoryView === linkView
                         ? "border border-orange-400/30 bg-orange-500/10 text-orange-100"
                         : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
                     )}
-                    onClick={() => setActiveMemoryView(view)}
                   >
                     <span className="flex min-w-0 items-center gap-2">
                       <Icon className="h-4 w-4 shrink-0" />
                       <span className="truncate">{label}</span>
                     </span>
-                    {activeMemoryView === view && (
+                    {activeMemoryView === linkView && (
                       <Badge variant="secondary" className="text-[10px]">
                         Open
                       </Badge>
                     )}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </section>
           </aside>
 
-          <div>
-            {activeMemoryView === "notes" && job.id && (
+          <div className="space-y-4">
+            {activeMemoryView === "overview" && (
+              <section className="space-y-4">
+                <div className="rounded-xl border border-border/50 bg-card/85 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                        Overview
+                      </div>
+                      <h2 className="mt-1 text-xl font-semibold">
+                        Application memory
+                      </h2>
+                    </div>
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`${baseJobPath}/ghostwriter`}>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        Ask Ghostwriter
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <article className="rounded-xl border border-border/50 bg-card/75 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <MessageSquareText className="h-4 w-4 text-orange-300" />
+                        Notes
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {notesQuery.isLoading
+                          ? "Loading"
+                          : `${notes.length} saved`}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 min-h-[5.5rem] rounded-lg border border-border/50 bg-background/25 p-3">
+                      {latestNote ? (
+                        <div>
+                          <div className="text-sm font-medium">
+                            {latestNote.title}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            Updated{" "}
+                            {formatDateTime(latestNote.updatedAt) ??
+                              latestNote.updatedAt}
+                          </div>
+                          {latestNotePreview && (
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                              {latestNotePreview}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No notes or transcripts captured yet.
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 w-full justify-between"
+                    >
+                      <Link to={`${baseJobPath}/note`}>
+                        Open notes
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </article>
+
+                  <article className="rounded-xl border border-border/50 bg-card/75 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <FileText className="h-4 w-4 text-sky-300" />
+                        Documents
+                      </div>
+                      <Badge variant="secondary" className="text-[10px]">
+                        {job.pdfPath ? "Resume ready" : "No resume PDF"}
+                      </Badge>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border border-border/50 bg-background/25 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Resume PDF
+                        </div>
+                        <div className="mt-2 text-sm font-medium">
+                          {job.pdfPath ? "Stored for this job" : "Missing"}
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border/50 bg-background/25 p-3">
+                        <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Job description
+                        </div>
+                        <div className="mt-2 text-sm font-medium">
+                          {job.jobDescription ? "Saved" : "Missing"}
+                        </div>
+                      </div>
+                    </div>
+                    {jobDescriptionPreview && (
+                      <p className="mt-4 line-clamp-3 text-sm leading-6 text-muted-foreground">
+                        {jobDescriptionPreview}
+                      </p>
+                    )}
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 w-full justify-between"
+                    >
+                      <Link to={`${baseJobPath}/documents`}>
+                        Open documents
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </article>
+
+                  <article className="rounded-xl border border-border/50 bg-card/75 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <ClipboardList className="h-4 w-4 text-emerald-300" />
+                        Timeline
+                      </div>
+                      {currentStage && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {STAGE_LABELS[currentStage as ApplicationStage] ||
+                            currentStage}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-4 min-h-[5.5rem] rounded-lg border border-border/50 bg-background/25 p-3">
+                      {latestEvent ? (
+                        <div>
+                          <div className="text-sm font-medium">
+                            {latestEventTitle}
+                          </div>
+                          <div className="mt-1 text-xs text-muted-foreground">
+                            {formatTimestamp(latestEvent.occurredAt)}
+                          </div>
+                          {latestEvent.metadata?.note && (
+                            <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                              {summarizeMemoryText(
+                                latestEvent.metadata.note,
+                                160,
+                              )}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No timeline events yet.
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="mt-4 w-full justify-between"
+                    >
+                      <Link to={`${baseJobPath}/timeline`}>
+                        Open timeline
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </article>
+
+                  <article className="rounded-xl border border-orange-400/20 bg-orange-500/5 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        <Sparkles className="h-4 w-4 text-orange-300" />
+                        Ghostwriter
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="border-orange-400/30 bg-orange-500/10 text-orange-100"
+                      >
+                        AI
+                      </Badge>
+                    </div>
+                    <div className="mt-4 min-h-[5.5rem] rounded-lg border border-orange-400/20 bg-background/25 p-3 text-sm leading-6 text-muted-foreground">
+                      Ask what CV context was used, what happened in the last
+                      call, or what to say before the next recruiter touchpoint.
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      className="mt-4 w-full justify-between border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    >
+                      <Link to={`${baseJobPath}/ghostwriter`}>
+                        Open Ghostwriter
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </Button>
+                  </article>
+                </div>
+              </section>
+            )}
+
+            {activeMemoryView === "note" && job.id && (
               <JobNotesCard jobId={job.id} />
             )}
 
@@ -1431,4 +1670,19 @@ const mergeEvents = (events: StageEvent[], pending: StageEvent | null) => {
   if (!pending) return events;
   if (events.some((event) => event.id === pending.id)) return events;
   return [...events, pending].sort((a, b) => a.occurredAt - b.occurredAt);
+};
+
+const summarizeMemoryText = (
+  value: string | null | undefined,
+  maxLength: number,
+) => {
+  const text = getRenderableJobDescription(value ?? "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/[#*_`>[\](){}-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!text) return "";
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trim()}...`;
 };

@@ -165,6 +165,7 @@ export const App: React.FC = () => {
                   element={<GmailOauthCallbackPage />}
                 />
                 <Route path="/job/:id" element={<JobPage />} />
+                <Route path="/job/:id/:view" element={<JobPage />} />
                 <Route
                   path="/applications/in-progress"
                   element={<InProgressBoardPage />}
