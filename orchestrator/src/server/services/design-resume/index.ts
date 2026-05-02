@@ -8,6 +8,8 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import { createId } from "@paralleldrive/cuid2";
 import { getDataDir } from "@server/config/dataDir";
 import * as designResumeRepo from "@server/repositories/design-resume";
+import { getSetting } from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { getResumeSchemaValidationMessage } from "@server/services/rxresume/schema";
@@ -104,6 +106,46 @@ function buildDocumentTitle(document: DesignResumeJson): string {
 
 function contentUrlForAsset(assetId: string): string {
   return `/api/design-resume/assets/${encodeURIComponent(assetId)}/content`;
+}
+
+function absolutizeUrl(value: string, baseUrl: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    try {
+      return new URL(trimmed, baseUrl).toString();
+    } catch {
+      return trimmed;
+    }
+  }
+}
+
+async function resolveReactiveResumePublicBaseUrl(): Promise<string> {
+  return (
+    (await getSetting("rxresumeUrl"))?.trim() ||
+    getOriginalEnvValue("RXRESUME_URL")?.trim() ||
+    "https://rxresu.me"
+  );
+}
+
+function withReactiveResumePictureUrl(
+  document: DesignResumeJson,
+  baseUrl: string,
+): DesignResumeJson {
+  const picture = asRecord(document.picture);
+  const pictureUrl = toText(picture?.url);
+  if (!pictureUrl) return document;
+
+  return {
+    ...document,
+    picture: {
+      ...document.picture,
+      url: absolutizeUrl(pictureUrl, baseUrl),
+    } as DesignResumeJson["picture"],
+  };
 }
 
 function toDesignResumeAsset(
@@ -461,7 +503,10 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
     throw badRequest("Reactive Resume base resume is empty or invalid.");
   }
 
-  const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
+  const validated = withReactiveResumePictureUrl(
+    validateIncomingDesignResumeDocument(upstreamResume.data),
+    await resolveReactiveResumePublicBaseUrl(),
+  );
   return replaceCurrentDesignResumeDocument({
     resumeJson: validated,
     sourceResumeId: resumeId,

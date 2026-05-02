@@ -25,8 +25,14 @@ vi.mock("@server/repositories/design-resume", () => repo);
 vi.mock("@server/config/dataDir", () => ({
   getDataDir: vi.fn(() => "/tmp/job-ops-test"),
 }));
+vi.mock("@server/repositories/settings", () => ({
+  getSetting: vi.fn(),
+}));
 vi.mock("@paralleldrive/cuid2", () => ({
   createId: vi.fn(() => "asset-1"),
+}));
+vi.mock("@server/services/envSettings", () => ({
+  getOriginalEnvValue: vi.fn(),
 }));
 vi.mock("@server/services/rxresume/baseResumeId", () => ({
   getConfiguredRxResumeBaseResumeId: vi.fn(),
@@ -51,6 +57,8 @@ vi.mock("node:fs/promises", () => ({
   default: fsMocks,
 }));
 
+import { getSetting } from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import {
@@ -109,6 +117,8 @@ describe("design resume service", () => {
       mode: "v5",
       resumeId: "rx-1",
     });
+    vi.mocked(getSetting).mockResolvedValue(null);
+    vi.mocked(getOriginalEnvValue).mockReturnValue(undefined);
     vi.mocked(getResume).mockResolvedValue({
       id: "rx-1",
       mode: "v5",
@@ -146,6 +156,34 @@ describe("design resume service", () => {
         id: "primary_tenant-test-2",
       }),
     );
+  });
+
+  it("stores Reactive Resume relative picture URLs as absolute upstream URLs", async () => {
+    const upstreamResume = makeValidResumeJson({
+      picture: {
+        ...(buildDefaultReactiveResumeDocument().picture as Record<
+          string,
+          unknown
+        >),
+        hidden: false,
+        url: "/uploads/profile-photo.png",
+      },
+    });
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "rxresumeUrl" ? "https://resume.example.com/api/openapi" : null,
+    );
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+
+    expect(result.resumeJson.picture.url).toBe(
+      "https://resume.example.com/uploads/profile-photo.png",
+    );
+    expect(result.resumeJson.picture.hidden).toBe(false);
   });
 
   it("preserves an explicit picture hidden flag during updates", async () => {

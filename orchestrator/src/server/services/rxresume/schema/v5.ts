@@ -11,6 +11,7 @@ const templateNames = [
   "kakuna",
   "lapras",
   "leafish",
+  "meowth",
   "onyx",
   "pikachu",
   "rhyhorn",

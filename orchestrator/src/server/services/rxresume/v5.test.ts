@@ -115,6 +115,21 @@ describe("rxresume v5 endpoints", () => {
     );
   });
 
+  it("preserves current v5 templates during import", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ id: "meowth" }));
+    vi.stubGlobal("fetch", mockFetch);
+    const resume = structuredClone(sampleResume);
+    (resume.metadata as Record<string, unknown>).template = "meowth";
+
+    await importResume(
+      { data: resume, name: "Meowth Resume" },
+      { baseUrl: "https://rxresu.me", apiKey: "test-key" },
+    );
+
+    const body = JSON.parse(String(mockFetch.mock.calls[0][1].body));
+    expect(body.data.metadata.template).toBe("meowth");
+  });
+
   it("logs sanitized upstream validation details when a request fails", async () => {
     const { logger } = await import("@infra/logger");
     const errorPayload = {

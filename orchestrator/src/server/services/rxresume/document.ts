@@ -15,6 +15,7 @@ const VALID_TEMPLATES = new Set([
   "kakuna",
   "lapras",
   "leafish",
+  "meowth",
   "onyx",
   "pikachu",
   "rhyhorn",
