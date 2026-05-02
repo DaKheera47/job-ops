@@ -1,3 +1,4 @@
+import { showErrorToast } from "@/client/lib/error-toast";
 /**
  * ReadyPanel - Optimized "shipping lane" view for Ready jobs.
  *
@@ -159,18 +160,14 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   const handleOpenPdf = useCallback(() => {
     if (!job) return;
     void openJobPdf(job.id).catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Could not open PDF",
-      );
+      showErrorToast(error, "Could not open PDF");
     });
   }, [job]);
 
   const handleDownloadPdf = useCallback(() => {
     if (!job) return;
     void downloadJobPdf(job.id, pdfFilename).catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Could not download PDF",
-      );
+      showErrorToast(error, "Could not download PDF");
     });
   }, [job, pdfFilename]);
 
@@ -199,9 +196,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           from_status: "applied",
           to_status: "ready",
         });
-        const message =
-          error instanceof Error ? error.message : "Failed to undo";
-        toast.error(message);
+        showErrorToast(error, "Failed to undo");
       }
     },
     [onJobUpdated, recentlyApplied],
@@ -252,9 +247,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         from_status: job.status,
         to_status: "applied",
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to mark as applied";
-      toast.error(message);
+      showErrorToast(error, "Failed to mark as applied");
     } finally {
       setIsMarkingApplied(false);
     }
@@ -279,9 +272,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         result: "error",
         from_status: job.status,
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
-      toast.error(message);
+      showErrorToast(error, "Failed to regenerate PDF");
     } finally {
       setIsRegenerating(false);
     }
@@ -313,8 +304,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         from_status: job.status,
         to_status: "skipped",
       });
-      const message = error instanceof Error ? error.message : "Failed to skip";
-      toast.error(message);
+      showErrorToast(error, "Failed to skip");
     }
   }, [job, onJobMoved, onJobUpdated, skipJobMutation]);
 
@@ -341,9 +331,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         toast.success(job.pdfPath ? "PDF replaced" : "PDF attached");
         await onJobUpdated();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to upload PDF";
-        toast.error(message);
+        showErrorToast(error, "Failed to upload PDF");
       } finally {
         setIsUploadingPdf(false);
         if (uploadPdfInputRef.current) {
@@ -374,9 +362,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         result: "error",
         from_status: job.status,
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
-      toast.error(message);
+      showErrorToast(error, "Failed to regenerate PDF");
     } finally {
       setIsRegenerating(false);
     }

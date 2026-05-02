@@ -45,6 +45,7 @@ import {
   useUpdateJobNoteMutation,
 } from "@/client/hooks/queries/useJobMutations";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
 import {
@@ -178,9 +179,7 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
       setSelectedNoteId(savedNote.id);
       resetEditor();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save note";
-      toast.error(message);
+      showErrorToast(error, "Failed to save note");
     }
   }, [
     createNoteMutation,
@@ -212,9 +211,7 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
         resetEditor();
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete note";
-      toast.error(message);
+      showErrorToast(error, "Failed to delete note");
     } finally {
       setNoteToDelete(null);
     }
@@ -675,9 +672,7 @@ export const JobPage: React.FC = () => {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to log event";
-      toast.error(message);
+      showErrorToast(error, "Failed to log event");
     }
   };
 
@@ -693,9 +688,7 @@ export const JobPage: React.FC = () => {
       await invalidateJobData(queryClient, job.id);
       toast.success("Event deleted");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete event";
-      toast.error(message);
+      showErrorToast(error, "Failed to delete event");
     } finally {
       setIsDeleteModalOpen(false);
       setEventToDelete(null);
@@ -715,9 +708,7 @@ export const JobPage: React.FC = () => {
         await task();
         await loadData();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to run action";
-        toast.error(message);
+        showErrorToast(error, "Failed to run action");
       } finally {
         setActiveAction(null);
       }
@@ -799,9 +790,7 @@ export const JobPage: React.FC = () => {
         job.pdfPath ? "Resume PDF replaced" : "Resume PDF attached",
       );
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to upload resume PDF";
-      toast.error(message);
+      showErrorToast(error, "Failed to upload resume PDF");
     } finally {
       setIsUploadingPdf(false);
       if (uploadPdfInputRef.current) {

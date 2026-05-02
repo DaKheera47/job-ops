@@ -10,6 +10,7 @@ import { SHORTCUTS } from "@client/lib/shortcut-map";
 import type { JobAction, JobListItem } from "@shared/types.js";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { safeFilenamePart } from "@/lib/utils";
 import type { FilterTab } from "./constants";
 import { tabs } from "./constants";
@@ -228,9 +229,7 @@ export function useKeyboardShortcuts(args: UseKeyboardShortcutsArgs): void {
         if (!selectedJob) return;
         if (activeTab !== "ready") return;
         void openJobPdf(selectedJob.id).catch((error) => {
-          toast.error(
-            error instanceof Error ? error.message : "Could not open PDF",
-          );
+          showErrorToast(error, "Could not open PDF");
         });
       },
 
@@ -241,9 +240,7 @@ export function useKeyboardShortcuts(args: UseKeyboardShortcutsArgs): void {
           selectedJob.id,
           `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`,
         ).catch((error) => {
-          toast.error(
-            error instanceof Error ? error.message : "Could not download PDF",
-          );
+          showErrorToast(error, "Could not download PDF");
         });
       },
 

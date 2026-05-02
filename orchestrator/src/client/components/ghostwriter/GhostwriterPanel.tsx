@@ -10,6 +10,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,9 +71,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     try {
       await loadMessages();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load Ghostwriter";
-      toast.error(message);
+      showErrorToast(error, "Failed to load Ghostwriter");
     } finally {
       setIsLoading(false);
     }
@@ -206,9 +205,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
           return;
         }
 
-        const message =
-          error instanceof Error ? error.message : "Failed to send message";
-        toast.error(message);
+        showErrorToast(error, "Failed to send message");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
@@ -228,9 +225,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       setStreamingMessageId(null);
       await loadMessages();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to stop run";
-      toast.error(message);
+      showErrorToast(error, "Failed to stop run");
     }
   }, [activeRunId, job.id, loadMessages]);
 
@@ -264,11 +259,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to regenerate response";
-        toast.error(message);
+        showErrorToast(error, "Failed to regenerate response");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
@@ -325,9 +316,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error ? error.message : "Failed to edit message";
-        toast.error(message);
+        showErrorToast(error, "Failed to edit message");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
@@ -343,9 +332,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         setMessages(result.messages);
         setBranches(result.branches);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to switch branch";
-        toast.error(message);
+        showErrorToast(error, "Failed to switch branch");
       }
     },
     [job.id],
@@ -362,9 +349,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       setBranches([]);
       toast.success("Conversation cleared");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reset conversation";
-      toast.error(message);
+      showErrorToast(error, "Failed to reset conversation");
     }
   }, [job.id]);
 

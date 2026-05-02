@@ -34,4 +34,30 @@ describe("RunModeModal", () => {
     expect(screen.getByTestId("automatic-tab")).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /manual/i })).toBeInTheDocument();
   });
+
+  it("uses the review header for manual import", () => {
+    render(
+      <RunModeModal
+        open
+        mode="manual"
+        settings={null}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onOpenChange={vi.fn()}
+        onModeChange={vi.fn()}
+        onSaveAndRunAutomatic={vi.fn().mockResolvedValue(undefined)}
+        onManualImported={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /review job details/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/choose automatic pipeline run or manual import/i),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -147,6 +147,7 @@ export interface ExtractorLimits {
   startupjobsMaxJobsPerTerm: number;
   workingnomadsMaxJobsPerTerm: number;
   seekMaxJobsPerTerm: number;
+  naukriMaxJobsPerTerm: number;
 }
 
 export function inferAutomaticPresetSelection(args: {
@@ -202,6 +203,7 @@ export function deriveExtractorLimits(args: {
   const includesStartupJobs = args.sources.includes("startupjobs");
   const includesWorkingNomads = args.sources.includes("workingnomads");
   const includesSeek = args.sources.includes("seek");
+  const includesNaukri = args.sources.includes("naukri");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
@@ -213,7 +215,8 @@ export function deriveExtractorLimits(args: {
     (includesHiringCafe ? termCount : 0) +
     (includesStartupJobs ? termCount : 0) +
     (includesWorkingNomads ? termCount : 0) +
-    (includesSeek ? termCount : 0);
+    (includesSeek ? termCount : 0) +
+    (includesNaukri ? termCount : 0);
 
   if (weightedContributors <= 0) {
     return {
@@ -224,6 +227,7 @@ export function deriveExtractorLimits(args: {
       startupjobsMaxJobsPerTerm: budget,
       workingnomadsMaxJobsPerTerm: budget,
       seekMaxJobsPerTerm: budget,
+      naukriMaxJobsPerTerm: budget,
     };
   }
 
@@ -238,6 +242,7 @@ export function deriveExtractorLimits(args: {
     startupjobsMaxJobsPerTerm: perUnit,
     workingnomadsMaxJobsPerTerm: perUnit,
     seekMaxJobsPerTerm: perUnit,
+    naukriMaxJobsPerTerm: perUnit,
   };
 }
 
@@ -324,6 +329,7 @@ export function calculateAutomaticEstimate(args: {
   const hasStartupJobs = sources.includes("startupjobs");
   const hasWorkingNomads = sources.includes("workingnomads");
   const hasSeek = sources.includes("seek");
+  const hasNaukri = sources.includes("naukri");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
@@ -349,6 +355,7 @@ export function calculateAutomaticEstimate(args: {
     ? limits.workingnomadsMaxJobsPerTerm * termCount
     : 0;
   const seekCap = hasSeek ? limits.seekMaxJobsPerTerm * termCount : 0;
+  const naukriCap = hasNaukri ? limits.naukriMaxJobsPerTerm * termCount : 0;
 
   const discoveredCap =
     jobspyCap +
@@ -358,7 +365,8 @@ export function calculateAutomaticEstimate(args: {
     hiringCafeCap +
     startupJobsCap +
     workingNomadsCap +
-    seekCap;
+    seekCap +
+    naukriCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);
   const discoveredMax = Math.round(discoveredCap * 0.75);
   const processedMin = Math.min(values.topN, discoveredMin);

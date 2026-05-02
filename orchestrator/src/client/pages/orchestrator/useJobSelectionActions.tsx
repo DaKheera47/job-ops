@@ -6,6 +6,7 @@ import type {
 } from "@shared/types.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { trackProductEvent } from "@/lib/analytics";
 import type { FilterTab } from "./constants";
 import { JobActionProgressToast } from "./JobActionProgressToast";
@@ -265,9 +266,7 @@ export function useJobSelectionActions({
           return next;
         });
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to run job action";
-        toast.error(message);
+        showErrorToast(error, "Failed to run job action");
       } finally {
         if (progressToastId !== undefined) {
           toast.dismiss(progressToastId);

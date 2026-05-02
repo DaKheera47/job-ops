@@ -317,6 +317,19 @@ export const settingsRegistry = {
     parse: parseIntOrNull,
     serialize: serializeNullableNumber,
   },
+  naukriMaxJobsPerTerm: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(1000),
+    default: (): number =>
+      parseInt(
+        typeof process !== "undefined"
+          ? process.env.NAUKRI_MAX_JOBS_PER_TERM || "50"
+          : "50",
+        10,
+      ),
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
   searchTerms: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(100),

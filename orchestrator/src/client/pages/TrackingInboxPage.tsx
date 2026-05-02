@@ -20,6 +20,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import {
   AlertDialog,
@@ -184,11 +185,7 @@ export const TrackingInboxPage: React.FC = () => {
         hasReviewItems ? appliedJobsQuery.refetch() : Promise.resolve(),
       ]);
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to refresh tracking inbox";
-      toast.error(message);
+      showErrorToast(error, "Failed to refresh tracking inbox");
     } finally {
       setIsRefreshing(false);
     }
@@ -399,12 +396,12 @@ export const TrackingInboxPage: React.FC = () => {
         await refresh();
       } catch (error) {
         if (action === "connect") {
-          const message = error instanceof Error ? error.message : "";
+          const rawMessage = error instanceof Error ? error.message : "";
           trackProductEvent("tracking_inbox_connect_completed", {
             provider,
-            result: message.includes("Timed out")
+            result: rawMessage.includes("Timed out")
               ? "timeout"
-              : message.includes("window was closed")
+              : rawMessage.includes("window was closed")
                 ? "cancelled"
                 : "error",
           });
@@ -415,14 +412,12 @@ export const TrackingInboxPage: React.FC = () => {
             result: "error",
           });
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : `Failed to ${action} provider connection`;
         if (syncToastId) {
-          toast.error(message, { id: syncToastId });
+          showErrorToast(error, `Failed to ${action} provider connection`, {
+            id: syncToastId,
+          });
         } else {
-          toast.error(message);
+          showErrorToast(error, `Failed to ${action} provider connection`);
         }
       } finally {
         setActiveAction(null);
@@ -497,11 +492,7 @@ export const TrackingInboxPage: React.FC = () => {
           provider,
           result: "error",
         });
-        const message =
-          error instanceof Error
-            ? error.message
-            : `Failed to ${decision} message`;
-        toast.error(message);
+        showErrorToast(error, `Failed to ${decision} message`);
       } finally {
         setIsActionLoading(false);
       }
@@ -557,11 +548,7 @@ export const TrackingInboxPage: React.FC = () => {
           provider,
           result: "error",
         });
-        const message =
-          error instanceof Error
-            ? error.message
-            : `Failed to ${action} messages`;
-        toast.error(message);
+        showErrorToast(error, `Failed to ${action} messages`);
       } finally {
         setIsActionLoading(false);
       }

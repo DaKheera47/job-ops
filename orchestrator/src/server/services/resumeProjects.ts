@@ -25,7 +25,7 @@ export function extractProjectsFromProfile(profile: ResumeProfile): {
     if (!id) continue;
 
     const name = item.name || "";
-    const description = item.description || "";
+    const description = stripHtml(item.description || "");
     const date = item.date || "";
     const isVisibleInBase = Boolean(item.visible);
     const summary = item.summary || "";

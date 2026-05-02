@@ -14,6 +14,8 @@ import type React from "react";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -408,9 +410,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       toast.success("Draft content generated");
       await editorProps.onUpdate();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "AI summarization failed";
-      toast.error(message);
+      showErrorToast(error, "AI summarization failed");
     } finally {
       setIsSummarizing(false);
     }
@@ -434,9 +434,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         description: "Review and edit before finalizing.",
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to generate AI draft";
-      toast.error(message);
+      showErrorToast(error, "Failed to generate AI draft");
     } finally {
       setIsGenerating(false);
     }
@@ -457,14 +455,13 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       toast.success("Resume PDF generated");
       await editorProps.onUpdate();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "PDF generation failed";
+      const message = formatUserFacingError(error, "PDF generation failed");
       if (/tracer/i.test(message)) {
         toast.error("Tracer links are unavailable right now", {
           description: message,
         });
       } else {
-        toast.error(message);
+        showErrorToast(error, "PDF generation failed");
       }
     } finally {
       setIsGeneratingPdf(false);

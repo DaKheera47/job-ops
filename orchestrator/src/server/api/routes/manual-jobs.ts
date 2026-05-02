@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import {
   AppError,
   badRequest,
@@ -31,7 +30,7 @@ const manualJobImportSchema = z.object({
   job: z.object({
     title: z.string().trim().min(1).max(500),
     employer: z.string().trim().min(1).max(500),
-    jobUrl: z.string().trim().url().max(2000).optional(),
+    jobUrl: z.string().trim().url().max(2000),
     applicationLink: z.string().trim().url().max(2000).optional(),
     location: z.string().trim().max(200).optional(),
     salary: z.string().trim().max(200).optional(),
@@ -52,6 +51,49 @@ const cleanOptional = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const BLOCKED_AUTOFETCH_HOSTS: Array<{
+  label: string;
+  match: (hostname: string) => boolean;
+}> = [
+  {
+    label: "LinkedIn",
+    match: (hostname) =>
+      hostname === "linkedin.com" || hostname.endsWith(".linkedin.com"),
+  },
+  {
+    label: "Indeed",
+    match: (hostname) =>
+      hostname === "indeed.com" || hostname.includes("indeed."),
+  },
+];
+
+function getHostname(value: string): string | null {
+  try {
+    return new URL(value).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function getBlockedAutofetchLabel(url: string): string | null {
+  const hostname = getHostname(url);
+  if (!hostname) return null;
+  const blocked = BLOCKED_AUTOFETCH_HOSTS.find((entry) =>
+    entry.match(hostname),
+  );
+  return blocked?.label ?? null;
+}
+
+function buildFetchFailureMessage(status: number): string {
+  if (status === 401 || status === 403 || status === 429) {
+    return "This site blocks automated fetch requests. Paste the job description manually.";
+  }
+  if (status === 404) {
+    return "We couldn't find that page. Check the URL or paste the job description manually.";
+  }
+  return "Couldn't fetch this URL automatically. Paste the job description manually.";
+}
+
 /**
  * POST /api/manual-jobs/fetch - Fetch and extract job content from a URL
  */
@@ -61,6 +103,17 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
 
   try {
     const input = manualJobFetchSchema.parse(req.body ?? {});
+    const blockedLabel = getBlockedAutofetchLabel(input.url);
+    if (blockedLabel) {
+      return fail(
+        res,
+        new AppError({
+          status: 422,
+          code: "UNPROCESSABLE_ENTITY",
+          message: `Auto-fetch is not supported for ${blockedLabel} links. Paste the job description manually.`,
+        }),
+      );
+    }
 
     const response = await fetch(input.url, {
       signal: controller.signal,
@@ -78,7 +131,8 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
         new AppError({
           status: 502,
           code: "UPSTREAM_ERROR",
-          message: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+          message: buildFetchFailureMessage(response.status),
+          details: { upstreamStatus: response.status },
         }),
       );
     }
@@ -206,16 +260,11 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
     const input = manualJobImportSchema.parse(req.body ?? {});
     const job = input.job;
 
-    const jobUrl =
-      cleanOptional(job.jobUrl) ||
-      cleanOptional(job.applicationLink) ||
-      `manual://${randomUUID()}`;
-
     const createdJob = await jobsRepo.createJob({
       source: "manual",
       title: job.title.trim(),
       employer: job.employer.trim(),
-      jobUrl,
+      jobUrl: job.jobUrl.trim(),
       applicationLink: cleanOptional(job.applicationLink) ?? undefined,
       location: cleanOptional(job.location) ?? undefined,
       salary: cleanOptional(job.salary) ?? undefined,

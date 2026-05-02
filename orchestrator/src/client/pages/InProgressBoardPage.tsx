@@ -12,6 +12,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -211,9 +212,7 @@ export const InProgressBoardPage: React.FC = () => {
           queryKeys.jobs.inProgressBoard(),
           previousCards,
         );
-        const message =
-          error instanceof Error ? error.message : "Failed to move stage";
-        toast.error(message);
+        showErrorToast(error, "Failed to move stage");
       } finally {
         setMovingJobId(null);
         setDragging(null);

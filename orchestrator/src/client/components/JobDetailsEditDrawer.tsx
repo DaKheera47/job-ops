@@ -3,6 +3,7 @@ import { Loader2, Save } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -184,11 +185,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
         try {
           await api.checkSponsor(job.id);
         } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Job updated, but sponsor check failed";
-          toast.error(message);
+          showErrorToast(error, "Job updated, but sponsor check failed");
         }
       }
 
@@ -204,11 +201,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
                 await onJobUpdated();
                 toast.success("Match recalculated");
               } catch (error) {
-                const message =
-                  error instanceof Error
-                    ? error.message
-                    : "Failed to recalculate match";
-                toast.error(message);
+                showErrorToast(error, "Failed to recalculate match");
               }
             })();
           },
@@ -217,9 +210,7 @@ export const JobDetailsEditDrawer: React.FC<JobDetailsEditDrawerProps> = ({
 
       onOpenChange(false);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to update job details";
-      toast.error(message);
+      showErrorToast(error, "Failed to update job details");
     } finally {
       setIsSaving(false);
     }

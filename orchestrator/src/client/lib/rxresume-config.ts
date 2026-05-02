@@ -1,5 +1,6 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type { ValidationResult } from "@shared/types.js";
+import { formatUserFacingError } from "@/client/lib/error-format";
 
 export type RxResumeSettingsLike =
   | {
@@ -141,11 +142,9 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
     skipPrecheck = false,
     getPrecheckMessage = (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
     getValidationErrorMessage = (error) =>
-      error instanceof Error ? error.message : "RxResume validation failed",
+      formatUserFacingError(error, "RxResume validation failed"),
     getPersistErrorMessage = (error) =>
-      error instanceof Error
-        ? error.message
-        : "Failed to save RxResume settings",
+      formatUserFacingError(error, "Failed to save RxResume settings"),
   } = input;
 
   const precheckFailure = skipPrecheck

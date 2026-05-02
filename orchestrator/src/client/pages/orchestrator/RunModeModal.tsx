@@ -44,16 +44,20 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   onSaveAndRunAutomatic,
   onManualImported,
 }) => {
+  const isManualMode = mode === "manual";
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-2xl">
         <div className="flex h-full flex-col">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              Run jobs
+              {isManualMode ? "Review job details" : "Run jobs"}
             </SheetTitle>
             <SheetDescription>
-              Choose Automatic pipeline run or Manual import.
+              {isManualMode
+                ? "Add a job description, review the extracted details, then import."
+                : "Configure an automatic pipeline run."}
             </SheetDescription>
           </SheetHeader>
 
@@ -87,6 +91,7 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
                 active={open && mode === "manual"}
                 onImported={onManualImported}
                 onClose={() => onOpenChange(false)}
+                showReviewIntro={false}
               />
             </TabsContent>
           </Tabs>

@@ -1,6 +1,6 @@
 {
   "name": "job-ops-orchestrator",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Unified orchestrator for job application pipeline",
   "main": "src/server/index.ts",

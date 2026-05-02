@@ -9,6 +9,7 @@ import type React from "react";
 import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,9 +56,7 @@ function AccountManagementSection() {
       toast.success("User created");
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create user",
-      );
+      showErrorToast(error, "Failed to create user");
     },
   });
 
@@ -69,9 +68,7 @@ function AccountManagementSection() {
       toast.success("User updated");
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to update user",
-      );
+      showErrorToast(error, "Failed to update user");
     },
   });
 
@@ -86,9 +83,7 @@ function AccountManagementSection() {
       toast.success("Password reset");
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to reset password",
-      );
+      showErrorToast(error, "Failed to reset password");
     },
   });
 

@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useRescoreJobMutation } from "@/client/hooks/queries/useJobMutations";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { trackProductEvent } from "@/lib/analytics";
 
 export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
@@ -25,11 +26,7 @@ export function useRescoreJob(onJobUpdated: () => void | Promise<void>) {
           action: "rescore",
           result: "error",
         });
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to recalculate match";
-        toast.error(message);
+        showErrorToast(error, "Failed to recalculate match");
       } finally {
         setIsRescoring(false);
       }
