@@ -25,13 +25,19 @@ import {
   MoreHorizontal,
   PlusCircle,
   RefreshCcw,
+  Send,
   Sparkles,
   Trash2,
   Upload,
   XCircle,
 } from "lucide-react";
 import React from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { toast } from "sonner";
 import { RichTextEditor } from "@/client/components/design-resume/RichTextEditor";
 import { JobDescriptionMarkdown } from "@/client/components/JobDescriptionMarkdown";
@@ -68,6 +74,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   cn,
   copyTextToClipboard,
@@ -116,6 +123,85 @@ const parseSelectedProjectIds = (value: string | null | undefined) =>
     ?.split(",")
     .map((id) => id.trim())
     .filter(Boolean) ?? [];
+
+const getGhostwriterSuggestions = (job: Job, hasNotes: boolean) => [
+  "What projects did I use for this application?",
+  hasNotes
+    ? "Summarize the latest interview notes."
+    : "What should I remember if a recruiter calls?",
+  `What should I know before speaking with ${job.employer}?`,
+  "Draft a concise follow-up message for this role.",
+];
+
+const OverviewGhostwriterComposer: React.FC<{
+  job: Job;
+  baseJobPath: string;
+  hasNotes: boolean;
+}> = ({ job, baseJobPath, hasNotes }) => {
+  const navigate = useNavigate();
+  const [prompt, setPrompt] = React.useState("");
+  const suggestions = React.useMemo(
+    () => getGhostwriterSuggestions(job, hasNotes),
+    [hasNotes, job],
+  );
+
+  const submitPrompt = React.useCallback(() => {
+    const content = prompt.trim();
+    if (!content) return;
+    navigate(
+      `${baseJobPath}/ghostwriter?prompt=${encodeURIComponent(content)}`,
+    );
+  }, [baseJobPath, navigate, prompt]);
+
+  return (
+    <section className="rounded-xl border border-border/50 bg-card/85 p-4">
+      <div className="rounded-lg border border-border/60 bg-background/30 p-3 shadow-sm transition focus-within:border-orange-400/50 focus-within:bg-background/45">
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-2 h-4 w-4 shrink-0 text-orange-300" />
+          <Textarea
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                submitPrompt();
+              }
+            }}
+            placeholder="Ask Ghostwriter anything about this application..."
+            className="min-h-[84px] resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 md:text-sm"
+          />
+        </div>
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50 pt-3">
+          <div className="text-[10px] text-muted-foreground">
+            Enter to send / Shift Enter for a new line
+          </div>
+          <Button
+            size="sm"
+            onClick={submitPrompt}
+            disabled={!prompt.trim()}
+            className="border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+          >
+            <Send className="mr-1.5 h-3.5 w-3.5" />
+            Go
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            className="rounded-md border border-border/60 bg-background/25 px-3 py-1.5 text-left text-xs text-muted-foreground transition hover:border-orange-400/40 hover:bg-orange-500/10 hover:text-orange-100"
+            onClick={() => setPrompt(suggestion)}
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+};
 
 const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
   const [editorState, setEditorState] = React.useState<
@@ -549,6 +635,7 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
 export const JobPage: React.FC = () => {
   const { id, view } = useParams<{ id: string; view?: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
@@ -905,6 +992,11 @@ export const JobPage: React.FC = () => {
     latestEvent?.metadata?.eventLabel || latestEvent?.title || null;
   const jobDescriptionPreview = summarizeMemoryText(job?.jobDescription, 260);
   const latestNotePreview = summarizeMemoryText(latestNote?.content, 180);
+  const initialGhostwriterPrompt =
+    activeMemoryView === "ghostwriter" ? searchParams.get("prompt") : null;
+  const clearInitialGhostwriterPrompt = React.useCallback(() => {
+    navigate(`${baseJobPath}/ghostwriter`, { replace: true });
+  }, [baseJobPath, navigate]);
 
   if (!id) {
     return null;
@@ -1083,14 +1175,14 @@ export const JobPage: React.FC = () => {
                         Application memory
                       </h2>
                     </div>
-                    <Button asChild size="sm" variant="outline">
-                      <Link to={`${baseJobPath}/ghostwriter`}>
-                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                        Ask Ghostwriter
-                      </Link>
-                    </Button>
                   </div>
                 </div>
+
+                <OverviewGhostwriterComposer
+                  job={job}
+                  baseJobPath={baseJobPath}
+                  hasNotes={notes.length > 0}
+                />
 
                 <div className="grid gap-4 lg:grid-cols-2">
                   <article className="rounded-xl border border-border/50 bg-card/75 p-4">
@@ -1236,35 +1328,6 @@ export const JobPage: React.FC = () => {
                       </Link>
                     </Button>
                   </article>
-
-                  <article className="rounded-xl border border-orange-400/20 bg-orange-500/5 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2 text-sm font-semibold">
-                        <Sparkles className="h-4 w-4 text-orange-300" />
-                        Ghostwriter
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="border-orange-400/30 bg-orange-500/10 text-orange-100"
-                      >
-                        AI
-                      </Badge>
-                    </div>
-                    <div className="mt-4 min-h-[5.5rem] rounded-lg border border-orange-400/20 bg-background/25 p-3 text-sm leading-6 text-muted-foreground">
-                      Ask what CV context was used, what happened in the last
-                      call, or what to say before the next recruiter touchpoint.
-                    </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      className="mt-4 w-full justify-between border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
-                    >
-                      <Link to={`${baseJobPath}/ghostwriter`}>
-                        Open Ghostwriter
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
-                  </article>
                 </div>
               </section>
             )}
@@ -1402,7 +1465,11 @@ export const JobPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="h-[720px] min-h-0">
-                  <GhostwriterPanel job={job} />
+                  <GhostwriterPanel
+                    job={job}
+                    initialPrompt={initialGhostwriterPrompt}
+                    onInitialPromptConsumed={clearInitialGhostwriterPrompt}
+                  />
                 </div>
               </section>
             )}
