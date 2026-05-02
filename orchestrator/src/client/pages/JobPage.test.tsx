@@ -205,11 +205,11 @@ beforeEach(() => {
   });
 });
 
-const renderJobPage = () =>
+const renderJobPage = (initialEntry = "/job/job-1/note") =>
   render(
-    <MemoryRouter initialEntries={["/job/job-1"]}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/job/:id" element={<JobPage />} />
+        <Route path="/job/:id/:view?" element={<JobPage />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -235,27 +235,14 @@ describe("JobPage notes", () => {
     renderJobPage();
 
     await waitFor(() => {
-      expect(screen.getByTestId("job-header")).toHaveTextContent(
-        "Backend Engineer",
-      );
+      expect(
+        screen.getByRole("heading", { name: "Acme Labs" }),
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByTestId("job-notes-section")).toHaveClass("w-full");
     expect(screen.getByTestId("job-notes-list")).toBeInTheDocument();
     expect(screen.getByTestId("job-notes-detail")).toBeInTheDocument();
-
-    const applicationDetails = screen.getByText("Application details");
-    const notesHeading = screen.getByText("Notes");
-    const upcomingTasks = screen.getByText("Upcoming tasks");
-
-    expect(
-      applicationDetails.compareDocumentPosition(notesHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      upcomingTasks.compareDocumentPosition(notesHeading) &
-        Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
 
     expect(
       await screen.findByRole("heading", { name: "Strong fit" }),
