@@ -125,12 +125,10 @@ const parseSelectedProjectIds = (value: string | null | undefined) =>
     .filter(Boolean) ?? [];
 
 const getGhostwriterSuggestions = (job: Job, hasNotes: boolean) => [
-  "What projects did I use for this application?",
   hasNotes
     ? "Summarize the latest interview notes."
     : "What should I remember if a recruiter calls?",
   `What should I know before speaking with ${job.employer}?`,
-  "Draft a concise follow-up message for this role.",
 ];
 
 const OverviewGhostwriterComposer: React.FC<{
@@ -155,9 +153,8 @@ const OverviewGhostwriterComposer: React.FC<{
 
   return (
     <section className="rounded-xl border border-border/50 bg-card/85 p-4">
-      <div className="rounded-lg border border-border/60 bg-background/30 p-3 shadow-sm transition focus-within:border-orange-400/50 focus-within:bg-background/45">
         <div className="flex items-start gap-3">
-          <Sparkles className="mt-2 h-4 w-4 shrink-0 text-orange-300" />
+          <Sparkles className="mt-1.5 h-4 w-4 shrink-0 text-orange-300" />
           <Textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
@@ -168,37 +165,35 @@ const OverviewGhostwriterComposer: React.FC<{
               }
             }}
             placeholder="Ask Ghostwriter anything about this application..."
-            className="min-h-[84px] resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 md:text-sm"
+            className="min-h-[30px] resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:ring-0 md:text-sm"
           />
         </div>
-        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50 pt-3">
-          <div className="text-[10px] text-muted-foreground">
-            Enter to send / Shift Enter for a new line
+        <div className="mt-3 flex items-center justify-between gap-3 border-t border-border/50">
+          <div className="mt-3 flex flex-wrap gap-2">
+            {suggestions.map((suggestion) => (
+              <Button
+                key={suggestion}
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-auto border-border/60 bg-background/25 px-3 py-1.5 text-left text-xs text-muted-foreground hover:border-orange-400/40 hover:bg-orange-500/10 hover:text-orange-100"
+                onClick={() => setPrompt(suggestion)}
+              >
+                {suggestion}
+              </Button>
+            ))}
           </div>
+
           <Button
             size="sm"
             onClick={submitPrompt}
             disabled={!prompt.trim()}
-            className="border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+            className="mt-3"
           >
             <Send className="mr-1.5 h-3.5 w-3.5" />
             Go
           </Button>
         </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {suggestions.map((suggestion) => (
-          <button
-            key={suggestion}
-            type="button"
-            className="rounded-md border border-border/60 bg-background/25 px-3 py-1.5 text-left text-xs text-muted-foreground transition hover:border-orange-400/40 hover:bg-orange-500/10 hover:text-orange-100"
-            onClick={() => setPrompt(suggestion)}
-          >
-            {suggestion}
-          </button>
-        ))}
-      </div>
     </section>
   );
 };
@@ -405,11 +400,12 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
                       formatDateTime(note.updatedAt) ?? note.updatedAt;
                     const isSelected = note.id === selectedNoteId;
                     return (
-                      <button
+                      <Button
                         key={note.id}
                         type="button"
+                        variant="ghost"
                         className={cn(
-                          "w-full rounded-xl border px-4 py-3 text-left transition",
+                          "h-auto w-full justify-start whitespace-normal rounded-xl border px-4 py-3 text-left font-normal transition",
                           isSelected
                             ? "border-primary/40 bg-primary/5 shadow-sm"
                             : "border-border/60 bg-background/70 hover:border-border hover:bg-muted/40",
@@ -433,7 +429,7 @@ const JobNotesCard: React.FC<{ jobId: string }> = ({ jobId }) => {
                             </Badge>
                           )}
                         </div>
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
@@ -1137,26 +1133,21 @@ export const JobPage: React.FC = () => {
                     icon: Sparkles,
                   },
                 ].map(({ id: linkView, label, path, icon: Icon }) => (
-                  <Link
-                    to={path}
+                  <Button
+                    asChild
                     key={linkView}
+                    variant={activeMemoryView === linkView ? "outline" : "ghost"}
                     className={cn(
-                      "flex h-9 w-full items-center justify-between rounded-md px-2 text-left text-sm transition",
-                      activeMemoryView === linkView
-                        ? "border border-orange-400/30 bg-orange-500/10 text-orange-100"
-                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                      "h-9 w-full justify-between px-2 text-left text-sm",
                     )}
                   >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{label}</span>
-                    </span>
-                    {activeMemoryView === linkView && (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Open
-                      </Badge>
-                    )}
-                  </Link>
+                    <Link to={path}>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </span>
+                    </Link>
+                  </Button>
                 ))}
               </div>
             </section>
@@ -1165,19 +1156,6 @@ export const JobPage: React.FC = () => {
           <div className="space-y-4">
             {activeMemoryView === "overview" && (
               <section className="space-y-4">
-                <div className="rounded-xl border border-border/50 bg-card/85 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-                        Overview
-                      </div>
-                      <h2 className="mt-1 text-xl font-semibold">
-                        Application memory
-                      </h2>
-                    </div>
-                  </div>
-                </div>
-
                 <OverviewGhostwriterComposer
                   job={job}
                   baseJobPath={baseJobPath}
@@ -1478,15 +1456,14 @@ export const JobPage: React.FC = () => {
           <aside className="space-y-4 xl:sticky xl:top-5">
             <section className="rounded-xl border border-border/50 bg-card/85 p-3">
               <div className="mb-3 flex items-center gap-2 px-1 text-sm font-semibold">
-                <Sparkles className="h-4 w-4" />
-                Next actions
+                Actions
               </div>
               <div className="space-y-2">
                 {jobLink && (
                   <Button
                     asChild
                     size="sm"
-                    className="h-9 w-full justify-start border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    className="w-full"
                   >
                     <a href={jobLink} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
@@ -1498,7 +1475,7 @@ export const JobPage: React.FC = () => {
                 {isDiscovered && (
                   <Button
                     size="sm"
-                    className="h-9 w-full justify-start border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    className="w-full"
                     onClick={() => navigate(`/jobs/discovered/${job.id}`)}
                     disabled={isBusy}
                   >
@@ -1510,7 +1487,7 @@ export const JobPage: React.FC = () => {
                 {isReady && (
                   <Button
                     size="sm"
-                    className="h-9 w-full justify-start border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    className="w-full"
                     onClick={() => void handleMarkApplied()}
                     disabled={isBusy}
                   >
@@ -1522,7 +1499,7 @@ export const JobPage: React.FC = () => {
                 {isApplied && (
                   <Button
                     size="sm"
-                    className="h-9 w-full justify-start border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    className="w-full"
                     onClick={() => void handleMoveToInProgress()}
                     disabled={isBusy}
                   >
@@ -1534,7 +1511,7 @@ export const JobPage: React.FC = () => {
                 {isInProgress && (
                   <Button
                     size="sm"
-                    className="h-9 w-full justify-start border border-orange-400/50 bg-orange-500/20 text-orange-100 hover:bg-orange-500/30"
+                    className="w-full"
                     onClick={() => setIsLogModalOpen(true)}
                     disabled={!canLogEvents || isBusy}
                   >
