@@ -77,13 +77,15 @@ import {
 } from "@/lib/utils";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
-import { GhostwriterDrawer } from "../components/ghostwriter/GhostwriterDrawer";
+import { GhostwriterPanel } from "../components/ghostwriter/GhostwriterPanel";
 import { JobDetailsEditDrawer } from "../components/JobDetailsEditDrawer";
 import {
   type LogEventFormValues,
   LogEventModal,
 } from "../components/LogEventModal";
 import { JobTimeline } from "./job/Timeline";
+
+type JobMemoryView = "notes" | "documents" | "timeline" | "ghostwriter";
 
 const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
   [...notes].sort(
@@ -540,6 +542,8 @@ export const JobPage: React.FC = () => {
   const [isEditDetailsOpen, setIsEditDetailsOpen] = React.useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = React.useState(false);
   const [activeAction, setActiveAction] = React.useState<string | null>(null);
+  const [activeMemoryView, setActiveMemoryView] =
+    React.useState<JobMemoryView>("notes");
   const [eventToDelete, setEventToDelete] = React.useState<string | null>(null);
   const [editingEvent, setEditingEvent] = React.useState<StageEvent | null>(
     null,
@@ -971,100 +975,195 @@ export const JobPage: React.FC = () => {
                 </div>
               )}
             </section>
+
+            <section className="rounded-xl border border-border/50 bg-card/70 p-3">
+              <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+                Links
+              </div>
+              <div className="space-y-1">
+                {[
+                  {
+                    id: "notes" as const,
+                    label: "Notes",
+                    icon: MessageSquareText,
+                  },
+                  {
+                    id: "documents" as const,
+                    label: "Documents",
+                    icon: FileText,
+                  },
+                  {
+                    id: "timeline" as const,
+                    label: "Timeline",
+                    icon: ClipboardList,
+                  },
+                  {
+                    id: "ghostwriter" as const,
+                    label: "Ghostwriter",
+                    icon: Sparkles,
+                  },
+                ].map(({ id: view, label, icon: Icon }) => (
+                  <button
+                    key={view}
+                    type="button"
+                    className={cn(
+                      "flex h-9 w-full items-center justify-between rounded-md px-2 text-left text-sm transition",
+                      activeMemoryView === view
+                        ? "border border-orange-400/30 bg-orange-500/10 text-orange-100"
+                        : "text-muted-foreground hover:bg-muted/30 hover:text-foreground",
+                    )}
+                    onClick={() => setActiveMemoryView(view)}
+                  >
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{label}</span>
+                    </span>
+                    {activeMemoryView === view && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Open
+                      </Badge>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
           </aside>
 
-          <div className="space-y-4">
-            <section className="rounded-xl border border-orange-400/20 bg-orange-500/[0.06] p-4">
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                <div className="min-w-0">
-                  <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-orange-100">
-                    <MessageSquareText className="h-4 w-4" />
-                    Ghostwriter recall
-                  </div>
-                  <div className="rounded-lg border border-orange-300/20 bg-background/50 px-4 py-3 text-sm text-muted-foreground">
-                    Ask Ghostwriter about this application...
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      "What projects did I use?",
-                      "Summarize interview notes",
-                      "What should I remember?",
-                    ].map((prompt) => (
-                      <Badge
-                        key={prompt}
-                        variant="outline"
-                        className="border-orange-300/20 bg-background/25 text-[11px] font-normal text-orange-100/80"
-                      >
-                        {prompt}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <GhostwriterDrawer job={job} />
-              </div>
-            </section>
+          <div>
+            {activeMemoryView === "notes" && job.id && (
+              <JobNotesCard jobId={job.id} />
+            )}
 
-            <section className="rounded-xl border border-border/50 bg-card/85">
-              <div className="border-b border-border/50 px-4 py-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-base font-semibold">
-                    <ClipboardList className="h-4 w-4" />
-                    Memory stream
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {job.salary && (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                      >
-                        <DollarSign className="mr-1 h-3.5 w-3.5" />
-                        {job.salary}
-                      </Badge>
-                    )}
-                    {currentStage && (
-                      <Badge variant="secondary">
-                        {STAGE_LABELS[currentStage as ApplicationStage] ||
-                          currentStage}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="p-4">
-                {!canTrackStages && (
-                  <div className="mb-4 rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
-                    Move this job to In Progress to track application stages.
-                  </div>
-                )}
-                {canTrackStages && isClosedStage && (
-                  <div className="mb-4 rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
-                    This application is closed. Stage logging is disabled.
-                  </div>
-                )}
-                <JobTimeline
-                  events={events}
-                  onEdit={canLogEvents ? handleEditEvent : undefined}
-                  onDelete={canLogEvents ? confirmDeleteEvent : undefined}
-                />
-              </div>
-            </section>
-
-            {job.id && <JobNotesCard jobId={job.id} />}
-
-            {job.jobDescription && (
+            {activeMemoryView === "documents" && (
               <section className="rounded-xl border border-border/50 bg-card/75">
                 <div className="border-b border-border/50 px-4 py-3">
                   <div className="flex items-center gap-2 text-base font-semibold">
                     <FileText className="h-4 w-4" />
-                    Source document
+                    Documents
+                  </div>
+                </div>
+                <div className="space-y-4 p-4">
+                  <div className="rounded-lg border border-border/60 bg-background/25 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">Resume PDF</div>
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          Generated or uploaded application material for this
+                          job.
+                        </div>
+                      </div>
+                      {job.pdfPath ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            void openJobPdf(job.id).catch((error) => {
+                              toast.error(
+                                error instanceof Error
+                                  ? error.message
+                                  : "Could not open PDF",
+                              );
+                            });
+                          }}
+                        >
+                          <FileText className="mr-1.5 h-3.5 w-3.5" />
+                          View PDF
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => uploadPdfInputRef.current?.click()}
+                          disabled={isUploadingPdf}
+                        >
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          Upload PDF
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-border/60 bg-background/25">
+                    <div className="border-b border-border/50 px-4 py-3">
+                      <div className="text-sm font-semibold">
+                        Job description
+                      </div>
+                    </div>
+                    <div className="p-4">
+                      {job.jobDescription ? (
+                        <JobDescriptionMarkdown
+                          description={getRenderableJobDescription(
+                            job.jobDescription,
+                          )}
+                        />
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          No job description stored.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {activeMemoryView === "timeline" && (
+              <section className="rounded-xl border border-border/50 bg-card/85">
+                <div className="border-b border-border/50 px-4 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-base font-semibold">
+                      <ClipboardList className="h-4 w-4" />
+                      Timeline
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {job.salary && (
+                        <Badge
+                          variant="outline"
+                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                        >
+                          <DollarSign className="mr-1 h-3.5 w-3.5" />
+                          {job.salary}
+                        </Badge>
+                      )}
+                      {currentStage && (
+                        <Badge variant="secondary">
+                          {STAGE_LABELS[currentStage as ApplicationStage] ||
+                            currentStage}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="p-4">
-                  <JobDescriptionMarkdown
-                    description={getRenderableJobDescription(
-                      job.jobDescription,
-                    )}
+                  {!canTrackStages && (
+                    <div className="mb-4 rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
+                      Move this job to In Progress to track application stages.
+                    </div>
+                  )}
+                  {canTrackStages && isClosedStage && (
+                    <div className="mb-4 rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
+                      This application is closed. Stage logging is disabled.
+                    </div>
+                  )}
+                  <JobTimeline
+                    events={events}
+                    onEdit={canLogEvents ? handleEditEvent : undefined}
+                    onDelete={canLogEvents ? confirmDeleteEvent : undefined}
                   />
+                </div>
+              </section>
+            )}
+
+            {activeMemoryView === "ghostwriter" && (
+              <section className="overflow-hidden rounded-xl border border-border/50 bg-card/85">
+                <div className="border-b border-border/50 px-4 py-3">
+                  <div className="flex items-center gap-2 text-base font-semibold">
+                    <Sparkles className="h-4 w-4" />
+                    Ghostwriter
+                  </div>
+                </div>
+                <div className="h-[720px] min-h-0">
+                  <GhostwriterPanel job={job} />
                 </div>
               </section>
             )}
