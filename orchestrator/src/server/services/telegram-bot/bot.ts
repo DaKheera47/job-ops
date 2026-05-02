@@ -95,14 +95,18 @@ export function createBot(token: string): Bot {
 export async function sendMainMenu(ctx: Context): Promise<void> {
   // Import here to avoid circular deps
   const { getJobStats } = await import("../../repositories/jobs");
+  const { escapeHtml } = await import("./formatting");
   const stats = await getJobStats();
 
   const ready = stats.ready || 0;
   const applied = stats.applied || 0;
   const discovered = stats.discovered || 0;
 
+  const name = ctx.from?.first_name || "";
+  const greeting = name ? ` ${escapeHtml(name)}` : "";
+
   const text =
-    `<b>🏠 Job Ops — Command Center</b>\n\n` +
+    `<b>🏠 Job Ops${greeting}</b>\n\n` +
     `📋 ${ready} ready · ${applied} applied · ${discovered} discovered`;
 
   const keyboard = new InlineKeyboard()

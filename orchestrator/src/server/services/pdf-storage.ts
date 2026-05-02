@@ -2,7 +2,7 @@ import { join } from "node:path";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
 
-function safeFilePart(value: string, maxLen = 40): string {
+export function safeFilePart(value: string, maxLen = 40): string {
   return value
     .replace(/[^a-zA-Z0-9\u0400-\u04FF _-]/g, "")
     .replace(/\s+/g, "_")

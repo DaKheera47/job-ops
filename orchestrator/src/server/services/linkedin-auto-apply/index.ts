@@ -42,59 +42,68 @@ export async function startLinkedInLogin(): Promise<{
   if (busy) throw new Error("A LinkedIn operation is already in progress");
   busy = true;
 
+  const viewerStatus = await ensureChallengeViewer();
+  if (!viewerStatus.available) {
+    busy = false;
+    throw new Error("Browser viewer is not available");
+  }
+
+  const { token } = createChallengeViewerSession({ ttlMs: 15 * 60 * 1000 });
+  const viewerUrl = buildChallengeViewerUrl({ token });
+
+  // Launch browser and navigate to login page, then return viewerUrl immediately.
+  // The login wait continues in the background so the user can open the viewer
+  // and enter credentials while the API response is already delivered.
+  let launchOptions: Record<string, unknown> = {
+    headless: false,
+    args: ["--no-sandbox"],
+  };
   try {
-    const viewerStatus = await ensureChallengeViewer();
-    if (!viewerStatus.available) {
-      throw new Error("Browser viewer is not available");
-    }
-
-    const { token } = createChallengeViewerSession({ ttlMs: 15 * 60 * 1000 });
-    const viewerUrl = buildChallengeViewerUrl({ token });
-
-    // Launch headed browser
-    let launchOptions: Record<string, unknown> = {
+    const camoufox = await import("camoufox-js");
+    launchOptions = await camoufox.launchOptions({
       headless: false,
-      args: ["--no-sandbox"],
-    };
-    try {
-      const camoufox = await import("camoufox-js");
-      launchOptions = await camoufox.launchOptions({
-        headless: false,
-        humanize: true,
-        geoip: true,
-        block_webrtc: true,
+      humanize: true,
+      geoip: true,
+      block_webrtc: true,
+    });
+  } catch {
+    // fallback to vanilla Firefox
+  }
+
+  const browser = await firefox.launch(launchOptions);
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  await page.goto("https://www.linkedin.com/login", {
+    waitUntil: "domcontentloaded",
+    timeout: 30_000,
+  });
+
+  logger.info("LinkedIn login page opened, waiting for user to log in");
+
+  // Continue waiting for login in the background — don't block the HTTP response
+  waitForLogin(page, 10 * 60 * 1000)
+    .then(async (loggedIn) => {
+      if (loggedIn) {
+        await saveLinkedInCookies(context);
+        lastVerifiedAt = new Date().toISOString();
+        logger.info("LinkedIn login successful, cookies saved");
+      } else {
+        logger.warn("LinkedIn login timed out");
+      }
+      await browser.close();
+    })
+    .catch(async (err) => {
+      logger.error("LinkedIn login background error", {
+        error: err instanceof Error ? err.message : String(err),
       });
-    } catch {
-      // fallback to vanilla Firefox
-    }
-
-    const browser = await firefox.launch(launchOptions);
-    const context = await browser.newContext();
-    const page = await context.newPage();
-
-    await page.goto("https://www.linkedin.com/login", {
-      waitUntil: "domcontentloaded",
-      timeout: 30_000,
+      await browser.close().catch(() => {});
+    })
+    .finally(() => {
+      busy = false;
     });
 
-    logger.info("LinkedIn login page opened, waiting for user to log in");
-
-    // Wait for user to log in (polls URL changes)
-    const loggedIn = await waitForLogin(page, 5 * 60 * 1000);
-
-    if (loggedIn) {
-      await saveLinkedInCookies(context);
-      lastVerifiedAt = new Date().toISOString();
-      logger.info("LinkedIn login successful, cookies saved");
-    } else {
-      logger.warn("LinkedIn login timed out");
-    }
-
-    await browser.close();
-    return { viewerUrl };
-  } finally {
-    busy = false;
-  }
+  return { viewerUrl };
 }
 
 export async function verifySession(): Promise<{
