@@ -366,6 +366,7 @@ describe("JobPage timeline actions", () => {
 
     renderJobPage("/job/job-1");
 
+    expect(await screen.findByTestId("job-right-sidebar")).toBeInTheDocument();
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /log event/i }),
@@ -380,6 +381,7 @@ describe("JobPage timeline actions", () => {
 
     renderJobPage("/job/job-1/timeline");
 
+    expect(screen.queryByTestId("job-right-sidebar")).not.toBeInTheDocument();
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: /log event/i }),

@@ -464,13 +464,17 @@ export const JobPage: React.FC = () => {
   const clearInitialGhostwriterPrompt = React.useCallback(() => {
     navigate(`${baseJobPath}/ghostwriter`, { replace: true });
   }, [baseJobPath, navigate]);
+  const pageGridClass =
+    activeMemoryView === "overview"
+      ? "grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]"
+      : "grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)]";
 
   if (!id) {
     return null;
   }
 
   return (
-    <main className="mx-auto max-w-[92rem] px-4 py-5 pb-12">
+    <main className="mx-auto max-w-[92rem] px-4 py-5">
       <div className="mb-4 flex items-center justify-between gap-4">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4" />
@@ -495,7 +499,7 @@ export const JobPage: React.FC = () => {
       )}
 
       {job && (
-        <div className="grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]">
+        <div className={pageGridClass}>
           <JobPageLeftSidebar
             job={job}
             activeMemoryView={activeMemoryView}
@@ -811,14 +815,14 @@ export const JobPage: React.FC = () => {
             )}
 
             {activeMemoryView === "ghostwriter" && (
-              <section className="overflow-hidden rounded-xl border border-border/50 bg-card/85">
+              <section className="">
                 <div className="border-b border-border/50 px-4 py-3">
                   <div className="flex items-center gap-2 text-base font-semibold">
                     <Sparkles className="h-4 w-4" />
                     Ghostwriter
                   </div>
                 </div>
-                <div className="h-[720px] min-h-0">
+                <div className="h-[calc(100vh-140px)] px-4">
                   <GhostwriterPanel
                     job={job}
                     initialPrompt={initialGhostwriterPrompt}
@@ -829,37 +833,41 @@ export const JobPage: React.FC = () => {
             )}
           </div>
 
-          <JobPageRightSidebar
-            job={job}
-            tasks={tasks}
-            jobLink={jobLink}
-            isDiscovered={Boolean(isDiscovered)}
-            isReady={Boolean(isReady)}
-            isApplied={Boolean(isApplied)}
-            isInProgress={Boolean(isInProgress)}
-            canLogEvents={canLogEvents}
-            isBusy={isBusy}
-            isUploadingPdf={isUploadingPdf}
-            onStartTailoring={() => navigate(`/jobs/discovered/${job.id}`)}
-            onMarkApplied={() => void handleMarkApplied()}
-            onMoveToInProgress={() => void handleMoveToInProgress()}
-            onOpenLogEvent={() => setIsLogModalOpen(true)}
-            onEditTailoring={() => navigate(`/jobs/ready/${job.id}`)}
-            onViewPdf={() => {
-              void openJobPdf(job.id).catch((error) => {
-                toast.error(
-                  error instanceof Error ? error.message : "Could not open PDF",
-                );
-              });
-            }}
-            onUploadPdf={() => uploadPdfInputRef.current?.click()}
-            onRegeneratePdf={() => void handleRegeneratePdf()}
-            onSkip={() => void handleSkip()}
-            onOpenEditDetails={openEditDetails}
-            onCopyJobInfo={() => void handleCopyJobInfo()}
-            onRescore={() => void handleRescore()}
-            onCheckSponsor={() => void handleCheckSponsor()}
-          />
+          {activeMemoryView === "overview" && (
+            <JobPageRightSidebar
+              job={job}
+              tasks={tasks}
+              jobLink={jobLink}
+              isDiscovered={Boolean(isDiscovered)}
+              isReady={Boolean(isReady)}
+              isApplied={Boolean(isApplied)}
+              isInProgress={Boolean(isInProgress)}
+              canLogEvents={canLogEvents}
+              isBusy={isBusy}
+              isUploadingPdf={isUploadingPdf}
+              onStartTailoring={() => navigate(`/jobs/discovered/${job.id}`)}
+              onMarkApplied={() => void handleMarkApplied()}
+              onMoveToInProgress={() => void handleMoveToInProgress()}
+              onOpenLogEvent={() => setIsLogModalOpen(true)}
+              onEditTailoring={() => navigate(`/jobs/ready/${job.id}`)}
+              onViewPdf={() => {
+                void openJobPdf(job.id).catch((error) => {
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Could not open PDF",
+                  );
+                });
+              }}
+              onUploadPdf={() => uploadPdfInputRef.current?.click()}
+              onRegeneratePdf={() => void handleRegeneratePdf()}
+              onSkip={() => void handleSkip()}
+              onOpenEditDetails={openEditDetails}
+              onCopyJobInfo={() => void handleCopyJobInfo()}
+              onRescore={() => void handleRescore()}
+              onCheckSponsor={() => void handleCheckSponsor()}
+            />
+          )}
         </div>
       )}
 
