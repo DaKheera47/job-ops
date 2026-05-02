@@ -420,7 +420,7 @@ export const OrchestratorPage: React.FC = () => {
         />
 
         {activeTab === "ready" && (() => {
-          const linkedInReadyCount = filteredJobs.filter(
+          const linkedInReadyCount = activeJobs.filter(
             (j) => j.source === "linkedin" && j.status === "ready",
           ).length;
           return linkedInReadyCount > 0 ? (
@@ -504,10 +504,10 @@ export const OrchestratorPage: React.FC = () => {
         canSkipSelected={canSkipSelected}
         canRescoreSelected={canRescoreSelected}
         canAutoApplySelected={(() => {
-          const selected = filteredJobs.filter((j) => selectedJobIds.has(j.id));
+          const selected = activeJobs.filter((j) => selectedJobIds.has(j.id));
           return selected.some((j) => j.source === "linkedin" && j.status === "ready");
         })()}
-        selectedLinkedInReadyIds={filteredJobs
+        selectedLinkedInReadyIds={activeJobs
           .filter((j) => selectedJobIds.has(j.id) && j.source === "linkedin" && j.status === "ready")
           .map((j) => j.id)}
         jobActionInFlight={jobActionInFlight !== null}
