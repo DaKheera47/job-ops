@@ -17,17 +17,26 @@ const listMessagesQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).max(10000).optional(),
 });
 
+const selectedNoteIdsSchema = z.array(z.string().trim().min(1)).default([]);
+
+const updateContextSchema = z.object({
+  selectedNoteIds: selectedNoteIdsSchema,
+});
+
 const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
+  selectedNoteIds: selectedNoteIdsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
 const regenerateSchema = z.object({
+  selectedNoteIds: selectedNoteIdsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
 const editMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
+  selectedNoteIds: selectedNoteIdsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
@@ -57,7 +66,33 @@ ghostwriterRouter.get(
         limit: parsed.data.limit,
         offset: parsed.data.offset,
       });
-      ok(res, { messages: result.messages, branches: result.branches });
+      ok(res, {
+        messages: result.messages,
+        branches: result.branches,
+        selectedNoteIds: result.selectedNoteIds,
+      });
+    });
+  }),
+);
+
+ghostwriterRouter.patch(
+  "/context",
+  asyncRoute(async (req, res) => {
+    const jobId = getJobId(req);
+    const parsed = updateContextSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return fail(
+        res,
+        badRequest(parsed.error.message, parsed.error.flatten()),
+      );
+    }
+
+    await runWithRequestContext({ jobId }, async () => {
+      const result = await ghostwriterService.updateContextForJob({
+        jobId,
+        selectedNoteIds: parsed.data.selectedNoteIds,
+      });
+      ok(res, result);
     });
   }),
 );
@@ -86,6 +121,7 @@ ghostwriterRouter.post(
           await ghostwriterService.sendMessageForJob({
             jobId,
             content: parsed.data.content,
+            selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -142,6 +178,7 @@ ghostwriterRouter.post(
       const result = await ghostwriterService.sendMessageForJob({
         jobId,
         content: parsed.data.content,
+        selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
       ok(res, {
@@ -201,6 +238,7 @@ ghostwriterRouter.post(
           await ghostwriterService.regenerateMessageForJob({
             jobId,
             assistantMessageId,
+            selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -257,6 +295,7 @@ ghostwriterRouter.post(
       const result = await ghostwriterService.regenerateMessageForJob({
         jobId,
         assistantMessageId,
+        selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
       ok(res, result);
@@ -293,6 +332,7 @@ ghostwriterRouter.post(
             jobId,
             messageId,
             content: parsed.data.content,
+            selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -350,6 +390,7 @@ ghostwriterRouter.post(
         jobId,
         messageId,
         content: parsed.data.content,
+        selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
       ok(res, {
@@ -488,6 +529,7 @@ ghostwriterRouter.post(
             jobId,
             threadId,
             content: parsed.data.content,
+            selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -545,6 +587,7 @@ ghostwriterRouter.post(
         jobId,
         threadId,
         content: parsed.data.content,
+        selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
       ok(res, {
@@ -610,6 +653,7 @@ ghostwriterRouter.post(
             jobId,
             threadId,
             assistantMessageId,
+            selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -667,6 +711,7 @@ ghostwriterRouter.post(
         jobId,
         threadId,
         assistantMessageId,
+        selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
       ok(res, result);

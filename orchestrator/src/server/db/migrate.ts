@@ -291,6 +291,7 @@ const migrations = [
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     last_message_at TEXT,
     active_root_message_id TEXT,
+    selected_note_ids TEXT NOT NULL DEFAULT '[]',
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
     FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE CASCADE
   )`,
@@ -829,6 +830,7 @@ const migrations = [
   `ALTER TABLE job_chat_messages ADD COLUMN parent_message_id TEXT`,
   `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
   `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
+  `ALTER TABLE job_chat_threads ADD COLUMN selected_note_ids TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE pipeline_runs ADD COLUMN config_snapshot TEXT`,
   `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_version INTEGER NOT NULL DEFAULT 0`,
   `ALTER TABLE analytics_install_state ADD COLUMN raw_event_replay_completed_at TEXT`,

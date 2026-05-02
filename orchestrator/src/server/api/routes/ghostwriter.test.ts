@@ -24,6 +24,8 @@ vi.mock("@server/services/ghostwriter", () => ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastMessageAt: new Date().toISOString(),
+      activeRootMessageId: null,
+      selectedNoteIds: ["note-1"],
     },
   ]),
   createThread: vi.fn(
@@ -34,6 +36,13 @@ vi.mock("@server/services/ghostwriter", () => ({
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastMessageAt: null,
+      activeRootMessageId: null,
+      selectedNoteIds: [],
+    }),
+  ),
+  updateContextForJob: vi.fn(
+    async (input: { jobId: string; selectedNoteIds: string[] }) => ({
+      selectedNoteIds: input.selectedNoteIds,
     }),
   ),
   listMessages: vi.fn(async () => ({
@@ -47,6 +56,7 @@ vi.mock("@server/services/ghostwriter", () => ({
       },
     ],
     branches: [],
+    selectedNoteIds: ["note-1"],
   })),
   listMessagesForJob: vi.fn(async () => ({
     messages: [
@@ -59,6 +69,7 @@ vi.mock("@server/services/ghostwriter", () => ({
       },
     ],
     branches: [],
+    selectedNoteIds: ["note-1"],
   })),
   sendMessage: vi.fn(async () => ({
     userMessage: {
@@ -189,6 +200,19 @@ describe.sequential("Ghostwriter API", () => {
     expect(messageBody.data.runId).toBe("run-1");
     expect(messageBody.data.assistantMessage.role).toBe("assistant");
     expect(typeof messageBody.meta.requestId).toBe("string");
+  });
+
+  it("updates selected Ghostwriter notes", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/context`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedNoteIds: ["note-1"] }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.selectedNoteIds).toEqual(["note-1"]);
   });
 
   it("edits a user message", async () => {

@@ -106,8 +106,8 @@ type LegacyApiResponse<T> =
 
 type StreamSseInput =
   | JobActionRequest
-  | { content: string; stream: true }
-  | { stream: true };
+  | { content: string; selectedNoteIds?: string[]; stream: true }
+  | { selectedNoteIds?: string[]; stream: true };
 
 export type CodexAuthStatusResponse = {
   authenticated: boolean;
@@ -997,7 +997,11 @@ export async function listJobChatThreads(jobId: string): Promise<{
 export async function listJobGhostwriterMessages(
   jobId: string,
   options?: { limit?: number; offset?: number },
-): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
+): Promise<{
+  messages: JobChatMessage[];
+  branches: BranchInfo[];
+  selectedNoteIds: string[];
+}> {
   const params = new URLSearchParams();
   if (typeof options?.limit === "number") {
     params.set("limit", String(options.limit));
@@ -1006,8 +1010,23 @@ export async function listJobGhostwriterMessages(
     params.set("offset", String(options.offset));
   }
   const query = params.toString();
-  return fetchApi<{ messages: JobChatMessage[]; branches: BranchInfo[] }>(
-    `/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`,
+  return fetchApi<{
+    messages: JobChatMessage[];
+    branches: BranchInfo[];
+    selectedNoteIds: string[];
+  }>(`/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`);
+}
+
+export async function updateJobGhostwriterContext(
+  jobId: string,
+  input: { selectedNoteIds: string[] },
+): Promise<{ selectedNoteIds: string[] }> {
+  return fetchApi<{ selectedNoteIds: string[] }>(
+    `/jobs/${jobId}/chat/context`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
   );
 }
 
@@ -1044,7 +1063,7 @@ export async function listJobChatMessages(
 export async function sendJobChatMessage(
   jobId: string,
   threadId: string,
-  input: { content: string },
+  input: { content: string; selectedNoteIds?: string[] },
 ): Promise<{
   userMessage: JobChatMessage;
   assistantMessage: JobChatMessage | null;
@@ -1063,14 +1082,18 @@ export async function sendJobChatMessage(
 export async function streamJobChatMessage(
   jobId: string,
   threadId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/threads/${threadId}/messages`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1080,14 +1103,18 @@ export async function streamJobChatMessage(
 
 export async function streamJobGhostwriterMessage(
   jobId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1152,14 +1179,14 @@ export async function streamRegenerateJobChatMessage(
   jobId: string,
   threadId: string,
   assistantMessageId: string,
-  input: { signal?: AbortSignal },
+  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/threads/${threadId}/messages/${assistantMessageId}/regenerate`,
-    { stream: true },
+    { selectedNoteIds: input.selectedNoteIds, stream: true },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1170,14 +1197,14 @@ export async function streamRegenerateJobChatMessage(
 export async function streamRegenerateJobGhostwriterMessage(
   jobId: string,
   assistantMessageId: string,
-  input: { signal?: AbortSignal },
+  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages/${assistantMessageId}/regenerate`,
-    { stream: true },
+    { selectedNoteIds: input.selectedNoteIds, stream: true },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1188,14 +1215,18 @@ export async function streamRegenerateJobGhostwriterMessage(
 export async function editJobGhostwriterMessage(
   jobId: string,
   messageId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages/${messageId}/edit`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,

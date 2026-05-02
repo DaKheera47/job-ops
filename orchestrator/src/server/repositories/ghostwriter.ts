@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { normalizeGhostwriterSelectedNoteIds } from "@shared/ghostwriter-note-context.js";
 import type {
   JobChatMessage,
   JobChatMessageRole,
@@ -13,6 +14,19 @@ import { getActiveTenantId } from "../tenancy/context";
 
 const { jobChatMessages, jobChatRuns, jobChatThreads } = schema;
 
+function parseSelectedNoteIds(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return normalizeGhostwriterSelectedNoteIds(
+      parsed.filter((item): item is string => typeof item === "string"),
+    );
+  } catch {
+    return [];
+  }
+}
+
 function mapThread(row: typeof jobChatThreads.$inferSelect): JobChatThread {
   return {
     id: row.id,
@@ -22,6 +36,7 @@ function mapThread(row: typeof jobChatThreads.$inferSelect): JobChatThread {
     updatedAt: row.updatedAt,
     lastMessageAt: row.lastMessageAt,
     activeRootMessageId: row.activeRootMessageId,
+    selectedNoteIds: parseSelectedNoteIds(row.selectedNoteIds),
   };
 }
 
@@ -144,6 +159,7 @@ export async function createThread(input: {
     createdAt: now,
     updatedAt: now,
     lastMessageAt: null,
+    selectedNoteIds: "[]",
   });
 
   const thread = await getThreadById(id);
@@ -151,6 +167,33 @@ export async function createThread(input: {
     throw new Error(`Failed to load created chat thread ${id}.`);
   }
   return thread;
+}
+
+export async function updateThreadSelectedNoteIds(input: {
+  jobId: string;
+  threadId: string;
+  selectedNoteIds: string[];
+}): Promise<JobChatThread | null> {
+  const now = new Date().toISOString();
+  const tenantId = getActiveTenantId();
+
+  await db
+    .update(jobChatThreads)
+    .set({
+      selectedNoteIds: JSON.stringify(
+        normalizeGhostwriterSelectedNoteIds(input.selectedNoteIds),
+      ),
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(jobChatThreads.tenantId, tenantId),
+        eq(jobChatThreads.id, input.threadId),
+        eq(jobChatThreads.jobId, input.jobId),
+      ),
+    );
+
+  return getThreadForJob(input.jobId, input.threadId);
 }
 
 export async function touchThread(

@@ -9,6 +9,7 @@ type ComposerProps = {
   disabled?: boolean;
   isStreaming: boolean;
   canReset: boolean;
+  noteContextSelector?: React.ReactNode;
   onStop: () => Promise<void>;
   onSend: (content: string) => Promise<void>;
   onReset: () => void;
@@ -18,6 +19,7 @@ export const Composer: React.FC<ComposerProps> = ({
   disabled,
   isStreaming,
   canReset,
+  noteContextSelector,
   onStop,
   onSend,
   onReset,
@@ -47,8 +49,11 @@ export const Composer: React.FC<ComposerProps> = ({
         className="min-h-[84px]"
       />
       <div className="flex items-center justify-between">
-        <div className="text-[10px] text-muted-foreground">
-          {getMetaShortcutLabel("Enter")} to send
+        <div className="flex min-w-0 items-center gap-2">
+          {noteContextSelector}
+          <div className="text-[10px] text-muted-foreground">
+            {getMetaShortcutLabel("Enter")} to send
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <Button

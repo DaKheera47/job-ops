@@ -5,6 +5,7 @@ import { buildJobChatPromptContext } from "./ghostwriter-context";
 
 vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
+  listJobNotes: vi.fn(),
 }));
 
 vi.mock("../repositories/settings", () => ({
@@ -24,7 +25,7 @@ vi.mock("./writing-style", async (importOriginal) => {
   };
 });
 
-import { getJobById } from "../repositories/jobs";
+import { getJobById, listJobNotes } from "../repositories/jobs";
 import { getSetting } from "../repositories/settings";
 import { getProfile } from "./profile";
 import { getWritingStyle } from "./writing-style";
@@ -32,6 +33,7 @@ import { getWritingStyle } from "./writing-style";
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(listJobNotes).mockResolvedValue([]);
     vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
       tone: "professional",
@@ -226,6 +228,42 @@ describe("buildJobChatPromptContext", () => {
       "Stop Slop revision rules for Ghostwriter prose",
     );
     expect(context.systemPrompt).toContain("Avoid formulaic structures");
+  });
+
+  it("builds selected job notes context with shared truncation limits", async () => {
+    const job = createJob({ id: "job-ctx-notes" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(listJobNotes).mockResolvedValue([
+      {
+        id: "note-2",
+        jobId: job.id,
+        title: "Not selected",
+        content: "Skip me",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "note-1",
+        jobId: job.id,
+        title: "Interview transcript",
+        content: "A".repeat(3500),
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+
+    const context = await buildJobChatPromptContext(job.id, ["note-1"]);
+
+    expect(context.selectedNotesSnapshot).toContain("Selected Job Notes:");
+    expect(context.selectedNotesSnapshot).toContain(
+      "Note 1: Interview transcript",
+    );
+    expect(context.selectedNotesSnapshot).toContain(
+      "Context note: trimmed for AI context limits.",
+    );
+    expect(context.selectedNotesSnapshot).not.toContain("Not selected");
+    expect(context.selectedNotesSnapshot).not.toContain("A".repeat(3501));
   });
 
   it("throws not found for unknown job", async () => {

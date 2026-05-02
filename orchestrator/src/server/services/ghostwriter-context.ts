@@ -1,6 +1,10 @@
 import { badRequest, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import {
+  buildGhostwriterNoteContextItems,
+  normalizeGhostwriterSelectedNoteIds,
+} from "@shared/ghostwriter-note-context.js";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { Job, ResumeProfile } from "@shared/types";
 import * as jobsRepo from "../repositories/jobs";
@@ -26,6 +30,7 @@ export type JobChatPromptContext = {
   systemPrompt: string;
   jobSnapshot: string;
   profileSnapshot: string;
+  selectedNotesSnapshot: string;
 };
 
 const MAX_JOB_DESCRIPTION = 4000;
@@ -125,6 +130,36 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
   ]);
 }
 
+async function buildSelectedNotesSnapshot(
+  jobId: string,
+  selectedNoteIds: readonly string[],
+): Promise<string> {
+  const normalizedNoteIds =
+    normalizeGhostwriterSelectedNoteIds(selectedNoteIds);
+  if (normalizedNoteIds.length === 0) return "";
+
+  const notes = await jobsRepo.listJobNotes(jobId);
+  const notesById = new Map(notes.map((note) => [note.id, note]));
+  const selectedNotes = normalizedNoteIds
+    .map((noteId) => notesById.get(noteId))
+    .filter((note): note is NonNullable<typeof note> => Boolean(note));
+
+  if (selectedNotes.length === 0) return "";
+
+  const context = buildGhostwriterNoteContextItems(selectedNotes);
+  return compactJoin([
+    "Selected Job Notes:",
+    ...context.items.map((note, index) =>
+      compactJoin([
+        `Note ${index + 1}: ${note.title}`,
+        `Updated: ${note.updatedAt}`,
+        note.wasTrimmed ? "Context note: trimmed for AI context limits." : null,
+        note.content ? `Content:\n${note.content}` : "Content: [empty]",
+      ]),
+    ),
+  ]);
+}
+
 async function buildSystemPrompt(
   style: WritingStyle,
   profile: ResumeProfile,
@@ -164,6 +199,7 @@ async function isStopSlopEnabled(): Promise<boolean> {
 
 export async function buildJobChatPromptContext(
   jobId: string,
+  selectedNoteIds: readonly string[] = [],
 ): Promise<JobChatPromptContext> {
   const job = await jobsRepo.getJobById(jobId);
   if (!job) {
@@ -183,10 +219,12 @@ export async function buildJobChatPromptContext(
   }
 
   const profileSnapshot = buildProfileSnapshot(profile);
-  const [baseSystemPrompt, stopSlopEnabled] = await Promise.all([
-    buildSystemPrompt(style, profile),
-    isStopSlopEnabled(),
-  ]);
+  const [baseSystemPrompt, stopSlopEnabled, selectedNotesSnapshot] =
+    await Promise.all([
+      buildSystemPrompt(style, profile),
+      isStopSlopEnabled(),
+      buildSelectedNotesSnapshot(jobId, selectedNoteIds),
+    ]);
   const systemPrompt = stopSlopEnabled
     ? `${baseSystemPrompt}\n\n${STOP_SLOP_GHOSTWRITER_PROMPT}`
     : baseSystemPrompt;
@@ -203,6 +241,9 @@ export async function buildJobChatPromptContext(
       systemChars: systemPrompt.length,
       jobChars: jobSnapshot.length,
       profileChars: profileSnapshot.length,
+      selectedNotesChars: selectedNotesSnapshot.length,
+      selectedNoteCount:
+        normalizeGhostwriterSelectedNoteIds(selectedNoteIds).length,
     }),
   });
 
@@ -212,5 +253,6 @@ export async function buildJobChatPromptContext(
     systemPrompt,
     jobSnapshot,
     profileSnapshot,
+    selectedNotesSnapshot,
   };
 }

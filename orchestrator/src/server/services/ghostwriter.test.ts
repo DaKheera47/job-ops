@@ -24,6 +24,10 @@ const mocks = vi.hoisted(() => ({
     setActiveRoot: vi.fn(),
     getSiblingsOf: vi.fn(),
     getChildrenOfMessage: vi.fn(),
+    updateThreadSelectedNoteIds: vi.fn(),
+  },
+  jobsRepo: {
+    listJobNotes: vi.fn(),
   },
   settings: {
     getAllSettings: vi.fn(),
@@ -70,6 +74,11 @@ vi.mock("../repositories/ghostwriter", () => ({
   getSiblingsOf: mocks.repo.getSiblingsOf,
   getChildrenOfMessage: mocks.repo.getChildrenOfMessage,
   setActiveRoot: mocks.repo.setActiveRoot,
+  updateThreadSelectedNoteIds: mocks.repo.updateThreadSelectedNoteIds,
+}));
+
+vi.mock("../repositories/jobs", () => ({
+  listJobNotes: mocks.jobsRepo.listJobNotes,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -94,6 +103,7 @@ const thread = {
   updatedAt: new Date().toISOString(),
   lastMessageAt: null,
   activeRootMessageId: "user-1",
+  selectedNoteIds: [],
 };
 
 const baseUserMessage: JobChatMessage = {
@@ -147,10 +157,13 @@ describe("ghostwriter service", () => {
       systemPrompt: "system prompt",
       jobSnapshot: '{"job":"snapshot"}',
       profileSnapshot: "profile snapshot",
+      selectedNotesSnapshot: "",
     });
 
+    mocks.jobsRepo.listJobNotes.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
     mocks.repo.getThreadForJob.mockResolvedValue(thread);
+    mocks.repo.updateThreadSelectedNoteIds.mockResolvedValue(thread);
     mocks.repo.getActiveRunForThread.mockResolvedValue(null);
     mocks.repo.createRun.mockResolvedValue({
       id: "run-1",
@@ -270,6 +283,92 @@ describe("ghostwriter service", () => {
           message.role !== "system" && message.role !== "user",
       ),
     ).toEqual([{ role: "assistant", content: "Draft response" }]);
+  });
+
+  it("saves selected notes before building prompt context", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-with-notes",
+      content: "",
+      status: "partial",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...assistantPartial,
+      content: "Noted.",
+      status: "complete",
+    };
+    const threadWithNotes = {
+      ...thread,
+      selectedNoteIds: ["note-1"],
+    };
+
+    mocks.jobsRepo.listJobNotes.mockResolvedValue([
+      {
+        id: "note-1",
+        jobId: "job-1",
+        title: "Recruiter call",
+        content: "Interview loop focuses on systems design.",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    mocks.repo.updateThreadSelectedNoteIds.mockResolvedValue(threadWithNotes);
+    mocks.repo.getThreadForJob
+      .mockResolvedValueOnce(thread)
+      .mockResolvedValueOnce(threadWithNotes);
+    mocks.buildJobChatPromptContext.mockResolvedValue({
+      job: { id: "job-1" },
+      style: {
+        tone: "professional",
+        formality: "medium",
+        constraints: "",
+        doNotUse: "",
+      },
+      systemPrompt: "system prompt",
+      jobSnapshot: '{"job":"snapshot"}',
+      profileSnapshot: "profile snapshot",
+      selectedNotesSnapshot: "Selected Job Notes:\nNote 1: Recruiter call",
+    });
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantComplete);
+    mocks.repo.getMessageById.mockResolvedValue(assistantComplete);
+
+    await sendMessageForJob({
+      jobId: "job-1",
+      content: "Prep me",
+      selectedNoteIds: ["note-1"],
+    });
+
+    expect(mocks.repo.updateThreadSelectedNoteIds).toHaveBeenCalledWith({
+      jobId: "job-1",
+      threadId: "thread-1",
+      selectedNoteIds: ["note-1"],
+    });
+    expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith("job-1", [
+      "note-1",
+    ]);
+    expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
+      role: "system",
+      content: "Selected Job Notes:\nNote 1: Recruiter call",
+    });
+  });
+
+  it("rejects too many selected notes", async () => {
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Use these",
+        selectedNoteIds: Array.from(
+          { length: 9 },
+          (_, index) => `note-${index}`,
+        ),
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_REQUEST",
+      status: 400,
+    });
   });
 
   it("rejects empty message content", async () => {
