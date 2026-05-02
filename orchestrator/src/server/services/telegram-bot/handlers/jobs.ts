@@ -19,6 +19,10 @@ export function registerJobHandlers(bot: Bot): void {
     const statuses: JobStatus[] | undefined =
       status === "all" ? undefined : [status as JobStatus];
     const allJobs = await jobsRepo.getJobListItems(statuses);
+
+    // Sort by suitability score descending (highest first)
+    allJobs.sort((a, b) => (b.suitabilityScore ?? -1) - (a.suitabilityScore ?? -1));
+
     const totalPages = Math.max(1, Math.ceil(allJobs.length / PAGE_SIZE));
     const safePage = Math.min(page, totalPages - 1);
     const pageJobs = allJobs.slice(
@@ -39,10 +43,13 @@ export function registerJobHandlers(bot: Bot): void {
 
     const keyboard = new InlineKeyboard();
 
-    // Job detail buttons
+    // Job detail buttons — compact: "⭐87 Title @ Company"
     for (const j of pageJobs) {
       const shortId = j.id.slice(0, 8);
-      keyboard.text(`📋 ${j.title.slice(0, 20)}`, `j:d:${shortId}`).row();
+      const score = j.suitabilityScore !== null ? `⭐${j.suitabilityScore}` : "";
+      const company = j.employer.slice(0, 15);
+      const title = j.title.slice(0, 22);
+      keyboard.text(`${score} ${title} · ${company}`, `j:d:${shortId}`).row();
     }
 
     // Pagination

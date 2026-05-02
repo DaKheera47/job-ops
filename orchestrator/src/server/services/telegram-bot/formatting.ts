@@ -1,4 +1,5 @@
 import type { Job, JobListItem, JobStatus } from "@shared/types";
+import type { StreakData } from "./streaks";
 
 const STATUS_EMOJI: Record<JobStatus, string> = {
   discovered: "🔍",

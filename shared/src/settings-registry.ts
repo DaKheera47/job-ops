@@ -744,6 +744,15 @@ export const settingsRegistry = {
     schema: z.string().trim().max(2000),
   },
 
+  userTimezone: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(50),
+    default: (): string => "Europe/Berlin",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+
   // --- Telegram Bot ---
   telegramBotToken: {
     kind: "secret" as const,
