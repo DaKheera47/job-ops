@@ -17,6 +17,7 @@ import {
   ExternalLink,
   FileText,
   MessageSquareText,
+  PlusCircle,
   Sparkles,
   Upload,
 } from "lucide-react";
@@ -644,17 +645,31 @@ export const JobPage: React.FC = () => {
                         </div>
                       )}
                     </div>
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="mt-4 w-full justify-between"
-                    >
-                      <Link to={`${baseJobPath}/timeline`}>
-                        Open timeline
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
+                    {canLogEvents ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-4 w-full justify-between"
+                        onClick={() => setIsLogModalOpen(true)}
+                      >
+                        <span className="flex items-center gap-2">
+                          <PlusCircle className="h-3.5 w-3.5" />
+                          Log event
+                        </span>
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="mt-4 w-full justify-between"
+                      >
+                        <Link to={`${baseJobPath}/timeline`}>
+                          Open timeline
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Link>
+                      </Button>
+                    )}
                   </article>
                 </div>
               </section>
@@ -760,6 +775,17 @@ export const JobPage: React.FC = () => {
                           {STAGE_LABELS[currentStage as ApplicationStage] ||
                             currentStage}
                         </Badge>
+                      )}
+                      {canLogEvents && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={() => setIsLogModalOpen(true)}
+                        >
+                          <PlusCircle className="mr-1.5 h-3.5 w-3.5" />
+                          Log event
+                        </Button>
                       )}
                     </div>
                   </div>

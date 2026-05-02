@@ -107,6 +107,10 @@ vi.mock("../components/LogEventModal", () => ({
   LogEventModal: () => null,
 }));
 
+vi.mock("./job-page/JobPageRightSidebar", () => ({
+  JobPageRightSidebar: () => <div data-testid="job-right-sidebar" />,
+}));
+
 vi.mock("../components/ConfirmDelete", () => ({
   ConfirmDelete: ({
     isOpen,
@@ -350,6 +354,36 @@ describe("JobPage notes", () => {
     expect(toast.success).toHaveBeenCalledWith("Note deleted");
     await waitFor(() =>
       expect(screen.queryByText("Why this company")).toBeNull(),
+    );
+  });
+});
+
+describe("JobPage timeline actions", () => {
+  it("shows a log event button on the overview page when stage logging is available", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "in_progress" }) as Job,
+    );
+
+    renderJobPage("/job/job-1");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /log event/i }),
+      ).toBeInTheDocument(),
+    );
+  });
+
+  it("shows a log event button on the timeline page when stage logging is available", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "in_progress" }) as Job,
+    );
+
+    renderJobPage("/job/job-1/timeline");
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /log event/i }),
+      ).toBeInTheDocument(),
     );
   });
 });
