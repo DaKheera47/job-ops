@@ -24,6 +24,7 @@ import {
 import React from "react";
 import {
   Link,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
@@ -78,6 +79,28 @@ const normalizeMemoryView = (view: string | undefined): JobMemoryView => {
   return "overview";
 };
 
+type JobPageLocationState = {
+  jobPageBackTo?: string;
+};
+
+const isValidJobPageBackTarget = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.startsWith("/") &&
+  !value.startsWith("/job/");
+
+const getFallbackBackTarget = (job: Job | null): string => {
+  if (job?.status === "ready" || job?.status === "discovered") {
+    return `/jobs/${job.status}`;
+  }
+  if (job?.status === "applied") {
+    return "/jobs/applied";
+  }
+  if (job?.status === "in_progress") {
+    return "/applications/in-progress";
+  }
+  return "/jobs/all";
+};
+
 const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
   [...notes].sort(
     (left, right) =>
@@ -97,6 +120,7 @@ const parseSelectedProjectIds = (value: string | null | undefined) =>
 
 export const JobPage: React.FC = () => {
   const { id, view } = useParams<{ id: string; view?: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -188,6 +212,25 @@ export const JobPage: React.FC = () => {
     () => formatSourceLabel(job?.source ?? ""),
     [job?.source],
   );
+  const jobPageBackTo = React.useMemo(() => {
+    const state = location.state as JobPageLocationState | null;
+    return isValidJobPageBackTarget(state?.jobPageBackTo)
+      ? state.jobPageBackTo
+      : null;
+  }, [location.state]);
+  const jobPageNavigationState = React.useMemo(
+    () => (jobPageBackTo ? { jobPageBackTo } : undefined),
+    [jobPageBackTo],
+  );
+
+  React.useEffect(() => {
+    if (!id || view !== "note") return;
+    const search = location.search;
+    navigate(`/job/${id}/notes${search}`, {
+      replace: true,
+      state: jobPageNavigationState,
+    });
+  }, [id, jobPageNavigationState, location.search, navigate, view]);
 
   React.useEffect(() => {
     let isCancelled = false;
@@ -462,8 +505,14 @@ export const JobPage: React.FC = () => {
   const initialGhostwriterPrompt =
     activeMemoryView === "ghostwriter" ? searchParams.get("prompt") : null;
   const clearInitialGhostwriterPrompt = React.useCallback(() => {
-    navigate(`${baseJobPath}/ghostwriter`, { replace: true });
-  }, [baseJobPath, navigate]);
+    navigate(`${baseJobPath}/ghostwriter`, {
+      replace: true,
+      state: jobPageNavigationState,
+    });
+  }, [baseJobPath, jobPageNavigationState, navigate]);
+  const handleBack = React.useCallback(() => {
+    navigate(jobPageBackTo ?? getFallbackBackTarget(job));
+  }, [job, jobPageBackTo, navigate]);
   const pageGridClass =
     activeMemoryView === "overview"
       ? "grid items-start gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_18rem]"
@@ -476,7 +525,7 @@ export const JobPage: React.FC = () => {
   return (
     <main className="mx-auto max-w-[92rem] px-4 py-5">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+        <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="h-4 w-4" />
           Back
         </Button>
@@ -504,6 +553,7 @@ export const JobPage: React.FC = () => {
             job={job}
             activeMemoryView={activeMemoryView}
             baseJobPath={baseJobPath}
+            navigationState={jobPageNavigationState}
             selectedProjects={selectedProjects}
             sourceLabel={sourceLabel}
           />
@@ -515,6 +565,7 @@ export const JobPage: React.FC = () => {
                   job={job}
                   baseJobPath={baseJobPath}
                   hasNotes={notes.length > 0}
+                  navigationState={jobPageNavigationState}
                 />
 
                 <div className="grid gap-4 lg:grid-cols-2">
@@ -559,7 +610,10 @@ export const JobPage: React.FC = () => {
                       variant="outline"
                       className="mt-4 w-full justify-between"
                     >
-                      <Link to={`${baseJobPath}/note`}>
+                      <Link
+                        to={`${baseJobPath}/notes`}
+                        state={jobPageNavigationState}
+                      >
                         Open notes
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
@@ -605,7 +659,10 @@ export const JobPage: React.FC = () => {
                       variant="outline"
                       className="mt-4 w-full justify-between"
                     >
-                      <Link to={`${baseJobPath}/documents`}>
+                      <Link
+                        to={`${baseJobPath}/documents`}
+                        state={jobPageNavigationState}
+                      >
                         Open documents
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
@@ -668,7 +725,10 @@ export const JobPage: React.FC = () => {
                         variant="outline"
                         className="mt-4 w-full justify-between"
                       >
-                        <Link to={`${baseJobPath}/timeline`}>
+                        <Link
+                          to={`${baseJobPath}/timeline`}
+                          state={jobPageNavigationState}
+                        >
                           Open timeline
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Link>

@@ -16,11 +16,12 @@ type OverviewGhostwriterComposerProps = {
   job: Job;
   baseJobPath: string;
   hasNotes: boolean;
+  navigationState?: { jobPageBackTo: string };
 };
 
 export const OverviewGhostwriterComposer: React.FC<
   OverviewGhostwriterComposerProps
-> = ({ job, baseJobPath, hasNotes }) => {
+> = ({ job, baseJobPath, hasNotes, navigationState }) => {
   const navigate = useNavigate();
   const [prompt, setPrompt] = React.useState("");
   const suggestions = React.useMemo(
@@ -33,8 +34,9 @@ export const OverviewGhostwriterComposer: React.FC<
     if (!content) return;
     navigate(
       `${baseJobPath}/ghostwriter?prompt=${encodeURIComponent(content)}`,
+      { state: navigationState },
     );
-  }, [baseJobPath, navigate, prompt]);
+  }, [baseJobPath, navigate, navigationState, prompt]);
 
   return (
     <section className="rounded-xl border border-border/50 bg-card/85 p-4">

@@ -22,6 +22,7 @@ type JobPageLeftSidebarProps = {
   job: Job;
   activeMemoryView: JobMemoryView;
   baseJobPath: string;
+  navigationState?: { jobPageBackTo: string };
   selectedProjects: string[];
   sourceLabel: string;
 };
@@ -114,6 +115,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
   job,
   activeMemoryView,
   baseJobPath,
+  navigationState,
   selectedProjects,
   sourceLabel,
 }) => (
@@ -185,7 +187,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
           const path =
             linkView === "overview"
               ? baseJobPath
-              : `${baseJobPath}/${linkView}`;
+              : `${baseJobPath}/${linkView === "note" ? "notes" : linkView}`;
           return (
             <Button
               asChild
@@ -195,7 +197,7 @@ export const JobPageLeftSidebar: React.FC<JobPageLeftSidebarProps> = ({
                 "h-9 w-full justify-between px-2 text-left text-sm",
               )}
             >
-              <Link to={path}>
+              <Link to={path} state={navigationState}>
                 <span className="flex min-w-0 items-center gap-2">
                   <Icon className="h-4 w-4 shrink-0" />
                   <span className="truncate">{label}</span>

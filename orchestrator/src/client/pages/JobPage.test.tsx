@@ -2,7 +2,7 @@ import { createJob } from "@shared/testing/factories.js";
 import type { Job, JobNote } from "@shared/types.js";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { editorHtmlToMarkdown } from "@/client/lib/jobNoteContent";
@@ -97,6 +97,10 @@ vi.mock("../components/JobHeader", () => ({
 
 vi.mock("../components/ghostwriter/GhostwriterDrawer", () => ({
   GhostwriterDrawer: () => <div data-testid="ghostwriter-drawer" />,
+}));
+
+vi.mock("../components/ghostwriter/GhostwriterPanel", () => ({
+  GhostwriterPanel: () => <div data-testid="ghostwriter-panel" />,
 }));
 
 vi.mock("../components/JobDetailsEditDrawer", () => ({
@@ -209,16 +213,59 @@ beforeEach(() => {
   });
 });
 
-const renderJobPage = (initialEntry = "/job/job-1/note") =>
+const LocationProbe = () => {
+  const location = useLocation();
+  return (
+    <div data-testid="location-probe">
+      {location.pathname}
+      {location.search}
+    </div>
+  );
+};
+
+type RouterInitialEntry = NonNullable<
+  Parameters<typeof MemoryRouter>[0]["initialEntries"]
+>[number];
+
+const renderJobPage = (initialEntry: RouterInitialEntry = "/job/job-1/notes") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationProbe />
       <Routes>
         <Route path="/job/:id/:view?" element={<JobPage />} />
+        <Route path="/jobs/ready" element={<div>Ready jobs</div>} />
+        <Route path="/jobs/discovered" element={<div>Discovered jobs</div>} />
+        <Route path="/jobs/applied" element={<div>Applied jobs</div>} />
+        <Route path="/jobs/all" element={<div>All jobs</div>} />
+        <Route
+          path="/applications/in-progress"
+          element={<div>In progress board</div>}
+        />
       </Routes>
     </MemoryRouter>,
   );
 
 describe("JobPage notes", () => {
+  it("renders notes at the public /notes URL", async () => {
+    renderJobPage("/job/job-1/notes");
+
+    expect(await screen.findByTestId("job-notes-section")).toBeInTheDocument();
+    expect(screen.getByTestId("location-probe")).toHaveTextContent(
+      "/job/job-1/notes",
+    );
+  });
+
+  it("normalizes the legacy /note URL to /notes", async () => {
+    renderJobPage("/job/job-1/note?draft=1");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/job/job-1/notes?draft=1",
+      ),
+    );
+    expect(await screen.findByTestId("job-notes-section")).toBeInTheDocument();
+  });
+
   it("renders the full-width notes section and defaults to markdown preview", async () => {
     notesStore = [
       makeNote({
@@ -386,6 +433,70 @@ describe("JobPage timeline actions", () => {
       expect(
         screen.getByRole("button", { name: /log event/i }),
       ).toBeInTheDocument(),
+    );
+  });
+});
+
+describe("JobPage back navigation", () => {
+  it("returns to the entry page instead of stepping through job memory views", async () => {
+    renderJobPage({
+      pathname: "/job/job-1/ghostwriter",
+      state: { jobPageBackTo: "/jobs/ready?q=backend" },
+    });
+
+    expect(await screen.findByTestId("ghostwriter-panel")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/jobs/ready?q=backend",
+      ),
+    );
+    expect(screen.getByText("Ready jobs")).toBeInTheDocument();
+  });
+
+  it("falls back to the status page when there is no entry page state", async () => {
+    vi.mocked(api.getJob).mockResolvedValue(
+      createJob({ status: "in_progress" }) as Job,
+    );
+
+    renderJobPage("/job/job-1/timeline");
+
+    expect(await screen.findByTestId("job-timeline")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/applications/in-progress",
+      ),
+    );
+    expect(screen.getByText("In progress board")).toBeInTheDocument();
+  });
+
+  it("preserves the entry page state across internal job view links", async () => {
+    renderJobPage({
+      pathname: "/job/job-1",
+      state: { jobPageBackTo: "/jobs/ready?source=naukri" },
+    });
+
+    await screen.findByRole("heading", { name: "Acme Labs" });
+
+    fireEvent.click(screen.getByRole("link", { name: /^notes$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/job/job-1/notes",
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^back$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location-probe")).toHaveTextContent(
+        "/jobs/ready?source=naukri",
+      ),
     );
   });
 });
