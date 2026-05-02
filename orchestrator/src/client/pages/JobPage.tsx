@@ -154,7 +154,7 @@ const OverviewGhostwriterComposer: React.FC<{
   return (
     <section className="rounded-xl border border-border/50 bg-card/85 p-4">
         <div className="flex items-start gap-3">
-          <Sparkles className="mt-1.5 h-4 w-4 shrink-0 text-orange-300" />
+          <Sparkles className="mt-1.5 h-4 w-4 shrink-0 text-primary" />
           <Textarea
             value={prompt}
             onChange={(event) => setPrompt(event.target.value)}
@@ -176,7 +176,7 @@ const OverviewGhostwriterComposer: React.FC<{
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-auto border-border/60 bg-background/25 px-3 py-1.5 text-left text-xs text-muted-foreground hover:border-orange-400/40 hover:bg-orange-500/10 hover:text-orange-100"
+                className="h-auto px-3 py-1.5 text-left text-xs"
                 onClick={() => setPrompt(suggestion)}
               >
                 {suggestion}
@@ -1070,30 +1070,15 @@ export const JobPage: React.FC = () => {
                     {job.outcome ? job.outcome.replace(/_/g, " ") : "Open"}
                   </span>
                 </div>
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-border/50 bg-card/70 p-4">
-              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-                <FolderKanban className="h-4 w-4 text-emerald-400" />
-                Applied with
-              </div>
-              {selectedProjects.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedProjects.map((project) => (
-                    <div
-                      key={project}
-                      className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-100"
-                    >
-                      {project}
-                    </div>
-                  ))}
+                <div className="flex items-start justify-between gap-4 border-t border-border/50 pt-3">
+                  <span className="text-muted-foreground">Projects Chosen</span>
+                  <span className="text-right font-medium">
+                    {selectedProjects.length > 0
+                      ? selectedProjects.length
+                      : "No projects"}
+                  </span>
                 </div>
-              ) : (
-                <div className="rounded-md border border-dashed border-border/60 p-3 text-sm text-muted-foreground">
-                  No selected projects stored.
-                </div>
-              )}
+              </div>
             </section>
 
             <section className="rounded-xl border border-border/50 bg-card/70 p-3">
@@ -1166,7 +1151,7 @@ export const JobPage: React.FC = () => {
                   <article className="rounded-xl border border-border/50 bg-card/75 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-semibold">
-                        <MessageSquareText className="h-4 w-4 text-orange-300" />
+                        <MessageSquareText className="h-4 w-4 text-primary" />
                         Notes
                       </div>
                       <Badge variant="secondary" className="text-[10px]">
@@ -1214,7 +1199,7 @@ export const JobPage: React.FC = () => {
                   <article className="rounded-xl border border-border/50 bg-card/75 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-semibold">
-                        <FileText className="h-4 w-4 text-sky-300" />
+                        <FileText className="h-4 w-4 text-primary" />
                         Documents
                       </div>
                       <Badge variant="secondary" className="text-[10px]">
@@ -1260,7 +1245,7 @@ export const JobPage: React.FC = () => {
                   <article className="rounded-xl border border-border/50 bg-card/75 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2 text-sm font-semibold">
-                        <ClipboardList className="h-4 w-4 text-emerald-300" />
+                        <ClipboardList className="h-4 w-4 text-primary" />
                         Timeline
                       </div>
                       {currentStage && (
@@ -1463,7 +1448,8 @@ export const JobPage: React.FC = () => {
                   <Button
                     asChild
                     size="sm"
-                    className="w-full"
+                    variant="outline"
+                    className="w-full justify-start"
                   >
                     <a href={jobLink} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
@@ -1475,7 +1461,8 @@ export const JobPage: React.FC = () => {
                 {isDiscovered && (
                   <Button
                     size="sm"
-                    className="w-full"
+                    variant="outline"
+                    className="w-full justify-start"
                     onClick={() => navigate(`/jobs/discovered/${job.id}`)}
                     disabled={isBusy}
                   >
@@ -1487,7 +1474,8 @@ export const JobPage: React.FC = () => {
                 {isReady && (
                   <Button
                     size="sm"
-                    className="w-full"
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => void handleMarkApplied()}
                     disabled={isBusy}
                   >
@@ -1499,7 +1487,8 @@ export const JobPage: React.FC = () => {
                 {isApplied && (
                   <Button
                     size="sm"
-                    className="w-full"
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => void handleMoveToInProgress()}
                     disabled={isBusy}
                   >
@@ -1511,7 +1500,8 @@ export const JobPage: React.FC = () => {
                 {isInProgress && (
                   <Button
                     size="sm"
-                    className="w-full"
+                    className="w-full justify-start"
+                    variant="outline"
                     onClick={() => setIsLogModalOpen(true)}
                     disabled={!canLogEvents || isBusy}
                   >
@@ -1524,7 +1514,7 @@ export const JobPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 w-full justify-start border-border/60 bg-background/30"
+                    className="h-9 w-full justify-start"
                     onClick={() => navigate(`/jobs/ready/${job.id}`)}
                     disabled={isBusy}
                   >
@@ -1537,7 +1527,7 @@ export const JobPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 w-full justify-start border-border/60 bg-background/30"
+                    className="h-9 w-full justify-start"
                     onClick={() => {
                       void openJobPdf(job.id).catch((error) => {
                         toast.error(
@@ -1556,7 +1546,7 @@ export const JobPage: React.FC = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="h-9 w-full justify-start border-border/60 bg-background/30"
+                  className="h-9 w-full justify-start"
                   onClick={() => uploadPdfInputRef.current?.click()}
                   disabled={isUploadingPdf}
                 >
@@ -1572,7 +1562,7 @@ export const JobPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 w-full justify-start border-border/60 bg-background/30"
+                    className="h-9 w-full justify-start"
                     onClick={() => void handleRegeneratePdf()}
                     disabled={isBusy}
                   >
@@ -1585,7 +1575,7 @@ export const JobPage: React.FC = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-9 w-full justify-start border-border/60 bg-background/30"
+                    className="h-9 w-full justify-start"
                     onClick={() => void handleSkip()}
                     disabled={isBusy}
                   >
