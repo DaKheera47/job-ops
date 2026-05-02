@@ -172,7 +172,15 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
         id: "model",
         label: "Models",
         description: "Provider, API credentials, and task-specific overrides.",
-        searchTerms: ["llm", "provider", "openai", "gemini", "ollama", "codex"],
+        searchTerms: [
+          "llm",
+          "provider",
+          "openai",
+          "gemini",
+          "gemini_cli",
+          "ollama",
+          "codex",
+        ],
       },
       {
         id: "chat",

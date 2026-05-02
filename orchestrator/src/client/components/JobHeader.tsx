@@ -213,8 +213,12 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   const jobStatus = getJobStatusIndicator(job.status);
   const tracerStatus = getTracerStatusIndicator(job.tracerLinksEnabled);
   const { showSponsorInfo } = useSettings();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const isJobPage = pathname.startsWith("/job/");
+  const jobPageLinkState = isJobPage
+    ? undefined
+    : { jobPageBackTo: `${location.pathname}${location.search}` };
   const deadline = formatDate(job.deadline);
   const jobStatusTooltip =
     job.status === "discovered" ? (
@@ -242,6 +246,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
         <div className="min-w-0 w-full sm:w-auto sm:flex-1">
           <Link
             to={`/job/${job.id}`}
+            state={jobPageLinkState}
             className="block text-base font-semibold leading-snug text-foreground/90 underline-offset-2 break-words hover:underline"
           >
             {job.title}
@@ -272,7 +277,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
               variant="ghost"
               className="h-6 px-2 text-[10px] uppercase tracking-wide"
             >
-              <Link to={`/job/${job.id}`}>
+              <Link to={`/job/${job.id}`} state={jobPageLinkState}>
                 View
                 <ArrowUpRight className="h-3 w-3" />
               </Link>

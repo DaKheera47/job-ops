@@ -295,6 +295,7 @@ export const OrchestratorPage: React.FC = () => {
   );
 
   useEffect(() => {
+    if (isLoading) return;
     if (activeJobs.length === 0) {
       if (selectedJobId) handleSelectJobId(null);
       return;
@@ -307,6 +308,7 @@ export const OrchestratorPage: React.FC = () => {
     }
   }, [
     activeJobs,
+    isLoading,
     selectedJobId,
     isDesktop,
     activeTab,

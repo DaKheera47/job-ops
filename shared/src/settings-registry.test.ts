@@ -313,9 +313,21 @@ describe("settingsRegistry helpers", () => {
       );
     });
 
+    it("accepts gemini_cli including hyphenated alias", () => {
+      expect(settingsRegistry.llmProvider.parse("gemini_cli")).toBe(
+        "gemini_cli",
+      );
+      expect(settingsRegistry.llmProvider.parse("gemini-cli")).toBe(
+        "gemini_cli",
+      );
+    });
+
     it("uses provider-specific default models", () => {
       expect(getDefaultModelForProvider("openai")).toBe("gpt-5.4-mini");
       expect(getDefaultModelForProvider("gemini")).toBe(
+        "google/gemini-3-flash-preview",
+      );
+      expect(getDefaultModelForProvider("gemini_cli")).toBe(
         "google/gemini-3-flash-preview",
       );
       expect(getDefaultModelForProvider("codex")).toBe("");

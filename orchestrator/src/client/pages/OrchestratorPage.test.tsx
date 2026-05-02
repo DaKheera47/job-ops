@@ -70,6 +70,7 @@ let mockAutomaticRunValues: AutomaticRunValues = {
   matchStrictness: "exact_only",
 };
 const mockJobListScrollToIndex = vi.fn();
+let mockIsLoading = false;
 
 const jobFixture = createJob({
   id: "job-1",
@@ -127,7 +128,7 @@ vi.mock("./orchestrator/useOrchestratorData", () => ({
       skipped: 0,
       expired: 0,
     },
-    isLoading: false,
+    isLoading: mockIsLoading,
     isPipelineRunning: mockIsPipelineRunning,
     setIsPipelineRunning: vi.fn(),
     pipelineTerminalEvent: mockPipelineTerminalEvent,
@@ -439,6 +440,7 @@ describe("OrchestratorPage", () => {
     mockDemoMode = false;
     mockIsPipelineRunning = false;
     mockPipelineTerminalEvent = null;
+    mockIsLoading = false;
     mockPipelineSources = ["linkedin"];
     mockJobs = [jobFixture, job2, processingJob];
     mockSelectedJob = jobFixture;
@@ -530,6 +532,30 @@ describe("OrchestratorPage", () => {
     await waitFor(() => {
       expect(locationText()).toContain("/all/job-2");
     });
+  });
+
+  it("keeps a direct job URL while jobs are still loading", () => {
+    mockIsLoading = true;
+    mockJobs = [];
+    mockSelectedJob = null;
+    window.matchMedia = createMatchMedia(
+      true,
+    ) as unknown as typeof window.matchMedia;
+
+    render(
+      <MemoryRouter initialEntries={["/jobs/discovered/job-2"]}>
+        <LocationWatcher />
+        <Routes>
+          <Route path="/jobs/:tab" element={<OrchestratorPage />} />
+          <Route path="/jobs/:tab/:jobId" element={<OrchestratorPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId("location").textContent).toBe(
+      "/jobs/discovered/job-2",
+    );
+    expect(screen.getByTestId("selected-job")).toHaveTextContent("job-2");
   });
 
   it("surfaces applied duplicate warnings for reposted jobs in the orchestrator flow", () => {

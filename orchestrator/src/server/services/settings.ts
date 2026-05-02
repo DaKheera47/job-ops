@@ -36,6 +36,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }
+  if (normalized === "gemini_cli") {
+    return "";
+  }
   if (normalized === "codex") {
     return "";
   }
@@ -62,7 +65,7 @@ function normalizeModelForProviderCompatibility(
     }
   }
 
-  if (normalizedProvider === "gemini") {
+  if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     const isGeminiModel =
       normalizedModel.startsWith("google/") ||
       normalizedModel.startsWith("models/") ||

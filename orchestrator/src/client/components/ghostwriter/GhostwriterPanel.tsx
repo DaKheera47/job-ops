@@ -30,9 +30,15 @@ import { NoteContextSelector } from "./NoteContextSelector";
 
 type GhostwriterPanelProps = {
   job: Job;
+  initialPrompt?: string | null;
+  onInitialPromptConsumed?: () => void;
 };
 
-export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
+export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
+  job,
+  initialPrompt,
+  onInitialPromptConsumed,
+}) => {
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
   const [notes, setNotes] = useState<JobNote[]>([]);
@@ -50,6 +56,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const consumedInitialPromptRef = useRef<string | null>(null);
   const runTriggerRef = useRef<"new_prompt" | "regenerate" | "edit">(
     "new_prompt",
   );
@@ -396,6 +403,22 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
   const canReset = useMemo(() => {
     return !isStreaming && messages.length > 0;
   }, [isStreaming, messages]);
+
+  useEffect(() => {
+    const content = initialPrompt?.trim();
+    if (!content || isLoading || isStreaming) return;
+    if (consumedInitialPromptRef.current === content) return;
+
+    consumedInitialPromptRef.current = content;
+    onInitialPromptConsumed?.();
+    void sendMessage(content);
+  }, [
+    initialPrompt,
+    isLoading,
+    isStreaming,
+    onInitialPromptConsumed,
+    sendMessage,
+  ]);
 
   const resetConversation = useCallback(async () => {
     try {
