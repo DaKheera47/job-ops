@@ -4,7 +4,6 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 const getGhostwriterSuggestions = (job: Job, hasNotes: boolean) => [
   hasNotes
@@ -64,7 +63,7 @@ export const OverviewGhostwriterComposer: React.FC<
               type="button"
               size="sm"
               variant="outline"
-              className={"h-auto md:px-3 md:py-1.5 text-left hidden md:inline-flex"}
+              className="hidden h-auto text-left md:inline-flex md:px-3 md:py-1.5"
               onClick={() => setPrompt(suggestion)}
             >
               {suggestion}

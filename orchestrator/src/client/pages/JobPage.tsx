@@ -53,6 +53,7 @@ import {
   formatDateTime,
   formatJobForWebhook,
   formatTimestamp,
+  sourceLabel as sourceLabels,
 } from "@/lib/utils";
 import * as api from "../api";
 import { ConfirmDelete } from "../components/ConfirmDelete";
@@ -106,11 +107,6 @@ const sortNotesByUpdatedAtDesc = (notes: JobNote[]) =>
     (left, right) =>
       new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
-
-const formatSourceLabel = (source: string) =>
-  source
-    .replace(/[-_]/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
 const parseSelectedProjectIds = (value: string | null | undefined) =>
   value
@@ -170,10 +166,6 @@ export const JobPage: React.FC = () => {
     "Failed to load job timeline. Please try again.",
   );
   useQueryErrorToast(
-    notesQuery.error,
-    "Failed to load notes. Please try again.",
-  );
-  useQueryErrorToast(
     tasksQuery.error,
     "Failed to load job tasks. Please try again.",
   );
@@ -195,10 +187,15 @@ export const JobPage: React.FC = () => {
   const isLoading =
     jobQuery.isLoading || eventsQuery.isLoading || tasksQuery.isLoading;
   const activeMemoryView = normalizeMemoryView(view);
+  useQueryErrorToast(
+    activeMemoryView === "note" ? null : notesQuery.error,
+    "Failed to load notes. Please try again.",
+  );
   const selectedProjectIds = React.useMemo(
     () => parseSelectedProjectIds(job?.selectedProjectIds),
     [job?.selectedProjectIds],
   );
+  const selectedProjectIdsKey = selectedProjectIds.join(",");
   const selectedProjects = React.useMemo(
     () =>
       selectedProjectIds.map(
@@ -208,10 +205,7 @@ export const JobPage: React.FC = () => {
       ),
     [catalog, selectedProjectIds],
   );
-  const sourceLabel = React.useMemo(
-    () => formatSourceLabel(job?.source ?? ""),
-    [job?.source],
-  );
+  const sourceLabel = job ? sourceLabels[job.source] : "";
   const jobPageBackTo = React.useMemo(() => {
     const state = location.state as JobPageLocationState | null;
     return isValidJobPageBackTarget(state?.jobPageBackTo)
@@ -235,7 +229,7 @@ export const JobPage: React.FC = () => {
   React.useEffect(() => {
     let isCancelled = false;
 
-    if (selectedProjectIds.length === 0) {
+    if (selectedProjectIdsKey.length === 0) {
       setCatalog([]);
       return () => {
         isCancelled = true;
@@ -258,7 +252,7 @@ export const JobPage: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [selectedProjectIds.length]);
+  }, [selectedProjectIdsKey]);
 
   const loadData = React.useCallback(async () => {
     if (!id) return;

@@ -1,7 +1,7 @@
+import { createJob } from "@shared/testing/factories.js";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
-import { createJob } from "../../../../../shared/src/testing/factories";
 import { JobPageLeftSidebar } from "./JobPageLeftSidebar";
 
 type JobOverrides = Parameters<typeof createJob>[0];
@@ -51,7 +51,7 @@ describe("JobPageLeftSidebar application details", () => {
   });
 
   it("shows the applied row when the job has an applied timestamp", () => {
-    renderSidebar({ appliedAt: "2026-05-01T22:17:00.000Z" });
+    renderSidebar({ appliedAt: "2026-05-01T12:00:00.000Z" });
 
     expect(screen.getByText("Applied")).toBeInTheDocument();
     expect(screen.getByText(/1 May 2026/)).toBeInTheDocument();
