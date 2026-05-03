@@ -52,8 +52,8 @@ import {
 } from "./steps";
 
 const DEFAULT_CONFIG: PipelineConfig = {
-  topN: 10,
-  minSuitabilityScore: 50,
+  topN: 20,
+  minSuitabilityScore: 35,
   // Keep Glassdoor opt-in via source picker/settings; do not enable by default.
   sources: ["gradcracker", "indeed", "linkedin", "ukvisajobs"],
   outputDir: join(getDataDir(), "pdfs"),

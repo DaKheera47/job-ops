@@ -35,6 +35,16 @@ function getTzShortLabel(tz: string): string {
   return entry ? entry.label : tz;
 }
 
+// Shared state for text input collection
+export const awaitingInput = new Map<number, string>();
+
+const BLOCKED_PAGE_SIZE = 8;
+
+function parseBlockedKeywords(raw: string | null): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
 export function registerSettingsHandlers(bot: Bot): void {
   // Settings menu
   bot.callbackQuery("x:menu", async (ctx) => {
@@ -67,6 +77,8 @@ export function registerSettingsHandlers(bot: Bot): void {
         .text(notifEnabled ? "🔕 Mute" : "🔔 Unmute", "x:notif")
         .row()
         .text("🔗 Link Code", "x:link")
+        .row()
+        .text("🚫 Blocked Companies", "x:blocked:0")
         .row()
         .text("◀️ Back", "m:menu");
 
@@ -254,6 +266,194 @@ export function registerSettingsHandlers(bot: Bot): void {
       console.error("Link code error:", err);
       await ctx.answerCallbackQuery("❌ Error generating link code").catch(() => {});
     }
+  });
+
+  // ── Blocked Companies ─────────────────────────────────────────────
+
+  // List blocked companies (paginated)
+  bot.callbackQuery(/^x:blocked:(\d+)$/, async (ctx) => {
+    try {
+      await ctx.answerCallbackQuery();
+      const page = parseInt(ctx.match![1], 10);
+      const raw = await settingsRepo.getSetting("blockedCompanyKeywords");
+      const keywords = parseBlockedKeywords(raw);
+
+      const totalPages = Math.max(1, Math.ceil(keywords.length / BLOCKED_PAGE_SIZE));
+      const safePage = Math.min(page, totalPages - 1);
+      const pageItems = keywords.slice(
+        safePage * BLOCKED_PAGE_SIZE,
+        (safePage + 1) * BLOCKED_PAGE_SIZE,
+      );
+
+      let text = `<b>🚫 Blocked Companies (${keywords.length})</b>\n\n`;
+      if (keywords.length === 0) {
+        text += "<i>No blocked companies yet.</i>\n";
+        text += "Companies matching these keywords will be filtered out during pipeline discovery.";
+      } else {
+        for (let i = 0; i < pageItems.length; i++) {
+          const globalIdx = safePage * BLOCKED_PAGE_SIZE + i;
+          text += `${globalIdx + 1}. ${escapeHtml(pageItems[i])}\n`;
+        }
+      }
+
+      const keyboard = new InlineKeyboard();
+
+      // Remove buttons — one per item on the page
+      for (let i = 0; i < pageItems.length; i++) {
+        const globalIdx = safePage * BLOCKED_PAGE_SIZE + i;
+        const label = `❌ ${pageItems[i].slice(0, 20)}`;
+        keyboard.text(label, `x:bl:rm:${globalIdx}`);
+        if (i % 2 === 1) keyboard.row();
+      }
+      if (pageItems.length % 2 === 1) keyboard.row();
+
+      // Pagination
+      if (totalPages > 1) {
+        if (safePage > 0) keyboard.text("◀️", `x:blocked:${safePage - 1}`);
+        keyboard.text(`${safePage + 1}/${totalPages}`, "noop");
+        if (safePage < totalPages - 1) keyboard.text("▶️", `x:blocked:${safePage + 1}`);
+        keyboard.row();
+      }
+
+      keyboard.text("➕ Add", "x:bl:add");
+      if (keywords.length > 0) keyboard.text("🗑 Clear All", "x:bl:clear");
+      keyboard.row().text("◀️ Settings", "x:menu");
+
+      await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: keyboard });
+    } catch (err) {
+      console.error("Blocked companies list error:", err);
+      await ctx.answerCallbackQuery("❌ Error loading blocked companies").catch(() => {});
+    }
+  });
+
+  // Add blocked company — prompt for text input
+  bot.callbackQuery("x:bl:add", async (ctx) => {
+    try {
+      await ctx.answerCallbackQuery();
+      const chatId = ctx.chat?.id;
+      if (!chatId) return;
+      awaitingInput.set(chatId, "blocked_company");
+
+      const text =
+        "<b>🚫 Add Blocked Companies</b>\n\n" +
+        "Send company name(s), comma-separated:\n" +
+        "<i>e.g. Acme Corp, Globex, Initech</i>\n\n" +
+        "Jobs from companies matching these keywords will be filtered out.";
+
+      await ctx.editMessageText(text, {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text("◀️ Back", "x:blocked:0"),
+      });
+    } catch (err) {
+      console.error("Add blocked prompt error:", err);
+      await ctx.answerCallbackQuery("❌ Error").catch(() => {});
+    }
+  });
+
+  // Remove single blocked keyword
+  bot.callbackQuery(/^x:bl:rm:(\d+)$/, async (ctx) => {
+    try {
+      const idx = parseInt(ctx.match![1], 10);
+      const raw = await settingsRepo.getSetting("blockedCompanyKeywords");
+      const keywords = parseBlockedKeywords(raw);
+
+      if (idx < 0 || idx >= keywords.length) {
+        await ctx.answerCallbackQuery("Invalid index");
+        return;
+      }
+
+      const removed = keywords.splice(idx, 1)[0];
+      await settingsRepo.setSetting("blockedCompanyKeywords", JSON.stringify(keywords));
+      await ctx.answerCallbackQuery(`Removed: ${removed}`);
+
+      // Re-render the list at page 0
+      const keyboard = new InlineKeyboard()
+        .text("🚫 Blocked Companies", "x:blocked:0")
+        .text("◀️ Settings", "x:menu");
+      await ctx.editMessageText(
+        `✅ Removed <b>${escapeHtml(removed)}</b> from blocked list.`,
+        { parse_mode: "HTML", reply_markup: keyboard },
+      );
+    } catch (err) {
+      console.error("Remove blocked keyword error:", err);
+      await ctx.answerCallbackQuery("❌ Error").catch(() => {});
+    }
+  });
+
+  // Clear all blocked keywords
+  bot.callbackQuery("x:bl:clear", async (ctx) => {
+    try {
+      await settingsRepo.setSetting("blockedCompanyKeywords", "[]");
+      await ctx.answerCallbackQuery("All blocked companies cleared!");
+      await ctx.editMessageText("✅ All blocked companies cleared.", {
+        reply_markup: new InlineKeyboard().text("◀️ Settings", "x:menu").text("◀️ Menu", "m:menu"),
+      });
+    } catch (err) {
+      console.error("Clear blocked error:", err);
+      await ctx.answerCallbackQuery("❌ Error").catch(() => {});
+    }
+  });
+
+  // ── Text input handler (blocked companies) ────────────────────────
+
+  bot.on("message:text", async (ctx, next) => {
+    const chatId = ctx.chat?.id;
+    if (!chatId) return next();
+
+    const action = awaitingInput.get(chatId);
+    if (!action) return next();
+    awaitingInput.delete(chatId);
+
+    try {
+      if (action === "blocked_company") {
+        const newKeywords = ctx.message.text
+          .split(",")
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean);
+
+        if (newKeywords.length === 0) {
+          await ctx.reply("No keywords provided.", {
+            reply_markup: new InlineKeyboard().text("🚫 Blocked Companies", "x:blocked:0"),
+          });
+          return;
+        }
+
+        const raw = await settingsRepo.getSetting("blockedCompanyKeywords");
+        const existing = parseBlockedKeywords(raw);
+        const existingSet = new Set(existing.map((k) => k.toLowerCase()));
+        const added: string[] = [];
+
+        for (const kw of newKeywords) {
+          if (!existingSet.has(kw)) {
+            existing.push(kw);
+            existingSet.add(kw);
+            added.push(kw);
+          }
+        }
+
+        await settingsRepo.setSetting("blockedCompanyKeywords", JSON.stringify(existing));
+
+        const keyboard = new InlineKeyboard()
+          .text("🚫 Blocked Companies", "x:blocked:0")
+          .row()
+          .text("◀️ Menu", "m:menu");
+
+        if (added.length > 0) {
+          await ctx.reply(
+            `✅ Added: <b>${escapeHtml(added.join(", "))}</b>\nTotal blocked: ${existing.length}`,
+            { parse_mode: "HTML", reply_markup: keyboard },
+          );
+        } else {
+          await ctx.reply("All keywords already in the blocklist.", { reply_markup: keyboard });
+        }
+        return;
+      }
+    } catch (err) {
+      console.error("Text input handler error:", err);
+      await ctx.reply("❌ Error saving setting.").catch(() => {});
+    }
+
+    return next();
   });
 
   // Back to main menu

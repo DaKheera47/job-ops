@@ -635,14 +635,14 @@ export const settingsRegistry = {
   pipelineTopN: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(100),
-    default: (): number => 10,
+    default: (): number => 20,
     parse: parseIntOrNull,
     serialize: serializeNullableNumber,
   },
   pipelineMinScore: {
     kind: "typed" as const,
     schema: z.number().int().min(0).max(100),
-    default: (): number => 50,
+    default: (): number => 35,
     parse: parseIntOrNull,
     serialize: serializeNullableNumber,
   },

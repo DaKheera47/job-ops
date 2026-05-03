@@ -4,9 +4,10 @@ import type { Bot } from "grammy";
 import { InputFile } from "grammy";
 import type { JobStatus } from "@shared/types";
 import * as jobsRepo from "../../../repositories/jobs";
+import * as settingsRepo from "../../../repositories/settings";
 import { getDataDir } from "../../../config/dataDir";
 import { safeFilePart } from "../../pdf-storage";
-import { formatJobCard, formatJobListItem } from "../formatting";
+import { formatJobCard, formatJobListItem, escapeHtml } from "../formatting";
 
 const PAGE_SIZE = 5;
 
@@ -113,6 +114,13 @@ export function registerJobHandlers(bot: Bot): void {
       keyboard.text("✅ Mark Applied", `j:apply:${sid}`);
       keyboard.text("⏭ Skip", `j:skip:${sid}`);
       keyboard.row();
+      keyboard.text("🚫 Block Company", `j:block:${sid}`);
+      keyboard.row();
+    }
+
+    if (job.status === "discovered") {
+      keyboard.text("🚫 Block Company", `j:block:${sid}`);
+      keyboard.row();
     }
 
     if (job.status === "applied") {
@@ -196,6 +204,49 @@ export function registerJobHandlers(bot: Bot): void {
       parse_mode: "HTML",
       reply_markup: new InlineKeyboard().text("◀️ Back", "j:ready:0").text("◀️ Menu", "m:menu"),
     });
+  });
+
+  // Block company — add to blocklist and skip job
+  bot.callbackQuery(/^j:block:(.+)$/, async (ctx) => {
+    const shortId = ctx.match![1];
+    const allJobs = await jobsRepo.getJobListItems();
+    const match = allJobs.find((j) => j.id.startsWith(shortId));
+    if (!match) {
+      await ctx.answerCallbackQuery("Job not found");
+      return;
+    }
+
+    const employer = match.employer.trim().toLowerCase();
+    if (!employer) {
+      await ctx.answerCallbackQuery("No employer name");
+      return;
+    }
+
+    // Add to blocked keywords
+    const raw = await settingsRepo.getSetting("blockedCompanyKeywords");
+    let keywords: string[] = [];
+    if (raw) {
+      try { keywords = JSON.parse(raw); } catch { /* empty */ }
+    }
+    const existingSet = new Set(keywords.map((k) => k.toLowerCase()));
+    if (!existingSet.has(employer)) {
+      keywords.push(employer);
+      await settingsRepo.setSetting("blockedCompanyKeywords", JSON.stringify(keywords));
+    }
+
+    // Skip the job
+    if (match.status === "ready" || match.status === "discovered") {
+      await jobsRepo.updateJob(match.id, { status: "skipped" });
+    }
+
+    await ctx.answerCallbackQuery(`🚫 ${match.employer} blocked!`);
+    await ctx.editMessageText(
+      `🚫 <b>${escapeHtml(match.employer)}</b> blocked.\nFuture jobs from this company will be filtered out.`,
+      {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().text("◀️ Back", `j:ready:0`).text("◀️ Menu", "m:menu"),
+      },
+    );
   });
 
   // Download PDF — with user's name in filename
