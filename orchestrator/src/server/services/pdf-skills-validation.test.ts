@@ -127,6 +127,15 @@ vi.mock("./projectSelection", () => ({
 }));
 
 vi.mock("./tracer-links", () => ({
+  getTracerReadiness: vi.fn().mockResolvedValue({
+    status: "ready",
+    canEnable: true,
+    publicBaseUrl: "https://jobops.example",
+    healthUrl: "https://jobops.example/health",
+    checkedAt: 1,
+    lastSuccessAt: 1,
+    reason: null,
+  }),
   resolveTracerPublicBaseUrl: vi.fn().mockReturnValue("https://jobops.example"),
   rewriteResumeLinksWithTracer: vi
     .fn()

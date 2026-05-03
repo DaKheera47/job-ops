@@ -20,6 +20,8 @@ type DesignResumeRailProps = {
   onUploadPicture: () => void;
   onDeletePicture: () => void;
   pictureUploading: boolean;
+  pictureEnabled: boolean;
+  pictureDisabledReason?: string | null;
 };
 
 export function DesignResumeRail({
@@ -29,6 +31,8 @@ export function DesignResumeRail({
   onUploadPicture,
   onDeletePicture,
   pictureUploading,
+  pictureEnabled,
+  pictureDisabledReason,
 }: DesignResumeRailProps) {
   const resumeJson = draft.resumeJson as Record<string, unknown>;
   const basics = (asRecord(resumeJson.basics) ?? {}) as Record<string, unknown>;
@@ -143,6 +147,8 @@ export function DesignResumeRail({
         <PictureSection
           picture={picture}
           pictureUploading={pictureUploading}
+          pictureEnabled={pictureEnabled}
+          pictureDisabledReason={pictureDisabledReason}
           onUploadPicture={onUploadPicture}
           onDeletePicture={onDeletePicture}
           onUpdatePicture={updatePicture}

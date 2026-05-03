@@ -5,6 +5,7 @@ import { ItemDialog } from "@client/components/design-resume/ItemDialog";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useSettings } from "@client/hooks/useSettings";
+import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import type {
   DesignResumeDocument,
   DesignResumeJson,
@@ -63,6 +64,7 @@ export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
   const { settings, isLoading: settingsLoading } = useSettings();
+  const { readiness: tracerReadiness } = useTracerReadiness();
   const [draft, setDraft] = useState<DesignResumeDocument | null>(null);
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -87,6 +89,10 @@ export const DesignResumePage: React.FC = () => {
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
   const canDownloadPdf = status?.exists && !pdfDownloading;
+  const pictureEnabled = Boolean(tracerReadiness?.canEnable);
+  const pictureDisabledReason =
+    tracerReadiness?.reason ??
+    "Pictures require JobOps to be reachable at a public URL.";
 
   useEffect(() => {
     if (!document) return;
@@ -308,6 +314,14 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const handleUploadPicture = async (file: File) => {
+    if (!pictureEnabled) {
+      toast.error(pictureDisabledReason);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     try {
       setPictureUploading(true);
       const latestDraft = await ensureLatestPersistedDraft();
@@ -344,6 +358,11 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const handleDeletePicture = async () => {
+    if (!pictureEnabled) {
+      toast.error(pictureDisabledReason);
+      return;
+    }
+
     try {
       const latestDraft = await ensureLatestPersistedDraft();
       if (!latestDraft) return;
@@ -428,6 +447,8 @@ export const DesignResumePage: React.FC = () => {
       onUploadPicture={() => fileInputRef.current?.click()}
       onDeletePicture={handleDeletePicture}
       pictureUploading={pictureUploading}
+      pictureEnabled={pictureEnabled}
+      pictureDisabledReason={pictureDisabledReason}
     />
   ) : null;
 

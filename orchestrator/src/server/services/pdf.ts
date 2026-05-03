@@ -8,6 +8,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
+import { getTracerReadiness } from "@server/services/tracer-links";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResume } from "./design-resume";
@@ -101,6 +102,36 @@ async function downloadRxResumePdf(
   await writeFile(outputPath, bytes);
 }
 
+async function stripPictureWhenJobOpsIsNotHosted(args: {
+  data: Record<string, unknown>;
+  requestOrigin?: string | null;
+}): Promise<Record<string, unknown>> {
+  const readiness = await getTracerReadiness({
+    requestOrigin: args.requestOrigin ?? null,
+    force: false,
+  });
+  if (readiness.canEnable) {
+    return args.data;
+  }
+
+  const picture =
+    args.data.picture &&
+    typeof args.data.picture === "object" &&
+    !Array.isArray(args.data.picture)
+      ? (args.data.picture as Record<string, unknown>)
+      : null;
+  if (!picture) return args.data;
+
+  return {
+    ...args.data,
+    picture: {
+      ...picture,
+      hidden: true,
+      url: "",
+    },
+  };
+}
+
 async function renderRxResumePdf(args: {
   preparedResume: PreparedRxResumePdfPayload;
   outputPath: string;
@@ -111,7 +142,10 @@ async function renderRxResumePdf(args: {
   const { preparedResume, outputPath, jobId } = args;
   let importedResumeId: string | null = null;
   const importData = prepareReactiveResumeV5DocumentForExternalUse(
-    preparedResume.data,
+    await stripPictureWhenJobOpsIsNotHosted({
+      data: preparedResume.data,
+      requestOrigin: args.requestOrigin ?? null,
+    }),
     {
       requestOrigin: args.requestOrigin ?? null,
     },

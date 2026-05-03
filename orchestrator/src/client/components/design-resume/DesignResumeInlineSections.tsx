@@ -1,4 +1,5 @@
 import { FileImage, ImagePlus, Plus, Trash2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -29,10 +30,17 @@ type ColorFieldProps = {
   id: string;
   label: string;
   value: string;
+  disabled?: boolean;
   onChange: (value: string) => void;
 };
 
-function ColorField({ id, label, value, onChange }: ColorFieldProps) {
+function ColorField({
+  id,
+  label,
+  value,
+  disabled = false,
+  onChange,
+}: ColorFieldProps) {
   const pickerValue = normalizeColorValue(value);
 
   return (
@@ -48,11 +56,13 @@ function ColorField({ id, label, value, onChange }: ColorFieldProps) {
           onChange={(event) => onChange(event.currentTarget.value)}
           className="h-10 w-12 cursor-pointer rounded-md border border-border/60 bg-background/60 p-1"
           aria-label={label}
+          disabled={disabled}
         />
         <Input
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
           className={fieldClassName}
+          disabled={disabled}
         />
       </div>
     </div>
@@ -62,6 +72,8 @@ function ColorField({ id, label, value, onChange }: ColorFieldProps) {
 type PictureSectionProps = {
   picture: Record<string, unknown>;
   pictureUploading: boolean;
+  pictureEnabled: boolean;
+  pictureDisabledReason?: string | null;
   onUploadPicture: () => void;
   onDeletePicture: () => void;
   onUpdatePicture: (key: string, value: unknown) => void;
@@ -70,12 +82,25 @@ type PictureSectionProps = {
 export function PictureSection({
   picture,
   pictureUploading,
+  pictureEnabled,
+  pictureDisabledReason,
   onUploadPicture,
   onDeletePicture,
   onUpdatePicture,
 }: PictureSectionProps) {
+  const disabled = !pictureEnabled;
+
   return (
     <div className="grid gap-3">
+      {!pictureEnabled ? (
+        <Alert>
+          <AlertDescription>
+            {pictureDisabledReason ??
+              "Pictures require JobOps to be reachable at a public URL."}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {picture.url ? (
         <div
           className={`${insetPanelClassName} flex items-center gap-3 border-dashed p-3`}
@@ -90,7 +115,7 @@ export function PictureSection({
               type="button"
               variant="outline"
               onClick={onUploadPicture}
-              disabled={pictureUploading}
+              disabled={pictureUploading || disabled}
             >
               <ImagePlus className="mr-2 h-4 w-4" />
               Replace
@@ -100,6 +125,7 @@ export function PictureSection({
               variant="ghost"
               className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
               onClick={onDeletePicture}
+              disabled={disabled}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
@@ -112,7 +138,7 @@ export function PictureSection({
           variant="outline"
           className="justify-start border-dashed"
           onClick={onUploadPicture}
-          disabled={pictureUploading}
+          disabled={pictureUploading || disabled}
         >
           <FileImage className="mr-2 h-4 w-4" />
           {pictureUploading ? "Uploading..." : "Upload image"}
@@ -130,6 +156,7 @@ export function PictureSection({
             onUpdatePicture("url", event.currentTarget.value)
           }
           className={fieldClassName}
+          disabled={disabled}
         />
       </div>
 
@@ -147,6 +174,7 @@ export function PictureSection({
         <Switch
           checked={!toBoolean(picture.hidden, false)}
           onCheckedChange={(checked) => onUpdatePicture("hidden", !checked)}
+          disabled={disabled}
         />
       </div>
 
@@ -171,6 +199,7 @@ export function PictureSection({
                 onUpdatePicture(key, Number(event.currentTarget.value || 0))
               }
               className={fieldClassName}
+              disabled={disabled}
             />
           </div>
         ))}
@@ -183,6 +212,7 @@ export function PictureSection({
             id={fieldId("picture", key)}
             label={label}
             value={toText(picture[key])}
+            disabled={disabled}
             onChange={(nextValue) => onUpdatePicture(key, nextValue)}
           />
         ))}

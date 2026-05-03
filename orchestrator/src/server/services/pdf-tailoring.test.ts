@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { generatePdf } from "./pdf";
+import { generateDesignResumePdf, generatePdf } from "./pdf";
 import * as projectSelection from "./projectSelection";
 
 // Define mock data in hoisted block
@@ -324,12 +324,22 @@ vi.mock("./resume-renderer", () => ({
 
 const mockTracerLinks = vi.hoisted(() => ({
   resolveTracerPublicBaseUrl: vi.fn().mockReturnValue("https://jobops.example"),
+  getTracerReadiness: vi.fn().mockResolvedValue({
+    status: "ready",
+    canEnable: true,
+    publicBaseUrl: "https://jobops.example",
+    healthUrl: "https://jobops.example/health",
+    checkedAt: 1,
+    lastSuccessAt: 1,
+    reason: null,
+  }),
   rewriteResumeLinksWithTracer: vi
     .fn()
     .mockResolvedValue({ rewrittenLinks: 2 }),
 }));
 
 vi.mock("./tracer-links", () => ({
+  getTracerReadiness: mockTracerLinks.getTracerReadiness,
   resolveTracerPublicBaseUrl: mockTracerLinks.resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer: mockTracerLinks.rewriteResumeLinksWithTracer,
 }));
@@ -427,6 +437,15 @@ describe("PDF Service Tailoring Logic", () => {
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
       "https://jobops.example",
     );
+    mockTracerLinks.getTracerReadiness.mockResolvedValue({
+      status: "ready",
+      canEnable: true,
+      publicBaseUrl: "https://jobops.example",
+      healthUrl: "https://jobops.example/health",
+      checkedAt: 1,
+      lastSuccessAt: 1,
+      reason: null,
+    });
     mockTracerLinks.rewriteResumeLinksWithTracer.mockResolvedValue({
       rewrittenLinks: 2,
     });
@@ -592,6 +611,67 @@ describe("PDF Service Tailoring Logic", () => {
         expect.any(Uint8Array),
       );
       expect(rxresume.deleteResume).toHaveBeenCalledWith("temp-resume-id");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("strips Design Resume pictures from RxResume export when JobOps is not hosted", async () => {
+    currentPdfRenderer.value = "rxresume";
+    mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
+      "http://localhost:3005",
+    );
+    mockTracerLinks.getTracerReadiness.mockResolvedValue({
+      status: "unavailable",
+      canEnable: false,
+      publicBaseUrl: "http://localhost:3005",
+      healthUrl: "http://localhost:3005/health",
+      checkedAt: 1,
+      lastSuccessAt: null,
+      reason:
+        "Configured public URL must be internet-reachable (not localhost/private network).",
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new TextEncoder().encode("pdf-bytes").buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const designResume = await import("./design-resume");
+    vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
+      id: "design-resume-1",
+      title: "Design Resume",
+      sourceResumeId: null,
+      sourceMode: "v5",
+      importedAt: "2026-05-02T00:00:00.000Z",
+      updatedAt: "2026-05-02T00:00:00.000Z",
+      revision: 1,
+      resumeJson: {
+        ...mockProfile,
+        picture: {
+          ...mockProfile.picture,
+          hidden: false,
+          url: "/api/design-resume/assets/photo-1/content",
+        },
+      },
+    } as any);
+
+    const rxresume = await import("./rxresume");
+
+    try {
+      await generateDesignResumePdf({
+        requestOrigin: "http://localhost:3005",
+      });
+
+      expect(rxresume.importResume).toHaveBeenCalledWith({
+        name: "Design Resume",
+        data: expect.objectContaining({
+          picture: expect.objectContaining({
+            hidden: true,
+            url: "",
+          }),
+        }),
+      });
     } finally {
       vi.unstubAllGlobals();
     }

@@ -1,4 +1,4 @@
-import { badRequest, notFound, toAppError } from "@infra/errors";
+import { badRequest, conflict, notFound, toAppError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import {
   deleteDesignResumePicture,
@@ -15,6 +15,7 @@ import { importDesignResumeFromFile } from "@server/services/design-resume/impor
 import { generateDesignResumePdf } from "@server/services/pdf";
 import { getTenantDesignResumePdfPath } from "@server/services/pdf-storage";
 import { clearProfileCache } from "@server/services/profile";
+import { getTracerReadiness } from "@server/services/tracer-links";
 import type { DesignResumeJson, DesignResumePatchRequest } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -55,6 +56,19 @@ function resolveRequestOrigin(req: Request): string | null {
 
   if (!host || !protocol) return null;
   return `${protocol}://${host}`;
+}
+
+async function assertPictureSupportEnabled(req: Request): Promise<void> {
+  const readiness = await getTracerReadiness({
+    requestOrigin: resolveRequestOrigin(req),
+    force: false,
+  });
+  if (readiness.canEnable) return;
+
+  throw conflict(
+    readiness.reason ??
+      "Design Resume pictures require JobOps to be reachable at a public URL.",
+  );
 }
 
 const addOperationSchema = z
@@ -246,6 +260,8 @@ designResumeRouter.patch(
 designResumeRouter.post(
   "/assets",
   asyncRoute(async (req: Request, res: Response) => {
+    await assertPictureSupportEnabled(req);
+
     if (Buffer.isBuffer(req.body)) {
       const input = rawUploadHeadersSchema.parse({
         fileName: req.header("x-file-name"),
@@ -277,6 +293,8 @@ designResumeRouter.post(
 designResumeRouter.delete(
   "/assets/picture",
   asyncRoute(async (req: Request, res: Response) => {
+    await assertPictureSupportEnabled(req);
+
     const input = pictureMutationSchema.parse(req.body ?? {});
     const document = await deleteDesignResumePicture({
       baseRevision: input.baseRevision,
