@@ -171,6 +171,7 @@ describe("SettingsPage", () => {
     _resetTracerReadinessCache();
     vi.mocked(api.getTracerReadiness).mockResolvedValue({
       status: "ready",
+      isPubliclyAvailable: true,
       canEnable: true,
       publicBaseUrl: "https://my-jobops.example.com",
       healthUrl: "https://my-jobops.example.com/health",

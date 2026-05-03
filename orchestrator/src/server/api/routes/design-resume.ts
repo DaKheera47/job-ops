@@ -15,7 +15,7 @@ import { importDesignResumeFromFile } from "@server/services/design-resume/impor
 import { generateDesignResumePdf } from "@server/services/pdf";
 import { getTenantDesignResumePdfPath } from "@server/services/pdf-storage";
 import { clearProfileCache } from "@server/services/profile";
-import { getTracerReadiness } from "@server/services/tracer-links";
+import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
 import type { DesignResumeJson, DesignResumePatchRequest } from "@shared/types";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
@@ -59,14 +59,14 @@ function resolveRequestOrigin(req: Request): string | null {
 }
 
 async function assertPictureSupportEnabled(req: Request): Promise<void> {
-  const readiness = await getTracerReadiness({
+  const availability = await getJobOpsPublicAvailability({
     requestOrigin: resolveRequestOrigin(req),
     force: false,
   });
-  if (readiness.canEnable) return;
+  if (availability.isPubliclyAvailable) return;
 
   throw conflict(
-    readiness.reason ??
+    availability.reason ??
       "Design Resume pictures require JobOps to be reachable at a public URL.",
   );
 }

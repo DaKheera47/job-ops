@@ -8,7 +8,7 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
-import { getTracerReadiness } from "@server/services/tracer-links";
+import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResume } from "./design-resume";
@@ -106,11 +106,11 @@ async function stripPictureWhenJobOpsIsNotHosted(args: {
   data: Record<string, unknown>;
   requestOrigin?: string | null;
 }): Promise<Record<string, unknown>> {
-  const readiness = await getTracerReadiness({
+  const availability = await getJobOpsPublicAvailability({
     requestOrigin: args.requestOrigin ?? null,
     force: false,
   });
-  if (readiness.canEnable) {
+  if (availability.isPubliclyAvailable) {
     return args.data;
   }
 

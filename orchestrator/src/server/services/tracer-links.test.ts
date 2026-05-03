@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as tracerLinksRepo from "../repositories/tracer-links";
 import {
   _resetTracerReadinessCacheForTests,
+  getJobOpsPublicAvailability,
   getTracerReadiness,
   resolveTracerPublicBaseUrl,
   resolveTracerRedirect,
@@ -205,6 +206,7 @@ describe("tracer-links service", () => {
     const readiness = await getTracerReadiness({ requestOrigin: null });
 
     expect(readiness.status).toBe("unconfigured");
+    expect(readiness.isPubliclyAvailable).toBe(false);
     expect(readiness.canEnable).toBe(false);
     expect(readiness.publicBaseUrl).toBeNull();
     expect(readiness.reason).toMatch(/no public jobops base url/i);
@@ -216,6 +218,7 @@ describe("tracer-links service", () => {
     });
 
     expect(readiness.status).toBe("unavailable");
+    expect(readiness.isPubliclyAvailable).toBe(false);
     expect(readiness.canEnable).toBe(false);
     expect(readiness.reason).toMatch(/internet-reachable/i);
   });
@@ -243,6 +246,7 @@ describe("tracer-links service", () => {
     });
 
     expect(readiness.status).toBe("ready");
+    expect(readiness.isPubliclyAvailable).toBe(true);
     expect(readiness.canEnable).toBe(true);
     expect(readiness.publicBaseUrl).toBe("https://my-jobops.example.com");
     expect(mockFetch).toHaveBeenCalledWith(
@@ -251,6 +255,30 @@ describe("tracer-links service", () => {
         method: "GET",
       }),
     );
+  });
+
+  it("exposes public availability as a reusable helper", async () => {
+    process.env.JOBOPS_PUBLIC_BASE_URL = "https://my-jobops.example.com";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ status: "ok" }), {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        }),
+      ),
+    );
+
+    const availability = await getJobOpsPublicAvailability({
+      requestOrigin: null,
+      force: true,
+    });
+
+    expect(availability.status).toBe("ready");
+    expect(availability.isPubliclyAvailable).toBe(true);
+    expect(availability.publicBaseUrl).toBe("https://my-jobops.example.com");
   });
 
   it("classifies browser-like bot user agents as bot family", async () => {

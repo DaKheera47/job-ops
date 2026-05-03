@@ -202,6 +202,7 @@ describe.sequential("Tracer links routes", () => {
         ok: boolean;
         data?: {
           status: string;
+          isPubliclyAvailable: boolean;
           canEnable: boolean;
           publicBaseUrl: string | null;
         };
@@ -211,6 +212,7 @@ describe.sequential("Tracer links routes", () => {
       expect(body.ok).toBe(true);
       expect(body.meta?.requestId).toBeTruthy();
       expect(body.data?.status).toBe("ready");
+      expect(body.data?.isPubliclyAvailable).toBe(true);
       expect(body.data?.canEnable).toBe(true);
       expect(body.data?.publicBaseUrl).toBe("https://my-jobops.example.com");
     } finally {

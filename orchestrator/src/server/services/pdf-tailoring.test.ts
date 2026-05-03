@@ -324,8 +324,18 @@ vi.mock("./resume-renderer", () => ({
 
 const mockTracerLinks = vi.hoisted(() => ({
   resolveTracerPublicBaseUrl: vi.fn().mockReturnValue("https://jobops.example"),
+  getJobOpsPublicAvailability: vi.fn().mockResolvedValue({
+    status: "ready",
+    isPubliclyAvailable: true,
+    publicBaseUrl: "https://jobops.example",
+    healthUrl: "https://jobops.example/health",
+    checkedAt: 1,
+    lastSuccessAt: 1,
+    reason: null,
+  }),
   getTracerReadiness: vi.fn().mockResolvedValue({
     status: "ready",
+    isPubliclyAvailable: true,
     canEnable: true,
     publicBaseUrl: "https://jobops.example",
     healthUrl: "https://jobops.example/health",
@@ -339,6 +349,7 @@ const mockTracerLinks = vi.hoisted(() => ({
 }));
 
 vi.mock("./tracer-links", () => ({
+  getJobOpsPublicAvailability: mockTracerLinks.getJobOpsPublicAvailability,
   getTracerReadiness: mockTracerLinks.getTracerReadiness,
   resolveTracerPublicBaseUrl: mockTracerLinks.resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer: mockTracerLinks.rewriteResumeLinksWithTracer,
@@ -437,8 +448,18 @@ describe("PDF Service Tailoring Logic", () => {
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
       "https://jobops.example",
     );
+    mockTracerLinks.getJobOpsPublicAvailability.mockResolvedValue({
+      status: "ready",
+      isPubliclyAvailable: true,
+      publicBaseUrl: "https://jobops.example",
+      healthUrl: "https://jobops.example/health",
+      checkedAt: 1,
+      lastSuccessAt: 1,
+      reason: null,
+    });
     mockTracerLinks.getTracerReadiness.mockResolvedValue({
       status: "ready",
+      isPubliclyAvailable: true,
       canEnable: true,
       publicBaseUrl: "https://jobops.example",
       healthUrl: "https://jobops.example/health",
@@ -621,8 +642,19 @@ describe("PDF Service Tailoring Logic", () => {
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
       "http://localhost:3005",
     );
+    mockTracerLinks.getJobOpsPublicAvailability.mockResolvedValue({
+      status: "unavailable",
+      isPubliclyAvailable: false,
+      publicBaseUrl: "http://localhost:3005",
+      healthUrl: "http://localhost:3005/health",
+      checkedAt: 1,
+      lastSuccessAt: null,
+      reason:
+        "Configured public URL must be internet-reachable (not localhost/private network).",
+    });
     mockTracerLinks.getTracerReadiness.mockResolvedValue({
       status: "unavailable",
+      isPubliclyAvailable: false,
       canEnable: false,
       publicBaseUrl: "http://localhost:3005",
       healthUrl: "http://localhost:3005/health",

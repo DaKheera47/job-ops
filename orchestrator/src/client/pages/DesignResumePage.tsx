@@ -89,7 +89,7 @@ export const DesignResumePage: React.FC = () => {
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
   const canDownloadPdf = status?.exists && !pdfDownloading;
-  const pictureEnabled = Boolean(tracerReadiness?.canEnable);
+  const pictureEnabled = Boolean(tracerReadiness?.isPubliclyAvailable);
   const pictureDisabledReason =
     tracerReadiness?.reason ??
     "Pictures require JobOps to be reachable at a public URL.";

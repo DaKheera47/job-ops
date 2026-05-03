@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import type {
+  JobOpsPublicAvailabilityResponse,
   JobTracerLinksResponse,
   TracerAnalyticsResponse,
   TracerReadinessResponse,
@@ -28,7 +29,7 @@ const TRACER_READINESS_CACHE_TTL_MS = 5 * 60_000;
 type TracerReadinessCacheEntry = {
   baseUrl: string | null;
   checkedAt: number;
-  response: TracerReadinessResponse;
+  response: JobOpsPublicAvailabilityResponse;
 };
 
 let tracerReadinessCache: TracerReadinessCacheEntry | null = null;
@@ -133,17 +134,17 @@ function resolveTracerReadinessBaseUrl(args: {
   return normalizeBaseUrl(args.requestOrigin);
 }
 
-function makeTracerReadinessResponse(
-  status: TracerReadinessResponse["status"],
+function makePublicAvailabilityResponse(
+  status: JobOpsPublicAvailabilityResponse["status"],
   args: {
     baseUrl: string | null;
     checkedAt: number;
     reason: string | null;
   },
-): TracerReadinessResponse {
+): JobOpsPublicAvailabilityResponse {
   return {
     status,
-    canEnable: status === "ready",
+    isPubliclyAvailable: status === "ready",
     publicBaseUrl: args.baseUrl,
     healthUrl: args.baseUrl ? `${args.baseUrl}/health` : null,
     checkedAt: args.checkedAt,
@@ -383,9 +384,9 @@ export function resolveTracerPublicBaseUrl(args: {
   return normalizeBaseUrl(process.env.JOBOPS_PUBLIC_BASE_URL ?? null);
 }
 
-export async function getTracerReadiness(
+export async function getJobOpsPublicAvailability(
   args: { requestOrigin?: string | null; force?: boolean } = {},
-): Promise<TracerReadinessResponse> {
+): Promise<JobOpsPublicAvailabilityResponse> {
   const baseUrl = resolveTracerReadinessBaseUrl({
     requestOrigin: args.requestOrigin,
   });
@@ -402,10 +403,10 @@ export async function getTracerReadiness(
     return cached.response;
   }
 
-  let response: TracerReadinessResponse;
+  let response: JobOpsPublicAvailabilityResponse;
 
   if (!baseUrl) {
-    response = makeTracerReadinessResponse("unconfigured", {
+    response = makePublicAvailabilityResponse("unconfigured", {
       baseUrl: null,
       checkedAt,
       reason:
@@ -420,7 +421,7 @@ export async function getTracerReadiness(
     }
 
     if (!hostname || isLocalOrPrivateHostname(hostname)) {
-      response = makeTracerReadinessResponse("unavailable", {
+      response = makePublicAvailabilityResponse("unavailable", {
         baseUrl,
         checkedAt,
         reason:
@@ -436,14 +437,14 @@ export async function getTracerReadiness(
         );
 
         if (!healthResponse.ok) {
-          response = makeTracerReadinessResponse("unavailable", {
+          response = makePublicAvailabilityResponse("unavailable", {
             baseUrl,
             checkedAt,
             reason: `Health check returned HTTP ${healthResponse.status}.`,
           });
         } else {
           tracerReadinessLastSuccessAt = checkedAt;
-          response = makeTracerReadinessResponse("ready", {
+          response = makePublicAvailabilityResponse("ready", {
             baseUrl,
             checkedAt,
             reason: null,
@@ -457,7 +458,7 @@ export async function getTracerReadiness(
               ? `Health check failed: ${error.message}.`
               : "Health check failed.";
 
-        response = makeTracerReadinessResponse("unavailable", {
+        response = makePublicAvailabilityResponse("unavailable", {
           baseUrl,
           checkedAt,
           reason,
@@ -489,6 +490,16 @@ export async function getTracerReadiness(
   }
 
   return response;
+}
+
+export async function getTracerReadiness(
+  args: { requestOrigin?: string | null; force?: boolean } = {},
+): Promise<TracerReadinessResponse> {
+  const availability = await getJobOpsPublicAvailability(args);
+  return {
+    ...availability,
+    canEnable: availability.isPubliclyAvailable,
+  };
 }
 
 export function _resetTracerReadinessCacheForTests(): void {

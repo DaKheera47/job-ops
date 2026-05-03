@@ -111,14 +111,19 @@ export interface JobTracerLinksResponse {
 
 export type TracerReadinessStatus = "ready" | "unconfigured" | "unavailable";
 
-export interface TracerReadinessResponse {
+export interface JobOpsPublicAvailabilityResponse {
   status: TracerReadinessStatus;
-  canEnable: boolean;
+  isPubliclyAvailable: boolean;
   publicBaseUrl: string | null;
   healthUrl: string | null;
   checkedAt: number;
   lastSuccessAt: number | null;
   reason: string | null;
+}
+
+export interface TracerReadinessResponse
+  extends JobOpsPublicAvailabilityResponse {
+  canEnable: boolean;
 }
 
 export type ExtractorHealthStatus = "healthy" | "unhealthy";
