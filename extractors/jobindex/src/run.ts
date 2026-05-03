@@ -32,6 +32,7 @@ export type JobindexProgressEvent =
 export interface RunJobindexOptions {
   searchTerms?: string[];
   selectedCountry?: string;
+  cityLocations?: string[];
   maxJobsPerTerm?: number;
   onProgress?: (event: JobindexProgressEvent) => void;
   shouldCancel?: () => boolean;
@@ -97,11 +98,20 @@ interface JobindexSearchResponse {
   total_pages?: unknown;
 }
 
+interface JobindexGeoareaOption {
+  id?: unknown;
+  text?: unknown;
+  typeid?: unknown;
+}
+
+interface JobindexStoreData {
+  geoareaOptions?: unknown;
+  searchResponse?: JobindexSearchResponse;
+}
+
 interface JobindexStash {
   "jobsearch/result_app"?: {
-    storeData?: {
-      searchResponse?: JobindexSearchResponse;
-    };
+    storeData?: JobindexStoreData;
   };
 }
 
@@ -246,9 +256,7 @@ function parseAddresses(value: unknown): JobindexAddress[] {
   );
 }
 
-export function extractJobindexSearchResponse(
-  html: string,
-): JobindexSearchResponse {
+export function extractJobindexStoreData(html: string): JobindexStoreData {
   const assignmentStart = html.indexOf("var Stash =");
   if (assignmentStart < 0) {
     throw new Error("Jobindex Stash payload was not found.");
@@ -265,8 +273,18 @@ export function extractJobindexSearchResponse(
   }
 
   const stash = JSON.parse(html.slice(jsonStart, jsonEnd)) as JobindexStash;
-  const searchResponse =
-    stash["jobsearch/result_app"]?.storeData?.searchResponse;
+  const storeData = stash["jobsearch/result_app"]?.storeData;
+  if (!storeData || typeof storeData !== "object") {
+    throw new Error("Jobindex storeData payload was not found.");
+  }
+
+  return storeData;
+}
+
+export function extractJobindexSearchResponse(
+  html: string,
+): JobindexSearchResponse {
+  const searchResponse = extractJobindexStoreData(html).searchResponse;
   if (!searchResponse || typeof searchResponse !== "object") {
     throw new Error("Jobindex searchResponse payload was not found.");
   }
@@ -274,12 +292,97 @@ export function extractJobindexSearchResponse(
   return searchResponse;
 }
 
+function normalizeLocationLabel(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function parseGeoareaOptions(value: unknown): JobindexGeoareaOption[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (option): option is JobindexGeoareaOption =>
+      option !== null && typeof option === "object",
+  );
+}
+
+function getGeoareaPreferenceRank(option: JobindexGeoareaOption): number {
+  const typeId = getNumber(option.typeid);
+  switch (typeId) {
+    case 30:
+      return 0;
+    case 0:
+      return 1;
+    case 20:
+      return 2;
+    case 10:
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+export function resolveGeoareaIds(
+  cityLocations: string[],
+  geoareaOptions: JobindexGeoareaOption[],
+): number[] {
+  if (cityLocations.length === 0 || geoareaOptions.length === 0) {
+    return [];
+  }
+
+  const ids: number[] = [];
+  const seen = new Set<number>();
+
+  for (const cityLocation of cityLocations) {
+    const normalizedCity = normalizeLocationLabel(cityLocation);
+    if (!normalizedCity) continue;
+
+    const matches = geoareaOptions
+      .map((option) => ({
+        option,
+        text: getString(option.text),
+        id: getNumber(option.id),
+      }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          option: JobindexGeoareaOption;
+          text: string;
+          id: number;
+        } =>
+          entry.text !== undefined &&
+          entry.id !== undefined &&
+          normalizeLocationLabel(entry.text) === normalizedCity,
+      )
+      .sort(
+        (left, right) =>
+          getGeoareaPreferenceRank(left.option) -
+          getGeoareaPreferenceRank(right.option),
+      );
+
+    const matchedId = matches[0]?.id;
+    if (matchedId === undefined || seen.has(matchedId)) continue;
+    seen.add(matchedId);
+    ids.push(matchedId);
+  }
+
+  return ids;
+}
+
 export function buildJobindexSearchUrl(
   searchTerm: string,
   page: number,
+  geoareaIds: number[] = [],
 ): string {
   const url = new URL(JOBINDEX_SEARCH_URL);
   url.searchParams.set("q", searchTerm);
+  for (const geoareaId of geoareaIds) {
+    url.searchParams.append("geoareaid", String(geoareaId));
+  }
   if (page > 1) {
     url.searchParams.set("page", String(page));
   }
@@ -343,12 +446,17 @@ export function mapJobindexResult(
   };
 }
 
-async function fetchSearchResponse(args: {
+async function fetchSearchPageHtml(args: {
   fetchImpl: typeof fetch;
   searchTerm: string;
   page: number;
-}): Promise<JobindexSearchResponse> {
-  const url = buildJobindexSearchUrl(args.searchTerm, args.page);
+  geoareaIds?: number[];
+}): Promise<string> {
+  const url = buildJobindexSearchUrl(
+    args.searchTerm,
+    args.page,
+    args.geoareaIds,
+  );
   const response = await args.fetchImpl(url, {
     headers: {
       accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -362,7 +470,30 @@ async function fetchSearchResponse(args: {
     throw new Error(`Jobindex request failed with ${response.status}`);
   }
 
-  return extractJobindexSearchResponse(await response.text());
+  return response.text();
+}
+
+async function fetchSearchResponse(args: {
+  fetchImpl: typeof fetch;
+  searchTerm: string;
+  page: number;
+  geoareaIds?: number[];
+}): Promise<JobindexSearchResponse> {
+  const html = await fetchSearchPageHtml(args);
+  return extractJobindexSearchResponse(html);
+}
+
+async function fetchGeoareaOptions(args: {
+  fetchImpl: typeof fetch;
+  searchTerm: string;
+}): Promise<JobindexGeoareaOption[]> {
+  const html = await fetchSearchPageHtml({
+    fetchImpl: args.fetchImpl,
+    searchTerm: args.searchTerm,
+    page: 1,
+  });
+
+  return parseGeoareaOptions(extractJobindexStoreData(html).geoareaOptions);
 }
 
 export async function runJobindex(
@@ -377,11 +508,23 @@ export async function runJobindex(
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms
       : ["software engineer"];
+  const cityLocations = options.cityLocations ?? [];
   const maxJobsPerTerm = toPositiveIntOrFallback(options.maxJobsPerTerm, 50);
   const jobs: CreateJobInput[] = [];
   const seen = new Set<string>();
 
   try {
+    const geoareaIds =
+      cityLocations.length > 0
+        ? resolveGeoareaIds(
+            cityLocations,
+            await fetchGeoareaOptions({
+              fetchImpl,
+              searchTerm: searchTerms[0] ?? "software engineer",
+            }),
+          )
+        : [];
+
     for (const [index, searchTerm] of searchTerms.entries()) {
       if (options.shouldCancel?.()) {
         return { success: true, jobs };
@@ -406,6 +549,7 @@ export async function runJobindex(
           fetchImpl,
           searchTerm,
           page,
+          geoareaIds,
         });
         const rawResults = Array.isArray(searchResponse.results)
           ? (searchResponse.results as JobindexSearchResult[])

@@ -1,14 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildJobindexSearchUrl,
+  extractJobindexStoreData,
   extractJobindexSearchResponse,
   mapJobindexResult,
+  resolveGeoareaIds,
   runJobindex,
 } from "../src/run";
 
-function createHtml(results: unknown[], totalPages = 1): string {
+function createHtml(
+  results: unknown[],
+  totalPages = 1,
+  extraStoreData: Record<string, unknown> = {},
+): string {
   return `<script>
-    var Stash = {"jobsearch/result_app":{"storeData":{"searchResponse":{"results":${JSON.stringify(results)},"total_pages":${totalPages},"page_size":20}}}};
+    var Stash = {"jobsearch/result_app":{"storeData":${JSON.stringify({
+      ...extraStoreData,
+      searchResponse: { results, total_pages: totalPages, page_size: 20 },
+    })}}};
   </script>`;
 }
 
@@ -21,6 +30,18 @@ function createResponse(html: string): Response {
 }
 
 describe("Jobindex Stash parsing", () => {
+  it("extracts embedded storeData values beyond searchResponse", () => {
+    const storeData = extractJobindexStoreData(
+      createHtml([], 1, {
+        geoareaOptions: [{ id: 74, text: "Odsherred", typeid: 30 }],
+      }),
+    );
+
+    expect(storeData.geoareaOptions).toEqual([
+      { id: 74, text: "Odsherred", typeid: 30 },
+    ]);
+  });
+
   it("extracts the embedded searchResponse payload", () => {
     const response = extractJobindexSearchResponse(
       createHtml([{ tid: "h1", headline: "Software Engineer" }], 2),
@@ -39,6 +60,27 @@ describe("Jobindex Stash parsing", () => {
     expect(buildJobindexSearchUrl("software engineering", 2)).toBe(
       "https://www.jobindex.dk/jobsoegning?q=software+engineering&page=2",
     );
+  });
+
+  it("builds location-aware search URLs with repeated geoareaid filters", () => {
+    expect(buildJobindexSearchUrl("software engineering", 1, [74, 56])).toBe(
+      "https://www.jobindex.dk/jobsoegning?q=software+engineering&geoareaid=74&geoareaid=56",
+    );
+  });
+});
+
+describe("resolveGeoareaIds", () => {
+  it("prefers kommune entries and matches diacritic-insensitively", () => {
+    expect(
+      resolveGeoareaIds(
+        ["odsherred", "Kobenhavn"],
+        [
+          { id: 15182, text: "Storkobenhavn", typeid: 0 },
+          { id: 56, text: "Kobenhavn", typeid: 30 },
+          { id: 74, text: "Odsherred", typeid: 30 },
+        ],
+      ),
+    ).toEqual([74, 56]);
   });
 });
 
@@ -131,6 +173,44 @@ describe("runJobindex", () => {
     expect(result.jobs).toHaveLength(1);
     expect(result.jobs[0]?.sourceJobId).toBe("h1");
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves city locations into geoareaid filters", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        createResponse(
+          createHtml([], 1, {
+            geoareaOptions: [{ id: 74, text: "Odsherred", typeid: 30 }],
+          }),
+        ),
+      )
+      .mockResolvedValueOnce(
+        createResponse(
+          createHtml([
+            {
+              tid: "h1",
+              headline: "Backend Engineer",
+              companytext: "Acme",
+              share_url: "https://www.jobindex.dk/vis-job/h1",
+            },
+          ]),
+        ),
+      );
+
+    const result = await runJobindex({
+      selectedCountry: "denmark",
+      searchTerms: ["software engineering"],
+      cityLocations: ["Odsherred"],
+      fetchImpl: fetchMock,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.jobs).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(
+      "https://www.jobindex.dk/jobsoegning?q=software+engineering&geoareaid=74",
+    );
   });
 
   it("does not run outside Denmark", async () => {

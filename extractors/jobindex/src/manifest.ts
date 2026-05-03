@@ -73,6 +73,9 @@ export const manifest: ExtractorManifest = {
     const result = await runJobindex({
       selectedCountry: context.selectedCountry,
       searchTerms: context.searchTerms,
+      cityLocations:
+        context.sourceLocationPlan?.requestedCities ??
+        context.locationIntent?.cityLocations,
       maxJobsPerTerm,
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
