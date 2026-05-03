@@ -1,0 +1,13 @@
+{
+  "name": "jobindex-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Jobindex Denmark extractor backed by the search page Stash payload",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  }
+}

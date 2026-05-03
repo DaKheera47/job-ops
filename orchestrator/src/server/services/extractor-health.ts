@@ -106,6 +106,13 @@ const HEALTH_PROBE_CONFIG_BY_SOURCE: Record<
       jobspyResultsWanted: "1",
     },
   },
+  jobindex: {
+    searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
+    selectedCountry: "denmark",
+    settings: {
+      jobindexMaxJobsPerTerm: "1",
+    },
+  },
   seek: {
     searchTerm: DEFAULT_HEALTH_SEARCH_TERM,
     selectedCountry: "australia",

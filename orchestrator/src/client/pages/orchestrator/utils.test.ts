@@ -29,6 +29,10 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(createAppSettings())).toContain("golangjobs");
   });
 
+  it("enables jobindex without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("jobindex");
+  });
+
   it("enables seek only when apify token is configured", () => {
     const withToken = createAppSettings({ apifyTokenHint: "sk-" });
     const withoutToken = createAppSettings({ apifyTokenHint: null });

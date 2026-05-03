@@ -60,6 +60,7 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/jobindex/package*.json ./extractors/jobindex/
 COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
@@ -86,6 +87,7 @@ COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
+COPY extractors/jobindex ./extractors/jobindex
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs
@@ -126,6 +128,7 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/jobindex/package*.json ./extractors/jobindex/
 COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
@@ -181,6 +184,7 @@ COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
+COPY extractors/jobindex ./extractors/jobindex
 COPY extractors/jobspy ./extractors/jobspy
 COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs

@@ -118,6 +118,17 @@ describe("automatic-run utilities", () => {
     expect(limits.startupjobsMaxJobsPerTerm).toBeLessThanOrEqual(120);
   });
 
+  it("assigns a dedicated Jobindex max-jobs limit", () => {
+    const limits = deriveExtractorLimits({
+      budget: 120,
+      searchTerms: ["backend", "platform"],
+      sources: ["jobindex"],
+    });
+
+    expect(limits.jobindexMaxJobsPerTerm).toBeGreaterThan(0);
+    expect(limits.jobindexMaxJobsPerTerm).toBeLessThanOrEqual(120);
+  });
+
   it("infers the balanced preset from legacy memory without an explicit preset id", () => {
     ensureStorage().setItem(
       RUN_MEMORY_STORAGE_KEY,
