@@ -5,7 +5,7 @@ import { buildJobChatPromptContext } from "./ghostwriter-context";
 
 vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
-  listJobNotes: vi.fn(),
+  listJobNotesByIds: vi.fn(),
 }));
 
 vi.mock("../repositories/settings", () => ({
@@ -25,7 +25,7 @@ vi.mock("./writing-style", async (importOriginal) => {
   };
 });
 
-import { getJobById, listJobNotes } from "../repositories/jobs";
+import { getJobById, listJobNotesByIds } from "../repositories/jobs";
 import { getSetting } from "../repositories/settings";
 import { getProfile } from "./profile";
 import { getWritingStyle } from "./writing-style";
@@ -33,7 +33,7 @@ import { getWritingStyle } from "./writing-style";
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    vi.mocked(listJobNotes).mockResolvedValue([]);
+    vi.mocked(listJobNotesByIds).mockResolvedValue([]);
     vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
       tone: "professional",
@@ -234,7 +234,7 @@ describe("buildJobChatPromptContext", () => {
     const job = createJob({ id: "job-ctx-notes" });
     vi.mocked(getJobById).mockResolvedValue(job);
     vi.mocked(getProfile).mockResolvedValue({});
-    vi.mocked(listJobNotes).mockResolvedValue([
+    vi.mocked(listJobNotesByIds).mockResolvedValue([
       {
         id: "note-2",
         jobId: job.id,
@@ -255,6 +255,7 @@ describe("buildJobChatPromptContext", () => {
 
     const context = await buildJobChatPromptContext(job.id, ["note-1"]);
 
+    expect(listJobNotesByIds).toHaveBeenCalledWith(job.id, ["note-1"]);
     expect(context.selectedNotesSnapshot).toContain("Selected Job Notes:");
     expect(context.selectedNotesSnapshot).toContain(
       "Note 1: Interview transcript",

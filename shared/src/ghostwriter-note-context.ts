@@ -54,7 +54,7 @@ export function buildGhostwriterNoteContextItems(
 
     totalContentChars += content.length;
     remainingTotal -= finalContent.length;
-    if (remainingTotal < 0 || content.length > finalContent.length) {
+    if (perNoteContent.length > finalContent.length) {
       wasTotalTrimmed = true;
     }
 

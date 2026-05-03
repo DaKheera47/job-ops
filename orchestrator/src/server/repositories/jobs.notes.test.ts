@@ -68,6 +68,46 @@ describe.sequential("jobs repository job notes", () => {
     expect(notes[0]?.content).toContain("growth opportunity");
   });
 
+  it("lists only requested notes for a job", async () => {
+    const job = await jobsRepo.createJob({
+      source: "manual",
+      title: "Backend Engineer",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/repo-notes-by-id",
+    });
+    const otherJob = await jobsRepo.createJob({
+      source: "manual",
+      title: "Frontend Engineer",
+      employer: "Beta",
+      jobUrl: "https://example.com/job/repo-other-notes-by-id",
+    });
+
+    const selected = await jobsRepo.createJobNote({
+      jobId: job.id,
+      title: "Selected",
+      content: "Use this one.",
+    });
+    await jobsRepo.createJobNote({
+      jobId: job.id,
+      title: "Unselected",
+      content: "Do not use this one.",
+    });
+    const otherJobNote = await jobsRepo.createJobNote({
+      jobId: otherJob.id,
+      title: "Other job",
+      content: "Wrong job.",
+    });
+
+    const notes = await jobsRepo.listJobNotesByIds(job.id, [
+      selected.id,
+      otherJobNote.id,
+      "missing-note",
+    ]);
+
+    expect(notes).toHaveLength(1);
+    expect(notes[0]?.id).toBe(selected.id);
+  });
+
   it("cascades note deletion when the parent job is removed", async () => {
     const job = await jobsRepo.createJob({
       source: "manual",

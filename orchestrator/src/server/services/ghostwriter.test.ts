@@ -27,7 +27,7 @@ const mocks = vi.hoisted(() => ({
     updateThreadSelectedNoteIds: vi.fn(),
   },
   jobsRepo: {
-    listJobNotes: vi.fn(),
+    listJobNotesByIds: vi.fn(),
   },
   settings: {
     getAllSettings: vi.fn(),
@@ -78,7 +78,7 @@ vi.mock("../repositories/ghostwriter", () => ({
 }));
 
 vi.mock("../repositories/jobs", () => ({
-  listJobNotes: mocks.jobsRepo.listJobNotes,
+  listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -160,7 +160,7 @@ describe("ghostwriter service", () => {
       selectedNotesSnapshot: "",
     });
 
-    mocks.jobsRepo.listJobNotes.mockResolvedValue([]);
+    mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
     mocks.repo.getThreadForJob.mockResolvedValue(thread);
     mocks.repo.updateThreadSelectedNoteIds.mockResolvedValue(thread);
@@ -302,7 +302,7 @@ describe("ghostwriter service", () => {
       selectedNoteIds: ["note-1"],
     };
 
-    mocks.jobsRepo.listJobNotes.mockResolvedValue([
+    mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([
       {
         id: "note-1",
         jobId: "job-1",
@@ -341,6 +341,9 @@ describe("ghostwriter service", () => {
       selectedNoteIds: ["note-1"],
     });
 
+    expect(mocks.jobsRepo.listJobNotesByIds).toHaveBeenCalledWith("job-1", [
+      "note-1",
+    ]);
     expect(mocks.repo.updateThreadSelectedNoteIds).toHaveBeenCalledWith({
       jobId: "job-1",
       threadId: "thread-1",

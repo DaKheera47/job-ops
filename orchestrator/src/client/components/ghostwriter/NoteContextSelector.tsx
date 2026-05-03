@@ -42,7 +42,12 @@ export const NoteContextSelector: React.FC<NoteContextSelectorProps> = ({
 }) => {
   const selectedNotes = getSelectedNotes(notes, selectedNoteIds);
   const selectedContentChars = selectedNotes.reduce(
-    (total, note) => total + note.content.trim().length,
+    (total, note) =>
+      total +
+      Math.min(
+        note.content.trim().length,
+        GHOSTWRITER_NOTE_CONTEXT_MAX_NOTE_CHARS,
+      ),
     0,
   );
   const hasTotalOverflow =

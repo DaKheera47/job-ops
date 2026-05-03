@@ -138,11 +138,11 @@ async function buildSelectedNotesSnapshot(
     normalizeGhostwriterSelectedNoteIds(selectedNoteIds);
   if (normalizedNoteIds.length === 0) return "";
 
-  const notes = await jobsRepo.listJobNotes(jobId);
+  const notes = await jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds);
   const notesById = new Map(notes.map((note) => [note.id, note]));
   const selectedNotes = normalizedNoteIds
     .map((noteId) => notesById.get(noteId))
-    .filter((note): note is NonNullable<typeof note> => Boolean(note));
+    .filter((note): note is (typeof notes)[number] => Boolean(note));
 
   if (selectedNotes.length === 0) return "";
 

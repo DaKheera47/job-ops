@@ -59,6 +59,23 @@ describe("NoteContextSelector", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not show aggregate overflow for a single oversized note", () => {
+    render(
+      <NoteContextSelector
+        notes={[makeNote({ content: "A".repeat(100_000) })]}
+        selectedNoteIds={["note-1"]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /1 notes/i }));
+
+    expect(screen.getByText("Trimmed for AI")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Selected notes exceed the AI context budget/i),
+    ).not.toBeInTheDocument();
+  });
+
   it("disables unchecked notes at the selection limit", () => {
     const selectedNoteIds = Array.from(
       { length: 8 },

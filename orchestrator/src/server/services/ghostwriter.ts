@@ -156,7 +156,7 @@ async function validateSelectedNoteIdsForJob(
 
   if (normalizedNoteIds.length === 0) return [];
 
-  const notes = await jobsRepo.listJobNotes(jobId);
+  const notes = await jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds);
   const noteIdsForJob = new Set(notes.map((note) => note.id));
   const invalidNoteIds = normalizedNoteIds.filter(
     (noteId) => !noteIdsForJob.has(noteId),
