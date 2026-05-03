@@ -7,6 +7,7 @@ import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
+import { getActiveTenantId } from "@server/tenancy/context";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
   getResumeSchemaValidationMessage,
@@ -129,6 +130,7 @@ function buildCredentialFingerprint(creds: V5Credentials): string {
 
 function buildResumeCacheKey(resumeId: string, creds: V5Credentials): string {
   return [
+    getActiveTenantId(),
     "v5",
     normalizeBaseUrlForCache(creds.baseUrl),
     resumeId.trim(),
