@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildJobindexSearchUrl,
-  extractJobindexStoreData,
   extractJobindexSearchResponse,
+  extractJobindexStoreData,
   mapJobindexResult,
   resolveGeoareaIds,
   runJobindex,
