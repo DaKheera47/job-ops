@@ -24,7 +24,7 @@ type SupportedImportMediaType =
   | "application/pdf"
   | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-type SupportedRuntimeProvider = "openai" | "openrouter" | "gemini";
+type SupportedRuntimeProvider = "openai" | "openrouter" | "gemini" | "anthropic";
 
 type ResumeImportFileInput = {
   fileName: string;
@@ -90,6 +90,7 @@ function normalizeRuntimeProvider(
     return "openrouter";
   }
   if (normalized === "gemini") return "gemini";
+  if (normalized === "anthropic") return "anthropic";
   return null;
 }
 
@@ -746,7 +747,7 @@ function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
 }
 
 function buildCapabilityErrorMessage(provider: string): string {
-  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, or Gemini to import resumes. DOCX files are converted to text locally before extraction.`;
+  return `Resume file import is not available for the current AI provider (${provider}). Connect OpenAI, OpenRouter, Gemini, or Anthropic to import resumes. DOCX files are converted to text locally before extraction.`;
 }
 
 function isFileCapabilityError(message: string): boolean {
@@ -1064,6 +1065,85 @@ async function extractWithGemini(args: {
   return text;
 }
 
+const ANTHROPIC_DEFAULT_TIMEOUT_MS = 90_000;
+
+function extractAnthropicText(response: unknown): string | null {
+  const payload = asRecord(response);
+  const content = asArray(payload?.content);
+  const text = content
+    .filter((block) => trimText(asRecord(block)?.type) === "text")
+    .map((block) => trimText(asRecord(block)?.text))
+    .filter(Boolean)
+    .join("");
+  return text || null;
+}
+
+async function extractWithAnthropic(args: {
+  apiKey: string;
+  baseUrl: string | null;
+  model: string;
+  mediaType: SupportedImportMediaType;
+  fileName: string;
+  dataBase64: string;
+  documentText?: string | null;
+  requestId: string | undefined;
+}): Promise<string> {
+  const baseUrl = args.baseUrl || "https://api.anthropic.com";
+  const url = joinUrl(baseUrl, "/v1/messages");
+
+  const userContent = args.documentText
+    ? [{ type: "text", text: buildDocxPrompt(args.documentText, args.fileName) }]
+    : [
+        {
+          type: "document",
+          source: {
+            type: "base64",
+            media_type: args.mediaType,
+            data: args.dataBase64,
+          },
+        },
+        { type: "text", text: buildUserPrompt() },
+      ];
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "x-api-key": args.apiKey,
+    },
+    body: JSON.stringify({
+      model: args.model,
+      max_tokens: 8192,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userContent }],
+    }),
+    signal: AbortSignal.timeout(ANTHROPIC_DEFAULT_TIMEOUT_MS),
+  });
+
+  if (!response.ok) {
+    const detail = parseErrorMessage(await getResponseDetail(response));
+    throw new AppError({
+      status: response.status >= 500 ? 502 : 503,
+      message: detail || `Anthropic returned ${response.status}.`,
+      details: {
+        provider: "anthropic",
+        model: args.model,
+        requestId: args.requestId ?? null,
+      },
+    });
+  }
+
+  const payload = await response.json();
+  const text = extractAnthropicText(payload);
+  if (!text) {
+    throw upstreamError(
+      "Anthropic returned an empty response for resume import.",
+    );
+  }
+  return text;
+}
+
 async function extractResumeFromProvider(args: {
   provider: SupportedRuntimeProvider;
   apiKey: string;
@@ -1080,6 +1160,9 @@ async function extractResumeFromProvider(args: {
   }
   if (args.provider === "openrouter") {
     return extractWithOpenRouter(args);
+  }
+  if (args.provider === "anthropic") {
+    return extractWithAnthropic(args);
   }
   return extractWithGemini(args);
 }

@@ -19,7 +19,12 @@ export function buildHeaders(args: {
     "Content-Type": "application/json",
   };
 
-  if (args.apiKey) {
+  if (args.provider === "anthropic") {
+    headers["anthropic-version"] = "2023-06-01";
+    if (args.apiKey) {
+      headers["x-api-key"] = args.apiKey;
+    }
+  } else if (args.apiKey) {
     headers.Authorization = `Bearer ${args.apiKey}`;
   }
 

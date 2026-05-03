@@ -334,7 +334,20 @@ export async function generatePdf(
       throw err;
     }
 
-    const outputPath = getTenantJobPdfPath(jobId);
+    // Build human-readable filename: PersonName_Company_CV.pdf
+    let personName: string | undefined;
+    try {
+      const basics = preparedResume.data?.basics as
+        | { name?: string }
+        | undefined;
+      personName = basics?.name?.trim() || undefined;
+    } catch {
+      // ignore
+    }
+    const outputPath = getTenantJobPdfPath(jobId, {
+      personName,
+      employer: options?.tracerCompanyName ?? undefined,
+    });
     if (renderer === "latex") {
       const language = await resolveLatexResumeLanguage(preparedResume.data);
       await renderResumePdf({

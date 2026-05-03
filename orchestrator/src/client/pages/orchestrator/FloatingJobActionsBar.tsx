@@ -1,3 +1,4 @@
+import { BatchApplyButton } from "@client/components/linkedin-apply/BatchApplyButton";
 import { AnimatePresence, motion } from "framer-motion";
 import type React from "react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,8 @@ interface FloatingJobActionsBarProps {
   canMoveSelected: boolean;
   canSkipSelected: boolean;
   canRescoreSelected: boolean;
+  canAutoApplySelected: boolean;
+  selectedLinkedInReadyIds: string[];
   jobActionInFlight: boolean;
   onMoveToReady: () => void;
   onSkipSelected: () => void;
@@ -19,6 +22,8 @@ export const FloatingJobActionsBar: React.FC<FloatingJobActionsBarProps> = ({
   canMoveSelected,
   canSkipSelected,
   canRescoreSelected,
+  canAutoApplySelected,
+  selectedLinkedInReadyIds,
   jobActionInFlight,
   onMoveToReady,
   onSkipSelected,
@@ -75,6 +80,12 @@ export const FloatingJobActionsBar: React.FC<FloatingJobActionsBarProps> = ({
                 >
                   Recalculate match
                 </Button>
+              )}
+              {canAutoApplySelected && (
+                <BatchApplyButton
+                  linkedInReadyCount={selectedLinkedInReadyIds.length}
+                  selectedJobIds={selectedLinkedInReadyIds}
+                />
               )}
               <Button
                 type="button"

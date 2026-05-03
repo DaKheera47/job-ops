@@ -197,7 +197,7 @@ async function startViewer(): Promise<ViewerStatus> {
 
   startProcess(
     "Xvfb",
-    [display, "-screen", "0", "1280x720x24", "-nolisten", "tcp"],
+    [display, "-screen", "0", "1920x1080x24", "-nolisten", "tcp"],
     "xvfb",
   );
   await sleep(500);
@@ -247,10 +247,13 @@ export async function ensureChallengeViewer(): Promise<ViewerStatus> {
   return startPromise;
 }
 
-export function createChallengeViewerSession(): { token: string } {
+export function createChallengeViewerSession(
+  options?: { ttlMs?: number },
+): { token: string } {
   pruneExpiredViewerTokens();
   const token = randomBytes(32).toString("base64url");
-  viewerTokens.set(token, Date.now() + VIEWER_TOKEN_TTL_MS);
+  const ttl = options?.ttlMs ?? VIEWER_TOKEN_TTL_MS;
+  viewerTokens.set(token, Date.now() + ttl);
   return { token };
 }
 
@@ -260,6 +263,11 @@ export function buildChallengeViewerUrl(args: { token: string }): string {
   const params = new URLSearchParams({
     autoconnect: "true",
     path: webSocketPath,
+    resize: "scale",
+    view_only: "false",
+    show_dot: "true",
+    reconnect: "true",
+    reconnect_delay: "1000",
   });
   return `${viewerPath}?${params.toString()}`;
 }

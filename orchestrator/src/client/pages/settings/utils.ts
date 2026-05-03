@@ -27,6 +27,7 @@ export const LLM_PROVIDERS = [
   "openai_compatible",
   "gemini",
   "codex",
+  "anthropic",
 ] as const;
 
 export type LlmProviderId = (typeof LLM_PROVIDERS)[number];
@@ -44,6 +45,7 @@ export const LLM_PROVIDER_LABELS: Record<LlmProviderId, string> = {
   openai_compatible: "OpenAI-compatible",
   gemini: "Gemini",
   codex: "Codex",
+  anthropic: "Anthropic Claude",
 };
 
 const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
@@ -51,12 +53,14 @@ const PROVIDERS_WITH_API_KEY = new Set<LlmProviderId>([
   "openai",
   "openai_compatible",
   "gemini",
+  "anthropic",
 ]);
 
 const PROVIDERS_WITH_BASE_URL = new Set<LlmProviderId>([
   "lmstudio",
   "ollama",
   "openai_compatible",
+  "anthropic",
 ]);
 
 const PROVIDER_HINTS: Record<LlmProviderId, string> = {
@@ -70,6 +74,8 @@ const PROVIDER_HINTS: Record<LlmProviderId, string> = {
   gemini: "Gemini uses the native AI Studio API and requires a key.",
   codex:
     "Codex runs through a local app-server process and uses your Codex login session.",
+  anthropic:
+    "Anthropic Messages API. Supports direct API, GNAI gateway, or any compatible proxy.",
 };
 
 const PROVIDER_KEY_HELPERS: Record<
@@ -94,15 +100,19 @@ const PROVIDER_KEY_HELPERS: Record<
     href: "https://aistudio.google.com/app/apikey",
   },
   codex: { text: "No API key required when Codex is authenticated locally" },
+  anthropic: {
+    text: "Use your Anthropic API key or proxy credentials",
+  },
 };
 
-const BASE_URL_PROVIDERS = ["lmstudio", "ollama", "openai_compatible"] as const;
+const BASE_URL_PROVIDERS = ["lmstudio", "ollama", "openai_compatible", "anthropic"] as const;
 type BaseUrlProviderId = (typeof BASE_URL_PROVIDERS)[number];
 
 const PROVIDER_BASE_URLS: Record<BaseUrlProviderId, string> = {
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
   openai_compatible: "https://api.example.com/v1/chat/completions",
+  anthropic: "https://api.anthropic.com",
 };
 
 export function normalizeLlmProvider(

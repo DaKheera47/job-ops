@@ -1,5 +1,8 @@
 import * as api from "@client/api";
 import { JobHeader, TailoredSummary } from "@client/components";
+import { AutoApplyButton } from "@client/components/linkedin-apply/AutoApplyButton";
+import { EasyApplyProgress } from "@client/components/linkedin-apply/EasyApplyProgress";
+import { LinkedInSessionBadge } from "@client/components/linkedin-apply/LinkedInSessionBadge";
 import { GhostwriterDrawer } from "@client/components/ghostwriter/GhostwriterDrawer";
 import { JobDescriptionMarkdown } from "@client/components/JobDescriptionMarkdown";
 import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
@@ -889,6 +892,20 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="apply" className="min-h-0 flex-1 space-y-4 pt-3">
+          {selectedJob.source === "linkedin" &&
+            selectedJob.status === "ready" && (
+              <div className="space-y-2 rounded-lg border border-[#0a66c2]/30 bg-[#0a66c2]/5 p-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-foreground/85">
+                    LinkedIn Auto Apply
+                  </h3>
+                  <LinkedInSessionBadge />
+                </div>
+                <AutoApplyButton job={selectedJob} />
+                <EasyApplyProgress jobId={selectedJob.id} />
+              </div>
+            )}
+
           <div className="space-y-3 pb-1">
             <div>
               <h3 className="text-sm font-semibold text-foreground/85">

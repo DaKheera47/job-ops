@@ -50,6 +50,7 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
 export const DEFAULT_CODEX_MODEL = "";
+export const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,
@@ -72,6 +73,9 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "codex") {
     return DEFAULT_CODEX_MODEL;
+  }
+  if (normalizedProvider === "anthropic") {
+    return DEFAULT_ANTHROPIC_MODEL;
   }
   return DEFAULT_GEMINI_MODEL;
 }
@@ -187,6 +191,7 @@ export const settingsRegistry = {
           "openai_compatible",
           "gemini",
           "codex",
+          "anthropic",
         ])
         .nullable(),
     ),
@@ -609,6 +614,52 @@ export const settingsRegistry = {
     },
   },
 
+  // --- Pipeline Scheduling ---
+  pipelineScheduleEnabled: {
+    kind: "typed" as const,
+    schema: z.preprocess(
+      (v) => (v === "1" || v === "true" ? true : v === "0" || v === "false" ? false : v),
+      z.boolean(),
+    ),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
+  pipelineScheduleHour: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(23),
+    default: (): number => 8,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineTopN: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(100),
+    default: (): number => 20,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineMinScore: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(100),
+    default: (): number => 35,
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  pipelineAutoSkipBelow: {
+    kind: "typed" as const,
+    schema: z.number().int().min(0).max(100),
+    default: (): number | null => null,
+    parse: (raw: string | undefined): number | null => {
+      if (!raw || raw === "null" || raw === "") return null;
+      const parsed = parseInt(raw, 10);
+      return Number.isNaN(parsed) ? null : Math.min(100, Math.max(0, parsed));
+    },
+    serialize: (value: number | null | undefined): string | null => {
+      return value === null || value === undefined ? null : String(value);
+    },
+  },
+
   // --- Model Variants ---
   modelScorer: {
     kind: "model" as const,
@@ -691,6 +742,40 @@ export const settingsRegistry = {
     kind: "secret" as const,
     envKey: "WEBHOOK_SECRET",
     schema: z.string().trim().max(2000),
+  },
+
+  userTimezone: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(50),
+    default: (): string => "Europe/Berlin",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+
+  // --- Telegram Bot ---
+  telegramBotToken: {
+    kind: "secret" as const,
+    envKey: "TELEGRAM_BOT_TOKEN",
+    schema: z.string().trim().max(200),
+  },
+  telegramAuthorizedChatIds: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(500),
+    default: (): string => "",
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  telegramNotificationsEnabled: {
+    kind: "typed" as const,
+    schema: z.preprocess(
+      (v) => (v === "1" || v === "true" ? true : v === "0" || v === "false" ? false : v),
+      z.boolean(),
+    ),
+    default: (): boolean => true,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
   },
 
   // --- Aliases ---

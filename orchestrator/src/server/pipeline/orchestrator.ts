@@ -52,8 +52,8 @@ import {
 } from "./steps";
 
 const DEFAULT_CONFIG: PipelineConfig = {
-  topN: 10,
-  minSuitabilityScore: 50,
+  topN: 20,
+  minSuitabilityScore: 35,
   // Keep Glassdoor opt-in via source picker/settings; do not enable by default.
   sources: ["gradcracker", "indeed", "linkedin", "ukvisajobs"],
   outputDir: join(getDataDir(), "pdfs"),
@@ -357,6 +357,28 @@ export async function runPipeline(
         stage: "scoring",
         jobsScored: scoredJobs.length,
       });
+
+      // Auto-skip jobs below threshold (if configured)
+      const autoSkipRaw = await settingsRepo.getSetting("pipelineAutoSkipBelow");
+      if (autoSkipRaw) {
+        const autoSkipThreshold = parseInt(autoSkipRaw, 10);
+        if (!Number.isNaN(autoSkipThreshold) && autoSkipThreshold > 0) {
+          const toSkip = scoredJobs.filter(
+            (j) =>
+              j.suitabilityScore !== null &&
+              j.suitabilityScore < autoSkipThreshold,
+          );
+          if (toSkip.length > 0) {
+            for (const job of toSkip) {
+              await jobsRepo.updateJob(job.id, { status: "skipped" });
+            }
+            pipelineLogger.info("Auto-skipped jobs below threshold", {
+              threshold: autoSkipThreshold,
+              skipped: toSkip.length,
+            });
+          }
+        }
+      }
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "selection" });

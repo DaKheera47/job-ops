@@ -425,7 +425,7 @@ export function useOnboardingFlow() {
       const defaultModel = getDefaultModelForProvider(normalizedProvider);
       toast.success("LLM provider connected", {
         description:
-          normalizedProvider === "openai" || normalizedProvider === "gemini"
+          normalizedProvider === "openai" || normalizedProvider === "gemini" || normalizedProvider === "anthropic"
             ? `Default for ${providerConfig.label}: ${defaultModel}.`
             : "You can fine-tune models later in Settings.",
       });

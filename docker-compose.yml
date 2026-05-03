@@ -18,6 +18,8 @@ services:
       - ./data:/app/data
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
+      # GNAI CA certificates (created by scripts/gnai-token.sh)
+      - ./gnai-ca-certs.pem:/app/gnai-ca-certs.pem:ro
     environment:
       # Server config
       - NODE_ENV=production
@@ -27,6 +29,12 @@ services:
       - PYTHON_PATH=/usr/bin/python3
       # Codex runtime home (stores auth and config)
       - CODEX_HOME=/app/codex-home
+
+      # GNAI/proxy support (configured by scripts/gnai-token.sh)
+      - NODE_EXTRA_CA_CERTS=/app/gnai-ca-certs.pem
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-localhost,127.0.0.1}
 
     env_file:
       - path: ./.env

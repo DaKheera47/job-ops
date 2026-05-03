@@ -17,6 +17,8 @@ import {
 } from "./services/backup/index";
 import { attachChallengeViewerUpgradeProxy } from "./services/challenge-viewer";
 import { initializeDemoModeServices } from "./services/demo-mode";
+import { initializePipelineScheduler } from "./services/pipeline-scheduler";
+import { initializeTelegramBot } from "./services/telegram-bot";
 import { applyStoredEnvOverrides } from "./services/envSettings";
 import { initializeHistoricalServerEventReplaySafely } from "./services/historical-product-analytics";
 import { initialize as initializeVisaSponsors } from "./services/visa-sponsors/index";
@@ -147,6 +149,24 @@ async function startServer() {
       await initializeDemoModeServices();
     } catch (error) {
       logger.warn("Failed to initialize demo mode services", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    // Initialize pipeline scheduler (daily automated pipeline runs)
+    try {
+      await initializePipelineScheduler();
+    } catch (error) {
+      logger.warn("Failed to initialize pipeline scheduler", {
+        error: sanitizeUnknown(error),
+      });
+    }
+
+    // Initialize Telegram bot (long-polling, no incoming connections needed)
+    try {
+      await initializeTelegramBot();
+    } catch (error) {
+      logger.warn("Failed to initialize Telegram bot", {
         error: sanitizeUnknown(error),
       });
     }
