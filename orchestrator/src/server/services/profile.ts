@@ -1,4 +1,6 @@
 import { logger } from "@infra/logger";
+import { getTenantId } from "@infra/request-context";
+import { getActiveTenantId } from "@server/tenancy/context";
 import type { ResumeProfile } from "@shared/types";
 import {
   designResumeToProfile,
@@ -7,9 +9,27 @@ import {
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
-let cachedProfile: ResumeProfile | null = null;
-let cachedResumeId: string | null = null;
-let cachedLocalProfile: ResumeProfile | null = null;
+type TenantProfileCache = {
+  profile: ResumeProfile | null;
+  resumeId: string | null;
+  localProfile: ResumeProfile | null;
+};
+
+const profileCacheByTenant = new Map<string, TenantProfileCache>();
+
+function getTenantProfileCache(): TenantProfileCache {
+  const tenantId = getActiveTenantId();
+  let cache = profileCacheByTenant.get(tenantId);
+  if (!cache) {
+    cache = {
+      profile: null,
+      resumeId: null,
+      localProfile: null,
+    };
+    profileCacheByTenant.set(tenantId, cache);
+  }
+  return cache;
+}
 
 /**
  * Get the base resume profile from RxResume.
@@ -21,14 +41,16 @@ let cachedLocalProfile: ResumeProfile | null = null;
  * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
 export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
-  if (cachedLocalProfile && !forceRefresh) {
-    return cachedLocalProfile;
+  const cache = getTenantProfileCache();
+
+  if (cache.localProfile && !forceRefresh) {
+    return cache.localProfile;
   }
 
   try {
     const localProfile = await designResumeToProfile();
     if (localProfile) {
-      cachedLocalProfile = localProfile;
+      cache.localProfile = localProfile;
       return localProfile;
     }
   } catch (error) {
@@ -54,11 +76,11 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
 
   // Return cached profile if valid
   if (
-    cachedProfile &&
-    cachedResumeId === rxresumeBaseResumeId &&
+    cache.profile &&
+    cache.resumeId === rxresumeBaseResumeId &&
     !forceRefresh
   ) {
-    return cachedProfile;
+    return cache.profile;
   }
 
   try {
@@ -73,12 +95,12 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
       throw new Error("Resume data is empty or invalid");
     }
 
-    cachedProfile = resume.data as unknown as ResumeProfile;
-    cachedResumeId = rxresumeBaseResumeId;
+    cache.profile = resume.data as unknown as ResumeProfile;
+    cache.resumeId = rxresumeBaseResumeId;
     logger.info("Profile loaded from Reactive Resume", {
       resumeId: rxresumeBaseResumeId,
     });
-    return cachedProfile;
+    return cache.profile;
   } catch (error) {
     if (error instanceof RxResumeAuthConfigError) {
       throw new Error(error.message);
@@ -103,7 +125,10 @@ export async function getPersonName(): Promise<string> {
  * Clear the profile cache.
  */
 export function clearProfileCache(): void {
-  cachedProfile = null;
-  cachedResumeId = null;
-  cachedLocalProfile = null;
+  const tenantId = getTenantId();
+  if (tenantId) {
+    profileCacheByTenant.delete(tenantId);
+    return;
+  }
+  profileCacheByTenant.clear();
 }

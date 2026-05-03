@@ -21,6 +21,11 @@ vi.mock("./rxresume/baseResumeId", () => ({
   getConfiguredRxResumeBaseResumeId: vi.fn(),
 }));
 
+vi.mock("@server/tenancy/context", () => ({
+  getActiveTenantId: vi.fn(() => "tenant_default"),
+}));
+
+import { getActiveTenantId } from "@server/tenancy/context";
 import {
   designResumeToProfile,
   isLegacyDesignResumeError,
@@ -31,6 +36,7 @@ import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 describe("getProfile", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant_default");
     clearProfileCache();
     vi.mocked(designResumeToProfile).mockResolvedValue(null);
     vi.mocked(isLegacyDesignResumeError).mockReturnValue(false);
@@ -69,6 +75,32 @@ describe("getProfile", () => {
     expect(designResumeToProfile).toHaveBeenCalledTimes(1);
     expect(getConfiguredRxResumeBaseResumeId).not.toHaveBeenCalled();
     expect(getResume).not.toHaveBeenCalled();
+  });
+
+  it("should keep local Design Resume profiles scoped by tenant", async () => {
+    vi.mocked(designResumeToProfile)
+      .mockResolvedValueOnce({ basics: { name: "Tenant One" } } as any)
+      .mockResolvedValueOnce({ basics: { name: "Tenant Two" } } as any);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-two");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant Two" },
+    });
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+
+    expect(designResumeToProfile).toHaveBeenCalledTimes(2);
   });
 
   it("should fetch profile from Reactive Resume when configured", async () => {

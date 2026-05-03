@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { queryClient } from "@/client/lib/queryClient";
 import * as api from "./client";
 
 const { redirectToSignIn } = vi.hoisted(() => ({
@@ -146,6 +147,7 @@ describe("API client auth flow", () => {
       username: "legacy-user",
       password: "legacy-pass",
     });
+    const clearSpy = vi.spyOn(queryClient, "clear");
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
       jwtLoginSuccess("fresh-token"),
@@ -155,10 +157,12 @@ describe("API client auth flow", () => {
       api.signInWithCredentials("legacy-user", "legacy-pass"),
     ).resolves.toBeUndefined();
     expect(api.getCachedAuthHeader()).toBe("Bearer fresh-token");
+    expect(clearSpy).toHaveBeenCalledTimes(1);
   });
 
   it("redirects after logout and clears the cached token", async () => {
     api.__setAuthTokenForTests("logout-token");
+    const clearSpy = vi.spyOn(queryClient, "clear");
 
     vi.spyOn(global, "fetch").mockResolvedValueOnce(
       createJsonResponse(200, {
@@ -171,6 +175,7 @@ describe("API client auth flow", () => {
     await api.logout();
 
     expect(api.getCachedAuthHeader()).toBeUndefined();
+    expect(clearSpy).toHaveBeenCalledTimes(1);
     expect(redirectToSignIn).toHaveBeenCalledTimes(1);
   });
 

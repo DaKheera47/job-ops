@@ -65,6 +65,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { formatUserFacingError } from "@/client/lib/error-format";
+import { queryClient } from "@/client/lib/queryClient";
 import {
   bucketQueryLength,
   getAnalyticsRequestHeaders,
@@ -234,7 +235,12 @@ let cachedLegacyCredentials: AuthCredentials | null =
 let cachedAuthToken: string | null = loadStoredAuthToken();
 let authMigrationInFlight: Promise<boolean> | null = null;
 
+function clearCachedAppData(): void {
+  queryClient.clear();
+}
+
 export function clearAuthSession(): void {
+  clearCachedAppData();
   cachedLegacyCredentials = null;
   cachedAuthToken = null;
   storeLegacyCredentials(null);
@@ -242,6 +248,7 @@ export function clearAuthSession(): void {
 }
 
 function setAuthenticatedSession(token: string): void {
+  clearCachedAppData();
   cachedAuthToken = token;
   storeAuthToken(token);
   cachedLegacyCredentials = null;
