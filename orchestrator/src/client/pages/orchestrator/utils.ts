@@ -253,6 +253,10 @@ export const getEnabledSources = (
       enabled.push(source);
       continue;
     }
+    if (source === "jobindex") {
+      enabled.push(source);
+      continue;
+    }
     if (
       source === "indeed" ||
       source === "linkedin" ||

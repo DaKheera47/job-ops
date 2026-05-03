@@ -36,6 +36,7 @@ function makeSettings() {
     gradcrackerMaxJobsPerTerm: { value: 50, default: 50, override: null },
     naukriMaxJobsPerTerm: { value: 50, default: 50, override: null },
     startupjobsMaxJobsPerTerm: { value: 50, default: 50, override: null },
+    jobindexMaxJobsPerTerm: { value: 50, default: 50, override: null },
     jobspyResultsWanted: { value: 20, default: 20, override: null },
     autoSkipScoreThreshold: { value: 65, default: 65, override: null },
     pdfRenderer: { value: "rxresume", default: "rxresume", override: null },
