@@ -53,6 +53,15 @@ describe("Jobindex Stash parsing", () => {
     ]);
   });
 
+  it("parses Stash payloads without relying on lf-only semicolon endings", () => {
+    const html =
+      '<script>var Stash = {"jobsearch/result_app":{"storeData":{"searchResponse":{"results":[{"tid":"h1"}],"total_pages":1}}}};</script>';
+
+    const response = extractJobindexSearchResponse(html);
+
+    expect(response.results).toEqual([{ tid: "h1" }]);
+  });
+
   it("builds query-only search URLs and adds page after the first page", () => {
     expect(buildJobindexSearchUrl("software engineering", 1)).toBe(
       "https://www.jobindex.dk/jobsoegning?q=software+engineering",
@@ -81,6 +90,19 @@ describe("resolveGeoareaIds", () => {
         ],
       ),
     ).toEqual([74, 56]);
+  });
+
+  it("matches common Danish transliterations", () => {
+    expect(
+      resolveGeoareaIds(
+        ["Kobenhavn", "Sonderborg", "Aabenraa"],
+        [
+          { id: 56, text: "København", typeid: 30 },
+          { id: 87, text: "Sønderborg", typeid: 30 },
+          { id: 6, text: "Aabenraa", typeid: 30 },
+        ],
+      ),
+    ).toEqual([56, 87, 6]);
   });
 });
 

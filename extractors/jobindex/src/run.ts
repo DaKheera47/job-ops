@@ -267,12 +267,17 @@ export function extractJobindexStoreData(html: string): JobindexStoreData {
     throw new Error("Jobindex Stash JSON start was not found.");
   }
 
-  const jsonEnd = html.indexOf(";\n", jsonStart);
-  if (jsonEnd < 0) {
+  const scriptEnd = html.indexOf("</script>", jsonStart);
+  if (scriptEnd < 0) {
+    throw new Error("Jobindex Stash script end was not found.");
+  }
+
+  const jsonText = html.slice(jsonStart, scriptEnd).trim().replace(/;\s*$/, "");
+  if (!jsonText.endsWith("}")) {
     throw new Error("Jobindex Stash JSON end was not found.");
   }
 
-  const stash = JSON.parse(html.slice(jsonStart, jsonEnd)) as JobindexStash;
+  const stash = JSON.parse(jsonText) as JobindexStash;
   const storeData = stash["jobsearch/result_app"]?.storeData;
   if (!storeData || typeof storeData !== "object") {
     throw new Error("Jobindex storeData payload was not found.");
@@ -294,6 +299,9 @@ export function extractJobindexSearchResponse(
 
 function normalizeLocationLabel(value: string): string {
   return value
+    .replace(/[æÆ]/g, "ae")
+    .replace(/[øØ]/g, "o")
+    .replace(/[åÅ]/g, "aa")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()

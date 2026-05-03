@@ -119,6 +119,25 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.ukvisajobsMaxJobs.parse("42")).toBe(42);
     });
 
+    it("uses env-backed defaults for jobindex per-term caps", () => {
+      const previousJobindexMaxJobsPerTerm =
+        process.env.JOBINDEX_MAX_JOBS_PER_TERM;
+
+      process.env.JOBINDEX_MAX_JOBS_PER_TERM = "75";
+
+      try {
+        expect(settingsRegistry.jobindexMaxJobsPerTerm.default()).toBe(75);
+        expect(settingsRegistry.jobindexMaxJobsPerTerm.parse("25")).toBe(25);
+      } finally {
+        if (previousJobindexMaxJobsPerTerm === undefined) {
+          delete process.env.JOBINDEX_MAX_JOBS_PER_TERM;
+        } else {
+          process.env.JOBINDEX_MAX_JOBS_PER_TERM =
+            previousJobindexMaxJobsPerTerm;
+        }
+      }
+    });
+
     it("clamps backupHour to 0-23", () => {
       expect(settingsRegistry.backupHour.parse("25")).toBe(23);
       expect(settingsRegistry.backupHour.parse("-1")).toBe(0);

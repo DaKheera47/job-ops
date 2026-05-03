@@ -9,11 +9,11 @@ sidebar_position: 11
 
 Original website: [Jobindex](https://www.jobindex.dk/)
 
-This extractor reads Jobindex search result pages and parses the embedded `var Stash = ...` payload that powers the browser result app. The first implementation supports Denmark query-only searches.
+This extractor reads Jobindex search result pages and parses the embedded `var Stash = ...` payload that powers the browser result app. It supports Denmark searches with query terms and optional city filtering through Jobindex `geoareaid` resolution.
 
 Implementation split:
 
-1. `extractors/jobindex/src/run.ts` fetches `/jobsoegning?q=...`, parses `searchResponse.results`, paginates with `page=2`, and maps rows into `CreateJobInput`.
+1. `extractors/jobindex/src/run.ts` fetches `/jobsoegning?q=...`, resolves selected city locations through `storeData.geoareaOptions`, appends matching `geoareaid` filters, parses `searchResponse.results`, paginates with `page=2`, and maps rows into `CreateJobInput`.
 2. `extractors/jobindex/src/manifest.ts` enforces Denmark-only runs, adapts pipeline settings, emits progress updates, and registers the source for runtime discovery.
 
 ## Why it exists
@@ -38,7 +38,7 @@ Using the page payload keeps the scraper small while still capturing company, lo
 Defaults and constraints:
 
 - The extractor only runs when selected country is `denmark`.
-- Location-specific Jobindex paths and `geoareaid` filters are not implemented yet.
+- When city locations are selected, the extractor resolves them to Jobindex `geoareaid` filters and applies them on the search URL.
 - `JOBINDEX_MAX_JOBS_PER_TERM` controls the default per-term cap when no automatic run budget override is present.
 - Direct application links are parsed from the result card heading where available; otherwise the Jobindex listing URL is used.
 - Job descriptions come from paragraph text in the result card, not from full detail-page scraping.
@@ -52,8 +52,9 @@ Defaults and constraints:
 
 ### Results are not filtered to a city
 
-- City/location support is intentionally deferred for the first version.
-- Use query terms to narrow results until Jobindex location filters are added.
+- City filtering only applies when the selected city can be resolved to a Jobindex `geoareaid`.
+- If no match is found, the extractor falls back to the query-only URL for that search term.
+- Danish names and common transliterations such as `Kobenhavn`, `Aabenraa`, and `Sonderborg` are supported.
 
 ### Application links point to Jobindex
 
