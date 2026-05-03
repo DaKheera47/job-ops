@@ -59,6 +59,15 @@ export async function getDesignResumeAssetById(id: string) {
   return row ?? null;
 }
 
+export async function getDesignResumeAssetByIdAnyTenant(id: string) {
+  const [row] = await db
+    .select()
+    .from(designResumeAssets)
+    .where(eq(designResumeAssets.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
 export async function upsertDesignResumeDocument(input: {
   id: string;
   title: string;

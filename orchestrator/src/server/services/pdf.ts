@@ -106,14 +106,6 @@ async function stripPictureWhenJobOpsIsNotHosted(args: {
   data: Record<string, unknown>;
   requestOrigin?: string | null;
 }): Promise<Record<string, unknown>> {
-  const availability = await getJobOpsPublicAvailability({
-    requestOrigin: args.requestOrigin ?? null,
-    force: false,
-  });
-  if (availability.isPubliclyAvailable) {
-    return args.data;
-  }
-
   const picture =
     args.data.picture &&
     typeof args.data.picture === "object" &&
@@ -121,6 +113,19 @@ async function stripPictureWhenJobOpsIsNotHosted(args: {
       ? (args.data.picture as Record<string, unknown>)
       : null;
   if (!picture) return args.data;
+
+  const pictureUrl = typeof picture.url === "string" ? picture.url.trim() : "";
+  if (!/^\/api\/design-resume\/assets\/[^/]+\/content$/.test(pictureUrl)) {
+    return args.data;
+  }
+
+  const availability = await getJobOpsPublicAvailability({
+    requestOrigin: args.requestOrigin ?? null,
+    force: false,
+  });
+  if (availability.isPubliclyAvailable) {
+    return args.data;
+  }
 
   return {
     ...args.data,

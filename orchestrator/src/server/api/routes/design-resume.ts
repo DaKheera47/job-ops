@@ -293,8 +293,6 @@ designResumeRouter.post(
 designResumeRouter.delete(
   "/assets/picture",
   asyncRoute(async (req: Request, res: Response) => {
-    await assertPictureSupportEnabled(req);
-
     const input = pictureMutationSchema.parse(req.body ?? {});
     const document = await deleteDesignResumePicture({
       baseRevision: input.baseRevision,
@@ -314,7 +312,9 @@ designResumeRouter.get(
       return;
     }
 
-    const { asset, content } = await readDesignResumeAssetContent(assetId);
+    const { asset, content } = await readDesignResumeAssetContent(assetId, {
+      bypassTenantScope: true,
+    });
     res.setHeader("Content-Type", asset.mimeType);
     res.setHeader("Cache-Control", "private, max-age=60");
     res.send(content);

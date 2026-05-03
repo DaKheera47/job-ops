@@ -358,11 +358,6 @@ export const DesignResumePage: React.FC = () => {
   };
 
   const handleDeletePicture = async () => {
-    if (!pictureEnabled) {
-      toast.error(pictureDisabledReason);
-      return;
-    }
-
     try {
       const latestDraft = await ensureLatestPersistedDraft();
       if (!latestDraft) return;

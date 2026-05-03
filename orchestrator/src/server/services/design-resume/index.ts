@@ -33,6 +33,7 @@ const DESIGN_RESUME_ASSET_DIR = join(DESIGN_RESUME_DIR, "assets");
 const DESIGN_RESUME_DEFAULT_ID = "primary";
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_PICTURE_FETCH_REDIRECTS = 3;
 const LEGACY_REIMPORT_MESSAGE =
   "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
 const INVALID_V5_PREFIX =
@@ -174,6 +175,78 @@ function assertImageByteSize(byteLength: number): void {
   }
 }
 
+function isLocalOrPrivateHostname(hostnameRaw: string): boolean {
+  const hostname = hostnameRaw.trim().toLowerCase();
+  if (!hostname) return true;
+
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  const ipv4Match = hostname.match(
+    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
+  );
+  if (ipv4Match) {
+    const octets = ipv4Match.slice(1).map((part) => Number(part));
+    if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return true;
+    const [first, second] = octets;
+    if (
+      first === 10 ||
+      first === 127 ||
+      first === 0 ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168)
+    ) {
+      return true;
+    }
+  }
+
+  if (hostname.includes(":")) {
+    if (
+      hostname === "::1" ||
+      hostname.startsWith("fe80:") ||
+      hostname.startsWith("fc") ||
+      hostname.startsWith("fd")
+    ) {
+      return true;
+    }
+  }
+
+  if (!hostname.includes(".") && !hostname.includes(":")) {
+    return true;
+  }
+
+  return false;
+}
+
+function parsePublicPictureUrl(value: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw badRequest("Design Resume pictures must use a valid absolute URL.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw badRequest("Design Resume pictures must use HTTP or HTTPS URLs.");
+  }
+  if (parsed.username || parsed.password) {
+    throw badRequest("Design Resume picture URLs cannot include credentials.");
+  }
+  if (isLocalOrPrivateHostname(parsed.hostname)) {
+    throw badRequest(
+      "Design Resume picture URLs must point to a publicly reachable host.",
+    );
+  }
+
+  return parsed;
+}
+
 function originalNameFromUrl(url: string, mimeType: string): string {
   try {
     const pathname = new URL(url).pathname;
@@ -223,14 +296,32 @@ async function storeDesignResumePictureAsset(input: {
   return { assetId, storagePath };
 }
 
-async function fetchPictureFromUrl(url: string): Promise<{
+async function fetchPictureFromUrl(
+  url: string,
+  redirectCount = 0,
+): Promise<{
   data: Buffer;
   fileName: string;
   mimeType: string;
 }> {
-  const response = await fetch(url, {
+  const parsedUrl = parsePublicPictureUrl(url);
+  const response = await fetch(parsedUrl.toString(), {
     signal: AbortSignal.timeout(15_000),
+    redirect: "manual",
   });
+  if (
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get("location")
+  ) {
+    if (redirectCount >= MAX_PICTURE_FETCH_REDIRECTS) {
+      throw new Error(
+        "Reactive Resume picture download redirected too many times.",
+      );
+    }
+    const nextUrl = new URL(response.headers.get("location") ?? "", parsedUrl);
+    return fetchPictureFromUrl(nextUrl.toString(), redirectCount + 1);
+  }
   if (!response.ok) {
     throw new Error(
       `Reactive Resume picture download failed with HTTP ${response.status}.`,
@@ -887,11 +978,16 @@ export async function deleteDesignResumePicture(input?: {
   return updated;
 }
 
-export async function readDesignResumeAssetContent(assetId: string): Promise<{
+export async function readDesignResumeAssetContent(
+  assetId: string,
+  options?: { bypassTenantScope?: boolean },
+): Promise<{
   asset: DesignResumeAsset;
   content: Buffer;
 }> {
-  const row = await designResumeRepo.getDesignResumeAssetById(assetId);
+  const row = options?.bypassTenantScope
+    ? await designResumeRepo.getDesignResumeAssetByIdAnyTenant(assetId)
+    : await designResumeRepo.getDesignResumeAssetById(assetId);
   if (!row) {
     throw notFound("Design Resume asset not found.");
   }

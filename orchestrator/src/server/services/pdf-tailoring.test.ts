@@ -708,4 +708,62 @@ describe("PDF Service Tailoring Logic", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("keeps externally hosted pictures in RxResume export when JobOps is not hosted", async () => {
+    currentPdfRenderer.value = "rxresume";
+    mockTracerLinks.getJobOpsPublicAvailability.mockResolvedValue({
+      status: "unavailable",
+      isPubliclyAvailable: false,
+      publicBaseUrl: "http://localhost:3005",
+      healthUrl: "http://localhost:3005/health",
+      checkedAt: 1,
+      lastSuccessAt: null,
+      reason:
+        "Configured public URL must be internet-reachable (not localhost/private network).",
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => new TextEncoder().encode("pdf-bytes").buffer,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const designResume = await import("./design-resume");
+    vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
+      id: "design-resume-1",
+      title: "Design Resume",
+      sourceResumeId: null,
+      sourceMode: "v5",
+      importedAt: "2026-05-02T00:00:00.000Z",
+      updatedAt: "2026-05-02T00:00:00.000Z",
+      revision: 1,
+      resumeJson: {
+        ...mockProfile,
+        picture: {
+          ...mockProfile.picture,
+          hidden: false,
+          url: "https://cdn.example.com/photo.png",
+        },
+      },
+    } as any);
+
+    const rxresume = await import("./rxresume");
+
+    try {
+      await generateDesignResumePdf({
+        requestOrigin: "http://localhost:3005",
+      });
+
+      expect(rxresume.importResume).toHaveBeenCalledWith({
+        name: "Design Resume",
+        data: expect.objectContaining({
+          picture: expect.objectContaining({
+            hidden: false,
+            url: "https://cdn.example.com/photo.png",
+          }),
+        }),
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

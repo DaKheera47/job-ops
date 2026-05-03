@@ -5,6 +5,7 @@ import { buildDefaultReactiveResumeDocument } from "./rxresume/document";
 const repo = vi.hoisted(() => ({
   getLatestDesignResumeDocument: vi.fn(),
   getDesignResumeAssetById: vi.fn(),
+  getDesignResumeAssetByIdAnyTenant: vi.fn(),
   listDesignResumeAssets: vi.fn(),
   upsertDesignResumeDocument: vi.fn(),
   insertDesignResumeAsset: vi.fn(),
@@ -110,6 +111,7 @@ describe("design resume service", () => {
     repo.getLatestDesignResumeDocument.mockResolvedValue(makeDocumentRow());
     repo.listDesignResumeAssets.mockResolvedValue([]);
     repo.getDesignResumeAssetById.mockResolvedValue(null);
+    repo.getDesignResumeAssetByIdAnyTenant.mockResolvedValue(null);
     repo.upsertDesignResumeDocument.mockImplementation(async (input) =>
       makeDocumentRow({
         ...input,
@@ -210,6 +212,37 @@ describe("design resume service", () => {
         kind: "picture",
         mimeType: "image/webp",
       }),
+    );
+  });
+
+  it("does not fetch imported picture URLs from private hosts", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const upstreamResume = makeValidResumeJson({
+      picture: {
+        ...(buildDefaultReactiveResumeDocument().picture as Record<
+          string,
+          unknown
+        >),
+        hidden: false,
+        url: "/uploads/profile-photo.png",
+      },
+    });
+    vi.mocked(getSetting).mockImplementation(async (key) =>
+      key === "rxresumeUrl" ? "http://127.0.0.1:3000/api/openapi" : null,
+    );
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(repo.insertDesignResumeAsset).not.toHaveBeenCalled();
+    expect(result.resumeJson.picture.url).toBe(
+      "http://127.0.0.1:3000/uploads/profile-photo.png",
     );
   });
 
@@ -567,6 +600,30 @@ describe("design resume service", () => {
     const { asset } = await readDesignResumeAssetContent("asset-1");
 
     expect(asset).not.toHaveProperty("storagePath");
+    expect(asset.contentUrl).toBe("/api/design-resume/assets/asset-1/content");
+  });
+
+  it("can read asset content without tenant scoping for public preview fetches", async () => {
+    repo.getDesignResumeAssetByIdAnyTenant.mockResolvedValueOnce({
+      id: "asset-1",
+      documentId: "primary",
+      kind: "picture",
+      originalName: "photo.png",
+      mimeType: "image/png",
+      byteSize: 123,
+      storagePath: "/tmp/job-ops-test/design-resume/assets/photo.png",
+      createdAt: "2026-04-07T00:00:00.000Z",
+      updatedAt: "2026-04-07T00:00:00.000Z",
+    });
+    fsMocks.readFile.mockResolvedValueOnce(Buffer.from("hello"));
+
+    const { asset } = await readDesignResumeAssetContent("asset-1", {
+      bypassTenantScope: true,
+    });
+
+    expect(repo.getDesignResumeAssetByIdAnyTenant).toHaveBeenCalledWith(
+      "asset-1",
+    );
     expect(asset.contentUrl).toBe("/api/design-resume/assets/asset-1/content");
   });
 

@@ -88,7 +88,7 @@ export function PictureSection({
   onDeletePicture,
   onUpdatePicture,
 }: PictureSectionProps) {
-  const disabled = !pictureEnabled;
+  const editDisabled = !pictureEnabled;
 
   return (
     <div className="grid gap-3">
@@ -115,7 +115,7 @@ export function PictureSection({
               type="button"
               variant="outline"
               onClick={onUploadPicture}
-              disabled={pictureUploading || disabled}
+              disabled={pictureUploading || editDisabled}
             >
               <ImagePlus className="mr-2 h-4 w-4" />
               Replace
@@ -125,7 +125,7 @@ export function PictureSection({
               variant="ghost"
               className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
               onClick={onDeletePicture}
-              disabled={disabled}
+              disabled={pictureUploading}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
@@ -138,7 +138,7 @@ export function PictureSection({
           variant="outline"
           className="justify-start border-dashed"
           onClick={onUploadPicture}
-          disabled={pictureUploading || disabled}
+          disabled={pictureUploading || editDisabled}
         >
           <FileImage className="mr-2 h-4 w-4" />
           {pictureUploading ? "Uploading..." : "Upload image"}
@@ -156,7 +156,7 @@ export function PictureSection({
             onUpdatePicture("url", event.currentTarget.value)
           }
           className={fieldClassName}
-          disabled={disabled}
+          disabled={editDisabled}
         />
       </div>
 
@@ -174,7 +174,7 @@ export function PictureSection({
         <Switch
           checked={!toBoolean(picture.hidden, false)}
           onCheckedChange={(checked) => onUpdatePicture("hidden", !checked)}
-          disabled={disabled}
+          disabled={editDisabled}
         />
       </div>
 
@@ -199,7 +199,7 @@ export function PictureSection({
                 onUpdatePicture(key, Number(event.currentTarget.value || 0))
               }
               className={fieldClassName}
-              disabled={disabled}
+              disabled={editDisabled}
             />
           </div>
         ))}
@@ -212,7 +212,7 @@ export function PictureSection({
             id={fieldId("picture", key)}
             label={label}
             value={toText(picture[key])}
-            disabled={disabled}
+            disabled={editDisabled}
             onChange={(nextValue) => onUpdatePicture(key, nextValue)}
           />
         ))}
