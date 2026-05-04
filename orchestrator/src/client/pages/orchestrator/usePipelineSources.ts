@@ -1,10 +1,30 @@
 import type { JobSource } from "@shared/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getAuthScopedStorageKey } from "@/client/api/client";
 import {
   DEFAULT_PIPELINE_SOURCES,
   orderedSources,
   PIPELINE_SOURCES_STORAGE_KEY,
 } from "./constants";
+
+export function getPipelineSourcesStorageKey(): string {
+  return getAuthScopedStorageKey(PIPELINE_SOURCES_STORAGE_KEY);
+}
+
+function readPipelineSourcesStorage(storageKey: string): string | null {
+  const scoped = localStorage.getItem(storageKey);
+  if (scoped || storageKey === PIPELINE_SOURCES_STORAGE_KEY) return scoped;
+  return localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
+}
+
+function migrateLegacyPipelineSourcesStorage(
+  storageKey: string,
+  raw: string,
+): void {
+  if (storageKey === PIPELINE_SOURCES_STORAGE_KEY) return;
+  if (localStorage.getItem(storageKey)) return;
+  localStorage.setItem(storageKey, raw);
+}
 
 const resolveAllowedSources = (enabledSources?: readonly JobSource[]) =>
   enabledSources && enabledSources.length > 0
@@ -28,9 +48,10 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
     () => resolveAllowedSources(enabledSources),
     [enabledSources],
   );
+  const storageKey = useMemo(() => getPipelineSourcesStorageKey(), []);
   const [pipelineSources, setPipelineSources] = useState<JobSource[]>(() => {
     try {
-      const raw = localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY);
+      const raw = readPipelineSourcesStorage(storageKey);
       if (!raw) return normalizeSources(allowedSources, allowedSources);
       const parsed = JSON.parse(raw) as unknown;
       if (!Array.isArray(parsed))
@@ -38,6 +59,7 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
       const next = parsed.filter((value): value is JobSource =>
         orderedSources.includes(value as JobSource),
       );
+      migrateLegacyPipelineSourcesStorage(storageKey, raw);
       return normalizeSources(next, allowedSources);
     } catch {
       return normalizeSources(allowedSources, allowedSources);
@@ -53,14 +75,11 @@ export const usePipelineSources = (enabledSources?: readonly JobSource[]) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        PIPELINE_SOURCES_STORAGE_KEY,
-        JSON.stringify(pipelineSources),
-      );
+      localStorage.setItem(storageKey, JSON.stringify(pipelineSources));
     } catch {
       // Ignore localStorage errors
     }
-  }, [pipelineSources]);
+  }, [pipelineSources, storageKey]);
 
   const toggleSource = useCallback(
     (source: JobSource, checked: boolean) => {

@@ -10,6 +10,7 @@ import {
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
 import type { JobSource } from "@shared/types";
+import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
 export type AutomaticPresetSelection = AutomaticPresetId | "custom";
@@ -83,6 +84,24 @@ export const AUTOMATIC_PRESETS: Record<
 };
 
 export const RUN_MEMORY_STORAGE_KEY = "jobops.pipeline.run-memory.v1";
+
+export function getRunMemoryStorageKey(): string {
+  return getAuthScopedStorageKey(RUN_MEMORY_STORAGE_KEY);
+}
+
+function readRunMemoryStorage(): string | null {
+  const storageKey = getRunMemoryStorageKey();
+  const scoped = localStorage.getItem(storageKey);
+  if (scoped || storageKey === RUN_MEMORY_STORAGE_KEY) return scoped;
+  return localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
+}
+
+function migrateLegacyRunMemoryStorage(raw: string): void {
+  const storageKey = getRunMemoryStorageKey();
+  if (storageKey === RUN_MEMORY_STORAGE_KEY) return;
+  if (localStorage.getItem(storageKey)) return;
+  localStorage.setItem(storageKey, raw);
+}
 
 export const SEARCH_SCOPE_OPTIONS: Array<{
   value: LocationSearchScope;
@@ -397,7 +416,7 @@ export function calculateAutomaticEstimate(args: {
 
 export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
   try {
-    const raw = localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
+    const raw = readRunMemoryStorage();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (
@@ -418,6 +437,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
       ? parsed.presetId
       : null;
+    migrateLegacyRunMemoryStorage(raw);
 
     if (explicitPresetId && explicitPresetId !== "custom") {
       const preset = AUTOMATIC_PRESETS[explicitPresetId];
@@ -467,7 +487,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
 
 export function saveAutomaticRunMemory(memory: AutomaticRunMemory): void {
   try {
-    localStorage.setItem(RUN_MEMORY_STORAGE_KEY, JSON.stringify(memory));
+    localStorage.setItem(getRunMemoryStorageKey(), JSON.stringify(memory));
   } catch {
     // Ignore localStorage failures
   }

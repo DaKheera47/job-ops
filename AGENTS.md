@@ -29,6 +29,14 @@ Use consistent status/code mapping:
 - Include request ID in API responses (`meta.requestId`) and logs.
 - Propagate context into async flows (especially pipeline run and per-job work) so logs include `pipelineRunId` / `jobId` when available.
 
+## Multi-Tenancy Defaults
+
+- Treat every server-side change as multi-tenant by default.
+- Before adding or changing storage, caching, background work, API routes, SSE streams, files, or external payloads, confirm how tenant/workspace context is selected, propagated, and enforced.
+- Scope database reads/writes, filesystem paths, in-memory caches, queues, locks, rate limits, and long-lived process state by tenant/workspace unless the data is explicitly global.
+- Never let module-level caches or singleton state hold tenant-specific profile, settings, job, PDF, chat, or integration data unless the cache key includes the active tenant/workspace.
+- Include cross-tenant regression coverage when touching shared repositories, services, auth/session handling, profile/resume flows, PDF generation, Ghostwriter/tailoring, pipeline state, or settings.
+
 ## Logging Rules
 
 - Use the shared logger wrapper (`infra/logger.ts`) in core server paths.
@@ -62,6 +70,7 @@ Use consistent status/code mapping:
 - API responses follow `{ ok, data/error, meta.requestId }`.
 - Status/code mapping is correct and consistent.
 - Request/correlation IDs appear in logs and async workflows.
+- Tenant/workspace context is correctly scoped across storage, caches, async work, files, and external payloads.
 - No raw sensitive payload logging or raw upstream body throws.
 - New/changed webhook or LLM payloads are sanitized and documented.
 

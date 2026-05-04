@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearProfileCache, getProfile } from "./profile";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  __getProfileCacheSizeForTests,
+  clearProfileCache,
+  getProfile,
+} from "./profile";
 
 // Mock the dependencies
 vi.mock("./design-resume", () => ({
@@ -21,6 +25,11 @@ vi.mock("./rxresume/baseResumeId", () => ({
   getConfiguredRxResumeBaseResumeId: vi.fn(),
 }));
 
+vi.mock("@server/tenancy/context", () => ({
+  getActiveTenantId: vi.fn(() => "tenant_default"),
+}));
+
+import { getActiveTenantId } from "@server/tenancy/context";
 import {
   designResumeToProfile,
   isLegacyDesignResumeError,
@@ -31,9 +40,14 @@ import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 describe("getProfile", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant_default");
     clearProfileCache();
     vi.mocked(designResumeToProfile).mockResolvedValue(null);
     vi.mocked(isLegacyDesignResumeError).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("should throw an error if rxresumeBaseResumeId is not configured", async () => {
@@ -69,6 +83,64 @@ describe("getProfile", () => {
     expect(designResumeToProfile).toHaveBeenCalledTimes(1);
     expect(getConfiguredRxResumeBaseResumeId).not.toHaveBeenCalled();
     expect(getResume).not.toHaveBeenCalled();
+  });
+
+  it("should keep local Design Resume profiles scoped by tenant", async () => {
+    vi.mocked(designResumeToProfile)
+      .mockResolvedValueOnce({ basics: { name: "Tenant One" } } as any)
+      .mockResolvedValueOnce({ basics: { name: "Tenant Two" } } as any);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-two");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant Two" },
+    });
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+
+    expect(designResumeToProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("should evict inactive tenant profile caches after the TTL", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-04T10:00:00.000Z"));
+
+    vi.mocked(designResumeToProfile)
+      .mockResolvedValueOnce({ basics: { name: "Tenant One" } } as any)
+      .mockResolvedValueOnce({ basics: { name: "Tenant Two" } } as any)
+      .mockResolvedValueOnce({
+        basics: { name: "Tenant One Reloaded" },
+      } as any);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+    expect(__getProfileCacheSizeForTests()).toBe(1);
+
+    vi.advanceTimersByTime(31 * 60 * 1000);
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-two");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant Two" },
+    });
+    expect(__getProfileCacheSizeForTests()).toBe(1);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One Reloaded" },
+    });
+
+    expect(designResumeToProfile).toHaveBeenCalledTimes(3);
   });
 
   it("should fetch profile from Reactive Resume when configured", async () => {

@@ -1,4 +1,5 @@
 import { getSetting } from "@server/repositories/settings";
+import { getActiveTenantId } from "@server/tenancy/context";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearRxResumeResumeCache,
@@ -12,6 +13,10 @@ import * as v5 from "./v5";
 
 vi.mock("@server/repositories/settings", () => ({
   getSetting: vi.fn(),
+}));
+
+vi.mock("@server/tenancy/context", () => ({
+  getActiveTenantId: vi.fn(() => "tenant-1"),
 }));
 
 vi.mock("./v5", () => ({
@@ -34,6 +39,7 @@ describe("RxResume Service (index.ts)", () => {
       if (key === "rxresumeUrl") return "https://rxresu.me";
       return null;
     });
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-1");
   });
 
   describe("listResumes", () => {
@@ -94,6 +100,34 @@ describe("RxResume Service (index.ts)", () => {
 
       await getResume("1", { forceRefresh: true });
       expect(v5.getResume).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps cached resumes scoped by tenant", async () => {
+      vi.mocked(v5.getResume)
+        .mockResolvedValueOnce({
+          id: "1",
+          name: "Tenant 1 Resume",
+          data: { basics: { name: "Tenant One" } },
+        } as any)
+        .mockResolvedValueOnce({
+          id: "1",
+          name: "Tenant 2 Resume",
+          data: { basics: { name: "Tenant Two" } },
+        } as any);
+
+      vi.mocked(getActiveTenantId).mockReturnValue("tenant-1");
+      const tenantOneResume = await getResume("1");
+
+      vi.mocked(getActiveTenantId).mockReturnValue("tenant-2");
+      const tenantTwoResume = await getResume("1");
+
+      vi.mocked(getActiveTenantId).mockReturnValue("tenant-1");
+      const tenantOneCachedResume = await getResume("1");
+
+      expect(v5.getResume).toHaveBeenCalledTimes(2);
+      expect(tenantOneResume.name).toBe("Tenant 1 Resume");
+      expect(tenantTwoResume.name).toBe("Tenant 2 Resume");
+      expect(tenantOneCachedResume).toEqual(tenantOneResume);
     });
 
     it("expires cache after TTL and refetches", async () => {

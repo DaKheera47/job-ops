@@ -65,6 +65,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { formatUserFacingError } from "@/client/lib/error-format";
+import { queryClient } from "@/client/lib/queryClient";
 import {
   bucketQueryLength,
   getAnalyticsRequestHeaders,
@@ -152,6 +153,35 @@ const LEGACY_SESSION_JWT_KEY = "jobops.jwtToken";
 const SESSION_AUTH_TOKEN_KEY = "jobops.authToken";
 const LEGACY_SESSION_AUTH_TTL_MS = 5 * 60 * 1000;
 
+function decodeBase64UrlJsonSegment(
+  segment: string,
+): Record<string, unknown> | null {
+  try {
+    const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    const decoded = globalThis.atob(padded);
+    const parsed = JSON.parse(decoded) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getTenantIdFromAuthToken(token: string | null): string | null {
+  const payloadSegment = token?.split(".")[1];
+  if (!payloadSegment) return null;
+  const payload = decodeBase64UrlJsonSegment(payloadSegment);
+  const tenantId = payload?.tenantId;
+  return typeof tenantId === "string" && tenantId.trim().length > 0
+    ? tenantId.trim()
+    : null;
+}
+
 function loadStoredLegacyCredentials(): AuthCredentials | null {
   try {
     const stored = sessionStorage.getItem(LEGACY_SESSION_AUTH_KEY);
@@ -229,12 +259,27 @@ function storeAuthToken(token: string | null): void {
   }
 }
 
+export function getCurrentAuthWorkspaceStorageScope(): string | null {
+  const tenantId = getTenantIdFromAuthToken(loadStoredAuthToken());
+  return tenantId ? `workspace:${tenantId}` : null;
+}
+
+export function getAuthScopedStorageKey(baseKey: string): string {
+  const scope = getCurrentAuthWorkspaceStorageScope();
+  return scope ? `${baseKey}:${scope}` : baseKey;
+}
+
 let cachedLegacyCredentials: AuthCredentials | null =
   loadStoredLegacyCredentials();
 let cachedAuthToken: string | null = loadStoredAuthToken();
 let authMigrationInFlight: Promise<boolean> | null = null;
 
+function clearCachedAppData(): void {
+  queryClient.clear();
+}
+
 export function clearAuthSession(): void {
+  clearCachedAppData();
   cachedLegacyCredentials = null;
   cachedAuthToken = null;
   storeLegacyCredentials(null);
@@ -242,6 +287,7 @@ export function clearAuthSession(): void {
 }
 
 function setAuthenticatedSession(token: string): void {
+  clearCachedAppData();
   cachedAuthToken = token;
   storeAuthToken(token);
   cachedLegacyCredentials = null;
