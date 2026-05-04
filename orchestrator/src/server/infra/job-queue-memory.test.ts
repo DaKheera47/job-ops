@@ -6,6 +6,7 @@ describe("InMemoryJobQueue", () => {
     const queue = new InMemoryJobQueue();
 
     const result = await queue.enqueue("auto_pdf_regeneration", {
+      tenantId: "tenant-test",
       jobId: "job-1",
       reason: "design_resume_updated",
       requestedAt: "2026-05-04T10:00:00.000Z",
@@ -27,6 +28,7 @@ describe("InMemoryJobQueue", () => {
     const first = await queue.enqueue(
       "auto_pdf_regeneration",
       {
+        tenantId: "tenant-test",
         jobId: "job-1",
         reason: "tailoring_updated",
         requestedAt: "2026-05-04T10:00:00.000Z",
@@ -38,6 +40,7 @@ describe("InMemoryJobQueue", () => {
     const second = await queue.enqueue(
       "auto_pdf_regeneration",
       {
+        tenantId: "tenant-test",
         jobId: "job-1",
         reason: "manual_refresh",
         requestedAt: "2026-05-04T10:01:00.000Z",
@@ -49,5 +52,41 @@ describe("InMemoryJobQueue", () => {
     expect(first.id).toBe(second.id);
     expect(second.deduplicated).toBe(true);
     expect(queue.getQueuedJobs()).toHaveLength(1);
+  });
+
+  it("allows re-enqueue after reserved job is acknowledged", async () => {
+    const queue = new InMemoryJobQueue();
+
+    const first = await queue.enqueue(
+      "auto_pdf_regeneration",
+      {
+        tenantId: "tenant-test",
+        jobId: "job-1",
+        reason: "tailoring_updated",
+        requestedAt: "2026-05-04T10:00:00.000Z",
+        requestedBy: "system",
+      },
+      { dedupeKey: "job-1:auto-pdf" },
+    );
+
+    const reserved = await queue.reserveNext("auto_pdf_regeneration");
+    expect(reserved?.id).toBe(first.id);
+
+    await queue.acknowledge(first.id);
+
+    const next = await queue.enqueue(
+      "auto_pdf_regeneration",
+      {
+        tenantId: "tenant-test",
+        jobId: "job-1",
+        reason: "tailoring_updated",
+        requestedAt: "2026-05-04T10:02:00.000Z",
+        requestedBy: "system",
+      },
+      { dedupeKey: "job-1:auto-pdf" },
+    );
+
+    expect(next.deduplicated).toBe(false);
+    expect(next.id).not.toBe(first.id);
   });
 });

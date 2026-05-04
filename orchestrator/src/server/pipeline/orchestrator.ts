@@ -24,6 +24,10 @@ import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
 import { generatePdf } from "../services/pdf";
+import {
+  createJobPdfFingerprint,
+  resolvePdfFingerprintContext,
+} from "../services/pdf-fingerprint";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
@@ -479,6 +483,7 @@ export type ProcessJobOptions = {
   analyticsOrigin?:
     | "move_to_ready"
     | "generate_pdf"
+    | "auto_pdf_regeneration"
     | "pipeline"
     | "manual_job_create";
 };
@@ -634,9 +639,15 @@ export async function generateFinalPdf(
         };
       }
 
+      const fingerprintContext = await resolvePdfFingerprintContext();
+      const pdfFingerprint = createJobPdfFingerprint(job, fingerprintContext);
+
       await jobsRepo.updateJob(job.id, {
         status: "ready",
         pdfPath: pdfResult.pdfPath,
+        pdfSource: "generated",
+        pdfFingerprint,
+        pdfGeneratedAt: new Date().toISOString(),
       });
 
       const analyticsOrigin = options?.analyticsOrigin ?? "move_to_ready";

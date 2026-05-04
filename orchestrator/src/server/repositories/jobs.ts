@@ -652,6 +652,26 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
   return rows.map(mapRowToJob);
 }
 
+export async function getReadyJobsWithGeneratedPdfs(
+  limit: number,
+): Promise<Job[]> {
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.tenantId, tenantId),
+        eq(jobs.status, "ready"),
+        eq(jobs.pdfSource, "generated"),
+      ),
+    )
+    .orderBy(desc(jobs.updatedAt))
+    .limit(limit);
+
+  return rows.map(mapRowToJob);
+}
+
 /**
  * Get discovered jobs missing a suitability score.
  */
@@ -738,6 +758,9 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     tailoredSkills: row.tailoredSkills ?? null,
     selectedProjectIds: row.selectedProjectIds ?? null,
     pdfPath: row.pdfPath,
+    pdfSource: row.pdfSource ?? null,
+    pdfFingerprint: row.pdfFingerprint ?? null,
+    pdfGeneratedAt: row.pdfGeneratedAt ?? null,
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     sponsorMatchScore: row.sponsorMatchScore ?? null,
     sponsorMatchNames: row.sponsorMatchNames ?? null,

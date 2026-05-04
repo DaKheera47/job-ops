@@ -304,7 +304,7 @@ export const DesignResumePage: React.FC = () => {
     try {
       setPdfDownloading(true);
       const generated = await api.generateDesignResumePdf();
-      await downloadDesignResumePdf(generated.fileName);
+      await downloadDesignResumePdf(generated.fileName, generated.pdfUrl);
       toast.success("Your PDF is ready.");
     } catch (downloadError) {
       showErrorToast(downloadError, "Failed to generate a PDF.");

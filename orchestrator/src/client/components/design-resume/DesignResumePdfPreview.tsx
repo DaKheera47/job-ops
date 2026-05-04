@@ -58,7 +58,9 @@ export function DesignResumePdfPreview({
 
     void api
       .generateDesignResumePdf()
-      .then(async () => createDesignResumePdfObjectUrl())
+      .then(async (generated) =>
+        createDesignResumePdfObjectUrl(generated.pdfUrl),
+      )
       .then((objectUrl) => {
         if (requestSequence.current !== requestId) {
           URL.revokeObjectURL(objectUrl);

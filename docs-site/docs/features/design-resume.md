@@ -50,7 +50,7 @@ Current v1 scope:
 - You already had a local Design Resume from an older JobOps build:
   Re-import from a Reactive Resume v5 base resume. Older local documents are no longer auto-converted.
 - Changes do not appear in a generated PDF:
-  Re-run tailoring or PDF generation after the local save finishes.
+  Ready jobs that already use system-generated PDFs are auto-queued for regeneration after Design Resume edits (capped per run). If a specific job still shows old content, regenerate that job PDF manually.
 - Picture upload fails:
   Use `png`, `jpeg`, or `webp` images.
 - You changed the upstream resume and want that copied over:

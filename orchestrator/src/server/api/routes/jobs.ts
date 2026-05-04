@@ -34,6 +34,10 @@ import {
 } from "@server/services/applicationTracking";
 import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
 import {
+  enqueueAutoPdfRegenerationForJob,
+  shouldEnqueueTailoringAutoPdfRegeneration,
+} from "@server/services/auto-pdf-regeneration";
+import {
   simulateApplyJob,
   simulateGeneratePdf,
   simulateProcessJob,
@@ -78,6 +82,31 @@ const jobNoteSchema = z.object({
   title: z.string().trim().min(1).max(120),
   content: z.string().trim().min(1).max(20000),
 });
+
+function queueTailoringAutoPdfRegenerationIfNeeded(
+  previousJob: Job,
+  nextJob: Job,
+  route: string,
+): void {
+  if (!shouldEnqueueTailoringAutoPdfRegeneration(previousJob, nextJob)) {
+    return;
+  }
+
+  queueMicrotask(() => {
+    void enqueueAutoPdfRegenerationForJob({
+      jobId: nextJob.id,
+      reason: "tailoring_updated",
+      requestedBy: "user",
+    }).catch((error) => {
+      logger.warn("Failed to queue auto PDF regeneration after job update", {
+        route,
+        jobId: nextJob.id,
+        reason: "tailoring_updated",
+        error,
+      });
+    });
+  });
+}
 
 async function notifyJobCompleteWebhook(job: Job) {
   const overrideWebhookUrl = await settingsRepo.getSetting(
@@ -1483,6 +1512,11 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       source: "jobs_patch_route",
     });
     ok(res, job);
+    queueTailoringAutoPdfRegenerationIfNeeded(
+      currentJob,
+      job,
+      "PATCH /api/jobs/:id",
+    );
     if (
       Object.hasOwn(input, "appliedAt") ||
       Object.hasOwn(input, "closedAt") ||
@@ -1559,6 +1593,9 @@ jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
 
     const job = await jobsRepo.updateJob(req.params.id, {
       pdfPath: uploaded.outputPath,
+      pdfSource: "uploaded",
+      pdfFingerprint: null,
+      pdfGeneratedAt: new Date().toISOString(),
     });
 
     if (!job) {
@@ -1654,6 +1691,7 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
   try {
     const forceRaw = req.query.force as string | undefined;
     const force = forceRaw === "1" || forceRaw === "true";
+    const previousJob = await jobsRepo.getJobById(req.params.id);
 
     if (isDemoMode()) {
       const result = await simulateSummarizeJob(req.params.id, { force });
@@ -1684,6 +1722,14 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
     ok(res, job);
+
+    if (previousJob) {
+      queueTailoringAutoPdfRegenerationIfNeeded(
+        previousJob,
+        job,
+        "POST /api/jobs/:id/summarize",
+      );
+    }
   } catch (error) {
     fail(res, toAppError(error));
   }

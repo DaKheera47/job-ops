@@ -1,5 +1,7 @@
 import { badRequest, conflict, notFound, toAppError } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
+import { logger } from "@infra/logger";
+import { enqueueAutoPdfRegenerationForReadyJobs } from "@server/services/auto-pdf-regeneration";
 import {
   deleteDesignResumePicture,
   exportDesignResume,
@@ -207,6 +209,24 @@ function asDesignResumeJson(value: unknown): DesignResumeJson | undefined {
     : undefined;
 }
 
+function queueDesignResumeAutoPdfRegeneration(route: string): void {
+  queueMicrotask(() => {
+    void enqueueAutoPdfRegenerationForReadyJobs({
+      reason: "design_resume_updated",
+      requestedBy: "user",
+    }).catch((error) => {
+      logger.warn(
+        "Failed to queue auto PDF regeneration for design resume update",
+        {
+          route,
+          reason: "design_resume_updated",
+          error,
+        },
+      );
+    });
+  });
+}
+
 designResumeRouter.get(
   "/",
   asyncRoute(async (_req: Request, res: Response) => {
@@ -232,6 +252,9 @@ designResumeRouter.post(
     const document = await importDesignResumeFromReactiveResume();
     clearProfileCache();
     ok(res, document, 201);
+    queueDesignResumeAutoPdfRegeneration(
+      "POST /api/design-resume/import/rxresume",
+    );
   }),
 );
 
@@ -242,6 +265,7 @@ designResumeRouter.post(
     const document = await importDesignResumeFromFile(input);
     clearProfileCache();
     ok(res, document, 201);
+    queueDesignResumeAutoPdfRegeneration("POST /api/design-resume/import/file");
   }),
 );
 
@@ -254,6 +278,7 @@ designResumeRouter.patch(
     const document = await updateCurrentDesignResume(input);
     clearProfileCache();
     ok(res, document);
+    queueDesignResumeAutoPdfRegeneration("PATCH /api/design-resume");
   }),
 );
 
@@ -275,6 +300,7 @@ designResumeRouter.post(
       });
       clearProfileCache();
       ok(res, document, 201);
+      queueDesignResumeAutoPdfRegeneration("POST /api/design-resume/assets");
       return;
     }
 
@@ -287,6 +313,7 @@ designResumeRouter.post(
     });
     clearProfileCache();
     ok(res, document, 201);
+    queueDesignResumeAutoPdfRegeneration("POST /api/design-resume/assets");
   }),
 );
 
@@ -300,6 +327,9 @@ designResumeRouter.delete(
     });
     clearProfileCache();
     ok(res, document);
+    queueDesignResumeAutoPdfRegeneration(
+      "DELETE /api/design-resume/assets/picture",
+    );
   }),
 );
 
@@ -344,7 +374,7 @@ designResumeRouter.get(
   "/pdf",
   asyncRoute(async (_req: Request, res: Response) => {
     const pdfPath = getTenantDesignResumePdfPath();
-    res.setHeader("Cache-Control", "private, max-age=60");
+    res.setHeader("Cache-Control", "no-store");
     res.sendFile(pdfPath, (error) => {
       if (error) {
         fail(res, notFound("Design Resume PDF not found"));

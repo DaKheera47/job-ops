@@ -54,6 +54,17 @@ describe("applySettingsUpdates", () => {
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
     expect(plan.shouldClearRxResumeCaches).toBe(false);
+    expect(plan.updatedSettingKeys).toEqual(
+      expect.arrayContaining([
+        "model",
+        "ukvisajobsMaxJobs",
+        "adzunaMaxJobsPerTerm",
+        "searchTerms",
+        "llmProvider",
+        "adzunaAppId",
+        "adzunaAppKey",
+      ]),
+    );
   });
 
   it("marks backup scheduler refresh when backup settings are changed", async () => {
@@ -72,6 +83,9 @@ describe("applySettingsUpdates", () => {
     );
     expect(plan.shouldRefreshBackupScheduler).toBe(true);
     expect(plan.shouldClearRxResumeCaches).toBe(false);
+    expect(plan.updatedSettingKeys).toEqual(
+      expect.arrayContaining(["backupEnabled", "backupHour"]),
+    );
   });
 
   it("resolves and persists normalized resumeProjects", async () => {
@@ -136,6 +150,9 @@ describe("applySettingsUpdates", () => {
     );
     expect(plan.shouldClearRxResumeCaches).toBe(true);
     expect(plan.shouldRefreshBackupScheduler).toBe(false);
+    expect(plan.updatedSettingKeys).toEqual(
+      expect.arrayContaining(["rxresumeUrl", "rxresumeBaseResumeId"]),
+    );
   });
 
   it("clears legacy jobspyLocation when searchCities is updated", async () => {
