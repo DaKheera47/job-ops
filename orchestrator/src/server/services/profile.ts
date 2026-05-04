@@ -13,11 +13,37 @@ type TenantProfileCache = {
   profile: ResumeProfile | null;
   resumeId: string | null;
   localProfile: ResumeProfile | null;
+  lastAccessedAt: number;
 };
 
+const PROFILE_CACHE_TTL_MS = 30 * 60 * 1000;
+const PROFILE_CACHE_MAX_TENANTS = 100;
 const profileCacheByTenant = new Map<string, TenantProfileCache>();
 
+function pruneProfileCache(now = Date.now()): void {
+  for (const [tenantId, cache] of profileCacheByTenant.entries()) {
+    if (now - cache.lastAccessedAt > PROFILE_CACHE_TTL_MS) {
+      profileCacheByTenant.delete(tenantId);
+    }
+  }
+
+  while (profileCacheByTenant.size >= PROFILE_CACHE_MAX_TENANTS) {
+    let oldestTenantId: string | null = null;
+    let oldestAccessedAt = Number.POSITIVE_INFINITY;
+    for (const [tenantId, cache] of profileCacheByTenant.entries()) {
+      if (cache.lastAccessedAt < oldestAccessedAt) {
+        oldestTenantId = tenantId;
+        oldestAccessedAt = cache.lastAccessedAt;
+      }
+    }
+    if (!oldestTenantId) return;
+    profileCacheByTenant.delete(oldestTenantId);
+  }
+}
+
 function getTenantProfileCache(): TenantProfileCache {
+  const now = Date.now();
+  pruneProfileCache(now);
   const tenantId = getActiveTenantId();
   let cache = profileCacheByTenant.get(tenantId);
   if (!cache) {
@@ -25,9 +51,11 @@ function getTenantProfileCache(): TenantProfileCache {
       profile: null,
       resumeId: null,
       localProfile: null,
+      lastAccessedAt: now,
     };
     profileCacheByTenant.set(tenantId, cache);
   }
+  cache.lastAccessedAt = now;
   return cache;
 }
 
@@ -131,4 +159,8 @@ export function clearProfileCache(): void {
     return;
   }
   profileCacheByTenant.clear();
+}
+
+export function __getProfileCacheSizeForTests(): number {
+  return profileCacheByTenant.size;
 }

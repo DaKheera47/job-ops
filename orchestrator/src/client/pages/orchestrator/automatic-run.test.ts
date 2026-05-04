@@ -260,6 +260,31 @@ describe("automatic-run utilities", () => {
     });
   });
 
+  it("migrates legacy run memory into the workspace-scoped key", () => {
+    const sessionStorage = ensureSessionStorage();
+    const localStorage = ensureStorage();
+    sessionStorage.setItem("jobops.authToken", makeAuthToken("tenant-one"));
+    localStorage.setItem(
+      RUN_MEMORY_STORAGE_KEY,
+      JSON.stringify({
+        topN: 8,
+        minSuitabilityScore: 65,
+        runBudget: 350,
+        presetId: "custom",
+      }),
+    );
+
+    expect(loadAutomaticRunMemory()).toEqual({
+      topN: 8,
+      minSuitabilityScore: 65,
+      runBudget: 350,
+      presetId: "custom",
+    });
+    expect(
+      localStorage.getItem(`${RUN_MEMORY_STORAGE_KEY}:workspace:tenant-one`),
+    ).toBe(localStorage.getItem(RUN_MEMORY_STORAGE_KEY));
+  });
+
   it("infers custom when legacy values do not match a preset", () => {
     expect(
       inferAutomaticPresetSelection({

@@ -1,5 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { clearProfileCache, getProfile } from "./profile";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  __getProfileCacheSizeForTests,
+  clearProfileCache,
+  getProfile,
+} from "./profile";
 
 // Mock the dependencies
 vi.mock("./design-resume", () => ({
@@ -40,6 +44,10 @@ describe("getProfile", () => {
     clearProfileCache();
     vi.mocked(designResumeToProfile).mockResolvedValue(null);
     vi.mocked(isLegacyDesignResumeError).mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("should throw an error if rxresumeBaseResumeId is not configured", async () => {
@@ -101,6 +109,38 @@ describe("getProfile", () => {
     });
 
     expect(designResumeToProfile).toHaveBeenCalledTimes(2);
+  });
+
+  it("should evict inactive tenant profile caches after the TTL", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-04T10:00:00.000Z"));
+
+    vi.mocked(designResumeToProfile)
+      .mockResolvedValueOnce({ basics: { name: "Tenant One" } } as any)
+      .mockResolvedValueOnce({ basics: { name: "Tenant Two" } } as any)
+      .mockResolvedValueOnce({
+        basics: { name: "Tenant One Reloaded" },
+      } as any);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One" },
+    });
+    expect(__getProfileCacheSizeForTests()).toBe(1);
+
+    vi.advanceTimersByTime(31 * 60 * 1000);
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-two");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant Two" },
+    });
+    expect(__getProfileCacheSizeForTests()).toBe(1);
+
+    vi.mocked(getActiveTenantId).mockReturnValue("tenant-one");
+    await expect(getProfile()).resolves.toEqual({
+      basics: { name: "Tenant One Reloaded" },
+    });
+
+    expect(designResumeToProfile).toHaveBeenCalledTimes(3);
   });
 
   it("should fetch profile from Reactive Resume when configured", async () => {

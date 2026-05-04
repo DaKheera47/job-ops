@@ -198,4 +198,24 @@ describe("usePipelineSources", () => {
       ),
     ).toEqual(["linkedin"]);
   });
+
+  it("migrates legacy stored sources into the workspace-scoped key", () => {
+    const sessionStorage = ensureSessionStorage();
+    const localStorage = ensureStorage();
+    sessionStorage.setItem("jobops.authToken", makeAuthToken("tenant-one"));
+    localStorage.setItem(
+      PIPELINE_SOURCES_STORAGE_KEY,
+      JSON.stringify(["ukvisajobs"]),
+    );
+
+    const enabledSources = ["ukvisajobs", "linkedin"] as const;
+    const { result } = renderHook(() => usePipelineSources(enabledSources));
+
+    expect(result.current.pipelineSources).toEqual(["ukvisajobs"]);
+    expect(
+      localStorage.getItem(
+        `${PIPELINE_SOURCES_STORAGE_KEY}:workspace:tenant-one`,
+      ),
+    ).toBe(localStorage.getItem(PIPELINE_SOURCES_STORAGE_KEY));
+  });
 });
