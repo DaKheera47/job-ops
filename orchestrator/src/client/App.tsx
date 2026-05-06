@@ -55,7 +55,9 @@ export const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const nodeRef = useRef<HTMLDivElement>(null);
-  const demoInfo = useDemoInfo();
+  const isSignInPage = location.pathname === "/sign-in";
+  const demoInfo = useDemoInfo({ enabled: !isSignInPage });
+  const showDemoBanners = !isSignInPage && demoInfo?.demoMode;
   const [demoWaitlistBannerDismissed, setDemoWaitlistBannerDismissed] =
     useState(() => {
       try {
@@ -97,7 +99,7 @@ export const App: React.FC = () => {
   return (
     <>
       <OnboardingGate />
-      {demoInfo?.demoMode && !demoWaitlistBannerDismissed && (
+      {showDemoBanners && !demoWaitlistBannerDismissed && (
         <div className="sticky top-0 z-50 w-full border-b border-orange-400/60 bg-orange-500 px-4 py-2 text-xs text-orange-950 shadow-sm">
           <div className="mx-auto flex items-center justify-center gap-3">
             <p className="flex-1 text-center font-medium">
@@ -132,7 +134,7 @@ export const App: React.FC = () => {
           </div>
         </div>
       )}
-      {demoInfo?.demoMode && (
+      {showDemoBanners && (
         <div className="w-full border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-100 backdrop-blur">
           Demo mode: integrations are simulated and data resets every{" "}
           {demoInfo.resetCadenceHours} hours.
