@@ -30,6 +30,12 @@ npm --workspace docs-site run build
 - Validate `LLM_API_KEY` and provider settings.
 - Check settings page and API connectivity.
 
+## Older jobs look expired or stale
+
+- Run the pipeline again before reviewing or applying.
+- Existing discovered jobs are not automatically refreshed in the background.
+- A new run fetches current listings so you can work from fresher results.
+
 ## Codex sign-in shows device-code authorization error
 
 - Symptom: UI shows:

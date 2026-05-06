@@ -27,6 +27,7 @@ Important:
 
 - Some scrapers are slower and can take significant time.
 - Larger scrape ranges and more sources increase run duration.
+- If you are returning after a few days, run the pipeline again before reviewing jobs. Existing results are not auto-refreshed, so older discovered jobs may be stale or expired.
 
 ### 2) Configure pipeline advanced settings
 
@@ -85,6 +86,7 @@ Once a job is marked `applied`, it becomes part of:
 ## Practical tips
 
 - Start with conservative run sizes while tuning sources.
+- Re-run the pipeline after time away when you want fresh listings.
 - Increase tailored-job count only after score thresholds feel calibrated.
 - Expect scraper runtime variance by source.
 - Keep resume/project context up to date so scoring/tailoring quality stays high.
