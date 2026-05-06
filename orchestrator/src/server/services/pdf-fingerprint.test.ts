@@ -67,4 +67,17 @@ describe("PDF freshness", () => {
       ),
     ).toBe("stale");
   });
+
+  it("treats legacy PDFs without a source as generated for freshness", () => {
+    expect(
+      getJobPdfFreshness(
+        createJob({
+          pdfPath: "data/pdfs/legacy-generated.pdf",
+          pdfSource: null,
+          pdfFingerprint: "old-fingerprint",
+        }),
+        context,
+      ),
+    ).toBe("stale");
+  });
 });

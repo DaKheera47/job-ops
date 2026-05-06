@@ -732,6 +732,10 @@ const migrations = [
   FROM jobs`,
   `DROP TABLE IF EXISTS jobs`,
   `ALTER TABLE jobs_new RENAME TO jobs`,
+  `UPDATE jobs
+   SET pdf_source = 'generated'
+   WHERE pdf_path IS NOT NULL
+     AND pdf_source IS NULL`,
   `PRAGMA foreign_keys = ON`,
 
   `CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)`,

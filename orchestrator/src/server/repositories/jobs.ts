@@ -11,6 +11,8 @@ import type {
   JobListItem,
   JobLocationEvidence,
   JobNote,
+  JobPdfFreshness,
+  JobPdfSource,
   JobStatus,
   JobsRevisionResponse,
   UpdateJobInput,
@@ -20,7 +22,17 @@ import type {
   LocationEvidence,
   LocationEvidenceEntry,
 } from "@shared/types/location";
-import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  ne,
+  sql,
+} from "drizzle-orm";
 import { db, schema } from "../db/index";
 import { getActiveTenantId } from "../tenancy/context";
 
@@ -34,6 +46,20 @@ type AppliedDuplicateMatchCandidate = {
   appliedAt: string;
   discoveredAt: string;
 };
+
+export type JobListItemWithPdfFreshnessInput = JobListItem &
+  Pick<
+    Job,
+    | "pdfPath"
+    | "pdfSource"
+    | "pdfFingerprint"
+    | "tailoredSummary"
+    | "tailoredHeadline"
+    | "tailoredSkills"
+    | "selectedProjectIds"
+    | "jobDescription"
+    | "tracerLinksEnabled"
+  >;
 
 function normalizeStatusFilter(statuses?: JobStatus[]): string | null {
   if (!statuses || statuses.length === 0) return null;
@@ -96,7 +122,7 @@ export async function getAllJobs(statuses?: JobStatus[]): Promise<Job[]> {
  */
 export async function getJobListItems(
   statuses?: JobStatus[],
-): Promise<JobListItem[]> {
+): Promise<JobListItemWithPdfFreshnessInput[]> {
   const tenantId = getActiveTenantId();
   const selection = {
     id: jobs.id,
@@ -117,6 +143,13 @@ export async function getJobListItems(
     pdfPath: jobs.pdfPath,
     pdfSource: jobs.pdfSource,
     pdfRegenerating: jobs.pdfRegenerating,
+    pdfFingerprint: jobs.pdfFingerprint,
+    tailoredSummary: jobs.tailoredSummary,
+    tailoredHeadline: jobs.tailoredHeadline,
+    tailoredSkills: jobs.tailoredSkills,
+    selectedProjectIds: jobs.selectedProjectIds,
+    jobDescription: jobs.jobDescription,
+    tracerLinksEnabled: jobs.tracerLinksEnabled,
     jobType: jobs.jobType,
     jobFunction: jobs.jobFunction,
     salaryMinAmount: jobs.salaryMinAmount,
@@ -145,19 +178,20 @@ export async function getJobListItems(
 
   const rows = await query;
   return rows.map((row) => {
-    const { pdfPath, pdfSource, ...listItem } = row;
     return {
-      ...listItem,
+      ...row,
       source: row.source as JobListItem["source"],
       status: row.status as JobStatus,
+      pdfSource: row.pdfSource as JobPdfSource | null,
       pdfRegenerating: row.pdfRegenerating ?? false,
       pdfFreshness: row.pdfRegenerating
         ? "regenerating"
-        : pdfSource === "uploaded"
+        : row.pdfSource === "uploaded"
           ? "uploaded"
-          : pdfPath
+          : row.pdfPath
             ? "stale"
-            : "missing",
+            : ("missing" as JobPdfFreshness),
+      tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     };
   });
 }
@@ -679,6 +713,7 @@ export async function getReadyJobsWithGeneratedPdfs(
         eq(jobs.tenantId, tenantId),
         eq(jobs.status, "ready"),
         eq(jobs.pdfSource, "generated"),
+        isNotNull(jobs.pdfPath),
       ),
     )
     .orderBy(desc(jobs.updatedAt))

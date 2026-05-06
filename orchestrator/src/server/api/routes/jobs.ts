@@ -49,6 +49,7 @@ import { getPdfPath, pdfExists } from "@server/services/pdf";
 import {
   applyJobPdfFreshness,
   applyJobsPdfFreshness,
+  type PdfFingerprintContext,
   resolvePdfFingerprintContext,
 } from "@server/services/pdf-fingerprint";
 import { getProfile } from "@server/services/profile";
@@ -93,12 +94,16 @@ async function hydrateJobPdfFreshness<T extends Job>(job: T): Promise<T> {
   return applyJobPdfFreshness(job, context);
 }
 
-async function hydrateJobsPdfFreshness<T extends Job>(jobs: T[]): Promise<T[]> {
-  const context = await resolvePdfFingerprintContext();
-  return applyJobsPdfFreshness(jobs, context);
+function hydrateJobPdfFreshnessWithContext<T extends Job>(
+  job: T,
+  context: PdfFingerprintContext,
+): T {
+  return applyJobPdfFreshness(job, context);
 }
 
-function toJobListItem(job: Job): JobListItem {
+function toJobListItem(
+  job: jobsRepo.JobListItemWithPdfFreshnessInput,
+): JobListItem {
   return {
     id: job.id,
     source: job.source,
@@ -680,11 +685,17 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     const view = parsedQuery.data.view ?? "list";
 
     const primaryQueryStart = performance.now();
-    const fullJobs = await hydrateJobsPdfFreshness(
-      await jobsRepo.getAllJobs(statuses),
-    );
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
     const jobs: Array<Job | JobListItem> =
-      view === "list" ? fullJobs.map(toJobListItem) : fullJobs;
+      view === "list"
+        ? applyJobsPdfFreshness(
+            await jobsRepo.getJobListItems(statuses),
+            pdfFingerprintContext,
+          ).map(toJobListItem)
+        : applyJobsPdfFreshness(
+            await jobsRepo.getAllJobs(statuses),
+            pdfFingerprintContext,
+          );
     primaryQueryMs = performance.now() - primaryQueryStart;
     const candidateCount = 0;
     const duplicateMatchingEnabled = false;
@@ -824,12 +835,16 @@ jobsRouter.post("/actions", async (req: Request, res: Response) => {
       task: async (jobId) =>
         executeJobActionForJob(parsed.action, jobId, executionOptions),
     });
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
     const results = await Promise.all(
       rawResults.map(async (result) =>
         result.ok
           ? {
               ...result,
-              job: await hydrateJobPdfFreshness(result.job),
+              job: hydrateJobPdfFreshnessWithContext(
+                result.job,
+                pdfFingerprintContext,
+              ),
             }
           : result,
       ),
@@ -931,6 +946,8 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
   };
 
   try {
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
+
     if (
       !sendEvent({
         type: "started",
@@ -968,7 +985,10 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
         const result = rawResult.ok
           ? {
               ...rawResult,
-              job: await hydrateJobPdfFreshness(rawResult.job),
+              job: hydrateJobPdfFreshnessWithContext(
+                rawResult.job,
+                pdfFingerprintContext,
+              ),
             }
           : rawResult;
         results.push(result);
@@ -1754,7 +1774,6 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
   try {
     const forceRaw = req.query.force as string | undefined;
     const force = forceRaw === "1" || forceRaw === "true";
-    const previousJob = await jobsRepo.getJobById(req.params.id);
 
     if (isDemoMode()) {
       const result = await simulateSummarizeJob(req.params.id, { force });
@@ -1773,6 +1792,7 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
       });
     }
 
+    const previousJob = await jobsRepo.getJobById(req.params.id);
     const result = await summarizeJob(req.params.id, { force });
 
     if (!result.success) {

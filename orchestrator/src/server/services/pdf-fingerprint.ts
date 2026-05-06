@@ -6,6 +6,19 @@ import { getCurrentDesignResumeOrNullOnLegacy } from "./design-resume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 const PDF_FINGERPRINT_VERSION = "v1";
+type JobPdfFingerprintInput = Pick<
+  Job,
+  | "tailoredSummary"
+  | "tailoredHeadline"
+  | "tailoredSkills"
+  | "selectedProjectIds"
+  | "jobDescription"
+  | "tracerLinksEnabled"
+  | "employer"
+>;
+
+type JobPdfFreshnessInput = JobPdfFingerprintInput &
+  Pick<Job, "pdfPath" | "pdfSource" | "pdfRegenerating" | "pdfFingerprint">;
 
 export interface PdfFingerprintContext {
   version: typeof PDF_FINGERPRINT_VERSION;
@@ -38,16 +51,7 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
 }
 
 export function createJobPdfFingerprint(
-  job: Pick<
-    Job,
-    | "tailoredSummary"
-    | "tailoredHeadline"
-    | "tailoredSkills"
-    | "selectedProjectIds"
-    | "jobDescription"
-    | "tracerLinksEnabled"
-    | "employer"
-  >,
+  job: JobPdfFingerprintInput,
   context: PdfFingerprintContext,
 ): string {
   const payload = {
@@ -72,44 +76,30 @@ export function createJobPdfFingerprint(
 }
 
 export function getJobPdfFreshness(
-  job: Pick<
-    Job,
-    | "pdfPath"
-    | "pdfSource"
-    | "pdfRegenerating"
-    | "pdfFingerprint"
-    | "tailoredSummary"
-    | "tailoredHeadline"
-    | "tailoredSkills"
-    | "selectedProjectIds"
-    | "jobDescription"
-    | "tracerLinksEnabled"
-    | "employer"
-  >,
+  job: JobPdfFreshnessInput,
   context: PdfFingerprintContext,
 ): JobPdfFreshness {
   if (job.pdfRegenerating) return "regenerating";
   if (!job.pdfPath) return "missing";
   if (job.pdfSource === "uploaded") return "uploaded";
-  if (job.pdfSource !== "generated") return "missing";
 
   const nextFingerprint = createJobPdfFingerprint(job, context);
   return job.pdfFingerprint === nextFingerprint ? "current" : "stale";
 }
 
-export function applyJobPdfFreshness<T extends Job>(
+export function applyJobPdfFreshness<T extends JobPdfFreshnessInput>(
   job: T,
   context: PdfFingerprintContext,
-): T {
+): T & { pdfFreshness: JobPdfFreshness } {
   return {
     ...job,
     pdfFreshness: getJobPdfFreshness(job, context),
   };
 }
 
-export function applyJobsPdfFreshness<T extends Job>(
+export function applyJobsPdfFreshness<T extends JobPdfFreshnessInput>(
   jobs: T[],
   context: PdfFingerprintContext,
-): T[] {
+): Array<T & { pdfFreshness: JobPdfFreshness }> {
   return jobs.map((job) => applyJobPdfFreshness(job, context));
 }
