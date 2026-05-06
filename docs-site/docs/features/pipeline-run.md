@@ -24,6 +24,7 @@ It helps you:
 - choose speed vs depth with presets
 - avoid invalid source/country combinations
 - understand estimated run cost before starting
+- refresh your job list when older discovered jobs have gone stale
 
 ## How to use it
 
@@ -127,6 +128,12 @@ For accepted input formats, inference behavior, and limits, see [Manual Import E
 - Reduce term count.
 - Use `Fast` preset or lower `Max jobs discovered`.
 - Disable high-cost source combinations where acceptable.
+
+### Older jobs look expired or stale
+
+- Run the pipeline again before reviewing or applying.
+- Existing discovered jobs are not automatically refreshed in the background.
+- A new run fetches current listings so you can work from fresher results.
 
 ### JobSpy results are broader than the selected workplace type
 
