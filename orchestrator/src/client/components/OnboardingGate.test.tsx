@@ -50,6 +50,20 @@ describe("OnboardingGate", () => {
     expect(screen.getByText("onboarding")).toBeInTheDocument();
   });
 
+  it("does not check onboarding while the user is on sign-in", () => {
+    render(
+      <MemoryRouter initialEntries={["/sign-in"]}>
+        <OnboardingGate />
+        <Routes>
+          <Route path="/sign-in" element={<div>sign-in</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("sign-in")).toBeInTheDocument();
+    expect(useOnboardingRequirement).not.toHaveBeenCalled();
+  });
+
   it("does not redirect once onboarding is complete", () => {
     vi.mocked(useOnboardingRequirement).mockReturnValue({
       checking: false,

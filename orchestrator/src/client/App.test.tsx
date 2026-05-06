@@ -110,6 +110,19 @@ describe("App demo banner", () => {
     expect(screen.queryByRole("link", { name: "try.jobops.app" })).toBeNull();
   });
 
+  it("does not fetch demo info while rendering the sign-in page", () => {
+    vi.mocked(useDemoInfo).mockReturnValue(null);
+
+    render(
+      <MemoryRouter initialEntries={["/sign-in"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("sign-in")).toBeInTheDocument();
+    expect(useDemoInfo).toHaveBeenCalledWith({ enabled: false });
+  });
+
   it("lets the user dismiss the waitlist banner and keeps it hidden", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: true,
