@@ -878,7 +878,10 @@ export async function uploadJobPdf(
 }
 
 export async function getJobPdfBlob(id: string): Promise<Blob> {
-  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf`);
+  const cacheBuster = Date.now().toString(36);
+  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf?v=${cacheBuster}`, {
+    cache: "no-store",
+  });
 }
 
 export async function getTracerAnalytics(options?: {

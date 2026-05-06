@@ -1739,7 +1739,7 @@ jobsRouter.get("/:id/pdf", async (req: Request, res: Response) => {
   }
 
   const pdfPath = getPdfPath(req.params.id);
-  res.setHeader("Cache-Control", "private, max-age=60");
+  res.setHeader("Cache-Control", "no-store");
   res.sendFile(pdfPath, (error) => {
     if (error) {
       fail(res, notFound("PDF not found"));
