@@ -6,6 +6,17 @@ import * as pdfService from "./services/pdf";
 // Mock dependencies
 vi.mock("./repositories/jobs");
 vi.mock("./services/pdf");
+vi.mock("./services/pdf-fingerprint", () => ({
+  createJobPdfFingerprint: vi.fn().mockReturnValue("test-pdf-fingerprint"),
+  resolvePdfFingerprintContext: vi.fn().mockResolvedValue({
+    version: "v1",
+    designResumeDocumentId: null,
+    designResumeRevision: null,
+    designResumeUpdatedAt: null,
+    pdfRenderer: "latex",
+    rxresumeBaseResumeId: null,
+  }),
+}));
 
 describe("Tailoring Flow", () => {
   beforeEach(() => {
