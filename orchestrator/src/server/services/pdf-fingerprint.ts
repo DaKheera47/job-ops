@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import * as settingsRepo from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
-import type { Job, PdfRenderer } from "@shared/types";
+import type { Job, JobPdfFreshness, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResumeOrNullOnLegacy } from "./design-resume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
@@ -69,4 +69,47 @@ export function createJobPdfFingerprint(
   };
 
   return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+export function getJobPdfFreshness(
+  job: Pick<
+    Job,
+    | "pdfPath"
+    | "pdfSource"
+    | "pdfRegenerating"
+    | "pdfFingerprint"
+    | "tailoredSummary"
+    | "tailoredHeadline"
+    | "tailoredSkills"
+    | "selectedProjectIds"
+    | "jobDescription"
+    | "tracerLinksEnabled"
+    | "employer"
+  >,
+  context: PdfFingerprintContext,
+): JobPdfFreshness {
+  if (job.pdfRegenerating) return "regenerating";
+  if (!job.pdfPath) return "missing";
+  if (job.pdfSource === "uploaded") return "uploaded";
+  if (job.pdfSource !== "generated") return "missing";
+
+  const nextFingerprint = createJobPdfFingerprint(job, context);
+  return job.pdfFingerprint === nextFingerprint ? "current" : "stale";
+}
+
+export function applyJobPdfFreshness<T extends Job>(
+  job: T,
+  context: PdfFingerprintContext,
+): T {
+  return {
+    ...job,
+    pdfFreshness: getJobPdfFreshness(job, context),
+  };
+}
+
+export function applyJobsPdfFreshness<T extends Job>(
+  jobs: T[],
+  context: PdfFingerprintContext,
+): T[] {
+  return jobs.map((job) => applyJobPdfFreshness(job, context));
 }

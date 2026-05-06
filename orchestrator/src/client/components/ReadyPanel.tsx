@@ -10,6 +10,7 @@ import { showErrorToast } from "@/client/lib/error-toast";
 
 import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronUp,
   Copy,
@@ -28,6 +29,13 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
+import {
+  getPdfActionLabels,
+  isPdfRegenerating,
+  isPdfStale,
+  PDF_REGENERATING_MESSAGE,
+  STALE_PDF_MESSAGE,
+} from "@/client/lib/pdf-freshness";
 import { downloadJobPdf, openJobPdf } from "@/client/lib/private-pdf";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
@@ -59,6 +67,7 @@ import { KbdHint } from "./KbdHint";
 import { OpenJobListingButton } from "./OpenJobListingButton";
 import { ReadySummaryAccordion } from "./ReadySummaryAccordion";
 import { buildReadyPanelGoogleDorks } from "./ready-panel-google-dorks";
+import { TooltipWhenDisabled } from "./TooltipWhenDisabled";
 
 type PanelMode = "ready" | "tailor";
 
@@ -155,17 +164,24 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     () => (job ? buildReadyPanelGoogleDorks(job) : []),
     [job],
   );
+  const isRegeneratingPdf = isPdfRegenerating(job);
+  const isStalePdf = isPdfStale(job);
+  const pdfLabels = getPdfActionLabels(job);
+  const pdfRegeneratingReason = isRegeneratingPdf
+    ? PDF_REGENERATING_MESSAGE
+    : null;
+  const pdfActionDisabled = !job?.pdfPath || isRegeneratingPdf;
   const pdfFilename = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job?.employer || "Unknown")}.pdf`;
 
   const handleOpenPdf = useCallback(() => {
-    if (!job) return;
+    if (!job || !job.pdfPath || isPdfRegenerating(job)) return;
     void openJobPdf(job.id).catch((error) => {
       showErrorToast(error, "Could not open PDF");
     });
   }, [job]);
 
   const handleDownloadPdf = useCallback(() => {
-    if (!job) return;
+    if (!job || !job.pdfPath || isPdfRegenerating(job)) return;
     void downloadJobPdf(job.id, pdfFilename).catch((error) => {
       showErrorToast(error, "Could not download PDF");
     });
@@ -429,6 +445,12 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           All actions in one line: View, Save, Open, and Mark Applied
       ───────────────────────────────────────────────────────────────────── */}
       <div className="pb-4 border-b border-border/40">
+        {isStalePdf && (
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{STALE_PDF_MESSAGE}</span>
+          </div>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           <GhostwriterDrawer
             job={job}
@@ -436,15 +458,21 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           />
 
           {/* Download PDF - primary artifact action */}
-          <Button
-            variant="outline"
-            className="h-9 w-full gap-1 px-2 text-xs"
-            onClick={handleDownloadPdf}
+          <TooltipWhenDisabled
+            reason={pdfRegeneratingReason}
+            className="w-full"
           >
-            <Download className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">Download PDF</span>
-            <KbdHint shortcut="d" className="ml-auto" />
-          </Button>
+            <Button
+              variant="outline"
+              className="h-9 w-full gap-1 px-2 text-xs"
+              onClick={handleDownloadPdf}
+              disabled={pdfActionDisabled}
+            >
+              <Download className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{pdfLabels.download}</span>
+              <KbdHint shortcut="d" className="ml-auto" />
+            </Button>
+          </TooltipWhenDisabled>
 
           {/* Open job - to verify before applying */}
           <OpenJobListingButton
@@ -574,7 +602,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
 
             <DropdownMenuItem
               onSelect={handleRegenerate}
-              disabled={isRegenerating}
+              disabled={isRegenerating || isRegeneratingPdf}
             >
               <RefreshCcw
                 className={cn("mr-2 h-4 w-4", isRegenerating && "animate-spin")}
@@ -592,9 +620,12 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <DropdownMenuSeparator />
 
             {/* Utility actions */}
-            <DropdownMenuItem onSelect={handleOpenPdf}>
+            <DropdownMenuItem
+              onSelect={handleOpenPdf}
+              disabled={pdfActionDisabled}
+            >
               <FileText className="mr-2 h-4 w-4" />
-              View PDF
+              {pdfLabels.view}
             </DropdownMenuItem>
 
             <DropdownMenuItem onSelect={handleCopyInfo}>

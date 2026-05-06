@@ -114,6 +114,9 @@ export async function getJobListItems(
     closedAt: jobs.closedAt,
     suitabilityScore: jobs.suitabilityScore,
     sponsorMatchScore: jobs.sponsorMatchScore,
+    pdfPath: jobs.pdfPath,
+    pdfSource: jobs.pdfSource,
+    pdfRegenerating: jobs.pdfRegenerating,
     jobType: jobs.jobType,
     jobFunction: jobs.jobFunction,
     salaryMinAmount: jobs.salaryMinAmount,
@@ -141,11 +144,22 @@ export async function getJobListItems(
           .orderBy(desc(jobs.discoveredAt));
 
   const rows = await query;
-  return rows.map((row) => ({
-    ...row,
-    source: row.source as JobListItem["source"],
-    status: row.status as JobStatus,
-  }));
+  return rows.map((row) => {
+    const { pdfPath, pdfSource, ...listItem } = row;
+    return {
+      ...listItem,
+      source: row.source as JobListItem["source"],
+      status: row.status as JobStatus,
+      pdfRegenerating: row.pdfRegenerating ?? false,
+      pdfFreshness: row.pdfRegenerating
+        ? "regenerating"
+        : pdfSource === "uploaded"
+          ? "uploaded"
+          : pdfPath
+            ? "stale"
+            : "missing",
+    };
+  });
 }
 
 export async function getAppliedDuplicateMatchCandidates(): Promise<
@@ -654,6 +668,7 @@ export async function getJobsForProcessing(limit: number = 10): Promise<Job[]> {
 
 export async function getReadyJobsWithGeneratedPdfs(
   limit: number,
+  offset = 0,
 ): Promise<Job[]> {
   const tenantId = getActiveTenantId();
   const rows = await db
@@ -667,7 +682,8 @@ export async function getReadyJobsWithGeneratedPdfs(
       ),
     )
     .orderBy(desc(jobs.updatedAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   return rows.map(mapRowToJob);
 }
@@ -759,6 +775,14 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     selectedProjectIds: row.selectedProjectIds ?? null,
     pdfPath: row.pdfPath,
     pdfSource: row.pdfSource ?? null,
+    pdfRegenerating: row.pdfRegenerating ?? false,
+    pdfFreshness: row.pdfRegenerating
+      ? "regenerating"
+      : row.pdfSource === "uploaded"
+        ? "uploaded"
+        : row.pdfPath
+          ? "stale"
+          : "missing",
     pdfFingerprint: row.pdfFingerprint ?? null,
     pdfGeneratedAt: row.pdfGeneratedAt ?? null,
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,

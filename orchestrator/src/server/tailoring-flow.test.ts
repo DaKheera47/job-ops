@@ -124,9 +124,13 @@ describe("Tailoring Flow", () => {
         "PDF generation failed. Your previous resume PDF is still available. Reactive Resume API error (500): Failed to generate PDF",
       errorCode: "UPSTREAM_ERROR",
     });
-    expect(jobsRepo.updateJob).toHaveBeenCalledTimes(1);
-    expect(jobsRepo.updateJob).toHaveBeenCalledWith("job-ready-789", {
+    expect(jobsRepo.updateJob).toHaveBeenCalledTimes(2);
+    expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(1, "job-ready-789", {
+      pdfRegenerating: true,
+    });
+    expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(2, "job-ready-789", {
       status: "ready",
+      pdfRegenerating: false,
     });
   });
 
@@ -149,12 +153,12 @@ describe("Tailoring Flow", () => {
     expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(
       1,
       "job-discovered-bad-skills",
-      { status: "processing" },
+      { status: "processing", pdfRegenerating: true },
     );
     expect(jobsRepo.updateJob).toHaveBeenNthCalledWith(
       2,
       "job-discovered-bad-skills",
-      { status: "discovered" },
+      { status: "discovered", pdfRegenerating: false },
     );
   });
 });

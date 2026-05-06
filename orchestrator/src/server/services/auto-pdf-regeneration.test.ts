@@ -27,6 +27,13 @@ vi.mock("@server/tenancy/context", () => ({
   getActiveTenantId: vi.fn(() => "tenant-test"),
 }));
 
+vi.mock("./pdf-fingerprint", () => ({
+  resolvePdfFingerprintContext: vi.fn().mockResolvedValue({}),
+  getJobPdfFreshness: vi.fn((job: { pdfFingerprint?: string | null }) =>
+    job.pdfFingerprint === "fresh" ? "current" : "stale",
+  ),
+}));
+
 import {
   enqueueAutoPdfRegenerationForSettingsChanges,
   shouldEnqueueTailoringAutoPdfRegeneration,
@@ -60,8 +67,20 @@ describe("auto PDF regeneration", () => {
 
   it("enqueues ready generated PDFs with settings_changed reason", async () => {
     mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([
-      createJob({ id: "job-1", status: "ready", pdfSource: "generated" }),
-      createJob({ id: "job-2", status: "ready", pdfSource: "generated" }),
+      createJob({
+        id: "job-1",
+        status: "ready",
+        pdfPath: "data/pdfs/job-1.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
+      createJob({
+        id: "job-2",
+        status: "ready",
+        pdfPath: "data/pdfs/job-2.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
     ]);
 
     const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
@@ -70,7 +89,7 @@ describe("auto PDF regeneration", () => {
     });
 
     expect(enqueued).toBe(2);
-    expect(mocks.getReadyJobsWithGeneratedPdfs).toHaveBeenCalledWith(25);
+    expect(mocks.getReadyJobsWithGeneratedPdfs).toHaveBeenCalledWith(25, 0);
     expect(mocks.enqueue).toHaveBeenCalledTimes(2);
     expect(mocks.enqueue).toHaveBeenNthCalledWith(
       1,
@@ -93,6 +112,38 @@ describe("auto PDF regeneration", () => {
         requestedBy: "user",
       }),
       { dedupeKey: "tenant-test:job-2" },
+    );
+  });
+
+  it("skips current generated PDFs when enqueueing settings refreshes", async () => {
+    mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([
+      createJob({
+        id: "job-current",
+        status: "ready",
+        pdfPath: "data/pdfs/job-current.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "fresh",
+      }),
+      createJob({
+        id: "job-stale",
+        status: "ready",
+        pdfPath: "data/pdfs/job-stale.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
+    ]);
+
+    const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
+      updatedSettingKeys: ["pdfRenderer"],
+      requestedBy: "user",
+    });
+
+    expect(enqueued).toBe(1);
+    expect(mocks.enqueue).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueue).toHaveBeenCalledWith(
+      "auto_pdf_regeneration",
+      expect.objectContaining({ jobId: "job-stale" }),
+      { dedupeKey: "tenant-test:job-stale" },
     );
   });
 

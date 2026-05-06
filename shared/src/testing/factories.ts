@@ -39,6 +39,8 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   selectedProjectIds: null,
   pdfPath: null,
   pdfSource: null,
+  pdfRegenerating: false,
+  pdfFreshness: "missing",
   pdfFingerprint: null,
   pdfGeneratedAt: null,
   tracerLinksEnabled: false,

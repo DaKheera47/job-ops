@@ -8,7 +8,7 @@ import { getActiveTenantId } from "@server/tenancy/context";
 import type { Job } from "@shared/types";
 import { generateFinalPdf } from "../pipeline";
 import {
-  createJobPdfFingerprint,
+  getJobPdfFreshness,
   resolvePdfFingerprintContext,
 } from "./pdf-fingerprint";
 
@@ -52,6 +52,12 @@ async function drainQueue(): Promise<void> {
     try {
       await processQueuedAutoPdfRegeneration(queuedJob.payload);
       await queue.acknowledge(queuedJob.id);
+      if (shouldTopUpReadyPdfRegeneration(queuedJob.payload.reason)) {
+        await enqueueAutoPdfRegenerationForReadyJobs({
+          reason: queuedJob.payload.reason,
+          requestedBy: queuedJob.payload.requestedBy,
+        });
+      }
     } catch (error) {
       logger.warn("Auto PDF regeneration job failed", {
         queue: "auto_pdf_regeneration",
@@ -63,6 +69,35 @@ async function drainQueue(): Promise<void> {
       await queue.reject(queuedJob.id);
     }
   }
+}
+
+function shouldTopUpReadyPdfRegeneration(
+  reason: AutoPdfRegenerationReason,
+): boolean {
+  return reason === "design_resume_updated" || reason === "settings_changed";
+}
+
+async function getStaleReadyGeneratedPdfJobs(limit: number): Promise<Job[]> {
+  const fingerprintContext = await resolvePdfFingerprintContext();
+  const staleJobs: Job[] = [];
+  let offset = 0;
+
+  while (staleJobs.length < limit) {
+    const page = await jobsRepo.getReadyJobsWithGeneratedPdfs(limit, offset);
+    if (page.length === 0) break;
+
+    for (const job of page) {
+      if (getJobPdfFreshness(job, fingerprintContext) === "stale") {
+        staleJobs.push(job);
+        if (staleJobs.length >= limit) break;
+      }
+    }
+
+    offset += page.length;
+    if (page.length < limit) break;
+  }
+
+  return staleJobs;
 }
 
 async function processQueuedAutoPdfRegeneration(input: {
@@ -99,9 +134,12 @@ async function processQueuedAutoPdfRegeneration(input: {
         return;
       }
 
+      if (job.pdfRegenerating) {
+        return;
+      }
+
       const fingerprintContext = await resolvePdfFingerprintContext();
-      const nextFingerprint = createJobPdfFingerprint(job, fingerprintContext);
-      if (job.pdfFingerprint === nextFingerprint) {
+      if (getJobPdfFreshness(job, fingerprintContext) !== "stale") {
         return;
       }
 
@@ -144,7 +182,7 @@ export async function enqueueAutoPdfRegenerationForReadyJobs(input: {
   limit?: number;
 }): Promise<number> {
   const limit = Math.max(1, input.limit ?? AUTO_PDF_REGEN_BATCH_LIMIT);
-  const jobs = await jobsRepo.getReadyJobsWithGeneratedPdfs(limit);
+  const jobs = await getStaleReadyGeneratedPdfJobs(limit);
 
   await Promise.all(
     jobs.map((job) =>

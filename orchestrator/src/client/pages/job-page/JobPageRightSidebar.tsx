@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import type React from "react";
+import { TooltipWhenDisabled } from "@/client/components/TooltipWhenDisabled";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +37,9 @@ type JobPageRightSidebarProps = {
   canLogEvents: boolean;
   isBusy: boolean;
   isUploadingPdf: boolean;
+  pdfActionsDisabled: boolean;
+  pdfRegeneratingReason: string | null;
+  pdfViewLabel: string;
   onStartTailoring: () => void;
   onMarkApplied: () => void;
   onMoveToInProgress: () => void;
@@ -62,6 +66,9 @@ export const JobPageRightSidebar: React.FC<JobPageRightSidebarProps> = ({
   canLogEvents,
   isBusy,
   isUploadingPdf,
+  pdfActionsDisabled,
+  pdfRegeneratingReason,
+  pdfViewLabel,
   onStartTailoring,
   onMarkApplied,
   onMoveToInProgress,
@@ -162,15 +169,21 @@ export const JobPageRightSidebar: React.FC<JobPageRightSidebarProps> = ({
         )}
 
         {job.pdfPath && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-9 w-full justify-start"
-            onClick={onViewPdf}
+          <TooltipWhenDisabled
+            reason={pdfRegeneratingReason}
+            className="w-full"
           >
-            <FileText className="mr-1.5 h-3.5 w-3.5" />
-            View PDF
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 w-full justify-start"
+              onClick={onViewPdf}
+              disabled={pdfActionsDisabled}
+            >
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              {pdfViewLabel}
+            </Button>
+          </TooltipWhenDisabled>
         )}
 
         <Button
@@ -194,7 +207,7 @@ export const JobPageRightSidebar: React.FC<JobPageRightSidebarProps> = ({
             variant="outline"
             className="h-9 w-full justify-start"
             onClick={onRegeneratePdf}
-            disabled={isBusy}
+            disabled={isBusy || Boolean(pdfRegeneratingReason)}
           >
             <RefreshCcw className="mr-1.5 h-3.5 w-3.5" />
             Regenerate PDF
