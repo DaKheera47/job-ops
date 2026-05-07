@@ -148,6 +148,51 @@ describe.sequential("Auth routes", () => {
     });
   });
 
+  describe("public demo auth behavior", () => {
+    beforeEach(async () => {
+      ({ server, baseUrl, closeDb, tempDir } = await startServer({
+        env: {
+          DEMO_MODE: "true",
+          JOBOPS_TEST_AUTH_BYPASS: "0",
+          BASIC_AUTH_USER: "",
+          BASIC_AUTH_PASSWORD: "",
+        },
+      }));
+    });
+
+    it("allows anonymous read access to demo-backed APIs", async () => {
+      const res = await fetch(`${baseUrl}/api/profile/projects`);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.ok).toBe(true);
+      expect(Array.isArray(body.data)).toBe(true);
+      expect(body.data.length).toBeGreaterThan(0);
+    });
+
+    it("does not allow creating the first admin in demo mode", async () => {
+      const bootstrapRes = await fetch(`${baseUrl}/api/auth/bootstrap-status`);
+      expect(bootstrapRes.status).toBe(200);
+      const bootstrapBody = await bootstrapRes.json();
+      expect(bootstrapBody.ok).toBe(true);
+      expect(bootstrapBody.data.setupRequired).toBe(false);
+
+      const setupRes = await fetch(`${baseUrl}/api/auth/setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: "admin",
+          password: "super-secret-password",
+        }),
+      });
+
+      expect(setupRes.status).toBe(503);
+      const setupBody = await setupRes.json();
+      expect(setupBody.ok).toBe(false);
+      expect(setupBody.error.message).toContain("disabled in the public demo");
+    });
+  });
+
   describe("POST /api/auth/logout", () => {
     beforeEach(async () => {
       ({ server, baseUrl, closeDb, tempDir } = await startServer({
