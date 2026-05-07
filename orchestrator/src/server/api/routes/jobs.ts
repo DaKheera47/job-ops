@@ -42,6 +42,11 @@ import {
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
 import { getPdfPath, pdfExists } from "@server/services/pdf";
+import {
+  DEFAULT_JOB_EMAIL_LIMIT,
+  listJobPostApplicationEmails,
+  MAX_JOB_EMAIL_LIMIT,
+} from "@server/services/post-application/job-emails";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -244,6 +249,15 @@ const listJobsQuerySchema = z.object({
 
 const jobsRevisionQuerySchema = z.object({
   status: z.string().optional(),
+});
+
+const jobEmailsQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_JOB_EMAIL_LIMIT)
+    .default(DEFAULT_JOB_EMAIL_LIMIT),
 });
 
 const uploadJobPdfSchema = z.object({
@@ -1001,6 +1015,56 @@ jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
   });
   if (!result.ok) return fail(res, mapJobActionFailure(result));
   ok(res, result.job);
+});
+
+/**
+ * GET /api/jobs/:id/emails - Get post-application email metadata for a job
+ */
+jobsRouter.get("/:id/emails", async (req: Request, res: Response) => {
+  const requestId = String(res.getHeader("x-request-id") || "unknown");
+  const route = "GET /api/jobs/:id/emails";
+  const jobId = req.params.id;
+  const parseResult = jobEmailsQuerySchema.safeParse(req.query);
+
+  if (!parseResult.success) {
+    const err = badRequest("Invalid email query", parseResult.error.flatten());
+    logger.warn("Job emails fetch failed", {
+      route,
+      jobId,
+      requestId,
+      status: err.status,
+      code: err.code,
+    });
+    return fail(res, err);
+  }
+
+  try {
+    const data = await listJobPostApplicationEmails(
+      jobId,
+      parseResult.data.limit,
+    );
+
+    logger.info("Job emails fetched", {
+      route,
+      jobId,
+      requestId,
+      returnedCount: data.items.length,
+    });
+
+    ok(res, data);
+  } catch (error) {
+    const err = toAppError(error);
+    logger[err.status === 404 ? "warn" : "error"]("Job emails fetch failed", {
+      route,
+      jobId,
+      requestId,
+      status: err.status,
+      code: err.code,
+      details: err.details,
+      errorMessage: error instanceof Error ? error.message : undefined,
+    });
+    fail(res, err);
+  }
 });
 
 /**

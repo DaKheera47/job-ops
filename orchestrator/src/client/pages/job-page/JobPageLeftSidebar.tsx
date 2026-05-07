@@ -3,6 +3,7 @@ import {
   ClipboardList,
   FileText,
   FolderKanban,
+  Mail,
   MessageSquareText,
   Sparkles,
 } from "lucide-react";
@@ -16,6 +17,7 @@ export type JobMemoryView =
   | "note"
   | "documents"
   | "timeline"
+  | "emails"
   | "ghostwriter";
 
 type JobPageLeftSidebarProps = {
@@ -47,6 +49,11 @@ const memoryLinks = [
     id: "timeline" as const,
     label: "Timeline",
     icon: ClipboardList,
+  },
+  {
+    id: "emails" as const,
+    label: "Emails",
+    icon: Mail,
   },
   {
     id: "ghostwriter" as const,

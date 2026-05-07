@@ -62,6 +62,17 @@ Detailed setup guide:
 - Approve to link/update timeline
 - Ignore to mark non-relevant
 
+## Job emails tab
+
+Open **Job → Emails** to review captured messages already linked to that job.
+
+The tab is read-only. It shows stored metadata only: sender, subject, received
+time, snippet, processing status, message type, match confidence, account label,
+and a Gmail thread link when the stored message includes a Gmail thread ID.
+
+It does not store full email bodies, re-fetch from Gmail, or expose review
+actions. Use **Tracking Inbox** for approve/ignore decisions.
+
 Confidence interpretation:
 
 - `95-100%`: auto-processed
@@ -83,6 +94,7 @@ Confidence interpretation:
 | POST   | `/api/post-application/inbox/:id/approve` | Approve message       |
 | POST   | `/api/post-application/inbox/:id/deny`    | Ignore message        |
 | GET    | `/api/post-application/runs`              | List sync runs        |
+| GET    | `/api/jobs/:id/emails?limit=100`          | List job-linked email metadata |
 | GET    | `/api/post-application/providers/gmail/oauth/start` | Start OAuth flow |
 | POST   | `/api/post-application/providers/gmail/oauth/exchange` | Exchange OAuth code |
 

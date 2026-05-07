@@ -45,6 +45,7 @@ import type {
   PostApplicationAction,
   PostApplicationActionResponse,
   PostApplicationInboxItem,
+  PostApplicationJobEmailsResponse,
   PostApplicationProvider,
   PostApplicationProviderActionResponse,
   PostApplicationRouterStageTarget,
@@ -814,6 +815,21 @@ export async function updateJob(
 
 export async function getJobNotes(id: string): Promise<JobNote[]> {
   return fetchApi<JobNote[]>(`/jobs/${id}/notes?t=${Date.now()}`);
+}
+
+export async function getJobEmails(
+  id: string,
+  options?: { limit?: number },
+): Promise<PostApplicationJobEmailsResponse> {
+  const params = new URLSearchParams();
+  params.set("t", String(Date.now()));
+  if (options?.limit !== undefined) {
+    params.set("limit", String(options.limit));
+  }
+
+  return fetchApi<PostApplicationJobEmailsResponse>(
+    `/jobs/${id}/emails?${params.toString()}`,
+  );
 }
 
 export async function createJobNote(
