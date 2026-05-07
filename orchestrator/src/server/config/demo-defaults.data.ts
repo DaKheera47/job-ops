@@ -15,6 +15,7 @@ export type DemoDefaultSettings = Partial<Record<SettingKey, string>>;
 export const DEMO_DEFAULT_SETTINGS: DemoDefaultSettings = {
   llmProvider: "openrouter",
   model: "google/gemini-3-flash-preview",
+  pdfRenderer: "latex",
   searchTerms: JSON.stringify([
     "software engineer",
     "backend engineer",
