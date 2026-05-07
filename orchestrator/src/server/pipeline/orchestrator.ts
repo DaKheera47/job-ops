@@ -24,6 +24,10 @@ import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
 import { generatePdf } from "../services/pdf";
+import {
+  createJobPdfFingerprint,
+  resolvePdfFingerprintContext,
+} from "../services/pdf-fingerprint";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
@@ -479,6 +483,7 @@ export type ProcessJobOptions = {
   analyticsOrigin?:
     | "move_to_ready"
     | "generate_pdf"
+    | "auto_pdf_regeneration"
     | "pipeline"
     | "manual_job_create";
 };
@@ -592,15 +597,30 @@ export async function generateFinalPdf(
     const jobLogger = logger.child({ jobId });
     jobLogger.info("Generating final PDF");
     let jobStatusToRestore: JobStatus | null = null;
+    let pdfRegeneratingMarked = false;
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
+      if (job.pdfRegenerating) {
+        return {
+          success: false,
+          error:
+            "PDF regeneration is already in progress for this job. Please wait for it to finish.",
+          errorCode: "CONFLICT",
+        };
+      }
       jobStatusToRestore = job.status;
 
       // Ready jobs already have a usable PDF; keep them visible while regenerating.
       if (job.status !== "ready") {
-        await jobsRepo.updateJob(job.id, { status: "processing" });
+        await jobsRepo.updateJob(job.id, {
+          status: "processing",
+          pdfRegenerating: true,
+        });
+      } else {
+        await jobsRepo.updateJob(job.id, { pdfRegenerating: true });
       }
+      pdfRegeneratingMarked = true;
 
       const pdfResult = await generatePdf(
         job.id,
@@ -620,7 +640,11 @@ export async function generateFinalPdf(
       );
 
       if (!pdfResult.success) {
-        await jobsRepo.updateJob(job.id, { status: job.status });
+        await jobsRepo.updateJob(job.id, {
+          status: job.status,
+          pdfRegenerating: false,
+        });
+        pdfRegeneratingMarked = false;
         const preservedPdfMessage =
           job.status === "ready" && job.pdfPath
             ? " Your previous resume PDF is still available."
@@ -633,11 +657,40 @@ export async function generateFinalPdf(
           errorCode: pdfResult.errorCode,
         };
       }
+      if (!pdfResult.pdfPath) {
+        throw new Error("PDF generation succeeded without an output path.");
+      }
 
-      await jobsRepo.updateJob(job.id, {
-        status: "ready",
+      const fingerprintContext = await resolvePdfFingerprintContext();
+      const pdfFingerprint = createJobPdfFingerprint(job, fingerprintContext);
+      const expectedStatusAtCommit: JobStatus =
+        job.status === "ready" ? "ready" : "processing";
+
+      const updatedJob = await jobsRepo.finalizeGeneratedPdfIfCurrent({
+        id: job.id,
+        expectedStatus: expectedStatusAtCommit,
+        requireGeneratedSource: job.status === "ready",
         pdfPath: pdfResult.pdfPath,
+        pdfFingerprint,
+        pdfGeneratedAt: new Date().toISOString(),
       });
+      if (!updatedJob) {
+        const latestJob = await jobsRepo.getJobById(job.id);
+        if (
+          latestJob?.pdfRegenerating &&
+          (latestJob.status !== expectedStatusAtCommit ||
+            (job.status === "ready" && latestJob.pdfSource !== "generated"))
+        ) {
+          await jobsRepo.updateJob(job.id, { pdfRegenerating: false });
+        }
+        pdfRegeneratingMarked = false;
+        return {
+          success: false,
+          error: "PDF generation was superseded by newer job changes.",
+          errorCode: "CONFLICT",
+        };
+      }
+      pdfRegeneratingMarked = false;
 
       const analyticsOrigin = options?.analyticsOrigin ?? "move_to_ready";
       const generationKind = job.status === "ready" ? "regenerate" : "initial";
@@ -673,9 +726,12 @@ export async function generateFinalPdf(
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      if (jobStatusToRestore) {
+      if (jobStatusToRestore || pdfRegeneratingMarked) {
         try {
-          await jobsRepo.updateJob(jobId, { status: jobStatusToRestore });
+          await jobsRepo.updateJob(jobId, {
+            ...(jobStatusToRestore ? { status: jobStatusToRestore } : {}),
+            pdfRegenerating: false,
+          });
         } catch (restoreError) {
           jobLogger.warn("Failed to restore job status after PDF error", {
             restoreStatus: jobStatusToRestore,

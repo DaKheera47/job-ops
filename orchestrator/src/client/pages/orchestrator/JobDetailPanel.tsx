@@ -5,6 +5,7 @@ import { JobDescriptionMarkdown } from "@client/components/JobDescriptionMarkdow
 import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
 import { KbdHint } from "@client/components/KbdHint";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
+import { TooltipWhenDisabled } from "@client/components/TooltipWhenDisabled";
 import { TailoringWorkspace } from "@client/components/tailoring/TailoringWorkspace";
 import {
   useMarkAsAppliedMutation,
@@ -15,6 +16,13 @@ import { useRescoreJob } from "@client/hooks/useRescoreJob";
 import { useSettings } from "@client/hooks/useSettings";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@client/lib/jobDescription";
+import {
+  getPdfActionLabels,
+  isPdfRegenerating,
+  isPdfStale,
+  PDF_REGENERATING_MESSAGE,
+  STALE_PDF_MESSAGE,
+} from "@client/lib/pdf-freshness";
 import { downloadJobPdf, openJobPdf } from "@client/lib/private-pdf";
 import type {
   Job,
@@ -22,6 +30,7 @@ import type {
   ResumeProjectCatalogItem,
 } from "@shared/types.js";
 import {
+  AlertTriangle,
   CheckCircle2,
   Copy,
   Download,
@@ -503,14 +512,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   }, [handleJobMoved, onJobUpdated, selectedJob, skipJobMutation]);
 
   const handleOpenPdf = useCallback(() => {
-    if (!selectedJob) return;
+    if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
+      return;
     void openJobPdf(selectedJob.id).catch((error) => {
       showErrorToast(error, "Could not open PDF");
     });
   }, [selectedJob]);
 
   const handleDownloadPdf = useCallback(() => {
-    if (!selectedJob) return;
+    if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
+      return;
     void downloadJobPdf(selectedJob.id, selectedPdfFilename).catch((error) => {
       showErrorToast(error, "Could not download PDF");
     });
@@ -559,6 +570,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     selectedJob.status === "processing";
   const canGenerate = ["discovered", "ready"].includes(selectedJob.status);
   const canSkip = ["discovered", "ready"].includes(selectedJob.status);
+  const isRegeneratingPdf = isPdfRegenerating(selectedJob);
+  const isStalePdf = isPdfStale(selectedJob);
+  const pdfLabels = getPdfActionLabels(selectedJob);
+  const pdfRegeneratingReason = isRegeneratingPdf
+    ? PDF_REGENERATING_MESSAGE
+    : null;
+  const pdfActionDisabled = !selectedJob.pdfPath || isRegeneratingPdf;
   const tone = statusTone[selectedJob.status];
 
   return (
@@ -684,13 +702,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   </DropdownMenuItem>
                   {selectedJob.pdfPath && (
                     <>
-                      <DropdownMenuItem onSelect={handleOpenPdf}>
+                      <DropdownMenuItem
+                        onSelect={handleOpenPdf}
+                        disabled={pdfActionDisabled}
+                      >
                         <ExternalLink className="mr-2 h-4 w-4" />
-                        View PDF
+                        {pdfLabels.view}
                       </DropdownMenuItem>
-                      <DropdownMenuItem onSelect={handleDownloadPdf}>
+                      <DropdownMenuItem
+                        onSelect={handleDownloadPdf}
+                        disabled={pdfActionDisabled}
+                      >
                         <Download className="mr-2 h-4 w-4" />
-                        Download PDF
+                        {pdfLabels.download}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -900,6 +924,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {isStalePdf && (
+                <div className="flex items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100 sm:col-span-2 xl:col-span-3">
+                  <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>{STALE_PDF_MESSAGE}</span>
+                </div>
+              )}
               <GhostwriterDrawer
                 job={selectedJob}
                 triggerClassName="h-10 w-full justify-center gap-1.5 px-2 text-xs"
@@ -909,31 +939,41 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 className="h-10 w-full px-2 text-xs"
                 shortcut="o"
               />
-              <Button
-                variant="outline"
-                className="h-10 w-full gap-1.5 px-2 text-xs"
-                onClick={handleDownloadPdf}
-                disabled={!selectedJob.pdfPath}
+              <TooltipWhenDisabled
+                reason={pdfRegeneratingReason}
+                className="w-full"
               >
-                <Download className="h-3.5 w-3.5" />
-                Download PDF
-                <KbdHint shortcut="d" className="ml-auto" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-10 w-full gap-1.5 px-2 text-xs"
-                onClick={handleOpenPdf}
-                disabled={!selectedJob.pdfPath}
+                <Button
+                  variant="outline"
+                  className="h-10 w-full gap-1.5 px-2 text-xs"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfActionDisabled}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  {pdfLabels.download}
+                  <KbdHint shortcut="d" className="ml-auto" />
+                </Button>
+              </TooltipWhenDisabled>
+              <TooltipWhenDisabled
+                reason={pdfRegeneratingReason}
+                className="w-full"
               >
-                <FileText className="h-3.5 w-3.5" />
-                View PDF
-              </Button>
+                <Button
+                  variant="outline"
+                  className="h-10 w-full gap-1.5 px-2 text-xs"
+                  onClick={handleOpenPdf}
+                  disabled={pdfActionDisabled}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {pdfLabels.view}
+                </Button>
+              </TooltipWhenDisabled>
               {canGenerate && (
                 <Button
                   variant="outline"
                   className="h-10 w-full gap-1.5 px-2 text-xs"
                   onClick={() => void handleProcess()}
-                  disabled={isProcessing}
+                  disabled={isProcessing || isRegeneratingPdf}
                 >
                   {isProcessing ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />

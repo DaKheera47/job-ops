@@ -36,6 +36,8 @@ Design Resume reduces that dependency by letting you:
 4. Watch for the local save indicator in the header.
 5. Use **Export** when you want the current Reactive Resume v5 JSON.
 
+When Design Resume changes, ready jobs with system-generated PDFs are queued for automatic regeneration. Until the queue catches up, those jobs show a `PDF stale` indicator and keep the old PDF available as **View old PDF** / **Download old PDF**.
+
 Current v1 scope:
 
 - left-panel editing only
@@ -50,7 +52,7 @@ Current v1 scope:
 - You already had a local Design Resume from an older JobOps build:
   Re-import from a Reactive Resume v5 base resume. Older local documents are no longer auto-converted.
 - Changes do not appear in a generated PDF:
-  Re-run tailoring or PDF generation after the local save finishes.
+  Ready jobs that already use system-generated PDFs are auto-queued for regeneration after Design Resume edits. If a job shows `PDF stale`, JobOps is keeping the old PDF available while the new one is queued or regenerating.
 - Picture upload fails:
   Use `png`, `jpeg`, or `webp` images.
 - You changed the upstream resume and want that copied over:

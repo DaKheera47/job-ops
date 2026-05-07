@@ -11,6 +11,7 @@ import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
 import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import { getSetting } from "@server/repositories/settings";
+import { enqueueAutoPdfRegenerationForSettingsChanges } from "@server/services/auto-pdf-regeneration";
 import { setBackupSettings } from "@server/services/backup/index";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
@@ -326,6 +327,22 @@ settingsRouter.patch(
       });
     }
     ok(res, data);
+
+    queueMicrotask(() => {
+      void enqueueAutoPdfRegenerationForSettingsChanges({
+        updatedSettingKeys: plan.updatedSettingKeys,
+        requestedBy: "user",
+      }).catch((error) => {
+        logger.warn(
+          "Failed to queue auto PDF regeneration for settings change",
+          {
+            route: "PATCH /api/settings",
+            updatedSettingKeys: plan.updatedSettingKeys,
+            error,
+          },
+        );
+      });
+    });
   }),
 );
 

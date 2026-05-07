@@ -695,7 +695,7 @@ describe.sequential("Jobs API routes", () => {
     const content = Buffer.from(await res.arrayBuffer()).toString("utf8");
 
     expect(res.status).toBe(200);
-    expect(res.headers.get("cache-control")).toContain("private");
+    expect(res.headers.get("cache-control")).toBe("no-store");
     expect(content).toContain("Legacy resume");
   });
 

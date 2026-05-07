@@ -133,6 +133,14 @@ export interface JobNote {
 
 export type JobSource = ExtractorSourceId;
 
+export type JobPdfSource = "generated" | "uploaded";
+export type JobPdfFreshness =
+  | "missing"
+  | "uploaded"
+  | "current"
+  | "stale"
+  | "regenerating";
+
 export interface AppliedDuplicateMatch {
   jobId: string;
   title: string;
@@ -179,6 +187,11 @@ export interface Job {
   tailoredSkills: string | null; // Generated resume skills (JSON)
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null; // Path to generated PDF
+  pdfSource: JobPdfSource | null; // Whether PDF was system-generated or user-uploaded
+  pdfRegenerating: boolean; // Whether a PDF generation/regeneration is currently in progress for this job
+  pdfFreshness: JobPdfFreshness; // Derived freshness state for the current PDF artifact
+  pdfFingerprint: string | null; // Stable hash of inputs that produced the current generated PDF
+  pdfGeneratedAt: string | null; // Timestamp of the latest generated/uploaded PDF artifact
   tracerLinksEnabled: boolean; // Rewrite outbound resume links to tracer links on next PDF generation
   sponsorMatchScore: number | null; // 0-100 fuzzy match score with visa sponsors
   sponsorMatchNames: string | null; // JSON array of matched sponsor names (when 100% matches or top match)
@@ -239,6 +252,8 @@ export type JobListItem = Pick<
   | "appliedDuplicateMatch"
   | "jobType"
   | "jobFunction"
+  | "pdfRegenerating"
+  | "pdfFreshness"
   | "salaryMinAmount"
   | "salaryMaxAmount"
   | "salaryCurrency"
@@ -341,6 +356,10 @@ export interface UpdateJobInput {
   tailoredSkills?: string;
   selectedProjectIds?: string;
   pdfPath?: string;
+  pdfSource?: JobPdfSource | null;
+  pdfRegenerating?: boolean;
+  pdfFingerprint?: string | null;
+  pdfGeneratedAt?: string | null;
   tracerLinksEnabled?: boolean;
   readyAt?: string;
   appliedAt?: string;

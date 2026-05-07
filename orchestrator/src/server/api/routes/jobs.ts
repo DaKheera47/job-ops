@@ -34,6 +34,10 @@ import {
 } from "@server/services/applicationTracking";
 import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
 import {
+  enqueueAutoPdfRegenerationForJob,
+  shouldEnqueueTailoringAutoPdfRegeneration,
+} from "@server/services/auto-pdf-regeneration";
+import {
   simulateApplyJob,
   simulateGeneratePdf,
   simulateProcessJob,
@@ -42,6 +46,12 @@ import {
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
 import { getPdfPath, pdfExists } from "@server/services/pdf";
+import {
+  applyJobPdfFreshness,
+  applyJobsPdfFreshness,
+  type PdfFingerprintContext,
+  resolvePdfFingerprintContext,
+} from "@server/services/pdf-fingerprint";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -78,6 +88,76 @@ const jobNoteSchema = z.object({
   title: z.string().trim().min(1).max(120),
   content: z.string().trim().min(1).max(20000),
 });
+
+async function hydrateJobPdfFreshness<T extends Job>(job: T): Promise<T> {
+  const context = await resolvePdfFingerprintContext();
+  return applyJobPdfFreshness(job, context);
+}
+
+function hydrateJobPdfFreshnessWithContext<T extends Job>(
+  job: T,
+  context: PdfFingerprintContext,
+): T {
+  return applyJobPdfFreshness(job, context);
+}
+
+function toJobListItem(
+  job: jobsRepo.JobListItemWithPdfFreshnessInput,
+): JobListItem {
+  return {
+    id: job.id,
+    source: job.source,
+    title: job.title,
+    employer: job.employer,
+    jobUrl: job.jobUrl,
+    applicationLink: job.applicationLink,
+    datePosted: job.datePosted,
+    deadline: job.deadline,
+    salary: job.salary,
+    location: job.location,
+    status: job.status,
+    outcome: job.outcome,
+    closedAt: job.closedAt,
+    suitabilityScore: job.suitabilityScore,
+    sponsorMatchScore: job.sponsorMatchScore,
+    jobType: job.jobType,
+    jobFunction: job.jobFunction,
+    pdfRegenerating: job.pdfRegenerating,
+    pdfFreshness: job.pdfFreshness,
+    salaryMinAmount: job.salaryMinAmount,
+    salaryMaxAmount: job.salaryMaxAmount,
+    salaryCurrency: job.salaryCurrency,
+    discoveredAt: job.discoveredAt,
+    readyAt: job.readyAt,
+    appliedAt: job.appliedAt,
+    updatedAt: job.updatedAt,
+  };
+}
+
+function queueTailoringAutoPdfRegenerationIfNeeded(
+  previousJob: Job,
+  nextJob: Job,
+  route: string,
+): void {
+  if (!shouldEnqueueTailoringAutoPdfRegeneration(previousJob, nextJob)) {
+    return;
+  }
+
+  queueMicrotask(() => {
+    void enqueueAutoPdfRegenerationForJob({
+      jobId: nextJob.id,
+      reason: "tailoring_updated",
+      requestedBy: "user",
+    }).catch((error) => {
+      logger.warn("Failed to queue auto PDF regeneration after job update", {
+        route,
+        jobId: nextJob.id,
+        reason: "tailoring_updated",
+        error,
+      });
+    });
+  });
+}
 
 async function notifyJobCompleteWebhook(job: Job) {
   const overrideWebhookUrl = await settingsRepo.getSetting(
@@ -605,10 +685,17 @@ jobsRouter.get("/", async (req: Request, res: Response) => {
     const view = parsedQuery.data.view ?? "list";
 
     const primaryQueryStart = performance.now();
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
     const jobs: Array<Job | JobListItem> =
       view === "list"
-        ? await jobsRepo.getJobListItems(statuses)
-        : await jobsRepo.getAllJobs(statuses);
+        ? applyJobsPdfFreshness(
+            await jobsRepo.getJobListItems(statuses),
+            pdfFingerprintContext,
+          ).map(toJobListItem)
+        : applyJobsPdfFreshness(
+            await jobsRepo.getAllJobs(statuses),
+            pdfFingerprintContext,
+          );
     primaryQueryMs = performance.now() - primaryQueryStart;
     const candidateCount = 0;
     const duplicateMatchingEnabled = false;
@@ -742,12 +829,26 @@ jobsRouter.post("/actions", async (req: Request, res: Response) => {
       ...(parsed.action === "move_to_ready" ? { requestOrigin } : {}),
     };
 
-    const results = await asyncPool({
+    const rawResults = await asyncPool({
       items: dedupedJobIds,
       concurrency: JOB_ACTION_CONCURRENCY,
       task: async (jobId) =>
         executeJobActionForJob(parsed.action, jobId, executionOptions),
     });
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
+    const results = await Promise.all(
+      rawResults.map(async (result) =>
+        result.ok
+          ? {
+              ...result,
+              job: hydrateJobPdfFreshnessWithContext(
+                result.job,
+                pdfFingerprintContext,
+              ),
+            }
+          : result,
+      ),
+    );
 
     const succeeded = results.filter((result) => result.ok).length;
     const failed = results.length - succeeded;
@@ -845,6 +946,8 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
   };
 
   try {
+    const pdfFingerprintContext = await resolvePdfFingerprintContext();
+
     if (
       !sendEvent({
         type: "started",
@@ -874,11 +977,20 @@ jobsRouter.post("/actions/stream", async (req: Request, res: Response) => {
       task: async (jobId) => {
         if (!isResponseWritable()) return;
 
-        const result = await executeJobActionForJob(
+        const rawResult = await executeJobActionForJob(
           action,
           jobId,
           executionOptions,
         );
+        const result = rawResult.ok
+          ? {
+              ...rawResult,
+              job: hydrateJobPdfFreshnessWithContext(
+                rawResult.job,
+                pdfFingerprintContext,
+              ),
+            }
+          : rawResult;
         results.push(result);
         if (result.ok) succeeded += 1;
         else failed += 1;
@@ -984,13 +1096,13 @@ jobsRouter.post("/:id/process", async (req: Request, res: Response) => {
     requestOrigin: resolveRequestOrigin(req),
   });
   if (!result.ok) return fail(res, mapJobActionFailure(result));
-  ok(res, result.job);
+  ok(res, await hydrateJobPdfFreshness(result.job));
 });
 
 jobsRouter.post("/:id/skip", async (req: Request, res: Response) => {
   const result = await executeJobActionForJob("skip", req.params.id);
   if (!result.ok) return fail(res, mapJobActionFailure(result));
-  ok(res, result.job);
+  ok(res, await hydrateJobPdfFreshness(result.job));
 });
 
 jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
@@ -1000,7 +1112,7 @@ jobsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
       : { getProfileForRescore: createSharedRescoreProfileLoader() }),
   });
   if (!result.ok) return fail(res, mapJobActionFailure(result));
-  ok(res, result.job);
+  ok(res, await hydrateJobPdfFreshness(result.job));
 });
 
 /**
@@ -1016,7 +1128,7 @@ jobsRouter.get("/:id", async (req: Request, res: Response) => {
       [job],
       await jobsRepo.getAppliedDuplicateMatchCandidates(),
     );
-    ok(res, jobWithAppliedDuplicateMatch);
+    ok(res, await hydrateJobPdfFreshness(jobWithAppliedDuplicateMatch));
   } catch (error) {
     fail(res, toAppError(error));
   }
@@ -1389,7 +1501,7 @@ jobsRouter.patch("/:id/outcome", async (req: Request, res: Response) => {
       source: "jobs_outcome_route",
     });
 
-    ok(res, job);
+    ok(res, await hydrateJobPdfFreshness(job));
     queueMicrotask(() => {
       void reconcileActivationMilestonesFromHistorySafely({
         route: "PATCH /api/jobs/:id/outcome",
@@ -1482,7 +1594,12 @@ jobsRouter.patch("/:id", async (req: Request, res: Response) => {
       requestOrigin: resolveRequestOrigin(req),
       source: "jobs_patch_route",
     });
-    ok(res, job);
+    ok(res, await hydrateJobPdfFreshness(job));
+    queueTailoringAutoPdfRegenerationIfNeeded(
+      currentJob,
+      job,
+      "PATCH /api/jobs/:id",
+    );
     if (
       Object.hasOwn(input, "appliedAt") ||
       Object.hasOwn(input, "closedAt") ||
@@ -1559,6 +1676,10 @@ jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
 
     const job = await jobsRepo.updateJob(req.params.id, {
       pdfPath: uploaded.outputPath,
+      pdfSource: "uploaded",
+      pdfRegenerating: false,
+      pdfFingerprint: null,
+      pdfGeneratedAt: new Date().toISOString(),
     });
 
     if (!job) {
@@ -1592,7 +1713,7 @@ jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
       byteLength: uploaded.byteLength,
     });
 
-    ok(res, job, 201);
+    ok(res, await hydrateJobPdfFreshness(job), 201);
   } catch (error) {
     const err =
       error instanceof z.ZodError
@@ -1639,7 +1760,7 @@ jobsRouter.get("/:id/pdf", async (req: Request, res: Response) => {
   }
 
   const pdfPath = getPdfPath(req.params.id);
-  res.setHeader("Cache-Control", "private, max-age=60");
+  res.setHeader("Cache-Control", "no-store");
   res.sendFile(pdfPath, (error) => {
     if (error) {
       fail(res, notFound("PDF not found"));
@@ -1667,9 +1788,12 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
       if (!job) {
         return fail(res, notFound("Job not found"));
       }
-      return okWithMeta(res, job, { simulated: true });
+      return okWithMeta(res, await hydrateJobPdfFreshness(job), {
+        simulated: true,
+      });
     }
 
+    const previousJob = await jobsRepo.getJobById(req.params.id);
     const result = await summarizeJob(req.params.id, { force });
 
     if (!result.success) {
@@ -1683,7 +1807,15 @@ jobsRouter.post("/:id/summarize", async (req: Request, res: Response) => {
     if (!job) {
       return fail(res, notFound("Job not found"));
     }
-    ok(res, job);
+    ok(res, await hydrateJobPdfFreshness(job));
+
+    if (previousJob) {
+      queueTailoringAutoPdfRegenerationIfNeeded(
+        previousJob,
+        job,
+        "POST /api/jobs/:id/summarize",
+      );
+    }
   } catch (error) {
     fail(res, toAppError(error));
   }
@@ -1738,7 +1870,7 @@ jobsRouter.post("/:id/check-sponsor", async (req: Request, res: Response) => {
     }
 
     ok(res, {
-      ...updatedJob,
+      ...(await hydrateJobPdfFreshness(updatedJob)),
       matchResults: sponsorResults.slice(0, 5).map((r) => ({
         name: r.sponsor.organisationName,
         score: r.score,
@@ -1766,7 +1898,9 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
       if (!job) {
         return fail(res, notFound("Job not found"));
       }
-      return okWithMeta(res, job, { simulated: true });
+      return okWithMeta(res, await hydrateJobPdfFreshness(job), {
+        simulated: true,
+      });
     }
 
     const result = await generateFinalPdf(req.params.id, {
@@ -1785,7 +1919,7 @@ jobsRouter.post("/:id/generate-pdf", async (req: Request, res: Response) => {
     if (!job) {
       return fail(res, notFound("Job not found"));
     }
-    ok(res, job);
+    ok(res, await hydrateJobPdfFreshness(job));
   } catch (error) {
     fail(res, toAppError(error));
   }
@@ -1798,7 +1932,9 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
   try {
     if (isDemoMode()) {
       const updatedJob = await simulateApplyJob(req.params.id);
-      return okWithMeta(res, updatedJob, { simulated: true });
+      return okWithMeta(res, await hydrateJobPdfFreshness(updatedJob), {
+        simulated: true,
+      });
     }
 
     const job = await jobsRepo.getJobById(req.params.id);
@@ -1852,7 +1988,7 @@ jobsRouter.post("/:id/apply", async (req: Request, res: Response) => {
       return fail(res, notFound("Job not found"));
     }
 
-    ok(res, updatedJob);
+    ok(res, await hydrateJobPdfFreshness(updatedJob));
   } catch (error) {
     fail(res, toAppError(error));
   }

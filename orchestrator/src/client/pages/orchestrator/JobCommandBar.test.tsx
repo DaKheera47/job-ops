@@ -25,6 +25,8 @@ const createJob = (overrides: Partial<JobListItem> = {}): JobListItem => ({
   appliedDuplicateMatch: null,
   jobType: null,
   jobFunction: null,
+  pdfRegenerating: false,
+  pdfFreshness: "missing",
   salaryMinAmount: null,
   salaryMaxAmount: null,
   salaryCurrency: null,

@@ -98,4 +98,48 @@ describe.sequential("database migrations", () => {
       },
     );
   });
+
+  it("backfills legacy PDF rows as generated", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      const migrationUrl = pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href;
+      await import(\`\${migrationUrl}?run=initial\`);
+
+      const sqlite = new Database(dbPath);
+      sqlite.prepare("INSERT INTO jobs(id, title, employer, job_url, pdf_path, pdf_source) VALUES (?, ?, ?, ?, ?, NULL)").run(
+        "legacy-pdf-job",
+        "Legacy PDF Job",
+        "Acme",
+        "https://example.com/legacy-pdf-job",
+        "data/pdfs/resume_legacy-pdf-job.pdf",
+      );
+      sqlite.close();
+
+      await import(\`\${migrationUrl}?run=backfill\`);
+
+      const migratedDb = new Database(dbPath, { readonly: true });
+      const row = migratedDb.prepare("SELECT pdf_source FROM jobs WHERE id = ?").get("legacy-pdf-job");
+      if (row?.pdf_source !== "generated") {
+        throw new Error(\`Expected legacy PDF source to be generated, got \${row?.pdf_source}\`);
+      }
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
 });
