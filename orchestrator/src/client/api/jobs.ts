@@ -1,0 +1,374 @@
+import type {
+  ApplicationStage,
+  ApplicationTask,
+  Job,
+  JobActionRequest,
+  JobActionResponse,
+  JobActionStreamEvent,
+  JobListItem,
+  JobNote,
+  JobOutcome,
+  JobsListResponse,
+  JobsRevisionResponse,
+  JobTracerLinksResponse,
+  StageEvent,
+  StageEventMetadata,
+  StageTransitionTarget,
+  TracerAnalyticsResponse,
+  TracerReadinessResponse,
+} from "@shared/types";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import {
+  ApiClientError,
+  fetchApi,
+  fetchBlobApi,
+  streamSseEvents,
+} from "./core";
+
+function toJobIdList(idOrIds: string | string[]): string[] {
+  return Array.isArray(idOrIds) ? idOrIds : [idOrIds];
+}
+
+function getSingleJobFromActionResult(
+  response: JobActionResponse,
+  jobId: string,
+): Job {
+  const result = response.results.find((entry) => entry.jobId === jobId);
+  if (!result) {
+    throw new ApiClientError("Job action did not return a result for the job");
+  }
+  if (!result.ok) {
+    throw new ApiClientError(formatUserFacingError(result.error.message), {
+      code: result.error.code,
+    });
+  }
+  return result.job;
+}
+
+export function getJobs(): Promise<JobsListResponse<JobListItem>>;
+export function getJobs(options: {
+  statuses?: string[];
+  view?: "list";
+}): Promise<JobsListResponse<JobListItem>>;
+export function getJobs(options?: {
+  statuses?: string[];
+  view: "full";
+}): Promise<JobsListResponse<Job>>;
+export async function getJobs(options?: {
+  statuses?: string[];
+  view?: "full" | "list";
+}): Promise<JobsListResponse<Job> | JobsListResponse<JobListItem>> {
+  const params = new URLSearchParams();
+  if (options?.statuses?.length)
+    params.set("status", options.statuses.join(","));
+  if (options?.view) params.set("view", options.view);
+  const query = params.toString();
+  return fetchApi<JobsListResponse<Job> | JobsListResponse<JobListItem>>(
+    `/jobs${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getJobsRevision(options?: {
+  statuses?: string[];
+}): Promise<JobsRevisionResponse> {
+  const params = new URLSearchParams();
+  if (options?.statuses?.length)
+    params.set("status", options.statuses.join(","));
+  const query = params.toString();
+  return fetchApi<JobsRevisionResponse>(
+    `/jobs/revision${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getJob(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}?t=${Date.now()}`);
+}
+
+export async function updateJob(
+  id: string,
+  update: Partial<Job>,
+): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(update),
+  });
+}
+
+export async function getJobNotes(id: string): Promise<JobNote[]> {
+  return fetchApi<JobNote[]>(`/jobs/${id}/notes?t=${Date.now()}`);
+}
+
+export async function createJobNote(
+  jobId: string,
+  input: import("@shared/types").CreateJobNoteInput,
+): Promise<JobNote> {
+  return fetchApi<JobNote>(`/jobs/${jobId}/notes`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateJobNote(
+  jobId: string,
+  noteId: string,
+  input: import("@shared/types").UpdateJobNoteInput,
+): Promise<JobNote> {
+  return fetchApi<JobNote>(`/jobs/${jobId}/notes/${noteId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteJobNote(
+  jobId: string,
+  noteId: string,
+): Promise<void> {
+  await fetchApi<void>(`/jobs/${jobId}/notes/${noteId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function uploadJobPdf(
+  id: string,
+  input: {
+    fileName: string;
+    mediaType?: string;
+    dataBase64: string;
+  },
+): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/pdf`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getJobPdfBlob(id: string): Promise<Blob> {
+  const cacheBuster = Date.now().toString(36);
+  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf?v=${cacheBuster}`, {
+    cache: "no-store",
+  });
+}
+
+export async function getTracerAnalytics(options?: {
+  jobId?: string;
+  from?: number;
+  to?: number;
+  includeBots?: boolean;
+  limit?: number;
+}): Promise<TracerAnalyticsResponse> {
+  const params = new URLSearchParams();
+  if (options?.jobId) params.set("jobId", options.jobId);
+  if (typeof options?.from === "number")
+    params.set("from", String(options.from));
+  if (typeof options?.to === "number") params.set("to", String(options.to));
+  if (typeof options?.includeBots === "boolean") {
+    params.set("includeBots", options.includeBots ? "1" : "0");
+  }
+  if (typeof options?.limit === "number") {
+    params.set("limit", String(options.limit));
+  }
+
+  const query = params.toString();
+  return fetchApi<TracerAnalyticsResponse>(
+    `/tracer-links/analytics${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getTracerReadiness(options?: {
+  force?: boolean;
+}): Promise<TracerReadinessResponse> {
+  const params = new URLSearchParams();
+  if (options?.force) params.set("force", "1");
+  const query = params.toString();
+  return fetchApi<TracerReadinessResponse>(
+    `/tracer-links/readiness${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function getJobTracerLinks(
+  jobId: string,
+  options?: {
+    from?: number;
+    to?: number;
+    includeBots?: boolean;
+  },
+): Promise<JobTracerLinksResponse> {
+  const params = new URLSearchParams();
+  if (typeof options?.from === "number")
+    params.set("from", String(options.from));
+  if (typeof options?.to === "number") params.set("to", String(options.to));
+  if (typeof options?.includeBots === "boolean") {
+    params.set("includeBots", options.includeBots ? "1" : "0");
+  }
+  const query = params.toString();
+  return fetchApi<JobTracerLinksResponse>(
+    `/tracer-links/jobs/${encodeURIComponent(jobId)}${query ? `?${query}` : ""}`,
+  );
+}
+
+export async function processJob(
+  ids: string[],
+  options?: { force?: boolean },
+): Promise<JobActionResponse>;
+export async function processJob(
+  id: string,
+  options?: { force?: boolean },
+): Promise<Job>;
+export async function processJob(
+  idOrIds: string | string[],
+  options?: { force?: boolean },
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "move_to_ready",
+    jobIds,
+    ...(options?.force ? { options: { force: true } } : {}),
+  });
+
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
+}
+
+export async function rescoreJob(ids: string[]): Promise<JobActionResponse>;
+export async function rescoreJob(id: string): Promise<Job>;
+export async function rescoreJob(
+  idOrIds: string | string[],
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "rescore",
+    jobIds,
+  });
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
+}
+
+export async function summarizeJob(
+  id: string,
+  options?: { force?: boolean },
+): Promise<Job> {
+  const query = options?.force ? "?force=1" : "";
+  return fetchApi<Job>(`/jobs/${id}/summarize${query}`, {
+    method: "POST",
+  });
+}
+
+export async function generateJobPdf(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/generate-pdf`, {
+    method: "POST",
+  });
+}
+
+export async function checkSponsor(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/check-sponsor`, {
+    method: "POST",
+  });
+}
+
+export async function markAsApplied(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/apply`, {
+    method: "POST",
+  });
+}
+
+export async function skipJob(ids: string[]): Promise<JobActionResponse>;
+export async function skipJob(id: string): Promise<Job>;
+export async function skipJob(
+  idOrIds: string | string[],
+): Promise<Job | JobActionResponse> {
+  const jobIds = toJobIdList(idOrIds);
+  const result = await runJobAction({
+    action: "skip",
+    jobIds,
+  });
+  if (Array.isArray(idOrIds)) return result;
+  return getSingleJobFromActionResult(result, idOrIds);
+}
+
+export async function runJobAction(
+  input: JobActionRequest,
+): Promise<JobActionResponse> {
+  return fetchApi<JobActionResponse>("/jobs/actions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function streamJobAction(
+  input: JobActionRequest,
+  handlers: {
+    onEvent: (event: JobActionStreamEvent) => void;
+    signal?: AbortSignal;
+  },
+): Promise<void> {
+  return streamSseEvents<JobActionStreamEvent>(
+    "/jobs/actions/stream",
+    input,
+    handlers,
+  );
+}
+
+export async function getJobStageEvents(id: string): Promise<StageEvent[]> {
+  return fetchApi<StageEvent[]>(`/jobs/${id}/events?t=${Date.now()}`);
+}
+
+export async function getJobTasks(
+  id: string,
+  options?: { includeCompleted?: boolean },
+): Promise<ApplicationTask[]> {
+  const params = new URLSearchParams();
+  if (options?.includeCompleted) params.set("includeCompleted", "1");
+  params.set("t", Date.now().toString());
+  const query = params.toString();
+  return fetchApi<ApplicationTask[]>(`/jobs/${id}/tasks?${query}`);
+}
+
+export async function transitionJobStage(
+  id: string,
+  input: {
+    toStage: StageTransitionTarget;
+    occurredAt?: number | null;
+    metadata?: StageEventMetadata | null;
+    outcome?: JobOutcome | null;
+  },
+): Promise<StageEvent> {
+  return fetchApi<StageEvent>(`/jobs/${id}/stages`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateJobStageEvent(
+  id: string,
+  eventId: string,
+  input: {
+    toStage?: ApplicationStage;
+    occurredAt?: number | null;
+    metadata?: StageEventMetadata | null;
+    outcome?: JobOutcome | null;
+  },
+): Promise<void> {
+  return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteJobStageEvent(
+  id: string,
+  eventId: string,
+): Promise<void> {
+  return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function updateJobOutcome(
+  id: string,
+  input: { outcome: JobOutcome | null; closedAt?: number | null },
+): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/outcome`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
