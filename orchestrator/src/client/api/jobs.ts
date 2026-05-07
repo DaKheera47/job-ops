@@ -361,14 +361,17 @@ export async function updateJobStageEvent(
   eventId: string,
   input: {
     toStage?: ApplicationStage;
-    occurredAt?: number | null;
+    occurredAt?: number;
     metadata?: StageEventMetadata | null;
     outcome?: JobOutcome | null;
   },
 ): Promise<void> {
+  const { occurredAt, ...rest } = input;
   return fetchApi<void>(`/jobs/${id}/events/${eventId}`, {
     method: "PATCH",
-    body: JSON.stringify(input),
+    body: JSON.stringify(
+      occurredAt === undefined ? rest : { ...rest, occurredAt },
+    ),
   });
 }
 

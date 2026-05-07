@@ -101,11 +101,7 @@ jobsMutationsRouter.patch("/:id", async (req: Request, res: Response) => {
       job,
       "PATCH /api/jobs/:id",
     );
-    if (
-      Object.hasOwn(input, "appliedAt") ||
-      Object.hasOwn(input, "closedAt") ||
-      Object.hasOwn(input, "outcome")
-    ) {
+    if (Object.hasOwn(input, "closedAt") || Object.hasOwn(input, "outcome")) {
       queueMicrotask(() => {
         void reconcileActivationMilestonesFromHistorySafely({
           route: "PATCH /api/jobs/:id",

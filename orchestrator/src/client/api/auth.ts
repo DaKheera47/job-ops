@@ -1,6 +1,10 @@
 import { redirectToSignIn } from "@client/lib/auth-navigation";
 import type { AuthCredentials } from "./auth-session";
-import { clearAuthSession, setAuthenticatedSession } from "./auth-session";
+import {
+  clearAuthSession,
+  getCachedAuthHeader,
+  setAuthenticatedSession,
+} from "./auth-session";
 import {
   fetchApi,
   performLoginWithCredentials,
@@ -94,7 +98,7 @@ export {
 export async function logout(
   options: { redirect?: boolean } = {},
 ): Promise<void> {
-  const authHeader = (await import("./auth-session")).getCachedAuthHeader();
+  const authHeader = getCachedAuthHeader();
   if (authHeader) {
     try {
       await fetch("/api/auth/logout", {

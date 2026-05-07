@@ -156,13 +156,11 @@ jobsDocumentsRouter.post(
       const job = await requireJob(req.params.id);
       ok(res, await hydrateJobPdfFreshness(job));
 
-      if (previousJob) {
-        queueTailoringAutoPdfRegenerationIfNeeded(
-          previousJob,
-          job,
-          "POST /api/jobs/:id/summarize",
-        );
-      }
+      queueTailoringAutoPdfRegenerationIfNeeded(
+        previousJob,
+        job,
+        "POST /api/jobs/:id/summarize",
+      );
     } catch (error) {
       fail(res, toJobsRouteError(error));
     }

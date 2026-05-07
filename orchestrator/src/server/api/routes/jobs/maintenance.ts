@@ -4,8 +4,19 @@ import { isDemoMode, sendDemoBlocked } from "@server/config/demo";
 import * as jobsRepo from "@server/repositories/jobs";
 import type { JobStatus } from "@shared/types";
 import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 
 export const jobsMaintenanceRouter = Router();
+
+const jobStatusParamSchema = z.enum([
+  "discovered",
+  "processing",
+  "ready",
+  "applied",
+  "in_progress",
+  "skipped",
+  "expired",
+]);
 
 jobsMaintenanceRouter.delete(
   "/status/:status",
@@ -22,7 +33,12 @@ jobsMaintenanceRouter.delete(
         );
       }
 
-      const status = req.params.status as JobStatus;
+      const parseResult = jobStatusParamSchema.safeParse(req.params.status);
+      if (!parseResult.success) {
+        return fail(res, badRequest("Invalid job status"));
+      }
+
+      const status: JobStatus = parseResult.data;
       const count = await jobsRepo.deleteJobsByStatus(status);
 
       ok(res, {
