@@ -209,7 +209,7 @@ export function createAuthGuard() {
     return false;
   }
 
-  function isProtectedDemoReadOnlyRoute(path: string): boolean {
+  function isProtectedDemoRoute(path: string): boolean {
     const normalizedPath = path.split("?")[0] || path;
 
     if (normalizedPath === "/api/auth/me") return true;
@@ -223,20 +223,18 @@ export function createAuthGuard() {
     return false;
   }
 
-  function isPublicDemoReadOnlyRoute(method: string, path: string): boolean {
+  function isPublicDemoRoute(path: string): boolean {
     if (!isDemoMode()) return false;
 
-    const normalizedMethod = method.toUpperCase();
     const normalizedPath = path.split("?")[0] || path;
-    if (!["GET", "HEAD"].includes(normalizedMethod)) return false;
     if (!normalizedPath.startsWith("/api/")) return false;
 
-    return !isProtectedDemoReadOnlyRoute(normalizedPath);
+    return !isProtectedDemoRoute(normalizedPath);
   }
 
   function requiresAuth(method: string, path: string): boolean {
     if (isPublicReadOnlyRoute(method, path)) return false;
-    if (isPublicDemoReadOnlyRoute(method, path)) return false;
+    if (isPublicDemoRoute(path)) return false;
     // OPTIONS is always exempt for CORS preflight.
     if (method.toUpperCase() === "OPTIONS") return false;
 

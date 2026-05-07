@@ -48,6 +48,7 @@ describe.sequential("Demo mode API behavior", () => {
     const { server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         DEMO_MODE: "true",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
         BASIC_AUTH_USER: "",
         BASIC_AUTH_PASSWORD: "",
       },
@@ -72,6 +73,7 @@ describe.sequential("Demo mode API behavior", () => {
     const { server, baseUrl, closeDb, tempDir } = await startServer({
       env: {
         DEMO_MODE: "true",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
         BASIC_AUTH_USER: "",
         BASIC_AUTH_PASSWORD: "",
       },
@@ -95,7 +97,10 @@ describe.sequential("Demo mode API behavior", () => {
 
   it("simulates apply in demo mode", async () => {
     const { server, baseUrl, closeDb, tempDir } = await startServer({
-      env: { DEMO_MODE: "true" },
+      env: {
+        DEMO_MODE: "true",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+      },
     });
 
     try {
@@ -124,6 +129,28 @@ describe.sequential("Demo mode API behavior", () => {
       expect(body.ok).toBe(true);
       expect(body.meta?.simulated).toBe(true);
       expect(body.data.status).toBe("applied");
+    } finally {
+      await stopServer({ server, closeDb, tempDir });
+    }
+  });
+
+  it("keeps sensitive demo auth surfaces protected", async () => {
+    const { server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        DEMO_MODE: "true",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+        BASIC_AUTH_USER: "",
+        BASIC_AUTH_PASSWORD: "",
+      },
+    });
+
+    try {
+      const response = await fetch(`${baseUrl}/api/auth/me`);
+      const body = await response.json();
+
+      expect(response.status).toBe(401);
+      expect(body.ok).toBe(false);
+      expect(body.error.code).toBe("UNAUTHORIZED");
     } finally {
       await stopServer({ server, closeDb, tempDir });
     }
