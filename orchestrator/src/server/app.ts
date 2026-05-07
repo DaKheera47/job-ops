@@ -200,6 +200,16 @@ export function createAuthGuard() {
     )
       return true;
 
+    // Extractor health endpoints (/api/<source>/health) report runtime
+    // availability and must remain reachable to uptime probes that cannot
+    // present a JWT. The route handler still returns 404 for unknown
+    // <source> values, so this exemption does not widen the surface.
+    if (
+      ["GET", "HEAD"].includes(normalizedMethod) &&
+      /^\/api\/[^/]+\/health$/.test(normalizedPath)
+    )
+      return true;
+
     return false;
   }
 

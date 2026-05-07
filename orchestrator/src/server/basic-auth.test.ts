@@ -117,6 +117,46 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
+  it("allows GET extractor health endpoints without auth (issue #465)", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    for (const path of [
+      "/api/linkedin/health",
+      "/api/jobspy/health",
+      "/api/not-a-source/health",
+    ]) {
+      const req = createMockRequest({ method: "GET", path });
+      const res = createMockResponse();
+      const next = vi.fn() as NextFunction;
+
+      middleware(req, res, next);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(next).toHaveBeenCalledOnce();
+      expect(res.status).not.toHaveBeenCalled();
+    }
+  });
+
+  it("still requires auth for nested or non-GET extractor health URLs", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    for (const request of [
+      createMockRequest({ method: "POST", path: "/api/linkedin/health" }),
+      createMockRequest({ method: "GET", path: "/api/linkedin/health/extra" }),
+    ]) {
+      const res = createMockResponse();
+      const next = vi.fn() as NextFunction;
+
+      middleware(request, res, next);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(next).not.toHaveBeenCalled();
+      expect(res.statusCode).toBe(401);
+    }
+  });
+
   it("allows OPTIONS preflight without auth even for API routes", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 
