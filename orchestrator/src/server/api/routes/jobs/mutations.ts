@@ -1,4 +1,4 @@
-import { AppError, badRequest, conflict } from "@infra/errors";
+import { AppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { resolveRequestOrigin } from "@server/infra/request-origin";
@@ -7,11 +7,11 @@ import { reconcileActivationMilestonesFromHistorySafely } from "@server/services
 import { trackApplicationAcceptedIfNeeded } from "@server/services/jobs/analytics";
 import { getTracerReadiness } from "@server/services/tracer-links";
 import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import {
   hydrateJobPdfFreshness,
   isJobUrlConflictError,
   queueTailoringAutoPdfRegenerationIfNeeded,
+  toJobsRouteError,
   updateJobSchema,
 } from "./shared";
 
@@ -115,22 +115,11 @@ jobsMutationsRouter.patch("/:id", async (req: Request, res: Response) => {
       });
     }
   } catch (error) {
-    const err =
-      error instanceof z.ZodError
-        ? badRequest(
-            error.issues[0]?.message ?? "Invalid job update request",
-            error.flatten(),
-          )
-        : error instanceof AppError
-          ? error
-          : isJobUrlConflictError(error)
-            ? conflict("Another job already uses that job URL")
-            : new AppError({
-                status: 500,
-                code: "INTERNAL_ERROR",
-                message:
-                  error instanceof Error ? error.message : "Unknown error",
-              });
+    const err = toJobsRouteError(error, {
+      invalidRequestFallbackMessage: "Invalid job update request",
+      conflictWhen: isJobUrlConflictError,
+      conflictMessage: "Another job already uses that job URL",
+    });
 
     logger.error("Job update failed", {
       route: "PATCH /api/jobs/:id",

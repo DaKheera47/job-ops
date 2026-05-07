@@ -23,6 +23,7 @@ import {
   fetchApi,
   fetchBlobApi,
   streamSseEvents,
+  withQuery,
 } from "./core";
 
 function toJobIdList(idOrIds: string | string[]): string[] {
@@ -58,30 +59,30 @@ export async function getJobs(options?: {
   statuses?: string[];
   view?: "full" | "list";
 }): Promise<JobsListResponse<Job> | JobsListResponse<JobListItem>> {
-  const params = new URLSearchParams();
-  if (options?.statuses?.length)
-    params.set("status", options.statuses.join(","));
-  if (options?.view) params.set("view", options.view);
-  const query = params.toString();
   return fetchApi<JobsListResponse<Job> | JobsListResponse<JobListItem>>(
-    `/jobs${query ? `?${query}` : ""}`,
+    withQuery("/jobs", {
+      status: options?.statuses?.length
+        ? options.statuses.join(",")
+        : undefined,
+      view: options?.view,
+    }),
   );
 }
 
 export async function getJobsRevision(options?: {
   statuses?: string[];
 }): Promise<JobsRevisionResponse> {
-  const params = new URLSearchParams();
-  if (options?.statuses?.length)
-    params.set("status", options.statuses.join(","));
-  const query = params.toString();
   return fetchApi<JobsRevisionResponse>(
-    `/jobs/revision${query ? `?${query}` : ""}`,
+    withQuery("/jobs/revision", {
+      status: options?.statuses?.length
+        ? options.statuses.join(",")
+        : undefined,
+    }),
   );
 }
 
 export async function getJob(id: string): Promise<Job> {
-  return fetchApi<Job>(`/jobs/${id}?t=${Date.now()}`);
+  return fetchApi<Job>(withQuery(`/jobs/${id}`, { t: Date.now() }));
 }
 
 export async function updateJob(
@@ -95,7 +96,7 @@ export async function updateJob(
 }
 
 export async function getJobNotes(id: string): Promise<JobNote[]> {
-  return fetchApi<JobNote[]>(`/jobs/${id}/notes?t=${Date.now()}`);
+  return fetchApi<JobNote[]>(withQuery(`/jobs/${id}/notes`, { t: Date.now() }));
 }
 
 export async function createJobNote(
@@ -144,9 +145,12 @@ export async function uploadJobPdf(
 
 export async function getJobPdfBlob(id: string): Promise<Blob> {
   const cacheBuster = Date.now().toString(36);
-  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf?v=${cacheBuster}`, {
-    cache: "no-store",
-  });
+  return fetchBlobApi(
+    withQuery(`/jobs/${encodeURIComponent(id)}/pdf`, { v: cacheBuster }),
+    {
+      cache: "no-store",
+    },
+  );
 }
 
 export async function getTracerAnalytics(options?: {
@@ -156,32 +160,29 @@ export async function getTracerAnalytics(options?: {
   includeBots?: boolean;
   limit?: number;
 }): Promise<TracerAnalyticsResponse> {
-  const params = new URLSearchParams();
-  if (options?.jobId) params.set("jobId", options.jobId);
-  if (typeof options?.from === "number")
-    params.set("from", String(options.from));
-  if (typeof options?.to === "number") params.set("to", String(options.to));
-  if (typeof options?.includeBots === "boolean") {
-    params.set("includeBots", options.includeBots ? "1" : "0");
-  }
-  if (typeof options?.limit === "number") {
-    params.set("limit", String(options.limit));
-  }
-
-  const query = params.toString();
   return fetchApi<TracerAnalyticsResponse>(
-    `/tracer-links/analytics${query ? `?${query}` : ""}`,
+    withQuery("/tracer-links/analytics", {
+      jobId: options?.jobId,
+      from: options?.from,
+      to: options?.to,
+      includeBots:
+        typeof options?.includeBots === "boolean"
+          ? options.includeBots
+            ? "1"
+            : "0"
+          : undefined,
+      limit: options?.limit,
+    }),
   );
 }
 
 export async function getTracerReadiness(options?: {
   force?: boolean;
 }): Promise<TracerReadinessResponse> {
-  const params = new URLSearchParams();
-  if (options?.force) params.set("force", "1");
-  const query = params.toString();
   return fetchApi<TracerReadinessResponse>(
-    `/tracer-links/readiness${query ? `?${query}` : ""}`,
+    withQuery("/tracer-links/readiness", {
+      force: options?.force ? "1" : undefined,
+    }),
   );
 }
 
@@ -193,16 +194,17 @@ export async function getJobTracerLinks(
     includeBots?: boolean;
   },
 ): Promise<JobTracerLinksResponse> {
-  const params = new URLSearchParams();
-  if (typeof options?.from === "number")
-    params.set("from", String(options.from));
-  if (typeof options?.to === "number") params.set("to", String(options.to));
-  if (typeof options?.includeBots === "boolean") {
-    params.set("includeBots", options.includeBots ? "1" : "0");
-  }
-  const query = params.toString();
   return fetchApi<JobTracerLinksResponse>(
-    `/tracer-links/jobs/${encodeURIComponent(jobId)}${query ? `?${query}` : ""}`,
+    withQuery(`/tracer-links/jobs/${encodeURIComponent(jobId)}`, {
+      from: options?.from,
+      to: options?.to,
+      includeBots:
+        typeof options?.includeBots === "boolean"
+          ? options.includeBots
+            ? "1"
+            : "0"
+          : undefined,
+    }),
   );
 }
 
@@ -309,18 +311,21 @@ export async function streamJobAction(
 }
 
 export async function getJobStageEvents(id: string): Promise<StageEvent[]> {
-  return fetchApi<StageEvent[]>(`/jobs/${id}/events?t=${Date.now()}`);
+  return fetchApi<StageEvent[]>(
+    withQuery(`/jobs/${id}/events`, { t: Date.now() }),
+  );
 }
 
 export async function getJobTasks(
   id: string,
   options?: { includeCompleted?: boolean },
 ): Promise<ApplicationTask[]> {
-  const params = new URLSearchParams();
-  if (options?.includeCompleted) params.set("includeCompleted", "1");
-  params.set("t", Date.now().toString());
-  const query = params.toString();
-  return fetchApi<ApplicationTask[]>(`/jobs/${id}/tasks?${query}`);
+  return fetchApi<ApplicationTask[]>(
+    withQuery(`/jobs/${id}/tasks`, {
+      includeCompleted: options?.includeCompleted ? "1" : undefined,
+      t: Date.now(),
+    }),
+  );
 }
 
 export async function transitionJobStage(

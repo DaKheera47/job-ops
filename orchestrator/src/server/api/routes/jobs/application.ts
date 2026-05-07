@@ -1,4 +1,4 @@
-import { badRequest, notFound, toAppError } from "@infra/errors";
+import { badRequest, notFound } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
@@ -11,7 +11,7 @@ import { simulateApplyJob } from "@server/services/demo-simulator";
 import { notifyJobCompleteWebhook } from "@server/services/jobs/webhooks";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { type Request, type Response, Router } from "express";
-import { hydrateJobPdfFreshness } from "./shared";
+import { hydrateJobPdfFreshness, requireJob, toJobsRouteError } from "./shared";
 
 export const jobsApplicationRouter = Router();
 
@@ -19,11 +19,7 @@ jobsApplicationRouter.post(
   "/:id/check-sponsor",
   async (req: Request, res: Response) => {
     try {
-      const job = await jobsRepo.getJobById(req.params.id);
-
-      if (!job) {
-        return fail(res, notFound("Job not found"));
-      }
+      const job = await requireJob(req.params.id);
 
       if (!job.employer) {
         return fail(res, badRequest("Job has no employer name"));
@@ -68,7 +64,7 @@ jobsApplicationRouter.post(
         })),
       });
     } catch (error) {
-      fail(res, toAppError(error));
+      fail(res, toJobsRouteError(error));
     }
   },
 );
@@ -84,11 +80,7 @@ jobsApplicationRouter.post(
         });
       }
 
-      const job = await jobsRepo.getJobById(req.params.id);
-
-      if (!job) {
-        return fail(res, notFound("Job not found"));
-      }
+      const job = await requireJob(req.params.id);
 
       const appliedAtDate = new Date();
       const appliedAt = appliedAtDate.toISOString();
@@ -137,7 +129,7 @@ jobsApplicationRouter.post(
 
       ok(res, await hydrateJobPdfFreshness(updatedJob));
     } catch (error) {
-      fail(res, toAppError(error));
+      fail(res, toJobsRouteError(error));
     }
   },
 );

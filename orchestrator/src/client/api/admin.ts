@@ -9,7 +9,7 @@ import type {
   VisaSponsorSearchResponse,
   VisaSponsorStatusResponse,
 } from "@shared/types";
-import { fetchApi } from "./core";
+import { fetchApi, withQuery } from "./core";
 import { bucketQueryLength, trackProductEvent } from "./internal-shared";
 
 export async function getDemoInfo(): Promise<DemoInfoResponse> {
@@ -111,10 +111,10 @@ export async function getVisaSponsorOrganization(
   name: string,
   providerId?: string,
 ): Promise<VisaSponsor[]> {
-  const params = new URLSearchParams();
-  if (providerId) params.set("providerId", providerId);
   return fetchApi<VisaSponsor[]>(
-    `/visa-sponsors/organization/${encodeURIComponent(name)}${params.size ? `?${params.toString()}` : ""}`,
+    withQuery(`/visa-sponsors/organization/${encodeURIComponent(name)}`, {
+      providerId,
+    }),
   );
 }
 

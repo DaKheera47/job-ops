@@ -88,6 +88,26 @@ export function createSharedRescoreProfileLoader(): () => Promise<
   };
 }
 
+export function buildJobActionExecutionOptions(
+  action: JobAction,
+  options?: {
+    forceMoveToReady?: boolean;
+    requestOrigin?: string | null;
+  },
+): JobActionExecutionOptions {
+  return {
+    ...(action === "rescore" && !isDemoMode()
+      ? { getProfileForRescore: createSharedRescoreProfileLoader() }
+      : {}),
+    ...(action === "move_to_ready" && options?.forceMoveToReady !== undefined
+      ? { forceMoveToReady: options.forceMoveToReady }
+      : {}),
+    ...(action === "move_to_ready"
+      ? { requestOrigin: options?.requestOrigin ?? null }
+      : {}),
+  };
+}
+
 export async function executeJobActionForJob(
   action: JobAction,
   jobId: string,

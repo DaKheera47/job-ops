@@ -1,4 +1,4 @@
-import { AppError, badRequest, notFound, toAppError } from "@infra/errors";
+import { badRequest, notFound } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
@@ -15,7 +15,9 @@ import {
   jobsRevisionQuerySchema,
   listJobsQuerySchema,
   parseStatusFilter,
+  requireJob,
   toJobListItem,
+  toJobsRouteError,
 } from "./shared";
 
 export const jobsReadRouter = Router();
@@ -113,15 +115,7 @@ jobsReadRouter.get("/", async (req: Request, res: Response) => {
 
     ok(res, response);
   } catch (error) {
-    const err =
-      error instanceof AppError
-        ? error
-        : new AppError({
-            status: 500,
-            code: "INTERNAL_ERROR",
-            message: error instanceof Error ? error.message : "Unknown error",
-          });
-    fail(res, err);
+    fail(res, toJobsRouteError(error));
   }
 });
 
@@ -157,31 +151,20 @@ jobsReadRouter.get("/revision", async (req: Request, res: Response) => {
 
     ok(res, response);
   } catch (error) {
-    const err =
-      error instanceof AppError
-        ? error
-        : new AppError({
-            status: 500,
-            code: "INTERNAL_ERROR",
-            message: error instanceof Error ? error.message : "Unknown error",
-          });
-    fail(res, err);
+    fail(res, toJobsRouteError(error));
   }
 });
 
 jobsReadRouter.get("/:id", async (req: Request, res: Response) => {
   try {
-    const job = await jobsRepo.getJobById(req.params.id);
-    if (!job) {
-      return fail(res, notFound("Job not found"));
-    }
+    const job = await requireJob(req.params.id);
     const [jobWithAppliedDuplicateMatch] = attachAppliedDuplicateMatches(
       [job],
       await jobsRepo.getAppliedDuplicateMatchCandidates(),
     );
     ok(res, await hydrateJobPdfFreshness(jobWithAppliedDuplicateMatch));
   } catch (error) {
-    fail(res, toAppError(error));
+    fail(res, toJobsRouteError(error));
   }
 });
 

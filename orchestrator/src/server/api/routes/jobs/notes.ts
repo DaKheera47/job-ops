@@ -1,33 +1,75 @@
-import { badRequest, notFound, toAppError } from "@infra/errors";
+import { badRequest, notFound } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import { type Request, type Response, Router } from "express";
-import { jobNoteSchema } from "./shared";
+import { jobNoteSchema, toJobsRouteError } from "./shared";
 
 export const jobsNotesRouter = Router();
 
+function getRequestId(res: Response): string {
+  return String(res.getHeader("x-request-id") || "unknown");
+}
+
+async function loadJobOrRespondNotFound(
+  req: Request,
+  res: Response,
+  route: string,
+  requestId: string,
+  noteId?: string,
+) {
+  const job = await jobsRepo.getJobById(req.params.id);
+  if (job) {
+    return job;
+  }
+
+  const err = notFound("Job not found");
+  logger.warn("Job note route failed", {
+    route,
+    jobId: req.params.id,
+    noteId,
+    requestId,
+    status: err.status,
+    code: err.code,
+  });
+  fail(res, err);
+  return null;
+}
+
+function failJobNotesRoute(
+  req: Request,
+  res: Response,
+  route: string,
+  requestId: string,
+  error: unknown,
+  noteId?: string,
+): void {
+  const err = toJobsRouteError(error);
+  logger.error("Job note route failed", {
+    route,
+    jobId: req.params.id,
+    noteId,
+    requestId,
+    status: err.status,
+    code: err.code,
+    details: err.details,
+    errorMessage: error instanceof Error ? error.message : undefined,
+  });
+  fail(res, err);
+}
+
 jobsNotesRouter.get("/:id/notes", async (req: Request, res: Response) => {
-  const requestId = String(res.getHeader("x-request-id") || "unknown");
+  const requestId = getRequestId(res);
+  const route = "GET /api/jobs/:id/notes";
 
   try {
-    const job = await jobsRepo.getJobById(req.params.id);
-    if (!job) {
-      const err = notFound("Job not found");
-      logger.warn("Job notes fetch failed", {
-        route: "GET /api/jobs/:id/notes",
-        jobId: req.params.id,
-        requestId,
-        status: err.status,
-        code: err.code,
-      });
-      return fail(res, err);
-    }
+    const job = await loadJobOrRespondNotFound(req, res, route, requestId);
+    if (!job) return;
 
     const notes = await jobsRepo.listJobNotes(job.id);
 
     logger.info("Job notes fetched", {
-      route: "GET /api/jobs/:id/notes",
+      route,
       jobId: job.id,
       requestId,
       returnedCount: notes.length,
@@ -35,22 +77,13 @@ jobsNotesRouter.get("/:id/notes", async (req: Request, res: Response) => {
 
     ok(res, notes);
   } catch (error) {
-    const err = toAppError(error);
-    logger.error("Job notes fetch failed", {
-      route: "GET /api/jobs/:id/notes",
-      jobId: req.params.id,
-      requestId,
-      status: err.status,
-      code: err.code,
-      details: err.details,
-      errorMessage: error instanceof Error ? error.message : undefined,
-    });
-    fail(res, err);
+    failJobNotesRoute(req, res, route, requestId, error);
   }
 });
 
 jobsNotesRouter.post("/:id/notes", async (req: Request, res: Response) => {
-  const requestId = String(res.getHeader("x-request-id") || "unknown");
+  const requestId = getRequestId(res);
+  const route = "POST /api/jobs/:id/notes";
 
   try {
     const input = jobNoteSchema.safeParse(req.body);
@@ -61,18 +94,8 @@ jobsNotesRouter.post("/:id/notes", async (req: Request, res: Response) => {
       );
     }
 
-    const job = await jobsRepo.getJobById(req.params.id);
-    if (!job) {
-      const err = notFound("Job not found");
-      logger.warn("Job note create failed", {
-        route: "POST /api/jobs/:id/notes",
-        jobId: req.params.id,
-        requestId,
-        status: err.status,
-        code: err.code,
-      });
-      return fail(res, err);
-    }
+    const job = await loadJobOrRespondNotFound(req, res, route, requestId);
+    if (!job) return;
 
     const note = await jobsRepo.createJobNote({
       jobId: job.id,
@@ -80,7 +103,7 @@ jobsNotesRouter.post("/:id/notes", async (req: Request, res: Response) => {
     });
 
     logger.info("Job note created", {
-      route: "POST /api/jobs/:id/notes",
+      route,
       jobId: job.id,
       noteId: note.id,
       requestId,
@@ -88,24 +111,15 @@ jobsNotesRouter.post("/:id/notes", async (req: Request, res: Response) => {
 
     ok(res, note, 201);
   } catch (error) {
-    const err = toAppError(error);
-    logger.error("Job note create failed", {
-      route: "POST /api/jobs/:id/notes",
-      jobId: req.params.id,
-      requestId,
-      status: err.status,
-      code: err.code,
-      details: err.details,
-      errorMessage: error instanceof Error ? error.message : undefined,
-    });
-    fail(res, err);
+    failJobNotesRoute(req, res, route, requestId, error);
   }
 });
 
 jobsNotesRouter.patch(
   "/:id/notes/:noteId",
   async (req: Request, res: Response) => {
-    const requestId = String(res.getHeader("x-request-id") || "unknown");
+    const requestId = getRequestId(res);
+    const route = "PATCH /api/jobs/:id/notes/:noteId";
 
     try {
       const input = jobNoteSchema.safeParse(req.body);
@@ -116,19 +130,14 @@ jobsNotesRouter.patch(
         );
       }
 
-      const job = await jobsRepo.getJobById(req.params.id);
-      if (!job) {
-        const err = notFound("Job not found");
-        logger.warn("Job note update failed", {
-          route: "PATCH /api/jobs/:id/notes/:noteId",
-          jobId: req.params.id,
-          noteId: req.params.noteId,
-          requestId,
-          status: err.status,
-          code: err.code,
-        });
-        return fail(res, err);
-      }
+      const job = await loadJobOrRespondNotFound(
+        req,
+        res,
+        route,
+        requestId,
+        req.params.noteId,
+      );
+      if (!job) return;
 
       const note = await jobsRepo.updateJobNote({
         jobId: job.id,
@@ -137,8 +146,8 @@ jobsNotesRouter.patch(
       });
       if (!note) {
         const err = notFound("Job note not found");
-        logger.warn("Job note update failed", {
-          route: "PATCH /api/jobs/:id/notes/:noteId",
+        logger.warn("Job note route failed", {
+          route,
           jobId: job.id,
           noteId: req.params.noteId,
           requestId,
@@ -149,7 +158,7 @@ jobsNotesRouter.patch(
       }
 
       logger.info("Job note updated", {
-        route: "PATCH /api/jobs/:id/notes/:noteId",
+        route,
         jobId: job.id,
         noteId: note.id,
         requestId,
@@ -157,18 +166,7 @@ jobsNotesRouter.patch(
 
       ok(res, note);
     } catch (error) {
-      const err = toAppError(error);
-      logger.error("Job note update failed", {
-        route: "PATCH /api/jobs/:id/notes/:noteId",
-        jobId: req.params.id,
-        noteId: req.params.noteId,
-        requestId,
-        status: err.status,
-        code: err.code,
-        details: err.details,
-        errorMessage: error instanceof Error ? error.message : undefined,
-      });
-      fail(res, err);
+      failJobNotesRoute(req, res, route, requestId, error, req.params.noteId);
     }
   },
 );
@@ -176,22 +174,18 @@ jobsNotesRouter.patch(
 jobsNotesRouter.delete(
   "/:id/notes/:noteId",
   async (req: Request, res: Response) => {
-    const requestId = String(res.getHeader("x-request-id") || "unknown");
+    const requestId = getRequestId(res);
+    const route = "DELETE /api/jobs/:id/notes/:noteId";
 
     try {
-      const job = await jobsRepo.getJobById(req.params.id);
-      if (!job) {
-        const err = notFound("Job not found");
-        logger.warn("Job note delete failed", {
-          route: "DELETE /api/jobs/:id/notes/:noteId",
-          jobId: req.params.id,
-          noteId: req.params.noteId,
-          requestId,
-          status: err.status,
-          code: err.code,
-        });
-        return fail(res, err);
-      }
+      const job = await loadJobOrRespondNotFound(
+        req,
+        res,
+        route,
+        requestId,
+        req.params.noteId,
+      );
+      if (!job) return;
 
       const deletedCount = await jobsRepo.deleteJobNote({
         jobId: job.id,
@@ -199,8 +193,8 @@ jobsNotesRouter.delete(
       });
       if (deletedCount === 0) {
         const err = notFound("Job note not found");
-        logger.warn("Job note delete failed", {
-          route: "DELETE /api/jobs/:id/notes/:noteId",
+        logger.warn("Job note route failed", {
+          route,
           jobId: job.id,
           noteId: req.params.noteId,
           requestId,
@@ -211,7 +205,7 @@ jobsNotesRouter.delete(
       }
 
       logger.info("Job note deleted", {
-        route: "DELETE /api/jobs/:id/notes/:noteId",
+        route,
         jobId: job.id,
         noteId: req.params.noteId,
         requestId,
@@ -219,18 +213,7 @@ jobsNotesRouter.delete(
 
       ok(res, null);
     } catch (error) {
-      const err = toAppError(error);
-      logger.error("Job note delete failed", {
-        route: "DELETE /api/jobs/:id/notes/:noteId",
-        jobId: req.params.id,
-        noteId: req.params.noteId,
-        requestId,
-        status: err.status,
-        code: err.code,
-        details: err.details,
-        errorMessage: error instanceof Error ? error.message : undefined,
-      });
-      fail(res, err);
+      failJobNotesRoute(req, res, route, requestId, error, req.params.noteId);
     }
   },
 );

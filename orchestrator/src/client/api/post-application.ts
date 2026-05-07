@@ -8,7 +8,7 @@ import type {
   PostApplicationRouterStageTarget,
   PostApplicationSyncRun,
 } from "@shared/types";
-import { fetchApi } from "./core";
+import { fetchApi, withQuery } from "./core";
 
 export async function postApplicationProviderConnect(input: {
   provider?: PostApplicationProvider;
@@ -36,16 +36,15 @@ export async function postApplicationGmailOauthStart(input?: {
   authorizationUrl: string;
   state: string;
 }> {
-  const params = new URLSearchParams();
-  if (input?.accountKey) params.set("accountKey", input.accountKey);
-  const query = params.toString();
   return fetchApi<{
     provider: "gmail";
     accountKey: string;
     authorizationUrl: string;
     state: string;
   }>(
-    `/post-application/providers/gmail/oauth/start${query ? `?${query}` : ""}`,
+    withQuery("/post-application/providers/gmail/oauth/start", {
+      accountKey: input?.accountKey,
+    }),
   );
 }
 
@@ -128,15 +127,12 @@ export async function getPostApplicationInbox(input?: {
   accountKey?: string;
   limit?: number;
 }): Promise<{ items: PostApplicationInboxItem[]; total: number }> {
-  const params = new URLSearchParams();
-  params.set("provider", input?.provider ?? "gmail");
-  params.set("accountKey", input?.accountKey ?? "default");
-  if (typeof input?.limit === "number") {
-    params.set("limit", String(input.limit));
-  }
-  const query = params.toString();
   return fetchApi<{ items: PostApplicationInboxItem[]; total: number }>(
-    `/post-application/inbox?${query}`,
+    withQuery("/post-application/inbox", {
+      provider: input?.provider ?? "gmail",
+      accountKey: input?.accountKey ?? "default",
+      limit: input?.limit,
+    }),
   );
 }
 
@@ -216,15 +212,12 @@ export async function getPostApplicationRuns(input?: {
   accountKey?: string;
   limit?: number;
 }): Promise<{ runs: PostApplicationSyncRun[]; total: number }> {
-  const params = new URLSearchParams();
-  params.set("provider", input?.provider ?? "gmail");
-  params.set("accountKey", input?.accountKey ?? "default");
-  if (typeof input?.limit === "number") {
-    params.set("limit", String(input.limit));
-  }
-  const query = params.toString();
   return fetchApi<{ runs: PostApplicationSyncRun[]; total: number }>(
-    `/post-application/runs?${query}`,
+    withQuery("/post-application/runs", {
+      provider: input?.provider ?? "gmail",
+      accountKey: input?.accountKey ?? "default",
+      limit: input?.limit,
+    }),
   );
 }
 
@@ -238,16 +231,18 @@ export async function getPostApplicationRunMessages(input: {
   items: PostApplicationInboxItem[];
   total: number;
 }> {
-  const params = new URLSearchParams();
-  params.set("provider", input.provider ?? "gmail");
-  params.set("accountKey", input.accountKey ?? "default");
-  if (typeof input.limit === "number") params.set("limit", String(input.limit));
-  const query = params.toString();
   return fetchApi<{
     run: PostApplicationSyncRun;
     items: PostApplicationInboxItem[];
     total: number;
   }>(
-    `/post-application/runs/${encodeURIComponent(input.runId)}/messages?${query}`,
+    withQuery(
+      `/post-application/runs/${encodeURIComponent(input.runId)}/messages`,
+      {
+        provider: input.provider ?? "gmail",
+        accountKey: input.accountKey ?? "default",
+        limit: input.limit,
+      },
+    ),
   );
 }

@@ -1,5 +1,5 @@
 import { rm } from "node:fs/promises";
-import { AppError, badRequest, notFound, toAppError } from "@infra/errors";
+import { AppError, badRequest } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
@@ -12,11 +12,12 @@ import {
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
 import { type Request, type Response, Router } from "express";
-import { z } from "zod";
 import {
   appErrorFromPipelineFailure,
   hydrateJobPdfFreshness,
   queueTailoringAutoPdfRegenerationIfNeeded,
+  requireJob,
+  toJobsRouteError,
   uploadJobPdfSchema,
 } from "./shared";
 
@@ -94,19 +95,9 @@ jobsDocumentsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
 
     ok(res, await hydrateJobPdfFreshness(job), 201);
   } catch (error) {
-    const err =
-      error instanceof z.ZodError
-        ? badRequest(
-            error.issues[0]?.message ?? "Invalid job PDF upload request",
-            error.flatten(),
-          )
-        : error instanceof AppError
-          ? error
-          : new AppError({
-              status: 500,
-              code: "INTERNAL_ERROR",
-              message: error instanceof Error ? error.message : "Unknown error",
-            });
+    const err = toJobsRouteError(error, {
+      invalidRequestFallbackMessage: "Invalid job PDF upload request",
+    });
 
     if (uploadedPath) {
       await rm(uploadedPath, { force: true }).catch((cleanupError) => {
@@ -146,16 +137,13 @@ jobsDocumentsRouter.post(
             badRequest(result.error ?? "Failed to summarize the job"),
           );
         }
-        const job = await jobsRepo.getJobById(req.params.id);
-        if (!job) {
-          return fail(res, notFound("Job not found"));
-        }
+        const job = await requireJob(req.params.id);
         return okWithMeta(res, await hydrateJobPdfFreshness(job), {
           simulated: true,
         });
       }
 
-      const previousJob = await jobsRepo.getJobById(req.params.id);
+      const previousJob = await requireJob(req.params.id);
       const result = await summarizeJob(req.params.id, { force });
 
       if (!result.success) {
@@ -165,10 +153,7 @@ jobsDocumentsRouter.post(
         );
       }
 
-      const job = await jobsRepo.getJobById(req.params.id);
-      if (!job) {
-        return fail(res, notFound("Job not found"));
-      }
+      const job = await requireJob(req.params.id);
       ok(res, await hydrateJobPdfFreshness(job));
 
       if (previousJob) {
@@ -179,7 +164,7 @@ jobsDocumentsRouter.post(
         );
       }
     } catch (error) {
-      fail(res, toAppError(error));
+      fail(res, toJobsRouteError(error));
     }
   },
 );
@@ -196,10 +181,7 @@ jobsDocumentsRouter.post(
             badRequest(result.error ?? "Failed to generate a resume PDF"),
           );
         }
-        const job = await jobsRepo.getJobById(req.params.id);
-        if (!job) {
-          return fail(res, notFound("Job not found"));
-        }
+        const job = await requireJob(req.params.id);
         return okWithMeta(res, await hydrateJobPdfFreshness(job), {
           simulated: true,
         });
@@ -220,13 +202,10 @@ jobsDocumentsRouter.post(
         );
       }
 
-      const job = await jobsRepo.getJobById(req.params.id);
-      if (!job) {
-        return fail(res, notFound("Job not found"));
-      }
+      const job = await requireJob(req.params.id);
       ok(res, await hydrateJobPdfFreshness(job));
     } catch (error) {
-      fail(res, toAppError(error));
+      fail(res, toJobsRouteError(error));
     }
   },
 );

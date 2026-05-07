@@ -2,12 +2,10 @@ import { AppError, badRequest } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { setupSse, startSseHeartbeat, writeSseData } from "@infra/sse";
-import { isDemoMode } from "@server/config/demo";
 import { resolveRequestOrigin } from "@server/infra/request-origin";
 import {
-  createSharedRescoreProfileLoader,
+  buildJobActionExecutionOptions,
   executeJobActionForJob,
-  type JobActionExecutionOptions,
   mapJobActionFailure,
 } from "@server/services/jobs/actions";
 import { resolvePdfFingerprintContext } from "@server/services/pdf-fingerprint";
@@ -28,17 +26,12 @@ jobsActionsRouter.post("/actions", async (req: Request, res: Response) => {
   try {
     const parsed = jobActionRequestSchema.parse(req.body);
     const dedupedJobIds = Array.from(new Set(parsed.jobIds));
-    const requestOrigin = resolveRequestOrigin(req);
-    const executionOptions: JobActionExecutionOptions = {
-      ...(parsed.action === "rescore" && !isDemoMode()
-        ? { getProfileForRescore: createSharedRescoreProfileLoader() }
-        : {}),
-      ...(parsed.action === "move_to_ready" &&
-      parsed.options?.force !== undefined
-        ? { forceMoveToReady: parsed.options.force }
-        : {}),
-      ...(parsed.action === "move_to_ready" ? { requestOrigin } : {}),
-    };
+    const forceMoveToReady =
+      parsed.action === "move_to_ready" ? parsed.options?.force : undefined;
+    const executionOptions = buildJobActionExecutionOptions(parsed.action, {
+      forceMoveToReady,
+      requestOrigin: resolveRequestOrigin(req),
+    });
 
     const rawResults = await asyncPool({
       items: dedupedJobIds,
@@ -116,18 +109,14 @@ jobsActionsRouter.post(
     }
 
     const dedupedJobIds = Array.from(new Set(parsed.data.jobIds));
-    const requestOrigin = resolveRequestOrigin(req);
     const requestId = String(res.getHeader("x-request-id") || "unknown");
     const action = parsed.data.action;
-    const executionOptions: JobActionExecutionOptions = {
-      ...(action === "rescore" && !isDemoMode()
-        ? { getProfileForRescore: createSharedRescoreProfileLoader() }
-        : {}),
-      ...(action === "move_to_ready" && parsed.data.options?.force !== undefined
-        ? { forceMoveToReady: parsed.data.options.force }
-        : {}),
-      ...(action === "move_to_ready" ? { requestOrigin } : {}),
-    };
+    const forceMoveToReady =
+      action === "move_to_ready" ? parsed.data.options?.force : undefined;
+    const executionOptions = buildJobActionExecutionOptions(action, {
+      forceMoveToReady,
+      requestOrigin: resolveRequestOrigin(req),
+    });
     const requested = dedupedJobIds.length;
     const results: JobActionResult[] = [];
     let succeeded = 0;
@@ -317,11 +306,11 @@ jobsActionsRouter.post("/:id/skip", async (req: Request, res: Response) => {
 });
 
 jobsActionsRouter.post("/:id/rescore", async (req: Request, res: Response) => {
-  const result = await executeJobActionForJob("rescore", req.params.id, {
-    ...(isDemoMode()
-      ? {}
-      : { getProfileForRescore: createSharedRescoreProfileLoader() }),
-  });
+  const result = await executeJobActionForJob(
+    "rescore",
+    req.params.id,
+    buildJobActionExecutionOptions("rescore"),
+  );
   if (!result.ok) return fail(res, mapJobActionFailure(result));
   ok(res, await hydrateJobPdfFreshness(result.job));
 });

@@ -4,13 +4,13 @@ import type {
   JobChatStreamEvent,
   JobChatThread,
 } from "@shared/types";
-import { fetchApi, streamSseEvents } from "./core";
+import { fetchApi, streamSseEvents, withQuery } from "./core";
 
 export async function listJobChatThreads(jobId: string): Promise<{
   threads: JobChatThread[];
 }> {
   return fetchApi<{ threads: JobChatThread[] }>(
-    `/jobs/${jobId}/chat/threads?t=${Date.now()}`,
+    withQuery(`/jobs/${jobId}/chat/threads`, { t: Date.now() }),
   );
 }
 
@@ -22,19 +22,16 @@ export async function listJobGhostwriterMessages(
   branches: BranchInfo[];
   selectedNoteIds: string[];
 }> {
-  const params = new URLSearchParams();
-  if (typeof options?.limit === "number") {
-    params.set("limit", String(options.limit));
-  }
-  if (typeof options?.offset === "number") {
-    params.set("offset", String(options.offset));
-  }
-  const query = params.toString();
   return fetchApi<{
     messages: JobChatMessage[];
     branches: BranchInfo[];
     selectedNoteIds: string[];
-  }>(`/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`);
+  }>(
+    withQuery(`/jobs/${jobId}/chat/messages`, {
+      limit: options?.limit,
+      offset: options?.offset,
+    }),
+  );
 }
 
 export async function updateJobGhostwriterContext(
@@ -67,14 +64,15 @@ export async function listJobChatMessages(
   threadId: string,
   options?: { limit?: number; offset?: number },
 ): Promise<{ messages: JobChatMessage[] }> {
-  const params = new URLSearchParams();
-  if (typeof options?.limit === "number")
-    params.set("limit", String(options.limit));
-  if (typeof options?.offset === "number")
-    params.set("offset", String(options.offset));
-  params.set("t", Date.now().toString());
   return fetchApi<{ messages: JobChatMessage[] }>(
-    `/jobs/${jobId}/chat/threads/${encodeURIComponent(threadId)}/messages?${params.toString()}`,
+    withQuery(
+      `/jobs/${jobId}/chat/threads/${encodeURIComponent(threadId)}/messages`,
+      {
+        limit: options?.limit,
+        offset: options?.offset,
+        t: Date.now(),
+      },
+    ),
   );
 }
 

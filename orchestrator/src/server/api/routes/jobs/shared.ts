@@ -1,6 +1,13 @@
-import { AppError, type AppErrorCode, badRequest } from "@infra/errors";
+import {
+  AppError,
+  type AppErrorCode,
+  badRequest,
+  conflict,
+  notFound,
+  toAppError,
+} from "@infra/errors";
 import { logger } from "@infra/logger";
-import type * as jobsRepo from "@server/repositories/jobs";
+import * as jobsRepo from "@server/repositories/jobs";
 import { stageEventMetadataSchema } from "@server/services/applicationTracking";
 import {
   enqueueAutoPdfRegenerationForJob,
@@ -237,6 +244,38 @@ export function parseStatusFilter(
     | JobStatus[]
     | undefined;
   return parsed && parsed.length > 0 ? parsed : undefined;
+}
+
+export async function requireJob(jobId: string): Promise<Job> {
+  const job = await jobsRepo.getJobById(jobId);
+  if (!job) {
+    throw notFound("Job not found");
+  }
+  return job;
+}
+
+export function toJobsRouteError(
+  error: unknown,
+  options?: {
+    invalidRequestFallbackMessage?: string;
+    conflictMessage?: string;
+    conflictWhen?: (error: unknown) => boolean;
+  },
+): AppError {
+  if (error instanceof z.ZodError) {
+    return badRequest(
+      error.issues[0]?.message ??
+        options?.invalidRequestFallbackMessage ??
+        error.message,
+      error.flatten(),
+    );
+  }
+
+  if (options?.conflictWhen?.(error)) {
+    return conflict(options.conflictMessage ?? "Conflict");
+  }
+
+  return toAppError(error);
 }
 
 const STATUS_BY_APP_ERROR_CODE: Record<AppErrorCode, number> = {
