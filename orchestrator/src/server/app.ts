@@ -20,6 +20,7 @@ import { logger } from "@infra/logger";
 import { runWithRequestContext } from "@infra/request-context";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { verifyToken } from "@server/auth/jwt";
+import { isDemoMode } from "@server/config/demo";
 import * as usersRepo from "@server/repositories/users";
 import { proxyChallengeViewerRequest } from "@server/services/challenge-viewer";
 import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
@@ -199,12 +200,41 @@ export function createAuthGuard() {
       /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
     )
       return true;
+    if (
+      ["GET", "HEAD"].includes(normalizedMethod) &&
+      /^\/api\/[^/]+\/health$/.test(normalizedPath)
+    )
+      return true;
 
     return false;
   }
 
+  function isProtectedDemoRoute(path: string): boolean {
+    const normalizedPath = path.split("?")[0] || path;
+
+    if (normalizedPath === "/api/auth/me") return true;
+    if (normalizedPath.startsWith("/api/workspaces")) return true;
+    if (normalizedPath === "/api/settings/codex-auth") return true;
+    if (normalizedPath === "/api/settings/rx-resumes") return true;
+    if (/^\/api\/settings\/rx-resumes\/[^/]+\/projects$/.test(normalizedPath)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function isPublicDemoRoute(path: string): boolean {
+    if (!isDemoMode()) return false;
+
+    const normalizedPath = path.split("?")[0] || path;
+    if (!normalizedPath.startsWith("/api/")) return false;
+
+    return !isProtectedDemoRoute(normalizedPath);
+  }
+
   function requiresAuth(method: string, path: string): boolean {
     if (isPublicReadOnlyRoute(method, path)) return false;
+    if (isPublicDemoRoute(path)) return false;
     // OPTIONS is always exempt for CORS preflight.
     if (method.toUpperCase() === "OPTIONS") return false;
 
@@ -254,7 +284,14 @@ export function createAuthGuard() {
 
       const userCount = await usersRepo.countUsers();
       if (userCount === 0) {
-        fail(res, unauthorized("Initial setup is required"));
+        fail(
+          res,
+          unauthorized(
+            isDemoMode()
+              ? "Authentication required"
+              : "Initial setup is required",
+          ),
+        );
         return;
       }
 

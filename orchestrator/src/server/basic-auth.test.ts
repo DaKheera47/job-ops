@@ -117,6 +117,69 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
+  it("allows extractor health APIs without auth", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/linkedin/health",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("allows demo read APIs without auth", async () => {
+    process.env.DEMO_MODE = "true";
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/profile/projects",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(countUsers).not.toHaveBeenCalled();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("keeps sensitive demo read APIs behind auth", async () => {
+    process.env.DEMO_MODE = "true";
+    vi.mocked(countUsers).mockResolvedValue(0);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/settings/codex-auth",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+    expect(res.jsonBody).toMatchObject({
+      ok: false,
+      error: {
+        code: "UNAUTHORIZED",
+        message: "Authentication required",
+      },
+    });
+  });
+
   it("allows OPTIONS preflight without auth even for API routes", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 

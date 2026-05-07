@@ -2,6 +2,7 @@ import { badRequest, serviceUnavailable, unauthorized } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import { verifyPassword } from "@server/auth/password";
+import { isDemoMode } from "@server/config/demo";
 import * as usersRepo from "@server/repositories/users";
 import type { Request, Response } from "express";
 import { Router } from "express";
@@ -79,6 +80,11 @@ authRouter.post(
 authRouter.get(
   "/bootstrap-status",
   asyncRoute(async (_req: Request, res: Response) => {
+    if (isDemoMode()) {
+      ok(res, { setupRequired: false });
+      return;
+    }
+
     ok(res, { setupRequired: (await usersRepo.countUsers()) === 0 });
   }),
 );
@@ -86,6 +92,14 @@ authRouter.get(
 authRouter.post(
   "/setup",
   asyncRoute(async (req: Request, res: Response) => {
+    if (isDemoMode()) {
+      fail(
+        res,
+        serviceUnavailable("First-run setup is disabled in the public demo."),
+      );
+      return;
+    }
+
     if ((await usersRepo.countUsers()) > 0) {
       fail(res, badRequest("Initial setup has already been completed"));
       return;

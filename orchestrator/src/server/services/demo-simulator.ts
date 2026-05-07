@@ -4,6 +4,7 @@ import { buildPipelineRunSavedDetails } from "@server/pipeline/run-details";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as pipelineRepo from "@server/repositories/pipeline";
 import { transitionStage } from "@server/services/applicationTracking";
+import { persistDemoGeneratedPdf } from "@server/services/demo-pdf";
 import type {
   Job,
   JobSource,
@@ -37,9 +38,13 @@ function ensureProjectIds(job: Job): string {
   return "demo-project-1,demo-project-2";
 }
 
-function samplePdfPath(job: Job): string {
-  const safeId = job.id.replace(/[^a-zA-Z0-9-_]/g, "");
-  return `/pdfs/demo-${safeId || "sample"}.pdf`;
+function makeDemoTailoredSkills(): string {
+  return JSON.stringify([
+    {
+      name: "Core Skills",
+      keywords: ["TypeScript", "System Design", "Communication"],
+    },
+  ]);
 }
 
 async function ensureJob(jobId: string): Promise<Job> {
@@ -116,11 +121,7 @@ export async function simulateSummarizeJob(
   await jobsRepo.updateJob(job.id, {
     tailoredSummary: makeDemoSummary(job),
     tailoredHeadline: `Demo Tailored Resume - ${job.title}`,
-    tailoredSkills: JSON.stringify([
-      "TypeScript",
-      "System Design",
-      "Communication",
-    ]),
+    tailoredSkills: makeDemoTailoredSkills(),
     selectedProjectIds: ensureProjectIds(job),
   });
   return { success: true };
@@ -130,13 +131,7 @@ export async function simulateGeneratePdf(
   jobId: string,
 ): Promise<{ success: boolean; error?: string }> {
   const job = await ensureJob(jobId);
-  await jobsRepo.updateJob(job.id, {
-    status: "ready",
-    pdfPath: samplePdfPath(job),
-    pdfSource: "generated",
-    pdfFingerprint: null,
-    pdfGeneratedAt: new Date().toISOString(),
-  });
+  await persistDemoGeneratedPdf(job);
   return { success: true };
 }
 

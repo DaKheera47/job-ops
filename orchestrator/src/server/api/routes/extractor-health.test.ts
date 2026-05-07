@@ -78,6 +78,42 @@ describe.sequential("Extractor health API routes", () => {
     expect(typeof body.meta.requestId).toBe("string");
   });
 
+  it("remains publicly reachable when auth bypass is disabled", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+        BASIC_AUTH_USER: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+      },
+    }));
+
+    const manifest: ExtractorManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["indeed", "linkedin", "glassdoor"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [
+          {
+            source: "linkedin",
+            title: "Software Engineer",
+            employer: "Acme",
+            jobUrl: "https://example.com/jobs/1",
+          },
+        ],
+      }),
+    };
+    mockGetExtractorRegistry.mockResolvedValue(createRegistry([manifest]));
+
+    const res = await fetch(`${baseUrl}/api/linkedin/health`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.status).toBe("healthy");
+  });
+
   it("returns service unavailable when the extractor run fails", async () => {
     const manifest: ExtractorManifest = {
       id: "gradcracker",

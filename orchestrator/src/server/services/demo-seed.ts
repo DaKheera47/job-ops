@@ -6,6 +6,12 @@ import {
   type DemoDefaultSettings,
 } from "@server/config/demo-defaults";
 import { db, schema } from "@server/db/index";
+import * as jobsRepo from "@server/repositories/jobs";
+import {
+  persistDemoGeneratedPdf,
+  seedDemoDesignResume,
+} from "@server/services/demo-pdf";
+import { resolvePdfFingerprintContext } from "@server/services/pdf-fingerprint";
 
 type BuiltDemoBaseline = {
   resetAt: string;
@@ -65,7 +71,7 @@ export function buildDemoBaseline(now: Date): BuiltDemoBaseline {
         ? JSON.stringify(job.tailoredSkills)
         : null,
       selectedProjectIds: job.selectedProjectIds ?? null,
-      pdfPath: job.pdfPath ?? null,
+      pdfPath: null,
       discoveredAt: toIsoFromOffset(now, job.discoveredOffsetMinutes),
       appliedAt:
         job.status === "applied" && typeof job.appliedOffsetMinutes === "number"
@@ -123,4 +129,20 @@ export async function applyDemoBaseline(
       tx.insert(stageEvents).values(baseline.stageEvents).run();
     }
   });
+
+  await seedDemoDesignResume();
+
+  const demoPdfJobIds = baseline.jobs
+    .filter((job) => job.status === "ready" || job.status === "applied")
+    .map((job) => job.id);
+  if (demoPdfJobIds.length === 0) return;
+
+  const fingerprintContext = await resolvePdfFingerprintContext();
+  for (const jobId of demoPdfJobIds) {
+    const job = await jobsRepo.getJobById(jobId);
+    if (!job) continue;
+    await persistDemoGeneratedPdf(job, fingerprintContext, {
+      seedResume: false,
+    });
+  }
 }

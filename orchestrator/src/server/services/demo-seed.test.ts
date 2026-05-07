@@ -1,6 +1,13 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import {
   DEMO_DEFAULT_JOBS,
   DEMO_DEFAULT_PIPELINE_RUNS,
@@ -10,6 +17,17 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const originalEnv = { ...process.env };
+const pdfMocks = vi.hoisted(() => ({
+  generatePdf: vi.fn(),
+}));
+
+vi.mock("./pdf", async () => {
+  const actual = await vi.importActual<typeof import("./pdf")>("./pdf");
+  return {
+    ...actual,
+    generatePdf: pdfMocks.generatePdf,
+  };
+});
 
 function sortedPairs(map: Record<string, string>) {
   return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
@@ -21,6 +39,13 @@ describe.sequential("demo seed baseline", () => {
 
   beforeEach(async () => {
     vi.resetModules();
+    pdfMocks.generatePdf.mockImplementation(async (jobId: string) => {
+      const { getTenantJobPdfPath } = await import("./pdf-storage");
+      const pdfPath = getTenantJobPdfPath(jobId);
+      await mkdir(dirname(pdfPath), { recursive: true });
+      await writeFile(pdfPath, Buffer.from("%PDF-1.4\nDemo PDF\n%%EOF\n"));
+      return { success: true, pdfPath };
+    });
     tempDir = await mkdtemp(join(tmpdir(), "job-ops-demo-seed-test-"));
     process.env = {
       ...originalEnv,
@@ -39,6 +64,7 @@ describe.sequential("demo seed baseline", () => {
     if (closeDb) closeDb();
     await rm(tempDir, { recursive: true, force: true });
     process.env = { ...originalEnv };
+    pdfMocks.generatePdf.mockReset();
   });
 
   it("buildDemoBaseline returns deterministic, schema-shaped fixtures", async () => {
@@ -90,6 +116,43 @@ describe.sequential("demo seed baseline", () => {
     expect(sortedPairs(allSettings)).toEqual(
       sortedPairs(DEMO_DEFAULT_SETTINGS as Record<string, string>),
     );
+    expect(allSettings.pdfRenderer).toBe("latex");
+  });
+
+  it("resetDemoData generates fresh PDF artifacts for seeded ready and applied jobs", async () => {
+    const { resetDemoData } = await import("./demo-mode");
+    const { getAllJobs } = await import("../repositories/jobs");
+    const { getTenantJobPdfPath } = await import("./pdf-storage");
+    const { getJobPdfFreshness, resolvePdfFingerprintContext } = await import(
+      "./pdf-fingerprint"
+    );
+
+    await resetDemoData();
+
+    const allJobs = await getAllJobs();
+    const pdfJobs = allJobs.filter(
+      (job) => job.status === "ready" || job.status === "applied",
+    );
+    const fingerprintContext = await resolvePdfFingerprintContext();
+
+    expect(pdfJobs).toHaveLength(
+      DEMO_DEFAULT_JOBS.filter(
+        (job) => job.status === "ready" || job.status === "applied",
+      ).length,
+    );
+
+    for (const job of pdfJobs) {
+      const expectedPath = getTenantJobPdfPath(job.id);
+      expect(job.pdfPath).toBe(expectedPath);
+      expect(job.pdfSource).toBe("generated");
+      expect(job.pdfGeneratedAt).toEqual(expect.any(String));
+      expect(job.pdfFingerprint).toEqual(expect.any(String));
+      expect(getJobPdfFreshness(job, fingerprintContext)).toBe("current");
+
+      await expect(access(expectedPath)).resolves.toBeUndefined();
+      const pdfBytes = await readFile(expectedPath);
+      expect(pdfBytes.subarray(0, 5).toString()).toBe("%PDF-");
+    }
   });
 
   it("reset is idempotent for logical baseline content", async () => {
