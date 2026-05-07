@@ -117,6 +117,24 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.status).not.toHaveBeenCalled();
   });
 
+  it("allows extractor health APIs without auth", async () => {
+    vi.mocked(countUsers).mockResolvedValue(1);
+
+    const { middleware } = createAuthGuard();
+    const req = createMockRequest({
+      method: "GET",
+      path: "/api/linkedin/health",
+    });
+    const res = createMockResponse();
+    const next = vi.fn() as NextFunction;
+
+    middleware(req, res, next);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(next).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
   it("allows demo read APIs without auth", async () => {
     process.env.DEMO_MODE = "true";
 
