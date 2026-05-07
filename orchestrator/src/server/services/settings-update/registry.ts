@@ -37,6 +37,7 @@ export type SettingUpdateHandler<K extends keyof UpdateSettingsInput> = (args: {
 export type SettingsUpdatePlan = {
   shouldRefreshBackupScheduler: boolean;
   shouldClearRxResumeCaches: boolean;
+  updatedSettingKeys: SettingKey[];
 };
 
 const LEGACY_SETTINGS_TO_CLEAR_ON_UPDATE: Partial<

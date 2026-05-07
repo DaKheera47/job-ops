@@ -763,6 +763,23 @@ async function fetchBlobApi(
   }
 }
 
+function normalizeApiPath(pathOrUrl: string): string {
+  const trimmed = pathOrUrl.trim();
+  if (!trimmed) {
+    return "/design-resume/pdf";
+  }
+
+  if (trimmed.startsWith("/api/")) {
+    return trimmed.slice(4);
+  }
+
+  if (trimmed.startsWith("/")) {
+    return trimmed;
+  }
+
+  return `/${trimmed}`;
+}
+
 // Jobs API
 export function getJobs(): Promise<JobsListResponse<JobListItem>>;
 export function getJobs(options: {
@@ -877,7 +894,10 @@ export async function uploadJobPdf(
 }
 
 export async function getJobPdfBlob(id: string): Promise<Blob> {
-  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf`);
+  const cacheBuster = Date.now().toString(36);
+  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf?v=${cacheBuster}`, {
+    cache: "no-store",
+  });
 }
 
 export async function getTracerAnalytics(options?: {
@@ -1969,8 +1989,11 @@ export async function generateDesignResumePdf(): Promise<DesignResumePdfResponse
   });
 }
 
-export async function getDesignResumePdfBlob(): Promise<Blob> {
-  return fetchBlobApi("/design-resume/pdf");
+export async function getDesignResumePdfBlob(pdfUrl?: string): Promise<Blob> {
+  return fetchBlobApi(
+    pdfUrl ? normalizeApiPath(pdfUrl) : "/design-resume/pdf",
+    { cache: "no-store" },
+  );
 }
 
 export async function getProfileStatus(): Promise<ProfileStatusResponse> {

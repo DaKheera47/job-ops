@@ -189,4 +189,56 @@ describe("ReadyPanel", () => {
       'site:linkedin.com/in "HP" "Wolf Security" "React"',
     );
   });
+
+  it("labels stale PDFs as old while keeping access visible", () => {
+    render(
+      <MemoryRouter>
+        <ReadyPanel
+          job={createJob({
+            status: "ready",
+            pdfPath: "data/pdfs/job-1.pdf",
+            pdfSource: "generated",
+            pdfFreshness: "stale",
+          })}
+          onJobUpdated={vi.fn()}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByText(
+        "PDF is out of date. A new one will regenerate automatically.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /download old pdf/i }),
+    ).toBeEnabled();
+    expect(
+      screen.getByRole("menuitem", { name: /view old pdf/i }),
+    ).toBeEnabled();
+  });
+
+  it("disables PDF access while regeneration is active", () => {
+    render(
+      <MemoryRouter>
+        <ReadyPanel
+          job={createJob({
+            status: "ready",
+            pdfPath: "data/pdfs/job-1.pdf",
+            pdfSource: "generated",
+            pdfRegenerating: true,
+            pdfFreshness: "regenerating",
+          })}
+          onJobUpdated={vi.fn()}
+          onJobMoved={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /download pdf/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: /view pdf/i })).toBeDisabled();
+  });
 });

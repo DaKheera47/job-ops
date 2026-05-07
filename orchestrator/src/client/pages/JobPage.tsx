@@ -11,6 +11,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import confetti from "canvas-confetti";
 import {
+  AlertTriangle,
   ArrowLeft,
   ClipboardList,
   DollarSign,
@@ -44,6 +45,13 @@ import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
 import { getRenderableJobDescription } from "@/client/lib/jobDescription";
+import {
+  getPdfActionLabels,
+  isPdfRegenerating,
+  isPdfStale,
+  PDF_REGENERATING_MESSAGE,
+  STALE_PDF_MESSAGE,
+} from "@/client/lib/pdf-freshness";
 import { openJobPdf } from "@/client/lib/private-pdf";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
@@ -63,6 +71,7 @@ import {
   type LogEventFormValues,
   LogEventModal,
 } from "../components/LogEventModal";
+import { TooltipWhenDisabled } from "../components/TooltipWhenDisabled";
 import { JobTimeline } from "./job/Timeline";
 import { JobEmailsPanel } from "./job-page/JobEmailsPanel";
 import { JobNotesCard } from "./job-page/JobNotesCard";
@@ -494,6 +503,13 @@ export const JobPage: React.FC = () => {
   const canLogEvents = canTrackStages && !isClosedStage;
   const jobLink = job ? job.applicationLink || job.jobUrl : null;
   const isBusy = activeAction !== null;
+  const isRegeneratingPdf = isPdfRegenerating(job);
+  const isStalePdf = isPdfStale(job);
+  const pdfLabels = getPdfActionLabels(job);
+  const pdfRegeneratingReason = isRegeneratingPdf
+    ? PDF_REGENERATING_MESSAGE
+    : null;
+  const pdfActionsDisabled = !job?.pdfPath || isRegeneratingPdf;
   const isDiscovered = job?.status === "discovered";
   const isReady = job?.status === "ready";
   const isApplied = job?.status === "applied";
@@ -764,23 +780,36 @@ export const JobPage: React.FC = () => {
                           job.
                         </div>
                       </div>
+                      {isStalePdf && (
+                        <div className="flex basis-full items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>{STALE_PDF_MESSAGE}</span>
+                        </div>
+                      )}
                       {job.pdfPath ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            void openJobPdf(job.id).catch((error) => {
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : "Could not open PDF",
-                              );
-                            });
-                          }}
+                        <TooltipWhenDisabled
+                          reason={pdfRegeneratingReason}
+                          className="w-full sm:w-auto"
                         >
-                          <FileText className="mr-1.5 h-3.5 w-3.5" />
-                          View PDF
-                        </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={pdfActionsDisabled}
+                            onClick={() => {
+                              if (pdfActionsDisabled) return;
+                              void openJobPdf(job.id).catch((error) => {
+                                toast.error(
+                                  error instanceof Error
+                                    ? error.message
+                                    : "Could not open PDF",
+                                );
+                              });
+                            }}
+                          >
+                            <FileText className="mr-1.5 h-3.5 w-3.5" />
+                            {pdfLabels.view}
+                          </Button>
+                        </TooltipWhenDisabled>
                       ) : (
                         <Button
                           size="sm"
@@ -910,12 +939,16 @@ export const JobPage: React.FC = () => {
               canLogEvents={canLogEvents}
               isBusy={isBusy}
               isUploadingPdf={isUploadingPdf}
+              pdfActionsDisabled={pdfActionsDisabled}
+              pdfRegeneratingReason={pdfRegeneratingReason}
+              pdfViewLabel={pdfLabels.view}
               onStartTailoring={() => navigate(`/jobs/discovered/${job.id}`)}
               onMarkApplied={() => void handleMarkApplied()}
               onMoveToInProgress={() => void handleMoveToInProgress()}
               onOpenLogEvent={() => setIsLogModalOpen(true)}
               onEditTailoring={() => navigate(`/jobs/ready/${job.id}`)}
               onViewPdf={() => {
+                if (pdfActionsDisabled) return;
                 void openJobPdf(job.id).catch((error) => {
                   toast.error(
                     error instanceof Error

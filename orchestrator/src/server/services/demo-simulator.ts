@@ -133,6 +133,9 @@ export async function simulateGeneratePdf(
   await jobsRepo.updateJob(job.id, {
     status: "ready",
     pdfPath: samplePdfPath(job),
+    pdfSource: "generated",
+    pdfFingerprint: null,
+    pdfGeneratedAt: new Date().toISOString(),
   });
   return { success: true };
 }

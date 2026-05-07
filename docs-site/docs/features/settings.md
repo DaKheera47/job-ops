@@ -154,6 +154,7 @@ Defaults and constraints:
 - JobOps uses the selected RxResume resume as the source of truth in both modes
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
+- Changing PDF-affecting settings (`pdfRenderer`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
 - Select a template/base resume
 - Configure project selection behavior:
   - Max projects

@@ -160,6 +160,12 @@ export const jobs = sqliteTable(
     tailoredSkills: text("tailored_skills"),
     selectedProjectIds: text("selected_project_ids"),
     pdfPath: text("pdf_path"),
+    pdfSource: text("pdf_source", { enum: ["generated", "uploaded"] }),
+    pdfRegenerating: integer("pdf_regenerating", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    pdfFingerprint: text("pdf_fingerprint"),
+    pdfGeneratedAt: text("pdf_generated_at"),
     tracerLinksEnabled: integer("tracer_links_enabled", { mode: "boolean" })
       .notNull()
       .default(false),

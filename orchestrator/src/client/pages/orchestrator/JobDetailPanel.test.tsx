@@ -168,6 +168,60 @@ describe("JobDetailPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows stale PDF copy and old-PDF actions in the application kit", async () => {
+    const job = createJob({
+      status: "ready",
+      pdfPath: "data/pdfs/job-1.pdf",
+      pdfSource: "generated",
+      pdfFreshness: "stale",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "ready",
+      activeJobs: [job],
+      selectedJob: job,
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /apply/i }));
+
+    expect(
+      screen.getByText(
+        "PDF is out of date. A new one will regenerate automatically.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /download old pdf/i }),
+    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: /view old pdf/i })).toBeEnabled();
+  });
+
+  it("disables application-kit PDF actions while regeneration is active", async () => {
+    const job = createJob({
+      status: "ready",
+      pdfPath: "data/pdfs/job-1.pdf",
+      pdfSource: "generated",
+      pdfRegenerating: true,
+      pdfFreshness: "regenerating",
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "ready",
+      activeJobs: [job],
+      selectedJob: job,
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    fireEvent.click(screen.getByRole("tab", { name: /apply/i }));
+
+    expect(
+      screen.getByRole("button", { name: /download pdf/i }),
+    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: /view pdf/i })).toBeDisabled();
+  });
+
   it("shows an empty state when no job is selected", async () => {
     await renderJobDetailPanel({
       activeTab: "all",

@@ -1,3 +1,4 @@
+import type { SettingKey } from "@server/repositories/settings";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type {
   DeferredSideEffect,
@@ -21,6 +22,7 @@ export async function applySettingsUpdates(
   const context: SettingsUpdateContext = { input };
   const actions: SettingsUpdateAction[] = [];
   const deferredSideEffects = new Set<DeferredSideEffect>();
+  const updatedSettingKeys = new Set<SettingKey>();
 
   const keys = Object.keys(input) as Array<keyof UpdateSettingsInput>;
   for (const key of keys) {
@@ -37,11 +39,15 @@ export async function applySettingsUpdates(
   }
 
   await Promise.all(actions.map(runAction));
+  for (const action of actions) {
+    updatedSettingKeys.add(action.settingKey);
+  }
 
   return {
     shouldRefreshBackupScheduler: deferredSideEffects.has(
       "refreshBackupScheduler",
     ),
     shouldClearRxResumeCaches: deferredSideEffects.has("clearRxResumeCaches"),
+    updatedSettingKeys: Array.from(updatedSettingKeys).sort(),
   };
 }

@@ -21,7 +21,7 @@ import {
   PenSquare,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
@@ -85,7 +85,14 @@ export const DesignResumePage: React.FC = () => {
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const editVersionRef = useRef(0);
   const draftRef = useRef<DesignResumeDocument | null>(null);
+  const readyPdfRefreshToastShownRef = useRef(false);
   draftRef.current = draft;
+
+  const notifyReadyPdfRefresh = useCallback(() => {
+    if (readyPdfRefreshToastShownRef.current) return;
+    readyPdfRefreshToastShownRef.current = true;
+    toast.info("Ready PDFs will refresh automatically.");
+  }, []);
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
   const canDownloadPdf = status?.exists && !pdfDownloading;
@@ -132,6 +139,7 @@ export const DesignResumePage: React.FC = () => {
           setDraft(updated);
           setDirty(false);
           setSaveState("saved");
+          notifyReadyPdfRefresh();
           return;
         }
 
@@ -153,7 +161,7 @@ export const DesignResumePage: React.FC = () => {
     }, 700);
 
     return () => window.clearTimeout(timer);
-  }, [dirty, draft, document, queryClient, saveState]);
+  }, [dirty, draft, document, notifyReadyPdfRefresh, queryClient, saveState]);
 
   const setDesignResume = (next: DesignResumeDocument) => {
     queryClient.setQueryData(queryKeys.designResume.current(), next);
@@ -247,6 +255,7 @@ export const DesignResumePage: React.FC = () => {
       setDesignResume(imported);
       setSaveState("saved");
       toast.success("Imported your resume.");
+      notifyReadyPdfRefresh();
     } catch (importError) {
       setSaveState("error");
       showErrorToast(importError, "Failed to import your resume.");
@@ -279,6 +288,7 @@ export const DesignResumePage: React.FC = () => {
       setDesignResume(imported);
       setSaveState("saved");
       toast.success("Imported your resume file.");
+      notifyReadyPdfRefresh();
     } catch (importError) {
       setSaveState("error");
       showErrorToast(importError, "Failed to import your resume file.");
@@ -304,7 +314,7 @@ export const DesignResumePage: React.FC = () => {
     try {
       setPdfDownloading(true);
       const generated = await api.generateDesignResumePdf();
-      await downloadDesignResumePdf(generated.fileName);
+      await downloadDesignResumePdf(generated.fileName, generated.pdfUrl);
       toast.success("Your PDF is ready.");
     } catch (downloadError) {
       showErrorToast(downloadError, "Failed to generate a PDF.");
@@ -347,6 +357,7 @@ export const DesignResumePage: React.FC = () => {
         setSaveState("idle");
       }
       toast.success("Picture uploaded.");
+      notifyReadyPdfRefresh();
     } catch (uploadError) {
       showErrorToast(uploadError, "Failed to upload picture.");
     } finally {
@@ -382,6 +393,7 @@ export const DesignResumePage: React.FC = () => {
         setSaveState("idle");
       }
       toast.success("Picture removed.");
+      notifyReadyPdfRefresh();
     } catch (deleteError) {
       showErrorToast(deleteError, "Failed to delete picture.");
     }
@@ -401,6 +413,7 @@ export const DesignResumePage: React.FC = () => {
           ? "Jake's template is now active."
           : "React Resume Renderer is now active.",
       );
+      notifyReadyPdfRefresh();
     } catch (updateError) {
       showErrorToast(updateError, "Failed to update the resume template.");
     } finally {

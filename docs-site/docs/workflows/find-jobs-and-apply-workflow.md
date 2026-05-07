@@ -61,8 +61,9 @@ At this stage:
 2. Open the **search links** row when you want quick external research on LinkedIn, GitHub, or the wider web.
 3. If you wrote a resume outside JobOps, use **Upload PDF** in the job detail view to attach that file to the application instead of using the generated version.
 4. Optionally enable tracer links for that specific job.
-5. Download the PDF you want to submit.
-6. Submit your application externally.
+5. If the job shows `PDF stale`, wait for the automatic regeneration to finish before using the refreshed PDF. You can still open or download the old PDF while it is labeled as old.
+6. Download the PDF you want to submit.
+7. Submit your application externally.
 
 ### 5) Mark jobs as applied in JobOps
 
