@@ -84,7 +84,7 @@ describe("App demo banner", () => {
       </MemoryRouter>,
     );
 
-    const link = screen.getByRole("link", { name: "try.jobops.app" });
+    const link = screen.getByRole("link", { name: "Join the waitlist." });
     expect(link).toHaveAttribute(
       "href",
       "https://try.jobops.app?utm_source=demo&utm_medium=banner&utm_campaign=waitlist",

@@ -99,45 +99,53 @@ export const App: React.FC = () => {
   return (
     <>
       <OnboardingGate />
-      {showDemoBanners && !demoWaitlistBannerDismissed && (
-        <div className="sticky top-0 z-50 w-full border-b border-orange-400/60 bg-orange-500 px-4 py-2 text-xs text-orange-950 shadow-sm">
-          <div className="mx-auto flex items-center justify-center gap-3">
-            <p className="flex-1 text-center font-medium">
-              This is a read-only demo. Want JobOps without the Docker setup? ☁️{" "}
-              Cloud version coming soon — join the waitlist at{" "}
-              <a
-                className="font-semibold underline underline-offset-2 hover:text-orange-900"
-                href="https://try.jobops.app?utm_source=demo&utm_medium=banner&utm_campaign=waitlist"
-                target="_blank"
-                rel="noreferrer"
-              >
-                try.jobops.app
-              </a>
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 rounded-full text-orange-950 hover:bg-orange-400/30 hover:text-orange-950"
-              onClick={() => {
-                setDemoWaitlistBannerDismissed(true);
-                try {
-                  localStorage.setItem(DEMO_WAITLIST_BANNER_DISMISSED_KEY, "1");
-                } catch {
-                  // Ignore storage errors in restricted browser contexts.
-                }
-              }}
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Dismiss demo waitlist banner</span>
-            </Button>
-          </div>
-        </div>
-      )}
       {showDemoBanners && (
-        <div className="w-full border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-center text-xs text-amber-100 backdrop-blur">
-          Demo mode: integrations are simulated and data resets every{" "}
-          {demoInfo.resetCadenceHours} hours.
+        <div className="sticky top-0 z-50 w-full border-b border-amber-400/50 bg-amber-500/20 px-4 py-2 text-xs text-amber-100 shadow-sm backdrop-blur">
+          <div className="mx-auto flex items-center justify-center gap-3">
+            <p className="flex-1 text-center">
+              <span className="font-medium">
+                Demo mode: integrations are simulated and data resets every{" "}
+                {demoInfo.resetCadenceHours} hours.
+              </span>
+              {!demoWaitlistBannerDismissed && (
+                <>
+                  {" "}
+                  This is a read-only demo. Want JobOps without the Docker
+                  setup?{" "}
+                  <a
+                    className="font-semibold underline underline-offset-2 hover:text-amber-50"
+                    href="https://try.jobops.app?utm_source=demo&utm_medium=banner&utm_campaign=waitlist"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Join the waitlist.
+                  </a>
+                </>
+              )}
+            </p>
+            {!demoWaitlistBannerDismissed && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 rounded-full text-amber-100 hover:bg-amber-400/20 hover:text-amber-50"
+                onClick={() => {
+                  setDemoWaitlistBannerDismissed(true);
+                  try {
+                    localStorage.setItem(
+                      DEMO_WAITLIST_BANNER_DISMISSED_KEY,
+                      "1",
+                    );
+                  } catch {
+                    // Ignore storage errors in restricted browser contexts.
+                  }
+                }}
+              >
+                <X className="h-4 w-4" />
+                <span className="sr-only">Dismiss demo waitlist banner</span>
+              </Button>
+            )}
+          </div>
         </div>
       )}
       <div>
