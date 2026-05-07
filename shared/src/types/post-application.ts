@@ -174,6 +174,17 @@ export interface PostApplicationInboxItem {
   } | null;
 }
 
+export interface PostApplicationJobEmailItem {
+  message: PostApplicationMessage;
+  sourceUrl: string | null;
+  accountDisplayName: string | null;
+}
+
+export interface PostApplicationJobEmailsResponse {
+  items: PostApplicationJobEmailItem[];
+  total: number;
+}
+
 export type PostApplicationAction = "approve" | "deny";
 
 export interface PostApplicationActionRequest {

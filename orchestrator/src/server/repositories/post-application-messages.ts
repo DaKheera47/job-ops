@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type {
+  PostApplicationJobEmailItem,
   PostApplicationMessage,
   PostApplicationMessageType,
   PostApplicationProcessingStatus,
@@ -7,7 +8,7 @@ import type {
   PostApplicationRelevanceDecision,
   PostApplicationRouterStageTarget,
 } from "@shared/types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import {
   normalizeStageTarget,
@@ -15,7 +16,7 @@ import {
 } from "../services/post-application/stage-target";
 import { getActiveTenantId } from "../tenancy/context";
 
-const { postApplicationMessages } = schema;
+const { postApplicationIntegrations, postApplicationMessages } = schema;
 
 type UpsertPostApplicationMessageInput = {
   provider: PostApplicationProvider;
@@ -73,6 +74,18 @@ export type UpsertPostApplicationMessageResult = {
   autoLinkTransitioned: boolean;
 };
 
+type PostApplicationIntegrationDisplayMetadata = {
+  id: string;
+  provider: PostApplicationProvider;
+  accountKey: string;
+  displayName: string | null;
+};
+
+export type ListPostApplicationMessagesForJobResult = {
+  items: Array<Omit<PostApplicationJobEmailItem, "sourceUrl">>;
+  total: number;
+};
+
 function isTerminalProcessingStatus(
   status: PostApplicationProcessingStatus,
 ): boolean {
@@ -123,6 +136,35 @@ function mapRowToPostApplicationMessage(
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
+}
+
+function integrationKey(
+  provider: PostApplicationProvider,
+  accountKey: string,
+): string {
+  return `${provider}:${accountKey}`;
+}
+
+async function listIntegrationDisplayMetadata(): Promise<
+  PostApplicationIntegrationDisplayMetadata[]
+> {
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select({
+      id: postApplicationIntegrations.id,
+      provider: postApplicationIntegrations.provider,
+      accountKey: postApplicationIntegrations.accountKey,
+      displayName: postApplicationIntegrations.displayName,
+    })
+    .from(postApplicationIntegrations)
+    .where(eq(postApplicationIntegrations.tenantId, tenantId));
+
+  return rows.map((row) => ({
+    id: row.id,
+    provider: row.provider,
+    accountKey: row.accountKey,
+    displayName: row.displayName,
+  }));
 }
 
 export async function getPostApplicationMessageByExternalId(
@@ -377,6 +419,57 @@ export async function listPostApplicationMessagesBySyncRun(
     .limit(limit);
 
   return rows.map(mapRowToPostApplicationMessage);
+}
+
+export async function listPostApplicationMessagesForJob(
+  jobId: string,
+  limit = 100,
+): Promise<ListPostApplicationMessagesForJobResult> {
+  const tenantId = getActiveTenantId();
+  const whereClause = and(
+    eq(postApplicationMessages.tenantId, tenantId),
+    eq(postApplicationMessages.matchedJobId, jobId),
+  );
+  const rows = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(whereClause)
+    .orderBy(desc(postApplicationMessages.receivedAt))
+    .limit(limit);
+  const [countRow] = await db
+    .select({ total: sql<number>`count(*)` })
+    .from(postApplicationMessages)
+    .where(whereClause);
+
+  const integrations = await listIntegrationDisplayMetadata();
+  const integrationsById = new Map(
+    integrations.map((integration) => [integration.id, integration]),
+  );
+  const integrationsByProviderAccount = new Map(
+    integrations.map((integration) => [
+      integrationKey(integration.provider, integration.accountKey),
+      integration,
+    ]),
+  );
+
+  return {
+    items: rows.map((row) => {
+      const message = mapRowToPostApplicationMessage(row);
+      const integration =
+        (message.integrationId
+          ? integrationsById.get(message.integrationId)
+          : undefined) ??
+        integrationsByProviderAccount.get(
+          integrationKey(message.provider, message.accountKey),
+        );
+
+      return {
+        message,
+        accountDisplayName: integration?.displayName ?? null,
+      };
+    }),
+    total: countRow?.total ?? 0,
+  };
 }
 
 export async function updatePostApplicationMessageDecision(
