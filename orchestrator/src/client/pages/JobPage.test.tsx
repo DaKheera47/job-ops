@@ -76,6 +76,7 @@ vi.mock("../api", () => ({
   getJobStageEvents: vi.fn(),
   getJobTasks: vi.fn(),
   getJobNotes: vi.fn(),
+  getJobEmails: vi.fn(),
   createJobNote: vi.fn(),
   updateJobNote: vi.fn(),
   deleteJobNote: vi.fn(),
@@ -177,6 +178,10 @@ beforeEach(() => {
     },
   ]);
   vi.mocked(api.getJobNotes).mockImplementation(async () => notesStore);
+  vi.mocked(api.getJobEmails).mockResolvedValue({
+    items: [],
+    total: 0,
+  });
   vi.mocked(api.createJobNote).mockImplementation(async (jobId, input) => {
     const created = makeNote({
       id: `note-${notesStore.length + 1}`,
@@ -434,6 +439,19 @@ describe("JobPage timeline actions", () => {
         screen.getByRole("button", { name: /log event/i }),
       ).toBeInTheDocument(),
     );
+  });
+});
+
+describe("JobPage emails", () => {
+  it("renders the email tab and marks the sidebar item active", async () => {
+    renderJobPage("/job/job-1/emails");
+
+    expect(await screen.findByText("Captured emails")).toBeInTheDocument();
+    expect(screen.queryByTestId("job-right-sidebar")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /^emails$/i })).toHaveClass(
+      "border-input",
+    );
+    expect(api.getJobEmails).toHaveBeenCalledWith("job-1", { limit: 100 });
   });
 });
 

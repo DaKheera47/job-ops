@@ -11,6 +11,7 @@ import type {
   JobsListResponse,
   JobsRevisionResponse,
   JobTracerLinksResponse,
+  PostApplicationJobEmailsResponse,
   StageEvent,
   StageEventMetadata,
   StageTransitionTarget,
@@ -97,6 +98,18 @@ export async function updateJob(
 
 export async function getJobNotes(id: string): Promise<JobNote[]> {
   return fetchApi<JobNote[]>(withQuery(`/jobs/${id}/notes`, { t: Date.now() }));
+}
+
+export async function getJobEmails(
+  id: string,
+  options?: { limit?: number },
+): Promise<PostApplicationJobEmailsResponse> {
+  return fetchApi<PostApplicationJobEmailsResponse>(
+    withQuery(`/jobs/${id}/emails`, {
+      t: Date.now(),
+      limit: options?.limit,
+    }),
+  );
 }
 
 export async function createJobNote(

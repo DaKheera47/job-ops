@@ -73,6 +73,7 @@ import {
 } from "../components/LogEventModal";
 import { TooltipWhenDisabled } from "../components/TooltipWhenDisabled";
 import { JobTimeline } from "./job/Timeline";
+import { JobEmailsPanel } from "./job-page/JobEmailsPanel";
 import { JobNotesCard } from "./job-page/JobNotesCard";
 import {
   type JobMemoryView,
@@ -83,7 +84,12 @@ import { OverviewGhostwriterComposer } from "./job-page/OverviewGhostwriterCompo
 
 const normalizeMemoryView = (view: string | undefined): JobMemoryView => {
   if (view === "notes" || view === "note") return "note";
-  if (view === "documents" || view === "timeline" || view === "ghostwriter") {
+  if (
+    view === "documents" ||
+    view === "timeline" ||
+    view === "emails" ||
+    view === "ghostwriter"
+  ) {
     return view;
   }
   return "overview";
@@ -272,6 +278,9 @@ export const JobPage: React.FC = () => {
       }),
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.tasks(id) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.jobs.notes(id) }),
+      queryClient.invalidateQueries({
+        queryKey: [...queryKeys.jobs.all, "emails", id] as const,
+      }),
     ]);
   }, [id, queryClient]);
 
@@ -896,6 +905,8 @@ export const JobPage: React.FC = () => {
                 </div>
               </section>
             )}
+
+            {activeMemoryView === "emails" && <JobEmailsPanel jobId={job.id} />}
 
             {activeMemoryView === "ghostwriter" && (
               <section className="">

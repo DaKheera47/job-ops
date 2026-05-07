@@ -8,7 +8,13 @@ import {
   applyJobsPdfFreshness,
   resolvePdfFingerprintContext,
 } from "@server/services/pdf-fingerprint";
+import {
+  DEFAULT_JOB_EMAIL_LIMIT,
+  listJobPostApplicationEmails,
+  MAX_JOB_EMAIL_LIMIT,
+} from "@server/services/post-application/job-emails";
 import { type Request, type Response, Router } from "express";
+import { z } from "zod";
 import {
   hydrateJobPdfFreshness,
   JOBS_BENCHMARK_ENABLED,
@@ -21,6 +27,15 @@ import {
 } from "./shared";
 
 export const jobsReadRouter = Router();
+
+const jobEmailsQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_JOB_EMAIL_LIMIT)
+    .default(DEFAULT_JOB_EMAIL_LIMIT),
+});
 
 jobsReadRouter.get("/", async (req: Request, res: Response) => {
   try {
@@ -165,6 +180,53 @@ jobsReadRouter.get("/:id", async (req: Request, res: Response) => {
     ok(res, await hydrateJobPdfFreshness(jobWithAppliedDuplicateMatch));
   } catch (error) {
     fail(res, toJobsRouteError(error));
+  }
+});
+
+jobsReadRouter.get("/:id/emails", async (req: Request, res: Response) => {
+  const requestId = String(res.getHeader("x-request-id") || "unknown");
+  const route = "GET /api/jobs/:id/emails";
+  const jobId = req.params.id;
+  const parseResult = jobEmailsQuerySchema.safeParse(req.query);
+
+  if (!parseResult.success) {
+    const err = badRequest("Invalid email query", parseResult.error.flatten());
+    logger.warn("Job emails fetch failed", {
+      route,
+      jobId,
+      requestId,
+      status: err.status,
+      code: err.code,
+    });
+    return fail(res, err);
+  }
+
+  try {
+    const data = await listJobPostApplicationEmails(
+      jobId,
+      parseResult.data.limit,
+    );
+
+    logger.info("Job emails fetched", {
+      route,
+      jobId,
+      requestId,
+      returnedCount: data.items.length,
+    });
+
+    ok(res, data);
+  } catch (error) {
+    const err = toJobsRouteError(error);
+    logger[err.status === 404 ? "warn" : "error"]("Job emails fetch failed", {
+      route,
+      jobId,
+      requestId,
+      status: err.status,
+      code: err.code,
+      details: err.details,
+      errorMessage: error instanceof Error ? error.message : undefined,
+    });
+    fail(res, err);
   }
 });
 
