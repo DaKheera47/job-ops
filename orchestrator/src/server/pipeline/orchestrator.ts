@@ -657,18 +657,39 @@ export async function generateFinalPdf(
           errorCode: pdfResult.errorCode,
         };
       }
+      if (!pdfResult.pdfPath) {
+        throw new Error("PDF generation succeeded without an output path.");
+      }
 
       const fingerprintContext = await resolvePdfFingerprintContext();
       const pdfFingerprint = createJobPdfFingerprint(job, fingerprintContext);
+      const expectedStatusAtCommit: JobStatus =
+        job.status === "ready" ? "ready" : "processing";
 
-      await jobsRepo.updateJob(job.id, {
-        status: "ready",
+      const updatedJob = await jobsRepo.finalizeGeneratedPdfIfCurrent({
+        id: job.id,
+        expectedStatus: expectedStatusAtCommit,
+        requireGeneratedSource: job.status === "ready",
         pdfPath: pdfResult.pdfPath,
-        pdfSource: "generated",
-        pdfRegenerating: false,
         pdfFingerprint,
         pdfGeneratedAt: new Date().toISOString(),
       });
+      if (!updatedJob) {
+        const latestJob = await jobsRepo.getJobById(job.id);
+        if (
+          latestJob?.pdfRegenerating &&
+          (latestJob.status !== expectedStatusAtCommit ||
+            (job.status === "ready" && latestJob.pdfSource !== "generated"))
+        ) {
+          await jobsRepo.updateJob(job.id, { pdfRegenerating: false });
+        }
+        pdfRegeneratingMarked = false;
+        return {
+          success: false,
+          error: "PDF generation was superseded by newer job changes.",
+          errorCode: "CONFLICT",
+        };
+      }
       pdfRegeneratingMarked = false;
 
       const analyticsOrigin = options?.analyticsOrigin ?? "move_to_ready";

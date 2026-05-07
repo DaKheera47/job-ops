@@ -13,6 +13,7 @@ import {
 } from "./pdf-fingerprint";
 
 const AUTO_PDF_REGEN_BATCH_LIMIT = 25;
+const AUTO_PDF_REGEN_RETRY_DELAY_MS = 5000;
 
 const SETTINGS_INVALIDATION_KEYS = new Set<SettingKey>([
   "pdfRenderer",
@@ -23,9 +24,33 @@ const SETTINGS_INVALIDATION_KEYS = new Set<SettingKey>([
 
 let workerPromise: Promise<void> | null = null;
 let workerRequested = false;
+let workerTimer: ReturnType<typeof setTimeout> | null = null;
+let workerTimerDueAt = 0;
 
-function scheduleWorker(): void {
+function scheduleWorker(delayMs = 0): void {
   workerRequested = true;
+  const normalizedDelayMs = Math.max(0, delayMs);
+
+  if (normalizedDelayMs > 0) {
+    const dueAt = Date.now() + normalizedDelayMs;
+    if (!workerTimer || dueAt < workerTimerDueAt) {
+      if (workerTimer) clearTimeout(workerTimer);
+      workerTimerDueAt = dueAt;
+      workerTimer = setTimeout(() => {
+        workerTimer = null;
+        workerTimerDueAt = 0;
+        scheduleWorker();
+      }, normalizedDelayMs);
+    }
+    return;
+  }
+
+  if (workerTimer) {
+    clearTimeout(workerTimer);
+    workerTimer = null;
+    workerTimerDueAt = 0;
+  }
+
   if (workerPromise) return;
   workerPromise = runWorker().finally(() => {
     workerPromise = null;
@@ -50,13 +75,27 @@ async function drainQueue(): Promise<void> {
     if (!queuedJob) return;
 
     try {
-      await processQueuedAutoPdfRegeneration(queuedJob.payload);
+      const result = await processQueuedAutoPdfRegeneration(queuedJob.payload);
       await queue.acknowledge(queuedJob.id);
-      if (shouldTopUpReadyPdfRegeneration(queuedJob.payload.reason)) {
-        await enqueueAutoPdfRegenerationForReadyJobs({
-          reason: queuedJob.payload.reason,
-          requestedBy: queuedJob.payload.requestedBy,
+      if (result === "retry_later") {
+        await enqueueAutoPdfRegenerationPayload(queuedJob.payload, {
+          delayMs: AUTO_PDF_REGEN_RETRY_DELAY_MS,
         });
+        continue;
+      }
+      if (shouldTopUpReadyPdfRegeneration(queuedJob.payload.reason)) {
+        await runWithRequestContext(
+          {
+            tenantId: queuedJob.payload.tenantId,
+            jobId: queuedJob.payload.jobId,
+          },
+          async () => {
+            await enqueueAutoPdfRegenerationForReadyJobs({
+              reason: queuedJob.payload.reason,
+              requestedBy: queuedJob.payload.requestedBy,
+            });
+          },
+        );
       }
     } catch (error) {
       logger.warn("Auto PDF regeneration job failed", {
@@ -106,8 +145,8 @@ async function processQueuedAutoPdfRegeneration(input: {
   reason: AutoPdfRegenerationReason;
   requestedAt: string;
   requestedBy: "system" | "user";
-}): Promise<void> {
-  await runWithRequestContext(
+}): Promise<"processed" | "retry_later"> {
+  return runWithRequestContext(
     {
       tenantId: input.tenantId,
       jobId: input.jobId,
@@ -123,24 +162,24 @@ async function processQueuedAutoPdfRegeneration(input: {
             reason: input.reason,
           },
         );
-        return;
+        return "processed";
       }
 
       if (job.status !== "ready") {
-        return;
+        return "processed";
       }
 
       if (job.pdfSource !== "generated") {
-        return;
+        return "processed";
       }
 
       if (job.pdfRegenerating) {
-        return;
+        return "retry_later";
       }
 
       const fingerprintContext = await resolvePdfFingerprintContext();
       if (getJobPdfFreshness(job, fingerprintContext) !== "stale") {
-        return;
+        return "processed";
       }
 
       const result = await generateFinalPdf(job.id, {
@@ -150,8 +189,27 @@ async function processQueuedAutoPdfRegeneration(input: {
       if (!result.success) {
         throw new Error(result.error ?? "Auto PDF regeneration failed.");
       }
+
+      return "processed";
     },
   );
+}
+
+async function enqueueAutoPdfRegenerationPayload(
+  payload: {
+    tenantId: string;
+    jobId: string;
+    reason: AutoPdfRegenerationReason;
+    requestedAt: string;
+    requestedBy: "system" | "user";
+  },
+  options?: { delayMs?: number },
+): Promise<void> {
+  await getJobQueue().enqueue("auto_pdf_regeneration", payload, {
+    dedupeKey: `${payload.tenantId}:${payload.jobId}`,
+    delayMs: options?.delayMs,
+  });
+  scheduleWorker(options?.delayMs);
 }
 
 export async function enqueueAutoPdfRegenerationForJob(input: {
@@ -160,20 +218,13 @@ export async function enqueueAutoPdfRegenerationForJob(input: {
   requestedBy: "system" | "user";
 }): Promise<void> {
   const tenantId = getActiveTenantId();
-  await getJobQueue().enqueue(
-    "auto_pdf_regeneration",
-    {
-      tenantId,
-      jobId: input.jobId,
-      reason: input.reason,
-      requestedAt: new Date().toISOString(),
-      requestedBy: input.requestedBy,
-    },
-    {
-      dedupeKey: `${tenantId}:${input.jobId}`,
-    },
-  );
-  scheduleWorker();
+  await enqueueAutoPdfRegenerationPayload({
+    tenantId,
+    jobId: input.jobId,
+    reason: input.reason,
+    requestedAt: new Date().toISOString(),
+    requestedBy: input.requestedBy,
+  });
 }
 
 export async function enqueueAutoPdfRegenerationForReadyJobs(input: {

@@ -1677,6 +1677,7 @@ jobsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
     const job = await jobsRepo.updateJob(req.params.id, {
       pdfPath: uploaded.outputPath,
       pdfSource: "uploaded",
+      pdfRegenerating: false,
       pdfFingerprint: null,
       pdfGeneratedAt: new Date().toISOString(),
     });

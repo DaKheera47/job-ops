@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { generateFinalPdf } from "./pipeline/orchestrator";
 import * as jobsRepo from "./repositories/jobs";
 import * as pdfService from "./services/pdf";
+import * as pdfFingerprint from "./services/pdf-fingerprint";
 
 // Mock dependencies
 vi.mock("./repositories/jobs");
@@ -21,6 +22,20 @@ vi.mock("./services/pdf-fingerprint", () => ({
 describe("Tailoring Flow", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    vi.mocked(pdfFingerprint.createJobPdfFingerprint).mockReturnValue(
+      "test-pdf-fingerprint",
+    );
+    vi.mocked(pdfFingerprint.resolvePdfFingerprintContext).mockResolvedValue({
+      version: "v1",
+      designResumeDocumentId: null,
+      designResumeRevision: null,
+      designResumeUpdatedAt: null,
+      pdfRenderer: "latex",
+      rxresumeBaseResumeId: null,
+    });
+    vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(
+      {} as any,
+    );
   });
 
   it("should use manual overrides (tailoring) when generating PDF", async () => {
@@ -72,6 +87,14 @@ describe("Tailoring Flow", () => {
         tracerLinksEnabled: undefined,
       }),
     );
+    expect(jobsRepo.finalizeGeneratedPdfIfCurrent).toHaveBeenCalledWith({
+      id: "job-tailored-123",
+      expectedStatus: "processing",
+      requireGeneratedSource: false,
+      pdfPath: "generated/path/resume.pdf",
+      pdfFingerprint: "test-pdf-fingerprint",
+      pdfGeneratedAt: expect.any(String),
+    });
   });
 
   it("should fall back to defaults if no tailoring is present", async () => {
@@ -105,6 +128,61 @@ describe("Tailoring Flow", () => {
         requestOrigin: null,
         tracerLinksEnabled: undefined,
       }),
+    );
+    expect(jobsRepo.finalizeGeneratedPdfIfCurrent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-raw-456",
+        expectedStatus: "processing",
+        requireGeneratedSource: false,
+      }),
+    );
+  });
+
+  it("does not commit a regenerated PDF after newer job changes", async () => {
+    const readyJob = {
+      id: "job-ready-superseded",
+      jobDescription: "Senior Product Engineer",
+      status: "ready",
+      pdfPath: "data/pdfs/resume_job-ready-superseded.pdf",
+      pdfSource: "generated",
+      tailoredSummary: "Existing tailored summary.",
+      tailoredHeadline: "Existing headline",
+      tailoredSkills: JSON.stringify(["React"]),
+      selectedProjectIds: "project-a",
+    };
+    const uploadedJob = {
+      ...readyJob,
+      pdfSource: "uploaded",
+      pdfRegenerating: true,
+    };
+
+    vi.mocked(jobsRepo.getJobById)
+      .mockResolvedValueOnce(readyJob as any)
+      .mockResolvedValueOnce(uploadedJob as any);
+    vi.mocked(pdfService.generatePdf).mockResolvedValue({
+      success: true,
+      pdfPath: "generated/path/resume.pdf",
+    });
+    vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(null);
+
+    const result = await generateFinalPdf("job-ready-superseded");
+
+    expect(result).toEqual({
+      success: false,
+      error: "PDF generation was superseded by newer job changes.",
+      errorCode: "CONFLICT",
+    });
+    expect(jobsRepo.finalizeGeneratedPdfIfCurrent).toHaveBeenCalledWith({
+      id: "job-ready-superseded",
+      expectedStatus: "ready",
+      requireGeneratedSource: true,
+      pdfPath: "generated/path/resume.pdf",
+      pdfFingerprint: "test-pdf-fingerprint",
+      pdfGeneratedAt: expect.any(String),
+    });
+    expect(jobsRepo.updateJob).toHaveBeenLastCalledWith(
+      "job-ready-superseded",
+      { pdfRegenerating: false },
     );
   });
 

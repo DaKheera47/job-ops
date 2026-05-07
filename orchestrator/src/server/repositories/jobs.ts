@@ -648,6 +648,46 @@ export async function updateJob(
   return getJobById(id);
 }
 
+export async function finalizeGeneratedPdfIfCurrent(input: {
+  id: string;
+  expectedStatus: JobStatus;
+  requireGeneratedSource: boolean;
+  pdfPath: string;
+  pdfFingerprint: string;
+  pdfGeneratedAt: string;
+}): Promise<Job | null> {
+  const now = new Date().toISOString();
+  const tenantId = getActiveTenantId();
+  const conditions = [
+    eq(jobs.tenantId, tenantId),
+    eq(jobs.id, input.id),
+    eq(jobs.status, input.expectedStatus),
+    eq(jobs.pdfRegenerating, true),
+  ];
+
+  if (input.requireGeneratedSource) {
+    conditions.push(eq(jobs.pdfSource, "generated"));
+  }
+
+  const result = await db
+    .update(jobs)
+    .set({
+      status: "ready",
+      pdfPath: input.pdfPath,
+      pdfSource: "generated",
+      pdfRegenerating: false,
+      pdfFingerprint: input.pdfFingerprint,
+      pdfGeneratedAt: input.pdfGeneratedAt,
+      updatedAt: now,
+      readyAt: sql`coalesce(${jobs.readyAt}, ${now})`,
+    })
+    .where(and(...conditions))
+    .run();
+
+  if (result.changes === 0) return null;
+  return getJobById(input.id);
+}
+
 /**
  * Get job statistics by status.
  */

@@ -11,6 +11,7 @@ type InMemoryJobState = "pending" | "reserved";
 type InMemoryJobRecord = QueueJobRecord & {
   state: InMemoryJobState;
   dedupeKey?: string;
+  availableAt: number;
 };
 
 export class InMemoryJobQueue implements JobQueue {
@@ -55,6 +56,7 @@ export class InMemoryJobQueue implements JobQueue {
       options,
       state: "pending",
       dedupeKey: normalizedDedupeKey,
+      availableAt: Date.now() + Math.max(0, options?.delayMs ?? 0),
     });
     this.queueOrder.push(id);
 
@@ -77,10 +79,12 @@ export class InMemoryJobQueue implements JobQueue {
   async reserveNext<K extends QueueJobRecord["queue"]>(
     queue: K,
   ): Promise<QueueJobRecord<K> | null> {
+    const now = Date.now();
     for (const jobId of this.queueOrder) {
       const job = this.jobs.get(jobId);
       if (!job || job.state !== "pending") continue;
       if (job.queue !== queue) continue;
+      if (job.availableAt > now) continue;
 
       job.state = "reserved";
       return {
