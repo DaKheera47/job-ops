@@ -211,7 +211,7 @@ export const JobListPanel = forwardRef<VirtualListHandle, JobListPanelProps>(
                       onClick={(event) => event.stopPropagation()}
                       aria-label={`Select ${job.title}`}
                       className={cn(
-                        "absolute inset-0 m-0 border-border/80 cursor-pointer text-muted-foreground/70 transition-opacity duration-150 ease-out data-[state=checked]:border-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary",
+                        "absolute inset-0 m-0 border-border/80 cursor-pointer text-muted-foreground/70 transition-opacity duration-150 ease-out data-[state=checked]:border-primary group-hover:border-primary data-[state=checked]:bg-primary/20 data-[state=checked]:text-primary",
                         isChecked || isSelected
                           ? "opacity-100 pointer-events-auto border-primary/50"
                           : "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
