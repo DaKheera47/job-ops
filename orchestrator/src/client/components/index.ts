@@ -1,4 +1,3 @@
-export { DiscoveredPanel } from "./discovered-panel/DiscoveredPanel";
 export { FitAssessment } from "./FitAssessment";
 export { JobHeader } from "./JobHeader";
 export * from "./layout";
