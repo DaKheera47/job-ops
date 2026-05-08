@@ -8,6 +8,7 @@ import {
   CircleAlert,
   FileText,
   Loader2,
+  RefreshCcw,
   Sparkles,
 } from "lucide-react";
 import type React from "react";
@@ -601,133 +602,56 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
   if (editorProps) {
     return (
-      <div className="space-y-4">
-        <div className="space-y-3 pb-2">
-          <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
-            Changes autosave. Draft resume content, or generate the PDF. <AutosaveStatusIcon status={autosaveStatus} />
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
+      <div className="space-y-5">
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
+          <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300">
+                <Check className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground/90">
+                  Draft ready
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground/75">
+                  Review required sections before generating the PDF.
+                </p>
+              </div>
+            </div>
+            <AutosaveStatusIcon status={autosaveStatus} />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
             <Button
               onClick={handleSummarizeEditor}
               disabled={isSummarizing || isGeneratingPdf}
               variant="outline"
-              className="h-10 w-full gap-1.5 px-2 text-xs"
+              size="sm"
             >
               {isSummarizing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
+                <RefreshCcw className="h-4 w-4" />
               )}
-              Draft Content
+              Generate with AI
             </Button>
             <Button
               onClick={handleGeneratePdf}
               disabled={isSummarizing || isGeneratingPdf || !summary}
-              className="h-10 w-full gap-1.5 px-2 text-xs"
+              size="sm"
             >
               {isGeneratingPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <FileText className="mr-2 h-4 w-4" />
+                <FileText className="h-4 w-4" />
               )}
               Generate PDF
             </Button>
           </div>
         </div>
 
-        <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
-          <TailoringSections {...tailoringSectionsProps} />
-        </div>
+        <TailoringSections {...tailoringSectionsProps} />
       </div>
     );
   }
-
-  if (!tailorProps) return null;
-
-  const finalizeVariant = tailorProps.variant ?? "discovered";
-
-  return (
-    <div className="flex h-full flex-col">
-      <div className="flex flex-col gap-2 pb-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={tailorProps.onBack}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to overview
-        </button>
-      </div>
-
-      <div className="flex-1 space-y-4 overflow-y-auto pr-1">
-        <div className="flex flex-col gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-              <span className="text-xs font-medium text-amber-300">
-                Draft tailoring for this role
-              </span>
-            </div>
-            <p className="ml-4 mt-1 text-[10px] text-muted-foreground">
-              AI can draft summary, headline, skills, and project selection.
-            </p>
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleGenerateWithAi}
-            disabled={isGenerating || tailorProps.isFinalizing || isSaving}
-            className="h-8 w-full text-xs sm:w-auto"
-          >
-            {isGenerating ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            Generate draft
-          </Button>
-        </div>
-
-        <TailoringSections {...tailoringSectionsProps} />
-      </div>
-
-      <Separator className="my-4 opacity-50" />
-
-      <div className="space-y-2">
-        {!canFinalize && (
-          <p className="text-center text-[10px] text-muted-foreground">
-            Add a summary to{" "}
-            {finalizeVariant === "ready" ? "regenerate" : "finalize"}.
-          </p>
-        )}
-        <Button
-          onClick={() => void handleFinalize()}
-          disabled={tailorProps.isFinalizing || !canFinalize || isGenerating}
-          className="h-10 w-full bg-emerald-600 text-white hover:bg-emerald-500"
-        >
-          {tailorProps.isFinalizing ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {finalizeVariant === "ready"
-                ? "Regenerating PDF..."
-                : "Finalizing & generating PDF..."}
-            </>
-          ) : (
-            <>
-              <Check className="mr-2 h-4 w-4" />
-              {finalizeVariant === "ready"
-                ? "Regenerate PDF"
-                : "Finalize & Move to Ready"}
-            </>
-          )}
-        </Button>
-        <p className="text-center text-[10px] text-muted-foreground/70">
-          {finalizeVariant === "ready"
-            ? "This will save your changes and regenerate the tailored PDF."
-            : "This will generate your tailored PDF and move the job to Ready."}
-        </p>
-      </div>
-    </div>
-  );
 };
