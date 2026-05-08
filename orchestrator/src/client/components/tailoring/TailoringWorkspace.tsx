@@ -603,17 +603,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     return (
       <div className="space-y-4">
         <div className="space-y-3 pb-2">
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h3 className="text-sm font-semibold text-foreground/85">
-                Tailoring
-              </h3>
-              <AutosaveStatusIcon status={autosaveStatus} />
-            </div>
-            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
-              Changes autosave. Draft resume content, or generate the PDF.
-            </p>
-          </div>
+          <p className="text-xs text-muted-foreground/70 flex items-center gap-1">
+            Changes autosave. Draft resume content, or generate the PDF. <AutosaveStatusIcon status={autosaveStatus} />
+          </p>
           <div className="grid gap-2 sm:grid-cols-2">
             <Button
               onClick={handleSummarizeEditor}
