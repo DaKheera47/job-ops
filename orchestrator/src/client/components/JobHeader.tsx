@@ -278,7 +278,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           </div>
         </div>
 
-        <div className="flex w-full flex-col flex-wrap items-end gap-4 sm:w-auto sm:justify-end">
+        <div className="flex w-full flex-row sm:flex-col sm:flex-wrap items-end gap-4 sm:w-auto sm:justify-end">
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             <Badge
               variant="outline"
