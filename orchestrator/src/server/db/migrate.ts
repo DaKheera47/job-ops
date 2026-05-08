@@ -1027,6 +1027,66 @@ function rebuildSettingsTable(): void {
   sqlite.exec("ALTER TABLE settings_new RENAME TO settings");
 }
 
+function ensureTracerLinksUniqueIndex(): void {
+  if (!tableExists("tracer_links")) return;
+
+  for (const columnName of [
+    "tenant_id",
+    "job_id",
+    "source_path",
+    "destination_url_hash",
+  ]) {
+    if (!tableHasColumn("tracer_links", columnName)) return;
+  }
+
+  if (tableExists("tracer_click_events")) {
+    sqlite.exec(`
+      WITH duplicate_links AS (
+        SELECT
+          id,
+          first_value(id) OVER (
+            PARTITION BY tenant_id, job_id, source_path, destination_url_hash
+            ORDER BY created_at ASC, id ASC
+          ) AS keep_id
+        FROM tracer_links
+      )
+      UPDATE tracer_click_events
+      SET tracer_link_id = (
+        SELECT keep_id
+        FROM duplicate_links
+        WHERE duplicate_links.id = tracer_click_events.tracer_link_id
+      )
+      WHERE tracer_link_id IN (
+        SELECT id
+        FROM duplicate_links
+        WHERE id <> keep_id
+      )
+    `);
+  }
+
+  sqlite.exec(`
+    WITH duplicate_links AS (
+      SELECT
+        id,
+        first_value(id) OVER (
+          PARTITION BY tenant_id, job_id, source_path, destination_url_hash
+          ORDER BY created_at ASC, id ASC
+        ) AS keep_id
+      FROM tracer_links
+    )
+    DELETE FROM tracer_links
+    WHERE id IN (
+      SELECT id
+      FROM duplicate_links
+      WHERE id <> keep_id
+    )
+  `);
+
+  sqlite.exec(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_tracer_links_tenant_job_source_destination_unique ON tracer_links(tenant_id, job_id, source_path, destination_url_hash)",
+  );
+}
+
 function seedLegacyOwnerFromBasicAuth(): void {
   const existing = sqlite
     .prepare("SELECT count(*) AS count FROM users")
@@ -1071,6 +1131,7 @@ function seedLegacyOwnerFromBasicAuth(): void {
 console.log("🔐 Applying tenancy compatibility migrations...");
 ensureTenantColumns();
 rebuildSettingsTable();
+ensureTracerLinksUniqueIndex();
 sqlite.exec(
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_settings_tenant_key_unique ON settings(tenant_id, key)",
 );
