@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   Circle,
   CircleAlert,
-  GripVertical,
   Plus,
   Redo2,
   Trash2,
@@ -120,10 +119,14 @@ const sectionStateForText = (value: string): SectionState =>
 const SectionTriggerLabel: React.FC<{
   title: string;
   state: SectionState;
+  badgeLabel?: string;
   count?: number;
   children?: React.ReactNode;
-}> = ({ title, state, count, children }) => {
+}> = ({ title, state, badgeLabel, count, children }) => {
   const copy = stateCopy[state];
+  const resolvedBadgeLabel =
+    badgeLabel ??
+    `${copy.label}${typeof count === "number" && count > 0 ? ` ${count}` : ""}`;
 
   return (
     <span className="flex min-w-0 flex-1 items-center justify-between gap-3 pr-2">
@@ -137,8 +140,7 @@ const SectionTriggerLabel: React.FC<{
             copy.className,
           )}
         >
-          {copy.label}
-          {typeof count === "number" && count > 0 ? ` ${count}` : ""}
+          {resolvedBadgeLabel}
         </span>
       </span>
       {children ? (
@@ -194,7 +196,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   const skillsState: SectionState =
     skillsDraft.length > 0 ? "review" : "missing";
   const projectsState: SectionState =
-    selectedIds.size > 0 ? "ready" : "missing";
+    selectedIds.size > 0 ? "ready" : "optional";
 
   return (
     <TooltipProvider>
@@ -506,7 +508,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
               <SectionTriggerLabel
                 title="Selected Projects"
                 state={projectsState}
-                count={selectedIds.size}
+                badgeLabel={String(selectedIds.size)}
               />
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3 pt-3">
