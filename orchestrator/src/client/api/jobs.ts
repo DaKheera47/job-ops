@@ -260,9 +260,15 @@ export async function rescoreJob(
 
 export async function summarizeJob(
   id: string,
-  options?: { force?: boolean },
+  options?: {
+    force?: boolean;
+    fields?: Array<"summary" | "headline" | "skills">;
+  },
 ): Promise<Job> {
-  const query = options?.force ? "?force=1" : "";
+  const params = new URLSearchParams();
+  if (options?.force) params.set("force", "1");
+  if (options?.fields?.length) params.set("fields", options.fields.join(","));
+  const query = params.toString() ? `?${params.toString()}` : "";
   return fetchApi<Job>(`/jobs/${id}/summarize${query}`, {
     method: "POST",
   });

@@ -60,6 +60,7 @@ interface TailoringBaseline {
 }
 
 type AutosaveStatus = "saved" | "unsaved" | "saving" | "error";
+type TailoringGenerateTarget = "all" | "summary" | "headline" | "skills";
 
 const AutosaveStatusIcon: React.FC<{ status: AutosaveStatus }> = ({
   status,
@@ -162,7 +163,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   });
 
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("saved");
-  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [generateTarget, setGenerateTarget] =
+    useState<TailoringGenerateTarget | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef<Promise<void> | null>(null);
@@ -374,22 +376,48 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     props.onRegisterSave(flushAutosave);
   }, [props.onRegisterSave, flushAutosave]);
 
-  const handleSummarizeEditor = useCallback(async () => {
-    try {
-      setIsSummarizing(true);
-      await flushAutosave();
+  const handleGenerateTailoring = useCallback(
+    async (target: TailoringGenerateTarget) => {
+      try {
+        setGenerateTarget(target);
+        await flushAutosave();
 
-      const updatedJob = await api.summarizeJob(props.job.id, { force: true });
-      applyIncomingDraft(updatedJob);
-      setAiBaseline(toBaselineFromJob(updatedJob));
-      toast.success("Draft content generated");
-      await props.onUpdate();
-    } catch (error) {
-      showErrorToast(error, "AI summarization failed");
-    } finally {
-      setIsSummarizing(false);
-    }
-  }, [props.onUpdate, flushAutosave, props.job.id, applyIncomingDraft]);
+        const updatedJob = await api.summarizeJob(props.job.id, {
+          force: true,
+          fields: target === "all" ? undefined : [target],
+        });
+        applyIncomingDraft(updatedJob);
+        setAiBaseline(toBaselineFromJob(updatedJob));
+        toast.success(
+          target === "all"
+            ? "Draft content generated"
+            : `${target[0].toUpperCase()}${target.slice(1)} generated`,
+        );
+        await props.onUpdate();
+      } catch (error) {
+        showErrorToast(error, "AI generation failed");
+      } finally {
+        setGenerateTarget(null);
+      }
+    },
+    [props.onUpdate, flushAutosave, props.job.id, applyIncomingDraft],
+  );
+
+  const handleSummarizeEditor = useCallback(async () => {
+    await handleGenerateTailoring("all");
+  }, [handleGenerateTailoring]);
+
+  const handleGenerateSummary = useCallback(async () => {
+    await handleGenerateTailoring("summary");
+  }, [handleGenerateTailoring]);
+
+  const handleGenerateHeadline = useCallback(async () => {
+    await handleGenerateTailoring("headline");
+  }, [handleGenerateTailoring]);
+
+  const handleGenerateSkills = useCallback(async () => {
+    await handleGenerateTailoring("skills");
+  }, [handleGenerateTailoring]);
 
   const handleGeneratePdf = useCallback(async () => {
     try {
@@ -443,7 +471,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     );
   }, [aiBaseline.skillsJson, setSkillsDraft]);
 
-  const disableInputs = isSummarizing || isGeneratingPdf;
+  const disableInputs = Boolean(generateTarget) || isGeneratingPdf;
   const isDraftReady = textHasValue(summary) && textHasValue(headline);
 
   const tailoringSectionsProps = useMemo<TailoringSectionsProps>(
@@ -459,8 +487,17 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       tracerEnableBlocked,
       tracerEnableBlockedReason,
       tracerReadinessChecking: isTracerReadinessChecking,
+      generatingSection:
+        generateTarget === "summary" ||
+        generateTarget === "headline" ||
+        generateTarget === "skills"
+          ? generateTarget
+          : null,
       openSkillGroupId,
       disableInputs,
+      onGenerateSummary: handleGenerateSummary,
+      onGenerateHeadline: handleGenerateHeadline,
+      onGenerateSkills: handleGenerateSkills,
       onSummaryChange: setSummary,
       onHeadlineChange: setHeadline,
       onUndoSummary: handleUndoSummary,
@@ -501,8 +538,12 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       tracerEnableBlocked,
       tracerEnableBlockedReason,
       isTracerReadinessChecking,
+      generateTarget,
       openSkillGroupId,
       disableInputs,
+      handleGenerateSummary,
+      handleGenerateHeadline,
+      handleGenerateSkills,
       setSummary,
       setHeadline,
       handleUndoSummary,
@@ -566,20 +607,22 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
           <Button
             onClick={handleSummarizeEditor}
-            disabled={isSummarizing || isGeneratingPdf}
+            disabled={Boolean(generateTarget) || isGeneratingPdf}
             variant="outline"
             size="sm"
           >
-            {isSummarizing ? (
+            {generateTarget === "all" ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCcw className="h-4 w-4" />
             )}
-            Generate with AI
+            Generate all
           </Button>
           <Button
             onClick={handleGeneratePdf}
-            disabled={isSummarizing || isGeneratingPdf || !isDraftReady}
+            disabled={
+              Boolean(generateTarget) || isGeneratingPdf || !isDraftReady
+            }
             size="sm"
           >
             {isGeneratingPdf ? (

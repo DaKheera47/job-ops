@@ -14,6 +14,7 @@ import type {
 
 type ProcessOptions = {
   force?: boolean;
+  fields?: Array<"summary" | "headline" | "skills">;
 };
 
 function scoreFromJob(job: Job): number {
@@ -115,14 +116,22 @@ export async function simulatePipelineRun(
 
 export async function simulateSummarizeJob(
   jobId: string,
-  _options?: ProcessOptions,
+  options?: ProcessOptions,
 ): Promise<{ success: boolean; error?: string }> {
   const job = await ensureJob(jobId);
+  const requestedFields = options?.fields;
+  const updateAll = !requestedFields?.length;
   await jobsRepo.updateJob(job.id, {
-    tailoredSummary: makeDemoSummary(job),
-    tailoredHeadline: `Demo Tailored Resume - ${job.title}`,
-    tailoredSkills: makeDemoTailoredSkills(),
-    selectedProjectIds: ensureProjectIds(job),
+    ...(updateAll || requestedFields.includes("summary")
+      ? { tailoredSummary: makeDemoSummary(job) }
+      : {}),
+    ...(updateAll || requestedFields.includes("headline")
+      ? { tailoredHeadline: `Demo Tailored Resume - ${job.title}` }
+      : {}),
+    ...(updateAll || requestedFields.includes("skills")
+      ? { tailoredSkills: makeDemoTailoredSkills() }
+      : {}),
+    ...(updateAll ? { selectedProjectIds: ensureProjectIds(job) } : {}),
   });
   return { success: true };
 }

@@ -23,6 +23,31 @@ import {
 
 export const jobsDocumentsRouter = Router();
 
+const tailoringGenerateFields = ["summary", "headline", "skills"] as const;
+type TailoringGenerateField = (typeof tailoringGenerateFields)[number];
+
+const parseTailoringGenerateFields = (
+  raw: string | undefined,
+): TailoringGenerateField[] | undefined => {
+  if (!raw) return undefined;
+  const fields = raw
+    .split(",")
+    .map((field) => field.trim())
+    .filter(Boolean);
+  const invalidFields = fields.filter(
+    (field): field is string =>
+      !tailoringGenerateFields.includes(field as TailoringGenerateField),
+  );
+  if (invalidFields.length > 0) {
+    throw badRequest("Invalid tailoring generation field", {
+      fields,
+      invalidFields,
+      allowedFields: [...tailoringGenerateFields],
+    });
+  }
+  return [...new Set(fields)] as TailoringGenerateField[];
+};
+
 jobsDocumentsRouter.post("/:id/pdf", async (req: Request, res: Response) => {
   let uploadedPath: string | null = null;
 
@@ -128,9 +153,15 @@ jobsDocumentsRouter.post(
     try {
       const forceRaw = req.query.force as string | undefined;
       const force = forceRaw === "1" || forceRaw === "true";
+      const fields = parseTailoringGenerateFields(
+        req.query.fields as string | undefined,
+      );
 
       if (isDemoMode()) {
-        const result = await simulateSummarizeJob(req.params.id, { force });
+        const result = await simulateSummarizeJob(req.params.id, {
+          force,
+          fields,
+        });
         if (!result.success) {
           return fail(
             res,
@@ -144,7 +175,7 @@ jobsDocumentsRouter.post(
       }
 
       const previousJob = await requireJob(req.params.id);
-      const result = await summarizeJob(req.params.id, { force });
+      const result = await summarizeJob(req.params.id, { force, fields });
 
       if (!result.success) {
         return fail(

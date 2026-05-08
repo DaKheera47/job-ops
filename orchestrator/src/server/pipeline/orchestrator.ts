@@ -479,6 +479,7 @@ export async function runPipeline(
 
 export type ProcessJobOptions = {
   force?: boolean;
+  fields?: Array<"summary" | "headline" | "skills">;
   requestOrigin?: string | null;
   analyticsOrigin?:
     | "move_to_ready"
@@ -511,18 +512,41 @@ export async function summarizeJob(
       let tailoredSummary = job.tailoredSummary;
       let tailoredHeadline = job.tailoredHeadline;
       let tailoredSkills = job.tailoredSkills;
+      const requestedFields = options?.fields;
+      const shouldUpdateAllTailoring = !requestedFields?.length;
+      const shouldUpdateSummary =
+        shouldUpdateAllTailoring || requestedFields.includes("summary");
+      const shouldUpdateHeadline =
+        shouldUpdateAllTailoring || requestedFields.includes("headline");
+      const shouldUpdateSkills =
+        shouldUpdateAllTailoring || requestedFields.includes("skills");
+      const shouldGenerateTailoring =
+        shouldUpdateSummary || shouldUpdateHeadline || shouldUpdateSkills;
 
-      if (!tailoredSummary || !tailoredHeadline || options?.force) {
+      if (
+        shouldGenerateTailoring &&
+        (!tailoredSummary || !tailoredHeadline || options?.force)
+      ) {
         jobLogger.info("Generating tailoring content");
         const tailoringResult = await generateTailoring(
           job.jobDescription || "",
           profile,
         );
         if (tailoringResult.success && tailoringResult.data) {
-          tailoredSummary = tailoringResult.data.summary;
-          tailoredHeadline = tailoringResult.data.headline;
-          tailoredSkills = JSON.stringify(tailoringResult.data.skills);
-        } else if (options?.force || !tailoredSummary || !tailoredHeadline) {
+          if (shouldUpdateSummary) {
+            tailoredSummary = tailoringResult.data.summary;
+          }
+          if (shouldUpdateHeadline) {
+            tailoredHeadline = tailoringResult.data.headline;
+          }
+          if (shouldUpdateSkills) {
+            tailoredSkills = JSON.stringify(tailoringResult.data.skills);
+          }
+        } else if (
+          options?.force ||
+          (shouldUpdateSummary && !tailoredSummary) ||
+          (shouldUpdateHeadline && !tailoredHeadline)
+        ) {
           return {
             success: false,
             error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
@@ -532,7 +556,7 @@ export async function summarizeJob(
 
       // 2. Suggest Projects
       let selectedProjectIds = job.selectedProjectIds;
-      if (!selectedProjectIds || options?.force) {
+      if (shouldUpdateAllTailoring && (!selectedProjectIds || options?.force)) {
         jobLogger.info("Selecting projects");
         try {
           const { catalog, selectionItems } =
@@ -567,10 +591,18 @@ export async function summarizeJob(
       }
 
       await jobsRepo.updateJob(job.id, {
-        tailoredSummary: tailoredSummary ?? undefined,
-        tailoredHeadline: tailoredHeadline ?? undefined,
-        tailoredSkills: tailoredSkills ?? undefined,
-        selectedProjectIds: selectedProjectIds ?? undefined,
+        ...(shouldUpdateSummary
+          ? { tailoredSummary: tailoredSummary ?? undefined }
+          : {}),
+        ...(shouldUpdateHeadline
+          ? { tailoredHeadline: tailoredHeadline ?? undefined }
+          : {}),
+        ...(shouldUpdateSkills
+          ? { tailoredSkills: tailoredSkills ?? undefined }
+          : {}),
+        ...(shouldUpdateAllTailoring
+          ? { selectedProjectIds: selectedProjectIds ?? undefined }
+          : {}),
       });
 
       return { success: true };

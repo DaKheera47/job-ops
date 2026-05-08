@@ -5,6 +5,7 @@ import {
   CircleAlert,
   Plus,
   Redo2,
+  Sparkles,
   Trash2,
   Undo2,
 } from "lucide-react";
@@ -39,8 +40,12 @@ interface TailoringSectionsProps {
   tracerEnableBlocked: boolean;
   tracerEnableBlockedReason: string | null;
   tracerReadinessChecking?: boolean;
+  generatingSection: "summary" | "headline" | "skills" | null;
   openSkillGroupId: string;
   disableInputs: boolean;
+  onGenerateSummary: () => void;
+  onGenerateHeadline: () => void;
+  onGenerateSkills: () => void;
   onSummaryChange: (value: string) => void;
   onHeadlineChange: (value: string) => void;
   onUndoSummary: () => void;
@@ -175,8 +180,12 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   tracerEnableBlocked,
   tracerEnableBlockedReason,
   tracerReadinessChecking = false,
+  generatingSection,
   openSkillGroupId,
   disableInputs,
+  onGenerateSummary,
+  onGenerateHeadline,
+  onGenerateSkills,
   onSummaryChange,
   onHeadlineChange,
   onUndoSummary,
@@ -202,6 +211,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
 }) => {
   const tracerToggleDisabled =
     disableInputs || (!tracerLinksEnabled && tracerEnableBlocked);
+  const generateTooltip = "Generate";
   const undoTooltip = "Undo to template";
   const redoTooltip = "Redo to AI draft";
   const skillsState: SectionState = skillsDraft.length > 0 ? "review" : "none";
@@ -219,6 +229,25 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
             <div className="mb-2 flex justify-end gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={actionButtonClass}
+                    onClick={onGenerateSummary}
+                    disabled={disableInputs}
+                    aria-label="Generate summary"
+                  >
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    {generatingSection === "summary"
+                      ? "Generating..."
+                      : generateTooltip}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{generateTooltip}</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -280,6 +309,25 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
             <div className="mb-2 flex justify-end gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={actionButtonClass}
+                    onClick={onGenerateHeadline}
+                    disabled={disableInputs}
+                    aria-label="Generate headline"
+                  >
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    {generatingSection === "headline"
+                      ? "Generating..."
+                      : generateTooltip}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{generateTooltip}</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -346,6 +394,25 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
             <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className={actionButtonClass}
+                    onClick={onGenerateSkills}
+                    disabled={disableInputs}
+                    aria-label="Generate skills"
+                  >
+                    <Sparkles className="mr-1 h-3.5 w-3.5" />
+                    {generatingSection === "skills"
+                      ? "Generating..."
+                      : generateTooltip}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{generateTooltip}</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

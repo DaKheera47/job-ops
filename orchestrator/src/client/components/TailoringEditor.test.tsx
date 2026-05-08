@@ -118,6 +118,30 @@ describe("TailoringEditor", () => {
     expect(screen.getByRole("button", { name: "Generate PDF" })).toBeEnabled();
   });
 
+  it("generates an individual tailoring section", async () => {
+    vi.mocked(api.summarizeJob).mockResolvedValueOnce(
+      createJob({ tailoredSummary: "Generated summary" }),
+    );
+
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    ensureAccordionOpen("Summary");
+    fireEvent.click(screen.getByRole("button", { name: "Generate summary" }));
+
+    await waitFor(() =>
+      expect(api.summarizeJob).toHaveBeenCalledWith("job-1", {
+        force: true,
+        fields: ["summary"],
+      }),
+    );
+    expect(screen.getByLabelText("Tailored Summary")).toHaveValue(
+      "Generated summary",
+    );
+  });
+
   it("does not rehydrate local edits from same-job prop updates", async () => {
     const { rerender } = render(
       <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,
@@ -344,7 +368,7 @@ describe("TailoringEditor", () => {
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Generate with AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate all" }));
 
     await waitFor(() => ensureAccordionOpen("Headline"));
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
