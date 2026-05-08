@@ -4,8 +4,6 @@ import { showErrorToast } from "@/client/lib/error-toast";
  *
  * Designed for a single, fast, repeatable workflow: verify → download → apply → mark applied.
  * The PDF is the primary artifact, represented abstractly through an Application Kit summary.
- *
- * Now includes inline tailoring mode for editing and regenerating PDFs without switching tabs.
  */
 
 import type { Job, ResumeProjectCatalogItem } from "@shared/types.js";
@@ -60,7 +58,6 @@ import {
 import { useProfile } from "../hooks/useProfile";
 import { useRescoreJob } from "../hooks/useRescoreJob";
 import { FitAssessment, JobHeader, TailoredSummary } from ".";
-import { TailorMode } from "./discovered-panel/TailorMode";
 import { GhostwriterDrawer } from "./ghostwriter/GhostwriterDrawer";
 import { JobDetailsEditDrawer } from "./JobDetailsEditDrawer";
 import { KbdHint } from "./KbdHint";
@@ -68,8 +65,6 @@ import { OpenJobListingButton } from "./OpenJobListingButton";
 import { ReadySummaryAccordion } from "./ReadySummaryAccordion";
 import { buildReadyPanelGoogleDorks } from "./ready-panel-google-dorks";
 import { TooltipWhenDisabled } from "./TooltipWhenDisabled";
-
-type PanelMode = "ready" | "tailor";
 
 interface ReadyPanelProps {
   job: Job | null;
@@ -84,7 +79,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   onJobMoved,
   onTailoringDirtyChange,
 }) => {
-  const [mode, setMode] = useState<PanelMode>("ready");
   const [isMarkingApplied, setIsMarkingApplied] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
@@ -134,21 +128,13 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     };
   }, [loadCatalog]);
 
-  // Reset mode when job changes
   useEffect(() => {
     const currentJobId = job?.id ?? null;
     if (previousJobIdRef.current === currentJobId) return;
     previousJobIdRef.current = currentJobId;
-    setMode("ready");
     setIsEditDetailsOpen(false);
     onTailoringDirtyChange?.(false);
   }, [job?.id, onTailoringDirtyChange]);
-
-  useEffect(() => {
-    if (mode !== "tailor") {
-      onTailoringDirtyChange?.(false);
-    }
-  }, [mode, onTailoringDirtyChange]);
 
   useEffect(() => {
     return () => onTailoringDirtyChange?.(false);
@@ -358,32 +344,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     [job, onJobUpdated],
   );
 
-  // Handler for regenerating PDF after tailoring edits
-  const handleTailorFinalize = useCallback(async () => {
-    if (!job) return;
-    try {
-      setIsRegenerating(true);
-      await api.generateJobPdf(job.id);
-      trackProductEvent("jobs_job_action_completed", {
-        action: "generate_pdf",
-        result: "success",
-        from_status: job.status,
-      });
-      toast.success("PDF regenerated");
-      await onJobUpdated();
-      setMode("ready");
-    } catch (error) {
-      trackProductEvent("jobs_job_action_completed", {
-        action: "generate_pdf",
-        result: "error",
-        from_status: job.status,
-      });
-      showErrorToast(error, "Failed to regenerate PDF");
-    } finally {
-      setIsRegenerating(false);
-    }
-  }, [job, onJobUpdated]);
-
   // Empty state
   if (!job) {
     return (
@@ -398,20 +358,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           Select a Ready job to view its application kit and take action.
         </p>
       </div>
-    );
-  }
-
-  // Tailor mode - reuse the same TailorMode component with 'ready' variant
-  if (mode === "tailor") {
-    return (
-      <TailorMode
-        job={job}
-        onBack={() => setMode("ready")}
-        onFinalize={handleTailorFinalize}
-        isFinalizing={isRegenerating}
-        variant="ready"
-        onDirtyChange={onTailoringDirtyChange}
-      />
     );
   }
 
@@ -579,11 +525,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="center" className="w-56">
-            {/* Fix/Edit actions */}
-            <DropdownMenuItem onSelect={() => setMode("tailor")}>
-              <Edit2 className="mr-2 h-4 w-4" />
-              Edit tailoring
-            </DropdownMenuItem>
             <DropdownMenuItem onSelect={openEditDetails}>
               <Edit2 className="mr-2 h-4 w-4" />
               Edit details

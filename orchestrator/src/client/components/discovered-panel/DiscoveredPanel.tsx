@@ -11,9 +11,6 @@ import { JobDetailsEditDrawer } from "../JobDetailsEditDrawer";
 import { DecideMode } from "./DecideMode";
 import { EmptyState } from "./EmptyState";
 import { ProcessingState } from "./ProcessingState";
-import { TailorMode } from "./TailorMode";
-
-type PanelMode = "decide" | "tailor";
 
 interface DiscoveredPanelProps {
   job: Job | null;
@@ -28,7 +25,6 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   onJobMoved,
   onTailoringDirtyChange,
 }) => {
-  const [mode, setMode] = useState<PanelMode>("decide");
   const [isSkipping, setIsSkipping] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
@@ -40,18 +36,11 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     const currentJobId = job?.id ?? null;
     if (previousJobIdRef.current === currentJobId) return;
     previousJobIdRef.current = currentJobId;
-    setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);
     setIsEditDetailsOpen(false);
     onTailoringDirtyChange?.(false);
   }, [job?.id, onTailoringDirtyChange]);
-
-  useEffect(() => {
-    if (mode !== "tailor") {
-      onTailoringDirtyChange?.(false);
-    }
-  }, [mode, onTailoringDirtyChange]);
 
   useEffect(() => {
     return () => onTailoringDirtyChange?.(false);
@@ -124,55 +113,6 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
   if (job.status === "processing") {
     return <ProcessingState />;
   }
-
-  return (
-    <div className="h-full">
-      {mode === "decide" ? (
-        <DecideMode
-          job={job}
-          onTailor={() => setMode("tailor")}
-          onSkip={handleSkip}
-          isSkipping={isSkipping}
-          onRescore={handleRescore}
-          isRescoring={isRescoring}
-          onEditDetails={() => setIsEditDetailsOpen(true)}
-          onCheckSponsor={async () => {
-            try {
-              await api.checkSponsor(job.id);
-              trackProductEvent("jobs_job_action_completed", {
-                action: "check_sponsor",
-                result: "success",
-                from_status: job.status,
-              });
-              await onJobUpdated();
-            } catch (error) {
-              trackProductEvent("jobs_job_action_completed", {
-                action: "check_sponsor",
-                result: "error",
-                from_status: job.status,
-              });
-              throw error;
-            }
-          }}
-        />
-      ) : (
-        <TailorMode
-          job={job}
-          onBack={() => setMode("decide")}
-          onFinalize={handleFinalize}
-          isFinalizing={isFinalizing}
-          onDirtyChange={onTailoringDirtyChange}
-        />
-      )}
-
-      <JobDetailsEditDrawer
-        open={isEditDetailsOpen}
-        onOpenChange={setIsEditDetailsOpen}
-        job={job}
-        onJobUpdated={onJobUpdated}
-      />
-    </div>
-  );
 };
 
 export default DiscoveredPanel;

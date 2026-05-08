@@ -82,7 +82,7 @@ export const DecideMode: React.FC<DecideModeProps> = ({
             ) : (
               <XCircle className="mr-2 h-4 w-4" />
             )}
-            Skip Job
+            Skip Job FUCK
             <KbdHint shortcut="s" className="ml-1.5" />
           </Button>
           <Button

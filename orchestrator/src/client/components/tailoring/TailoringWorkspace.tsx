@@ -3,13 +3,11 @@ import { useProfile } from "@client/hooks/useProfile";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import type { Job } from "@shared/types.js";
 import {
-  ArrowLeft,
   Check,
   CircleAlert,
   FileText,
   Loader2,
   RefreshCcw,
-  Sparkles,
 } from "lucide-react";
 import type React from "react";
 import type { ComponentProps } from "react";
@@ -18,7 +16,6 @@ import { toast } from "sonner";
 import { formatUserFacingError } from "@/client/lib/error-format";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import {
   Tooltip,
   TooltipContent,
@@ -34,7 +31,6 @@ import {
   serializeTailoredSkills,
   toEditableSkillGroups,
 } from "../tailoring-utils";
-import { canFinalizeTailoring } from "./rules";
 import { TailoringSections } from "./TailoringSections";
 import {
   getTailoringSavePayloadKey,
@@ -54,17 +50,7 @@ interface TailoringWorkspaceEditorProps extends TailoringWorkspaceBaseProps {
   onBeforeGenerate?: () => boolean | Promise<boolean>;
 }
 
-interface TailoringWorkspaceTailorProps extends TailoringWorkspaceBaseProps {
-  mode: "tailor";
-  onBack: () => void;
-  onFinalize: () => void;
-  isFinalizing: boolean;
-  variant?: "discovered" | "ready";
-}
-
-type TailoringWorkspaceProps =
-  | TailoringWorkspaceEditorProps
-  | TailoringWorkspaceTailorProps;
+type TailoringWorkspaceProps = TailoringWorkspaceEditorProps;
 type TailoringSectionsProps = ComponentProps<typeof TailoringSections>;
 
 interface TailoringBaseline {
@@ -142,9 +128,6 @@ const toSavePayloadFromJob = (job: Job): TailoringSavePayload => ({
 export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   props,
 ) => {
-  const editorProps = props.mode === "editor" ? props : null;
-  const tailorProps = props.mode === "tailor" ? props : null;
-
   const {
     catalog,
     isCatalogLoading,
@@ -177,11 +160,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     onDirtyChange: props.onDirtyChange,
   });
 
-  const [isSaving, setIsSaving] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("saved");
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef<Promise<void> | null>(null);
   const saveAgainRef = useRef(false);
@@ -266,13 +247,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     };
   }, []);
 
-  const persistCurrent = useCallback(async () => {
-    const updatedJob = await api.updateJob(props.job.id, savePayload);
-    applyIncomingDraft(updatedJob);
-  }, [props.job.id, savePayload, applyIncomingDraft]);
-
   const runAutosaveLoop = useCallback(async () => {
-    if (!editorProps) return;
     if (saveInFlightRef.current) {
       saveAgainRef.current = true;
       await saveInFlightRef.current;
@@ -340,10 +315,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
     saveInFlightRef.current = savePromise;
     await savePromise;
-  }, [editorProps, markSavedJob, markSavedSnapshot, props.job.id]);
+  }, [markSavedJob, markSavedSnapshot, props.job.id]);
 
   const flushAutosave = useCallback(async () => {
-    if (!editorProps) return;
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
@@ -360,10 +334,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     ) {
       await runAutosaveLoop();
     }
-  }, [editorProps, runAutosaveLoop]);
+  }, [runAutosaveLoop]);
 
   useEffect(() => {
-    if (!editorProps) return;
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
@@ -393,16 +366,14 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         autosaveTimerRef.current = null;
       }
     };
-  }, [editorProps, isDirty, runAutosaveLoop, savePayloadKey]);
+  }, [isDirty, runAutosaveLoop, savePayloadKey]);
 
   useEffect(() => {
-    if (!editorProps?.onRegisterSave) return;
-    editorProps.onRegisterSave(flushAutosave);
-  }, [editorProps, flushAutosave]);
+    if (!props.onRegisterSave) return;
+    props.onRegisterSave(flushAutosave);
+  }, [props.onRegisterSave, flushAutosave]);
 
   const handleSummarizeEditor = useCallback(async () => {
-    if (!editorProps) return;
-
     try {
       setIsSummarizing(true);
       await flushAutosave();
@@ -411,44 +382,18 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       applyIncomingDraft(updatedJob);
       setAiBaseline(toBaselineFromJob(updatedJob));
       toast.success("Draft content generated");
-      await editorProps.onUpdate();
+      await props.onUpdate();
     } catch (error) {
       showErrorToast(error, "AI summarization failed");
     } finally {
       setIsSummarizing(false);
     }
-  }, [editorProps, flushAutosave, props.job.id, applyIncomingDraft]);
-
-  const handleGenerateWithAi = useCallback(async () => {
-    if (!tailorProps) return;
-
-    try {
-      setIsGenerating(true);
-
-      if (isDirty) {
-        await persistCurrent();
-      }
-
-      const updatedJob = await api.summarizeJob(props.job.id, { force: true });
-      applyIncomingDraft(updatedJob);
-      setAiBaseline(toBaselineFromJob(updatedJob));
-
-      toast.success("Draft generated with AI", {
-        description: "Review and edit before finalizing.",
-      });
-    } catch (error) {
-      showErrorToast(error, "Failed to generate AI draft");
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [tailorProps, isDirty, persistCurrent, props.job.id, applyIncomingDraft]);
+  }, [props.onUpdate, flushAutosave, props.job.id, applyIncomingDraft]);
 
   const handleGeneratePdf = useCallback(async () => {
-    if (!editorProps) return;
-
     try {
-      const shouldProceed = editorProps.onBeforeGenerate
-        ? await editorProps.onBeforeGenerate()
+      const shouldProceed = props.onBeforeGenerate
+        ? await props.onBeforeGenerate()
         : true;
       if (shouldProceed === false) return;
 
@@ -456,7 +401,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       await flushAutosave();
       await api.generateJobPdf(props.job.id);
       toast.success("Resume PDF generated");
-      await editorProps.onUpdate();
+      await props.onUpdate();
     } catch (error) {
       const message = formatUserFacingError(error, "PDF generation failed");
       if (/tracer/i.test(message)) {
@@ -469,26 +414,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [editorProps, flushAutosave, props.job.id]);
-
-  const handleFinalize = useCallback(async () => {
-    if (!tailorProps) return;
-
-    if (isDirty) {
-      try {
-        setIsSaving(true);
-        await persistCurrent();
-      } catch {
-        toast.error("Failed to save draft before finalizing");
-        setIsSaving(false);
-        return;
-      } finally {
-        setIsSaving(false);
-      }
-    }
-
-    tailorProps.onFinalize();
-  }, [tailorProps, isDirty, persistCurrent]);
+  }, [props.onBeforeGenerate, props.onUpdate, flushAutosave, props.job.id]);
 
   const handleUndoSummary = useCallback(() => {
     setSummary(originalValues.summary);
@@ -516,11 +442,8 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     );
   }, [aiBaseline.skillsJson, setSkillsDraft]);
 
-  const disableInputs = editorProps
-    ? isSummarizing || isGeneratingPdf || isSaving
-    : isGenerating || Boolean(tailorProps?.isFinalizing) || isSaving;
+  const disableInputs = isSummarizing || isGeneratingPdf;
 
-  const canFinalize = canFinalizeTailoring(summary);
   const tailoringSectionsProps = useMemo<TailoringSectionsProps>(
     () => ({
       catalog,
@@ -600,58 +523,56 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     ],
   );
 
-  if (editorProps) {
-    return (
-      <div className="space-y-5">
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
-          <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300">
-                <Check className="h-4 w-4" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground/90">
-                  Draft ready
-                </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground/75">
-                  Review required sections before generating the PDF.
-                </p>
-              </div>
+  return (
+    <div className="space-y-5">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
+        <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300">
+              <Check className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground/90">
+                Draft ready
+              </p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground/75">
+                Review required sections before generating the PDF.
+              </p>
             </div>
-            <AutosaveStatusIcon status={autosaveStatus} />
           </div>
-
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-            <Button
-              onClick={handleSummarizeEditor}
-              disabled={isSummarizing || isGeneratingPdf}
-              variant="outline"
-              size="sm"
-            >
-              {isSummarizing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCcw className="h-4 w-4" />
-              )}
-              Generate with AI
-            </Button>
-            <Button
-              onClick={handleGeneratePdf}
-              disabled={isSummarizing || isGeneratingPdf || !summary}
-              size="sm"
-            >
-              {isGeneratingPdf ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <FileText className="h-4 w-4" />
-              )}
-              Generate PDF
-            </Button>
-          </div>
+          <AutosaveStatusIcon status={autosaveStatus} />
         </div>
 
-        <TailoringSections {...tailoringSectionsProps} />
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+          <Button
+            onClick={handleSummarizeEditor}
+            disabled={isSummarizing || isGeneratingPdf}
+            variant="outline"
+            size="sm"
+          >
+            {isSummarizing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCcw className="h-4 w-4" />
+            )}
+            Generate with AI
+          </Button>
+          <Button
+            onClick={handleGeneratePdf}
+            disabled={isSummarizing || isGeneratingPdf || !summary}
+            size="sm"
+          >
+            {isGeneratingPdf ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            Generate PDF
+          </Button>
+        </div>
       </div>
-    );
-  }
+
+      <TailoringSections {...tailoringSectionsProps} />
+    </div>
+  );
 };
