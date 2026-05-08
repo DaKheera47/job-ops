@@ -165,6 +165,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     isDirty,
     savedPayloadKey,
     applyIncomingDraft,
+    markSavedSnapshot,
     markSavedJob,
     handleToggleProject,
     handleAddSkillGroup,
@@ -303,13 +304,14 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
             getTailoringSavePayloadKey(latestPayloadRef.current) ===
               snapshotKey;
           if (latestStillMatchesSnapshot) {
-            applyIncomingDraft(updatedJob);
-            latestPayloadRef.current = updatedPayload;
+            markSavedSnapshot(snapshot);
+            latestPayloadRef.current = snapshot;
           } else {
             markSavedJob(updatedJob);
           }
-          persistedPayloadKeyRef.current =
-            getTailoringSavePayloadKey(updatedPayload);
+          persistedPayloadKeyRef.current = latestStillMatchesSnapshot
+            ? snapshotKey
+            : getTailoringSavePayloadKey(updatedPayload);
 
           const latestKey = latestPayloadRef.current
             ? getTailoringSavePayloadKey(latestPayloadRef.current)
@@ -337,7 +339,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
     saveInFlightRef.current = savePromise;
     await savePromise;
-  }, [applyIncomingDraft, editorProps, markSavedJob, props.job.id]);
+  }, [editorProps, markSavedJob, markSavedSnapshot, props.job.id]);
 
   const flushAutosave = useCallback(async () => {
     if (!editorProps) return;

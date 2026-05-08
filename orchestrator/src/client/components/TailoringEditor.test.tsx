@@ -262,6 +262,47 @@ describe("TailoringEditor", () => {
     );
   });
 
+  it("keeps the edited skill group open after autosave", async () => {
+    vi.mocked(api.updateJob).mockResolvedValueOnce(
+      createJob({
+        tailoredSkills: JSON.stringify([
+          { name: "Core", keywords: ["Node.js", "TypeScript"] },
+        ]),
+      }),
+    );
+
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+    ensureAccordionOpen("Tailored Skills");
+    ensureAccordionOpen("Core");
+
+    fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
+      target: { value: "Node.js, TypeScript" },
+    });
+
+    await waitFor(
+      () =>
+        expect(api.updateJob).toHaveBeenCalledWith(
+          "job-1",
+          expect.objectContaining({
+            tailoredSkills:
+              '[{"name":"Core","keywords":["Node.js","TypeScript"]}]',
+          }),
+        ),
+      { timeout: 2000 },
+    );
+
+    expect(screen.getByRole("button", { name: "Core" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    expect(screen.getByLabelText("Keywords (comma-separated)")).toHaveValue(
+      "Node.js, TypeScript",
+    );
+  });
+
   it("hydrates headline and skills after AI summarize", async () => {
     vi.mocked(api.summarizeJob).mockResolvedValueOnce({
       ...createJob(),
