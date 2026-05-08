@@ -69,7 +69,13 @@ interface TailoringSectionsProps {
   onTracerLinksEnabledChange: (value: boolean) => void;
 }
 
-type SectionState = "ready" | "review" | "missing" | "optional" | "source";
+type SectionState =
+  | "ready"
+  | "review"
+  | "missing"
+  | "optional"
+  | "source"
+  | "none";
 
 const sectionClass =
   "overflow-hidden rounded-md border border-border/55 bg-background/25 px-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
@@ -101,6 +107,11 @@ const stateCopy: Record<
   },
   optional: {
     label: "Optional",
+    icon: Circle,
+    className: "border-border/60 bg-muted/20 text-muted-foreground",
+  },
+  none: {
+    label: "None",
     icon: Circle,
     className: "border-border/60 bg-muted/20 text-muted-foreground",
   },
@@ -193,42 +204,14 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
     disableInputs || (!tracerLinksEnabled && tracerEnableBlocked);
   const undoTooltip = "Undo to template";
   const redoTooltip = "Redo to AI draft";
-  const skillsState: SectionState =
-    skillsDraft.length > 0 ? "review" : "missing";
-  const projectsState: SectionState =
-    selectedIds.size > 0 ? "ready" : "optional";
+  const skillsState: SectionState = skillsDraft.length > 0 ? "review" : "none";
+  const projectsState: SectionState = selectedIds.size > 0 ? "ready" : "none";
 
   return (
     <TooltipProvider>
       <Accordion type="multiple" className="space-y-2">
-        <AccordionItem value="job-description" className={sectionClass}>
-          <AccordionTrigger className={triggerClass}>
-            <SectionTriggerLabel
-              title="Job Description"
-              state={
-                sectionStateForText(jobDescription) === "ready"
-                  ? "source"
-                  : "missing"
-              }
-            />
-          </AccordionTrigger>
-          <AccordionContent className="px-3 pb-3 pt-3">
-            <label htmlFor="tailor-jd-edit" className="sr-only">
-              Job Description
-            </label>
-            <textarea
-              id="tailor-jd-edit"
-              className={`${inputClass} min-h-[120px] max-h-[250px]`}
-              value={jobDescription}
-              onChange={(event) => onDescriptionChange(event.target.value)}
-              placeholder="The raw job description..."
-              disabled={disableInputs}
-            />
-          </AccordionContent>
-        </AccordionItem>
-
         <AccordionItem value="summary" className={sectionClass}>
-          <AccordionTrigger className={triggerClass}>
+          <AccordionTrigger className={triggerClass} aria-label="Summary">
             <SectionTriggerLabel
               title="Summary"
               state={sectionStateForText(summary)}
@@ -289,7 +272,7 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         </AccordionItem>
 
         <AccordionItem value="headline" className={sectionClass}>
-          <AccordionTrigger className={triggerClass}>
+          <AccordionTrigger className={triggerClass} aria-label="Headline">
             <SectionTriggerLabel
               title="Headline"
               state={sectionStateForText(headline)}
@@ -351,11 +334,14 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         </AccordionItem>
 
         <AccordionItem value="skills" className={sectionClass}>
-          <AccordionTrigger className={triggerClass}>
+          <AccordionTrigger
+            className={triggerClass}
+            aria-label="Tailored Skills"
+          >
             <SectionTriggerLabel
               title="Tailored Skills"
               state={skillsState}
-              count={skillsDraft.length}
+              count={skillsDraft.length > 0 ? skillsDraft.length : undefined}
             />
           </AccordionTrigger>
           <AccordionContent className="px-3 pb-3 pt-3">
@@ -504,11 +490,16 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
 
         {!isCatalogLoading && catalog.length > 0 && (
           <AccordionItem value="projects" className={sectionClass}>
-            <AccordionTrigger className={triggerClass}>
+            <AccordionTrigger
+              className={triggerClass}
+              aria-label="Selected Projects"
+            >
               <SectionTriggerLabel
                 title="Selected Projects"
                 state={projectsState}
-                badgeLabel={String(selectedIds.size)}
+                badgeLabel={
+                  selectedIds.size > 0 ? String(selectedIds.size) : undefined
+                }
               />
             </AccordionTrigger>
             <AccordionContent className="px-3 pb-3 pt-3">
@@ -524,9 +515,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
         )}
 
         <AccordionItem value="tracer-links" className={sectionClass}>
-          <AccordionTrigger className={triggerClass}>
+          <AccordionTrigger className={triggerClass} aria-label="Tracer Links">
             <SectionTriggerLabel
-              title="Supporting Links"
+              title="Tracer Links"
               state={tracerLinksEnabled ? "ready" : "optional"}
             />
           </AccordionTrigger>
@@ -559,6 +550,35 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                 </p>
               ) : null}
             </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="job-description" className={sectionClass}>
+          <AccordionTrigger
+            className={triggerClass}
+            aria-label="Job Description"
+          >
+            <SectionTriggerLabel
+              title="Job Description"
+              state={
+                sectionStateForText(jobDescription) === "ready"
+                  ? "source"
+                  : "missing"
+              }
+            />
+          </AccordionTrigger>
+          <AccordionContent className="px-3 pb-3 pt-3">
+            <label htmlFor="tailor-jd-edit" className="sr-only">
+              Job Description
+            </label>
+            <textarea
+              id="tailor-jd-edit"
+              className={`${inputClass} min-h-[120px] max-h-[250px]`}
+              value={jobDescription}
+              onChange={(event) => onDescriptionChange(event.target.value)}
+              placeholder="The raw job description..."
+              disabled={disableInputs}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

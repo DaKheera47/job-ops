@@ -109,6 +109,7 @@ const AutosaveStatusIcon: React.FC<{ status: AutosaveStatus }> = ({
 
 const normalizeSkillsJson = (value: string | null | undefined) =>
   serializeTailoredSkills(parseTailoredSkills(value));
+const textHasValue = (value: string) => value.trim().length > 0;
 
 const toBaselineFromJob = (job: Job): TailoringBaseline => ({
   summary: job.tailoredSummary ?? "",
@@ -443,6 +444,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   }, [aiBaseline.skillsJson, setSkillsDraft]);
 
   const disableInputs = isSummarizing || isGeneratingPdf;
+  const isDraftReady = textHasValue(summary) && textHasValue(headline);
 
   const tailoringSectionsProps = useMemo<TailoringSectionsProps>(
     () => ({
@@ -526,17 +528,35 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   return (
     <div className="space-y-5">
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(260px,0.75fr)]">
-        <div className="flex min-h-16 items-center justify-between gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-3 py-3">
+        <div
+          className={`flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-3 ${
+            isDraftReady
+              ? "border-emerald-500/20 bg-emerald-500/[0.04]"
+              : "border-amber-500/20 bg-amber-500/[0.04]"
+          }`}
+        >
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300">
-              <Check className="h-4 w-4" />
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                isDraftReady
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                  : "border-amber-500/45 bg-amber-500/10 text-amber-300"
+              }`}
+            >
+              {isDraftReady ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <CircleAlert className="h-4 w-4" />
+              )}
             </span>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-foreground/90">
-                Draft ready
+                {isDraftReady ? "Draft ready" : "Draft incomplete"}
               </p>
               <p className="mt-0.5 text-[11px] text-muted-foreground/75">
-                Review required sections before generating the PDF.
+                {isDraftReady
+                  ? "Review optional sections before generating the PDF."
+                  : "Add a summary and headline to generate the PDF."}
               </p>
             </div>
           </div>
@@ -559,7 +579,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
           </Button>
           <Button
             onClick={handleGeneratePdf}
-            disabled={isSummarizing || isGeneratingPdf || !summary}
+            disabled={isSummarizing || isGeneratingPdf || !isDraftReady}
             size="sm"
           >
             {isGeneratingPdf ? (

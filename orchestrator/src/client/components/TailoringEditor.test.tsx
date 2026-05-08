@@ -92,6 +92,32 @@ describe("TailoringEditor", () => {
     });
   });
 
+  it("requires summary and headline before the draft is ready for PDF generation", async () => {
+    render(
+      <TailoringEditor
+        job={createJob({
+          tailoredSummary: "",
+          tailoredHeadline: "Saved headline",
+        })}
+        onUpdate={vi.fn()}
+      />,
+    );
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    expect(screen.getByText("Draft incomplete")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate PDF" })).toBeDisabled();
+
+    ensureAccordionOpen("Summary");
+    fireEvent.change(screen.getByLabelText("Tailored Summary"), {
+      target: { value: "Ready summary" },
+    });
+
+    expect(screen.getByText("Draft ready")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate PDF" })).toBeEnabled();
+  });
+
   it("does not rehydrate local edits from same-job prop updates", async () => {
     const { rerender } = render(
       <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,
@@ -318,7 +344,7 @@ describe("TailoringEditor", () => {
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Draft Content" }));
+    fireEvent.click(screen.getByRole("button", { name: "Generate with AI" }));
 
     await waitFor(() => ensureAccordionOpen("Headline"));
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
