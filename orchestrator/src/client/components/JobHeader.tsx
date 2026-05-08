@@ -31,6 +31,7 @@ interface JobHeaderProps {
   job: Job;
   className?: string;
   onCheckSponsor?: () => Promise<void>;
+  jobCTA?: React.ReactNode;
 }
 
 const ScoreMeter: React.FC<{
@@ -209,6 +210,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
   job,
   className,
   onCheckSponsor,
+  jobCTA,
 }) => {
   const jobStatus = getJobStatusIndicator(job.status);
   const tracerStatus = getTracerStatusIndicator(job.tracerLinksEnabled);
@@ -247,65 +249,72 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
           <Link
             to={`/job/${job.id}`}
             state={jobPageLinkState}
-            className="block text-base font-semibold leading-snug text-foreground/90 underline-offset-2 break-words hover:underline"
+            className="block text-xl font-bold underline-offset-2 break-words hover:underline"
           >
             {job.title}
           </Link>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{job.employer}</span>
+
+          <span>{job.employer}</span>
+
+          <div className="flex flex-wrap items-center gap-x-3 text-sm text-muted-foreground/70 mt-1">
+            {(job.location || job.isRemote) && (
+              <span className="flex items-center gap-1">
+                <MapPin className="size-4" />
+                {job.location} {job.isRemote && "Remote"}
+              </span>
+            )}
+            {deadline && (
+              <span className="flex items-center gap-1">
+                <Calendar className="size-4" />
+                {deadline}
+              </span>
+            )}
+            {job.salary && (
+              <span className="flex items-center gap-1">
+                <DollarSign className="size-4" />
+                {job.salary}
+              </span>
+            )}
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-          <Badge
-            variant="outline"
-            className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
-          >
-            {sourceLabel[job.source]}
-          </Badge>
-          {job.isRemote === true && (
+
+        <div className="flex w-full flex-col flex-wrap items-end gap-4 sm:w-auto sm:justify-end">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
             <Badge
               variant="outline"
               className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
             >
-              Remote
+              {sourceLabel[job.source]}
             </Badge>
-          )}
-          {!isJobPage && (
-            <Button
-              asChild
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-[10px] uppercase tracking-wide"
-            >
-              <Link to={`/job/${job.id}`} state={jobPageLinkState}>
-                View
-                <ArrowUpRight className="h-3 w-3" />
-              </Link>
-            </Button>
+            {job.isRemote === true && (
+              <Badge
+                variant="outline"
+                className="text-[10px] uppercase tracking-wide text-muted-foreground border-border/50"
+              >
+                Remote
+              </Badge>
+            )}
+            {!isJobPage && (
+              <Button
+                asChild
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] uppercase tracking-wide"
+              >
+                <Link to={`/job/${job.id}`} state={jobPageLinkState}>
+                  View
+                  <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </Button>
+            )}
+          </div>
+
+          {jobCTA && (
+            <div>
+              {jobCTA}
+            </div>
           )}
         </div>
-      </div>
-
-      {/* Tertiary metadata - subdued */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground/70">
-        {job.location && (
-          <span className="flex items-center gap-1">
-            <MapPin className="h-3 w-3" />
-            {job.location}
-          </span>
-        )}
-        {deadline && (
-          <span className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            {deadline}
-          </span>
-        )}
-        {job.salary && (
-          <span className="flex items-center gap-1">
-            <DollarSign className="h-3 w-3" />
-            {job.salary}
-          </span>
-        )}
       </div>
 
       {/* Status and score: single line, subdued */}

@@ -588,29 +588,8 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             await api.checkSponsor(selectedJob.id);
             await onJobUpdated();
           }}
-        />
-
-        <div
-          className={cn(
-            "relative overflow-hidden rounded-lg border p-3",
-            tone.shell,
-          )}
-        >
-          <div className={cn("absolute inset-y-0 left-0 w-1", tone.icon)} />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div
-                className={cn(
-                  "text-[10px] font-semibold uppercase tracking-wide",
-                  tone.eyebrow,
-                )}
-              >
-                Next step
-              </div>
-              <p className="mt-1 text-xs text-foreground/80">
-                {getJobStageNote(selectedJob)}
-              </p>
-            </div>
+          jobCTA={
+            <>
             <div className="flex shrink-0 gap-2">
               <Button
                 size="sm"
@@ -732,9 +711,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
+            </div></>
+          }
+        />
+
+        {/* <div
+          className={cn(
+            "relative overflow-hidden rounded-lg border p-3",
+            tone.shell,
+          )}
+        >
+          <div className={cn("absolute inset-y-0 left-0 w-1", tone.icon)} />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
           </div>
-        </div>
+        </div> */}
       </div>
 
       <Tabs
@@ -776,10 +767,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             })}
           </TabsList>
         </TooltipProvider>
-
-        <div className="mt-2 border-l border-border/50 pl-2 text-[10px] text-muted-foreground/65">
-          {tabCopy[inspectorTab].description}
-        </div>
 
         <TabsContent value="brief" className="min-h-0 flex-1 space-y-4 pt-3">
           <div className="grid gap-2 sm:grid-cols-2">
