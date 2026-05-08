@@ -130,9 +130,17 @@ export async function simulateSummarizeJob(
 export async function simulateGeneratePdf(
   jobId: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const job = await ensureJob(jobId);
-  await persistDemoGeneratedPdf(job);
-  return { success: true };
+  try {
+    const job = await ensureJob(jobId);
+    await persistDemoGeneratedPdf(job);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to generate demo PDF",
+    };
+  }
 }
 
 export async function simulateProcessJob(

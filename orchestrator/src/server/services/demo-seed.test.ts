@@ -21,8 +21,10 @@ const pdfMocks = vi.hoisted(() => ({
   generatePdf: vi.fn(),
 }));
 
-vi.mock("./pdf", async () => {
-  const actual = await vi.importActual<typeof import("./pdf")>("./pdf");
+vi.mock("@server/services/pdf", async () => {
+  const actual = await vi.importActual<typeof import("@server/services/pdf")>(
+    "@server/services/pdf",
+  );
   return {
     ...actual,
     generatePdf: pdfMocks.generatePdf,
