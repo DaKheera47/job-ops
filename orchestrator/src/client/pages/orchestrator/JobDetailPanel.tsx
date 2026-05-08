@@ -583,7 +583,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     <Tabs
       value={inspectorTab}
       onValueChange={(value) => setInspectorTab(value as InspectorTab)}
-      className='flex min-h-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto'
+      className='flex min-h-0 min-w-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto'
     >
         <TooltipProvider delayDuration={0}>
           <TabsList className='grid h-auto grid-cols-3 gap-1 rounded-lg text-xs bg-muted/90 mb-4'>
@@ -767,7 +767,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
         <TabsContent
           value='brief'
-          className='min-h-0 flex-1 space-y-4 pt-3'
+          className='space-y-4 pt-3'
         >
           <div className='grid gap-2 sm:grid-cols-2'>
             <Stat
@@ -910,7 +910,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
         <TabsContent
           value='tailoring'
-          className='min-h-0 flex-1 space-y-4 pt-3'
+          className='space-y-4 pt-3'
         >
           <TailoringWorkspace
             mode='editor'
@@ -922,7 +922,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
 
         <TabsContent
           value='apply'
-          className='min-h-0 flex-1 space-y-4 pt-3'
+          className='space-y-4 pt-3'
         >
           <div className='space-y-3 pb-1'>
             <div>
