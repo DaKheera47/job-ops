@@ -50,7 +50,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -714,18 +714,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </div></>
           }
         />
-
-        {/* <div
-          className={cn(
-            "relative overflow-hidden rounded-lg border p-3",
-            tone.shell,
-          )}
-        >
-          <div className={cn("absolute inset-y-0 left-0 w-1", tone.icon)} />
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-
-          </div>
-        </div> */}
       </div>
 
       <Tabs
@@ -734,7 +722,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         className="flex min-h-0 flex-1 flex-col"
       >
         <TooltipProvider delayDuration={0}>
-          <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg border border-border/35 bg-background/30 p-1 text-xs">
+          <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg bg-transparent text-xs">
             {Object.entries(tabCopy).map(([value, copy]) => {
               const isSelected = inspectorTab === value;
               const trigger = (
@@ -742,7 +730,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   key={value}
                   value={value}
                   className={cn(
-                    "h-9 gap-2 border border-transparent text-xs text-muted-foreground data-[state=active]:shadow-none",
+                    buttonVariants({ variant: "outline" }),
                     isSelected && copy.selectedClassName,
                   )}
                 >
