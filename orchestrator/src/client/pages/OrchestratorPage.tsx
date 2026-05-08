@@ -471,7 +471,6 @@ export const OrchestratorPage: React.FC = () => {
 
             {/* Inspector panel: visually subordinate to list */}
             {isDesktop && (
-              <div className="min-w-0 rounded-lg border border-border/40 bg-card p-4 lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
                 <JobDetailPanel
                   activeTab={activeTab}
                   activeJobs={activeJobs}
@@ -480,7 +479,6 @@ export const OrchestratorPage: React.FC = () => {
                   onJobUpdated={loadJobs}
                   onPauseRefreshChange={setIsRefreshPaused}
                 />
-              </div>
             )}
           </div>
         </section>
