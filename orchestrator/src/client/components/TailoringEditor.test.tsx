@@ -142,6 +142,17 @@ describe("TailoringEditor", () => {
     );
   });
 
+  it("marks tailored skills ready when every group has a category and keywords", async () => {
+    render(<TailoringEditor job={createJob()} onUpdate={vi.fn()} />);
+    await waitFor(() =>
+      expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Tailored Skills Ready 1" }),
+    ).toBeInTheDocument();
+  });
+
   it("does not rehydrate local edits from same-job prop updates", async () => {
     const { rerender } = render(
       <TailoringEditor job={createJob()} onUpdate={vi.fn()} />,

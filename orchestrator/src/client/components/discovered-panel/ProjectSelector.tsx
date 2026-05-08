@@ -32,7 +32,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
         )}
       </div>
 
-      <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
+      <div className="space-y-1.5">
         {catalog.length === 0 ? (
           <div className="text-xs text-muted-foreground text-center py-4">
             Loading projects...

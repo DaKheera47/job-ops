@@ -132,6 +132,15 @@ const textHasValue = (value: string) => value.trim().length > 0;
 const sectionStateForText = (value: string): SectionState =>
   textHasValue(value) ? "ready" : "missing";
 
+const skillGroupHasKeywords = (keywordsText: string) =>
+  keywordsText
+    .split(",")
+    .map((keyword) => keyword.trim())
+    .some(Boolean);
+
+const skillGroupNeedsReview = (group: EditableSkillGroup) =>
+  !textHasValue(group.name) || !skillGroupHasKeywords(group.keywordsText);
+
 const SectionTriggerLabel: React.FC<{
   title: string;
   state: SectionState;
@@ -214,7 +223,12 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   const generateTooltip = "Generate";
   const undoTooltip = "Undo to template";
   const redoTooltip = "Redo to AI draft";
-  const skillsState: SectionState = skillsDraft.length > 0 ? "review" : "none";
+  const skillsState: SectionState =
+    skillsDraft.length === 0
+      ? "none"
+      : skillsDraft.some(skillGroupNeedsReview)
+        ? "review"
+        : "ready";
   const projectsState: SectionState = selectedIds.size > 0 ? "ready" : "none";
 
   return (

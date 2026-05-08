@@ -619,7 +619,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             })}
           </TabsList>
         </TooltipProvider>
-      <div className='flex min-h-[520px] flex-col gap-4 min-w-0 rounded-lg border border-border bg-card p-4'>
+      <div className='flex flex-col gap-4 min-w-0 rounded-lg border border-border bg-card p-4'>
 
         <div className='space-y-4'>
           <JobHeader
