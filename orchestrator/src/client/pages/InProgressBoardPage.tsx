@@ -262,14 +262,14 @@ export const InProgressBoardPage: React.FC = () => {
           </div>
         }
       />
-      <PageMain className="max-w-[1600px]">
+      <PageMain className="flex h-[calc(100dvh-5rem)] max-w-[1600px] flex-col">
         {isLoading ? (
           <div className="rounded-lg border border-dashed border-border/60 p-6 text-sm text-muted-foreground">
             Loading board...
           </div>
         ) : (
-          <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max items-start gap-4">
+          <div className="min-h-0 flex-1 overflow-x-auto pb-2">
+            <div className="flex h-full min-w-max items-stretch gap-4">
               {BOARD_STAGES.map((stage) => {
                 const laneCards = lanes[stage];
                 return (
@@ -291,7 +291,7 @@ export const InProgressBoardPage: React.FC = () => {
                       }
                     }}
                     className={cn(
-                      "w-[320px] self-start rounded-xl border border-border/70 bg-muted/30 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.8)] transition-colors",
+                      "flex h-full w-[320px] flex-col rounded-xl border border-border/70 bg-muted/30 shadow-[0_10px_24px_-20px_rgba(0,0,0,0.8)] transition-colors",
                       dropTargetStage === stage &&
                         "border-sky-400/70 bg-sky-500/15",
                     )}
@@ -312,7 +312,7 @@ export const InProgressBoardPage: React.FC = () => {
                       </Badge>
                     </header>
 
-                    <div className="max-h-[calc(100vh-15rem)] space-y-2 overflow-y-auto p-2.5">
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
                       {laneCards.length === 0 ? (
                         <div className="rounded-md border border-dashed border-border/35 bg-background/20 px-2.5 py-2 text-[11px] text-muted-foreground/80">
                           Drop a card here or log a stage.
