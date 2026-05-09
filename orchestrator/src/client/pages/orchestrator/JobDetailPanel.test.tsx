@@ -52,7 +52,9 @@ vi.mock("@/components/ui/dropdown-menu", () => {
 });
 
 vi.mock("@client/components", () => ({
-  JobHeader: () => <div data-testid="job-header" />,
+  JobHeader: ({ jobCTA }: { jobCTA?: React.ReactNode }) => (
+    <div data-testid="job-header">{jobCTA}</div>
+  ),
   FitAssessment: () => <div data-testid="fit-assessment" />,
   TailoredSummary: () => <div data-testid="tailored-summary" />,
 }));
