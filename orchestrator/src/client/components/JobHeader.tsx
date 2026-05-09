@@ -260,7 +260,8 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             {(job.location || job.isRemote) && (
               <span className="flex items-center gap-1">
                 <MapPin className="size-4" />
-                {job.location?.trim()}{job.isRemote && ", Remote"}
+                {job.location?.trim()}
+                {job.isRemote && ", Remote"}
               </span>
             )}
             {deadline && (
@@ -309,11 +310,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
             )}
           </div>
 
-          {jobCTA && (
-            <div>
-              {jobCTA}
-            </div>
-          )}
+          {jobCTA && <div>{jobCTA}</div>}
         </div>
       </div>
 

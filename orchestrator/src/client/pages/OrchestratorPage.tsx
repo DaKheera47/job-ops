@@ -471,14 +471,14 @@ export const OrchestratorPage: React.FC = () => {
 
             {/* Inspector panel: visually subordinate to list */}
             {isDesktop && (
-                <JobDetailPanel
-                  activeTab={activeTab}
-                  activeJobs={activeJobs}
-                  selectedJob={visibleSelectedJob}
-                  onSelectJobId={handleSelectJobId}
-                  onJobUpdated={loadJobs}
-                  onPauseRefreshChange={setIsRefreshPaused}
-                />
+              <JobDetailPanel
+                activeTab={activeTab}
+                activeJobs={activeJobs}
+                selectedJob={visibleSelectedJob}
+                onSelectJobId={handleSelectJobId}
+                onJobUpdated={loadJobs}
+                onPauseRefreshChange={setIsRefreshPaused}
+              />
             )}
           </div>
         </section>
