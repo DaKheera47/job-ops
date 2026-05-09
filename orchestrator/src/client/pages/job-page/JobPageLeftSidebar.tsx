@@ -94,7 +94,7 @@ const getSuitabilityScoreTokens = (score: number | null) => {
   };
 };
 
-const ScoreRing: React.FC<{ score: number | null }> = ({ score }) => {
+export const ScoreRing: React.FC<{ score: number | null, size?: "sm" | "lg" }> = ({ score, size = "lg" }) => {
   const tokens = getSuitabilityScoreTokens(score);
 
   return (
@@ -102,17 +102,20 @@ const ScoreRing: React.FC<{ score: number | null }> = ({ score }) => {
       role="img"
       aria-label={tokens.label}
       className={cn(
-        "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
+        size === "sm"
+          ? "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 p-1"
+          : "flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 p-1",
         tokens.shell,
       )}
     >
       <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div className="text-2xl font-semibold leading-none tabular-nums">
+        <div className={cn(size === "sm" ? "text-lg" : "text-2xl", "font-semibold leading-none tabular-nums")}>
           {tokens.value}
         </div>
-        <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
-          score
-        </div>
+        {
+          size === "lg" &&
+             <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">score</div>
+        }
       </div>
     </div>
   );

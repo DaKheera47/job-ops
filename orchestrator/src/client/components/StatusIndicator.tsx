@@ -64,6 +64,7 @@ const StatusIndicator: React.FC<StatusIndicatorProps> = ({
   const content = (
     <span
       className={cn(
+        "whitespace-nowrap",
         appearance === "badge"
           ? "inline-flex items-center gap-2 rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
           : STATUS_INDICATOR_BASE_CLASS,

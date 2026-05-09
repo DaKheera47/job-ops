@@ -31,6 +31,7 @@ import type {
 } from "@shared/types.js";
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   CircleAlert,
   Copy,
@@ -77,6 +78,7 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import type { FilterTab } from "./constants";
+import { Link, useLocation } from "react-router-dom";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
@@ -602,15 +604,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     selectedJob.status === "ready" && (!hasJobListing || hasOpenedJobListing);
   const activeApplyCtaClassName =
     "border-emerald-500/40 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white";
+  const location = useLocation();
+  const { pathname } = location;
+  const isJobPage = pathname.startsWith("/job/");
+  const jobPageLinkState = isJobPage
+    ? undefined
+    : { jobPageBackTo: `${location.pathname}${location.search}` };
 
   return (
     <Tabs
       value={inspectorTab}
       onValueChange={(value) => setInspectorTab(value as InspectorTab)}
-      className="flex min-h-0 min-w-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto"
+      className="flex min-h-0 min-w-0 flex-1 flex-col lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto p-1"
     >
       <TooltipProvider delayDuration={0}>
-        <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg text-xs bg-muted/90 mb-4">
+        <TabsList className="grid h-auto grid-cols-3 gap-1 rounded-lg text-sm bg-muted/90 mb-4">
           {Object.entries(tabCopy).map(([value, copy]) => {
             const isSelected = inspectorTab === value;
             const trigger = (
@@ -625,7 +633,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <span
                   className={cn("h-1.5 w-1.5 rounded-full", copy.dotClassName)}
                 />
-                <span className="text-xs">{copy.label}</span>
+                <span className="text-sm">{copy.label}</span>
               </TabsTrigger>
             );
 
@@ -640,146 +648,144 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           })}
         </TabsList>
       </TooltipProvider>
-      <div className="flex flex-col gap-4 min-w-0 rounded-lg border border-border bg-card p-4">
-        <div className="space-y-4">
-          <JobHeader
-            job={selectedJob}
-            onCheckSponsor={async () => {
-              await api.checkSponsor(selectedJob.id);
-              await onJobUpdated();
-            }}
-            jobCTA={
-              <div className="flex shrink-0 gap-2">
-                <GhostwriterDrawer
-                  job={selectedJob}
-                  triggerLabel="Ask Ghostwriter"
-                  triggerVariant="ghost"
-                />
-                <Button
-                  size="sm"
-                  onClick={() => void handlePrimaryAction()}
-                  disabled={primaryBusy || selectedJob.status === "processing"}
-                  className={cn(tone.button)}
-                >
-                  {primaryBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : selectedJob.status === "discovered" ? (
-                    <Sparkles className="h-3.5 w-3.5" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  )}
-                  {getPrimaryAction(selectedJob)}
-                  {selectedJob.status === "ready" ? (
-                    <KbdHint shortcut="a" className="ml-1" />
-                  ) : null}
-                </Button>
+        <JobHeader
+          job={selectedJob}
+          onCheckSponsor={async () => {
+            await api.checkSponsor(selectedJob.id);
+            await onJobUpdated();
+          }}
+          jobCTA={
+            <div className="flex shrink-0 gap-2">
+              <GhostwriterDrawer
+                job={selectedJob}
+                triggerLabel="Ask Ghostwriter"
+                triggerVariant="ghost"
+              />
+              <Button
+                size="sm"
+                onClick={() => void handlePrimaryAction()}
+                disabled={primaryBusy || selectedJob.status === "processing"}
+                className={cn(tone.button)}
+              >
+                {primaryBusy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : selectedJob.status === "discovered" ? (
+                  <Sparkles className="h-3.5 w-3.5" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+                {getPrimaryAction(selectedJob)}
+                {selectedJob.status === "ready" ? (
+                  <KbdHint shortcut="a" className="ml-1" />
+                ) : null}
+              </Button>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="More actions"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onSelect={openEditDetails}>
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit details
-                    </DropdownMenuItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem onSelect={openEditDetails}>
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Edit details
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      setInspectorTab("brief");
+                      setIsEditingDescription(true);
+                    }}
+                  >
+                    <Edit2 className="mr-2 h-4 w-4" />
+                    Edit job description
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void handleCopyInfo()}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy job info
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => rescoreJob(selectedJob.id)}
+                    disabled={isRescoring}
+                  >
+                    <RefreshCcw
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        isRescoring && "animate-spin",
+                      )}
+                    />
+                    {isRescoring ? "Recalculating..." : "Recalculate match"}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {canGenerate && (
                     <DropdownMenuItem
-                      onSelect={() => {
-                        setInspectorTab("brief");
-                        setIsEditingDescription(true);
-                      }}
-                    >
-                      <Edit2 className="mr-2 h-4 w-4" />
-                      Edit job description
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => void handleCopyInfo()}>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copy job info
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => rescoreJob(selectedJob.id)}
-                      disabled={isRescoring}
+                      onSelect={() => void handleProcess()}
+                      disabled={isProcessing}
                     >
                       <RefreshCcw
                         className={cn(
                           "mr-2 h-4 w-4",
-                          isRescoring && "animate-spin",
+                          isProcessing && "animate-spin",
                         )}
                       />
-                      {isRescoring ? "Recalculating..." : "Recalculate match"}
+                      {selectedJob.status === "ready"
+                        ? "Regenerate PDF"
+                        : "Generate PDF"}
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {canGenerate && (
+                  )}
+                  <DropdownMenuItem
+                    onSelect={() => uploadPdfInputRef.current?.click()}
+                    disabled={isUploadingPdf}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    {isUploadingPdf
+                      ? "Uploading PDF..."
+                      : selectedJob.pdfPath
+                        ? "Replace PDF"
+                        : "Upload PDF"}
+                  </DropdownMenuItem>
+                  {selectedJob.pdfPath && (
+                    <>
                       <DropdownMenuItem
-                        onSelect={() => void handleProcess()}
-                        disabled={isProcessing}
+                        onSelect={handleOpenPdf}
+                        disabled={pdfActionDisabled}
                       >
-                        <RefreshCcw
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            isProcessing && "animate-spin",
-                          )}
-                        />
-                        {selectedJob.status === "ready"
-                          ? "Regenerate PDF"
-                          : "Generate PDF"}
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        {pdfLabels.view}
                       </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem
-                      onSelect={() => uploadPdfInputRef.current?.click()}
-                      disabled={isUploadingPdf}
-                    >
-                      <Upload className="mr-2 h-4 w-4" />
-                      {isUploadingPdf
-                        ? "Uploading PDF..."
-                        : selectedJob.pdfPath
-                          ? "Replace PDF"
-                          : "Upload PDF"}
-                    </DropdownMenuItem>
-                    {selectedJob.pdfPath && (
-                      <>
-                        <DropdownMenuItem
-                          onSelect={handleOpenPdf}
-                          disabled={pdfActionDisabled}
-                        >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          {pdfLabels.view}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={handleDownloadPdf}
-                          disabled={pdfActionDisabled}
-                        >
-                          <Download className="mr-2 h-4 w-4" />
-                          {pdfLabels.download}
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {canSkip && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={() => void handleSkip()}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Skip job
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            }
-          />
-        </div>
+                      <DropdownMenuItem
+                        onSelect={handleDownloadPdf}
+                        disabled={pdfActionDisabled}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        {pdfLabels.download}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canSkip && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onSelect={() => void handleSkip()}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Skip job
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          }
+        />
 
-        <TabsContent value="brief" className="space-y-4 pt-3">
+      <div className="flex flex-col min-w-0 rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4">
+        <TabsContent value="brief">
           <div className="grid gap-2 sm:grid-cols-2">
             <Stat label="Location" value={selectedJob.location} tone="blue" />
             <Stat label="Salary" value={selectedJob.salary} tone="green" />
@@ -890,7 +896,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           </div>
         </TabsContent>
 
-        <TabsContent value="tailoring" className="space-y-4 pt-3">
+        <TabsContent value="tailoring">
           <TailoringWorkspace
             mode="editor"
             job={selectedJob}
@@ -899,7 +905,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           />
         </TabsContent>
 
-        <TabsContent value="apply" className="pt-3">
+        <TabsContent value="apply">
           <div className="space-y-5">
             {isStalePdf && (
               <div className="flex items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100">
@@ -917,33 +923,45 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     : "border-amber-500/20 bg-amber-500/[0.04]",
                 )}
               >
-                <div className="flex min-w-0 items-center gap-3">
-                  <span
-                    className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
-                      applicationKitReady
-                        ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                        : "border-amber-500/45 bg-amber-500/10 text-amber-300",
-                    )}
-                  >
-                    {applicationKitReady ? (
-                      <CheckCircle2 className="h-4 w-4" />
-                    ) : (
-                      <CircleAlert className="h-4 w-4" />
-                    )}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground/90">
-                      {applicationKitReady
-                        ? "Application materials ready"
-                        : "Application materials need review"}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-muted-foreground/75">
-                      {applicationKitReady
-                        ? "Tailored summary, skills, and PDF are ready for this role."
-                        : "Check the application kit before submitting this role."}
-                    </p>
+                <div className="flex min-w-0 items-center w-full justify-between">
+                  <div className="flex gap-3">
+                    <span
+                      className={cn(
+                        "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border",
+                        applicationKitReady
+                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                          : "border-amber-500/45 bg-amber-500/10 text-amber-300",
+                      )}
+                    >
+                      {applicationKitReady ? (
+                        <CheckCircle2 className="h-4 w-4" />
+                      ) : (
+                        <CircleAlert className="h-4 w-4" />
+                      )}
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground/90">
+                        {applicationKitReady
+                          ? "Application materials ready"
+                          : "Application materials need review"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground/75">
+                        {applicationKitReady
+                          ? "Tailored summary, skills, and PDF are ready for this role."
+                          : "Check the application kit before submitting this role."}
+                      </p>
+                    </div>
                   </div>
+
+                  <Button
+                    asChild
+                    variant="outline"
+                  >
+                    <Link to={`/job/${selectedJob.id}`} state={jobPageLinkState}>
+                      Open Job Page
+                      <ArrowRight />
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>
