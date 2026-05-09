@@ -925,17 +925,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           className='space-y-4 pt-3'
         >
           <div className='space-y-3 pb-1'>
-            <div>
-              <h3 className='text-sm font-semibold text-foreground/85'>
-                Application kit
-              </h3>
-              <p className='mt-0.5 text-[10px] text-muted-foreground/70'>
-                Open, write, and use the generated materials for this job.
-              </p>
-            </div>
-            <div className='grid gap-2 sm:grid-cols-2 xl:grid-cols-3'>
+            <div className='grid gap-2 sm:grid-cols-2'>
               {isStalePdf && (
-                <div className='flex items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100 sm:col-span-2 xl:col-span-3'>
+                <div className='flex items-start gap-2 rounded-md border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-100 sm:col-span-2'>
                   <AlertTriangle className='mt-0.5 h-3.5 w-3.5 shrink-0' />
                   <span>{STALE_PDF_MESSAGE}</span>
                 </div>
@@ -981,23 +973,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   {pdfLabels.view}
                 </Button>
               </TooltipWhenDisabled>
-              {canGenerate && (
-                <Button
-                  variant='outline'
-                  className='h-10 w-full gap-1.5 px-2 text-xs'
-                  onClick={() => void handleProcess()}
-                  disabled={isProcessing || isRegeneratingPdf}
-                >
-                  {isProcessing ? (
-                    <Loader2 className='h-3.5 w-3.5 animate-spin' />
-                  ) : (
-                    <RefreshCcw className='h-3.5 w-3.5' />
-                  )}
-                  {selectedJob.status === "ready"
-                    ? "Regenerate PDF"
-                    : "Generate PDF"}
-                </Button>
-              )}
             </div>
           </div>
 
