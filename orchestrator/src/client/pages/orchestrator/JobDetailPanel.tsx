@@ -654,7 +654,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   size="sm"
                   onClick={() => void handlePrimaryAction()}
                   disabled={primaryBusy || selectedJob.status === "processing"}
-                  className={cn("h-9 gap-1.5 px-3 text-xs", tone.button)}
+                  className={cn(tone.button)}
                 >
                   {primaryBusy ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -674,7 +674,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-9 w-9"
                       aria-label="More actions"
                     >
                       <MoreHorizontal className="h-4 w-4" />
@@ -806,7 +805,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                         asChild
                       >
                         <a
@@ -822,7 +820,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         void copyTextToClipboard(
                           selectedJob.jobDescription || "",
@@ -836,7 +833,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => setIsEditingDescription(true)}
                     >
                       <Edit2 className="mr-1.5 h-3.5 w-3.5" />
@@ -848,7 +844,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
                       onClick={() => {
                         setIsEditingDescription(false);
                         setEditedDescription(selectedJob.jobDescription || "");
@@ -860,7 +855,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                     <Button
                       size="sm"
                       variant="secondary"
-                      className="h-8 px-2 text-xs"
                       onClick={() => void handleSaveDescription()}
                       disabled={isSavingDescription}
                     >
@@ -956,12 +950,26 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               <GhostwriterDrawer
                 job={selectedJob}
-                triggerClassName="h-11 w-full justify-center gap-2 px-3 text-sm"
               />
+                            <TooltipWhenDisabled
+                reason={pdfRegeneratingReason}
+                className="w-full"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadPdf}
+                  disabled={pdfActionDisabled}
+                >
+                  <Download className="size-3.5" />
+                  {pdfLabels.download}
+                  <KbdHint shortcut="d" className="ml-auto" />
+                </Button>
+              </TooltipWhenDisabled>
               <OpenJobListingButton
                 href={jobLink}
+                size="sm"
                 className={cn(
-                  "h-11 w-full px-3 text-sm",
                   openListingIsPrimary && activeApplyCtaClassName,
                 )}
                 shortcut="o"
@@ -971,35 +979,20 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <Button
                 variant={markAppliedIsPrimary ? "default" : "outline"}
                 className={cn(
-                  "h-11 w-full gap-2 px-3 text-sm",
                   markAppliedIsPrimary && activeApplyCtaClassName,
                 )}
+                size="sm"
                 onClick={() => void handleMarkApplied()}
                 disabled={selectedJob.status !== "ready" || primaryBusy}
               >
                 {isApplying ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <CheckCircle2 className="h-4 w-4" />
+                  <CheckCircle2 className="size-3.5" />
                 )}
                 Mark Applied
                 <KbdHint shortcut="a" className="ml-auto" />
               </Button>
-              <TooltipWhenDisabled
-                reason={pdfRegeneratingReason}
-                className="w-full"
-              >
-                <Button
-                  variant="outline"
-                  className="h-11 w-full gap-2 px-3 text-sm"
-                  onClick={handleDownloadPdf}
-                  disabled={pdfActionDisabled}
-                >
-                  <Download className="h-4 w-4" />
-                  {pdfLabels.download}
-                  <KbdHint shortcut="d" className="ml-auto" />
-                </Button>
-              </TooltipWhenDisabled>
             </div>
 
             <div>
