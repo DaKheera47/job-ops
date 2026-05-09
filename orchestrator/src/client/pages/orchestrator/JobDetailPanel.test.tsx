@@ -2,7 +2,13 @@ import * as api from "@client/api";
 import { renderWithQueryClient } from "@client/test/renderWithQueryClient";
 import { createJob } from "@shared/testing/factories.js";
 import type { Job } from "@shared/types.js";
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { JobDetailPanel } from "./JobDetailPanel";
@@ -145,6 +151,8 @@ const renderJobDetailPanel = async (
   return rendered;
 };
 
+const getApplyPanel = () => screen.getByRole("tabpanel", { name: /apply/i });
+
 describe("JobDetailPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -196,7 +204,44 @@ describe("JobDetailPanel", () => {
     expect(
       screen.getByRole("button", { name: /download old pdf/i }),
     ).toBeEnabled();
-    expect(screen.getByRole("button", { name: /view old pdf/i })).toBeEnabled();
+    expect(
+      within(getApplyPanel()).queryByRole("button", { name: /view old pdf/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /view old pdf/i }),
+    ).toBeEnabled();
+  });
+
+  it("promotes Mark Applied after the ready job listing is opened", async () => {
+    const job = createJob({
+      status: "ready",
+      jobUrl: "https://example.com/apply",
+      applicationLink: null,
+    });
+
+    await renderJobDetailPanel({
+      activeTab: "ready",
+      activeJobs: [job],
+      selectedJob: job,
+      onSelectJobId: vi.fn(),
+      onJobUpdated: vi.fn().mockResolvedValue(undefined),
+    });
+
+    const applyPanel = within(getApplyPanel());
+    const openListing = applyPanel.getByRole("link", {
+      name: /open job listing/i,
+    });
+    const markApplied = applyPanel.getByRole("button", {
+      name: /mark applied/i,
+    });
+
+    expect(openListing).toHaveClass("bg-emerald-600");
+    expect(markApplied).not.toHaveClass("bg-emerald-600");
+
+    fireEvent.click(openListing);
+
+    expect(openListing).not.toHaveClass("bg-emerald-600");
+    expect(markApplied).toHaveClass("bg-emerald-600");
   });
 
   it("disables application-kit PDF actions while regeneration is active", async () => {
@@ -221,7 +266,9 @@ describe("JobDetailPanel", () => {
     expect(
       screen.getByRole("button", { name: /download pdf/i }),
     ).toBeDisabled();
-    expect(screen.getByRole("button", { name: /view pdf/i })).toBeDisabled();
+    expect(
+      within(getApplyPanel()).queryByRole("button", { name: /view pdf/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an empty state when no job is selected", async () => {
@@ -381,7 +428,9 @@ describe("JobDetailPanel", () => {
       onJobUpdated,
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /applied/i }));
+    fireEvent.click(
+      within(getApplyPanel()).getByRole("button", { name: /mark applied/i }),
+    );
 
     await waitFor(() =>
       expect(api.markAsApplied).toHaveBeenCalledWith("job-1"),

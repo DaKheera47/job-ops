@@ -297,6 +297,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false);
   const [catalog, setCatalog] = useState<ResumeProjectCatalogItem[]>([]);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [openedListingJobIds, setOpenedListingJobIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const uploadPdfInputRef = useRef<HTMLInputElement | null>(null);
   const previousSelectionKeyRef = useRef<string | null>(null);
   const markAsAppliedMutation = useMarkAsAppliedMutation();
@@ -329,6 +332,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const hasTailoredSummary = Boolean(selectedJob?.tailoredSummary);
   const hasTailoredSkills = Boolean(selectedJob?.tailoredSkills);
   const hasResumePdf = Boolean(selectedJob?.pdfPath);
+  const hasJobListing = Boolean(jobLink && jobLink !== "#");
+  const hasOpenedJobListing = selectedJob
+    ? openedListingJobIds.has(selectedJob.id)
+    : false;
   const applicationKitReady =
     hasTailoredSummary && hasTailoredSkills && hasResumePdf;
 
@@ -440,6 +447,29 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     }
   }, [handleJobMoved, onJobUpdated, selectedJob]);
 
+  const handleMarkApplied = useCallback(async () => {
+    if (!selectedJob || selectedJob.status !== "ready") return;
+    try {
+      setIsApplying(true);
+      await markAsAppliedMutation.mutateAsync(selectedJob.id);
+      trackProductEvent("jobs_job_action_completed", {
+        action: "mark_applied",
+        result: "success",
+        from_status: selectedJob.status,
+        to_status: "applied",
+      });
+      toast.success("Marked as applied", {
+        description: `${selectedJob.title} at ${selectedJob.employer}`,
+      });
+      handleJobMoved(selectedJob.id);
+      await onJobUpdated();
+    } catch (error) {
+      showErrorToast(error, "Failed to mark as applied");
+    } finally {
+      setIsApplying(false);
+    }
+  }, [handleJobMoved, markAsAppliedMutation, onJobUpdated, selectedJob]);
+
   const handlePrimaryAction = useCallback(async () => {
     if (!selectedJob) return;
     if (selectedJob.status === "discovered") {
@@ -447,25 +477,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       return;
     }
     if (selectedJob.status === "ready") {
-      try {
-        setIsApplying(true);
-        await markAsAppliedMutation.mutateAsync(selectedJob.id);
-        trackProductEvent("jobs_job_action_completed", {
-          action: "mark_applied",
-          result: "success",
-          from_status: selectedJob.status,
-          to_status: "applied",
-        });
-        toast.success("Marked as applied", {
-          description: `${selectedJob.title} at ${selectedJob.employer}`,
-        });
-        handleJobMoved(selectedJob.id);
-        await onJobUpdated();
-      } catch (error) {
-        showErrorToast(error, "Failed to mark as applied");
-      } finally {
-        setIsApplying(false);
-      }
+      await handleMarkApplied();
       return;
     }
     if (selectedJob.status === "applied") {
@@ -488,7 +500,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       return;
     }
     setInspectorTab("brief");
-  }, [handleJobMoved, markAsAppliedMutation, onJobUpdated, selectedJob]);
+  }, [handleMarkApplied, onJobUpdated, selectedJob]);
+
+  const handleJobListingOpened = useCallback(() => {
+    if (!selectedJob) return;
+    setOpenedListingJobIds((current) => {
+      const next = new Set(current);
+      next.add(selectedJob.id);
+      return next;
+    });
+  }, [selectedJob]);
 
   const handleSkip = useCallback(async () => {
     if (!selectedJob) return;
@@ -575,6 +596,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     : null;
   const pdfActionDisabled = !selectedJob.pdfPath || isRegeneratingPdf;
   const tone = statusTone[selectedJob.status];
+  const openListingIsPrimary =
+    selectedJob.status === "ready" && hasJobListing && !hasOpenedJobListing;
+  const markAppliedIsPrimary =
+    selectedJob.status === "ready" && (!hasJobListing || hasOpenedJobListing);
+  const activeApplyCtaClassName =
+    "border-emerald-500/40 bg-emerald-600 text-white hover:bg-emerald-500 hover:text-white";
 
   return (
     <Tabs
@@ -887,16 +914,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             )}
 
             <div className="space-y-4">
-              <div>
-                <h3 className="text-xl font-semibold tracking-normal text-foreground/90">
-                  Ready to apply
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground/80">
-                  Use your tailored materials, submit the application, then
-                  track the result.
-                </p>
-              </div>
-
               <div
                 className={cn(
                   "flex min-h-16 items-center justify-between gap-3 rounded-md border px-3 py-3",
@@ -943,23 +960,31 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               />
               <OpenJobListingButton
                 href={jobLink}
-                className="h-11 w-full border-emerald-500/40 bg-emerald-600 px-3 text-sm text-white hover:bg-emerald-500 hover:text-white"
+                className={cn(
+                  "h-11 w-full px-3 text-sm",
+                  openListingIsPrimary && activeApplyCtaClassName,
+                )}
                 shortcut="o"
+                disabled={!hasJobListing}
+                onClick={handleJobListingOpened}
               />
-              <TooltipWhenDisabled
-                reason={pdfRegeneratingReason}
-                className="w-full"
+              <Button
+                variant={markAppliedIsPrimary ? "default" : "outline"}
+                className={cn(
+                  "h-11 w-full gap-2 px-3 text-sm",
+                  markAppliedIsPrimary && activeApplyCtaClassName,
+                )}
+                onClick={() => void handleMarkApplied()}
+                disabled={selectedJob.status !== "ready" || primaryBusy}
               >
-                <Button
-                  variant="outline"
-                  className="h-11 w-full gap-2 px-3 text-sm"
-                  onClick={handleOpenPdf}
-                  disabled={pdfActionDisabled}
-                >
-                  <FileText className="h-4 w-4" />
-                  {pdfLabels.view}
-                </Button>
-              </TooltipWhenDisabled>
+                {isApplying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                Mark Applied
+                <KbdHint shortcut="a" className="ml-auto" />
+              </Button>
               <TooltipWhenDisabled
                 reason={pdfRegeneratingReason}
                 className="w-full"

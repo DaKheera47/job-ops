@@ -47,13 +47,13 @@ export const JobRowContent = ({
       <div className="min-w-0 flex-1">
         <div
           className={cn(
-            "truncate text-sm leading-tight",
+            "truncate leading-tight",
             isSelected ? "font-semibold" : "font-medium",
           )}
         >
           {job.title}
         </div>
-        <div className="truncate text-xs text-muted-foreground mt-0.5">
+        <div className="truncate text-sm text-muted-foreground mt-0.5">
           {job.employer}
           {job.location && (
             <span className="before:content-['_in_']">{job.location}</span>
@@ -69,12 +69,12 @@ export const JobRowContent = ({
             {showRegeneratingPdf && (
               <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-blue-200/70 bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-blue-700 dark:border-blue-400/25 dark:bg-blue-400/10 dark:text-blue-200">
                 <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                Regenerating PDF
+                Generating PDF
               </span>
             )}
             {showStalePdf && (
               <span className="inline-flex shrink-0 rounded-sm border border-amber-200/70 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-200">
-                PDF stale
+                Regenerate PDF
               </span>
             )}
           </div>
@@ -83,7 +83,7 @@ export const JobRowContent = ({
 
       {hasScore && (
         <div className="shrink-0 text-right">
-          <span className={cn("text-xs tabular-nums", suitabilityTone)}>
+          <span className={cn("text-sm tabular-nums", suitabilityTone)}>
             {job.suitabilityScore}
           </span>
         </div>
