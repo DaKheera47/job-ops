@@ -1,3 +1,4 @@
+import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import type { ResumeProjectCatalogItem } from "@shared/types.js";
 import {
   CheckCircle2,
@@ -10,6 +11,7 @@ import {
   Undo2,
 } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -132,11 +134,14 @@ const textHasValue = (value: string) => value.trim().length > 0;
 const sectionStateForText = (value: string): SectionState =>
   textHasValue(value) ? "ready" : "missing";
 
-const skillGroupHasKeywords = (keywordsText: string) =>
-  keywordsText
-    .split(",")
+const parseSkillGroupKeywordsInput = (input: string): string[] =>
+  input
+    .split(/[\n,]/g)
     .map((keyword) => keyword.trim())
-    .some(Boolean);
+    .filter(Boolean);
+
+const skillGroupHasKeywords = (keywordsText: string) =>
+  parseSkillGroupKeywordsInput(keywordsText).length > 0;
 
 const skillGroupNeedsReview = (group: EditableSkillGroup) =>
   !textHasValue(group.name) || !skillGroupHasKeywords(group.keywordsText);
@@ -218,6 +223,9 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
   onToggleProject,
   onTracerLinksEnabledChange,
 }) => {
+  const [keywordDrafts, setKeywordDrafts] = useState<Record<string, string>>(
+    {},
+  );
   const tracerToggleDisabled =
     disableInputs || (!tracerLinksEnabled && tracerEnableBlocked);
   const generateTooltip = "Generate";
@@ -531,18 +539,29 @@ export const TailoringSections: React.FC<TailoringSectionsProps> = ({
                           >
                             Keywords (comma-separated)
                           </label>
-                          <textarea
+                          <TokenizedInput
                             id={`tailor-skill-group-keywords-${group.id}`}
-                            className={`${inputClass} min-h-[88px]`}
-                            value={group.keywordsText}
-                            onChange={(event) =>
+                            values={parseSkillGroupKeywordsInput(
+                              group.keywordsText,
+                            )}
+                            draft={keywordDrafts[group.id] ?? ""}
+                            parseInput={parseSkillGroupKeywordsInput}
+                            onDraftChange={(value) =>
+                              setKeywordDrafts((current) => ({
+                                ...current,
+                                [group.id]: value,
+                              }))
+                            }
+                            onValuesChange={(values) =>
                               onUpdateSkillGroup(
                                 group.id,
                                 "keywordsText",
-                                event.target.value,
+                                values.join(", "),
                               )
                             }
                             placeholder="TypeScript, Node.js, REST APIs..."
+                            helperText="Press Enter, comma, or paste a list to add keywords."
+                            removeLabelPrefix="Remove keyword"
                             disabled={disableInputs}
                           />
                         </div>

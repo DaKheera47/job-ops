@@ -50,6 +50,45 @@ const ensureAccordionOpen = (name: string) => {
   }
 };
 
+const buildClipboardData = (text: string) => ({
+  getData: (type: string) => (type === "text" ? text : ""),
+});
+
+const replaceSkillKeywords = (value: string) => {
+  const input = screen.getByLabelText(
+    "Keywords (comma-separated)",
+  ) as HTMLInputElement;
+  fireEvent.focus(input);
+
+  const removeLabels = screen
+    .queryAllByRole("button", {
+      name: /Remove keyword /,
+    })
+    .map((button) => button.getAttribute("aria-label"))
+    .filter((label): label is string => Boolean(label));
+  for (const label of removeLabels) {
+    const removeButton = screen.queryByRole("button", { name: label });
+    if (!removeButton) continue;
+    fireEvent.click(removeButton);
+  }
+
+  fireEvent.paste(input, {
+    clipboardData: buildClipboardData(value),
+  });
+};
+
+const expectKeywordToken = (value: string) => {
+  expect(screen.getAllByText(value).length).toBeGreaterThan(0);
+};
+
+const expectRemovableKeyword = (value: string) => {
+  expect(
+    screen.getByRole("button", {
+      name: `Remove keyword ${value}`,
+    }),
+  ).toBeInTheDocument();
+};
+
 describe("TailoringEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -218,7 +257,8 @@ describe("TailoringEditor", () => {
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
       "New job headline",
     );
-    expect(screen.getByDisplayValue("Node.js, Postgres")).toBeInTheDocument();
+    expectKeywordToken("Node.js");
+    expectKeywordToken("Postgres");
   });
 
   it("emits dirty state changes", async () => {
@@ -305,9 +345,7 @@ describe("TailoringEditor", () => {
     fireEvent.change(screen.getByLabelText("Tailored Headline"), {
       target: { value: "Updated headline" },
     });
-    fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
-      target: { value: "Node.js, TypeScript" },
-    });
+    replaceSkillKeywords("Node.js, TypeScript");
 
     await waitFor(
       () =>
@@ -339,9 +377,7 @@ describe("TailoringEditor", () => {
     ensureAccordionOpen("Tailored Skills");
     ensureAccordionOpen("Core");
 
-    fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
-      target: { value: "Node.js, TypeScript" },
-    });
+    replaceSkillKeywords("Node.js, TypeScript");
 
     await waitFor(
       () =>
@@ -359,9 +395,8 @@ describe("TailoringEditor", () => {
       "aria-expanded",
       "true",
     );
-    expect(screen.getByLabelText("Keywords (comma-separated)")).toHaveValue(
-      "Node.js, TypeScript",
-    );
+    expectRemovableKeyword("Node.js");
+    expectRemovableKeyword("TypeScript");
   });
 
   it("hydrates headline and skills after AI summarize", async () => {
@@ -388,7 +423,8 @@ describe("TailoringEditor", () => {
     ensureAccordionOpen("Tailored Skills");
     ensureAccordionOpen("Backend");
     expect(screen.getByDisplayValue("Backend")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Node.js, Kafka")).toBeInTheDocument();
+    expectKeywordToken("Node.js");
+    expectKeywordToken("Kafka");
   });
 
   it("persists tracer-links toggle in tailoring save payload", async () => {
@@ -447,10 +483,12 @@ describe("TailoringEditor", () => {
     ensureAccordionOpen("Tailored Skills");
     fireEvent.click(screen.getAllByLabelText("Undo to template")[2]);
     ensureAccordionOpen("Backend");
-    expect(screen.getByDisplayValue("Node.js, TypeScript")).toBeInTheDocument();
+    expectKeywordToken("Node.js");
+    expectKeywordToken("TypeScript");
     fireEvent.click(screen.getAllByLabelText("Redo to AI draft")[2]);
     ensureAccordionOpen("Core");
-    expect(screen.getByDisplayValue("React, TypeScript")).toBeInTheDocument();
+    expectKeywordToken("React");
+    expectKeywordToken("TypeScript");
   });
 
   it("resets redo baseline when switching jobs", async () => {
