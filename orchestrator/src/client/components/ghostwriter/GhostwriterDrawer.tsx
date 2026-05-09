@@ -19,6 +19,7 @@ type GhostwriterDrawerProps = {
   job: Job | null;
   triggerLabel?: string;
   triggerClassName?: string;
+  triggerVariant?: React.ComponentProps<typeof Button>["variant"];
 };
 
 type DisplayMode = "drawer" | "fullscreen";
@@ -46,6 +47,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
   job,
   triggerLabel = "Ghostwriter",
   triggerClassName,
+  triggerVariant = "outline",
 }) => {
   const [open, setOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() =>
@@ -80,7 +82,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
   const panelClassName = useMemo(
     () =>
       cn(
-        "flex w-full flex-col p-0",
+        "flex w-full flex-col p-0 outline-none",
         isFullscreen
           ? "inset-0 h-dvh w-screen max-w-none sm:max-w-none border-0 rounded-none shadow-none"
           : "sm:max-w-none lg:w-[50vw] xl:w-[40vw] 2xl:w-[30vw]",
@@ -94,7 +96,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
       <SheetTrigger asChild>
         <Button
           size="sm"
-          variant="outline"
+          variant={triggerVariant}
           className={cn("h-8 gap-1.5 text-xs", triggerClassName)}
           disabled={!job}
         >
