@@ -17,6 +17,7 @@ import { GhostwriterPanel } from "./GhostwriterPanel";
 
 type GhostwriterDrawerProps = {
   job: Job | null;
+  triggerLabel?: string;
   triggerClassName?: string;
 };
 
@@ -43,6 +44,7 @@ function getStoredDisplayMode(): DisplayMode {
 
 export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
   job,
+  triggerLabel = "Ghostwriter",
   triggerClassName,
 }) => {
   const [open, setOpen] = useState(false);
@@ -97,7 +99,7 @@ export const GhostwriterDrawer: React.FC<GhostwriterDrawerProps> = ({
           disabled={!job}
         >
           <PanelRightOpen className="h-3.5 w-3.5" />
-          Ghostwriter
+          {triggerLabel}
         </Button>
       </SheetTrigger>
 

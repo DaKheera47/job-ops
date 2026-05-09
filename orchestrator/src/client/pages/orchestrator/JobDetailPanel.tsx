@@ -802,11 +802,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 {!isEditingDescription ? (
                   <>
                     {selectedJob.jobUrl ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        asChild
-                      >
+                      <Button size="sm" variant="ghost" asChild>
                         <a
                           href={selectedJob.jobUrl}
                           target="_blank"
@@ -947,11 +943,33 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               </div>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              <GhostwriterDrawer
-                job={selectedJob}
-              />
-                            <TooltipWhenDisabled
+            <div className="rounded-md border border-border/45 bg-muted/[0.03] px-3 py-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-amber-400/20 bg-amber-400/10 text-amber-200">
+                    <Sparkles className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground/90">
+                      Use Ghostwriter for the parts a resume can't cover
+                    </p>
+                    <p className="mt-1 text-[11px] leading-5 text-muted-foreground/75">
+                      Draft thoughtful answers to open-ended application
+                      prompts, then shape sharp, relevant questions about the
+                      role before you submit.
+                    </p>
+                  </div>
+                </div>
+                <GhostwriterDrawer
+                  job={selectedJob}
+                  triggerLabel="Open Ghostwriter"
+                  triggerClassName="h-8 w-full justify-center sm:w-auto"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3">
+              <TooltipWhenDisabled
                 reason={pdfRegeneratingReason}
                 className="w-full"
               >
@@ -969,18 +987,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
               <OpenJobListingButton
                 href={jobLink}
                 size="sm"
-                className={cn(
-                  openListingIsPrimary && activeApplyCtaClassName,
-                )}
+                className={cn(openListingIsPrimary && activeApplyCtaClassName)}
                 shortcut="o"
                 disabled={!hasJobListing}
                 onClick={handleJobListingOpened}
               />
               <Button
                 variant={markAppliedIsPrimary ? "default" : "outline"}
-                className={cn(
-                  markAppliedIsPrimary && activeApplyCtaClassName,
-                )}
+                className={cn(markAppliedIsPrimary && activeApplyCtaClassName)}
                 size="sm"
                 onClick={() => void handleMarkApplied()}
                 disabled={selectedJob.status !== "ready" || primaryBusy}
