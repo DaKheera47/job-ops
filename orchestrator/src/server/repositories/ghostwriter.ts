@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { normalizeGhostwriterSelectedNoteIds } from "@shared/ghostwriter-note-context.js";
 import type {
+  JobChatImageAttachment,
   JobChatMessage,
   JobChatMessageRole,
   JobChatMessageStatus,
@@ -22,6 +23,43 @@ function parseSelectedNoteIds(value: string | null): string[] {
     return normalizeGhostwriterSelectedNoteIds(
       parsed.filter((item): item is string => typeof item === "string"),
     );
+  } catch {
+    return [];
+  }
+}
+
+function parseImageAttachments(value: string | null): JobChatImageAttachment[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const attachments: JobChatImageAttachment[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const record = item as Record<string, unknown>;
+      const mediaType = record.mediaType;
+      const dataUrl = record.dataUrl;
+      if (
+        mediaType !== "image/png" &&
+        mediaType !== "image/jpeg" &&
+        mediaType !== "image/webp"
+      ) {
+        continue;
+      }
+      if (
+        typeof dataUrl !== "string" ||
+        !dataUrl.startsWith(`data:${mediaType};base64,`)
+      ) {
+        continue;
+      }
+      attachments.push({
+        ...(typeof record.id === "string" ? { id: record.id } : {}),
+        name: typeof record.name === "string" ? record.name : "Screenshot",
+        mediaType,
+        dataUrl,
+      });
+    }
+    return attachments;
   } catch {
     return [];
   }
@@ -54,6 +92,7 @@ function mapMessage(row: typeof jobChatMessages.$inferSelect): JobChatMessage {
     replacesMessageId: row.replacesMessageId,
     parentMessageId: row.parentMessageId,
     activeChildId: row.activeChildId,
+    attachments: parseImageAttachments(row.attachments),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -267,6 +306,7 @@ export async function createMessage(input: {
   version?: number;
   replacesMessageId?: string | null;
   parentMessageId?: string | null;
+  attachments?: readonly JobChatImageAttachment[];
 }): Promise<JobChatMessage> {
   const id = randomUUID();
   const now = new Date().toISOString();
@@ -285,6 +325,7 @@ export async function createMessage(input: {
     version: input.version ?? 1,
     replacesMessageId: input.replacesMessageId ?? null,
     parentMessageId: input.parentMessageId ?? null,
+    attachments: JSON.stringify(input.attachments ?? []),
     createdAt: now,
     updatedAt: now,
   });

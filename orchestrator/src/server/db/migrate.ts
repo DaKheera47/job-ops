@@ -317,6 +317,7 @@ const migrations = [
     replaces_message_id TEXT,
     parent_message_id TEXT,
     active_child_id TEXT,
+    attachments TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE,
@@ -850,6 +851,7 @@ const migrations = [
   // Branching conversations: add parent_message_id and active_child_id to job_chat_messages
   `ALTER TABLE job_chat_messages ADD COLUMN parent_message_id TEXT`,
   `ALTER TABLE job_chat_messages ADD COLUMN active_child_id TEXT`,
+  `ALTER TABLE job_chat_messages ADD COLUMN attachments TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE job_chat_threads ADD COLUMN active_root_message_id TEXT`,
   `ALTER TABLE job_chat_threads ADD COLUMN selected_note_ids TEXT NOT NULL DEFAULT '[]'`,
   `ALTER TABLE pipeline_runs ADD COLUMN config_snapshot TEXT`,

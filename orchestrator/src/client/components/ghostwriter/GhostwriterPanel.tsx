@@ -144,6 +144,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
               replacesMessageId: null,
               parentMessageId: null,
               activeChildId: null,
+              attachments: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
             },
@@ -216,6 +217,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         replacesMessageId: null,
         parentMessageId: null,
         activeChildId: null,
+        attachments,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -344,6 +346,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
             replacesMessageId: null,
             parentMessageId: null,
             activeChildId: null,
+            attachments,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },

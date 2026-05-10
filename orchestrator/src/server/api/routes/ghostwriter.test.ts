@@ -11,6 +11,7 @@ const baseMsgFields = {
   replacesMessageId: null,
   parentMessageId: null,
   activeChildId: null,
+  attachments: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };

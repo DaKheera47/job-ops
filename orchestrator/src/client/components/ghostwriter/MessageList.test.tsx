@@ -35,6 +35,7 @@ describe("MessageList", () => {
         replacesMessageId: null,
         parentMessageId: null,
         activeChildId: null,
+        attachments: [],
         createdAt: "2026-03-23T10:00:00.000Z",
         updatedAt: "2026-03-23T10:00:00.000Z",
       },
@@ -79,6 +80,7 @@ describe("MessageList", () => {
         replacesMessageId: null,
         parentMessageId: null,
         activeChildId: null,
+        attachments: [],
         createdAt: "2026-03-23T10:00:00.000Z",
         updatedAt: "2026-03-23T10:00:00.000Z",
       },
@@ -120,6 +122,7 @@ describe("MessageList", () => {
         replacesMessageId: null,
         parentMessageId: null,
         activeChildId: null,
+        attachments: [],
         createdAt: "2026-03-23T10:00:00.000Z",
         updatedAt: "2026-03-23T10:00:00.000Z",
       },
@@ -141,6 +144,55 @@ describe("MessageList", () => {
 
     expect(toast.error).toHaveBeenCalledWith(
       "Copy is not available in this browser context",
+    );
+  });
+
+  it("renders user message screenshot attachments with the shared preview", () => {
+    const messages: JobChatMessage[] = [
+      {
+        id: "user-1",
+        threadId: "thread-1",
+        jobId: "job-1",
+        role: "user",
+        content: "How many people applied?",
+        status: "complete",
+        tokensIn: null,
+        tokensOut: null,
+        version: 1,
+        replacesMessageId: null,
+        parentMessageId: null,
+        activeChildId: null,
+        attachments: [
+          {
+            id: "screen-1",
+            name: "linkedin-apply-count.png",
+            mediaType: "image/png",
+            dataUrl: "data:image/png;base64,aGVsbG8=",
+          },
+        ],
+        createdAt: "2026-03-23T10:00:00.000Z",
+        updatedAt: "2026-03-23T10:00:00.000Z",
+      },
+    ];
+
+    render(
+      <MessageList
+        messages={messages}
+        branches={[] satisfies BranchInfo[]}
+        isStreaming={false}
+        streamingMessageId={null}
+        onRegenerate={vi.fn()}
+        onEdit={vi.fn()}
+        onSwitchBranch={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /preview linkedin-apply-count/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByAltText("linkedin-apply-count.png")).toHaveAttribute(
+      "src",
+      "data:image/png;base64,aGVsbG8=",
     );
   });
 });

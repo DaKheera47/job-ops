@@ -347,6 +347,7 @@ export const jobChatMessages = sqliteTable(
     replacesMessageId: text("replaces_message_id"),
     parentMessageId: text("parent_message_id"),
     activeChildId: text("active_child_id"),
+    attachments: text("attachments").notNull().default("[]"),
     createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
     updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
   },

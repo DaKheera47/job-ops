@@ -124,6 +124,7 @@ const baseUserMessage: JobChatMessage = {
   replacesMessageId: null,
   parentMessageId: null,
   activeChildId: "assistant-1",
+  attachments: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -141,6 +142,7 @@ const baseAssistantMessage: JobChatMessage = {
   replacesMessageId: null,
   parentMessageId: "user-1",
   activeChildId: null,
+  attachments: [],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -400,6 +402,19 @@ describe("ghostwriter service", () => {
         },
       ],
     });
+
+    expect(mocks.repo.createMessage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        role: "user",
+        attachments: [
+          {
+            name: "form.png",
+            mediaType: "image/png",
+            dataUrl: "data:image/png;base64,aGVsbG8=",
+          },
+        ],
+      }),
+    );
 
     const userMessage = mocks.llmCallJson.mock.calls[0][0].messages.at(-1);
     expect(userMessage.role).toBe("user");

@@ -46,6 +46,7 @@ export interface JobChatMessage {
   replacesMessageId: string | null;
   parentMessageId: string | null;
   activeChildId: string | null;
+  attachments: JobChatImageAttachment[];
   createdAt: string;
   updatedAt: string;
 }

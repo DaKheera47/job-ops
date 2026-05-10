@@ -1,4 +1,8 @@
-import type { BranchInfo, JobChatMessage } from "@shared/types";
+import type {
+  BranchInfo,
+  JobChatImageAttachment,
+  JobChatMessage,
+} from "@shared/types";
 import { Check, Copy, Pencil, RefreshCcw } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { BranchNavigator } from "./BranchNavigator";
+import { ScreenshotAttachmentPreview } from "./ScreenshotAttachmentPreview";
 import { StreamingMessage } from "./StreamingMessage";
 
 type MessageListProps = {
@@ -18,7 +23,11 @@ type MessageListProps = {
   isStreaming: boolean;
   streamingMessageId: string | null;
   onRegenerate: (messageId: string) => void;
-  onEdit: (messageId: string, content: string) => void;
+  onEdit: (
+    messageId: string,
+    content: string,
+    attachments: JobChatImageAttachment[],
+  ) => void;
   onSwitchBranch: (messageId: string) => void;
 };
 
@@ -54,7 +63,8 @@ export const MessageList: React.FC<MessageListProps> = ({
   const submitEdit = (messageId: string) => {
     const content = editContent.trim();
     if (!content) return;
-    onEdit(messageId, content);
+    const message = messages.find((item) => item.id === messageId);
+    onEdit(messageId, content, message?.attachments ?? []);
     setEditingMessageId(null);
     setEditContent("");
   };
@@ -209,8 +219,13 @@ export const MessageList: React.FC<MessageListProps> = ({
                   </ReactMarkdown>
                 </div>
               ) : (
-                <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                  {message.content}
+                <div className="space-y-2">
+                  <ScreenshotAttachmentPreview
+                    attachments={message.attachments}
+                  />
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                    {message.content}
+                  </div>
                 </div>
               )}
             </div>
