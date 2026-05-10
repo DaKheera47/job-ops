@@ -165,6 +165,32 @@ describe("design resume service", () => {
     );
   });
 
+  it("imports Reactive Resume v5.1 data when metadata.css is absent", async () => {
+    const upstreamResume = makeValidResumeJson();
+    delete (upstreamResume.metadata as Record<string, unknown>).css;
+    vi.mocked(getResume).mockResolvedValueOnce({
+      id: "rx-1",
+      mode: "v5",
+      data: upstreamResume,
+    } as never);
+
+    const result = await importDesignResumeFromReactiveResume();
+
+    expect(result.resumeJson.metadata.css).toEqual({
+      enabled: false,
+      value: "",
+    });
+    expect(repo.upsertDesignResumeDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeJson: expect.objectContaining({
+          metadata: expect.objectContaining({
+            css: { enabled: false, value: "" },
+          }),
+        }),
+      }),
+    );
+  });
+
   it("localizes Reactive Resume relative picture URLs into design resume assets", async () => {
     vi.stubGlobal(
       "fetch",

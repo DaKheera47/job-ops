@@ -351,6 +351,8 @@ export const cssSchema = z.object({
   value: z.string(),
 });
 
+const defaultCss = { enabled: false, value: "" };
+
 export const pageSchema = z.object({
   gapX: z.number().min(0),
   gapY: z.number().min(0),
@@ -393,7 +395,7 @@ export const typographySchema = z.object({
 export const metadataSchema = z.object({
   template: templateSchema.catch("onyx"),
   layout: layoutSchema,
-  css: cssSchema,
+  css: cssSchema.catch(defaultCss),
   page: pageSchema,
   design: designSchema,
   typography: typographySchema,

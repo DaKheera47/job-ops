@@ -37,6 +37,10 @@ export function DesignResumePdfPreview({
   useEffect(() => {
     if (saveState === "error") {
       setIsFrameLoading(false);
+      setPreviewState((current) =>
+        current === "waiting-for-save" ? "error" : current,
+      );
+      setPreviewError("Changes could not be saved. Please try again.");
       return;
     }
 

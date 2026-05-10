@@ -250,15 +250,16 @@ export const DesignResumePage: React.FC = () => {
 
   const handleImport = async () => {
     try {
-      setSaveState("saving");
+      setResumeImporting(true);
       const imported = await api.importDesignResumeFromRxResume();
       setDesignResume(imported);
       setSaveState("saved");
       toast.success("Imported your resume.");
       notifyReadyPdfRefresh();
     } catch (importError) {
-      setSaveState("error");
       showErrorToast(importError, "Failed to import your resume.");
+    } finally {
+      setResumeImporting(false);
     }
   };
 
@@ -526,9 +527,14 @@ export const DesignResumePage: React.FC = () => {
                 type="button"
                 variant="outline"
                 onClick={handleImportWithConfirm}
+                disabled={resumeImporting}
               >
                 <Import className="mr-2 h-4 w-4" />
-                {status?.exists ? "Re-import RxResume" : "Import RxResume"}
+                {resumeImporting
+                  ? "Importing RxResume"
+                  : status?.exists
+                    ? "Re-import RxResume"
+                    : "Import RxResume"}
               </Button>
 
               <Button
@@ -572,9 +578,16 @@ export const DesignResumePage: React.FC = () => {
                   <Import className="mr-2 h-4 w-4" />
                   {resumeImporting ? "Importing File" : "Import File"}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleImportWithConfirm()}>
+                <DropdownMenuItem
+                  onSelect={() => handleImportWithConfirm()}
+                  disabled={resumeImporting}
+                >
                   <Import className="mr-2 h-4 w-4" />
-                  {status?.exists ? "Re-import RxResume" : "Import RxResume"}
+                  {resumeImporting
+                    ? "Importing RxResume"
+                    : status?.exists
+                      ? "Re-import RxResume"
+                      : "Import RxResume"}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => handleDownloadPdf()}
@@ -611,9 +624,13 @@ export const DesignResumePage: React.FC = () => {
                 between tools.
               </p>
               <div className="flex justify-center gap-3">
-                <Button type="button" onClick={handleImport}>
+                <Button
+                  type="button"
+                  onClick={handleImport}
+                  disabled={resumeImporting}
+                >
                   <Import className="mr-2 h-4 w-4" />
-                  Import resume
+                  {resumeImporting ? "Importing resume" : "Import resume"}
                 </Button>
                 {error ? (
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
