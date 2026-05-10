@@ -751,12 +751,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           <div className="overflow-hidden rounded-lg border border-border/45 bg-muted/5">
             <div className="flex items-center justify-between gap-2 border-b border-border/35 bg-muted/5 px-3 py-2.5">
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground/90">
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
                   <FileText className="h-3.5 w-3.5 text-sky-400/80" />
                   Job description
                 </div>
-                <p className="mt-0.5 text-[10px] text-muted-foreground/65">
-                  The source material for deciding, tailoring, and applying.
+                <p className="mt-0.5 text-xs text-muted-foreground/65">
+                  Base description extracted from the job listing, editable if something looks off. Used by the Ghostwriter and for fit assessment
                 </p>
               </div>
               <div className="flex flex-wrap justify-end gap-1">

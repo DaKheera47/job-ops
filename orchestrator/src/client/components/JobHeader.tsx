@@ -252,7 +252,7 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
 
       {/* Status and score: single line, subdued */}
       <div className="flex items-center justify-between gap-2 py-1 border-y border-border/30 flex-wrap">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-x-4 gap-y-2 flex-wrap">
           <StatusIndicator
             dotColor={jobStatus.dotColor}
             label={jobStatus.label}
