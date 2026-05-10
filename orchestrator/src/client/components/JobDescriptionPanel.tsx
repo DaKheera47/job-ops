@@ -61,8 +61,12 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
   }, [isEditing, rawDescription]);
 
   const handleCopy = async () => {
-    await copyTextToClipboard(rawDescription || description);
-    toast.success("Copied job description");
+    try {
+      await copyTextToClipboard(rawDescription || description);
+      toast.success("Copied job description");
+    } catch (error) {
+      showErrorToast(error, "Failed to copy job description");
+    }
   };
 
   const handleCancel = () => {
