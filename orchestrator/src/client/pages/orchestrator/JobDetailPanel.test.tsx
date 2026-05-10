@@ -57,14 +57,18 @@ vi.mock("@/components/ui/dropdown-menu", () => {
   };
 });
 
-vi.mock("@client/components", () => ({
-  JobHeader: ({ jobCTA }: { jobCTA?: React.ReactNode }) => (
-    <div data-testid="job-header">{jobCTA}</div>
-  ),
-  JobBriefPane: () => <div data-testid="job-brief-pane" />,
-  FitAssessment: () => <div data-testid="fit-assessment" />,
-  TailoredSummary: () => <div data-testid="tailored-summary" />,
-}));
+vi.mock("@client/components", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@client/components")>();
+  return {
+    ...actual,
+    JobHeader: ({ jobCTA }: { jobCTA?: React.ReactNode }) => (
+      <div data-testid="job-header">{jobCTA}</div>
+    ),
+    JobBriefPane: () => <div data-testid="job-brief-pane" />,
+    FitAssessment: () => <div data-testid="fit-assessment" />,
+    TailoredSummary: () => <div data-testid="tailored-summary" />,
+  };
+});
 
 vi.mock("@client/hooks/useSettings", () => ({
   useSettings: () => mockSettings,
@@ -174,7 +178,7 @@ describe("JobDetailPanel", () => {
     expect(screen.getByText("Start Tailoring")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "The source material for deciding, tailoring, and applying.",
+        "Base description extracted from the job listing, editable if something looks off. Used by the Ghostwriter and for fit assessment.",
       ),
     ).toBeInTheDocument();
   });

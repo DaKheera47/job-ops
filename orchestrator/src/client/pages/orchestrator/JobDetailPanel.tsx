@@ -1,7 +1,10 @@
 import * as api from "@client/api";
-import { JobBriefPane, JobHeader, TailoredSummary } from "@client/components";
+import {
+  JobBriefPane,
+  JobDescriptionPanel,
+  JobHeader,
+} from "@client/components";
 import { GhostwriterDrawer } from "@client/components/ghostwriter/GhostwriterDrawer";
-import { JobDescriptionMarkdown } from "@client/components/JobDescriptionMarkdown";
 import { JobDetailsEditDrawer } from "@client/components/JobDetailsEditDrawer";
 import { KbdHint } from "@client/components/KbdHint";
 import { OpenJobListingButton } from "@client/components/OpenJobListingButton";
@@ -13,9 +16,7 @@ import {
 } from "@client/hooks/queries/useJobMutations";
 import { useProfile } from "@client/hooks/useProfile";
 import { useRescoreJob } from "@client/hooks/useRescoreJob";
-import { useSettings } from "@client/hooks/useSettings";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
-import { getRenderableJobDescription } from "@client/lib/jobDescription";
 import {
   getPdfActionLabels,
   isPdfRegenerating,
@@ -44,7 +45,6 @@ import {
   Loader2,
   MoreHorizontal,
   RefreshCcw,
-  Save,
   Sparkles,
   Star,
   Upload,
@@ -53,6 +53,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { parseJobBrief } from "@/client/components/JobBriefPane";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,7 +64,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -78,7 +78,6 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import type { FilterTab } from "./constants";
-import { parseJobBrief } from "@/client/components/JobBriefPane";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
@@ -249,9 +248,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   onPauseRefreshChange,
 }) => {
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("brief");
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editedDescription, setEditedDescription] = useState("");
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [isMoving, setIsMoving] = useState(false);
@@ -267,7 +263,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const skipJobMutation = useSkipJobMutation();
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const { personName } = useProfile();
-  const { renderMarkdownInJobDescriptions } = useSettings();
 
   const jobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
@@ -275,10 +270,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const selectedPdfFilename = selectedJob
     ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`
     : "resume.pdf";
-  const description = useMemo(
-    () => getRenderableJobDescription(selectedJob?.jobDescription),
-    [selectedJob?.jobDescription],
-  );
   const selectedProjectIds = useMemo(
     () => selectedJob?.selectedProjectIds?.split(",").filter(Boolean) ?? [],
     [selectedJob?.selectedProjectIds],
@@ -319,16 +310,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     if (previousSelectionKeyRef.current === currentSelectionKey) return;
     previousSelectionKeyRef.current = currentSelectionKey;
     setInspectorTab(getDefaultInspectorTab(selectedJob, activeTab));
-    setIsEditingDescription(false);
-    setEditedDescription(selectedJob?.jobDescription || "");
     setIsEditDetailsOpen(false);
     onPauseRefreshChange?.(false);
   }, [activeTab, selectedJob, onPauseRefreshChange]);
-
-  useEffect(() => {
-    if (!selectedJob || isEditingDescription) return;
-    setEditedDescription(selectedJob.jobDescription || "");
-  }, [selectedJob, isEditingDescription]);
 
   useEffect(() => {
     return () => onPauseRefreshChange?.(false);
@@ -344,22 +328,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     [activeJobs, onSelectJobId],
   );
 
-  const handleSaveDescription = useCallback(async () => {
-    if (!selectedJob) return;
-    try {
-      setIsSavingDescription(true);
-      await api.updateJob(selectedJob.id, {
-        jobDescription: editedDescription,
-      });
-      toast.success("Job description updated");
-      setIsEditingDescription(false);
+  const handleSaveDescription = useCallback(
+    async (jobDescription: string) => {
+      if (!selectedJob) return;
+      await api.updateJob(selectedJob.id, { jobDescription });
       await onJobUpdated();
-    } catch (error) {
-      showErrorToast(error, "Failed to update description");
-    } finally {
-      setIsSavingDescription(false);
-    }
-  }, [editedDescription, onJobUpdated, selectedJob]);
+    },
+    [onJobUpdated, selectedJob],
+  );
 
   const openEditDetails = useCallback(() => {
     window.setTimeout(() => setIsEditDetailsOpen(true), 0);
@@ -647,11 +623,10 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 <DropdownMenuItem
                   onSelect={() => {
                     setInspectorTab("brief");
-                    setIsEditingDescription(true);
                   }}
                 >
                   <Edit2 className="mr-2 h-4 w-4" />
-                  Edit job description
+                  View job description
                 </DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => void handleCopyInfo()}>
                   <Copy className="mr-2 h-4 w-4" />
@@ -747,103 +722,11 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           )}
 
           <JobBriefPane job={selectedJob} />
-
-          <div className="overflow-hidden rounded-lg border border-border/45 bg-muted/5">
-            <div className="flex items-center justify-between gap-2 border-b border-border/35 bg-muted/5 px-3 py-2.5">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground/90">
-                  <FileText className="h-3.5 w-3.5 text-sky-400/80" />
-                  Job description
-                </div>
-                <p className="mt-0.5 text-xs text-muted-foreground/65">
-                  Base description extracted from the job listing, editable if something looks off. Used by the Ghostwriter and for fit assessment
-                </p>
-              </div>
-              <div className="flex flex-wrap justify-end gap-1">
-                {!isEditingDescription ? (
-                  <>
-                    {selectedJob.jobUrl ? (
-                      <Button size="sm" variant="ghost" asChild>
-                        <a
-                          href={selectedJob.jobUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                          View job
-                        </a>
-                      </Button>
-                    ) : null}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        void copyTextToClipboard(
-                          selectedJob.jobDescription || "",
-                        );
-                        toast.success("Copied job description");
-                      }}
-                    >
-                      <Copy className="mr-1.5 h-3.5 w-3.5" />
-                      Copy
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setIsEditingDescription(true)}
-                    >
-                      <Edit2 className="mr-1.5 h-3.5 w-3.5" />
-                      Edit
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setIsEditingDescription(false);
-                        setEditedDescription(selectedJob.jobDescription || "");
-                      }}
-                      disabled={isSavingDescription}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => void handleSaveDescription()}
-                      disabled={isSavingDescription}
-                    >
-                      {isSavingDescription ? (
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                      )}
-                      Save
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="max-h-[420px] overflow-y-auto bg-background/20 p-4 text-sm text-foreground/75">
-              {isEditingDescription ? (
-                <Textarea
-                  value={editedDescription}
-                  onChange={(event) => setEditedDescription(event.target.value)}
-                  className="min-h-[360px] bg-background/70 font-mono text-sm leading-relaxed focus-visible:ring-1"
-                  placeholder="Enter job description..."
-                />
-              ) : renderMarkdownInJobDescriptions ? (
-                <JobDescriptionMarkdown description={description} />
-              ) : (
-                <div className="whitespace-pre-wrap leading-7">
-                  {description}
-                </div>
-              )}
-            </div>
-          </div>
+          <JobDescriptionPanel
+            description={selectedJob.jobDescription}
+            jobUrl={selectedJob.jobUrl}
+            onSave={handleSaveDescription}
+          />
         </TabsContent>
 
         <TabsContent value="tailoring">
