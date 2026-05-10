@@ -66,6 +66,7 @@ COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
+COPY extractors/ats-boards/package*.json ./extractors/ats-boards/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
 RUN --mount=type=cache,target=/root/.npm \
@@ -73,8 +74,13 @@ RUN --mount=type=cache,target=/root/.npm \
     --no-audit --no-fund --progress=false
 
 # Fetch Camoufox binaries before copying source to keep the download cached.
+# The fetch may fail behind corporate proxies (Node fetch doesn't honour
+# HTTPS_PROXY).  Allow it to fail gracefully – the app works without Camoufox.
+ARG HTTPS_PROXY
+ARG HTTP_PROXY
 RUN --mount=type=secret,id=github_token,required=false \
-    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
+    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs || echo "WARN: Camoufox fetch failed (non-fatal)"' && \
+    mkdir -p /root/.cache/camoufox
 
 FROM node-deps AS build-sources
 
@@ -92,6 +98,7 @@ COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/browser-utils ./extractors/browser-utils
+COPY extractors/ats-boards ./extractors/ats-boards
 
 # ============================================================================
 # PARALLEL BUILD STAGES
@@ -130,6 +137,7 @@ COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
+COPY extractors/ats-boards/package*.json ./extractors/ats-boards/
 
 # Install production Node dependencies only.
 RUN --mount=type=cache,target=/root/.npm \
@@ -185,6 +193,7 @@ COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
 COPY extractors/browser-utils ./extractors/browser-utils
+COPY extractors/ats-boards ./extractors/ats-boards
 
 # Create runtime directories.
 RUN mkdir -p /app/data/pdfs /app/data/cloudflare-cookies /app/codex-home

@@ -1,8 +1,10 @@
+import { logger } from "@infra/logger";
 import { InlineKeyboard } from "grammy";
 import type { Bot } from "grammy";
 import * as settingsRepo from "../../../repositories/settings";
 import { initializePipelineScheduler, getPipelineSchedulerStatus } from "../../pipeline-scheduler";
 import { generateLinkCode } from "../auth";
+import { awaitingInput } from "../awaiting-input";
 import { escapeHtml } from "../formatting";
 
 const TIMEZONES = [
@@ -20,13 +22,22 @@ const TIMEZONES = [
   { label: "LA (PST)", tz: "America/Los_Angeles" },
 ];
 
-function formatTimeInTz(hour: number, tz: string): string {
+function formatLocalHour(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
+function formatInstantInTz(iso: string, tz: string): string {
   try {
-    const d = new Date();
-    d.setUTCHours(hour, 0, 0, 0);
-    return d.toLocaleTimeString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit" });
+    const d = new Date(iso);
+    return d.toLocaleString("en-GB", {
+      timeZone: tz,
+      day: "2-digit",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   } catch {
-    return `${hour}:00`;
+    return iso;
   }
 }
 
@@ -35,9 +46,8 @@ function getTzShortLabel(tz: string): string {
   return entry ? entry.label : tz;
 }
 
-// Shared state for text input collection
-export const awaitingInput = new Map<number, string>();
-
+// Shared awaiting-input state lives in ../awaiting-input. We prefix actions
+// with "settings:" so other handlers' middleware ignores our prompts.
 const BLOCKED_PAGE_SIZE = 8;
 
 function parseBlockedKeywords(raw: string | null): string[] {
@@ -60,12 +70,15 @@ export function registerSettingsHandlers(bot: Bot): void {
       const scheduler = getPipelineSchedulerStatus();
 
       const hour = parseInt(scheduleHour, 10);
-      const localTime = formatTimeInTz(hour, userTz);
+      const localTime = formatLocalHour(hour);
       const tzLabel = getTzShortLabel(userTz);
+      const nextRunLocal = scheduler.nextRun
+        ? formatInstantInTz(scheduler.nextRun, userTz)
+        : null;
 
       let text = "<b>⚙️ Settings</b>\n\n";
       text += `🕐 Pipeline: ${scheduleEnabled ? `✅ ${localTime} (${tzLabel})` : "❌ Disabled"}\n`;
-      if (scheduler.nextRun) text += `Next run: ${scheduler.nextRun}\n`;
+      if (nextRunLocal) text += `Next run: ${nextRunLocal} (${tzLabel})\n`;
       text += `🌍 Timezone: ${tzLabel}\n`;
       text += `🔔 Notifications: ${notifEnabled ? "✅ Enabled" : "🔕 Disabled"}\n`;
 
@@ -76,9 +89,10 @@ export function registerSettingsHandlers(bot: Bot): void {
         .text(`🌍 Timezone`, "x:tz")
         .text(notifEnabled ? "🔕 Mute" : "🔔 Unmute", "x:notif")
         .row()
-        .text("🔗 Link Code", "x:link")
-        .row()
+        .text("📡 Boards", "b:menu")
         .text("🚫 Blocked Companies", "x:blocked:0")
+        .row()
+        .text("🔗 Link Code", "x:link")
         .row()
         .text("◀️ Back", "m:menu");
 
@@ -87,7 +101,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         reply_markup: keyboard,
       });
     } catch (err) {
-      console.error("Settings menu error:", err);
+      logger.error("Settings menu error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading settings").catch(() => {});
     }
   });
@@ -110,7 +124,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         { reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Toggle schedule error:", err);
+      logger.error("Toggle schedule error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error toggling schedule").catch(() => {});
     }
   });
@@ -131,7 +145,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         { reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Toggle notifications error:", err);
+      logger.error("Toggle notifications error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error toggling notifications").catch(() => {});
     }
   });
@@ -157,7 +171,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Timezone picker error:", err);
+      logger.error("Timezone picker error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading timezones").catch(() => {});
     }
   });
@@ -183,7 +197,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         },
       );
     } catch (err) {
-      console.error("Set timezone error:", err);
+      logger.error("Set timezone error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error setting timezone").catch(() => {});
     }
   });
@@ -207,14 +221,14 @@ export function registerSettingsHandlers(bot: Bot): void {
       }
       keyboard.text("◀️ Back", "x:menu");
 
-      const currentLocalTime = formatTimeInTz(parseInt(currentHour, 10), userTz);
+      const currentLocalTime = formatLocalHour(parseInt(currentHour, 10));
 
       await ctx.editMessageText(
-        `<b>🕐 Set Pipeline Schedule Time</b>\n\nCurrent: <b>${currentLocalTime} (${escapeHtml(tzLabel)})</b>\n\nPick an hour (UTC):`,
+        `<b>🕐 Set Pipeline Schedule Time</b>\n\nCurrent: <b>${currentLocalTime} (${escapeHtml(tzLabel)})</b>\n\nPick an hour in <b>${escapeHtml(tzLabel)}</b>:`,
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Time picker error:", err);
+      logger.error("Time picker error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading time picker").catch(() => {});
     }
   });
@@ -232,7 +246,7 @@ export function registerSettingsHandlers(bot: Bot): void {
       await initializePipelineScheduler();
 
       const userTz = await settingsRepo.getSetting("userTimezone") || "Europe/Berlin";
-      const localTime = formatTimeInTz(hour, userTz);
+      const localTime = formatLocalHour(hour);
       const tzLabel = getTzShortLabel(userTz);
 
       await ctx.answerCallbackQuery(`Schedule set to ${localTime}`);
@@ -245,7 +259,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         },
       );
     } catch (err) {
-      console.error("Set hour error:", err);
+      logger.error("Set hour error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error setting hour").catch(() => {});
     }
   });
@@ -256,14 +270,14 @@ export function registerSettingsHandlers(bot: Bot): void {
       const code = generateLinkCode();
       await ctx.answerCallbackQuery();
       await ctx.editMessageText(
-        `<b>🔗 Link Code</b>\n\n<code>${code}</code>\n\nSend this to another user. Expires in 5 minutes.`,
+        `<b>🔗 Link Code</b>\n\n<code>${code}</code>\n\n<i>Tap the code above to copy it.</i>\n\nSend this to another user. Expires in 5 minutes.`,
         {
           parse_mode: "HTML",
           reply_markup: new InlineKeyboard().text("◀️ Settings", "x:menu"),
         },
       );
     } catch (err) {
-      console.error("Link code error:", err);
+      logger.error("Link code error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error generating link code").catch(() => {});
     }
   });
@@ -321,7 +335,7 @@ export function registerSettingsHandlers(bot: Bot): void {
 
       await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: keyboard });
     } catch (err) {
-      console.error("Blocked companies list error:", err);
+      logger.error("Blocked companies list error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading blocked companies").catch(() => {});
     }
   });
@@ -332,7 +346,7 @@ export function registerSettingsHandlers(bot: Bot): void {
       await ctx.answerCallbackQuery();
       const chatId = ctx.chat?.id;
       if (!chatId) return;
-      awaitingInput.set(chatId, "blocked_company");
+      awaitingInput.set(chatId, "settings:blocked_company");
 
       const text =
         "<b>🚫 Add Blocked Companies</b>\n\n" +
@@ -345,7 +359,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         reply_markup: new InlineKeyboard().text("◀️ Back", "x:blocked:0"),
       });
     } catch (err) {
-      console.error("Add blocked prompt error:", err);
+      logger.error("Add blocked prompt error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -375,13 +389,37 @@ export function registerSettingsHandlers(bot: Bot): void {
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Remove blocked keyword error:", err);
+      logger.error("Remove blocked keyword error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
 
-  // Clear all blocked keywords
+  // Clear all blocked keywords — confirmation step
   bot.callbackQuery("x:bl:clear", async (ctx) => {
+    try {
+      await ctx.answerCallbackQuery();
+      const raw = await settingsRepo.getSetting("blockedCompanyKeywords");
+      const keywords = parseBlockedKeywords(raw);
+      if (keywords.length === 0) {
+        await ctx.answerCallbackQuery("Nothing to clear").catch(() => {});
+        return;
+      }
+
+      const keyboard = new InlineKeyboard()
+        .text(`🗑 Yes, clear ${keywords.length}`, "x:bl:clear:do")
+        .text("◀️ Cancel", "x:blocked:0");
+      await ctx.editMessageText(
+        `🗑 <b>Clear all blocked companies?</b>\n\n<i>${keywords.length} keyword(s) will be removed. Cannot be undone.</i>`,
+        { parse_mode: "HTML", reply_markup: keyboard },
+      );
+    } catch (err) {
+      logger.error("Clear blocked confirm error", { error: err instanceof Error ? err.message : String(err) });
+      await ctx.answerCallbackQuery("❌ Error").catch(() => {});
+    }
+  });
+
+  // Clear all blocked keywords — confirmed
+  bot.callbackQuery("x:bl:clear:do", async (ctx) => {
     try {
       await settingsRepo.setSetting("blockedCompanyKeywords", "[]");
       await ctx.answerCallbackQuery("All blocked companies cleared!");
@@ -389,7 +427,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         reply_markup: new InlineKeyboard().text("◀️ Settings", "x:menu").text("◀️ Menu", "m:menu"),
       });
     } catch (err) {
-      console.error("Clear blocked error:", err);
+      logger.error("Clear blocked error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -401,11 +439,13 @@ export function registerSettingsHandlers(bot: Bot): void {
     if (!chatId) return next();
 
     const action = awaitingInput.get(chatId);
-    if (!action) return next();
+    if (!action || !action.startsWith("settings:")) return next();
     awaitingInput.delete(chatId);
 
+    const subAction = action.slice("settings:".length);
+
     try {
-      if (action === "blocked_company") {
+      if (subAction === "blocked_company") {
         const newKeywords = ctx.message.text
           .split(",")
           .map((t) => t.trim().toLowerCase())
@@ -449,7 +489,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         return;
       }
     } catch (err) {
-      console.error("Text input handler error:", err);
+      logger.error("Text input handler error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.reply("❌ Error saving setting.").catch(() => {});
     }
 
@@ -487,7 +527,7 @@ export function registerSettingsHandlers(bot: Bot): void {
         reply_markup: keyboard,
       });
     } catch (err) {
-      console.error("Main menu error:", err);
+      logger.error("Main menu error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading menu").catch(() => {});
     }
   });

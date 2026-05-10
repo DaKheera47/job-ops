@@ -16,7 +16,8 @@
       "@server/*": ["src/server/*"],
       "@infra/*": ["src/server/infra/*"],
       "@client/*": ["src/client/*"],
-      "@shared/*": ["../shared/src/*"]
+      "@shared/*": ["../shared/src/*"],
+      "@extractors/*": ["../extractors/*"]
     }
   },
   "include": ["src/**/*", "scripts/**/*"],

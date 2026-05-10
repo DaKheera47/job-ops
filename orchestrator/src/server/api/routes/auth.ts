@@ -1,4 +1,4 @@
-import { badRequest, serviceUnavailable, unauthorized } from "@infra/errors";
+import { badRequest, serviceUnavailable, tooManyRequests, unauthorized } from "@infra/errors";
 import { asyncRoute, fail, ok } from "@infra/http";
 import { blacklistToken, signToken, verifyToken } from "@server/auth/jwt";
 import { verifyPassword } from "@server/auth/password";
@@ -17,11 +17,70 @@ const setupSchema = loginSchema.extend({
   displayName: z.string().trim().min(1).max(120).optional(),
 });
 
+// Per-IP brute-force protection for login. In-memory; resets on restart.
+// 8 failed attempts per 15 minutes is generous for typos but blocks
+// password-spraying.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_FAILURES = 8;
+
+interface LoginAttempt {
+  failures: number;
+  resetAt: number;
+}
+
+const loginAttempts = new Map<string, LoginAttempt>();
+
+function loginRateKey(req: Request): string {
+  return req.ip ?? "unknown";
+}
+
+function checkLoginRateLimit(req: Request): {
+  allowed: boolean;
+  retryInSeconds?: number;
+} {
+  const key = loginRateKey(req);
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || entry.resetAt <= now) return { allowed: true };
+  if (entry.failures >= LOGIN_MAX_FAILURES) {
+    return {
+      allowed: false,
+      retryInSeconds: Math.ceil((entry.resetAt - now) / 1000),
+    };
+  }
+  return { allowed: true };
+}
+
+function recordLoginFailure(req: Request): void {
+  const key = loginRateKey(req);
+  const now = Date.now();
+  const entry = loginAttempts.get(key);
+  if (!entry || entry.resetAt <= now) {
+    loginAttempts.set(key, { failures: 1, resetAt: now + LOGIN_WINDOW_MS });
+    return;
+  }
+  entry.failures += 1;
+}
+
+function clearLoginFailures(req: Request): void {
+  loginAttempts.delete(loginRateKey(req));
+}
+
 export const authRouter = Router();
 
 authRouter.post(
   "/login",
   asyncRoute(async (req: Request, res: Response) => {
+    const gate = checkLoginRateLimit(req);
+    if (!gate.allowed) {
+      res.setHeader("Retry-After", String(gate.retryInSeconds ?? 60));
+      fail(
+        res,
+        tooManyRequests("Too many failed attempts. Try again later."),
+      );
+      return;
+    }
+
     if ((await usersRepo.countUsers()) === 0) {
       fail(res, badRequest("Initial setup is required before sign-in"));
       return;
@@ -36,6 +95,7 @@ authRouter.post(
     const { username, password } = parsed.data;
     const user = await usersRepo.getUserForLogin(username);
     if (!user || user.isDisabled) {
+      recordLoginFailure(req);
       fail(res, unauthorized("Invalid credentials"));
       return;
     }
@@ -46,6 +106,7 @@ authRouter.post(
       passwordSalt: user.passwordSalt,
     });
     if (!passwordValid) {
+      recordLoginFailure(req);
       fail(res, unauthorized("Invalid credentials"));
       return;
     }
@@ -72,6 +133,7 @@ authRouter.post(
       return;
     }
 
+    clearLoginFailures(req);
     ok(res, { token, expiresIn });
   }),
 );

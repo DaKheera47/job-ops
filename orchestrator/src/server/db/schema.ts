@@ -160,6 +160,8 @@ export const jobs = sqliteTable(
     tailoredSkills: text("tailored_skills"),
     selectedProjectIds: text("selected_project_ids"),
     pdfPath: text("pdf_path"),
+    coverLetterText: text("cover_letter_text"),
+    coverLetterPdfPath: text("cover_letter_pdf_path"),
     tracerLinksEnabled: integer("tracer_links_enabled", { mode: "boolean" })
       .notNull()
       .default(false),

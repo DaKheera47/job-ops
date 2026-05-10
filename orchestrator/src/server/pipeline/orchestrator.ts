@@ -42,6 +42,7 @@ import {
   updatePipelineRunResultSummary,
 } from "./run-details";
 import {
+  checkLivenessStep,
   discoverJobsStep,
   importJobsStep,
   loadProfileStep,
@@ -210,28 +211,56 @@ export async function runPipeline(
   tenantState.isRunning = true;
   tenantState.activePipelineRunId = "pending";
   tenantState.cancelRequestedAt = null;
-  resetProgress();
-  const locationIntent = await resolveLocationIntent(config);
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config, locationIntent };
-  const configSnapshot = {
-    topN: mergedConfig.topN,
-    minSuitabilityScore: mergedConfig.minSuitabilityScore,
-    sources: mergedConfig.sources,
-    locationIntent,
-  } as const;
 
+  // Setup phase — anything that throws here would leave isRunning=true forever
+  // because the main finally block lives inside runWithRequestContext below.
+  // Guard with our own try/catch that resets state on early failure.
+  let locationIntent: NonNullable<PipelineConfig["locationIntent"]>;
+  let mergedConfig: PipelineConfig;
+  let configSnapshot: {
+    topN: number;
+    minSuitabilityScore: number;
+    sources: PipelineConfig["sources"];
+    locationIntent: NonNullable<PipelineConfig["locationIntent"]>;
+  };
   let savedDetails: PipelineRunSavedDetails | null = null;
+  let pipelineRun: Awaited<ReturnType<typeof pipelineRepo.createPipelineRun>>;
   try {
-    savedDetails = await buildPipelineRunSavedDetails(mergedConfig);
-  } catch (error) {
-    logger.warn("Failed to capture pipeline run settings snapshot", { error });
-  }
+    resetProgress();
+    locationIntent = await resolveLocationIntent(config);
+    mergedConfig = { ...DEFAULT_CONFIG, ...config, locationIntent };
+    configSnapshot = {
+      topN: mergedConfig.topN,
+      minSuitabilityScore: mergedConfig.minSuitabilityScore,
+      sources: mergedConfig.sources,
+      locationIntent,
+    };
 
-  const pipelineRun = await pipelineRepo.createPipelineRun({
-    configSnapshot,
-    savedDetails,
-  });
-  tenantState.activePipelineRunId = pipelineRun.id;
+    try {
+      savedDetails = await buildPipelineRunSavedDetails(mergedConfig);
+    } catch (error) {
+      logger.warn("Failed to capture pipeline run settings snapshot", { error });
+    }
+
+    pipelineRun = await pipelineRepo.createPipelineRun({
+      configSnapshot,
+      savedDetails,
+    });
+    tenantState.activePipelineRunId = pipelineRun.id;
+  } catch (error) {
+    tenantState.isRunning = false;
+    tenantState.activePipelineRunId = null;
+    tenantState.cancelRequestedAt = null;
+    const message = error instanceof Error ? error.message : "Unknown error";
+    logger.error("Pipeline setup failed before run could start", { error });
+    progressHelpers.failed(message);
+    return {
+      success: false,
+      jobsDiscovered: 0,
+      jobsProcessed: 0,
+      error: `Pipeline setup failed: ${message}`,
+    };
+  }
 
   return runWithRequestContext({ pipelineRunId: pipelineRun.id }, async () => {
     const pipelineLogger = logger.child({ pipelineRunId: pipelineRun.id });
@@ -345,6 +374,18 @@ export async function runPipeline(
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
         jobsDiscovered: created,
       });
+
+      ensureNotCancelled(tenantId);
+      await persistResultSummary({ stage: "liveness" });
+      const { expired: jobsExpired } = await checkLivenessStep({
+        shouldCancel: () =>
+          getPipelineState(tenantId).cancelRequestedAt !== null,
+      });
+      if (jobsExpired > 0) {
+        pipelineLogger.info("Liveness check removed expired jobs", {
+          expired: jobsExpired,
+        });
+      }
 
       ensureNotCancelled(tenantId);
       await persistResultSummary({ stage: "scoring" });

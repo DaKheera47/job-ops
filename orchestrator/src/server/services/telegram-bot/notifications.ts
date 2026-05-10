@@ -18,7 +18,14 @@ async function broadcast(
   if (!(await areNotificationsEnabled())) return;
 
   const chatIds = await getAuthorizedChatIds();
+  // Telegram global limit is ~30 messages/sec across all chats. We're far
+  // below that today (1 user) but a small inter-message delay future-proofs
+  // the broadcast and avoids 429s when the user list grows.
+  const SEND_INTERVAL_MS = 50;
+  let first = true;
   for (const chatId of chatIds) {
+    if (!first) await new Promise((r) => setTimeout(r, SEND_INTERVAL_MS));
+    first = false;
     try {
       await bot.api.sendMessage(chatId, text, {
         parse_mode: "HTML",

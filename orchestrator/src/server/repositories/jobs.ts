@@ -20,7 +20,7 @@ import type {
   LocationEvidence,
   LocationEvidenceEntry,
 } from "@shared/types/location";
-import { and, desc, eq, inArray, isNull, lt, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, like, lt, ne, or, sql } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import { getActiveTenantId } from "../tenancy/context";
 
@@ -215,6 +215,67 @@ export async function getJobsRevision(
 }
 
 /**
+ * Search jobs by free-text query across title, employer, and location.
+ */
+export async function searchJobs(
+  query: string,
+  limit: number = 20,
+): Promise<JobListItem[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  const tenantId = getActiveTenantId();
+  const escaped = trimmed.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const pattern = `%${escaped}%`;
+
+  const rows = await db
+    .select({
+      id: jobs.id,
+      source: jobs.source,
+      title: jobs.title,
+      employer: jobs.employer,
+      jobUrl: jobs.jobUrl,
+      applicationLink: jobs.applicationLink,
+      datePosted: jobs.datePosted,
+      deadline: jobs.deadline,
+      salary: jobs.salary,
+      location: jobs.location,
+      status: jobs.status,
+      outcome: jobs.outcome,
+      closedAt: jobs.closedAt,
+      suitabilityScore: jobs.suitabilityScore,
+      sponsorMatchScore: jobs.sponsorMatchScore,
+      jobType: jobs.jobType,
+      jobFunction: jobs.jobFunction,
+      salaryMinAmount: jobs.salaryMinAmount,
+      salaryMaxAmount: jobs.salaryMaxAmount,
+      salaryCurrency: jobs.salaryCurrency,
+      discoveredAt: jobs.discoveredAt,
+      readyAt: jobs.readyAt,
+      appliedAt: jobs.appliedAt,
+      updatedAt: jobs.updatedAt,
+    })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.tenantId, tenantId),
+        or(
+          like(jobs.title, pattern),
+          like(jobs.employer, pattern),
+          like(jobs.location, pattern),
+        ),
+      ),
+    )
+    .orderBy(desc(jobs.discoveredAt))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ...row,
+    source: row.source as JobListItem["source"],
+    status: row.status as JobStatus,
+  }));
+}
+
+/**
  * Get a single job by ID.
  */
 export async function getJobById(id: string): Promise<Job | null> {
@@ -224,6 +285,26 @@ export async function getJobById(id: string): Promise<Job | null> {
     .from(jobs)
     .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, id)));
   return row ? mapRowToJob(row) : null;
+}
+
+/**
+ * Resolve a short ID prefix (used by Telegram callbacks where button-data is
+ * limited to 64 bytes) to a full job ID. Returns null if no match or if the
+ * prefix is ambiguous (matches multiple jobs).
+ */
+export async function getJobIdByShortId(
+  shortId: string,
+): Promise<string | null> {
+  const trimmed = shortId.trim();
+  if (!trimmed || !/^[0-9a-f-]+$/i.test(trimmed)) return null;
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(and(eq(jobs.tenantId, tenantId), like(jobs.id, `${trimmed}%`)))
+    .limit(2);
+  if (rows.length !== 1) return null;
+  return rows[0].id;
 }
 
 export async function listJobNotes(jobId: string): Promise<JobNote[]> {
@@ -653,6 +734,19 @@ export async function getUnscoredDiscoveredJobs(
 }
 
 /**
+ * Delete a single job by ID. Cascade deletes are configured for related tables
+ * (stage_events, application_tasks, job_notes, interviews, jobChat*).
+ */
+export async function deleteJob(id: string): Promise<boolean> {
+  const tenantId = getActiveTenantId();
+  const result = await db
+    .delete(jobs)
+    .where(and(eq(jobs.tenantId, tenantId), eq(jobs.id, id)))
+    .run();
+  return result.changes > 0;
+}
+
+/**
  * Delete jobs by status.
  */
 export async function deleteJobsByStatus(status: JobStatus): Promise<number> {
@@ -714,6 +808,8 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     tailoredSkills: row.tailoredSkills ?? null,
     selectedProjectIds: row.selectedProjectIds ?? null,
     pdfPath: row.pdfPath,
+    coverLetterText: row.coverLetterText ?? null,
+    coverLetterPdfPath: row.coverLetterPdfPath ?? null,
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     sponsorMatchScore: row.sponsorMatchScore ?? null,
     sponsorMatchNames: row.sponsorMatchNames ?? null,

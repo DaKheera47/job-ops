@@ -1,5 +1,6 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { ResumeProjectCatalogItem } from "@shared/types";
+import { normalizeTextForATS } from "@shared/utils/normalize-ats-text.js";
 import { stripHtmlTags } from "@shared/utils/string";
 
 type RecordLike = Record<string, unknown>;
@@ -251,7 +252,30 @@ export function applyTailoredChunks(args: {
   resumeData: RecordLike;
   tailoredContent: TailorChunkInput;
 }): void {
-  applyTailoredSkills(args.resumeData, args.tailoredContent.skills);
-  applyTailoredSummary(args.resumeData, args.tailoredContent.summary);
-  applyTailoredHeadline(args.resumeData, args.tailoredContent.headline);
+  // Normalize AI-generated text for ATS compatibility before applying
+  const normalized: TailorChunkInput = {
+    headline: args.tailoredContent.headline
+      ? normalizeTextForATS(args.tailoredContent.headline)
+      : args.tailoredContent.headline,
+    summary: args.tailoredContent.summary
+      ? normalizeTextForATS(args.tailoredContent.summary)
+      : args.tailoredContent.summary,
+    skills: normalizeSkillsForATS(args.tailoredContent.skills),
+  };
+
+  applyTailoredSkills(args.resumeData, normalized.skills);
+  applyTailoredSummary(args.resumeData, normalized.summary);
+  applyTailoredHeadline(args.resumeData, normalized.headline);
+}
+
+function normalizeSkillsForATS(
+  skills: TailoredSkillsInput,
+): TailoredSkillsInput {
+  if (!skills || typeof skills === "string") {
+    return skills ? normalizeTextForATS(skills) : skills;
+  }
+  return skills.map((group) => ({
+    name: normalizeTextForATS(group.name),
+    keywords: group.keywords.map((kw) => normalizeTextForATS(kw)),
+  }));
 }

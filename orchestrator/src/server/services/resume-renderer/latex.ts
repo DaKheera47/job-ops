@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { normalizeTextForATS } from "@shared/utils/normalize-ats-text.js";
 import { getLatexResumeSectionTitles } from "./document";
 import type {
   LatexResumeContactItem,
@@ -50,11 +51,7 @@ const TECTONIC_TIMEOUT_MS = 120_000;
 const OUTPUT_FILENAME = "resume.pdf";
 
 function normalizeText(value: string): string {
-  return value
-    .replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, "-")
-    .replace(/\u2022/g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeTextForATS(value);
 }
 
 function escapeLatexText(value: string): string {

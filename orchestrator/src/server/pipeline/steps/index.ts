@@ -1,3 +1,4 @@
+export { checkLivenessStep } from "./check-liveness";
 export { discoverJobsStep } from "./discover-jobs";
 export { importJobsStep } from "./import-jobs";
 export { loadProfileStep } from "./load-profile";

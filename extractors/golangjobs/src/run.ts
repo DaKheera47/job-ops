@@ -5,6 +5,7 @@ import {
   resolveSearchCities,
 } from "job-ops-shared/search-cities";
 import type { CreateJobInput } from "job-ops-shared/types/jobs";
+import { createRateLimitedFetch } from "job-ops-shared/utils/rate-limited-fetch";
 
 const GOLANG_JOBS_SUPABASE_URL = "https://mvjyjzestmcxxmmmakec.supabase.co";
 const GOLANG_JOBS_DEFAULT_SUPABASE_ANON_KEY =
@@ -360,7 +361,7 @@ function resolveExplicitLocations(
 export async function runGolangJobs(
   options: RunGolangJobsOptions = {},
 ): Promise<GolangJobsResult> {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = options.fetchImpl ?? createRateLimitedFetch("golangjobs");
   const supabaseAnonKey =
     options.supabaseAnonKey ??
     process.env[GOLANG_JOBS_SUPABASE_ANON_KEY_ENV]?.trim() ??

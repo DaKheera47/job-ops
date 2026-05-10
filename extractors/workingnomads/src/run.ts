@@ -5,6 +5,7 @@ import {
   resolveSearchCities,
 } from "@shared/search-cities.js";
 import type { CreateJobInput, JobLocationEvidence } from "@shared/types/jobs";
+import { createRateLimitedFetch } from "job-ops-shared/utils/rate-limited-fetch";
 
 const WORKING_NOMADS_SEARCH_URL =
   "https://www.workingnomads.com/jobsapi/_search";
@@ -598,7 +599,7 @@ function matchesWorkplaceTypes(
 export async function runWorkingNomads(
   options: RunWorkingNomadsOptions = {},
 ): Promise<WorkingNomadsResult> {
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = options.fetchImpl ?? createRateLimitedFetch("workingnomads");
   const searchTerms =
     options.searchTerms && options.searchTerms.length > 0
       ? options.searchTerms

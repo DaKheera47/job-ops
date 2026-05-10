@@ -5,9 +5,12 @@ import {
   toNumberOrNull,
   toStringOrNull,
 } from "job-ops-shared/utils/type-conversion";
+import { createRateLimitedFetch } from "job-ops-shared/utils/rate-limited-fetch";
 
 const API_BASE = "https://api.adzuna.com/v1/api";
 const JOBOPS_PROGRESS_PREFIX = "JOBOPS_PROGRESS ";
+
+const adzunaFetch = createRateLimitedFetch("adzuna");
 const DEFAULT_SEARCH_TERM = "web developer";
 
 type AdzunaCompany = { display_name?: unknown };
@@ -118,7 +121,7 @@ async function fetchJobsPage(args: {
   }
   url.searchParams.set("results_per_page", String(args.resultsPerPage));
 
-  const response = await fetch(url.toString(), {
+  const response = await adzunaFetch(url.toString(), {
     headers: { Accept: "application/json" },
   });
   if (!response.ok) {

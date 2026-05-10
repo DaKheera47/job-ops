@@ -42,6 +42,7 @@ export type PipelineRunExecutionStage =
   | "profile_loaded"
   | "discovery"
   | "import"
+  | "liveness"
   | "scoring"
   | "selection"
   | "processing"

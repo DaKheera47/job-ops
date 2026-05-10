@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import { InlineKeyboard } from "grammy";
 import type { Bot } from "grammy";
 import * as jobsRepo from "../../../repositories/jobs";
@@ -33,7 +34,7 @@ export function registerStatsHandlers(bot: Bot): void {
         reply_markup: new InlineKeyboard().text("◀️ Back", "m:menu"),
       });
     } catch (err) {
-      console.error("Stats error:", err);
+      logger.error("Stats error", { error: err instanceof Error ? err.message : String(err) });
       await ctx.answerCallbackQuery("❌ Error loading stats").catch(() => {});
     }
   });

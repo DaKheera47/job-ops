@@ -1,3 +1,4 @@
+import { logger } from "@infra/logger";
 import { InlineKeyboard } from "grammy";
 import type { Bot } from "grammy";
 import { runWithRequestContext } from "@infra/request-context";
@@ -9,10 +10,8 @@ import {
 import * as settingsRepo from "../../../repositories/settings";
 import { subscribeToProgress, getProgress } from "../../../pipeline/progress";
 import { getPipelineSchedulerStatus } from "../../pipeline-scheduler";
+import { awaitingInput } from "../awaiting-input";
 import { formatPipelineProgress, escapeHtml } from "../formatting";
-
-// Shared state for text input collection
-export const awaitingPipelineInput = new Map<number, string>();
 
 const SCOPE_OPTIONS = [
   { label: "📍 Selected Only", value: "selected_only" },
@@ -24,6 +23,10 @@ const STRICTNESS_OPTIONS = [
   { label: "🎯 Exact Only", value: "exact_only" },
   { label: "🎯 Flexible", value: "flexible" },
 ];
+
+function logErr(scope: string, err: unknown): void {
+  logger.error(scope, { error: err instanceof Error ? err.message : String(err) });
+}
 
 function scopeLabel(value: string): string {
   return SCOPE_OPTIONS.find((o) => o.value === value)?.label || value;
@@ -120,7 +123,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         reply_markup: buildConfigKeyboard(),
       });
     } catch (err) {
-      console.error("Pipeline config screen error:", err);
+      logErr("Pipeline config screen error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -133,7 +136,7 @@ export function registerPipelineHandlers(bot: Bot): void {
       await ctx.answerCallbackQuery();
       const chatId = ctx.chat?.id;
       if (!chatId) return;
-      awaitingPipelineInput.set(chatId, "searchTerms");
+      awaitingInput.set(chatId, "pipeline:searchTerms");
 
       const searchTermsRaw = await settingsRepo.getSetting("searchTerms");
       let keywords: string[] = [];
@@ -151,7 +154,7 @@ export function registerPipelineHandlers(bot: Bot): void {
       const keyboard = new InlineKeyboard().text("◀️ Back", "p:run");
       await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: keyboard });
     } catch (err) {
-      console.error("Edit search terms error:", err);
+      logErr("Edit search terms error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -162,7 +165,7 @@ export function registerPipelineHandlers(bot: Bot): void {
       await ctx.answerCallbackQuery();
       const chatId = ctx.chat?.id;
       if (!chatId) return;
-      awaitingPipelineInput.set(chatId, "location");
+      awaitingInput.set(chatId, "pipeline:location");
 
       const current = await settingsRepo.getSetting("searchCities") || "";
       let text = "<b>📍 Location</b>\n\n";
@@ -175,7 +178,7 @@ export function registerPipelineHandlers(bot: Bot): void {
       const keyboard = new InlineKeyboard().text("◀️ Back", "p:run");
       await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: keyboard });
     } catch (err) {
-      console.error("Edit location error:", err);
+      logErr("Edit location error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -199,7 +202,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Scope picker error:", err);
+      logErr("Scope picker error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -221,7 +224,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         reply_markup: buildConfigKeyboard(),
       });
     } catch (err) {
-      console.error("Set scope error:", err);
+      logErr("Set scope error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -245,7 +248,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         { parse_mode: "HTML", reply_markup: keyboard },
       );
     } catch (err) {
-      console.error("Strictness picker error:", err);
+      logErr("Strictness picker error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -267,7 +270,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         reply_markup: buildConfigKeyboard(),
       });
     } catch (err) {
-      console.error("Set strictness error:", err);
+      logErr("Set strictness error", err);
       await ctx.answerCallbackQuery("❌ Error").catch(() => {});
     }
   });
@@ -278,12 +281,14 @@ export function registerPipelineHandlers(bot: Bot): void {
     const chatId = ctx.chat?.id;
     if (!chatId) return next();
 
-    const action = awaitingPipelineInput.get(chatId);
-    if (!action) return next();
-    awaitingPipelineInput.delete(chatId);
+    const action = awaitingInput.get(chatId);
+    if (!action || !action.startsWith("pipeline:")) return next();
+    awaitingInput.delete(chatId);
+
+    const subAction = action.slice("pipeline:".length);
 
     try {
-      if (action === "searchTerms") {
+      if (subAction === "searchTerms") {
         const terms = ctx.message.text
           .split(",")
           .map((t) => t.trim())
@@ -298,7 +303,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         return;
       }
 
-      if (action === "location") {
+      if (subAction === "location") {
         const location = ctx.message.text.trim();
         await settingsRepo.setSetting("searchCities", location);
 
@@ -310,7 +315,7 @@ export function registerPipelineHandlers(bot: Bot): void {
         return;
       }
     } catch (err) {
-      console.error("Pipeline text input error:", err);
+      logErr("Pipeline text input error", err);
       await ctx.reply("❌ Error saving setting.").catch(() => {});
     }
 
@@ -329,6 +334,9 @@ export function registerPipelineHandlers(bot: Bot): void {
       { parse_mode: "HTML", reply_markup: new InlineKeyboard().text("⏹ Cancel", "p:cancel") },
     );
 
+    // editMessageText returns `true` for inline-mode messages; in chat mode it
+    // returns the edited Message. Bail out defensively rather than crash.
+    if (statusMsg === true) return;
     const messageId = statusMsg.message_id;
 
     runWithRequestContext({}, async () => {
@@ -354,7 +362,7 @@ export function registerPipelineHandlers(bot: Bot): void {
             parse_mode: "HTML",
             reply_markup: keyboard,
           })
-          .catch(() => {});
+          .catch((err) => logErr("Pipeline progress edit error", err));
       });
 
       try {
@@ -376,7 +384,7 @@ export function registerPipelineHandlers(bot: Bot): void {
               .text("◀️ Menu", "m:menu"),
           },
         )
-        .catch(() => {});
+        .catch((e) => logErr("Pipeline error edit error", e));
     });
   });
 

@@ -1,0 +1,13 @@
+{
+  "name": "ats-boards-extractor",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Zero-token ATS board scanner for Greenhouse, Ashby, and Lever APIs",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.0"
+  },
+  "scripts": {
+    "check:types": "tsc --noEmit"
+  }
+}

@@ -3,10 +3,12 @@ import * as settingsRepo from "../../repositories/settings";
 import { generateLinkCode } from "./auth";
 import { createBot, getBot } from "./bot";
 import { registerApplyHandlers } from "./handlers/apply";
+import { registerBoardHandlers } from "./handlers/boards";
 import { registerJobHandlers } from "./handlers/jobs";
 import { registerPipelineHandlers } from "./handlers/pipeline";
 import { registerSettingsHandlers } from "./handlers/settings";
 import { registerStatsHandlers } from "./handlers/stats";
+import { sendChangelogIfNeeded } from "./changelog-notifications";
 import {
   startNotificationSubscriptions,
   stopNotificationSubscriptions,
@@ -35,12 +37,20 @@ export async function initializeTelegramBot(): Promise<void> {
     registerApplyHandlers(bot);
     registerStatsHandlers(bot);
     registerSettingsHandlers(bot);
+    registerBoardHandlers(bot);
 
     // Start long-polling
     bot.start({
       onStart: () => {
         logger.info("Telegram bot started (long-polling)");
         started = true;
+
+        // Send changelog for any unseen updates (async, non-blocking)
+        sendChangelogIfNeeded().catch((err) =>
+          logger.warn("Changelog notification failed", {
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
       },
       drop_pending_updates: true,
     });

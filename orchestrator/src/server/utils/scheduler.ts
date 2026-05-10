@@ -1,11 +1,11 @@
 /**
  * Shared daily scheduler utility for running tasks at a specific hour.
- * Used by visa-sponsors and backup services.
+ * Used by visa-sponsors, backup, and pipeline services.
  */
 
 export interface Scheduler {
-  /** Start scheduling at the specified hour (0-23) */
-  start(hour: number): void;
+  /** Start scheduling at the specified hour (0-23). */
+  start(hour: number, timezone?: string): void;
   /** Stop the scheduler */
   stop(): void;
   /** Get ISO string of next scheduled run, or null if not running */
@@ -18,24 +18,93 @@ interface SchedulerState {
   timer: ReturnType<typeof setTimeout> | null;
   nextRunTime: Date | null;
   currentHour: number | null;
+  currentTimezone: string | null;
 }
 
 /**
- * Calculate the next occurrence of a specific hour (UTC)
- * @param hour - Hour of day (0-23) in UTC
- * @returns Date object set to the next UTC occurrence of that hour
+ * Compute the UTC offset (in ms) for an absolute instant in a given IANA
+ * timezone. Used to convert local-wall-clock to UTC and back without a
+ * library, while respecting DST transitions for that exact instant.
  */
-export function calculateNextTime(hour: number): Date {
-  const now = new Date();
-  const next = new Date(now);
-  next.setUTCHours(hour, 0, 0, 0);
+function getTimezoneOffsetMs(date: Date, timeZone: string): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = dtf.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) {
+    if (p.type !== "literal") map[p.type] = p.value;
+  }
+  const asIfUtc = Date.UTC(
+    parseInt(map.year, 10),
+    parseInt(map.month, 10) - 1,
+    parseInt(map.day, 10),
+    parseInt(map.hour, 10),
+    parseInt(map.minute, 10),
+    parseInt(map.second, 10),
+  );
+  return asIfUtc - date.getTime();
+}
 
-  // If we've passed the time today, schedule for tomorrow
-  if (next <= now) {
-    next.setUTCDate(next.getUTCDate() + 1);
+/**
+ * Resolve a wall-clock time (year/month/day/hour in `timeZone`) to the
+ * corresponding UTC instant. Handles DST transitions correctly.
+ */
+function zonedWallTimeToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  timeZone: string,
+): Date {
+  // Initial guess assumes no offset; correct iteratively (one pass is
+  // enough for any normal offset including DST transitions).
+  const guess = new Date(Date.UTC(year, month - 1, day, hour, 0, 0));
+  const offset = getTimezoneOffsetMs(guess, timeZone);
+  return new Date(guess.getTime() - offset);
+}
+
+/**
+ * Calculate the next occurrence of a specific hour, optionally interpreted
+ * in a given IANA timezone (e.g. "Europe/Berlin"). When `timezone` is
+ * omitted the hour is treated as UTC, matching the legacy behaviour used
+ * by visa-sponsors and backup schedulers.
+ */
+export function calculateNextTime(hour: number, timezone?: string): Date {
+  const now = new Date();
+
+  if (!timezone) {
+    const next = new Date(now);
+    next.setUTCHours(hour, 0, 0, 0);
+    if (next <= now) {
+      next.setUTCDate(next.getUTCDate() + 1);
+    }
+    return next;
   }
 
-  return next;
+  // Walk forward day-by-day in the target timezone until we find an
+  // occurrence strictly in the future. Two iterations are always enough.
+  for (let dayOffset = 0; dayOffset < 3; dayOffset++) {
+    const probe = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
+    const dateStr = new Intl.DateTimeFormat("en-CA", {
+      timeZone: timezone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(probe);
+    const [y, m, d] = dateStr.split("-").map((s) => parseInt(s, 10));
+    const candidate = zonedWallTimeToUtc(y, m, d, hour, timezone);
+    if (candidate > now) return candidate;
+  }
+  // Defensive fallback (should never hit).
+  return new Date(now.getTime() + 24 * 60 * 60 * 1000);
 }
 
 /**
@@ -52,6 +121,7 @@ export function createScheduler(
     timer: null,
     nextRunTime: null,
     currentHour: null,
+    currentTimezone: null,
   };
 
   function clearState(): void {
@@ -61,20 +131,23 @@ export function createScheduler(
     state.timer = null;
     state.nextRunTime = null;
     state.currentHour = null;
+    state.currentTimezone = null;
   }
 
-  function scheduleNext(hour: number): void {
-    // Clear any existing timer
+  function scheduleNext(hour: number, timezone: string | undefined): void {
     if (state.timer) {
       clearState();
     }
 
     state.currentHour = hour;
-    state.nextRunTime = calculateNextTime(hour);
+    state.currentTimezone = timezone ?? null;
+    state.nextRunTime = calculateNextTime(hour, timezone);
     const delay = state.nextRunTime.getTime() - Date.now();
 
     console.log(
-      `⏰ [${name}] Next run scheduled for: ${state.nextRunTime.toISOString()}`,
+      `⏰ [${name}] Next run scheduled for: ${state.nextRunTime.toISOString()}${
+        timezone ? ` (${hour}:00 ${timezone})` : ""
+      }`,
     );
 
     state.timer = setTimeout(async () => {
@@ -85,19 +158,19 @@ export function createScheduler(
         console.error(`❌ [${name}] Scheduled task failed:`, error);
       }
       // Reschedule for next occurrence
-      scheduleNext(hour);
+      scheduleNext(hour, timezone);
     }, delay);
   }
 
   return {
-    start(hour: number): void {
+    start(hour: number, timezone?: string): void {
       if (state.timer) {
         console.log(`🔄 [${name}] Restarting scheduler with hour ${hour}...`);
         clearState();
       } else {
         console.log(`🚀 [${name}] Starting scheduler at hour ${hour}...`);
       }
-      scheduleNext(hour);
+      scheduleNext(hour, timezone);
     },
 
     stop(): void {

@@ -894,6 +894,10 @@ const migrations = [
        ORDER BY se.occurred_at DESC, se.id DESC
        LIMIT 1
      ), 'applied') = 'closed'`,
+
+  // Cover letter PDF feature
+  `ALTER TABLE jobs ADD COLUMN cover_letter_text TEXT`,
+  `ALTER TABLE jobs ADD COLUMN cover_letter_pdf_path TEXT`,
 ];
 
 console.log("🔧 Running database migrations...");

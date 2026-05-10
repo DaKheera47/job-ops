@@ -44,10 +44,15 @@ export async function initializePipelineScheduler(): Promise<void> {
   const hourRaw = await settingsRepo.getSetting("pipelineScheduleHour");
   const hour = parseInt(hourRaw || "8", 10);
   const safeHour = Number.isNaN(hour) ? 8 : Math.min(23, Math.max(0, hour));
+  const userTimezone =
+    (await settingsRepo.getSetting("userTimezone")) || "Europe/Berlin";
 
   if (enabled === "true" || enabled === "1") {
-    scheduler.start(safeHour);
-    logger.info("Pipeline scheduler started", { hour: safeHour });
+    scheduler.start(safeHour, userTimezone);
+    logger.info("Pipeline scheduler started", {
+      hour: safeHour,
+      timezone: userTimezone,
+    });
   } else {
     scheduler.stop();
     logger.info("Pipeline scheduler disabled");

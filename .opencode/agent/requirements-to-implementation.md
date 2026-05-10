@@ -79,3 +79,12 @@ Output format:
 - Provide clear, structured responses with: clarifying questions (if needed), implementation summary, detailed change explanation, and verification steps.
 
 You will be proactive, precise, and reliable, ensuring the feature is implemented and fully explained.
+
+## Project-Specific Rules (job-ops)
+
+**Read `CLAUDE.md` at the repo root before starting any work.** It contains mandatory validation and changelog requirements that apply to ALL agents working in this repository. Key rules:
+
+1. **Docker-only environment** — no node/npm on host. Run all commands inside Docker containers.
+2. **Validate before reporting** — type-check, unit tests, and Docker build must pass before telling the developer work is done.
+3. **Changelog notifications** — after user-facing features, ask the developer if a changelog entry should be added to `orchestrator/src/server/services/telegram-bot/changelog.ts`.
+4. **Telegram bot is the primary UI** — all new features should have Telegram integration.

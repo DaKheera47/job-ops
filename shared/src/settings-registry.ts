@@ -353,6 +353,27 @@ export const settingsRegistry = {
     parse: parseJsonArrayOrNull,
     serialize: serializeNullableJsonArray,
   },
+  atsBoardSlugs: {
+    kind: "typed" as const,
+    schema: z.array(
+      z.object({
+        provider: z.enum(["greenhouse", "ashby", "lever", "workday", "smartrecruiters"]),
+        slug: z.string().trim().min(1).max(100),
+      }),
+    ).max(100),
+    default: (): Array<{ provider: string; slug: string }> => [],
+    parse: (raw: string | undefined): Array<{ provider: string; slug: string }> | null => {
+      if (!raw) return null;
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    },
+    serialize: (value: Array<{ provider: string; slug: string }> | null | undefined): string | null =>
+      value !== null && value !== undefined ? JSON.stringify(value) : null,
+  },
   scoringInstructions: {
     kind: "typed" as const,
     schema: z.string().trim().max(4000),
@@ -776,6 +797,10 @@ export const settingsRegistry = {
     default: (): boolean => true,
     parse: parseBitBoolOrNull,
     serialize: serializeBitBool,
+  },
+  telegramChangelogLastSentVersion: {
+    kind: "string" as const,
+    schema: z.string().trim().max(20),
   },
 
   // --- Aliases ---
