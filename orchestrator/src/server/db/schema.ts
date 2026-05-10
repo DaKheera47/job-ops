@@ -155,6 +155,7 @@ export const jobs = sqliteTable(
     closedAt: integer("closed_at", { mode: "number" }),
     suitabilityScore: real("suitability_score"),
     suitabilityReason: text("suitability_reason"),
+    jobBrief: text("job_brief"),
     tailoredSummary: text("tailored_summary"),
     tailoredHeadline: text("tailored_headline"),
     tailoredSkills: text("tailored_skills"),

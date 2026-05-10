@@ -9,6 +9,7 @@ import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import { processJob } from "@server/pipeline/index";
 import * as jobsRepo from "@server/repositories/jobs";
+import { generateJobBrief } from "@server/services/job-brief";
 import { inferManualJobDetails } from "@server/services/manualJob";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
@@ -316,13 +317,16 @@ manualJobsRouter.post("/import", async (req: Request, res: Response) => {
           throw new Error("Invalid resume profile format");
         }
         const profile = rawProfile as Record<string, unknown>;
-        const { score, reason } = await scoreJobSuitability(
-          processedJob,
-          profile,
-        );
+        const [{ score, reason }, jobBrief] = await Promise.all([
+          scoreJobSuitability(processedJob, profile),
+          generateJobBrief(processedJob.jobDescription, {
+            jobId: processedJob.id,
+          }),
+        ]);
         await jobsRepo.updateJob(processedJob.id, {
           suitabilityScore: score,
           suitabilityReason: reason,
+          jobBrief,
         });
       } catch (error) {
         logger.warn("Manual job scoring failed", {

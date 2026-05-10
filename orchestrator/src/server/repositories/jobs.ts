@@ -58,6 +58,7 @@ export type JobListItemWithPdfFreshnessInput = JobListItem &
     | "tailoredSkills"
     | "selectedProjectIds"
     | "jobDescription"
+    | "jobBrief"
     | "tracerLinksEnabled"
   >;
 
@@ -149,6 +150,7 @@ export async function getJobListItems(
     tailoredSkills: jobs.tailoredSkills,
     selectedProjectIds: jobs.selectedProjectIds,
     jobDescription: jobs.jobDescription,
+    jobBrief: jobs.jobBrief,
     tracerLinksEnabled: jobs.tracerLinksEnabled,
     jobType: jobs.jobType,
     jobFunction: jobs.jobFunction,
@@ -618,6 +620,8 @@ export async function updateJob(
   const now = new Date().toISOString();
   const tenantId = getActiveTenantId();
   const { locationEvidence, ...updateFields } = input;
+  const clearsBriefForDescriptionEdit =
+    input.jobDescription !== undefined && input.jobBrief === undefined;
   const readyAtUpdate =
     input.readyAt !== undefined
       ? { readyAt: input.readyAt }
@@ -635,6 +639,7 @@ export async function updateJob(
     .update(jobs)
     .set({
       ...updateFields,
+      ...(clearsBriefForDescriptionEdit ? { jobBrief: null } : {}),
       ...(locationEvidence !== undefined
         ? { locationEvidence: serializeLocationEvidence(locationEvidence) }
         : {}),
@@ -844,6 +849,7 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     closedAt: row.closedAt ?? null,
     suitabilityScore: row.suitabilityScore,
     suitabilityReason: row.suitabilityReason,
+    jobBrief: row.jobBrief ?? null,
     tailoredSummary: row.tailoredSummary,
     tailoredHeadline: row.tailoredHeadline ?? null,
     tailoredSkills: row.tailoredSkills ?? null,

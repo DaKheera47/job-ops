@@ -137,6 +137,7 @@ export const updateJobSchema = z.object({
   jobDescription: z.string().trim().max(40000).nullable().optional(),
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
+  jobBrief: z.string().nullable().optional(),
   tailoredSummary: z.string().optional(),
   tailoredHeadline: z.string().optional(),
   tailoredSkills: z

@@ -68,6 +68,10 @@ vi.mock("@server/services/scorer", () => ({
   scoreJobSuitability: vi.fn(),
 }));
 
+vi.mock("@server/services/job-brief", () => ({
+  generateJobBrief: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock("@server/services/profile", () => ({
   getProfile: vi.fn().mockResolvedValue({}),
   clearProfileCache: vi.fn(),

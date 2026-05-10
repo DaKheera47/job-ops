@@ -151,6 +151,16 @@ export interface AppliedDuplicateMatch {
   employerScore: number;
 }
 
+export interface JobBrief {
+  role_summary: string;
+  they_want: string[];
+  specifics: string[];
+  company_offers: string[];
+  practical_details: string[];
+  missing_or_unclear: string[];
+  repeated_signals: string[];
+}
+
 export interface Job {
   id: string;
 
@@ -182,6 +192,7 @@ export interface Job {
   closedAt: number | null;
   suitabilityScore: number | null; // 0-100 AI-generated score
   suitabilityReason: string | null; // AI explanation
+  jobBrief: string | null; // Generated JD brief (JSON)
   tailoredSummary: string | null; // Generated resume summary
   tailoredHeadline: string | null; // Generated resume headline
   tailoredSkills: string | null; // Generated resume skills (JSON)
@@ -351,6 +362,7 @@ export interface UpdateJobInput {
   locationEvidence?: JobLocationEvidence | null;
   suitabilityScore?: number;
   suitabilityReason?: string;
+  jobBrief?: string | null;
   tailoredSummary?: string;
   tailoredHeadline?: string;
   tailoredSkills?: string;

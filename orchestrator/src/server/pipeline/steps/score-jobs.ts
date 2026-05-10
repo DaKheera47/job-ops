@@ -1,6 +1,7 @@
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
+import { generateJobBrief } from "@server/services/job-brief";
 import { scoreJobSuitability } from "@server/services/scorer";
 import * as visaSponsors from "@server/services/visa-sponsors/index";
 import { asyncPool } from "@server/utils/async-pool";
@@ -63,7 +64,10 @@ export async function scoreJobsStep(args: {
         return;
       }
 
-      const { score, reason } = await scoreJobSuitability(job, args.profile);
+      const [{ score, reason }, jobBrief] = await Promise.all([
+        scoreJobSuitability(job, args.profile),
+        generateJobBrief(job.jobDescription, { jobId: job.id }),
+      ]);
       if (args.shouldCancel?.()) return;
 
       let sponsorMatchScore = 0;
@@ -91,6 +95,7 @@ export async function scoreJobsStep(args: {
       await jobsRepo.updateJob(job.id, {
         suitabilityScore: score,
         suitabilityReason: reason,
+        jobBrief,
         sponsorMatchScore,
         sponsorMatchNames,
         ...(shouldAutoSkip ? { status: "skipped" } : {}),

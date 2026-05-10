@@ -6,6 +6,7 @@ import {
   simulateProcessJob,
   simulateRescoreJob,
 } from "@server/services/demo-simulator";
+import { generateJobBrief } from "@server/services/job-brief";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import type { JobAction, JobActionResult, JobStatus } from "@shared/types";
@@ -221,11 +222,15 @@ export async function executeJobActionForJob(
           return rawProfile as Record<string, unknown>;
         })();
 
-    const { score, reason } = await scoreJobSuitability(job, profile);
+    const [{ score, reason }, jobBrief] = await Promise.all([
+      scoreJobSuitability(job, profile),
+      generateJobBrief(job.jobDescription, { jobId: job.id }),
+    ]);
 
     const updated = await jobsRepo.updateJob(job.id, {
       suitabilityScore: score,
       suitabilityReason: reason,
+      jobBrief,
     });
     if (!updated) {
       throw new AppError({

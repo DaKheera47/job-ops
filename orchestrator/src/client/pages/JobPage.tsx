@@ -31,6 +31,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { toast } from "sonner";
+import { JobBriefPane } from "@/client/components/JobBriefPane";
 import { JobDescriptionMarkdown } from "@/client/components/JobDescriptionMarkdown";
 import { invalidateJobData } from "@/client/hooks/queries/invalidate";
 import {
@@ -587,6 +588,8 @@ export const JobPage: React.FC = () => {
                   navigationState={jobPageNavigationState}
                 />
 
+                <JobBriefPane job={job} />
+
                 <div className="grid gap-4 lg:grid-cols-2">
                   <article className="rounded-xl border border-border/50 bg-card/75 p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -823,6 +826,8 @@ export const JobPage: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  <JobBriefPane job={job} />
 
                   <div className="rounded-lg border border-border/60 bg-background/25">
                     <div className="border-b border-border/50 px-4 py-3">

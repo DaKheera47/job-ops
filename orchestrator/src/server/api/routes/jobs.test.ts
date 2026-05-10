@@ -1013,6 +1013,32 @@ describe.sequential("Jobs API routes", () => {
     expect(deleteBody.data.count).toBe(1);
   });
 
+  it("clears a generated brief when the job description changes", async () => {
+    const { createJob, updateJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Brief Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/brief-clear",
+      jobDescription: "Old description",
+    });
+    await updateJob(job.id, {
+      jobBrief:
+        '{"role_summary":"Old brief","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
+    });
+
+    const res = await fetch(`${baseUrl}/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobDescription: "New description" }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.jobBrief).toBeNull();
+  });
+
   it("runs skip action with partial failures", async () => {
     const { createJob } = await import("@server/repositories/jobs");
     const discovered = await createJob({
@@ -1361,6 +1387,7 @@ describe.sequential("Jobs API routes", () => {
 
   it("rescoring a job updates the suitability fields", async () => {
     const { createJob } = await import("@server/repositories/jobs");
+    const { generateJobBrief } = await import("@server/services/job-brief");
     const { scoreJobSuitability } = await import("@server/services/scorer");
     const { getProfile } = await import("@server/services/profile");
 
@@ -1369,6 +1396,9 @@ describe.sequential("Jobs API routes", () => {
       score: 77,
       reason: "Updated fit",
     });
+    vi.mocked(generateJobBrief).mockResolvedValue(
+      '{"role_summary":"Build tools","they_want":[],"specifics":[],"company_offers":[],"practical_details":[],"missing_or_unclear":[],"repeated_signals":[]}',
+    );
 
     const job = await createJob({
       source: "manual",
@@ -1396,6 +1426,7 @@ describe.sequential("Jobs API routes", () => {
     expect(body.data.results[0].ok).toBe(true);
     expect(body.data.results[0].job.suitabilityScore).toBe(77);
     expect(body.data.results[0].job.suitabilityReason).toBe("Updated fit");
+    expect(body.data.results[0].job.jobBrief).toContain("Build tools");
   });
 
   it("deletes jobs below a score threshold (excluding applied)", async () => {
