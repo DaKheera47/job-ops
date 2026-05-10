@@ -27,9 +27,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { Composer } from "./Composer";
-import { EmailContextSelector } from "./EmailContextSelector";
+import { GhostwriterContextSelector } from "./GhostwriterContextSelector";
 import { MessageList } from "./MessageList";
-import { NoteContextSelector } from "./NoteContextSelector";
 
 const JOB_EMAIL_LIMIT = 100;
 
@@ -576,28 +575,22 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
           isStreaming={isStreaming}
           canReset={canReset}
           noteContextSelector={
-            <>
-              <NoteContextSelector
-                notes={notes}
-                selectedNoteIds={selectedNoteIds}
-                disabled={isLoading || isStreaming}
-                isLoading={areNotesLoading}
-                isSaving={isSavingContext}
-                onChange={(nextSelectedNoteIds) =>
-                  void updateSelectedNotes(nextSelectedNoteIds)
-                }
-              />
-              <EmailContextSelector
-                emails={emails}
-                selectedEmailIds={selectedEmailIds}
-                disabled={isLoading || isStreaming}
-                isLoading={areEmailsLoading}
-                isSaving={isSavingContext}
-                onChange={(nextSelectedEmailIds) =>
-                  void updateSelectedEmails(nextSelectedEmailIds)
-                }
-              />
-            </>
+            <GhostwriterContextSelector
+              notes={notes}
+              emails={emails}
+              selectedNoteIds={selectedNoteIds}
+              selectedEmailIds={selectedEmailIds}
+              disabled={isLoading || isStreaming}
+              areNotesLoading={areNotesLoading}
+              areEmailsLoading={areEmailsLoading}
+              isSaving={isSavingContext}
+              onNotesChange={(nextSelectedNoteIds) =>
+                void updateSelectedNotes(nextSelectedNoteIds)
+              }
+              onEmailsChange={(nextSelectedEmailIds) =>
+                void updateSelectedEmails(nextSelectedEmailIds)
+              }
+            />
           }
           onStop={stopStreaming}
           onSend={sendMessage}
