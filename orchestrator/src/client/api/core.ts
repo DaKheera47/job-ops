@@ -52,10 +52,11 @@ export type StreamSseInput =
   | {
       content: string;
       selectedNoteIds?: string[];
+      selectedEmailIds?: string[];
       attachments?: import("@shared/types").JobChatImageAttachment[];
       stream: true;
     }
-  | { selectedNoteIds?: string[]; stream: true };
+  | { selectedNoteIds?: string[]; selectedEmailIds?: string[]; stream: true };
 
 function describeAction(endpoint: string, method?: string): string {
   const verb = (method || "GET").toUpperCase();

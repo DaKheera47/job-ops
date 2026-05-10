@@ -24,10 +24,13 @@ const mocks = vi.hoisted(() => ({
     setActiveRoot: vi.fn(),
     getSiblingsOf: vi.fn(),
     getChildrenOfMessage: vi.fn(),
-    updateThreadSelectedNoteIds: vi.fn(),
+    updateThreadContext: vi.fn(),
   },
   jobsRepo: {
     listJobNotesByIds: vi.fn(),
+  },
+  jobEmails: {
+    listJobPostApplicationEmailsByIds: vi.fn(),
   },
   settings: {
     getAllSettings: vi.fn(),
@@ -75,11 +78,16 @@ vi.mock("../repositories/ghostwriter", () => ({
   getSiblingsOf: mocks.repo.getSiblingsOf,
   getChildrenOfMessage: mocks.repo.getChildrenOfMessage,
   setActiveRoot: mocks.repo.setActiveRoot,
-  updateThreadSelectedNoteIds: mocks.repo.updateThreadSelectedNoteIds,
+  updateThreadContext: mocks.repo.updateThreadContext,
 }));
 
 vi.mock("../repositories/jobs", () => ({
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
+}));
+
+vi.mock("./post-application/job-emails", () => ({
+  listJobPostApplicationEmailsByIds:
+    mocks.jobEmails.listJobPostApplicationEmailsByIds,
 }));
 
 vi.mock("./modelSelection", () => ({
@@ -109,6 +117,7 @@ const thread = {
   lastMessageAt: null,
   activeRootMessageId: "user-1",
   selectedNoteIds: [],
+  selectedEmailIds: [],
 };
 
 const baseUserMessage: JobChatMessage = {
@@ -171,12 +180,14 @@ describe("ghostwriter service", () => {
       jobSnapshot: '{"job":"snapshot"}',
       profileSnapshot: "profile snapshot",
       selectedNotesSnapshot: "",
+      selectedEmailsSnapshot: "",
     });
 
     mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
+    mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
     mocks.repo.getThreadForJob.mockResolvedValue(thread);
-    mocks.repo.updateThreadSelectedNoteIds.mockResolvedValue(thread);
+    mocks.repo.updateThreadContext.mockResolvedValue(thread);
     mocks.repo.getActiveRunForThread.mockResolvedValue(null);
     mocks.repo.createRun.mockResolvedValue({
       id: "run-1",
@@ -326,7 +337,7 @@ describe("ghostwriter service", () => {
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
     ]);
-    mocks.repo.updateThreadSelectedNoteIds.mockResolvedValue(threadWithNotes);
+    mocks.repo.updateThreadContext.mockResolvedValue(threadWithNotes);
     mocks.repo.getThreadForJob
       .mockResolvedValueOnce(thread)
       .mockResolvedValueOnce(threadWithNotes);
@@ -342,6 +353,7 @@ describe("ghostwriter service", () => {
       jobSnapshot: '{"job":"snapshot"}',
       profileSnapshot: "profile snapshot",
       selectedNotesSnapshot: "Selected Job Notes:\nNote 1: Recruiter call",
+      selectedEmailsSnapshot: "",
     });
     mocks.repo.createMessage
       .mockResolvedValueOnce(baseUserMessage)
@@ -358,17 +370,125 @@ describe("ghostwriter service", () => {
     expect(mocks.jobsRepo.listJobNotesByIds).toHaveBeenCalledWith("job-1", [
       "note-1",
     ]);
-    expect(mocks.repo.updateThreadSelectedNoteIds).toHaveBeenCalledWith({
+    expect(mocks.repo.updateThreadContext).toHaveBeenCalledWith({
       jobId: "job-1",
       threadId: "thread-1",
       selectedNoteIds: ["note-1"],
+      selectedEmailIds: undefined,
     });
-    expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith("job-1", [
-      "note-1",
-    ]);
+    expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith(
+      "job-1",
+      ["note-1"],
+      [],
+    );
     expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
       role: "system",
       content: "Selected Job Notes:\nNote 1: Recruiter call",
+    });
+  });
+
+  it("saves selected emails before building prompt context", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-with-emails",
+      content: "",
+      status: "partial",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...assistantPartial,
+      content: "Email-aware reply.",
+      status: "complete",
+    };
+    const threadWithEmails = {
+      ...thread,
+      selectedEmailIds: ["email-1"],
+    };
+
+    mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([
+      {
+        message: {
+          id: "email-1",
+          provider: "gmail",
+          accountKey: "default",
+          integrationId: null,
+          syncRunId: null,
+          externalMessageId: "gmail-1",
+          externalThreadId: "thread-ext-1",
+          fromAddress: "recruiter@example.com",
+          fromDomain: "example.com",
+          senderName: "Recruiter",
+          subject: "Interview update",
+          receivedAt: 1_767_225_600_000,
+          snippet: "Can you share your availability?",
+          classificationLabel: null,
+          classificationConfidence: null,
+          classificationPayload: null,
+          relevanceLlmScore: null,
+          relevanceDecision: "relevant",
+          matchedJobId: "job-1",
+          matchConfidence: 91,
+          stageTarget: "recruiter_screen",
+          messageType: "interview",
+          stageEventPayload: null,
+          processingStatus: "auto_linked",
+          decidedAt: null,
+          decidedBy: null,
+          errorCode: null,
+          errorMessage: null,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        accountDisplayName: "Work Gmail",
+        sourceUrl: "https://mail.google.com/mail/u/0/#all/thread-ext-1",
+      },
+    ]);
+    mocks.repo.updateThreadContext.mockResolvedValue(threadWithEmails);
+    mocks.repo.getThreadForJob
+      .mockResolvedValueOnce(thread)
+      .mockResolvedValueOnce(threadWithEmails);
+    mocks.buildJobChatPromptContext.mockResolvedValue({
+      job: { id: "job-1" },
+      style: {
+        tone: "professional",
+        formality: "medium",
+        constraints: "",
+        doNotUse: "",
+      },
+      systemPrompt: "system prompt",
+      jobSnapshot: '{"job":"snapshot"}',
+      profileSnapshot: "profile snapshot",
+      selectedNotesSnapshot: "",
+      selectedEmailsSnapshot: "Selected Job Emails:\nEmail 1: Interview update",
+    });
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantComplete);
+    mocks.repo.getMessageById.mockResolvedValue(assistantComplete);
+
+    await sendMessageForJob({
+      jobId: "job-1",
+      content: "Use the email",
+      selectedEmailIds: ["email-1"],
+    });
+
+    expect(
+      mocks.jobEmails.listJobPostApplicationEmailsByIds,
+    ).toHaveBeenCalledWith("job-1", ["email-1"]);
+    expect(mocks.repo.updateThreadContext).toHaveBeenCalledWith({
+      jobId: "job-1",
+      threadId: "thread-1",
+      selectedNoteIds: undefined,
+      selectedEmailIds: ["email-1"],
+    });
+    expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith(
+      "job-1",
+      [],
+      ["email-1"],
+    );
+    expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
+      role: "system",
+      content: "Selected Job Emails:\nEmail 1: Interview update",
     });
   });
 
@@ -574,6 +694,22 @@ describe("ghostwriter service", () => {
         selectedNoteIds: Array.from(
           { length: 9 },
           (_, index) => `note-${index}`,
+        ),
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_REQUEST",
+      status: 400,
+    });
+  });
+
+  it("rejects too many selected emails", async () => {
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Use these",
+        selectedEmailIds: Array.from(
+          { length: 9 },
+          (_, index) => `email-${index}`,
         ),
       }),
     ).rejects.toMatchObject({

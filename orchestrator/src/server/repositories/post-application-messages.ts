@@ -8,7 +8,7 @@ import type {
   PostApplicationRelevanceDecision,
   PostApplicationRouterStageTarget,
 } from "@shared/types";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../db";
 import {
   normalizeStageTarget,
@@ -470,6 +470,61 @@ export async function listPostApplicationMessagesForJob(
     }),
     total: countRow?.total ?? 0,
   };
+}
+
+export async function listPostApplicationMessagesForJobByIds(
+  jobId: string,
+  messageIds: readonly string[],
+): Promise<Array<Omit<PostApplicationJobEmailItem, "sourceUrl">>> {
+  const ids = Array.from(
+    new Set(messageIds.map((id) => id.trim()).filter(Boolean)),
+  );
+  if (ids.length === 0) return [];
+
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select()
+    .from(postApplicationMessages)
+    .where(
+      and(
+        eq(postApplicationMessages.tenantId, tenantId),
+        eq(postApplicationMessages.matchedJobId, jobId),
+        inArray(postApplicationMessages.id, ids),
+      ),
+    );
+
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const integrations = await listIntegrationDisplayMetadata();
+  const integrationsById = new Map(
+    integrations.map((integration) => [integration.id, integration]),
+  );
+  const integrationsByProviderAccount = new Map(
+    integrations.map((integration) => [
+      integrationKey(integration.provider, integration.accountKey),
+      integration,
+    ]),
+  );
+
+  return ids
+    .map((id) => rowsById.get(id))
+    .filter((row): row is typeof postApplicationMessages.$inferSelect =>
+      Boolean(row),
+    )
+    .map((row) => {
+      const message = mapRowToPostApplicationMessage(row);
+      const integration =
+        (message.integrationId
+          ? integrationsById.get(message.integrationId)
+          : undefined) ??
+        integrationsByProviderAccount.get(
+          integrationKey(message.provider, message.accountKey),
+        );
+
+      return {
+        message,
+        accountDisplayName: integration?.displayName ?? null,
+      };
+    });
 }
 
 export async function updatePostApplicationMessageDecision(

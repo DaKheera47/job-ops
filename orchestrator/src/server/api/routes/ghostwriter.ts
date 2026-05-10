@@ -18,9 +18,11 @@ const listMessagesQuerySchema = z.object({
 });
 
 const selectedNoteIdsSchema = z.array(z.string().trim().min(1)).default([]);
+const selectedEmailIdsSchema = z.array(z.string().trim().min(1)).default([]);
 
 const updateContextSchema = z.object({
-  selectedNoteIds: selectedNoteIdsSchema,
+  selectedNoteIds: selectedNoteIdsSchema.optional(),
+  selectedEmailIds: selectedEmailIdsSchema.optional(),
 });
 
 const imageAttachmentSchema = z
@@ -54,18 +56,21 @@ const imageAttachmentsSchema = z
 const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
   selectedNoteIds: selectedNoteIdsSchema.optional(),
+  selectedEmailIds: selectedEmailIdsSchema.optional(),
   attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
 const regenerateSchema = z.object({
   selectedNoteIds: selectedNoteIdsSchema.optional(),
+  selectedEmailIds: selectedEmailIdsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
 const editMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
   selectedNoteIds: selectedNoteIdsSchema.optional(),
+  selectedEmailIds: selectedEmailIdsSchema.optional(),
   attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });
@@ -100,6 +105,7 @@ ghostwriterRouter.get(
         messages: result.messages,
         branches: result.branches,
         selectedNoteIds: result.selectedNoteIds,
+        selectedEmailIds: result.selectedEmailIds,
       });
     });
   }),
@@ -121,6 +127,7 @@ ghostwriterRouter.patch(
       const result = await ghostwriterService.updateContextForJob({
         jobId,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
       ok(res, result);
     });
@@ -153,6 +160,7 @@ ghostwriterRouter.post(
             content: parsed.data.content,
             attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
+            selectedEmailIds: parsed.data.selectedEmailIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -211,6 +219,7 @@ ghostwriterRouter.post(
         content: parsed.data.content,
         attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
 
       ok(res, {
@@ -271,6 +280,7 @@ ghostwriterRouter.post(
             jobId,
             assistantMessageId,
             selectedNoteIds: parsed.data.selectedNoteIds,
+            selectedEmailIds: parsed.data.selectedEmailIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -328,6 +338,7 @@ ghostwriterRouter.post(
         jobId,
         assistantMessageId,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
 
       ok(res, result);
@@ -366,6 +377,7 @@ ghostwriterRouter.post(
             content: parsed.data.content,
             attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
+            selectedEmailIds: parsed.data.selectedEmailIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -425,6 +437,7 @@ ghostwriterRouter.post(
         content: parsed.data.content,
         attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
 
       ok(res, {
@@ -565,6 +578,7 @@ ghostwriterRouter.post(
             content: parsed.data.content,
             attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
+            selectedEmailIds: parsed.data.selectedEmailIds,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -624,6 +638,7 @@ ghostwriterRouter.post(
         content: parsed.data.content,
         attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
 
       ok(res, {
@@ -690,6 +705,7 @@ ghostwriterRouter.post(
             threadId,
             assistantMessageId,
             selectedNoteIds: parsed.data.selectedNoteIds,
+            selectedEmailIds: parsed.data.selectedEmailIds,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
                 writeSseData(res, {
@@ -748,6 +764,7 @@ ghostwriterRouter.post(
         threadId,
         assistantMessageId,
         selectedNoteIds: parsed.data.selectedNoteIds,
+        selectedEmailIds: parsed.data.selectedEmailIds,
       });
 
       ok(res, result);

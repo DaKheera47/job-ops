@@ -313,6 +313,7 @@ export const jobChatThreads = sqliteTable(
     lastMessageAt: text("last_message_at"),
     activeRootMessageId: text("active_root_message_id"),
     selectedNoteIds: text("selected_note_ids").notNull().default("[]"),
+    selectedEmailIds: text("selected_email_ids").notNull().default("[]"),
   },
   (table) => ({
     jobUpdatedIndex: index("idx_job_chat_threads_job_updated").on(

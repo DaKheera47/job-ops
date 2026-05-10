@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { normalizeGhostwriterSelectedEmailIds } from "@shared/ghostwriter-email-context.js";
 import { normalizeGhostwriterSelectedNoteIds } from "@shared/ghostwriter-note-context.js";
 import type {
   JobChatImageAttachment,
@@ -21,6 +22,19 @@ function parseSelectedNoteIds(value: string | null): string[] {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return [];
     return normalizeGhostwriterSelectedNoteIds(
+      parsed.filter((item): item is string => typeof item === "string"),
+    );
+  } catch {
+    return [];
+  }
+}
+
+function parseSelectedEmailIds(value: string | null): string[] {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return normalizeGhostwriterSelectedEmailIds(
       parsed.filter((item): item is string => typeof item === "string"),
     );
   } catch {
@@ -75,6 +89,7 @@ function mapThread(row: typeof jobChatThreads.$inferSelect): JobChatThread {
     lastMessageAt: row.lastMessageAt,
     activeRootMessageId: row.activeRootMessageId,
     selectedNoteIds: parseSelectedNoteIds(row.selectedNoteIds),
+    selectedEmailIds: parseSelectedEmailIds(row.selectedEmailIds),
   };
 }
 
@@ -199,6 +214,7 @@ export async function createThread(input: {
     updatedAt: now,
     lastMessageAt: null,
     selectedNoteIds: "[]",
+    selectedEmailIds: "[]",
   });
 
   const thread = await getThreadById(id);
@@ -222,6 +238,45 @@ export async function updateThreadSelectedNoteIds(input: {
       selectedNoteIds: JSON.stringify(
         normalizeGhostwriterSelectedNoteIds(input.selectedNoteIds),
       ),
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(jobChatThreads.tenantId, tenantId),
+        eq(jobChatThreads.id, input.threadId),
+        eq(jobChatThreads.jobId, input.jobId),
+      ),
+    );
+
+  return getThreadForJob(input.jobId, input.threadId);
+}
+
+export async function updateThreadContext(input: {
+  jobId: string;
+  threadId: string;
+  selectedNoteIds?: string[];
+  selectedEmailIds?: string[];
+}): Promise<JobChatThread | null> {
+  const now = new Date().toISOString();
+  const tenantId = getActiveTenantId();
+
+  await db
+    .update(jobChatThreads)
+    .set({
+      ...(input.selectedNoteIds !== undefined
+        ? {
+            selectedNoteIds: JSON.stringify(
+              normalizeGhostwriterSelectedNoteIds(input.selectedNoteIds),
+            ),
+          }
+        : {}),
+      ...(input.selectedEmailIds !== undefined
+        ? {
+            selectedEmailIds: JSON.stringify(
+              normalizeGhostwriterSelectedEmailIds(input.selectedEmailIds),
+            ),
+          }
+        : {}),
       updatedAt: now,
     })
     .where(

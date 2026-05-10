@@ -1,6 +1,9 @@
 import { notFound } from "@infra/errors";
 import { getJobById } from "@server/repositories/jobs";
-import { listPostApplicationMessagesForJob } from "@server/repositories/post-application-messages";
+import {
+  listPostApplicationMessagesForJob,
+  listPostApplicationMessagesForJobByIds,
+} from "@server/repositories/post-application-messages";
 import type {
   PostApplicationJobEmailItem,
   PostApplicationJobEmailsResponse,
@@ -36,4 +39,20 @@ export async function listJobPostApplicationEmails(
     items,
     total: result.total,
   };
+}
+
+export async function listJobPostApplicationEmailsByIds(
+  jobId: string,
+  emailIds: readonly string[],
+): Promise<PostApplicationJobEmailItem[]> {
+  const job = await getJobById(jobId);
+  if (!job) {
+    throw notFound("Job not found");
+  }
+
+  const items = await listPostApplicationMessagesForJobByIds(job.id, emailIds);
+  return items.map((item) => ({
+    ...item,
+    sourceUrl: buildMessageSourceUrl(item.message),
+  }));
 }

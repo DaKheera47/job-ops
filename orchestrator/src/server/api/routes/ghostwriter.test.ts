@@ -27,6 +27,7 @@ vi.mock("@server/services/ghostwriter", () => ({
       lastMessageAt: new Date().toISOString(),
       activeRootMessageId: null,
       selectedNoteIds: ["note-1"],
+      selectedEmailIds: ["email-1"],
     },
   ]),
   createThread: vi.fn(
@@ -39,11 +40,17 @@ vi.mock("@server/services/ghostwriter", () => ({
       lastMessageAt: null,
       activeRootMessageId: null,
       selectedNoteIds: [],
+      selectedEmailIds: [],
     }),
   ),
   updateContextForJob: vi.fn(
-    async (input: { jobId: string; selectedNoteIds: string[] }) => ({
-      selectedNoteIds: input.selectedNoteIds,
+    async (input: {
+      jobId: string;
+      selectedNoteIds?: string[];
+      selectedEmailIds?: string[];
+    }) => ({
+      selectedNoteIds: input.selectedNoteIds ?? [],
+      selectedEmailIds: input.selectedEmailIds ?? [],
     }),
   ),
   listMessages: vi.fn(async () => ({
@@ -58,6 +65,7 @@ vi.mock("@server/services/ghostwriter", () => ({
     ],
     branches: [],
     selectedNoteIds: ["note-1"],
+    selectedEmailIds: ["email-1"],
   })),
   listMessagesForJob: vi.fn(async () => ({
     messages: [
@@ -71,6 +79,7 @@ vi.mock("@server/services/ghostwriter", () => ({
     ],
     branches: [],
     selectedNoteIds: ["note-1"],
+    selectedEmailIds: ["email-1"],
   })),
   sendMessage: vi.fn(async () => ({
     userMessage: {
@@ -214,6 +223,19 @@ describe.sequential("Ghostwriter API", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.selectedNoteIds).toEqual(["note-1"]);
+  });
+
+  it("updates selected Ghostwriter emails", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/context`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedEmailIds: ["email-1"] }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.selectedEmailIds).toEqual(["email-1"]);
   });
 
   it("edits a user message", async () => {

@@ -31,6 +31,7 @@ export interface JobChatThread {
   lastMessageAt: string | null;
   activeRootMessageId: string | null;
   selectedNoteIds: string[];
+  selectedEmailIds: string[];
 }
 
 export interface JobChatMessage {

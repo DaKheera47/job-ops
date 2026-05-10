@@ -22,11 +22,13 @@ export async function listJobGhostwriterMessages(
   messages: JobChatMessage[];
   branches: BranchInfo[];
   selectedNoteIds: string[];
+  selectedEmailIds: string[];
 }> {
   return fetchApi<{
     messages: JobChatMessage[];
     branches: BranchInfo[];
     selectedNoteIds: string[];
+    selectedEmailIds: string[];
   }>(
     withQuery(`/jobs/${jobId}/chat/messages`, {
       limit: options?.limit,
@@ -37,9 +39,9 @@ export async function listJobGhostwriterMessages(
 
 export async function updateJobGhostwriterContext(
   jobId: string,
-  input: { selectedNoteIds: string[] },
-): Promise<{ selectedNoteIds: string[] }> {
-  return fetchApi<{ selectedNoteIds: string[] }>(
+  input: { selectedNoteIds?: string[]; selectedEmailIds?: string[] },
+): Promise<{ selectedNoteIds: string[]; selectedEmailIds: string[] }> {
+  return fetchApi<{ selectedNoteIds: string[]; selectedEmailIds: string[] }>(
     `/jobs/${jobId}/chat/context`,
     {
       method: "PATCH",
@@ -83,6 +85,7 @@ export async function sendJobChatMessage(
   input: {
     content: string;
     selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
     attachments?: JobChatImageAttachment[];
   },
 ): Promise<{
@@ -105,6 +108,7 @@ export async function streamJobChatMessage(
   input: {
     content: string;
     selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
     attachments?: JobChatImageAttachment[];
     signal?: AbortSignal;
   },
@@ -127,6 +131,7 @@ export async function streamJobGhostwriterMessage(
   input: {
     content: string;
     selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
     attachments?: JobChatImageAttachment[];
     signal?: AbortSignal;
   },
@@ -139,6 +144,7 @@ export async function streamJobGhostwriterMessage(
     {
       content: input.content,
       selectedNoteIds: input.selectedNoteIds,
+      selectedEmailIds: input.selectedEmailIds,
       attachments: input.attachments,
       stream: true,
     },
@@ -203,14 +209,22 @@ export async function streamRegenerateJobChatMessage(
   jobId: string,
   threadId: string,
   assistantMessageId: string,
-  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
+  input: {
+    selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
+    signal?: AbortSignal;
+  },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents<JobChatStreamEvent>(
     `/jobs/${jobId}/chat/threads/${encodeURIComponent(threadId)}/messages/${encodeURIComponent(assistantMessageId)}/regenerate`,
-    { selectedNoteIds: input.selectedNoteIds, stream: true },
+    {
+      selectedNoteIds: input.selectedNoteIds,
+      selectedEmailIds: input.selectedEmailIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -221,14 +235,22 @@ export async function streamRegenerateJobChatMessage(
 export async function streamRegenerateJobGhostwriterMessage(
   jobId: string,
   assistantMessageId: string,
-  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
+  input: {
+    selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
+    signal?: AbortSignal;
+  },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents<JobChatStreamEvent>(
     `/jobs/${jobId}/chat/messages/${encodeURIComponent(assistantMessageId)}/regenerate`,
-    { selectedNoteIds: input.selectedNoteIds, stream: true },
+    {
+      selectedNoteIds: input.selectedNoteIds,
+      selectedEmailIds: input.selectedEmailIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -242,6 +264,7 @@ export async function editJobGhostwriterMessage(
   input: {
     content: string;
     selectedNoteIds?: string[];
+    selectedEmailIds?: string[];
     attachments?: JobChatImageAttachment[];
     signal?: AbortSignal;
   },
@@ -254,6 +277,7 @@ export async function editJobGhostwriterMessage(
     {
       content: input.content,
       selectedNoteIds: input.selectedNoteIds,
+      selectedEmailIds: input.selectedEmailIds,
       attachments: input.attachments,
       stream: true,
     },
