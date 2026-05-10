@@ -78,6 +78,7 @@ import {
   safeFilenamePart,
 } from "@/lib/utils";
 import type { FilterTab } from "./constants";
+import { parseJobBrief } from "@/client/components/JobBriefPane";
 
 interface JobDetailPanelProps {
   activeTab: FilterTab;
@@ -298,6 +299,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     : false;
   const applicationKitReady =
     hasTailoredSummary && hasTailoredSkills && hasResumePdf;
+  const brief = parseJobBrief(selectedJob?.jobBrief || null);
 
   const loadCatalog = useCallback(async () => {
     try {
@@ -732,18 +734,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
       />
 
       <div className="flex flex-col min-w-0 rounded-lg rounded-t-none border border-t-0 border-border/50 bg-card p-4">
-        <TabsContent value="brief">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Stat label="Location" value={selectedJob.location} tone="blue" />
-            <Stat label="Salary" value={selectedJob.salary} tone="green" />
-            <Stat label="Level" value={selectedJob.jobLevel} />
-            <Stat label="Function" value={selectedJob.jobFunction} />
-            <Stat label="Type" value={selectedJob.jobType} />
-            <Stat label="Discipline" value={selectedJob.disciplines} />
-          </div>
+        <TabsContent value="brief" className="space-y-4">
+          {!brief && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Stat label="Location" value={selectedJob.location} tone="blue" />
+              <Stat label="Salary" value={selectedJob.salary} tone="green" />
+              <Stat label="Level" value={selectedJob.jobLevel} />
+              <Stat label="Function" value={selectedJob.jobFunction} />
+              <Stat label="Type" value={selectedJob.jobType} />
+              <Stat label="Discipline" value={selectedJob.disciplines} />
+            </div>
+          )}
 
           <JobBriefPane job={selectedJob} />
-          <TailoredSummary job={selectedJob} />
 
           <div className="overflow-hidden rounded-lg border border-border/45 bg-muted/5">
             <div className="flex items-center justify-between gap-2 border-b border-border/35 bg-muted/5 px-3 py-2.5">
