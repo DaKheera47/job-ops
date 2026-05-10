@@ -103,7 +103,7 @@ export const JobDescriptionPanel: React.FC<JobDescriptionPanelProps> = ({
                 <FileText className="h-3.5 w-3.5 text-sky-400/80" />
                 Job description
               </div>
-              <p className="mt-0.5 text-xs text-muted-foreground/65">
+              <p className="mt-0.5 text-xs text-muted-foreground/65 max-w-3/5">
                 {helperText}
               </p>
             </div>

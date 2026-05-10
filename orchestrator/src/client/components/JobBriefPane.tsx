@@ -42,7 +42,14 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
         {brief.role_summary}
       </p>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-y-6 gap-x-2 lg:grid-cols-2">
+        <BulletSection title="Company offers" items={brief.company_offers} />
+        <BulletSection title="They want" items={brief.they_want} />
+        <BulletSection
+          title="Missing or unclear"
+          items={brief.missing_or_unclear}
+        />
+
             {brief.specifics.length > 0 && (
         <div className="space-y-2">
           <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -60,13 +67,6 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
           </div>
         </div>
       )}
-
-        <BulletSection title="They want" items={brief.they_want} />
-        <BulletSection title="Company offers" items={brief.company_offers} />
-        <BulletSection
-          title="Missing or unclear"
-          items={brief.missing_or_unclear}
-        />
       </div>
     </section>
   );
