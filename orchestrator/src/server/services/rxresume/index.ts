@@ -45,6 +45,8 @@ export type PreparedRxResumePdfPayload = {
   selectedProjectIds: string[];
 };
 
+export type RxResumeExportPdfResult = v5.RxResumeExportPdfResult;
+
 export class RxResumeAuthConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -512,7 +514,7 @@ export async function deleteResume(
 export async function exportResumePdf(
   resumeId: string,
   options: ResolveModeOptions = {},
-): Promise<string> {
+): Promise<RxResumeExportPdfResult> {
   try {
     const creds = await readV5Credentials(options.v5);
     return await v5.exportResumePdf(resumeId, {

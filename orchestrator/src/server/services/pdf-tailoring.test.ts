@@ -371,9 +371,10 @@ vi.mock("./rxresume", async () => {
   const projectSelectionModule = await import("./projectSelection");
   return {
     importResume: vi.fn().mockResolvedValue("temp-resume-id"),
-    exportResumePdf: vi
-      .fn()
-      .mockResolvedValue("https://pdf.rxresume.test/print/123"),
+    exportResumePdf: vi.fn().mockResolvedValue({
+      kind: "url",
+      url: "https://pdf.rxresume.test/print/123",
+    }),
     deleteResume: vi.fn().mockResolvedValue(undefined),
     getResume: vi.fn().mockResolvedValue({
       id: "base-resume-id",

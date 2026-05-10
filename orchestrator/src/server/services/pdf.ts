@@ -162,13 +162,12 @@ async function renderRxResumePdf(args: {
       data: importData,
     });
 
-    const downloadUrl = await exportRxResumePdf(importedResumeId);
-    if (!downloadUrl || typeof downloadUrl !== "string") {
-      throw new Error(
-        "Reactive Resume did not return a PDF download URL. Please ensure your Reactive Resume API key and instance URL are configured correctly in Settings.",
-      );
+    const exportResult = await exportRxResumePdf(importedResumeId);
+    if (exportResult.kind === "pdf") {
+      await writeFile(outputPath, exportResult.bytes);
+    } else {
+      await downloadRxResumePdf(exportResult.url, outputPath);
     }
-    await downloadRxResumePdf(downloadUrl, outputPath);
   } finally {
     if (importedResumeId) {
       try {

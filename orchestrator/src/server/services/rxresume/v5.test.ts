@@ -36,6 +36,23 @@ function jsonResponse(data: unknown, ok = true, status = 200) {
   };
 }
 
+function pdfResponse(bytes: Uint8Array, ok = true, status = 200) {
+  return {
+    ok,
+    status,
+    statusText: ok ? "OK" : "Error",
+    headers: {
+      get: (name: string) =>
+        name.toLowerCase() === "content-type" ? "application/pdf" : null,
+    },
+    arrayBuffer: async () => bytes.buffer.slice(0),
+    json: async () => {
+      throw new Error("not json");
+    },
+    text: async () => Buffer.from(bytes).toString("latin1"),
+  };
+}
+
 describe("rxresume v5 endpoints", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -72,9 +89,7 @@ describe("rxresume v5 endpoints", () => {
       )
       .mockResolvedValueOnce(jsonResponse({ id: "imported-123" }))
       .mockResolvedValueOnce(jsonResponse({ ok: true }))
-      .mockResolvedValueOnce(
-        jsonResponse({ url: "https://rxresu.me/storage/resume-123.pdf" }),
-      );
+      .mockResolvedValueOnce(pdfResponse(new Uint8Array([37, 80, 68, 70])));
     vi.stubGlobal("fetch", mockFetch);
 
     const config = { baseUrl: "https://rxresu.me", apiKey: "test-key" };
@@ -83,7 +98,10 @@ describe("rxresume v5 endpoints", () => {
     await getResume("resume-123", config);
     await importResume({ data: sampleResume, name: "Imported Resume" }, config);
     await deleteResume("resume-123", config);
-    await exportResumePdf("resume-123", config);
+    await expect(exportResumePdf("resume-123", config)).resolves.toEqual({
+      kind: "pdf",
+      bytes: new Uint8Array([37, 80, 68, 70]),
+    });
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -112,6 +130,39 @@ describe("rxresume v5 endpoints", () => {
       5,
       "https://rxresu.me/api/openapi/resumes/resume-123/pdf",
       expect.any(Object),
+    );
+  });
+
+  it("supports older PDF export responses that return a download URL", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ url: "https://rxresu.me/storage/resume-123.pdf" }),
+      );
+    vi.stubGlobal("fetch", mockFetch);
+
+    await expect(
+      exportResumePdf("resume-123", {
+        baseUrl: "https://rxresu.me",
+        apiKey: "test-key",
+      }),
+    ).resolves.toEqual({
+      kind: "url",
+      url: "https://rxresu.me/storage/resume-123.pdf",
+    });
+  });
+
+  it("rejects unexpected PDF export response shapes", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(jsonResponse({ ok: true }));
+    vi.stubGlobal("fetch", mockFetch);
+
+    await expect(
+      exportResumePdf("resume-123", {
+        baseUrl: "https://rxresu.me",
+        apiKey: "test-key",
+      }),
+    ).rejects.toThrow(
+      "Reactive Resume returned an unexpected PDF export response shape.",
     );
   });
 

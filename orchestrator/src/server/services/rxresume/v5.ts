@@ -36,9 +36,9 @@ export type RxResumeImportRequest = {
   slug?: string;
 };
 
-export type RxResumeExportPdfResponse = {
-  url: string;
-};
+export type RxResumeExportPdfResult =
+  | { kind: "pdf"; bytes: Uint8Array }
+  | { kind: "url"; url: string };
 
 export type VerifyApiKeyResult =
   | { ok: true }
@@ -130,6 +130,9 @@ async function executeWithKeyRetries(
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
       return response.json();
+    }
+    if (contentType?.includes("application/pdf")) {
+      return new Uint8Array(await response.arrayBuffer());
     }
     return response.text();
   }
@@ -246,18 +249,32 @@ export async function deleteResume(
 }
 
 /**
- * Export a resume as PDF. Returns the URL.
+ * Export a resume as PDF.
  */
 export async function exportResumePdf(
   id: string,
   config?: RxResumeApiConfig,
-): Promise<string> {
+): Promise<RxResumeExportPdfResult> {
   const result = (await fetchRxResume(
     `/resumes/${id}/pdf`,
     {},
     config,
-  )) as RxResumeExportPdfResponse;
-  return result.url;
+  )) as unknown;
+
+  if (result instanceof Uint8Array) {
+    return { kind: "pdf", bytes: result };
+  }
+
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const url = (result as Record<string, unknown>).url;
+    if (typeof url === "string" && url.trim()) {
+      return { kind: "url", url };
+    }
+  }
+
+  throw new Error(
+    "Reactive Resume returned an unexpected PDF export response shape.",
+  );
 }
 
 /**

@@ -214,7 +214,10 @@ describe("RxResume Service (index.ts)", () => {
 
   describe("exportResumePdf", () => {
     it("exports PDF using v5 upstream", async () => {
-      vi.mocked(v5.exportResumePdf).mockResolvedValueOnce("https://pdf.url");
+      vi.mocked(v5.exportResumePdf).mockResolvedValueOnce({
+        kind: "url",
+        url: "https://pdf.url",
+      });
 
       const result = await exportResumePdf("resume-1");
 
@@ -222,7 +225,7 @@ describe("RxResume Service (index.ts)", () => {
         apiKey: "test-api-key",
         baseUrl: "https://rxresu.me",
       });
-      expect(result).toBe("https://pdf.url");
+      expect(result).toEqual({ kind: "url", url: "https://pdf.url" });
     });
   });
 
