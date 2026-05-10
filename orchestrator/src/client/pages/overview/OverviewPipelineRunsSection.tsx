@@ -515,7 +515,7 @@ export const OverviewPipelineRunsSection: React.FC = () => {
 
   return (
     <>
-      <Card className="border-border/60 bg-card/40 shadow-none">
+      <Card className="border-border/60 bg-card shadow-none">
         <CardHeader className="gap-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">

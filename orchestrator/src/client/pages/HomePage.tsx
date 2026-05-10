@@ -142,8 +142,6 @@ export const HomePage: React.FC = () => {
       />
 
       <PageMain>
-        <OverviewPipelineRunsSection />
-
         <ApplicationsPerDayChart
           appliedAt={appliedDates}
           isLoading={isLoading}
@@ -158,6 +156,8 @@ export const HomePage: React.FC = () => {
         />
 
         <ResponseRateBySourceChart jobs={jobsWithEvents} error={error} />
+
+        <OverviewPipelineRunsSection />
       </PageMain>
     </>
   );
