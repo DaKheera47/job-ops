@@ -585,9 +585,31 @@ describe("SettingsPage", () => {
     fireEvent.click(saveButton);
 
     expect(
-      await screen.findByText(/Reactive Resume v5 API key is invalid/i),
-    ).toBeInTheDocument();
+      await screen.findAllByText(/Reactive Resume v5 API key is invalid/i),
+    ).not.toHaveLength(0);
     expect(api.updateSettings).not.toHaveBeenCalled();
+  });
+
+  it("does not show background RxResume credential failures as an invalid settings state", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        rxresumeApiKeyHint: "rr-v5",
+      }),
+    );
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: false,
+      message:
+        "Reactive Resume API key is not configured. Set RXRESUME_API_KEY or configure rxresumeApiKey in Settings.",
+      status: 400,
+    });
+
+    renderPage();
+    await openReactiveResumeSection();
+
+    await waitFor(() => expect(api.validateRxresume).toHaveBeenCalled());
+    expect(screen.queryByText(/Reactive Resume API error/i)).toBeNull();
+    expect(screen.queryByText(/API key is not configured/i)).toBeNull();
+    expect(screen.getByText(/v5 status: not tested/i)).toBeInTheDocument();
   });
 
   it("allows saving on RxResume availability warnings and keeps the inline warning visible", async () => {

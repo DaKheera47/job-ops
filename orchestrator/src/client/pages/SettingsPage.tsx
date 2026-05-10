@@ -44,7 +44,7 @@ import type {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Search, Settings } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FormProvider,
   type Resolver,
@@ -366,6 +366,12 @@ const toRxResumeValidationBadgeState = (
   message: validation.valid ? null : (validation.message ?? null),
   status: validation.valid ? null : (validation.status ?? null),
 });
+const isRxResumeMissingConfigValidationFailure = (
+  validation: ValidationResult,
+): boolean =>
+  !validation.valid &&
+  validation.status === 400 &&
+  /not configured/i.test(validation.message ?? "");
 
 const normalizeLlmProviderValue = (
   value: string | null | undefined,
@@ -705,6 +711,7 @@ export const SettingsPage: React.FC = () => {
     useState<RxResumeValidationBadgeState>(
       EMPTY_RXRESUME_VALIDATION_BADGE_STATE,
     );
+  const rxresumeSilentValidationAttemptedRef = useRef(false);
   const [statusesToClear, setStatusesToClear] = useState<JobStatus[]>([
     "discovered",
   ]);
@@ -766,7 +773,9 @@ export const SettingsPage: React.FC = () => {
     control,
     name: "resumeProjects",
   });
-  const hasRxResumeAccess = Boolean(rxresumeValidationStatus.valid);
+  const hasRxResumeAccess = Boolean(
+    storedRxResume.hasV5 || rxresumeValidationStatus.valid,
+  );
 
   useEffect(() => {
     if (!settingsQuery.data) return;
@@ -906,6 +915,7 @@ export const SettingsPage: React.FC = () => {
   );
 
   const clearRxResumeValidationFeedback = useCallback(() => {
+    rxresumeSilentValidationAttemptedRef.current = false;
     setRxresumeValidationStatus(EMPTY_RXRESUME_VALIDATION_BADGE_STATE);
     clearErrors(["rxresumeApiKey"]);
   }, [clearErrors]);
@@ -913,6 +923,9 @@ export const SettingsPage: React.FC = () => {
   const validateRxresume = useCallback(
     async (options?: { silent?: boolean; persistOnSuccess?: boolean }) => {
       const { silent = false, persistOnSuccess = true } = options ?? {};
+      if (silent) {
+        rxresumeSilentValidationAttemptedRef.current = true;
+      }
       const notify = !silent;
       const values = getValues();
       const draftCredentials = getRxResumeCredentialDrafts(values);
@@ -930,7 +943,14 @@ export const SettingsPage: React.FC = () => {
           formatUserFacingError(error, "RxResume validation failed"),
       });
 
-      setRxResumeValidationStatus(result.validation);
+      if (
+        silent &&
+        isRxResumeMissingConfigValidationFailure(result.validation)
+      ) {
+        setRxresumeValidationStatus(EMPTY_RXRESUME_VALIDATION_BADGE_STATE);
+      } else {
+        setRxResumeValidationStatus(result.validation);
+      }
 
       if (result.updatedSettings) {
         setSettings(result.updatedSettings);
@@ -966,7 +986,10 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     if (!settings) return;
 
-    if (!rxresumeValidationStatus.checked) {
+    if (
+      !rxresumeValidationStatus.checked &&
+      !rxresumeSilentValidationAttemptedRef.current
+    ) {
       void validateRxresume({ silent: true, persistOnSuccess: false });
     }
   }, [rxresumeValidationStatus, settings, validateRxresume]);
