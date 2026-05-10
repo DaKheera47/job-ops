@@ -111,27 +111,6 @@ export const Composer: React.FC<ComposerProps> = ({
 
   return (
     <div className="space-y-2">
-      <Textarea
-        placeholder="Ask anything about this job..."
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onPaste={(event) => {
-          void (async () => {
-            const handled = await addClipboardImages(event.clipboardData);
-            if (handled) {
-              event.preventDefault();
-            }
-          })();
-        }}
-        disabled={disabled}
-        onKeyDown={(event) => {
-          if (isMetaKeyPressed(event) && event.key === "Enter") {
-            event.preventDefault();
-            void submit();
-          }
-        }}
-        className="min-h-[84px]"
-      />
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((attachment) => (
@@ -163,6 +142,28 @@ export const Composer: React.FC<ComposerProps> = ({
           ))}
         </div>
       )}
+      <Textarea
+        placeholder="Ask anything about this job..."
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onPaste={(event) => {
+          const hasClipboardImage = Array.from(event.clipboardData.items).some(
+            (item) => item.kind === "file" && item.type.startsWith("image/"),
+          );
+          if (!hasClipboardImage) return;
+
+          event.preventDefault();
+          void addClipboardImages(event.clipboardData);
+        }}
+        disabled={disabled}
+        onKeyDown={(event) => {
+          if (isMetaKeyPressed(event) && event.key === "Enter") {
+            event.preventDefault();
+            void submit();
+          }
+        }}
+        className="min-h-[84px]"
+      />
       <div className="flex items-center justify-between">
         <div className="flex min-w-0 items-center gap-2">
           {noteContextSelector}
