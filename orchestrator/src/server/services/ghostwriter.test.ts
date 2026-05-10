@@ -504,9 +504,66 @@ describe("ghostwriter service", () => {
       "https://openrouter.ai/api/v1/models",
       expect.objectContaining({
         headers: { Authorization: "Bearer test-key" },
+        signal: expect.any(AbortSignal),
       }),
     );
     expect(mocks.repo.createMessage).not.toHaveBeenCalled();
+  });
+
+  it("caches OpenRouter image capability lookups", async () => {
+    mocks.resolveLlmRuntimeSettings.mockResolvedValue({
+      model: "example/vision",
+      provider: "openrouter",
+      baseUrl: "https://openrouter.ai",
+      apiKey: "test-key",
+    });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        data: [
+          {
+            id: "example/vision",
+            architecture: { input_modalities: ["text", "image"] },
+          },
+        ],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-vision",
+      content: "",
+      status: "partial",
+    };
+    mocks.repo.createMessage.mockResolvedValue(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue({
+      ...assistantPartial,
+      content: "ok",
+      status: "complete",
+    });
+    mocks.repo.getMessageById.mockResolvedValue({
+      ...assistantPartial,
+      content: "ok",
+      status: "complete",
+    });
+
+    const input = {
+      jobId: "job-1",
+      content: "Read this screenshot",
+      attachments: [
+        {
+          name: "screen.png",
+          mediaType: "image/png" as const,
+          dataUrl: "data:image/png;base64,aGVsbG8=",
+        },
+      ],
+    };
+
+    await sendMessageForJob(input);
+    await sendMessageForJob(input);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("rejects too many selected notes", async () => {

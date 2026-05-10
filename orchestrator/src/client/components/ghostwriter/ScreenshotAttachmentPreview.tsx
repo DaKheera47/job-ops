@@ -26,9 +26,9 @@ export const ScreenshotAttachmentPreview: React.FC<
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {attachments.map((attachment) => (
+        {attachments.map((attachment, index) => (
           <div
-            key={attachment.id ?? attachment.dataUrl}
+            key={attachment.id ?? `${attachment.name}-${index}`}
             className="group relative h-14 w-20 overflow-hidden rounded-md border bg-muted"
           >
             <button

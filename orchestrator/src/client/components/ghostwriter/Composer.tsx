@@ -78,7 +78,7 @@ export const Composer: React.FC<ComposerProps> = ({
       }
 
       nextAttachments.push({
-        id: `${file.name}-${file.lastModified}-${file.size}`,
+        id: crypto.randomUUID(),
         name: file.name,
         mediaType: file.type as JobChatImageAttachment["mediaType"],
         dataUrl,

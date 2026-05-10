@@ -32,6 +32,12 @@ type LlmRuntimeSettings = {
 };
 
 const abortControllers = new Map<string, AbortController>();
+const OPENROUTER_CAPABILITY_TIMEOUT_MS = 2500;
+const OPENROUTER_CAPABILITY_CACHE_TTL_MS = 5 * 60 * 1000;
+const openRouterImageCapabilityCache = new Map<
+  string,
+  { reason: string | null | undefined; expiresAt: number }
+>();
 
 const CHAT_RESPONSE_SCHEMA: JsonSchemaDefinition = {
   name: "job_chat_response",
@@ -143,15 +149,36 @@ function resolveOpenRouterModelsUrl(baseUrl: string | null): string {
   return `${normalized}/api/v1/models`;
 }
 
+function buildOpenRouterCapabilityCacheKey(input: LlmRuntimeSettings): string {
+  return [
+    "openrouter",
+    input.baseUrl || "https://openrouter.ai",
+    input.model.trim().toLowerCase(),
+  ].join(":");
+}
+
 async function getOpenRouterImageCapabilityReason(
   input: LlmRuntimeSettings,
 ): Promise<string | null | undefined> {
+  const cacheKey = buildOpenRouterCapabilityCacheKey(input);
+  const cached = openRouterImageCapabilityCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.reason;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(),
+    OPENROUTER_CAPABILITY_TIMEOUT_MS,
+  );
+
   try {
     const headers: Record<string, string> = {};
     if (input.apiKey) headers.Authorization = `Bearer ${input.apiKey}`;
     const response = await fetch(resolveOpenRouterModelsUrl(input.baseUrl), {
       method: "GET",
       headers,
+      signal: controller.signal,
     });
     if (!response.ok) return undefined;
 
@@ -166,17 +193,30 @@ async function getOpenRouterImageCapabilityReason(
       const id = typeof candidate.id === "string" ? candidate.id : "";
       return id.toLowerCase() === model;
     });
-    if (!match) return undefined;
+    if (!match) {
+      openRouterImageCapabilityCache.set(cacheKey, {
+        reason: undefined,
+        expiresAt: Date.now() + OPENROUTER_CAPABILITY_CACHE_TTL_MS,
+      });
+      return undefined;
+    }
 
     const modalities = match.architecture?.input_modalities;
     if (!Array.isArray(modalities)) return undefined;
-    return modalities.some(
+    const reason = modalities.some(
       (modality) => typeof modality === "string" && modality === "image",
     )
       ? null
       : `The selected OpenRouter model (${input.model}) does not accept image input.`;
+    openRouterImageCapabilityCache.set(cacheKey, {
+      reason,
+      expiresAt: Date.now() + OPENROUTER_CAPABILITY_CACHE_TTL_MS,
+    });
+    return reason;
   } catch {
     return undefined;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
