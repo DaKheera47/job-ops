@@ -1,4 +1,5 @@
 import type { Server } from "node:http";
+import { updateContextForJob } from "@server/services/ghostwriter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils";
 
@@ -236,6 +237,19 @@ describe.sequential("Ghostwriter API", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.selectedEmailIds).toEqual(["email-1"]);
+  });
+
+  it("rejects empty Ghostwriter context updates", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/context`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(vi.mocked(updateContextForJob)).not.toHaveBeenCalled();
   });
 
   it("edits a user message", async () => {

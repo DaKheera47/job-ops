@@ -24,9 +24,18 @@ const selectedContextSchema = {
   selectedEmailIds: selectedEmailIdsSchema.optional(),
 };
 
-const updateContextSchema = z.object({
-  ...selectedContextSchema,
-});
+const updateContextSchema = z
+  .object({
+    ...selectedContextSchema,
+  })
+  .refine(
+    (input) =>
+      input.selectedNoteIds !== undefined ||
+      input.selectedEmailIds !== undefined,
+    {
+      message: "At least one context selection must be provided.",
+    },
+  );
 
 const imageAttachmentSchema = z
   .object({

@@ -365,6 +365,10 @@ describe("buildJobChatPromptContext", () => {
     expect(context.selectedEmailsSnapshot).toContain(
       "Context note: snippet trimmed for AI context limits.",
     );
+    expect(context.selectedEmailsSnapshot).not.toContain("Account:");
+    expect(context.selectedEmailsSnapshot).not.toContain("Source URL:");
+    expect(context.selectedEmailsSnapshot).not.toContain("Work Gmail");
+    expect(context.selectedEmailsSnapshot).not.toContain("mail.google.com");
     expect(context.selectedEmailsSnapshot).not.toContain("Not selected");
     expect(context.selectedEmailsSnapshot).not.toContain("A".repeat(1301));
   });

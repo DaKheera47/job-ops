@@ -211,10 +211,6 @@ async function buildSelectedEmailsSnapshot(
         email.matchConfidence !== null
           ? `Match confidence: ${email.matchConfidence}%`
           : null,
-        email.accountDisplayName
-          ? `Account: ${email.accountDisplayName}`
-          : null,
-        email.sourceUrl ? `Source URL: ${email.sourceUrl}` : null,
         email.wasTrimmed
           ? "Context note: snippet trimmed for AI context limits."
           : null,

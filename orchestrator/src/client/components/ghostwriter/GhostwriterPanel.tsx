@@ -139,14 +139,6 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     );
   }, [areNotesLoading, notes]);
 
-  useEffect(() => {
-    if (areEmailsLoading) return;
-    const emailIds = new Set(emails.map((email) => email.message.id));
-    setSelectedEmailIds((current) =>
-      current.filter((emailId) => emailIds.has(emailId)),
-    );
-  }, [areEmailsLoading, emails]);
-
   const onStreamEvent = useCallback(
     (event: JobChatStreamEvent) => {
       if (event.type === "ready") {
