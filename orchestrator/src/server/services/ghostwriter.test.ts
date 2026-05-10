@@ -32,6 +32,7 @@ const mocks = vi.hoisted(() => ({
   settings: {
     getAllSettings: vi.fn(),
   },
+  resolveLlmRuntimeSettings: vi.fn(),
 }));
 
 vi.mock("@infra/logger", () => ({
@@ -79,6 +80,10 @@ vi.mock("../repositories/ghostwriter", () => ({
 
 vi.mock("../repositories/jobs", () => ({
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
+}));
+
+vi.mock("./modelSelection", () => ({
+  resolveLlmRuntimeSettings: mocks.resolveLlmRuntimeSettings,
 }));
 
 vi.mock("./llm/service", () => ({
@@ -146,6 +151,12 @@ describe("ghostwriter service", () => {
 
     mocks.getRequestId.mockReturnValue("req-123");
     mocks.settings.getAllSettings.mockResolvedValue({});
+    mocks.resolveLlmRuntimeSettings.mockResolvedValue({
+      model: "gpt-4o-mini",
+      provider: "openai",
+      baseUrl: null,
+      apiKey: "test-key",
+    });
     mocks.buildJobChatPromptContext.mockResolvedValue({
       job: { id: "job-1" },
       style: {
@@ -235,6 +246,7 @@ describe("ghostwriter service", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("sends message, runs LLM, and returns user + assistant messages", async () => {
@@ -356,6 +368,130 @@ describe("ghostwriter service", () => {
       role: "system",
       content: "Selected Job Notes:\nNote 1: Recruiter call",
     });
+  });
+
+  it("passes screenshot attachments as image input when the model supports them", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-with-image",
+      content: "",
+      status: "partial",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...assistantPartial,
+      content: "I can see the screenshot.",
+      status: "complete",
+    };
+
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantComplete);
+    mocks.repo.getMessageById.mockResolvedValue(assistantComplete);
+
+    await sendMessageForJob({
+      jobId: "job-1",
+      content: "Help with this form",
+      attachments: [
+        {
+          name: "form.png",
+          mediaType: "image/png",
+          dataUrl: "data:image/png;base64,aGVsbG8=",
+        },
+      ],
+    });
+
+    const userMessage = mocks.llmCallJson.mock.calls[0][0].messages.at(-1);
+    expect(userMessage.role).toBe("user");
+    expect(userMessage.content).toEqual([
+      {
+        type: "text",
+        text: expect.stringContaining("Help with this form"),
+      },
+      {
+        type: "image",
+        imageUrl: "data:image/png;base64,aGVsbG8=",
+        mediaType: "image/png",
+        name: "form.png",
+      },
+    ]);
+  });
+
+  it("rejects screenshots before running when the selected model is text-only", async () => {
+    mocks.resolveLlmRuntimeSettings.mockResolvedValue({
+      model: "text-embedding-3-small",
+      provider: "openai",
+      baseUrl: null,
+      apiKey: "test-key",
+    });
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Read this screenshot",
+        attachments: [
+          {
+            name: "screen.png",
+            mediaType: "image/png",
+            dataUrl: "data:image/png;base64,aGVsbG8=",
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_REQUEST",
+      status: 400,
+    });
+
+    expect(mocks.llmCallJson).not.toHaveBeenCalled();
+    expect(mocks.repo.createMessage).not.toHaveBeenCalled();
+  });
+
+  it("checks OpenRouter model metadata for screenshot support", async () => {
+    mocks.resolveLlmRuntimeSettings.mockResolvedValue({
+      model: "example/text-only",
+      provider: "openrouter",
+      baseUrl: "https://openrouter.ai",
+      apiKey: "test-key",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          data: [
+            {
+              id: "example/text-only",
+              architecture: { input_modalities: ["text"] },
+            },
+          ],
+        }),
+      })),
+    );
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Read this screenshot",
+        attachments: [
+          {
+            name: "screen.png",
+            mediaType: "image/png",
+            dataUrl: "data:image/png;base64,aGVsbG8=",
+          },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_REQUEST",
+      status: 400,
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/models",
+      expect.objectContaining({
+        headers: { Authorization: "Bearer test-key" },
+      }),
+    );
+    expect(mocks.repo.createMessage).not.toHaveBeenCalled();
   });
 
   it("rejects too many selected notes", async () => {

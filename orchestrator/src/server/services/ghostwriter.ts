@@ -11,7 +11,12 @@ import {
   GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED,
   normalizeGhostwriterSelectedNoteIds,
 } from "@shared/ghostwriter-note-context.js";
-import type { BranchInfo, JobChatMessage, JobChatRun } from "@shared/types";
+import type {
+  BranchInfo,
+  JobChatImageAttachment,
+  JobChatMessage,
+  JobChatRun,
+} from "@shared/types";
 import * as jobChatRepo from "../repositories/ghostwriter";
 import * as jobsRepo from "../repositories/jobs";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
@@ -97,6 +102,8 @@ type GenerateReplyOptions = {
   jobId: string;
   threadId: string;
   prompt: string;
+  attachments?: readonly JobChatImageAttachment[];
+  llmConfig?: LlmRuntimeSettings;
   replaceMessageId?: string;
   version?: number;
   /** Parent message ID for the assistant reply (i.e. the user message that triggered it). */
@@ -129,6 +136,162 @@ type GenerateReplyOptions = {
     }) => void;
   };
 };
+
+function resolveOpenRouterModelsUrl(baseUrl: string | null): string {
+  const normalized = (baseUrl || "https://openrouter.ai").replace(/\/+$/, "");
+  if (normalized.endsWith("/api/v1")) return `${normalized}/models`;
+  return `${normalized}/api/v1/models`;
+}
+
+async function getOpenRouterImageCapabilityReason(
+  input: LlmRuntimeSettings,
+): Promise<string | null | undefined> {
+  try {
+    const headers: Record<string, string> = {};
+    if (input.apiKey) headers.Authorization = `Bearer ${input.apiKey}`;
+    const response = await fetch(resolveOpenRouterModelsUrl(input.baseUrl), {
+      method: "GET",
+      headers,
+    });
+    if (!response.ok) return undefined;
+
+    const payload = (await response.json()) as {
+      data?: Array<{
+        id?: unknown;
+        architecture?: { input_modalities?: unknown };
+      }>;
+    };
+    const model = input.model.trim().toLowerCase();
+    const match = payload.data?.find((candidate) => {
+      const id = typeof candidate.id === "string" ? candidate.id : "";
+      return id.toLowerCase() === model;
+    });
+    if (!match) return undefined;
+
+    const modalities = match.architecture?.input_modalities;
+    if (!Array.isArray(modalities)) return undefined;
+    return modalities.some(
+      (modality) => typeof modality === "string" && modality === "image",
+    )
+      ? null
+      : `The selected OpenRouter model (${input.model}) does not accept image input.`;
+  } catch {
+    return undefined;
+  }
+}
+
+async function imageInputCapabilityReason(
+  input: LlmRuntimeSettings,
+): Promise<string | null> {
+  const provider = (input.provider || "openrouter").toLowerCase();
+  const model = input.model.trim().toLowerCase();
+  if (!model) return "No AI model is configured.";
+
+  const blockedModelPatterns = [
+    "embedding",
+    "audio",
+    "moderation",
+    "tts",
+    "whisper",
+    "dall-e",
+    "image-generation",
+    "codex",
+  ];
+  if (blockedModelPatterns.some((pattern) => model.includes(pattern))) {
+    return `The selected model (${input.model}) does not accept image input.`;
+  }
+
+  if (provider === "openai") {
+    const supported = [
+      /^gpt-4o\b/,
+      /^gpt-4\.1\b/,
+      /^gpt-4\.5\b/,
+      /^gpt-5\b/,
+      /^chatgpt-4o\b/,
+      /^o3\b/,
+      /^o4\b/,
+    ].some((pattern) => pattern.test(model));
+    return supported
+      ? null
+      : `The selected OpenAI model (${input.model}) is not recognized as image-capable.`;
+  }
+
+  if (provider === "gemini" || provider === "gemini_cli") {
+    return /^google\/gemini|^gemini|^models\/gemini/.test(model)
+      ? null
+      : `The selected Gemini model (${input.model}) is not recognized as image-capable.`;
+  }
+
+  if (provider === "openrouter" || provider === "openai_compatible") {
+    if (provider === "openrouter") {
+      const metadataReason = await getOpenRouterImageCapabilityReason(input);
+      if (metadataReason !== undefined) return metadataReason;
+    }
+
+    const supportedSignals = [
+      "vision",
+      "-vl",
+      "/vl",
+      "qwen2-vl",
+      "qwen2.5-vl",
+      "llava",
+      "pixtral",
+      "gemini",
+      "gpt-4o",
+      "gpt-4.1",
+      "gpt-4.5",
+      "gpt-5",
+      "claude-3",
+      "claude-sonnet-4",
+      "claude-opus-4",
+      "mistral-medium-3",
+    ];
+    return supportedSignals.some((signal) => model.includes(signal))
+      ? null
+      : `The selected model (${input.model}) is not recognized as image-capable.`;
+  }
+
+  return `Screenshot context is not available for the current AI provider (${input.provider || "openrouter"}).`;
+}
+
+function buildUserPromptContent(
+  prompt: string,
+  attachments: readonly JobChatImageAttachment[] | undefined,
+) {
+  if (!attachments?.length) return prompt;
+  return [
+    {
+      type: "text" as const,
+      text: [
+        prompt,
+        "",
+        `The user attached ${attachments.length} screenshot${attachments.length === 1 ? "" : "s"} for visual context. Inspect the image content directly and use it only where relevant.`,
+      ].join("\n"),
+    },
+    ...attachments.map((attachment) => ({
+      type: "image" as const,
+      imageUrl: attachment.dataUrl,
+      mediaType: attachment.mediaType,
+      name: attachment.name,
+    })),
+  ];
+}
+
+async function resolveAndValidateImageInput(
+  attachments: readonly JobChatImageAttachment[] | undefined,
+): Promise<LlmRuntimeSettings | undefined> {
+  if (!attachments?.length) return undefined;
+
+  const llmConfig = await resolveLlmRuntimeSettings();
+  const capabilityReason = await imageInputCapabilityReason(llmConfig);
+  if (capabilityReason) {
+    throw badRequest(capabilityReason, {
+      provider: llmConfig.provider || "openrouter",
+      model: llmConfig.model,
+    });
+  }
+  return llmConfig;
+}
 
 async function ensureJobThread(jobId: string) {
   return jobChatRepo.getOrCreateThreadForJob({
@@ -287,11 +450,12 @@ async function runAssistantReply(
     throw conflict("A chat generation is already running for this thread");
   }
 
-  const [context, llmConfig, history] = await Promise.all([
+  const [context, resolvedLlmConfig, history] = await Promise.all([
     buildJobChatPromptContext(options.jobId, thread.selectedNoteIds),
-    resolveLlmRuntimeSettings(),
+    options.llmConfig ?? resolveLlmRuntimeSettings(),
     buildConversationMessages(options.threadId, options.parentMessageId),
   ]);
+  const llmConfig = resolvedLlmConfig;
 
   const requestId = getRequestId() ?? "unknown";
 
@@ -376,7 +540,7 @@ async function runAssistantReply(
         ...history,
         {
           role: "user",
-          content: options.prompt,
+          content: buildUserPromptContent(options.prompt, options.attachments),
         },
       ],
       jsonSchema: CHAT_RESPONSE_SCHEMA,
@@ -505,6 +669,7 @@ export async function sendMessage(input: {
   jobId: string;
   threadId: string;
   content: string;
+  attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
@@ -524,6 +689,7 @@ export async function sendMessage(input: {
       selectedNoteIds: input.selectedNoteIds,
     });
   }
+  const llmConfig = await resolveAndValidateImageInput(input.attachments);
 
   // Determine parent: last message on the current active path
   const activePath = await jobChatRepo.getActivePathFromRoot(input.threadId);
@@ -553,6 +719,8 @@ export async function sendMessage(input: {
     jobId: input.jobId,
     threadId: input.threadId,
     prompt: content,
+    attachments: input.attachments,
+    llmConfig,
     parentMessageId: userMessage.id,
     stream: input.stream,
   });
@@ -571,6 +739,7 @@ export async function sendMessage(input: {
 export async function sendMessageForJob(input: {
   jobId: string;
   content: string;
+  attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
@@ -579,6 +748,7 @@ export async function sendMessageForJob(input: {
     jobId: input.jobId,
     threadId: thread.id,
     content: input.content,
+    attachments: input.attachments,
     selectedNoteIds: input.selectedNoteIds,
     stream: input.stream,
   });
@@ -688,6 +858,7 @@ export async function editMessage(input: {
   threadId: string;
   messageId: string;
   content: string;
+  attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
@@ -707,6 +878,7 @@ export async function editMessage(input: {
       selectedNoteIds: input.selectedNoteIds,
     });
   }
+  const llmConfig = await resolveAndValidateImageInput(input.attachments);
 
   const target = await jobChatRepo.getMessageById(input.messageId);
   if (
@@ -746,6 +918,8 @@ export async function editMessage(input: {
     jobId: input.jobId,
     threadId: input.threadId,
     prompt: content,
+    attachments: input.attachments,
+    llmConfig,
     parentMessageId: newUserMessage.id,
     stream: input.stream,
   });
@@ -765,6 +939,7 @@ export async function editMessageForJob(input: {
   jobId: string;
   messageId: string;
   content: string;
+  attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
@@ -774,6 +949,7 @@ export async function editMessageForJob(input: {
     threadId: thread.id,
     messageId: input.messageId,
     content: input.content,
+    attachments: input.attachments,
     selectedNoteIds: input.selectedNoteIds,
     stream: input.stream,
   });

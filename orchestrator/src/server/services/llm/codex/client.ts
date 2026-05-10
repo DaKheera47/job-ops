@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { logger } from "@infra/logger";
-import type { JsonSchemaDefinition, LlmRequestOptions } from "../types";
+import {
+  getLlmMessageText,
+  type JsonSchemaDefinition,
+  type LlmRequestOptions,
+} from "../types";
 import { truncate } from "../utils/string";
 
 const DEFAULT_STARTUP_TIMEOUT_MS = 15_000;
@@ -188,7 +192,7 @@ function formatPrompt(args: {
 }): string {
   const transcript = args.messages
     .map((message, index) => {
-      return `Message ${index + 1} (${message.role.toUpperCase()}):\n${message.content.trim()}`;
+      return `Message ${index + 1} (${message.role.toUpperCase()}):\n${getLlmMessageText(message.content).trim()}`;
     })
     .join("\n\n");
 

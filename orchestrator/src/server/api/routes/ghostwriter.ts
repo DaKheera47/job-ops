@@ -23,9 +23,38 @@ const updateContextSchema = z.object({
   selectedNoteIds: selectedNoteIdsSchema,
 });
 
+const imageAttachmentSchema = z
+  .object({
+    id: z.string().trim().max(80).optional(),
+    name: z.string().trim().min(1).max(180),
+    mediaType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+    dataUrl: z
+      .string()
+      .max(2_800_000)
+      .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/),
+  })
+  .superRefine((attachment, ctx) => {
+    if (
+      !attachment.dataUrl.startsWith(`data:${attachment.mediaType};base64,`)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["dataUrl"],
+        message:
+          "Image data URL media type must match the attachment media type.",
+      });
+    }
+  });
+
+const imageAttachmentsSchema = z
+  .array(imageAttachmentSchema)
+  .max(3)
+  .default([]);
+
 const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
   selectedNoteIds: selectedNoteIdsSchema.optional(),
+  attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
@@ -37,6 +66,7 @@ const regenerateSchema = z.object({
 const editMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
   selectedNoteIds: selectedNoteIdsSchema.optional(),
+  attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
@@ -121,6 +151,7 @@ ghostwriterRouter.post(
           await ghostwriterService.sendMessageForJob({
             jobId,
             content: parsed.data.content,
+            attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
@@ -178,6 +209,7 @@ ghostwriterRouter.post(
       const result = await ghostwriterService.sendMessageForJob({
         jobId,
         content: parsed.data.content,
+        attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
@@ -332,6 +364,7 @@ ghostwriterRouter.post(
             jobId,
             messageId,
             content: parsed.data.content,
+            attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, threadId, messageId, requestId }) =>
@@ -390,6 +423,7 @@ ghostwriterRouter.post(
         jobId,
         messageId,
         content: parsed.data.content,
+        attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
       });
 
@@ -529,6 +563,7 @@ ghostwriterRouter.post(
             jobId,
             threadId,
             content: parsed.data.content,
+            attachments: parsed.data.attachments,
             selectedNoteIds: parsed.data.selectedNoteIds,
             stream: {
               onReady: ({ runId, messageId, requestId }) =>
@@ -587,6 +622,7 @@ ghostwriterRouter.post(
         jobId,
         threadId,
         content: parsed.data.content,
+        attachments: parsed.data.attachments,
         selectedNoteIds: parsed.data.selectedNoteIds,
       });
 

@@ -75,6 +75,13 @@ export interface JobChatRun {
   updatedAt: string;
 }
 
+export interface JobChatImageAttachment {
+  id?: string;
+  name: string;
+  mediaType: "image/png" | "image/jpeg" | "image/webp";
+  dataUrl: string;
+}
+
 export type JobChatStreamEvent =
   | {
       type: "ready";

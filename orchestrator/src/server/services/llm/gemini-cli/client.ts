@@ -2,7 +2,11 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { logger } from "@infra/logger";
-import type { JsonSchemaDefinition, LlmRequestOptions } from "../types";
+import {
+  getLlmMessageText,
+  type JsonSchemaDefinition,
+  type LlmRequestOptions,
+} from "../types";
 import { truncate } from "../utils/string";
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
@@ -148,7 +152,7 @@ function formatStructuredPrompt(args: {
 }): string {
   const transcript = args.messages
     .map((message, index) => {
-      return `Message ${index + 1} (${message.role.toUpperCase()}):\n${message.content.trim()}`;
+      return `Message ${index + 1} (${message.role.toUpperCase()}):\n${getLlmMessageText(message.content).trim()}`;
     })
     .join("\n\n");
 

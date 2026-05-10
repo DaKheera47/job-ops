@@ -1,4 +1,4 @@
-import type { LlmRequestOptions } from "../types";
+import { getLlmMessageText, type LlmRequestOptions } from "../types";
 import { addQueryParam, buildHeaders, joinUrl } from "../utils/http";
 import { getNestedValue } from "../utils/object";
 import { createProviderStrategy } from "./factory";
@@ -82,13 +82,18 @@ function toGeminiResponseSchema(schema: unknown): unknown {
 
 function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
   systemInstruction: { parts: Array<{ text: string }> } | null;
-  contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }>;
+  contents: Array<{
+    role: "user" | "model";
+    parts: Array<
+      { text: string } | { inlineData: { mimeType: string; data: string } }
+    >;
+  }>;
 } {
   const systemParts: string[] = [];
   const contents = messages
     .filter((message) => {
       if (message.role === "system") {
-        systemParts.push(message.content);
+        systemParts.push(getLlmMessageText(message.content));
         return false;
       }
       return true;
@@ -96,7 +101,20 @@ function toGeminiContents(messages: LlmRequestOptions<unknown>["messages"]): {
     .map((message) => {
       const role: "user" | "model" =
         message.role === "assistant" ? "model" : "user";
-      return { role, parts: [{ text: message.content }] };
+      if (typeof message.content === "string") {
+        return { role, parts: [{ text: message.content }] };
+      }
+      const parts = message.content.map((part) => {
+        if (part.type === "text") return { text: part.text };
+        const data = part.imageUrl.replace(/^data:[^;]+;base64,/, "");
+        return {
+          inlineData: {
+            mimeType: part.mediaType,
+            data,
+          },
+        };
+      });
+      return { role, parts };
     });
 
   const systemInstruction = systemParts.length

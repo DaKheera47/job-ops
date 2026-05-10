@@ -2,6 +2,7 @@ import * as api from "@client/api";
 import type {
   BranchInfo,
   Job,
+  JobChatImageAttachment,
   JobChatMessage,
   JobChatStreamEvent,
   JobNote,
@@ -199,7 +200,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
   );
 
   const sendMessage = useCallback(
-    async (content: string) => {
+    async (content: string, attachments: JobChatImageAttachment[] = []) => {
       if (isStreaming) return;
 
       const optimisticUser: JobChatMessage = {
@@ -229,7 +230,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
       try {
         await api.streamJobGhostwriterMessage(
           job.id,
-          { content, selectedNoteIds, signal: controller.signal },
+          {
+            content,
+            selectedNoteIds,
+            attachments,
+            signal: controller.signal,
+          },
           { onEvent: onStreamEvent },
         );
 
@@ -310,7 +316,11 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
   );
 
   const editMessage = useCallback(
-    async (messageId: string, content: string) => {
+    async (
+      messageId: string,
+      content: string,
+      attachments: JobChatImageAttachment[] = [],
+    ) => {
       if (isStreaming) return;
 
       // Remove the edited message and everything below it (old branch disappears)
@@ -349,7 +359,12 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
         await api.editJobGhostwriterMessage(
           job.id,
           messageId,
-          { content, selectedNoteIds, signal: controller.signal },
+          {
+            content,
+            selectedNoteIds,
+            attachments,
+            signal: controller.signal,
+          },
           { onEvent: onStreamEvent },
         );
         await loadMessages();

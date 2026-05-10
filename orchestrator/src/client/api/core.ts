@@ -49,7 +49,12 @@ export type LegacyApiResponse<T> =
 
 export type StreamSseInput =
   | import("@shared/types").JobActionRequest
-  | { content: string; selectedNoteIds?: string[]; stream: true }
+  | {
+      content: string;
+      selectedNoteIds?: string[];
+      attachments?: import("@shared/types").JobChatImageAttachment[];
+      stream: true;
+    }
   | { selectedNoteIds?: string[]; stream: true };
 
 function describeAction(endpoint: string, method?: string): string {

@@ -20,11 +20,27 @@ export interface JsonSchemaDefinition {
   };
 }
 
+export type LlmContentPart =
+  | { type: "text"; text: string }
+  | {
+      type: "image";
+      imageUrl: string;
+      mediaType: "image/png" | "image/jpeg" | "image/webp";
+      name?: string;
+    };
+
+export type LlmMessageContent = string | LlmContentPart[];
+
+export interface LlmMessage {
+  role: "user" | "system" | "assistant";
+  content: LlmMessageContent;
+}
+
 export interface LlmRequestOptions<_T> {
   /** The model to use (e.g., 'google/gemini-3-flash-preview') */
   model: string;
   /** The prompt messages to send */
-  messages: Array<{ role: "user" | "system" | "assistant"; content: string }>;
+  messages: LlmMessage[];
   /** JSON schema for structured output */
   jsonSchema: JsonSchemaDefinition;
   /** Number of retries on parsing failures (default: 0) */
@@ -90,4 +106,15 @@ export type ProviderStrategy = {
 export interface LlmApiError extends Error {
   status?: number;
   body?: string;
+}
+
+export function getLlmMessageText(content: LlmMessageContent): string {
+  if (typeof content === "string") return content;
+  return content
+    .map((part) =>
+      part.type === "text"
+        ? part.text
+        : `[Attached image: ${part.name || part.mediaType}]`,
+    )
+    .join("\n");
 }

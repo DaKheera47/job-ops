@@ -1,6 +1,8 @@
 import { isCapabilityError } from "../policies/capability-fallback";
 import type {
   JsonSchemaDefinition,
+  LlmMessage,
+  LlmMessageContent,
   LlmRequestOptions,
   ProviderStrategy,
   ResponseMode,
@@ -38,7 +40,7 @@ export function buildChatCompletionsBody(args: {
 }): Record<string, unknown> {
   const body: Record<string, unknown> = {
     model: args.model,
-    messages: args.messages,
+    messages: toChatCompletionsMessages(args.messages),
     stream: false,
     ...(args.extra ?? {}),
   };
@@ -59,6 +61,28 @@ export function buildChatCompletionsBody(args: {
   }
 
   return body;
+}
+
+function toChatCompletionsContent(content: LlmMessageContent) {
+  if (typeof content === "string") return content;
+  return content.map((part) => {
+    if (part.type === "text") {
+      return { type: "text", text: part.text };
+    }
+    return {
+      type: "image_url",
+      image_url: {
+        url: part.imageUrl,
+      },
+    };
+  });
+}
+
+export function toChatCompletionsMessages(messages: LlmMessage[]) {
+  return messages.map((message) => ({
+    role: message.role,
+    content: toChatCompletionsContent(message.content),
+  }));
 }
 
 export function extractChatCompletionsText(response: unknown): string | null {

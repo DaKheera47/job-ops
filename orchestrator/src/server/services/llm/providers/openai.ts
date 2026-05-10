@@ -1,4 +1,10 @@
-import type { LlmRequestOptions, ResponseMode } from "../types";
+import type {
+  LlmMessage,
+  LlmMessageContent,
+  LlmRequestOptions,
+  ResponseMode,
+} from "../types";
+import { getLlmMessageText } from "../types";
 import { buildHeaders, joinUrl } from "../utils/http";
 import { getNestedValue } from "../utils/object";
 import { createProviderStrategy } from "./factory";
@@ -10,7 +16,9 @@ export const openAiStrategy = createProviderStrategy({
   modes: ["json_schema", "json_object", "none"],
   validationPaths: ["/v1/models"],
   buildRequest: ({ mode, baseUrl, apiKey, model, messages, jsonSchema }) => {
-    const input = ensureJsonInstructionIfNeeded(messages, mode);
+    const input = ensureJsonInstructionIfNeeded(messages, mode).map(
+      toResponsesInputMessage,
+    );
     const body: Record<string, unknown> = {
       model,
       input,
@@ -63,7 +71,7 @@ function ensureJsonInstructionIfNeeded(
 ) {
   if (mode !== "json_object") return messages;
   const hasJson = messages.some((message) =>
-    message.content.toLowerCase().includes("json"),
+    getLlmMessageText(message.content).toLowerCase().includes("json"),
   );
   if (hasJson) return messages;
   return [
@@ -73,4 +81,21 @@ function ensureJsonInstructionIfNeeded(
     },
     ...messages,
   ];
+}
+
+function toResponsesInputContent(content: LlmMessageContent) {
+  if (typeof content === "string") return content;
+  return content.map((part) => {
+    if (part.type === "text") {
+      return { type: "input_text", text: part.text };
+    }
+    return { type: "input_image", image_url: part.imageUrl };
+  });
+}
+
+function toResponsesInputMessage(message: LlmMessage) {
+  return {
+    role: message.role,
+    content: toResponsesInputContent(message.content),
+  };
 }

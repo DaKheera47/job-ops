@@ -383,6 +383,8 @@ export function createApp() {
   // Resume file import sends base64 JSON payloads, which expand beyond the raw
   // file size. Scope the larger JSON limit to that endpoint only.
   app.use("/api/design-resume/import/file", express.json({ limit: "15mb" }));
+  // Ghostwriter screenshot context sends small base64 image attachments.
+  app.use("/api/jobs/:id/chat", express.json({ limit: "8mb" }));
   app.use(express.json());
 
   // Logging middleware
