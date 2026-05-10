@@ -265,7 +265,11 @@ export const GhostwriterContextSelector: React.FC<
           </div>
         </div>
 
-        <div className="max-h-96 overflow-y-auto">
+        <div
+          className="max-h-96 overflow-y-auto overscroll-contain"
+          onWheelCapture={(event) => event.stopPropagation()}
+          onTouchMoveCapture={(event) => event.stopPropagation()}
+        >
           <ContextGroup
             title="Notes"
             icon={FileText}
