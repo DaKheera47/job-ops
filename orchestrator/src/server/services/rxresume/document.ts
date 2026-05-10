@@ -251,6 +251,76 @@ function absolutizeSectionWebsites(
   };
 }
 
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function looksLikeHtml(value: string): boolean {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
+
+function ensureHtmlBlock(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed || looksLikeHtml(trimmed)) return value;
+
+  return trimmed
+    .split(/\n{2,}/)
+    .map((paragraph) => {
+      const html = escapeHtmlText(paragraph.trim()).replace(/\n/g, "<br>");
+      return `<p>${html}</p>`;
+    })
+    .join("");
+}
+
+function prepareRichTextItemForExternalUse(item: unknown): unknown {
+  const record = asRecord(item);
+  if (!record) return item;
+
+  return {
+    ...record,
+    ...(typeof record.description === "string"
+      ? { description: ensureHtmlBlock(record.description) }
+      : {}),
+    ...(typeof record.content === "string"
+      ? { content: ensureHtmlBlock(record.content) }
+      : {}),
+    ...(typeof record.recipient === "string"
+      ? { recipient: ensureHtmlBlock(record.recipient) }
+      : {}),
+    ...(Array.isArray(record.roles)
+      ? {
+          roles: record.roles.map((role) =>
+            prepareRichTextItemForExternalUse(role),
+          ),
+        }
+      : {}),
+  };
+}
+
+function prepareSectionForExternalUse(
+  section: unknown,
+  publicBaseUrl: string | null,
+): unknown {
+  const withAbsoluteWebsites = absolutizeSectionWebsites(
+    section,
+    publicBaseUrl,
+  );
+  const record = asRecord(withAbsoluteWebsites);
+  if (!record) return withAbsoluteWebsites;
+
+  return {
+    ...record,
+    items: asArray(record.items).map((item) =>
+      prepareRichTextItemForExternalUse(item),
+    ),
+  };
+}
+
 function normalizeOptions(value: unknown) {
   const record = asRecord(value);
   return {
@@ -659,6 +729,7 @@ export function prepareReactiveResumeV5DocumentForExternalUse(
   const parsed = parseV5ResumeData(input) as RecordLike;
   const picture = asRecord(parsed.picture) ?? {};
   const basics = asRecord(parsed.basics) ?? {};
+  const summary = asRecord(parsed.summary) ?? {};
   const sections = asRecord(parsed.sections) ?? {};
 
   return {
@@ -671,24 +742,53 @@ export function prepareReactiveResumeV5DocumentForExternalUse(
       ...basics,
       website: absolutizeV5UrlNode(basics.website, publicBaseUrl),
     },
+    summary: {
+      ...summary,
+      content:
+        typeof summary.content === "string"
+          ? ensureHtmlBlock(summary.content)
+          : summary.content,
+    },
     sections: {
       ...sections,
-      profiles: absolutizeSectionWebsites(sections.profiles, publicBaseUrl),
-      experience: absolutizeSectionWebsites(sections.experience, publicBaseUrl),
-      education: absolutizeSectionWebsites(sections.education, publicBaseUrl),
-      projects: absolutizeSectionWebsites(sections.projects, publicBaseUrl),
-      awards: absolutizeSectionWebsites(sections.awards, publicBaseUrl),
-      certifications: absolutizeSectionWebsites(
+      profiles: prepareSectionForExternalUse(sections.profiles, publicBaseUrl),
+      experience: prepareSectionForExternalUse(
+        sections.experience,
+        publicBaseUrl,
+      ),
+      education: prepareSectionForExternalUse(
+        sections.education,
+        publicBaseUrl,
+      ),
+      projects: prepareSectionForExternalUse(sections.projects, publicBaseUrl),
+      awards: prepareSectionForExternalUse(sections.awards, publicBaseUrl),
+      certifications: prepareSectionForExternalUse(
         sections.certifications,
         publicBaseUrl,
       ),
-      publications: absolutizeSectionWebsites(
+      publications: prepareSectionForExternalUse(
         sections.publications,
         publicBaseUrl,
       ),
-      volunteer: absolutizeSectionWebsites(sections.volunteer, publicBaseUrl),
-      references: absolutizeSectionWebsites(sections.references, publicBaseUrl),
+      volunteer: prepareSectionForExternalUse(
+        sections.volunteer,
+        publicBaseUrl,
+      ),
+      references: prepareSectionForExternalUse(
+        sections.references,
+        publicBaseUrl,
+      ),
     },
+    customSections: asArray(parsed.customSections).map((section) => {
+      const record = asRecord(section);
+      if (!record) return section;
+      return {
+        ...record,
+        items: asArray(record.items).map((item) =>
+          prepareRichTextItemForExternalUse(item),
+        ),
+      };
+    }),
   };
 }
 
