@@ -1,7 +1,6 @@
 import type { Job, JobBrief } from "@shared/types.js";
-import { ClipboardList, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import type React from "react";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 type JobBriefPaneProps = {
@@ -32,12 +31,7 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
   }
 
   return (
-    <section
-      className={cn(
-        "space-y-4",
-        className,
-      )}
-    >
+    <section className={cn("space-y-4", className)}>
       <p className="text-lg font-bold leading-7 text-foreground border-border p-4 rounded-lg bg-muted/50 flex items-center gap-2">
         {brief.role_summary}
       </p>
@@ -50,23 +44,23 @@ export const JobBriefPane: React.FC<JobBriefPaneProps> = ({
           items={brief.missing_or_unclear}
         />
 
-            {brief.specifics.length > 0 && (
-        <div className="space-y-2">
-          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Highlights
+        {brief.specifics.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Highlights
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {brief.specifics.map((item) => (
+                <span
+                  key={item}
+                  className="whitespace-nowrap inline-flex items-center text-foreground bg-muted/50 rounded-lg px-2 py-1"
+                >
+                  <span className="truncate">{item}</span>
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-1.5">
-            {brief.specifics.map((item) => (
-              <span
-                key={item}
-                className="whitespace-nowrap inline-flex items-center text-foreground bg-muted/50 rounded-lg px-2 py-1"
-              >
-                <span className="truncate">{item}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
       </div>
     </section>
   );

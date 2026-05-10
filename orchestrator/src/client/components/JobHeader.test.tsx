@@ -62,16 +62,12 @@ describe("JobHeader", () => {
     expect(screen.getByText("£60,000")).toBeInTheDocument();
   });
 
-  it("links the title and view button to the job page", () => {
+  it("links the title to the job page", () => {
     renderWithRouter(<JobHeader job={mockJob} />);
 
     expect(
       screen.getByRole("link", { name: "Software Engineer" }),
     ).toHaveAttribute("href", "/job/job-1");
-    expect(screen.getByRole("link", { name: /view/i })).toHaveAttribute(
-      "href",
-      "/job/job-1",
-    );
   });
 
   it("shows 'Check Sponsorship Status' button when sponsorMatchScore is null", async () => {
@@ -163,7 +159,7 @@ describe("JobHeader", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Suitability score: 45/100. Higher is better."),
+      screen.getByRole("img", { name: "Suitability score 45" }),
     ).toBeInTheDocument();
   });
 

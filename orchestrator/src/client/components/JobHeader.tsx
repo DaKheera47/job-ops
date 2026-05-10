@@ -1,16 +1,8 @@
 import type { AppliedDuplicateMatch, Job } from "@shared/types.js";
-import {
-  ArrowUpRight,
-  Calendar,
-  DollarSign,
-  Loader2,
-  MapPin,
-  Search,
-} from "lucide-react";
+import { Calendar, DollarSign, Loader2, MapPin, Search } from "lucide-react";
 import type React from "react";
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -20,13 +12,13 @@ import {
 } from "@/components/ui/tooltip";
 import { cn, formatDate, sourceLabel } from "@/lib/utils";
 import { useSettings } from "../hooks/useSettings";
+import { ScoreRing } from "../pages/job-page/JobPageLeftSidebar";
 import { appliedDuplicateIndicator } from "../pages/orchestrator/constants";
 import {
   getJobStatusIndicator,
   getTracerStatusIndicator,
   StatusIndicator,
 } from "./StatusIndicator";
-import { ScoreRing } from "../pages/job-page/JobPageLeftSidebar";
 
 interface JobHeaderProps {
   job: Job;
@@ -199,15 +191,13 @@ export const JobHeader: React.FC<JobHeaderProps> = ({
       recorded.
     </p>
   ) : undefined;
-  const scoreTooltip =
-    job.suitabilityScore == null ? undefined : (
-      <p className="text-xs">
-        Suitability score: {job.suitabilityScore}/100. Higher is better.
-      </p>
-    );
-
   return (
-    <div className={cn("space-y-3 p-4 bg-muted/30 rounded-lg rounded-b-none border border-b-0 border-border", className)}>
+    <div
+      className={cn(
+        "space-y-3 p-4 bg-muted/30 rounded-lg rounded-b-none border border-b-0 border-border",
+        className,
+      )}
+    >
       {/* Detail header: lighter weight than list items */}
       <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 w-full sm:w-auto sm:flex-1">

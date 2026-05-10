@@ -1664,7 +1664,7 @@ export const SettingsPage: React.FC = () => {
                                     "h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium",
                                     isActive
                                       ? "border border-primary/40 bg-primary/12 text-white hover:bg-primary/18"
-                                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                                   )}
                                   onClick={() => setActiveSection(item.id)}
                                 >

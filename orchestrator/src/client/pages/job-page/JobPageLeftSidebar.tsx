@@ -94,7 +94,10 @@ const getSuitabilityScoreTokens = (score: number | null) => {
   };
 };
 
-export const ScoreRing: React.FC<{ score: number | null, size?: "sm" | "lg" }> = ({ score, size = "lg" }) => {
+export const ScoreRing: React.FC<{
+  score: number | null;
+  size?: "sm" | "lg";
+}> = ({ score, size = "lg" }) => {
   const tokens = getSuitabilityScoreTokens(score);
 
   return (
@@ -109,13 +112,19 @@ export const ScoreRing: React.FC<{ score: number | null, size?: "sm" | "lg" }> =
       )}
     >
       <div className="flex h-full w-full flex-col items-center justify-center rounded-full border border-white/5 bg-background/70 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-        <div className={cn(size === "sm" ? "text-lg" : "text-2xl", "font-semibold leading-none tabular-nums")}>
+        <div
+          className={cn(
+            size === "sm" ? "text-lg" : "text-2xl",
+            "font-semibold leading-none tabular-nums",
+          )}
+        >
           {tokens.value}
         </div>
-        {
-          size === "lg" &&
-             <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">score</div>
-        }
+        {size === "lg" && (
+          <div className="mt-0.5 text-[9px] uppercase tracking-[0.22em] text-current/70">
+            score
+          </div>
+        )}
       </div>
     </div>
   );

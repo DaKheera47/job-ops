@@ -22,16 +22,15 @@ describe("JobBriefPane", () => {
     render(<JobBriefPane job={job} />);
 
     expect(screen.getByText("Build internal workflow tools.")).toBeVisible();
-    expect(screen.getByText(/82\/100:/)).toBeVisible();
     expect(
-      screen.getByText("Good fit because the stack matches."),
-    ).toBeVisible();
+      screen.queryByText(/Good fit because the stack matches/),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("TypeScript")).toBeVisible();
     expect(screen.getByText("React")).toBeVisible();
     expect(screen.getByText("Node.js")).toBeVisible();
     expect(screen.getByText("PostgreSQL")).toBeVisible();
     expect(screen.getByText("Mentorship")).toBeVisible();
-    expect(screen.getByText("Salary: Not stated")).toBeVisible();
+    expect(screen.queryByText("Salary: Not stated")).not.toBeInTheDocument();
     expect(screen.getByText("Sponsorship not stated")).toBeVisible();
     expect(screen.queryByText("Collaboration")).not.toBeInTheDocument();
   });
@@ -69,7 +68,8 @@ describe("JobBriefPane", () => {
 
     expect(screen.getByText("Maintain data pipelines.")).toBeVisible();
     expect(screen.queryByText("They want")).not.toBeInTheDocument();
-    expect(screen.queryByText("Specifics")).not.toBeInTheDocument();
-    expect(screen.getByText("Practical details")).toBeVisible();
+    expect(screen.queryByText("Highlights")).not.toBeInTheDocument();
+    expect(screen.queryByText("Practical details")).not.toBeInTheDocument();
+    expect(screen.queryByText("Location: London")).not.toBeInTheDocument();
   });
 });
