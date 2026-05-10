@@ -345,75 +345,80 @@ async function ensureJobThread(jobId: string) {
   });
 }
 
-async function validateSelectedNoteIdsForJob(
-  jobId: string,
-  selectedNoteIds: readonly string[],
-): Promise<string[]> {
-  const normalizedNoteIds =
-    normalizeGhostwriterSelectedNoteIds(selectedNoteIds);
+async function validateSelectedContextIdsForJob<TItem>(input: {
+  selectedIds: readonly string[];
+  maxSelected: number;
+  contextLabel: string;
+  maxSelectedDetailsKey: string;
+  invalidIdsDetailsKey: string;
+  normalize: (selectedIds: readonly string[]) => string[];
+  listItems: (normalizedIds: string[]) => Promise<TItem[]>;
+  getId: (item: TItem) => string;
+}): Promise<string[]> {
+  const normalizedIds = input.normalize(input.selectedIds);
 
-  if (normalizedNoteIds.length > GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED) {
+  if (normalizedIds.length > input.maxSelected) {
     throw badRequest(
-      `Select up to ${GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED} notes for Ghostwriter context`,
+      `Select up to ${input.maxSelected} ${input.contextLabel}s for Ghostwriter context`,
       {
-        maxSelectedNotes: GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED,
-        selectedCount: normalizedNoteIds.length,
+        [input.maxSelectedDetailsKey]: input.maxSelected,
+        selectedCount: normalizedIds.length,
       },
     );
   }
 
-  if (normalizedNoteIds.length === 0) return [];
+  if (normalizedIds.length === 0) return [];
 
-  const notes = await jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds);
-  const noteIdsForJob = new Set(notes.map((note) => note.id));
-  const invalidNoteIds = normalizedNoteIds.filter(
-    (noteId) => !noteIdsForJob.has(noteId),
+  const items = await input.listItems(normalizedIds);
+  const itemIdsForJob = new Set(items.map(input.getId));
+  const invalidIds = normalizedIds.filter(
+    (selectedId) => !itemIdsForJob.has(selectedId),
   );
 
-  if (invalidNoteIds.length > 0) {
-    throw badRequest("Selected notes must belong to this job", {
-      invalidNoteIds,
-    });
+  if (invalidIds.length > 0) {
+    throw badRequest(
+      `Selected ${input.contextLabel}s must belong to this job`,
+      {
+        [input.invalidIdsDetailsKey]: invalidIds,
+      },
+    );
   }
 
-  return normalizedNoteIds;
+  return normalizedIds;
+}
+
+async function validateSelectedNoteIdsForJob(
+  jobId: string,
+  selectedNoteIds: readonly string[],
+): Promise<string[]> {
+  return validateSelectedContextIdsForJob({
+    selectedIds: selectedNoteIds,
+    maxSelected: GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED,
+    contextLabel: "note",
+    maxSelectedDetailsKey: "maxSelectedNotes",
+    invalidIdsDetailsKey: "invalidNoteIds",
+    normalize: normalizeGhostwriterSelectedNoteIds,
+    listItems: (normalizedNoteIds) =>
+      jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds),
+    getId: (note) => note.id,
+  });
 }
 
 async function validateSelectedEmailIdsForJob(
   jobId: string,
   selectedEmailIds: readonly string[],
 ): Promise<string[]> {
-  const normalizedEmailIds =
-    normalizeGhostwriterSelectedEmailIds(selectedEmailIds);
-
-  if (normalizedEmailIds.length > GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED) {
-    throw badRequest(
-      `Select up to ${GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED} emails for Ghostwriter context`,
-      {
-        maxSelectedEmails: GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED,
-        selectedCount: normalizedEmailIds.length,
-      },
-    );
-  }
-
-  if (normalizedEmailIds.length === 0) return [];
-
-  const emails = await listJobPostApplicationEmailsByIds(
-    jobId,
-    normalizedEmailIds,
-  );
-  const emailIdsForJob = new Set(emails.map((email) => email.message.id));
-  const invalidEmailIds = normalizedEmailIds.filter(
-    (emailId) => !emailIdsForJob.has(emailId),
-  );
-
-  if (invalidEmailIds.length > 0) {
-    throw badRequest("Selected emails must belong to this job", {
-      invalidEmailIds,
-    });
-  }
-
-  return normalizedEmailIds;
+  return validateSelectedContextIdsForJob({
+    selectedIds: selectedEmailIds,
+    maxSelected: GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED,
+    contextLabel: "email",
+    maxSelectedDetailsKey: "maxSelectedEmails",
+    invalidIdsDetailsKey: "invalidEmailIds",
+    normalize: normalizeGhostwriterSelectedEmailIds,
+    listItems: (normalizedEmailIds) =>
+      listJobPostApplicationEmailsByIds(jobId, normalizedEmailIds),
+    getId: (email) => email.message.id,
+  });
 }
 
 async function updateThreadContext(input: {

@@ -135,19 +135,33 @@ function buildProfileSnapshot(profile: ResumeProfile): string {
   ]);
 }
 
+async function listSelectedContextItems<TItem>(input: {
+  selectedIds: readonly string[];
+  normalize: (selectedIds: readonly string[]) => string[];
+  listItems: (normalizedIds: string[]) => Promise<TItem[]>;
+  getId: (item: TItem) => string;
+}): Promise<TItem[]> {
+  const normalizedIds = input.normalize(input.selectedIds);
+  if (normalizedIds.length === 0) return [];
+
+  const items = await input.listItems(normalizedIds);
+  const itemsById = new Map(items.map((item) => [input.getId(item), item]));
+  return normalizedIds
+    .map((selectedId) => itemsById.get(selectedId))
+    .filter((item): item is TItem => Boolean(item));
+}
+
 async function buildSelectedNotesSnapshot(
   jobId: string,
   selectedNoteIds: readonly string[],
 ): Promise<string> {
-  const normalizedNoteIds =
-    normalizeGhostwriterSelectedNoteIds(selectedNoteIds);
-  if (normalizedNoteIds.length === 0) return "";
-
-  const notes = await jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds);
-  const notesById = new Map(notes.map((note) => [note.id, note]));
-  const selectedNotes = normalizedNoteIds
-    .map((noteId) => notesById.get(noteId))
-    .filter((note): note is (typeof notes)[number] => Boolean(note));
+  const selectedNotes = await listSelectedContextItems({
+    selectedIds: selectedNoteIds,
+    normalize: normalizeGhostwriterSelectedNoteIds,
+    listItems: (normalizedNoteIds) =>
+      jobsRepo.listJobNotesByIds(jobId, normalizedNoteIds),
+    getId: (note) => note.id,
+  });
 
   if (selectedNotes.length === 0) return "";
 
@@ -169,21 +183,16 @@ async function buildSelectedEmailsSnapshot(
   jobId: string,
   selectedEmailIds: readonly string[],
 ): Promise<string> {
-  const normalizedEmailIds =
-    normalizeGhostwriterSelectedEmailIds(selectedEmailIds);
-  if (normalizedEmailIds.length === 0) return "";
-
   const { listJobPostApplicationEmailsByIds } = await import(
     "./post-application/job-emails"
   );
-  const emails = await listJobPostApplicationEmailsByIds(
-    jobId,
-    normalizedEmailIds,
-  );
-  const emailsById = new Map(emails.map((email) => [email.message.id, email]));
-  const selectedEmails = normalizedEmailIds
-    .map((emailId) => emailsById.get(emailId))
-    .filter((email): email is (typeof emails)[number] => Boolean(email));
+  const selectedEmails = await listSelectedContextItems({
+    selectedIds: selectedEmailIds,
+    normalize: normalizeGhostwriterSelectedEmailIds,
+    listItems: (normalizedEmailIds) =>
+      listJobPostApplicationEmailsByIds(jobId, normalizedEmailIds),
+    getId: (email) => email.message.id,
+  });
 
   if (selectedEmails.length === 0) return "";
 

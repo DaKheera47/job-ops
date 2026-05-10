@@ -7,6 +7,25 @@ import type {
 } from "@shared/types";
 import { fetchApi, streamSseEvents, withQuery } from "./core";
 
+type GhostwriterContextSelectionInput = {
+  selectedNoteIds?: string[];
+  selectedEmailIds?: string[];
+};
+
+type GhostwriterContextSelectionResult = {
+  selectedNoteIds: string[];
+  selectedEmailIds: string[];
+};
+
+type GhostwriterMessageContextInput = GhostwriterContextSelectionInput & {
+  content: string;
+  attachments?: JobChatImageAttachment[];
+};
+
+type GhostwriterStreamSignalInput = GhostwriterContextSelectionInput & {
+  signal?: AbortSignal;
+};
+
 export async function listJobChatThreads(jobId: string): Promise<{
   threads: JobChatThread[];
 }> {
@@ -18,18 +37,18 @@ export async function listJobChatThreads(jobId: string): Promise<{
 export async function listJobGhostwriterMessages(
   jobId: string,
   options?: { limit?: number; offset?: number },
-): Promise<{
-  messages: JobChatMessage[];
-  branches: BranchInfo[];
-  selectedNoteIds: string[];
-  selectedEmailIds: string[];
-}> {
-  return fetchApi<{
+): Promise<
+  {
     messages: JobChatMessage[];
     branches: BranchInfo[];
-    selectedNoteIds: string[];
-    selectedEmailIds: string[];
-  }>(
+  } & GhostwriterContextSelectionResult
+> {
+  return fetchApi<
+    {
+      messages: JobChatMessage[];
+      branches: BranchInfo[];
+    } & GhostwriterContextSelectionResult
+  >(
     withQuery(`/jobs/${jobId}/chat/messages`, {
       limit: options?.limit,
       offset: options?.offset,
@@ -39,9 +58,9 @@ export async function listJobGhostwriterMessages(
 
 export async function updateJobGhostwriterContext(
   jobId: string,
-  input: { selectedNoteIds?: string[]; selectedEmailIds?: string[] },
-): Promise<{ selectedNoteIds: string[]; selectedEmailIds: string[] }> {
-  return fetchApi<{ selectedNoteIds: string[]; selectedEmailIds: string[] }>(
+  input: GhostwriterContextSelectionInput,
+): Promise<GhostwriterContextSelectionResult> {
+  return fetchApi<GhostwriterContextSelectionResult>(
     `/jobs/${jobId}/chat/context`,
     {
       method: "PATCH",
@@ -82,12 +101,7 @@ export async function listJobChatMessages(
 export async function sendJobChatMessage(
   jobId: string,
   threadId: string,
-  input: {
-    content: string;
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    attachments?: JobChatImageAttachment[];
-  },
+  input: GhostwriterMessageContextInput,
 ): Promise<{
   userMessage: JobChatMessage;
   assistantMessage: JobChatMessage | null;
@@ -105,13 +119,7 @@ export async function sendJobChatMessage(
 export async function streamJobChatMessage(
   jobId: string,
   threadId: string,
-  input: {
-    content: string;
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    attachments?: JobChatImageAttachment[];
-    signal?: AbortSignal;
-  },
+  input: GhostwriterMessageContextInput & { signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
@@ -128,13 +136,7 @@ export async function streamJobChatMessage(
 
 export async function streamJobGhostwriterMessage(
   jobId: string,
-  input: {
-    content: string;
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    attachments?: JobChatImageAttachment[];
-    signal?: AbortSignal;
-  },
+  input: GhostwriterMessageContextInput & { signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
@@ -209,11 +211,7 @@ export async function streamRegenerateJobChatMessage(
   jobId: string,
   threadId: string,
   assistantMessageId: string,
-  input: {
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    signal?: AbortSignal;
-  },
+  input: GhostwriterStreamSignalInput,
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
@@ -235,11 +233,7 @@ export async function streamRegenerateJobChatMessage(
 export async function streamRegenerateJobGhostwriterMessage(
   jobId: string,
   assistantMessageId: string,
-  input: {
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    signal?: AbortSignal;
-  },
+  input: GhostwriterStreamSignalInput,
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
@@ -261,11 +255,8 @@ export async function streamRegenerateJobGhostwriterMessage(
 export async function editJobGhostwriterMessage(
   jobId: string,
   messageId: string,
-  input: {
+  input: GhostwriterMessageContextInput & {
     content: string;
-    selectedNoteIds?: string[];
-    selectedEmailIds?: string[];
-    attachments?: JobChatImageAttachment[];
     signal?: AbortSignal;
   },
   handlers: {

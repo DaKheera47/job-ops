@@ -19,10 +19,13 @@ const listMessagesQuerySchema = z.object({
 
 const selectedNoteIdsSchema = z.array(z.string().trim().min(1)).default([]);
 const selectedEmailIdsSchema = z.array(z.string().trim().min(1)).default([]);
-
-const updateContextSchema = z.object({
+const selectedContextSchema = {
   selectedNoteIds: selectedNoteIdsSchema.optional(),
   selectedEmailIds: selectedEmailIdsSchema.optional(),
+};
+
+const updateContextSchema = z.object({
+  ...selectedContextSchema,
 });
 
 const imageAttachmentSchema = z
@@ -55,22 +58,19 @@ const imageAttachmentsSchema = z
 
 const sendMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
-  selectedNoteIds: selectedNoteIdsSchema.optional(),
-  selectedEmailIds: selectedEmailIdsSchema.optional(),
+  ...selectedContextSchema,
   attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });
 
 const regenerateSchema = z.object({
-  selectedNoteIds: selectedNoteIdsSchema.optional(),
-  selectedEmailIds: selectedEmailIdsSchema.optional(),
+  ...selectedContextSchema,
   stream: z.boolean().optional(),
 });
 
 const editMessageSchema = z.object({
   content: z.string().trim().min(1).max(20000),
-  selectedNoteIds: selectedNoteIdsSchema.optional(),
-  selectedEmailIds: selectedEmailIdsSchema.optional(),
+  ...selectedContextSchema,
   attachments: imageAttachmentsSchema.optional(),
   stream: z.boolean().optional(),
 });

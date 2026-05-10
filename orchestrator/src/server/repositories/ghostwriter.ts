@@ -16,12 +16,15 @@ import { getActiveTenantId } from "../tenancy/context";
 
 const { jobChatMessages, jobChatRuns, jobChatThreads } = schema;
 
-function parseSelectedNoteIds(value: string | null): string[] {
+function parseSelectedContextIds(
+  value: string | null,
+  normalize: (selectedIds: readonly string[]) => string[],
+): string[] {
   if (!value) return [];
   try {
     const parsed = JSON.parse(value) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return normalizeGhostwriterSelectedNoteIds(
+    return normalize(
       parsed.filter((item): item is string => typeof item === "string"),
     );
   } catch {
@@ -29,17 +32,12 @@ function parseSelectedNoteIds(value: string | null): string[] {
   }
 }
 
+function parseSelectedNoteIds(value: string | null): string[] {
+  return parseSelectedContextIds(value, normalizeGhostwriterSelectedNoteIds);
+}
+
 function parseSelectedEmailIds(value: string | null): string[] {
-  if (!value) return [];
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return normalizeGhostwriterSelectedEmailIds(
-      parsed.filter((item): item is string => typeof item === "string"),
-    );
-  } catch {
-    return [];
-  }
+  return parseSelectedContextIds(value, normalizeGhostwriterSelectedEmailIds);
 }
 
 function parseImageAttachments(value: string | null): JobChatImageAttachment[] {

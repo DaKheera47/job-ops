@@ -429,48 +429,58 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
     ],
   );
 
-  const updateSelectedNotes = useCallback(
-    async (nextSelectedNoteIds: string[]) => {
+  const updateSelectedContext = useCallback(
+    async (input: {
+      selectedNoteIds?: string[];
+      selectedEmailIds?: string[];
+      errorMessage: string;
+    }) => {
       const previousSelectedNoteIds = selectedNoteIds;
-      setSelectedNoteIds(nextSelectedNoteIds);
+      const previousSelectedEmailIds = selectedEmailIds;
+
+      if (input.selectedNoteIds !== undefined) {
+        setSelectedNoteIds(input.selectedNoteIds);
+      }
+      if (input.selectedEmailIds !== undefined) {
+        setSelectedEmailIds(input.selectedEmailIds);
+      }
+
       setIsSavingContext(true);
 
       try {
         const result = await api.updateJobGhostwriterContext(job.id, {
-          selectedNoteIds: nextSelectedNoteIds,
+          selectedNoteIds: input.selectedNoteIds,
+          selectedEmailIds: input.selectedEmailIds,
         });
         setSelectedNoteIds(result.selectedNoteIds);
         setSelectedEmailIds(result.selectedEmailIds);
       } catch (error) {
         setSelectedNoteIds(previousSelectedNoteIds);
-        showErrorToast(error, "Failed to update Ghostwriter notes");
+        setSelectedEmailIds(previousSelectedEmailIds);
+        showErrorToast(error, input.errorMessage);
       } finally {
         setIsSavingContext(false);
       }
     },
-    [job.id, selectedNoteIds],
+    [job.id, selectedEmailIds, selectedNoteIds],
+  );
+
+  const updateSelectedNotes = useCallback(
+    (nextSelectedNoteIds: string[]) =>
+      updateSelectedContext({
+        selectedNoteIds: nextSelectedNoteIds,
+        errorMessage: "Failed to update Ghostwriter notes",
+      }),
+    [updateSelectedContext],
   );
 
   const updateSelectedEmails = useCallback(
-    async (nextSelectedEmailIds: string[]) => {
-      const previousSelectedEmailIds = selectedEmailIds;
-      setSelectedEmailIds(nextSelectedEmailIds);
-      setIsSavingContext(true);
-
-      try {
-        const result = await api.updateJobGhostwriterContext(job.id, {
-          selectedEmailIds: nextSelectedEmailIds,
-        });
-        setSelectedNoteIds(result.selectedNoteIds);
-        setSelectedEmailIds(result.selectedEmailIds);
-      } catch (error) {
-        setSelectedEmailIds(previousSelectedEmailIds);
-        showErrorToast(error, "Failed to update Ghostwriter emails");
-      } finally {
-        setIsSavingContext(false);
-      }
-    },
-    [job.id, selectedEmailIds],
+    (nextSelectedEmailIds: string[]) =>
+      updateSelectedContext({
+        selectedEmailIds: nextSelectedEmailIds,
+        errorMessage: "Failed to update Ghostwriter emails",
+      }),
+    [updateSelectedContext],
   );
 
   const switchBranch = useCallback(
