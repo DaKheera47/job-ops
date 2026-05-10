@@ -66,6 +66,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -1591,7 +1592,7 @@ export const SettingsPage: React.FC = () => {
       <main className="container mx-auto px-4 py-6 pb-12">
         <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
           <aside className="lg:sticky lg:top-6 lg:self-start">
-            <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/95">
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
               <div className="border-b px-4 py-4">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -1636,11 +1637,12 @@ export const SettingsPage: React.FC = () => {
                                   key={item.id}
                                   type="button"
                                   variant="ghost"
-                                  className={`h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium ${
+                                  className={cn(
+                                    "h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium",
                                     isActive
-                                      ? "border border-orange-400/40 bg-orange-500/12 text-orange-100 hover:bg-orange-500/18 hover:text-orange-50"
+                                      ? "border border-primary/40 bg-primary/12 text-white hover:bg-primary/18"
                                       : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                                  }`}
+                                  )}
                                   onClick={() => setActiveSection(item.id)}
                                 >
                                   {item.label}
@@ -1661,7 +1663,7 @@ export const SettingsPage: React.FC = () => {
             </div>
           </aside>
 
-          <section className="space-y-4">
+          <section className="space-y-4 border border-border/70 rounded-2xl bg-card p-6 h-fit">
             <header className="space-y-4 border-b border-border/70 pb-5">
               <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
                 <span>{activeGroup.label}</span>
