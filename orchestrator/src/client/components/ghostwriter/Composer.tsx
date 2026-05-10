@@ -5,6 +5,13 @@ import type React from "react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 
 const MAX_SCREENSHOTS = 3;
@@ -35,6 +42,8 @@ export const Composer: React.FC<ComposerProps> = ({
 }) => {
   const [value, setValue] = useState("");
   const [attachments, setAttachments] = useState<JobChatImageAttachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] =
+    useState<JobChatImageAttachment | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const addFiles = async (files: FileList | File[] | null) => {
@@ -106,6 +115,7 @@ export const Composer: React.FC<ComposerProps> = ({
     const attachmentsToSend = attachments;
     setValue("");
     setAttachments([]);
+    setPreviewAttachment(null);
     await onSend(content, attachmentsToSend);
   };
 
@@ -114,9 +124,13 @@ export const Composer: React.FC<ComposerProps> = ({
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((attachment) => (
-            <div
+            <button
+              type="button"
               key={attachment.id ?? attachment.dataUrl}
-              className="group relative h-14 w-20 overflow-hidden rounded-md border bg-muted"
+              className="group relative h-14 w-20 overflow-hidden rounded-md border bg-muted text-left focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              onClick={() => setPreviewAttachment(attachment)}
+              aria-label={`Preview ${attachment.name}`}
+              title="Preview screenshot"
             >
               <img
                 src={attachment.dataUrl}
@@ -130,15 +144,19 @@ export const Composer: React.FC<ComposerProps> = ({
                 aria-label={`Remove ${attachment.name}`}
                 title="Remove screenshot"
                 className="absolute right-1 top-1 h-6 w-6 opacity-95"
-                onClick={() =>
+                onClick={(event) => {
+                  event.stopPropagation();
                   setAttachments((current) =>
                     current.filter((item) => item.id !== attachment.id),
-                  )
-                }
+                  );
+                  setPreviewAttachment((current) =>
+                    current?.id === attachment.id ? null : current,
+                  );
+                }}
               >
                 <X className="h-3 w-3" />
               </Button>
-            </div>
+            </button>
           ))}
         </div>
       )}
@@ -229,6 +247,30 @@ export const Composer: React.FC<ComposerProps> = ({
           </Button>
         </div>
       </div>
+      <Dialog
+        open={previewAttachment !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(null);
+        }}
+      >
+        <DialogContent className="max-w-5xl p-4">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="truncate text-base">
+              {previewAttachment?.name ?? "Screenshot"}
+            </DialogTitle>
+            <DialogDescription>Screenshot attachment preview</DialogDescription>
+          </DialogHeader>
+          {previewAttachment && (
+            <div className="max-h-[75vh] overflow-auto rounded-md border bg-muted/30">
+              <img
+                src={previewAttachment.dataUrl}
+                alt={previewAttachment.name}
+                className="mx-auto h-auto max-h-[75vh] max-w-full object-contain"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
