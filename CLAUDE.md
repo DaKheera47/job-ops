@@ -99,3 +99,23 @@ If the developer says yes:
 - **New setting not recognized**: Must be added to `shared/src/settings-registry.ts`
 - **Telegram menu not updating**: Docker build cache — use `--no-cache`
 - **Type errors in `Record<ExtractorSourceId, ...>`**: When adding source IDs, also update `demo-defaults.data.ts` and `extractor-health.ts`
+
+## Karpathy Coding Principles
+
+> These four behavioral principles apply to every AI agent working in this repository. Source: [andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills).
+
+### 1. Think Before Coding
+
+State your assumptions explicitly. If uncertain, ask. If multiple interpretations exist, present them — don't pick silently. Surface confusion and tradeoffs upfront rather than making silent decisions.
+
+### 2. Simplicity First
+
+Minimum code that solves the problem. Nothing speculative. No features beyond what was asked. No over-engineering, unnecessary abstractions, or unasked flexibility.
+
+### 3. Surgical Changes
+
+Touch only what you must. Clean up only your own mess. Don't "improve" adjacent code unless the user requested it. Every change must directly trace to the user's request.
+
+### 4. Goal-Driven Execution
+
+Define success criteria before writing code. Transform tasks into verifiable goals with a brief plan listing steps and verification checks. Loop until verified — don't declare done until the goal is measurably met.
