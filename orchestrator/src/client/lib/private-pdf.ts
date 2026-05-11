@@ -13,6 +13,12 @@ function openBlob(blob: Blob, filename?: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+async function createObjectUrlFromBlob(
+  loadBlob: () => Promise<Blob>,
+): Promise<string> {
+  return URL.createObjectURL(await loadBlob());
+}
+
 export async function openJobPdf(jobId: string): Promise<void> {
   openBlob(await api.getJobPdfBlob(jobId));
 }
@@ -25,7 +31,7 @@ export async function downloadJobPdf(
 }
 
 export async function createJobPdfObjectUrl(jobId: string): Promise<string> {
-  return URL.createObjectURL(await api.getJobPdfBlob(jobId));
+  return createObjectUrlFromBlob(() => api.getJobPdfBlob(jobId));
 }
 
 export async function openJobDocument(
@@ -47,14 +53,15 @@ export async function createJobDocumentObjectUrl(
   jobId: string,
   documentId: string,
 ): Promise<string> {
-  return URL.createObjectURL(await api.getJobDocumentBlob(jobId, documentId));
+  return createObjectUrlFromBlob(() =>
+    api.getJobDocumentBlob(jobId, documentId),
+  );
 }
 
 export async function createDesignResumePdfObjectUrl(
   pdfUrl?: string,
 ): Promise<string> {
-  const blob = await api.getDesignResumePdfBlob(pdfUrl);
-  return URL.createObjectURL(blob);
+  return createObjectUrlFromBlob(() => api.getDesignResumePdfBlob(pdfUrl));
 }
 
 export async function downloadDesignResumePdf(

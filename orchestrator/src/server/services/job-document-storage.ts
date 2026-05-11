@@ -4,6 +4,7 @@ import { extname, join } from "node:path";
 import { badRequest } from "@infra/errors";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
+import { decodeBase64Upload } from "./upload-base64";
 
 const MAX_JOB_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
@@ -43,44 +44,6 @@ export function normalizeJobDocumentMediaType(
   return normalized;
 }
 
-export function decodeJobDocumentBase64(dataBase64: string): Buffer {
-  const trimmed = dataBase64.trim();
-  if (!trimmed) {
-    throw badRequest("Document upload requires file data.");
-  }
-
-  const normalized = trimmed.replace(/\s+/g, "");
-  if (
-    normalized.length % 4 !== 0 ||
-    !/^[A-Za-z0-9+/]*={0,2}$/.test(normalized)
-  ) {
-    throw badRequest("Document file data must be valid base64.");
-  }
-
-  const paddingLength = normalized.endsWith("==")
-    ? 2
-    : normalized.endsWith("=")
-      ? 1
-      : 0;
-  const estimatedByteLength = (normalized.length / 4) * 3 - paddingLength;
-  if (estimatedByteLength > MAX_JOB_DOCUMENT_BYTES) {
-    throw badRequest("Documents must be 10 MB or smaller.");
-  }
-
-  const decoded = Buffer.from(normalized, "base64");
-  if (decoded.toString("base64") !== normalized) {
-    throw badRequest("Document file data must be valid base64.");
-  }
-  if (decoded.byteLength === 0) {
-    throw badRequest("Document file data must not be empty.");
-  }
-  if (decoded.byteLength > MAX_JOB_DOCUMENT_BYTES) {
-    throw badRequest("Documents must be 10 MB or smaller.");
-  }
-
-  return decoded;
-}
-
 export async function storeJobDocument(input: StoredJobDocumentInput): Promise<{
   fileName: string;
   mediaType: string | null;
@@ -89,7 +52,13 @@ export async function storeJobDocument(input: StoredJobDocumentInput): Promise<{
 }> {
   const fileName = normalizeJobDocumentFileName(input.fileName);
   const mediaType = normalizeJobDocumentMediaType(input.mediaType);
-  const decoded = decodeJobDocumentBase64(input.dataBase64);
+  const decoded = decodeBase64Upload({
+    dataBase64: input.dataBase64,
+    maxBytes: MAX_JOB_DOCUMENT_BYTES,
+    emptyMessage: "Document upload requires file data.",
+    invalidMessage: "Document file data must be valid base64.",
+    tooLargeMessage: "Documents must be 10 MB or smaller.",
+  });
   const documentsDir = getTenantJobDocumentsDir(input.jobId);
   const extension = extname(fileName).slice(0, 32);
   const storagePath = join(documentsDir, `${randomUUID()}${extension}`);

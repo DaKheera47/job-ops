@@ -14,12 +14,20 @@ import {
   Upload,
 } from "lucide-react";
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDelete } from "@/client/components/ConfirmDelete";
 import { TooltipWhenDisabled } from "@/client/components/TooltipWhenDisabled";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { uploadJobDocumentFromFile } from "@/client/lib/job-document-upload";
+import {
+  canPreviewJobDocumentAsObject,
+  canPreviewJobDocumentAsText,
+  formatJobDocumentByteSize,
+  isJobDocumentImage,
+  isJobDocumentPdf,
+  isJobDocumentTextLike,
+} from "@/client/lib/job-documents";
 import {
   createJobDocumentObjectUrl,
   createJobPdfObjectUrl,
@@ -27,6 +35,7 @@ import {
   openJobDocument,
 } from "@/client/lib/private-pdf";
 import { queryKeys } from "@/client/lib/queryKeys";
+import { useObjectUrl } from "@/client/lib/useObjectUrl";
 import {
   Accordion,
   AccordionContent,
@@ -52,55 +61,15 @@ type JobDocumentsPanelProps = {
   onRegeneratePdf: () => void;
 };
 
-const bytesFormatter = new Intl.NumberFormat("en", {
-  maximumFractionDigits: 1,
-});
-
-function formatByteSize(byteSize: number): string {
-  if (byteSize < 1024) return `${byteSize} B`;
-  if (byteSize < 1024 * 1024) {
-    return `${bytesFormatter.format(byteSize / 1024)} KB`;
-  }
-  return `${bytesFormatter.format(byteSize / (1024 * 1024))} MB`;
-}
-
-function getFileExtension(fileName: string): string {
-  const extension = fileName.toLowerCase().split(".").pop();
-  return extension && extension !== fileName.toLowerCase() ? extension : "";
-}
-
-function isPdf(document: Pick<JobDocument, "fileName" | "mediaType">): boolean {
-  return (
-    document.mediaType === "application/pdf" ||
-    getFileExtension(document.fileName) === "pdf"
-  );
-}
-
-function isImage(
-  document: Pick<JobDocument, "fileName" | "mediaType">,
-): boolean {
-  return Boolean(document.mediaType?.startsWith("image/"));
-}
-
-function isTextLike(document: Pick<JobDocument, "fileName" | "mediaType">) {
-  const extension = getFileExtension(document.fileName);
-  return (
-    document.mediaType?.startsWith("text/") ||
-    document.mediaType === "application/json" ||
-    document.mediaType === "application/xml" ||
-    ["csv", "json", "md", "markdown", "txt", "xml", "log"].includes(extension)
-  );
-}
-
 function DocumentIcon({
   document,
 }: {
   document: Pick<JobDocument, "fileName" | "mediaType">;
 }) {
-  if (isPdf(document) || isTextLike(document)) {
+  if (isJobDocumentPdf(document) || isJobDocumentTextLike(document)) {
     return <FileText className="h-3.5 w-3.5 text-sky-400/80" />;
   }
-  if (isImage(document)) {
+  if (isJobDocumentImage(document)) {
     return <ImageIcon className="h-3.5 w-3.5 text-emerald-400/80" />;
   }
   return <File className="h-3.5 w-3.5 text-muted-foreground" />;
@@ -109,34 +78,26 @@ function DocumentIcon({
 const DocumentPreview: React.FC<{
   document: JobDocument;
 }> = ({ document }) => {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [textPreview, setTextPreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const canPreviewAsObject = isPdf(document) || isImage(document);
-  const canPreviewAsText = isTextLike(document);
+  const [textError, setTextError] = useState<string | null>(null);
+  const canPreviewAsObject = canPreviewJobDocumentAsObject(document);
+  const canPreviewAsText = canPreviewJobDocumentAsText(document);
+  const loadObjectUrl = useCallback(
+    () =>
+      canPreviewAsObject
+        ? createJobDocumentObjectUrl(document.jobId, document.id)
+        : null,
+    [canPreviewAsObject, document.id, document.jobId],
+  );
+  const { objectUrl, error } = useObjectUrl(loadObjectUrl);
 
   useEffect(() => {
     let cancelled = false;
-    let nextObjectUrl: string | null = null;
 
-    setObjectUrl(null);
     setTextPreview(null);
-    setError(null);
+    setTextError(null);
 
-    if (canPreviewAsObject) {
-      void createJobDocumentObjectUrl(document.jobId, document.id)
-        .then((url) => {
-          if (cancelled) {
-            URL.revokeObjectURL(url);
-            return;
-          }
-          nextObjectUrl = url;
-          setObjectUrl(url);
-        })
-        .catch(() => {
-          if (!cancelled) setError("Preview unavailable.");
-        });
-    } else if (canPreviewAsText) {
+    if (canPreviewAsText) {
       void api
         .getJobDocumentBlob(document.jobId, document.id)
         .then((blob) => blob.text())
@@ -144,15 +105,14 @@ const DocumentPreview: React.FC<{
           if (!cancelled) setTextPreview(text.slice(0, 80_000));
         })
         .catch(() => {
-          if (!cancelled) setError("Preview unavailable.");
+          if (!cancelled) setTextError("Preview unavailable.");
         });
     }
 
     return () => {
       cancelled = true;
-      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
     };
-  }, [canPreviewAsObject, canPreviewAsText, document.id, document.jobId]);
+  }, [canPreviewAsText, document.id, document.jobId]);
 
   if (!canPreviewAsObject && !canPreviewAsText) {
     return (
@@ -162,16 +122,16 @@ const DocumentPreview: React.FC<{
     );
   }
 
-  if (error) {
+  if (error || textError) {
     return (
       <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        {error}
+        {error || textError}
       </div>
     );
   }
 
   if (canPreviewAsObject && objectUrl) {
-    return isImage(document) ? (
+    return isJobDocumentImage(document) ? (
       <div className="max-h-[560px] overflow-auto rounded-md border border-border/50 bg-background/40 p-3">
         <img
           src={objectUrl}
@@ -205,31 +165,11 @@ const DocumentPreview: React.FC<{
 };
 
 const ResumePdfPreview: React.FC<{ jobId: string }> = ({ jobId }) => {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    let nextObjectUrl: string | null = null;
-
-    void createJobPdfObjectUrl(jobId)
-      .then((url) => {
-        if (cancelled) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        nextObjectUrl = url;
-        setObjectUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Preview unavailable.");
-      });
-
-    return () => {
-      cancelled = true;
-      if (nextObjectUrl) URL.revokeObjectURL(nextObjectUrl);
-    };
-  }, [jobId]);
+  const loadObjectUrl = useCallback(
+    () => createJobPdfObjectUrl(jobId),
+    [jobId],
+  );
+  const { objectUrl, error } = useObjectUrl(loadObjectUrl);
 
   if (error) {
     return (
@@ -466,7 +406,8 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground/65">
                         {document.mediaType || "Unknown type"} ·{" "}
-                        {formatByteSize(document.byteSize)} · Uploaded{" "}
+                        {formatJobDocumentByteSize(document.byteSize)} ·
+                        Uploaded{" "}
                         {formatDateTime(document.createdAt) ??
                           document.createdAt}
                       </p>
