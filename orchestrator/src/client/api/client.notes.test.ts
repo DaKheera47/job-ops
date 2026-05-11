@@ -10,6 +10,14 @@ function createJsonResponse(status: number, payload: unknown): Response {
   } as Response;
 }
 
+function createBlobResponse(status: number, blob: Blob): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    blob: async () => blob,
+  } as Response;
+}
+
 describe("job notes API client", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -230,6 +238,120 @@ describe("job notes API client", () => {
       expect.objectContaining({
         method: "DELETE",
       }),
+    );
+  });
+
+  it("fetches job documents with a cache-busting query param", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      createJsonResponse(200, {
+        ok: true,
+        data: [
+          {
+            id: "doc-1",
+            jobId: "job-1",
+            fileName: "cover-letter.txt",
+            mediaType: "text/plain",
+            byteSize: 42,
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z",
+          },
+        ],
+        meta: { requestId: "req-docs" },
+      }),
+    );
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    await expect(api.getJobDocuments("job-1")).resolves.toEqual([
+      {
+        id: "doc-1",
+        jobId: "job-1",
+        fileName: "cover-letter.txt",
+        mediaType: "text/plain",
+        byteSize: 42,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/jobs/job-1/documents?t=1700000000000",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+        }),
+      }),
+    );
+  });
+
+  it("uploads a job document", async () => {
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce(
+      createJsonResponse(201, {
+        ok: true,
+        data: {
+          id: "doc-1",
+          jobId: "job-1",
+          fileName: "cover-letter.txt",
+          mediaType: "text/plain",
+          byteSize: 42,
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updatedAt: "2026-01-01T00:00:00.000Z",
+        },
+        meta: { requestId: "req-upload-doc" },
+      }),
+    );
+
+    await expect(
+      api.uploadJobDocument("job-1", {
+        fileName: "cover-letter.txt",
+        mediaType: "text/plain",
+        dataBase64: "SGVsbG8=",
+      }),
+    ).resolves.toMatchObject({
+      id: "doc-1",
+      fileName: "cover-letter.txt",
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/jobs/job-1/documents",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          fileName: "cover-letter.txt",
+          mediaType: "text/plain",
+          dataBase64: "SGVsbG8=",
+        }),
+      }),
+    );
+  });
+
+  it("downloads and deletes a job document", async () => {
+    const blob = new Blob(["document"]);
+    const fetchSpy = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(createBlobResponse(200, blob))
+      .mockResolvedValueOnce(
+        createJsonResponse(200, {
+          ok: true,
+          data: null,
+          meta: { requestId: "req-delete-doc" },
+        }),
+      );
+    vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
+
+    await expect(api.getJobDocumentBlob("job-1", "doc-1")).resolves.toBe(blob);
+    await expect(
+      api.deleteJobDocument("job-1", "doc-1"),
+    ).resolves.toBeUndefined();
+
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      1,
+      "/api/jobs/job-1/documents/doc-1/content?v=loyw3v28",
+      expect.objectContaining({ cache: "no-store" }),
+    );
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      "/api/jobs/job-1/documents/doc-1",
+      expect.objectContaining({ method: "DELETE" }),
     );
   });
 });

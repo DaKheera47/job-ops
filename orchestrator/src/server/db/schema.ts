@@ -530,6 +530,33 @@ export const designResumeAssets = sqliteTable(
   }),
 );
 
+export const jobDocuments = sqliteTable(
+  "job_documents",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .default("tenant_default")
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    jobId: text("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    fileName: text("file_name").notNull(),
+    mediaType: text("media_type"),
+    byteSize: integer("byte_size").notNull(),
+    storagePath: text("storage_path").notNull(),
+    createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+    updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+  },
+  (table) => ({
+    jobIndex: index("idx_job_documents_job_id").on(table.jobId),
+    tenantJobIndex: index("idx_job_documents_tenant_job_id").on(
+      table.tenantId,
+      table.jobId,
+    ),
+  }),
+);
+
 export const postApplicationIntegrations = sqliteTable(
   "post_application_integrations",
   {
@@ -756,6 +783,8 @@ export type TaskRow = typeof tasks.$inferSelect;
 export type NewTaskRow = typeof tasks.$inferInsert;
 export type JobNoteRow = typeof jobNotes.$inferSelect;
 export type NewJobNoteRow = typeof jobNotes.$inferInsert;
+export type JobDocumentRow = typeof jobDocuments.$inferSelect;
+export type NewJobDocumentRow = typeof jobDocuments.$inferInsert;
 export type InterviewRow = typeof interviews.$inferSelect;
 export type NewInterviewRow = typeof interviews.$inferInsert;
 export type PipelineRunRow = typeof pipelineRuns.$inferSelect;

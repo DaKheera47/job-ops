@@ -131,6 +131,16 @@ export interface JobNote {
   updatedAt: string;
 }
 
+export interface JobDocument {
+  id: string;
+  jobId: string;
+  fileName: string;
+  mediaType: string | null;
+  byteSize: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type JobSource = ExtractorSourceId;
 
 export type JobPdfSource = "generated" | "uploaded";

@@ -234,6 +234,12 @@ export const uploadJobPdfSchema = z.object({
   dataBase64: z.string().trim().min(1),
 });
 
+export const uploadJobDocumentSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  mediaType: z.string().trim().max(200).nullable().optional(),
+  dataBase64: z.string().trim().min(1),
+});
+
 export const JOBS_BENCHMARK_ENABLED =
   process.env.BENCHMARK_JOBS_TIMING === "1" ||
   process.env.BENCHMARK_JOBS_TIMING === "true";

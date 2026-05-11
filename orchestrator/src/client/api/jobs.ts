@@ -5,6 +5,7 @@ import type {
   JobActionRequest,
   JobActionResponse,
   JobActionStreamEvent,
+  JobDocument,
   JobListItem,
   JobNote,
   JobOutcome,
@@ -98,6 +99,51 @@ export async function updateJob(
 
 export async function getJobNotes(id: string): Promise<JobNote[]> {
   return fetchApi<JobNote[]>(withQuery(`/jobs/${id}/notes`, { t: Date.now() }));
+}
+
+export async function getJobDocuments(id: string): Promise<JobDocument[]> {
+  return fetchApi<JobDocument[]>(
+    withQuery(`/jobs/${id}/documents`, { t: Date.now() }),
+  );
+}
+
+export async function uploadJobDocument(
+  id: string,
+  input: {
+    fileName: string;
+    mediaType?: string | null;
+    dataBase64: string;
+  },
+): Promise<JobDocument> {
+  return fetchApi<JobDocument>(`/jobs/${id}/documents`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteJobDocument(
+  jobId: string,
+  documentId: string,
+): Promise<void> {
+  await fetchApi<void>(`/jobs/${jobId}/documents/${documentId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getJobDocumentBlob(
+  jobId: string,
+  documentId: string,
+): Promise<Blob> {
+  const cacheBuster = Date.now().toString(36);
+  return fetchBlobApi(
+    withQuery(
+      `/jobs/${encodeURIComponent(jobId)}/documents/${encodeURIComponent(documentId)}/content`,
+      { v: cacheBuster },
+    ),
+    {
+      cache: "no-store",
+    },
+  );
 }
 
 export async function getJobEmails(
