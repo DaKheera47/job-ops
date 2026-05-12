@@ -328,6 +328,57 @@ describe("SettingsPage", () => {
     await waitFor(() => expect(saveButton).toBeEnabled());
   });
 
+  it("saves a paid tailoring provider while the default provider stays local", async () => {
+    const localSettings = createAppSettings({
+      model: {
+        value: "llama3.2",
+        default: "llama3.2",
+        override: "llama3.2",
+      },
+      llmProvider: {
+        value: "ollama",
+        default: "ollama",
+        override: "ollama",
+      },
+      llmBaseUrl: {
+        value: "http://localhost:11434",
+        default: "http://localhost:11434",
+        override: null,
+      },
+    });
+    vi.mocked(api.getSettings).mockResolvedValue(localSettings);
+    vi.mocked(api.updateSettings).mockResolvedValue(localSettings);
+
+    renderPage();
+    await openModelSection();
+
+    const runtimeSelectors = await screen.findAllByRole("combobox", {
+      name: /runtime/i,
+    });
+    fireEvent.click(runtimeSelectors[1]);
+    fireEvent.click(await screen.findByText("OpenAI"));
+
+    const purposeModels = screen.getAllByLabelText(/^model$/i);
+    fireEvent.change(purposeModels[1], {
+      target: { value: "gpt-5.4-mini" },
+    });
+    fireEvent.change(screen.getByLabelText(/^api key$/i), {
+      target: { value: "sk-tailoring" },
+    });
+
+    fireEvent.click(getSaveButton());
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmPurposeOverrides: {
+          tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+        },
+        llmPurposeApiKeys: { tailoring: "sk-tailoring" },
+      }),
+    );
+  });
+
   it("clears stale model overrides when the provider changes", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(
       createAppSettings({

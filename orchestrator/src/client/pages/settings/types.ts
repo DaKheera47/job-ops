@@ -1,6 +1,8 @@
 import type {
   ChatStyleLanguageMode,
   ChatStyleManualLanguage,
+  LlmPurposeApiKeyHints,
+  LlmPurposeOverrides,
 } from "@shared/types.js";
 
 export type EffectiveDefault<T> = {
@@ -15,6 +17,8 @@ export type ModelValues = EffectiveDefault<string> & {
   llmProvider: string;
   llmBaseUrl: string;
   llmApiKeyHint: string | null;
+  llmPurposeOverrides: LlmPurposeOverrides;
+  llmPurposeApiKeyHints: LlmPurposeApiKeyHints;
 };
 
 export type WebhookValues = EffectiveDefault<string>;

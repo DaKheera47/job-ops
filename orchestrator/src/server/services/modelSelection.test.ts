@@ -56,6 +56,14 @@ describe("Model Selection Logic", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
+        output_text: JSON.stringify({
+          score: 50,
+          explanation: "ok",
+          summary: "sum",
+          headline: "head",
+          skills: [],
+          selectedProjectIds: ["1"],
+        }),
         choices: [
           {
             message: {
@@ -219,6 +227,55 @@ describe("Model Selection Logic", () => {
       const fetchCall = vi.mocked(fetch).mock.calls[0];
       const body = JSON.parse(fetchCall[1]?.body as string);
       expect(body.model).toBe("global-model");
+    });
+
+    it("should use a purpose-specific paid provider while default provider stays local", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "",
+        llmPurposeApiKeys: JSON.stringify({ tailoring: "sk-purpose" }),
+      });
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "llama3.2",
+          default: "llama3.2",
+          override: "llama3.2",
+        },
+        modelScorer: { value: "llama3.2", override: null },
+        modelTailoring: {
+          value: "gpt-5.4-mini",
+          override: "gpt-5.4-mini",
+        },
+        modelProjectSelection: { value: "llama3.2", override: null },
+        llmProvider: {
+          value: "ollama",
+          default: "ollama",
+          override: "ollama",
+        },
+        llmBaseUrl: {
+          value: "http://localhost:11434",
+          default: "http://localhost:11434",
+          override: null,
+        },
+        llmPurposeOverrides: {
+          value: {
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+          },
+          default: {},
+          override: {
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+          },
+        },
+      } as any);
+
+      await generateTailoring("job desc", {});
+
+      const fetchCall = vi.mocked(fetch).mock.calls[0];
+      expect(fetchCall[0]).toBe("https://api.openai.com/v1/responses");
+      expect(fetchCall[1]?.headers).toMatchObject({
+        Authorization: "Bearer sk-purpose",
+      });
+      const body = JSON.parse(fetchCall[1]?.body as string);
+      expect(body.model).toBe("gpt-5.4-mini");
     });
   });
 

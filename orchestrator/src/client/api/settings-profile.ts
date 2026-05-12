@@ -161,6 +161,7 @@ export async function getLlmModels(input?: {
   provider?: string;
   baseUrl?: string;
   apiKey?: string;
+  purpose?: string;
 }): Promise<string[]> {
   const data = await fetchApi<{ models: string[] }>("/settings/llm-models", {
     method: "POST",

@@ -99,4 +99,20 @@ describe("getEffectiveSettings", () => {
     await expect(getEffectiveSettings()).resolves.toBeTruthy();
     expect(designResumeToProfile).not.toHaveBeenCalled();
   });
+
+  it("exposes purpose overrides and redacted purpose API key hints", async () => {
+    vi.mocked(getAllSettings).mockResolvedValue({
+      llmPurposeOverrides: JSON.stringify({
+        tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+      }),
+      llmPurposeApiKeys: JSON.stringify({ tailoring: "sk-purpose" }),
+    } as never);
+
+    const settings = await getEffectiveSettings();
+
+    expect(settings.llmPurposeOverrides.override).toEqual({
+      tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+    });
+    expect(settings.llmPurposeApiKeyHints).toEqual({ tailoring: "sk-p" });
+  });
 });

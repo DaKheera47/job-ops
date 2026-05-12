@@ -90,7 +90,7 @@ export async function generateTailoring(
     writingStyle,
   );
 
-  const llm = await createConfiguredLlmService();
+  const llm = await createConfiguredLlmService("tailoring");
   const result = await llm.callJson<TailoredData>({
     model,
     messages: [{ role: "user", content: prompt }],

@@ -76,6 +76,8 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   llmProvider: null,
   llmBaseUrl: "",
   llmApiKey: "",
+  llmPurposeOverrides: {},
+  llmPurposeApiKeys: {},
   pipelineWebhookUrl: "",
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
@@ -293,6 +295,8 @@ const SECTION_FIELD_MAP: Record<
     "llmProvider",
     "llmBaseUrl",
     "llmApiKey",
+    "llmPurposeOverrides",
+    "llmPurposeApiKeys",
     "model",
     "modelScorer",
     "modelTailoring",
@@ -377,6 +381,27 @@ const normalizeLlmProviderValue = (
   value: string | null | undefined,
 ): LlmProviderValue => (value ? normalizeLlmProvider(value) : null);
 
+const LEGACY_MODEL_KEYS = {
+  scoring: "modelScorer",
+  tailoring: "modelTailoring",
+  projectSelection: "modelProjectSelection",
+} as const;
+
+const mapPurposeOverridesToForm = (data: AppSettings) => {
+  const overrides = { ...(data.llmPurposeOverrides.override ?? {}) };
+  for (const [purpose, modelKey] of Object.entries(LEGACY_MODEL_KEYS)) {
+    const typedPurpose = purpose as keyof typeof LEGACY_MODEL_KEYS;
+    const legacyModel = data[modelKey].override;
+    if (legacyModel && !overrides[typedPurpose]?.model) {
+      overrides[typedPurpose] = {
+        ...overrides[typedPurpose],
+        model: legacyModel,
+      };
+    }
+  }
+  return overrides;
+};
+
 const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   model: null,
   modelScorer: null,
@@ -385,6 +410,8 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   llmProvider: null,
   llmBaseUrl: null,
   llmApiKey: null,
+  llmPurposeOverrides: null,
+  llmPurposeApiKeys: null,
   pipelineWebhookUrl: null,
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
@@ -435,6 +462,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   ),
   llmBaseUrl: data.llmBaseUrl.override ?? "",
   llmApiKey: "",
+  llmPurposeOverrides: mapPurposeOverridesToForm(data),
+  llmPurposeApiKeys: {},
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
@@ -486,6 +515,47 @@ const normalizePrivateInput = (value: string | null | undefined) => {
   const trimmed = value?.trim();
   if (trimmed === "") return null;
   return trimmed || undefined;
+};
+
+const normalizePurposeOverrides = (
+  value: UpdateSettingsInput["llmPurposeOverrides"],
+) => {
+  if (!value) return null;
+  const out: NonNullable<UpdateSettingsInput["llmPurposeOverrides"]> = {};
+  for (const purpose of Object.keys(LEGACY_MODEL_KEYS) as Array<
+    keyof typeof LEGACY_MODEL_KEYS
+  >) {
+    const override = value[purpose];
+    if (!override) continue;
+    const provider = normalizeLlmProviderValue(override.provider ?? null);
+    const baseUrl = normalizeString(override.baseUrl ?? null);
+    const model = normalizeString(override.model ?? null);
+    if (provider || baseUrl || model) {
+      out[purpose] = {
+        ...(provider ? { provider } : {}),
+        ...(baseUrl ? { baseUrl } : {}),
+        ...(model ? { model } : {}),
+      };
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
+};
+
+const normalizePurposeApiKeys = (
+  value: UpdateSettingsInput["llmPurposeApiKeys"],
+) => {
+  if (!value) return null;
+  const out: NonNullable<UpdateSettingsInput["llmPurposeApiKeys"]> = {};
+  for (const purpose of Object.keys(LEGACY_MODEL_KEYS) as Array<
+    keyof typeof LEGACY_MODEL_KEYS
+  >) {
+    if (!Object.hasOwn(value, purpose)) continue;
+    const normalized = normalizePrivateInput(value[purpose] ?? null);
+    if (normalized !== undefined) {
+      out[purpose] = normalized;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null;
 };
 
 const stringArraysEqual = (left: string[], right: string[]): boolean => {
@@ -543,6 +613,8 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       llmProvider: settings?.llmProvider?.value ?? "",
       llmBaseUrl: settings?.llmBaseUrl?.value ?? "",
       llmApiKeyHint: settings?.llmApiKeyHint ?? null,
+      llmPurposeOverrides: settings?.llmPurposeOverrides?.value ?? {},
+      llmPurposeApiKeyHints: settings?.llmPurposeApiKeyHints ?? {},
     },
     pipelineWebhook: {
       effective: settings?.pipelineWebhookUrl?.value ?? "",
@@ -1096,21 +1168,30 @@ export const SettingsPage: React.FC = () => {
             ? normalizeString(data.model)
             : null
           : normalizeString(data.model),
-        modelScorer: dirtyFields.llmProvider
-          ? dirtyFields.modelScorer
-            ? normalizeString(data.modelScorer)
-            : null
-          : normalizeString(data.modelScorer),
-        modelTailoring: dirtyFields.llmProvider
-          ? dirtyFields.modelTailoring
-            ? normalizeString(data.modelTailoring)
-            : null
-          : normalizeString(data.modelTailoring),
-        modelProjectSelection: dirtyFields.llmProvider
-          ? dirtyFields.modelProjectSelection
-            ? normalizeString(data.modelProjectSelection)
-            : null
-          : normalizeString(data.modelProjectSelection),
+        ...(dirtyFields.llmProvider
+          ? {
+              modelScorer: null,
+              modelTailoring: null,
+              modelProjectSelection: null,
+            }
+          : {}),
+        ...(dirtyFields.llmPurposeOverrides
+          ? {
+              llmPurposeOverrides: normalizePurposeOverrides(
+                data.llmPurposeOverrides,
+              ),
+              modelScorer: null,
+              modelTailoring: null,
+              modelProjectSelection: null,
+            }
+          : {}),
+        ...(dirtyFields.llmPurposeApiKeys
+          ? {
+              llmPurposeApiKeys: normalizePurposeApiKeys(
+                data.llmPurposeApiKeys,
+              ),
+            }
+          : {}),
         pipelineWebhookUrl: normalizeString(data.pipelineWebhookUrl),
         jobCompleteWebhookUrl: normalizeString(data.jobCompleteWebhookUrl),
         resumeProjects: resumeProjectsOverride,

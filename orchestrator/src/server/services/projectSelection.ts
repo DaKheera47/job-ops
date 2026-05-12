@@ -42,7 +42,7 @@ export async function pickProjectIdsForJob(args: {
     desiredCount,
   });
 
-  const llm = await createConfiguredLlmService();
+  const llm = await createConfiguredLlmService("projectSelection");
   const result = await llm.callJson<{ selectedProjectIds: string[] }>({
     model,
     messages: [{ role: "user", content: prompt }],

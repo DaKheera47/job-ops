@@ -355,4 +355,36 @@ describe("settingsRegistry helpers", () => {
       );
     });
   });
+
+  describe("LLM purpose override parsing", () => {
+    it("normalizes structured purpose overrides and drops empty purpose entries", () => {
+      const raw = JSON.stringify({
+        scoring: { model: "  llama3.2  " },
+        tailoring: {
+          provider: "openai",
+          baseUrl: "https://api.openai.com",
+          model: "gpt-5.4-mini",
+        },
+        projectSelection: {},
+      });
+
+      expect(settingsRegistry.llmPurposeOverrides.parse(raw)).toEqual({
+        scoring: { model: "llama3.2" },
+        tailoring: {
+          provider: "openai",
+          baseUrl: "https://api.openai.com",
+          model: "gpt-5.4-mini",
+        },
+      });
+    });
+
+    it("serializes empty purpose overrides as null", () => {
+      expect(settingsRegistry.llmPurposeOverrides.serialize({})).toBeNull();
+      expect(
+        settingsRegistry.llmPurposeOverrides.serialize({
+          tailoring: { model: "gpt-5.4-mini" },
+        }),
+      ).toBe(JSON.stringify({ tailoring: { model: "gpt-5.4-mini" } }));
+    });
+  });
 });

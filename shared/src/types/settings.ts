@@ -17,6 +17,38 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
+export const LLM_PROVIDER_VALUES = [
+  "openrouter",
+  "lmstudio",
+  "ollama",
+  "openai",
+  "openai_compatible",
+  "gemini",
+  "gemini_cli",
+  "codex",
+] as const;
+export type LlmProviderId = (typeof LLM_PROVIDER_VALUES)[number];
+
+export const LLM_PURPOSE_VALUES = [
+  "scoring",
+  "tailoring",
+  "projectSelection",
+] as const;
+export type LlmPurpose = (typeof LLM_PURPOSE_VALUES)[number];
+
+export type LlmPurposeOverride = {
+  provider?: LlmProviderId | null;
+  baseUrl?: string | null;
+  model?: string | null;
+};
+
+export type LlmPurposeOverrides = Partial<
+  Record<LlmPurpose, LlmPurposeOverride>
+>;
+
+export type LlmPurposeApiKeys = Partial<Record<LlmPurpose, string | null>>;
+export type LlmPurposeApiKeyHints = Partial<Record<LlmPurpose, string | null>>;
+
 export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
 export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
 export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
@@ -162,6 +194,7 @@ export interface AppSettings {
   model: Resolved<string>;
   llmProvider: Resolved<string>;
   llmBaseUrl: Resolved<string>;
+  llmPurposeOverrides: Resolved<LlmPurposeOverrides>;
   pipelineWebhookUrl: Resolved<string>;
   jobCompleteWebhookUrl: Resolved<string>;
   resumeProjects: Resolved<ResumeProjectsSettings>;
@@ -219,6 +252,7 @@ export interface AppSettings {
 
   // Secret hints:
   llmApiKeyHint: string | null;
+  llmPurposeApiKeyHints: LlmPurposeApiKeyHints;
   rxresumeApiKeyHint: string | null;
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;

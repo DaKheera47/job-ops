@@ -5,7 +5,15 @@ import {
   getDefaultModelForProvider,
   settingsRegistry,
 } from "@shared/settings-registry";
-import type { AppSettings, ResumeProfile } from "@shared/types";
+import {
+  type AppSettings,
+  LLM_PURPOSE_VALUES,
+  type LlmPurpose,
+  type LlmPurposeApiKeyHints,
+  type LlmPurposeApiKeys,
+  type LlmPurposeOverrides,
+  type ResumeProfile,
+} from "@shared/types";
 import {
   designResumeToProfile,
   getCurrentDesignResumeOrNullOnLegacy,
@@ -78,6 +86,40 @@ function normalizeModelForProviderCompatibility(
   return trimmedModel;
 }
 
+function readPurposeOverrides(
+  overrides: Partial<Record<settingsRepo.SettingKey, string>>,
+): LlmPurposeOverrides {
+  return (
+    settingsRegistry.llmPurposeOverrides.parse(overrides.llmPurposeOverrides) ??
+    {}
+  );
+}
+
+function readPurposeApiKeyHints(
+  overrides: Partial<Record<settingsRepo.SettingKey, string>>,
+): LlmPurposeApiKeyHints {
+  const purposeApiKeys = settingsRegistry.llmPurposeApiKeys.parse(
+    overrides.llmPurposeApiKeys,
+  ) as LlmPurposeApiKeys | null;
+  const hints: LlmPurposeApiKeyHints = {};
+  for (const purpose of LLM_PURPOSE_VALUES) {
+    const value = purposeApiKeys?.[purpose]?.trim();
+    if (!value) continue;
+    const hintLength = value.length > 4 ? 4 : Math.max(value.length - 1, 1);
+    hints[purpose] = value.slice(0, hintLength);
+  }
+  return hints;
+}
+
+const MODEL_KEY_BY_PURPOSE: Record<
+  LlmPurpose,
+  "modelScorer" | "modelTailoring" | "modelProjectSelection"
+> = {
+  scoring: "modelScorer",
+  tailoring: "modelTailoring",
+  projectSelection: "modelProjectSelection",
+};
+
 /**
  * Get the effective app settings, combining environment variables and database overrides.
  */
@@ -92,6 +134,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   );
   const effectiveLlmProvider =
     providerOverride ?? settingsRegistry.llmProvider.default();
+  const purposeOverrides = readPurposeOverrides(overrides);
   const resolvedModelDefault =
     normalizeModelForProviderCompatibility(
       effectiveLlmProvider,
@@ -148,6 +191,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   const result: Partial<AppSettings> = {
     ...envSettings,
+    llmPurposeApiKeyHints: readPurposeApiKeyHints(overrides),
   };
 
   const rawModel = overrides.model;
@@ -217,14 +261,30 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         override,
       };
     } else if (def.kind === "model") {
+      const purpose = (
+        Object.entries(MODEL_KEY_BY_PURPOSE) as Array<
+          [LlmPurpose, keyof typeof settingsRegistry]
+        >
+      ).find(([, modelKey]) => modelKey === key)?.[0];
+      const purposeOverride = purpose ? purposeOverrides[purpose] : undefined;
+      const purposeProvider = purposeOverride?.provider ?? effectiveLlmProvider;
+      const purposeModelDefault =
+        purposeProvider === effectiveLlmProvider
+          ? modelValue
+          : getDefaultModelForProvider(purposeProvider);
       const override =
         normalizeModelForProviderCompatibility(
-          effectiveLlmProvider,
-          overrides[key as settingsRepo.SettingKey] ?? null,
+          purposeProvider,
+          purposeOverride?.model ??
+            overrides[key as settingsRepo.SettingKey] ??
+            null,
         ) ?? null;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       // biome-ignore lint/suspicious/noExplicitAny: dynamic assignment for settings building
-      (result as any)[key] = { value: override || modelValue, override };
+      (result as any)[key] = {
+        value: override || purposeModelDefault,
+        override,
+      };
     } else if (def.kind === "string") {
       if (!("envKey" in def) || !def.envKey) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -44,10 +44,12 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 - Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `gemini`, `gemini_cli`, `codex`)
 - Set provider-specific base URL/API key when required
-- Configure default model plus task-specific overrides:
-  - Scoring model
-  - Tailoring model
-  - Project-selection model
+- Configure the default model/runtime, plus purpose-specific overrides for:
+  - Scoring
+  - Tailoring
+  - Project selection
+- Purpose overrides can inherit the default provider or use a different provider, base URL, API key, and model. For example, you can use `ollama` locally by default and route tailoring to `openai` or `openrouter`.
+- Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
   - `openai` defaults to `gpt-5.4-mini`
   - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`

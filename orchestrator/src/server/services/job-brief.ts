@@ -80,7 +80,7 @@ export async function generateJobBrief(
 
   try {
     const model = await resolveLlmModel("scoring");
-    const llm = await createConfiguredLlmService();
+    const llm = await createConfiguredLlmService("scoring");
     const result = await llm.callJson<JobBrief>({
       model,
       messages: [

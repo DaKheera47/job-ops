@@ -9,6 +9,11 @@ import {
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
   type ChatStyleLanguageMode,
   type ChatStyleManualLanguage,
+  LLM_PROVIDER_VALUES,
+  LLM_PURPOSE_VALUES,
+  type LlmProviderId,
+  type LlmPurposeApiKeys,
+  type LlmPurposeOverrides,
   PDF_RENDERER_VALUES,
   type PdfRenderer,
   type ResumeProjectsSettings,
@@ -142,6 +147,34 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
 );
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
 
+const llmPurposeOverrideSchema = z.object({
+  provider: z.enum(LLM_PROVIDER_VALUES).nullable().optional(),
+  baseUrl: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.string().trim().url().max(2000).nullable().optional(),
+  ),
+  model: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.string().trim().max(200).nullable().optional(),
+  ),
+});
+
+export const llmPurposeOverridesSchema = z
+  .object({
+    scoring: llmPurposeOverrideSchema.optional(),
+    tailoring: llmPurposeOverrideSchema.optional(),
+    projectSelection: llmPurposeOverrideSchema.optional(),
+  })
+  .strict();
+
+export const llmPurposeApiKeysSchema = z
+  .object({
+    scoring: z.string().trim().max(2000).nullable().optional(),
+    tailoring: z.string().trim().max(2000).nullable().optional(),
+    projectSelection: z.string().trim().max(2000).nullable().optional(),
+  })
+  .strict();
+
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 const parseWorkplaceTypesOrNull = createEnumArrayParser(WORKPLACE_TYPE_VALUES);
 const parseLocationSearchScopeOrNull = createEnumParser(
@@ -150,6 +183,47 @@ const parseLocationSearchScopeOrNull = createEnumParser(
 const parseLocationMatchStrictnessOrNull = createEnumParser(
   LOCATION_MATCH_STRICTNESS_VALUES,
 );
+
+function parseJsonObjectOrNull<T>(raw: string | undefined): T | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as T)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeLlmPurposeOverrides(
+  value: LlmPurposeOverrides | null | undefined,
+): LlmPurposeOverrides | null {
+  if (!value) return null;
+
+  const out: LlmPurposeOverrides = {};
+  for (const purpose of LLM_PURPOSE_VALUES) {
+    const override = value[purpose];
+    if (!override) continue;
+
+    const provider = normalizeLlmProviderOrNull(
+      override.provider ?? undefined,
+    ) as LlmProviderId | null;
+    const baseUrl = override.baseUrl?.trim() || null;
+    const model = override.model?.trim() || null;
+    const normalized = {
+      ...(provider ? { provider } : {}),
+      ...(baseUrl ? { baseUrl } : {}),
+      ...(model ? { model } : {}),
+    };
+
+    if (Object.keys(normalized).length > 0) {
+      out[purpose] = normalized;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
+}
 
 export const resumeProjectsSchema = z.object({
   maxProjects: z.number().int().min(0).max(100),
@@ -178,18 +252,7 @@ export const settingsRegistry = {
     envKey: "LLM_PROVIDER",
     schema: z.preprocess(
       (v) => (typeof v === "string" ? normalizeLlmProviderOrNull(v) : v),
-      z
-        .enum([
-          "openrouter",
-          "lmstudio",
-          "ollama",
-          "openai",
-          "openai_compatible",
-          "gemini",
-          "gemini_cli",
-          "codex",
-        ])
-        .nullable(),
+      z.enum(LLM_PROVIDER_VALUES).nullable(),
     ),
     default: (): string =>
       typeof process !== "undefined"
@@ -211,6 +274,21 @@ export const settingsRegistry = {
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
+  },
+  llmPurposeOverrides: {
+    kind: "typed" as const,
+    schema: llmPurposeOverridesSchema,
+    default: (): LlmPurposeOverrides => ({}),
+    parse: (raw: string | undefined): LlmPurposeOverrides | null =>
+      normalizeLlmPurposeOverrides(
+        parseJsonObjectOrNull<LlmPurposeOverrides>(raw),
+      ),
+    serialize: (
+      value: LlmPurposeOverrides | null | undefined,
+    ): string | null => {
+      const normalized = normalizeLlmPurposeOverrides(value);
+      return normalized ? JSON.stringify(normalized) : null;
+    },
   },
   pipelineWebhookUrl: {
     kind: "typed" as const,
@@ -688,6 +766,14 @@ export const settingsRegistry = {
     kind: "secret" as const,
     envKey: "LLM_API_KEY",
     schema: z.string().trim().max(2000),
+  },
+  llmPurposeApiKeys: {
+    kind: "secret" as const,
+    schema: llmPurposeApiKeysSchema,
+    parse: (raw: string | undefined): LlmPurposeApiKeys | null =>
+      parseJsonObjectOrNull<LlmPurposeApiKeys>(raw),
+    serialize: (value: LlmPurposeApiKeys | null | undefined): string | null =>
+      value ? JSON.stringify(value) : null,
   },
   rxresumeApiKey: {
     kind: "secret" as const,

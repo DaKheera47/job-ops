@@ -8,6 +8,7 @@ import {
 } from "@server/services/resumeProjects";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { UpdateSettingsInput } from "@shared/settings-schema";
+import { LLM_PURPOSE_VALUES, type LlmPurposeApiKeys } from "@shared/types";
 
 export type DeferredSideEffect =
   | "refreshBackupScheduler"
@@ -119,6 +120,36 @@ for (const [key, def] of Object.entries(settingsRegistry)) {
         actions: [persistAction("rxresumeBaseResumeId", serialized)],
         deferred: ["clearRxResumeCaches"],
       });
+    };
+    continue;
+  }
+
+  if (key === "llmPurposeApiKeys") {
+    settingsUpdateRegistry.llmPurposeApiKeys = async ({ value }) => {
+      if (value === null || value === undefined) {
+        return result({ actions: [persistAction(targetKey, null)] });
+      }
+
+      const existing =
+        settingsRegistry.llmPurposeApiKeys.parse(
+          (await settingsRepo.getSetting(targetKey)) ?? undefined,
+        ) ?? {};
+      const next: LlmPurposeApiKeys = { ...existing };
+
+      for (const purpose of LLM_PURPOSE_VALUES) {
+        if (!Object.hasOwn(value, purpose)) continue;
+        const rawValue = value[purpose];
+        const normalized =
+          typeof rawValue === "string" ? rawValue.trim() : rawValue;
+        if (!normalized) {
+          delete next[purpose];
+          continue;
+        }
+        next[purpose] = normalized;
+      }
+
+      const serialized = settingsRegistry.llmPurposeApiKeys.serialize(next);
+      return result({ actions: [persistAction(targetKey, serialized)] });
     };
     continue;
   }

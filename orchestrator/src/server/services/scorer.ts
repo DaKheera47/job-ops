@@ -104,7 +104,7 @@ export async function scoreJobSuitability(
       getDefaultPromptTemplate("scoringPromptTemplate"),
   });
 
-  const llm = await createConfiguredLlmService();
+  const llm = await createConfiguredLlmService("scoring");
   const result = await llm.callJson<{ score: number; reason: string }>({
     model,
     messages: [{ role: "user", content: prompt }],
