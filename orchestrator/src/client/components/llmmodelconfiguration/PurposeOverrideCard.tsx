@@ -1,17 +1,37 @@
 import * as api from "@client/api";
-import { formatSecretHint, getLlmProviderConfig, LLM_PROVIDER_LABELS, LLM_PROVIDERS, normalizeLlmProvider, supportsLlmModelSuggestions } from "@/client/pages/settings/utils";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { LlmProviderId, LlmPurpose, LlmPurposeOverrides } from "@shared/types";
+import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
+import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
+import { getDefaultModelForProvider } from "@shared/settings-registry";
+import type {
+  LlmProviderId,
+  LlmPurpose,
+  LlmPurposeOverrides,
+} from "@shared/types";
 import { useEffect, useState } from "react";
-import { buildModelOptions, renderKeyHelper } from "./llm-model-configuration-helpers";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsInput } from "@/client/pages/settings/components/SettingsInput";
+import {
+  formatSecretHint,
+  getLlmProviderConfig,
+  LLM_PROVIDER_LABELS,
+  LLM_PROVIDERS,
+  normalizeLlmProvider,
+  supportsLlmModelSuggestions,
+} from "@/client/pages/settings/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  buildModelOptions,
+  renderKeyHelper,
+} from "./llm-model-configuration-helpers";
 import ModelField from "./ModelField";
 
 export default function PurposeOverrideCard({
   purpose,
-  label,
-  description,
   defaultProvider,
   defaultModel,
   defaultBaseUrl,
@@ -25,8 +45,6 @@ export default function PurposeOverrideCard({
   onApiKeyChange,
 }: {
   purpose: LlmPurpose;
-  label: string;
-  description: string;
   defaultProvider: LlmProviderId;
   defaultModel: string;
   defaultBaseUrl: string;
@@ -48,6 +66,9 @@ export default function PurposeOverrideCard({
     : defaultProvider;
   const hasProviderOverride = Boolean(value?.provider);
   const providerConfig = getLlmProviderConfig(selectedProvider);
+  const isCodexProvider = providerConfig.normalizedProvider === "codex";
+  const isGeminiCliProvider =
+    providerConfig.normalizedProvider === "gemini_cli";
   const supportsModelSuggestions =
     supportsLlmModelSuggestions(selectedProvider);
   const [availableModels, setAvailableModels] = useState<string[]>([]);
@@ -55,6 +76,9 @@ export default function PurposeOverrideCard({
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const baseUrlValue = value?.baseUrl ?? "";
   const modelValue = value?.model ?? "";
+  const purposeProviderDefaultModel = hasProviderOverride
+    ? getDefaultModelForProvider(selectedProvider)
+    : defaultModel;
   const effectiveBaseUrl = baseUrlValue || defaultBaseUrl;
   const hasSavedKey = Boolean(apiKeyHint || defaultApiKeyHint);
   const keyHint = apiKeyHint
@@ -176,6 +200,13 @@ export default function PurposeOverrideCard({
         </span>
       </div>
 
+      {hasProviderOverride && isCodexProvider ? (
+        <CodexAuthPanel isBusy={disabled} />
+      ) : null}
+      {hasProviderOverride && isGeminiCliProvider ? (
+        <GeminiCliSetupHint />
+      ) : null}
+
       {hasProviderOverride && providerConfig.showBaseUrl ? (
         <SettingsInput
           label="Base URL"
@@ -219,7 +250,7 @@ export default function PurposeOverrideCard({
         onChange={(nextValue) => onChange(purpose, "model", nextValue)}
         supportsModelSuggestions={supportsModelSuggestions}
         options={modelOptions}
-        placeholder={defaultModel || "Inherit model"}
+        placeholder={purposeProviderDefaultModel || "Inherit model"}
         helper={modelHelper}
         current={currentModel}
         disabled={disabled || isLoadingModels}

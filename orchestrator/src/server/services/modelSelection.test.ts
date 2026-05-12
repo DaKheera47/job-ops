@@ -1,6 +1,7 @@
 // src/server/services/modelSelection.test.ts
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as settingsRepo from "../repositories/settings";
+import { resolveLlmModel, resolveLlmRuntimeSettings } from "./modelSelection";
 import { pickProjectIdsForJob } from "./projectSelection";
 import { scoreJobSuitability } from "./scorer";
 import { getEffectiveSettings } from "./settings";
@@ -276,6 +277,47 @@ describe("Model Selection Logic", () => {
       });
       const body = JSON.parse(fetchCall[1]?.body as string);
       expect(body.model).toBe("gpt-5.4-mini");
+    });
+
+    it("should not inherit the global model when tailoring uses Codex with no model override", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "llama3.2",
+          default: "llama3.2",
+          override: "llama3.2",
+        },
+        modelScorer: { value: "llama3.2", override: null },
+        modelTailoring: { value: "", override: null },
+        modelProjectSelection: { value: "llama3.2", override: null },
+        llmProvider: {
+          value: "ollama",
+          default: "ollama",
+          override: "ollama",
+        },
+        llmBaseUrl: {
+          value: "http://localhost:11434",
+          default: "http://localhost:11434",
+          override: null,
+        },
+        llmPurposeOverrides: {
+          value: {
+            tailoring: { provider: "codex" },
+          },
+          default: {},
+          override: {
+            tailoring: { provider: "codex" },
+          },
+        },
+      } as any);
+
+      await expect(resolveLlmModel("tailoring")).resolves.toBe("");
+      await expect(
+        resolveLlmRuntimeSettings("tailoring"),
+      ).resolves.toMatchObject({
+        provider: "codex",
+        model: "",
+      });
     });
   });
 

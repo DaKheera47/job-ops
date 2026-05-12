@@ -1,6 +1,7 @@
 import * as api from "@client/api";
 import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
 import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
+import PurposeOverrideCard from "@client/components/llmmodelconfiguration/PurposeOverrideCard";
 import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
 import {
   formatSecretHint,
@@ -19,6 +20,12 @@ import type {
 import type React from "react";
 import { useDeferredValue, useEffect, useState } from "react";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -26,19 +33,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import PurposeOverrideCard from "@client/components/llmmodelconfiguration/PurposeOverrideCard";
 import {
   buildModelOptions,
   LLM_PURPOSES,
   renderKeyHelper,
 } from "./llm-model-configuration-helpers";
 import ModelField from "./ModelField";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 type TextFieldBinding = {
   value: string;
@@ -383,8 +383,6 @@ export function LlmModelConfiguration({
                         <PurposeOverrideCard
                           key={purpose.id}
                           purpose={purpose.id}
-                          label={purpose.label}
-                          description={purpose.description}
                           defaultProvider={selectedProvider}
                           defaultModel={previewDefaultModel}
                           defaultBaseUrl={resolvedBaseUrl}
@@ -415,9 +413,7 @@ export function LlmModelConfiguration({
                     error={modelScorer?.error}
                     supportsModelSuggestions={supportsModelSuggestions}
                     options={scoringModelOptions}
-                    placeholder={
-                      previewDefaultModel || "Inherit default model"
-                    }
+                    placeholder={previewDefaultModel || "Inherit default model"}
                     current={scoringModel}
                     disabled={disabled || isLoadingModels}
                   />
@@ -429,9 +425,7 @@ export function LlmModelConfiguration({
                     error={modelTailoring?.error}
                     supportsModelSuggestions={supportsModelSuggestions}
                     options={tailoringModelOptions}
-                    placeholder={
-                      previewDefaultModel || "Inherit default model"
-                    }
+                    placeholder={previewDefaultModel || "Inherit default model"}
                     current={tailoringModel}
                     disabled={disabled || isLoadingModels}
                   />
@@ -439,15 +433,11 @@ export function LlmModelConfiguration({
                     id="modelProjectSelection"
                     label="Project Selection Model"
                     value={modelProjectSelection?.value ?? ""}
-                    onChange={(value) =>
-                      modelProjectSelection?.onChange(value)
-                    }
+                    onChange={(value) => modelProjectSelection?.onChange(value)}
                     error={modelProjectSelection?.error}
                     supportsModelSuggestions={supportsModelSuggestions}
                     options={projectSelectionModelOptions}
-                    placeholder={
-                      previewDefaultModel || "Inherit default model"
-                    }
+                    placeholder={previewDefaultModel || "Inherit default model"}
                     current={projectSelectionModel}
                     disabled={disabled || isLoadingModels}
                   />

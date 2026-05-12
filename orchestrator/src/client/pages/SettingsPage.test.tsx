@@ -351,15 +351,16 @@ describe("SettingsPage", () => {
 
     renderPage();
     await openModelSection();
+    await clickLastButtonByName(/tailoring/i);
 
-    const runtimeSelectors = await screen.findAllByRole("combobox", {
-      name: /runtime/i,
+    const providerSelectors = await screen.findAllByRole("combobox", {
+      name: /provider/i,
     });
-    fireEvent.click(runtimeSelectors[1]);
+    fireEvent.click(providerSelectors.at(-1) as HTMLElement);
     fireEvent.click(await screen.findByText("OpenAI"));
 
     const purposeModels = screen.getAllByLabelText(/^model$/i);
-    fireEvent.change(purposeModels[1], {
+    fireEvent.change(purposeModels.at(-1) as HTMLElement, {
       target: { value: "gpt-5.4-mini" },
     });
     fireEvent.change(screen.getByLabelText(/^api key$/i), {

@@ -40,6 +40,30 @@ function resolveDefaultModelFromSettings(
   );
 }
 
+function resolveModelFromSettings(
+  settings: Awaited<ReturnType<typeof getEffectiveSettings>>,
+  purpose: LlmModelPurpose,
+): string {
+  const defaultModel = resolveDefaultModelFromSettings(settings);
+  if (!isLlmPurpose(purpose)) return defaultModel;
+
+  const defaultProvider = readStringSettingValue(settings?.llmProvider);
+  const purposeOverride = settings?.llmPurposeOverrides?.value?.[purpose];
+  const purposeProvider = purposeOverride?.provider?.trim() || defaultProvider;
+  const purposeModel = purposeOverride?.model?.trim();
+  const resolvedPurposeModel = readStringSettingValue(
+    settings?.[MODEL_KEY_BY_PURPOSE[purpose]],
+  );
+
+  if (purposeModel) return purposeModel;
+  if (resolvedPurposeModel) return resolvedPurposeModel;
+  if (purposeProvider && purposeProvider !== defaultProvider) {
+    return getDefaultModelForProvider(purposeProvider);
+  }
+
+  return defaultModel;
+}
+
 function isLlmPurpose(purpose: LlmModelPurpose): purpose is LlmPurpose {
   return (LLM_PURPOSE_VALUES as readonly string[]).includes(purpose);
 }
@@ -75,23 +99,7 @@ export async function resolveLlmModel(
   purpose: LlmModelPurpose = "default",
 ): Promise<string> {
   const settings = await getEffectiveSettings();
-  const defaultModel = resolveDefaultModelFromSettings(settings);
-
-  if (purpose === "scoring") {
-    return readStringSettingValue(settings?.modelScorer) ?? defaultModel;
-  }
-
-  if (purpose === "tailoring") {
-    return readStringSettingValue(settings?.modelTailoring) ?? defaultModel;
-  }
-
-  if (purpose === "projectSelection") {
-    return (
-      readStringSettingValue(settings?.modelProjectSelection) ?? defaultModel
-    );
-  }
-
-  return defaultModel;
+  return resolveModelFromSettings(settings, purpose);
 }
 
 export async function resolveLlmRuntimeSettings(
@@ -110,13 +118,7 @@ export async function resolveLlmRuntimeSettings(
       ? getAllSettings()
       : Promise.resolve({} as Partial<Record<settingsRepo.SettingKey, string>>),
   ]);
-  const defaultModel = resolveDefaultModelFromSettings(settings);
-
-  const model =
-    isLlmPurpose(purpose) && MODEL_KEY_BY_PURPOSE[purpose]
-      ? (readStringSettingValue(settings?.[MODEL_KEY_BY_PURPOSE[purpose]]) ??
-        defaultModel)
-      : defaultModel;
+  const model = resolveModelFromSettings(settings, purpose);
   const defaultProvider = readStringSettingValue(settings?.llmProvider);
   const defaultBaseUrl = readStringSettingValue(settings?.llmBaseUrl);
   const purposeOverride = isLlmPurpose(purpose)

@@ -1,4 +1,4 @@
-import { LlmPurpose } from "@shared/types";
+import type { LlmPurpose } from "@shared/types";
 
 function buildModelOptions(input: {
   models: string[];
@@ -44,9 +44,9 @@ function renderKeyHelper(
       {helperHref ? (
         <a
           href={helperHref}
-          target='_blank'
-          rel='noopener noreferrer'
-          className='underline decoration-border underline-offset-4 transition-colors hover:text-foreground'
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
         >
           {helperText}
         </a>
@@ -57,7 +57,6 @@ function renderKeyHelper(
     </>
   );
 }
-
 
 const LLM_PURPOSES: Array<{
   id: LlmPurpose;
@@ -72,7 +71,7 @@ const LLM_PURPOSES: Array<{
   {
     id: "tailoring",
     label: "Tailoring",
-    description: "Resume summaries, skills, and tailoring generation.",
+    description: "Ghostwriter, Resume content tailoring.",
   },
   {
     id: "projectSelection",
@@ -80,6 +79,5 @@ const LLM_PURPOSES: Array<{
     description: "Choosing resume projects for a job.",
   },
 ];
-
 
 export { buildModelOptions, renderKeyHelper, LLM_PURPOSES };
