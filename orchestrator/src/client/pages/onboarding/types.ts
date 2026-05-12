@@ -9,6 +9,7 @@ export type OnboardingFormData = {
   llmProvider: string;
   llmBaseUrl: string;
   llmApiKey: string;
+  model: string;
   pdfRenderer: PdfRenderer;
   rxresumeUrl: string;
   rxresumeApiKey: string;

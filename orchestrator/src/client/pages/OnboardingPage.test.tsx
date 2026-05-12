@@ -16,6 +16,7 @@ vi.mock("@client/api", () => ({
   getCodexAuthStatus: vi.fn(),
   startCodexAuth: vi.fn(),
   disconnectCodexAuth: vi.fn(),
+  getLlmModels: vi.fn(),
   validateLlm: vi.fn(),
   validateRxresume: vi.fn(),
   validateResumeConfig: vi.fn(),
@@ -67,6 +68,10 @@ const baseSettings = {
   llmProvider: { value: "openrouter", default: "openrouter", override: null },
   llmBaseUrl: { value: "", default: "", override: null },
   llmApiKeyHint: "sk-t",
+  model: { value: "gpt-4o", default: "gpt-4o", override: null },
+  modelScorer: { value: "gpt-4o", override: null },
+  modelTailoring: { value: "gpt-4o", override: null },
+  modelProjectSelection: { value: "gpt-4o", override: null },
   pdfRenderer: { value: "rxresume", default: "rxresume", override: null },
   onboardingBasicAuthDecision: null,
   rxresumeUrl: "https://resume.example.com",
@@ -158,6 +163,7 @@ describe("OnboardingPage", () => {
       terms: ["Platform Engineer", "Backend Engineer"],
       source: "ai",
     });
+    vi.mocked(api.getLlmModels).mockResolvedValue([]);
     vi.mocked(api.getCodexAuthStatus).mockResolvedValue({
       authenticated: false,
       username: null,
@@ -208,9 +214,87 @@ describe("OnboardingPage", () => {
       screen.getByText("Choose the LLM connection Job Ops should use."),
     ).toBeInTheDocument();
     expect(screen.getByLabelText("API key")).toBeInTheDocument();
+    expect(screen.getByLabelText("Default model")).toBeInTheDocument();
+    expect(
+      screen.queryByText("Task-Specific Overrides"),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(/leave blank to keep the saved key/i),
     ).toBeInTheDocument();
+  });
+
+  it("saves the selected default model from onboarding", async () => {
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings as any);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Choose the LLM connection Job Ops should use."),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Default model"), {
+      target: { value: "google/gemini-3-flash-preview" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /revalidate connection/i }),
+    );
+
+    await waitFor(() => {
+      expect(api.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: "google/gemini-3-flash-preview",
+          modelScorer: null,
+          modelTailoring: null,
+          modelProjectSelection: null,
+        }),
+      );
+    });
+  });
+
+  it("uses a saved API key hint when loading onboarding model suggestions", async () => {
+    currentSettings = {
+      ...baseSettings,
+      llmProvider: { value: "openai", default: "openai", override: null },
+      llmApiKeyHint: "sk-t",
+      model: { value: "gpt-4o", default: "gpt-4o", override: null },
+    };
+    vi.mocked(api.validateLlm).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.validateResumeConfig).mockResolvedValue({
+      valid: true,
+      message: null,
+    });
+    vi.mocked(api.getLlmModels).mockResolvedValue(["gpt-4.1"]);
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(api.getLlmModels).toHaveBeenCalledWith({
+        provider: "openai",
+        baseUrl: undefined,
+        apiKey: undefined,
+      });
+    });
   });
 
   it("shows Codex sign-in controls in onboarding when provider is codex", async () => {
@@ -822,6 +906,11 @@ describe("OnboardingPage", () => {
     await waitFor(() => {
       expect(api.updateSettings).toHaveBeenCalled();
     });
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: null,
+      }),
+    );
 
     expect(
       screen.getByText("Choose the LLM connection Job Ops should use."),

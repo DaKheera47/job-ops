@@ -108,8 +108,9 @@ export const OnboardingPage: React.FC = () => {
                     basicAuthChoice={flow.basicAuthChoice}
                     basicAuthPassword={flow.watch("basicAuthPassword")}
                     basicAuthUser={flow.watch("basicAuthUser")}
-                    control={flow.control}
                     currentStep={flow.currentStep}
+                    defaultModel={flow.settings?.model?.default}
+                    effectiveModel={flow.settings?.model?.value}
                     hasSavedSearchTermsInSession={
                       flow.hasSavedSearchTermsInSession
                     }
@@ -118,8 +119,11 @@ export const OnboardingPage: React.FC = () => {
                     isImportingResume={flow.isImportingResume}
                     isResumeReady={flow.baseResumeValidation.valid}
                     isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
+                    llmApiKey={flow.watch("llmApiKey")}
+                    llmBaseUrl={flow.watch("llmBaseUrl")}
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
+                    model={flow.watch("model")}
                     resumeSetupMode={flow.resumeSetupMode}
                     rxresumeApiKey={flow.watch("rxresumeApiKey")}
                     rxresumeApiKeyHint={flow.settings?.rxresumeApiKeyHint}
@@ -129,7 +133,23 @@ export const OnboardingPage: React.FC = () => {
                     searchTerms={flow.watch("searchTerms")}
                     searchTermsSource={flow.searchTermsSource}
                     searchTermsStale={flow.searchTermsStale}
+                    savedBaseUrl={flow.settings?.llmBaseUrl?.value}
+                    savedProvider={flow.settings?.llmProvider?.value}
                     selectedProvider={flow.selectedProvider}
+                    onLlmApiKeyChange={(value) =>
+                      flow.setValue("llmApiKey", value, { shouldDirty: true })
+                    }
+                    onLlmBaseUrlChange={(value) =>
+                      flow.setValue("llmBaseUrl", value, { shouldDirty: true })
+                    }
+                    onLlmModelChange={(value) =>
+                      flow.setValue("model", value, { shouldDirty: true })
+                    }
+                    onLlmProviderChange={(value) =>
+                      flow.setValue("llmProvider", value, {
+                        shouldDirty: true,
+                      })
+                    }
                     onBasicAuthChoiceChange={flow.setBasicAuthChoice}
                     onBasicAuthPasswordChange={(value) =>
                       flow.setValue("basicAuthPassword", value)

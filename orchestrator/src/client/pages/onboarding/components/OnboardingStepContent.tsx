@@ -1,10 +1,8 @@
 import type { LlmProviderId } from "@client/pages/settings/utils";
 import type { SearchTermsSuggestionResponse } from "@shared/types.js";
 import type React from "react";
-import type { Control } from "react-hook-form";
 import type {
   BasicAuthChoice,
-  OnboardingFormData,
   ResumeSetupMode,
   StepId,
   ValidationState,
@@ -20,15 +18,19 @@ export const OnboardingStepContent: React.FC<{
   basicAuthChoice: BasicAuthChoice;
   basicAuthPassword: string;
   basicAuthUser: string;
-  control: Control<OnboardingFormData>;
   currentStep: StepId;
+  defaultModel: string | null | undefined;
+  effectiveModel: string | null | undefined;
   isBusy: boolean;
   isImportingResume: boolean;
   isGeneratingSearchTerms: boolean;
   isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
   hasSavedSearchTermsInSession: boolean;
+  llmApiKey: string;
+  llmBaseUrl: string;
   llmKeyHint: string | null;
+  model: string;
   llmValidation: ValidationState;
   resumeSetupMode: ResumeSetupMode;
   rxresumeApiKey: string;
@@ -39,7 +41,13 @@ export const OnboardingStepContent: React.FC<{
   searchTerms: string[];
   searchTermsSource: SearchTermsSuggestionResponse["source"] | null;
   searchTermsStale: boolean;
+  savedBaseUrl: string | null | undefined;
+  savedProvider: string | null | undefined;
   selectedProvider: LlmProviderId;
+  onLlmApiKeyChange: (value: string) => void;
+  onLlmBaseUrlChange: (value: string) => void;
+  onLlmModelChange: (value: string) => void;
+  onLlmProviderChange: (value: string) => void;
   onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
   onBasicAuthPasswordChange: (value: string) => void;
   onBasicAuthUserChange: (value: string) => void;
@@ -56,11 +64,21 @@ export const OnboardingStepContent: React.FC<{
   if (props.currentStep === "llm") {
     return (
       <LlmConnectionStep
-        control={props.control}
+        apiKey={props.llmApiKey}
+        baseUrl={props.llmBaseUrl}
+        defaultModel={props.defaultModel}
+        effectiveModel={props.effectiveModel}
         isBusy={props.isBusy}
         llmKeyHint={props.llmKeyHint}
+        model={props.model}
+        savedBaseUrl={props.savedBaseUrl}
+        savedProvider={props.savedProvider}
         selectedProvider={props.selectedProvider}
         validation={props.llmValidation}
+        onApiKeyChange={props.onLlmApiKeyChange}
+        onBaseUrlChange={props.onLlmBaseUrlChange}
+        onModelChange={props.onLlmModelChange}
+        onProviderChange={props.onLlmProviderChange}
       />
     );
   }

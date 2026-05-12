@@ -1,153 +1,79 @@
-import { CodexAuthPanel } from "@client/components/CodexAuthPanel";
-import { GeminiCliSetupHint } from "@client/components/GeminiCliSetupHint";
-import { SettingsInput } from "@client/pages/settings/components/SettingsInput";
+import { LlmModelConfiguration } from "@client/components/LlmModelConfiguration";
 import {
   getLlmProviderConfig,
-  LLM_PROVIDER_LABELS,
-  LLM_PROVIDERS,
   type LlmProviderId,
 } from "@client/pages/settings/utils";
 import type React from "react";
-import { type Control, Controller } from "react-hook-form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import type { OnboardingFormData, ValidationState } from "../types";
+import type { ValidationState } from "../types";
 import { InlineValidation } from "./InlineValidation";
 
-function renderKeyHelper(
-  helperText: string,
-  helperHref: string | null,
-  keepSavedKey: boolean,
-) {
-  return (
-    <>
-      {helperHref ? (
-        <a
-          href={helperHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline decoration-border underline-offset-4 transition-colors hover:text-foreground"
-        >
-          {helperText}
-        </a>
-      ) : (
-        helperText
-      )}
-      {keepSavedKey ? ". Leave blank to keep the saved key." : null}
-    </>
-  );
-}
-
 export const LlmConnectionStep: React.FC<{
-  control: Control<OnboardingFormData>;
+  apiKey: string;
+  baseUrl: string;
+  defaultModel: string | null | undefined;
+  effectiveModel: string | null | undefined;
   isBusy: boolean;
   llmKeyHint: string | null;
+  model: string;
+  savedBaseUrl: string | null | undefined;
+  savedProvider: string | null | undefined;
   selectedProvider: LlmProviderId;
   validation: ValidationState;
-}> = ({ control, isBusy, llmKeyHint, selectedProvider, validation }) => {
+  onApiKeyChange: (value: string) => void;
+  onBaseUrlChange: (value: string) => void;
+  onModelChange: (value: string) => void;
+  onProviderChange: (value: string) => void;
+}> = ({
+  apiKey,
+  baseUrl,
+  defaultModel,
+  effectiveModel,
+  isBusy,
+  llmKeyHint,
+  model,
+  savedBaseUrl,
+  savedProvider,
+  selectedProvider,
+  validation,
+  onApiKeyChange,
+  onBaseUrlChange,
+  onModelChange,
+  onProviderChange,
+}) => {
   const providerConfig = getLlmProviderConfig(selectedProvider);
-  const { showApiKey, showBaseUrl } = providerConfig;
-  const isCodexProvider = providerConfig.normalizedProvider === "codex";
-  const isGeminiCliProvider =
-    providerConfig.normalizedProvider === "gemini_cli";
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-5 lg:grid-cols-2">
-        <div className="space-y-2">
-          <label htmlFor="llmProvider" className="text-sm font-medium">
-            Provider
-          </label>
-          <Controller
-            name="llmProvider"
-            control={control}
-            render={({ field }) => (
-              <Select
-                value={selectedProvider}
-                onValueChange={(value) => field.onChange(value)}
-                disabled={isBusy}
-              >
-                <SelectTrigger id="llmProvider" className="h-10">
-                  <SelectValue placeholder="Select provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  {LLM_PROVIDERS.map((provider) => (
-                    <SelectItem key={provider} value={provider}>
-                      {LLM_PROVIDER_LABELS[provider]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
-          <p className="text-sm text-muted-foreground">
-            {providerConfig.providerHint}
-          </p>
-          {isCodexProvider ? <CodexAuthPanel isBusy={isBusy} /> : null}
-          {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
-        </div>
-
-        {showBaseUrl ? (
-          <Controller
-            name="llmBaseUrl"
-            control={control}
-            render={({ field }) => (
-              <SettingsInput
-                label="Base URL"
-                inputProps={{
-                  name: "llmBaseUrl",
-                  value: field.value,
-                  onChange: field.onChange,
-                }}
-                placeholder={providerConfig.baseUrlPlaceholder}
-                helper={providerConfig.baseUrlHelper}
-                disabled={isBusy}
-              />
-            )}
-          />
-        ) : null}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-        {showApiKey ? (
-          <Controller
-            name="llmApiKey"
-            control={control}
-            render={({ field }) => (
-              <SettingsInput
-                label="API key"
-                inputProps={{
-                  name: "llmApiKey",
-                  value: field.value,
-                  onChange: field.onChange,
-                }}
-                type="password"
-                placeholder="Paste a new key"
-                helper={renderKeyHelper(
-                  providerConfig.keyHelperText,
-                  providerConfig.keyHelperHref,
-                  Boolean(llmKeyHint),
-                )}
-                disabled={isBusy}
-              />
-            )}
-          />
-        ) : (
-          <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-            No API key is required for this provider.
-          </div>
-        )}
-      </div>
-
-      <InlineValidation
-        state={validation}
-        successMessage={`${providerConfig.label} connection verified.`}
-      />
-    </div>
+    <LlmModelConfiguration
+      mode="compact"
+      disabled={isBusy}
+      selectedProvider={selectedProvider}
+      savedProvider={savedProvider}
+      savedBaseUrl={savedBaseUrl}
+      apiKeyHint={llmKeyHint}
+      effectiveModel={effectiveModel}
+      defaultModel={defaultModel}
+      provider={{
+        value: selectedProvider,
+        onChange: onProviderChange,
+      }}
+      baseUrl={{
+        value: baseUrl,
+        onChange: onBaseUrlChange,
+      }}
+      apiKey={{
+        value: apiKey,
+        onChange: onApiKeyChange,
+      }}
+      model={{
+        value: model,
+        onChange: onModelChange,
+      }}
+      validationSlot={
+        <InlineValidation
+          state={validation}
+          successMessage={`${providerConfig.label} connection verified.`}
+        />
+      }
+    />
   );
 };

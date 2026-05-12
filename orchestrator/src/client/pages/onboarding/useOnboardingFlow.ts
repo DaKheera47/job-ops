@@ -86,6 +86,7 @@ export function useOnboardingFlow() {
         llmProvider: "",
         llmBaseUrl: "",
         llmApiKey: "",
+        model: "",
         pdfRenderer: "latex",
         rxresumeUrl: "",
         rxresumeApiKey: "",
@@ -119,6 +120,7 @@ export function useOnboardingFlow() {
       llmProvider: settings.llmProvider?.value || "",
       llmBaseUrl: settings.llmBaseUrl?.value || "",
       llmApiKey: "",
+      model: settings.model?.override ?? "",
       pdfRenderer: selectedId ? "rxresume" : "latex",
       rxresumeUrl: settings.rxresumeUrl ?? "",
       rxresumeApiKey: "",
@@ -392,6 +394,7 @@ export function useOnboardingFlow() {
     const values = getValues();
     const apiKeyValue = values.llmApiKey.trim();
     const baseUrlValue = values.llmBaseUrl.trim();
+    const modelValue = values.model.trim();
 
     if (requiresLlmKey && !apiKeyValue && !hasLlmKey) {
       toast.info("Add your LLM API key to continue");
@@ -408,7 +411,7 @@ export function useOnboardingFlow() {
     const update: Partial<UpdateSettingsInput> = {
       llmProvider: normalizedProvider,
       llmBaseUrl: showBaseUrl ? baseUrlValue || null : null,
-      model: null,
+      model: modelValue || null,
       modelScorer: null,
       modelTailoring: null,
       modelProjectSelection: null,
@@ -425,10 +428,11 @@ export function useOnboardingFlow() {
       setValue("llmApiKey", "");
       const defaultModel = getDefaultModelForProvider(normalizedProvider);
       toast.success("LLM provider connected", {
-        description:
-          normalizedProvider === "openai" ||
-          normalizedProvider === "gemini" ||
-          normalizedProvider === "gemini_cli"
+        description: modelValue
+          ? `Default model: ${modelValue}.`
+          : normalizedProvider === "openai" ||
+              normalizedProvider === "gemini" ||
+              normalizedProvider === "gemini_cli"
             ? `Default for ${providerConfig.label}: ${defaultModel}.`
             : "You can fine-tune models later in Settings.",
       });
