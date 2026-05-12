@@ -27,8 +27,18 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import PurposeOverrideCard from "@client/components/llmmodelconfiguration/PurposeOverrideCard";
-import { buildModelOptions, LLM_PURPOSES, renderKeyHelper } from "./llm-model-configuration-helpers";
+import {
+  buildModelOptions,
+  LLM_PURPOSES,
+  renderKeyHelper,
+} from "./llm-model-configuration-helpers";
 import ModelField from "./ModelField";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type TextFieldBinding = {
   value: string;
@@ -350,76 +360,96 @@ export function LlmModelConfiguration({
         <>
           <Separator />
 
-          <div className="space-y-4">
-            <div className="text-sm font-medium">Purpose-specific Model Overrides</div>
+          <Accordion type="single" collapsible>
+            <AccordionItem value="purpose-overrides">
+              <AccordionTrigger>
+                <h6 className="font-medium">
+                  Purpose-specific model overrides
+                </h6>
+              </AccordionTrigger>
+            </AccordionItem>
 
-            {purposeOverrides ? (
-              <div className="grid gap-4 lg:grid-cols-3">
-                {LLM_PURPOSES.map((purpose) => (
-                  <PurposeOverrideCard
-                    key={purpose.id}
-                    purpose={purpose.id}
-                    label={purpose.label}
-                    description={purpose.description}
-                    defaultProvider={selectedProvider}
-                    defaultModel={previewDefaultModel}
-                    defaultBaseUrl={resolvedBaseUrl}
-                    defaultApiKeyHint={apiKeyHint ?? null}
-                    value={purposeOverrides.values[purpose.id]}
-                    apiKeyValue={purposeOverrides.apiKeys[purpose.id] ?? ""}
-                    apiKeyHint={
-                      purposeOverrides.apiKeyHints[purpose.id] ?? null
-                    }
-                    currentModel={purposeOverrides.models[purpose.id]}
-                    disabled={disabled}
-                    onChange={purposeOverrides.onChange}
-                    onApiKeyChange={purposeOverrides.onApiKeyChange}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <ModelField
-                  id="modelScorer"
-                  label="Scoring Model"
-                  value={modelScorer?.value ?? ""}
-                  onChange={(value) => modelScorer?.onChange(value)}
-                  error={modelScorer?.error}
-                  supportsModelSuggestions={supportsModelSuggestions}
-                  options={scoringModelOptions}
-                  placeholder={previewDefaultModel || "Inherit default model"}
-                  current={scoringModel}
-                  disabled={disabled || isLoadingModels}
-                />
-                <ModelField
-                  id="modelTailoring"
-                  label="Tailoring Model"
-                  value={modelTailoring?.value ?? ""}
-                  onChange={(value) => modelTailoring?.onChange(value)}
-                  error={modelTailoring?.error}
-                  supportsModelSuggestions={supportsModelSuggestions}
-                  options={tailoringModelOptions}
-                  placeholder={previewDefaultModel || "Inherit default model"}
-                  current={tailoringModel}
-                  disabled={disabled || isLoadingModels}
-                />
-                <ModelField
-                  id="modelProjectSelection"
-                  label="Project Selection Model"
-                  value={modelProjectSelection?.value ?? ""}
-                  onChange={(value) => modelProjectSelection?.onChange(value)}
-                  error={modelProjectSelection?.error}
-                  supportsModelSuggestions={supportsModelSuggestions}
-                  options={projectSelectionModelOptions}
-                  placeholder={previewDefaultModel || "Inherit default model"}
-                  current={projectSelectionModel}
-                  disabled={disabled || isLoadingModels}
-                />
-              </div>
-            )}
-          </div>
-
-          <Separator />
+            <AccordionItem value="purpose-overrides">
+              <AccordionContent className="pt-4">
+                <div className="space-y-4">
+                  {purposeOverrides ? (
+                    <div className="grid gap-4">
+                      {LLM_PURPOSES.map((purpose) => (
+                        <PurposeOverrideCard
+                          key={purpose.id}
+                          purpose={purpose.id}
+                          label={purpose.label}
+                          description={purpose.description}
+                          defaultProvider={selectedProvider}
+                          defaultModel={previewDefaultModel}
+                          defaultBaseUrl={resolvedBaseUrl}
+                          defaultApiKeyHint={apiKeyHint ?? null}
+                          value={purposeOverrides.values[purpose.id]}
+                          apiKeyValue={
+                            purposeOverrides.apiKeys[purpose.id] ?? ""
+                          }
+                          apiKeyHint={
+                            purposeOverrides.apiKeyHints[purpose.id] ?? null
+                          }
+                          currentModel={purposeOverrides.models[purpose.id]}
+                          disabled={disabled}
+                          onChange={purposeOverrides.onChange}
+                          onApiKeyChange={purposeOverrides.onApiKeyChange}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      <ModelField
+                        id="modelScorer"
+                        label="Scoring Model"
+                        value={modelScorer?.value ?? ""}
+                        onChange={(value) => modelScorer?.onChange(value)}
+                        error={modelScorer?.error}
+                        supportsModelSuggestions={supportsModelSuggestions}
+                        options={scoringModelOptions}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        current={scoringModel}
+                        disabled={disabled || isLoadingModels}
+                      />
+                      <ModelField
+                        id="modelTailoring"
+                        label="Tailoring Model"
+                        value={modelTailoring?.value ?? ""}
+                        onChange={(value) => modelTailoring?.onChange(value)}
+                        error={modelTailoring?.error}
+                        supportsModelSuggestions={supportsModelSuggestions}
+                        options={tailoringModelOptions}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        current={tailoringModel}
+                        disabled={disabled || isLoadingModels}
+                      />
+                      <ModelField
+                        id="modelProjectSelection"
+                        label="Project Selection Model"
+                        value={modelProjectSelection?.value ?? ""}
+                        onChange={(value) =>
+                          modelProjectSelection?.onChange(value)
+                        }
+                        error={modelProjectSelection?.error}
+                        supportsModelSuggestions={supportsModelSuggestions}
+                        options={projectSelectionModelOptions}
+                        placeholder={
+                          previewDefaultModel || "Inherit default model"
+                        }
+                        current={projectSelectionModel}
+                        disabled={disabled || isLoadingModels}
+                      />
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
 
           <div className="space-y-3 text-sm">
             <div className="text-xs text-muted-foreground">Resolved config</div>
