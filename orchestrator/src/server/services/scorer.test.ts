@@ -310,6 +310,216 @@ describe("salary penalty", () => {
     vi.clearAllMocks();
   });
 
+  function getScoringPrompt(): string {
+    const call = callJsonMock.mock.calls.at(-1)?.[0];
+    return call?.messages?.[0]?.content ?? "";
+  }
+
+  function getPromptProfile(): Record<string, any> {
+    const prompt = getScoringPrompt();
+    const match = prompt.match(
+      /CANDIDATE PROFILE:\n(?<profile>[\s\S]*?)\n\nJOB LISTING:/,
+    );
+    expect(match?.groups?.profile).toBeDefined();
+    return JSON.parse(match?.groups?.profile ?? "{}");
+  }
+
+  describe("profile prompt sanitization", () => {
+    it("includes top-level education and the full top-level CV content", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: { value: "", default: "", override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      await scoreJobSuitability(
+        createJob({
+          id: "test-job-profile-top-level",
+          title: "Software Engineer Intern",
+        }),
+        {
+          basics: {
+            label: "Software Engineer",
+            summary: "Builds React and TypeScript applications.",
+            location: "Sheffield",
+            email: "private@example.com",
+            phone: "+44 7000 000000",
+            website: { url: "https://private.example.com" },
+          },
+          education: [
+            {
+              id: "education-private-id",
+              school: "University of Lancashire",
+              degree: "BSc Software Engineering",
+              location: "Preston",
+              period: "2022 - 2025",
+              description: "Computer Science and Software Engineering.",
+              website: { url: "https://university.example.com" },
+            },
+          ],
+          experience: Array.from({ length: 6 }, (_, index) => ({
+            company: `Company ${index + 1}`,
+            position: "Software Engineer",
+            summary: `Experience summary ${index + 1}`,
+            roles:
+              index === 0
+                ? [
+                    {
+                      id: "role-private-id",
+                      position: "Frontend Developer",
+                      period: "2024",
+                      description: "Built React features.",
+                    },
+                  ]
+                : [],
+          })),
+        },
+      );
+
+      const promptProfile = getPromptProfile();
+      expect(promptProfile.basics).toEqual({
+        label: "Software Engineer",
+        summary: "Builds React and TypeScript applications.",
+        location: "Sheffield",
+      });
+      expect(promptProfile.education).toEqual([
+        {
+          school: "University of Lancashire",
+          degree: "BSc Software Engineering",
+          location: "Preston",
+          period: "2022 - 2025",
+          description: "Computer Science and Software Engineering.",
+        },
+      ]);
+      expect(promptProfile.experience).toHaveLength(6);
+      expect(promptProfile.experience[5]).toEqual({
+        company: "Company 6",
+        position: "Software Engineer",
+        summary: "Experience summary 6",
+      });
+      expect(promptProfile.experience[0].roles).toEqual([
+        {
+          position: "Frontend Developer",
+          period: "2024",
+          description: "Built React features.",
+        },
+      ]);
+      expect(getScoringPrompt()).not.toContain("private@example.com");
+      expect(getScoringPrompt()).not.toContain("+44 7000 000000");
+      expect(getScoringPrompt()).not.toContain("education-private-id");
+      expect(getScoringPrompt()).not.toContain("role-private-id");
+      expect(getScoringPrompt()).not.toContain(
+        "https://university.example.com",
+      );
+    });
+
+    it("includes education from nested resume sections", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: { value: "", default: "", override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      await scoreJobSuitability(
+        createJob({ id: "test-job-profile-sections" }),
+        {
+          sections: {
+            education: {
+              title: "Education",
+              hidden: false,
+              items: [
+                {
+                  school: "University of Sheffield",
+                  degree: "BSc Computer Science",
+                  area: "Software Engineering",
+                  location: "Sheffield",
+                },
+              ],
+            },
+          },
+          metadata: {
+            layout: "private-renderer-layout",
+          },
+        },
+      );
+
+      const promptProfile = getPromptProfile();
+      expect(promptProfile.education).toEqual([
+        {
+          school: "University of Sheffield",
+          degree: "BSc Computer Science",
+          area: "Software Engineering",
+          location: "Sheffield",
+        },
+      ]);
+      expect(getScoringPrompt()).not.toContain("private-renderer-layout");
+    });
+
+    it("excludes hidden and invisible CV items from prompt content", async () => {
+      const { scoreJobSuitability } = await import("./scorer");
+      getEffectiveSettingsMock.mockResolvedValue({
+        penalizeMissingSalary: { value: false, default: false, override: null },
+        missingSalaryPenalty: { value: 10, default: 10, override: null },
+        scoringInstructions: { value: "", default: "", override: null },
+        rxresumeBaseResumeId: "base-resume-123",
+      } as any);
+
+      await scoreJobSuitability(
+        createJob({ id: "test-job-profile-hidden-items" }),
+        {
+          sections: {
+            skills: {
+              items: [
+                { name: "Frontend", keywords: ["React"], visible: true },
+                {
+                  name: "Hidden Skill",
+                  keywords: ["PrivateSkill"],
+                  hidden: true,
+                },
+                {
+                  name: "Invisible Skill",
+                  keywords: ["InvisibleSkill"],
+                  visible: false,
+                },
+              ],
+            },
+            education: {
+              items: [
+                { school: "Visible University", degree: "BSc Computing" },
+                {
+                  school: "Hidden University",
+                  degree: "Private Degree",
+                  hidden: true,
+                },
+                {
+                  school: "Invisible University",
+                  degree: "Invisible Degree",
+                  visible: false,
+                },
+              ],
+            },
+          },
+        },
+      );
+
+      const promptProfile = getPromptProfile();
+      expect(promptProfile.skills).toEqual([
+        { name: "Frontend", keywords: ["React"] },
+      ]);
+      expect(promptProfile.education).toEqual([
+        { school: "Visible University", degree: "BSc Computing" },
+      ]);
+      expect(getScoringPrompt()).not.toContain("PrivateSkill");
+      expect(getScoringPrompt()).not.toContain("InvisibleSkill");
+      expect(getScoringPrompt()).not.toContain("Hidden University");
+      expect(getScoringPrompt()).not.toContain("Invisible University");
+    });
+  });
+
   describe("isSalaryMissing detection", () => {
     it("should detect null salary as missing", async () => {
       const { scoreJobSuitability } = await import("./scorer");
