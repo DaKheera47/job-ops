@@ -251,7 +251,7 @@ export function LlmModelConfiguration({
       : "text-xs text-muted-foreground";
 
   return (
-    <div className="space-y-4">
+    <>
       <div className={mode === "compact" ? "space-y-6" : "space-y-4"}>
         <div className="space-y-4">
           {mode === "settings" ? (
@@ -360,21 +360,26 @@ export function LlmModelConfiguration({
         <>
           <Separator />
 
-          <Accordion type="single" collapsible>
-            <AccordionItem value="purpose-overrides">
-              <AccordionTrigger>
-                <h6 className="font-medium">
-                  Purpose-specific model overrides
-                </h6>
-              </AccordionTrigger>
-            </AccordionItem>
-
-            <AccordionItem value="purpose-overrides">
-              <AccordionContent className="pt-4">
-                <div className="space-y-4">
-                  {purposeOverrides ? (
-                    <div className="grid gap-4">
-                      {LLM_PURPOSES.map((purpose) => (
+          <div>
+            <div className="font-medium mt-8">
+              Purpose-specific model overrides
+            </div>
+            <div className="space-y-4">
+              {purposeOverrides ? (
+                <Accordion type="single" collapsible>
+                  {LLM_PURPOSES.map((purpose) => (
+                    <AccordionItem key={purpose.id} value={purpose.id}>
+                      <AccordionTrigger>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-medium text-sm">
+                            {purpose.label}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {purpose.description}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
                         <PurposeOverrideCard
                           key={purpose.id}
                           purpose={purpose.id}
@@ -396,60 +401,60 @@ export function LlmModelConfiguration({
                           onChange={purposeOverrides.onChange}
                           onApiKeyChange={purposeOverrides.onApiKeyChange}
                         />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      <ModelField
-                        id="modelScorer"
-                        label="Scoring Model"
-                        value={modelScorer?.value ?? ""}
-                        onChange={(value) => modelScorer?.onChange(value)}
-                        error={modelScorer?.error}
-                        supportsModelSuggestions={supportsModelSuggestions}
-                        options={scoringModelOptions}
-                        placeholder={
-                          previewDefaultModel || "Inherit default model"
-                        }
-                        current={scoringModel}
-                        disabled={disabled || isLoadingModels}
-                      />
-                      <ModelField
-                        id="modelTailoring"
-                        label="Tailoring Model"
-                        value={modelTailoring?.value ?? ""}
-                        onChange={(value) => modelTailoring?.onChange(value)}
-                        error={modelTailoring?.error}
-                        supportsModelSuggestions={supportsModelSuggestions}
-                        options={tailoringModelOptions}
-                        placeholder={
-                          previewDefaultModel || "Inherit default model"
-                        }
-                        current={tailoringModel}
-                        disabled={disabled || isLoadingModels}
-                      />
-                      <ModelField
-                        id="modelProjectSelection"
-                        label="Project Selection Model"
-                        value={modelProjectSelection?.value ?? ""}
-                        onChange={(value) =>
-                          modelProjectSelection?.onChange(value)
-                        }
-                        error={modelProjectSelection?.error}
-                        supportsModelSuggestions={supportsModelSuggestions}
-                        options={projectSelectionModelOptions}
-                        placeholder={
-                          previewDefaultModel || "Inherit default model"
-                        }
-                        current={projectSelectionModel}
-                        disabled={disabled || isLoadingModels}
-                      />
-                    </div>
-                  )}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <ModelField
+                    id="modelScorer"
+                    label="Scoring Model"
+                    value={modelScorer?.value ?? ""}
+                    onChange={(value) => modelScorer?.onChange(value)}
+                    error={modelScorer?.error}
+                    supportsModelSuggestions={supportsModelSuggestions}
+                    options={scoringModelOptions}
+                    placeholder={
+                      previewDefaultModel || "Inherit default model"
+                    }
+                    current={scoringModel}
+                    disabled={disabled || isLoadingModels}
+                  />
+                  <ModelField
+                    id="modelTailoring"
+                    label="Tailoring Model"
+                    value={modelTailoring?.value ?? ""}
+                    onChange={(value) => modelTailoring?.onChange(value)}
+                    error={modelTailoring?.error}
+                    supportsModelSuggestions={supportsModelSuggestions}
+                    options={tailoringModelOptions}
+                    placeholder={
+                      previewDefaultModel || "Inherit default model"
+                    }
+                    current={tailoringModel}
+                    disabled={disabled || isLoadingModels}
+                  />
+                  <ModelField
+                    id="modelProjectSelection"
+                    label="Project Selection Model"
+                    value={modelProjectSelection?.value ?? ""}
+                    onChange={(value) =>
+                      modelProjectSelection?.onChange(value)
+                    }
+                    error={modelProjectSelection?.error}
+                    supportsModelSuggestions={supportsModelSuggestions}
+                    options={projectSelectionModelOptions}
+                    placeholder={
+                      previewDefaultModel || "Inherit default model"
+                    }
+                    current={projectSelectionModel}
+                    disabled={disabled || isLoadingModels}
+                  />
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              )}
+            </div>
+          </div>
 
           <div className="space-y-3 text-sm">
             <div className="text-xs text-muted-foreground">Resolved config</div>
@@ -486,6 +491,6 @@ export function LlmModelConfiguration({
           </div>
         </>
       ) : null}
-    </div>
+    </>
   );
 }

@@ -138,49 +138,43 @@ export default function PurposeOverrideCard({
     : `Type the exact model name, or leave blank to use ${providerConfig.label}.`;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="text-sm font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground">{description}</div>
-      </CardHeader>
-
-      <CardContent className="space-y-2">
-        <label htmlFor={`${purpose}-provider`} className="text-sm font-medium">
-          Provider
-        </label>
-        <Select
-          value={value?.provider ?? "__inherit__"}
-          onValueChange={(nextValue) => {
-            onChange(
-              purpose,
-              "provider",
-              nextValue === "__inherit__" ? null : nextValue,
-            );
-            onChange(purpose, "baseUrl", null);
-            onChange(purpose, "model", null);
-          }}
-          disabled={disabled}
-        >
-          <SelectTrigger id={`${purpose}-provider`} className="h-9">
-            <SelectValue placeholder="Inherit default" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__inherit__">Inherit default</SelectItem>
-            {LLM_PROVIDERS.map((provider) => (
-              <SelectItem key={provider} value={provider}>
-                {LLM_PROVIDER_LABELS[provider]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="text-xs text-muted-foreground">
-          Current:{" "}
-          <span className="font-mono">
-            {hasProviderOverride
-              ? selectedProvider
-              : `inherits ${defaultProvider}`}
-          </span>
-        </div>
+    <div className="space-y-2">
+      <label htmlFor={`${purpose}-provider`} className="text-sm font-medium">
+        Provider
+      </label>
+      <Select
+        value={value?.provider ?? "__inherit__"}
+        onValueChange={(nextValue) => {
+          onChange(
+            purpose,
+            "provider",
+            nextValue === "__inherit__" ? null : nextValue,
+          );
+          onChange(purpose, "baseUrl", null);
+          onChange(purpose, "model", null);
+        }}
+        disabled={disabled}
+      >
+        <SelectTrigger id={`${purpose}-provider`} className="h-9">
+          <SelectValue placeholder="Inherit default" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__inherit__">Inherit default</SelectItem>
+          {LLM_PROVIDERS.map((provider) => (
+            <SelectItem key={provider} value={provider}>
+              {LLM_PROVIDER_LABELS[provider]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <div className="text-xs text-muted-foreground">
+        Current:{" "}
+        <span className="font-mono">
+          {hasProviderOverride
+            ? selectedProvider
+            : `inherits ${defaultProvider}`}
+        </span>
+      </div>
 
       {hasProviderOverride && providerConfig.showBaseUrl ? (
         <SettingsInput
@@ -230,7 +224,6 @@ export default function PurposeOverrideCard({
         current={currentModel}
         disabled={disabled || isLoadingModels}
       />
-            </CardContent>
-    </Card>
+    </div>
   );
 }
