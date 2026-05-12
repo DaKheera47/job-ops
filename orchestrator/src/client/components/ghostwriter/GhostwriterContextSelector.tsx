@@ -1,4 +1,9 @@
 import {
+  GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS,
+  GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED,
+  GHOSTWRITER_DOCUMENT_CONTEXT_MAX_TOTAL_CHARS,
+} from "@shared/ghostwriter-document-context.js";
+import {
   GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED,
   GHOSTWRITER_EMAIL_CONTEXT_MAX_SNIPPET_CHARS,
   GHOSTWRITER_EMAIL_CONTEXT_MAX_TOTAL_CHARS,
@@ -8,9 +13,18 @@ import {
   GHOSTWRITER_NOTE_CONTEXT_MAX_SELECTED,
   GHOSTWRITER_NOTE_CONTEXT_MAX_TOTAL_CHARS,
 } from "@shared/ghostwriter-note-context.js";
-import type { JobNote, PostApplicationJobEmailItem } from "@shared/types";
+import type {
+  JobDocument,
+  JobNote,
+  PostApplicationJobEmailItem,
+} from "@shared/types";
 import { ChevronDown, FileText, Info, Mail, Paperclip } from "lucide-react";
 import type React from "react";
+import {
+  formatJobDocumentByteSize,
+  isJobDocumentPdf,
+  isJobDocumentTextLike,
+} from "@/client/lib/job-documents";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,14 +38,18 @@ import { cn, formatDateTime } from "@/lib/utils";
 type GhostwriterContextSelectorProps = {
   notes: JobNote[];
   emails: PostApplicationJobEmailItem[];
+  documents: JobDocument[];
   selectedNoteIds: string[];
   selectedEmailIds: string[];
+  selectedDocumentIds: string[];
   disabled?: boolean;
   areNotesLoading?: boolean;
   areEmailsLoading?: boolean;
+  areDocumentsLoading?: boolean;
   isSaving?: boolean;
   onNotesChange: (selectedNoteIds: string[]) => void;
   onEmailsChange: (selectedEmailIds: string[]) => void;
+  onDocumentsChange: (selectedDocumentIds: string[]) => void;
 };
 
 type ContextGroupProps<TItem> = {
@@ -54,6 +72,7 @@ type ContextGroupProps<TItem> = {
   getMeta: (item: TItem) => string;
   getContentLength: (item: TItem) => number;
   getCheckboxId: (item: TItem) => string;
+  getUnavailableReason?: (item: TItem) => string | null;
   onChange: (selectedIds: string[]) => void;
 };
 
@@ -82,6 +101,17 @@ function getEmailMeta(email: PostApplicationJobEmailItem): string {
   return `${getSenderLabel(email)}${receivedAt ? ` - ${receivedAt}` : ""}`;
 }
 
+function canUseDocumentForGhostwriter(document: JobDocument): boolean {
+  return isJobDocumentPdf(document) || isJobDocumentTextLike(document);
+}
+
+function getDocumentMeta(document: JobDocument): string {
+  return [
+    document.mediaType || "Unknown type",
+    formatJobDocumentByteSize(document.byteSize),
+  ].join(" - ");
+}
+
 function ContextGroup<TItem>({
   title,
   icon: Icon,
@@ -102,6 +132,7 @@ function ContextGroup<TItem>({
   getMeta,
   getContentLength,
   getCheckboxId,
+  getUnavailableReason,
   onChange,
 }: ContextGroupProps<TItem>) {
   const selectedItems = getSelectedItems(items, selectedIds, getId);
@@ -150,7 +181,9 @@ function ContextGroup<TItem>({
             const itemId = getId(item);
             const isSelected = selectedIds.includes(itemId);
             const isTrimmed = getContentLength(item) > maxItemChars;
-            const isUnavailable = !isSelected && isAtSelectionLimit;
+            const unavailableReason = getUnavailableReason?.(item) ?? null;
+            const isUnavailable =
+              !isSelected && (isAtSelectionLimit || Boolean(unavailableReason));
             const checkboxId = getCheckboxId(item);
 
             return (
@@ -188,7 +221,7 @@ function ContextGroup<TItem>({
                     )}
                   </span>
                   <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                    {getMeta(item)}
+                    {unavailableReason ?? getMeta(item)}
                   </span>
                 </label>
               </div>
@@ -222,16 +255,23 @@ export const GhostwriterContextSelector: React.FC<
 > = ({
   notes,
   emails,
+  documents,
   selectedNoteIds,
   selectedEmailIds,
+  selectedDocumentIds,
   disabled,
   areNotesLoading,
   areEmailsLoading,
+  areDocumentsLoading,
   isSaving,
   onNotesChange,
   onEmailsChange,
+  onDocumentsChange,
 }) => {
-  const selectedCount = selectedNoteIds.length + selectedEmailIds.length;
+  const selectedCount =
+    selectedNoteIds.length +
+    selectedEmailIds.length +
+    selectedDocumentIds.length;
   const triggerLabel =
     selectedCount > 0 ? `${selectedCount} context` : "Context";
 
@@ -293,6 +333,36 @@ export const GhostwriterContextSelector: React.FC<
             getContentLength={(note) => note.content.trim().length}
             getCheckboxId={(note) => `ghostwriter-note-context-${note.id}`}
             onChange={onNotesChange}
+          />
+
+          <ContextGroup
+            title="Documents"
+            icon={Paperclip}
+            items={documents}
+            selectedIds={selectedDocumentIds}
+            loadingLabel="Loading documents..."
+            emptyLabel="No uploaded documents yet."
+            limitLabel={`${GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED} document limit`}
+            overflowLabel="Selected documents exceed the AI context budget; later document text will be trimmed."
+            maxSelected={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED}
+            maxItemChars={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS}
+            maxTotalChars={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_TOTAL_CHARS}
+            disabled={disabled}
+            isLoading={areDocumentsLoading}
+            isSaving={isSaving}
+            getId={(document) => document.id}
+            getTitle={(document) => document.fileName}
+            getMeta={getDocumentMeta}
+            getContentLength={(document) => document.byteSize}
+            getCheckboxId={(document) =>
+              `ghostwriter-document-context-${document.id}`
+            }
+            getUnavailableReason={(document) =>
+              canUseDocumentForGhostwriter(document)
+                ? null
+                : "PDF or text-like files only"
+            }
+            onChange={onDocumentsChange}
           />
 
           <ContextGroup

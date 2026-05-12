@@ -29,6 +29,7 @@ vi.mock("@server/services/ghostwriter", () => ({
       activeRootMessageId: null,
       selectedNoteIds: ["note-1"],
       selectedEmailIds: ["email-1"],
+      selectedDocumentIds: ["doc-1"],
     },
   ]),
   createThread: vi.fn(
@@ -42,6 +43,7 @@ vi.mock("@server/services/ghostwriter", () => ({
       activeRootMessageId: null,
       selectedNoteIds: [],
       selectedEmailIds: [],
+      selectedDocumentIds: [],
     }),
   ),
   updateContextForJob: vi.fn(
@@ -49,9 +51,11 @@ vi.mock("@server/services/ghostwriter", () => ({
       jobId: string;
       selectedNoteIds?: string[];
       selectedEmailIds?: string[];
+      selectedDocumentIds?: string[];
     }) => ({
       selectedNoteIds: input.selectedNoteIds ?? [],
       selectedEmailIds: input.selectedEmailIds ?? [],
+      selectedDocumentIds: input.selectedDocumentIds ?? [],
     }),
   ),
   listMessages: vi.fn(async () => ({
@@ -67,6 +71,7 @@ vi.mock("@server/services/ghostwriter", () => ({
     branches: [],
     selectedNoteIds: ["note-1"],
     selectedEmailIds: ["email-1"],
+    selectedDocumentIds: ["doc-1"],
   })),
   listMessagesForJob: vi.fn(async () => ({
     messages: [
@@ -81,6 +86,7 @@ vi.mock("@server/services/ghostwriter", () => ({
     branches: [],
     selectedNoteIds: ["note-1"],
     selectedEmailIds: ["email-1"],
+    selectedDocumentIds: ["doc-1"],
   })),
   sendMessage: vi.fn(async () => ({
     userMessage: {
@@ -237,6 +243,19 @@ describe.sequential("Ghostwriter API", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.data.selectedEmailIds).toEqual(["email-1"]);
+  });
+
+  it("updates selected Ghostwriter documents", async () => {
+    const res = await fetch(`${baseUrl}/api/jobs/job-1/chat/context`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedDocumentIds: ["doc-1"] }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.selectedDocumentIds).toEqual(["doc-1"]);
   });
 
   it("rejects empty Ghostwriter context updates", async () => {

@@ -29,6 +29,9 @@ const mocks = vi.hoisted(() => ({
   jobsRepo: {
     listJobNotesByIds: vi.fn(),
   },
+  jobDocumentsRepo: {
+    listJobDocumentsByIds: vi.fn(),
+  },
   jobEmails: {
     listJobPostApplicationEmailsByIds: vi.fn(),
   },
@@ -53,6 +56,7 @@ vi.mock("@infra/request-context", () => ({
 
 vi.mock("./ghostwriter-context", () => ({
   buildJobChatPromptContext: mocks.buildJobChatPromptContext,
+  canUseJobDocumentForGhostwriterContext: vi.fn(() => true),
 }));
 
 vi.mock("../repositories/settings", () => ({
@@ -83,6 +87,10 @@ vi.mock("../repositories/ghostwriter", () => ({
 
 vi.mock("../repositories/jobs", () => ({
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
+}));
+
+vi.mock("../repositories/job-documents", () => ({
+  listJobDocumentsByIds: mocks.jobDocumentsRepo.listJobDocumentsByIds,
 }));
 
 vi.mock("./post-application/job-emails", () => ({
@@ -118,6 +126,7 @@ const thread = {
   activeRootMessageId: "user-1",
   selectedNoteIds: [],
   selectedEmailIds: [],
+  selectedDocumentIds: [],
 };
 
 const baseUserMessage: JobChatMessage = {
@@ -181,9 +190,11 @@ describe("ghostwriter service", () => {
       profileSnapshot: "profile snapshot",
       selectedNotesSnapshot: "",
       selectedEmailsSnapshot: "",
+      selectedDocumentsSnapshot: "",
     });
 
     mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
+    mocks.jobDocumentsRepo.listJobDocumentsByIds.mockResolvedValue([]);
     mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
     mocks.repo.getThreadForJob.mockResolvedValue(thread);
@@ -354,6 +365,7 @@ describe("ghostwriter service", () => {
       profileSnapshot: "profile snapshot",
       selectedNotesSnapshot: "Selected Job Notes:\nNote 1: Recruiter call",
       selectedEmailsSnapshot: "",
+      selectedDocumentsSnapshot: "",
     });
     mocks.repo.createMessage
       .mockResolvedValueOnce(baseUserMessage)
@@ -375,10 +387,12 @@ describe("ghostwriter service", () => {
       threadId: "thread-1",
       selectedNoteIds: ["note-1"],
       selectedEmailIds: undefined,
+      selectedDocumentIds: undefined,
     });
     expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith(
       "job-1",
       ["note-1"],
+      [],
       [],
     );
     expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
@@ -459,6 +473,7 @@ describe("ghostwriter service", () => {
       profileSnapshot: "profile snapshot",
       selectedNotesSnapshot: "",
       selectedEmailsSnapshot: "Selected Job Emails:\nEmail 1: Interview update",
+      selectedDocumentsSnapshot: "",
     });
     mocks.repo.createMessage
       .mockResolvedValueOnce(baseUserMessage)
@@ -480,15 +495,101 @@ describe("ghostwriter service", () => {
       threadId: "thread-1",
       selectedNoteIds: undefined,
       selectedEmailIds: ["email-1"],
+      selectedDocumentIds: undefined,
     });
     expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith(
       "job-1",
       [],
       ["email-1"],
+      [],
     );
     expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
       role: "system",
       content: "Selected Job Emails:\nEmail 1: Interview update",
+    });
+  });
+
+  it("saves selected documents before building prompt context", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-with-documents",
+      content: "",
+      status: "partial",
+    };
+    const assistantComplete: JobChatMessage = {
+      ...assistantPartial,
+      content: "Document-aware reply.",
+      status: "complete",
+    };
+    const threadWithDocuments = {
+      ...thread,
+      selectedDocumentIds: ["doc-1"],
+    };
+
+    mocks.jobDocumentsRepo.listJobDocumentsByIds.mockResolvedValue([
+      {
+        id: "doc-1",
+        jobId: "job-1",
+        fileName: "take-home.md",
+        mediaType: "text/markdown",
+        byteSize: 120,
+        storagePath: "/tmp/take-home.md",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    mocks.repo.updateThreadContext.mockResolvedValue(threadWithDocuments);
+    mocks.repo.getThreadForJob
+      .mockResolvedValueOnce(thread)
+      .mockResolvedValueOnce(threadWithDocuments);
+    mocks.buildJobChatPromptContext.mockResolvedValue({
+      job: { id: "job-1" },
+      style: {
+        tone: "professional",
+        formality: "medium",
+        constraints: "",
+        doNotUse: "",
+      },
+      systemPrompt: "system prompt",
+      jobSnapshot: '{"job":"snapshot"}',
+      profileSnapshot: "profile snapshot",
+      selectedNotesSnapshot: "",
+      selectedEmailsSnapshot: "",
+      selectedDocumentsSnapshot:
+        "Selected Job Documents:\nDocument 1: take-home.md",
+    });
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantComplete);
+    mocks.repo.getMessageById.mockResolvedValue(assistantComplete);
+
+    await sendMessageForJob({
+      jobId: "job-1",
+      content: "Use the document",
+      selectedDocumentIds: ["doc-1"],
+    });
+
+    expect(mocks.jobDocumentsRepo.listJobDocumentsByIds).toHaveBeenCalledWith(
+      "job-1",
+      ["doc-1"],
+    );
+    expect(mocks.repo.updateThreadContext).toHaveBeenCalledWith({
+      jobId: "job-1",
+      threadId: "thread-1",
+      selectedNoteIds: undefined,
+      selectedEmailIds: undefined,
+      selectedDocumentIds: ["doc-1"],
+    });
+    expect(mocks.buildJobChatPromptContext).toHaveBeenCalledWith(
+      "job-1",
+      [],
+      [],
+      ["doc-1"],
+    );
+    expect(mocks.llmCallJson.mock.calls[0][0].messages).toContainEqual({
+      role: "system",
+      content: "Selected Job Documents:\nDocument 1: take-home.md",
     });
   });
 
@@ -710,6 +811,22 @@ describe("ghostwriter service", () => {
         selectedEmailIds: Array.from(
           { length: 9 },
           (_, index) => `email-${index}`,
+        ),
+      }),
+    ).rejects.toMatchObject({
+      code: "INVALID_REQUEST",
+      status: 400,
+    });
+  });
+
+  it("rejects too many selected documents", async () => {
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Use these",
+        selectedDocumentIds: Array.from(
+          { length: 6 },
+          (_, index) => `doc-${index}`,
         ),
       }),
     ).rejects.toMatchObject({

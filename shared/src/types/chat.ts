@@ -32,6 +32,7 @@ export interface JobChatThread {
   activeRootMessageId: string | null;
   selectedNoteIds: string[];
   selectedEmailIds: string[];
+  selectedDocumentIds: string[];
 }
 
 export interface JobChatMessage {

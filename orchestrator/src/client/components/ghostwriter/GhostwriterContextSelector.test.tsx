@@ -1,4 +1,8 @@
-import type { JobNote, PostApplicationJobEmailItem } from "@shared/types";
+import type {
+  JobDocument,
+  JobNote,
+  PostApplicationJobEmailItem,
+} from "@shared/types";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GhostwriterContextSelector } from "./GhostwriterContextSelector";
@@ -53,6 +57,17 @@ const makeEmail = (
   sourceUrl: "https://mail.google.com/mail/u/0/#all/thread-1",
 });
 
+const makeDocument = (overrides: Partial<JobDocument> = {}): JobDocument => ({
+  id: "doc-1",
+  jobId: "job-1",
+  fileName: "take-home.md",
+  mediaType: "text/markdown",
+  byteSize: 1024,
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
+  ...overrides,
+});
+
 function renderSelector(
   overrides: Partial<
     React.ComponentProps<typeof GhostwriterContextSelector>
@@ -62,30 +77,37 @@ function renderSelector(
     <GhostwriterContextSelector
       notes={[makeNote({})]}
       emails={[makeEmail()]}
+      documents={[makeDocument()]}
       selectedNoteIds={[]}
       selectedEmailIds={[]}
+      selectedDocumentIds={[]}
       onNotesChange={vi.fn()}
       onEmailsChange={vi.fn()}
+      onDocumentsChange={vi.fn()}
       {...overrides}
     />,
   );
 }
 
 describe("GhostwriterContextSelector", () => {
-  it("renders notes and emails in one context picker", () => {
+  it("renders notes, documents, and emails in one context picker", () => {
     const onNotesChange = vi.fn();
     const onEmailsChange = vi.fn();
-    renderSelector({ onNotesChange, onEmailsChange });
+    const onDocumentsChange = vi.fn();
+    renderSelector({ onNotesChange, onEmailsChange, onDocumentsChange });
 
     fireEvent.click(screen.getByRole("button", { name: /context/i }));
 
     expect(screen.getByText("Notes")).toBeInTheDocument();
+    expect(screen.getByText("Documents")).toBeInTheDocument();
     expect(screen.getByText("Emails")).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText(/Recruiter call/));
+    fireEvent.click(screen.getByLabelText(/take-home.md/));
     fireEvent.click(screen.getByLabelText(/Interview update/));
 
     expect(onNotesChange).toHaveBeenCalledWith(["note-1"]);
+    expect(onDocumentsChange).toHaveBeenCalledWith(["doc-1"]);
     expect(onEmailsChange).toHaveBeenCalledWith(["email-1"]);
   });
 
@@ -93,10 +115,11 @@ describe("GhostwriterContextSelector", () => {
     renderSelector({
       selectedNoteIds: ["note-1"],
       selectedEmailIds: ["email-1"],
+      selectedDocumentIds: ["doc-1"],
     });
 
     expect(
-      screen.getByRole("button", { name: /2 context/i }),
+      screen.getByRole("button", { name: /3 context/i }),
     ).toBeInTheDocument();
   });
 
@@ -142,5 +165,22 @@ describe("GhostwriterContextSelector", () => {
     expect(screen.getByLabelText(/Ninth email/)).toBeDisabled();
     expect(screen.getByText("8 note limit")).toBeInTheDocument();
     expect(screen.getByText("8 email limit")).toBeInTheDocument();
+  });
+
+  it("disables unsupported documents", () => {
+    renderSelector({
+      documents: [
+        makeDocument({
+          id: "doc-unsupported",
+          fileName: "archive.zip",
+          mediaType: "application/zip",
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /context/i }));
+
+    expect(screen.getByLabelText(/archive.zip/)).toBeDisabled();
+    expect(screen.getByText("PDF or text-like files only")).toBeInTheDocument();
   });
 });

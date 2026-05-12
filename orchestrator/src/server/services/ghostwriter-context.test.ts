@@ -3,9 +3,24 @@ import { createJob } from "@shared/testing/factories";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
 
+const mocks = vi.hoisted(() => ({
+  readFile: vi.fn(),
+}));
+
+vi.mock("node:fs/promises", () => ({
+  default: {
+    readFile: mocks.readFile,
+  },
+  readFile: mocks.readFile,
+}));
+
 vi.mock("../repositories/jobs", () => ({
   getJobById: vi.fn(),
   listJobNotesByIds: vi.fn(),
+}));
+
+vi.mock("../repositories/job-documents", () => ({
+  listJobDocumentsByIds: vi.fn(),
 }));
 
 vi.mock("./post-application/job-emails", () => ({
@@ -29,6 +44,7 @@ vi.mock("./writing-style", async (importOriginal) => {
   };
 });
 
+import { listJobDocumentsByIds } from "../repositories/job-documents";
 import { getJobById, listJobNotesByIds } from "../repositories/jobs";
 import { getSetting } from "../repositories/settings";
 import { listJobPostApplicationEmailsByIds } from "./post-application/job-emails";
@@ -39,6 +55,8 @@ describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(listJobNotesByIds).mockResolvedValue([]);
+    vi.mocked(listJobDocumentsByIds).mockResolvedValue([]);
+    mocks.readFile.mockResolvedValue(Buffer.from(""));
     vi.mocked(listJobPostApplicationEmailsByIds).mockResolvedValue([]);
     vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
@@ -371,6 +389,51 @@ describe("buildJobChatPromptContext", () => {
     expect(context.selectedEmailsSnapshot).not.toContain("mail.google.com");
     expect(context.selectedEmailsSnapshot).not.toContain("Not selected");
     expect(context.selectedEmailsSnapshot).not.toContain("A".repeat(1301));
+  });
+
+  it("builds selected job documents context with shared truncation limits", async () => {
+    const job = createJob({ id: "job-ctx-documents" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(listJobDocumentsByIds).mockResolvedValue([
+      {
+        id: "doc-2",
+        jobId: job.id,
+        fileName: "skip.txt",
+        mediaType: "text/plain",
+        byteSize: 7,
+        storagePath: "/tmp/skip.txt",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+      {
+        id: "doc-1",
+        jobId: job.id,
+        fileName: "take-home.md",
+        mediaType: "text/markdown",
+        byteSize: 7000,
+        storagePath: "/tmp/take-home.md",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    mocks.readFile.mockResolvedValue(Buffer.from("A".repeat(7000)));
+
+    const context = await buildJobChatPromptContext(job.id, [], [], ["doc-1"]);
+
+    expect(listJobDocumentsByIds).toHaveBeenCalledWith(job.id, ["doc-1"]);
+    expect(mocks.readFile).toHaveBeenCalledWith("/tmp/take-home.md");
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Selected Job Documents:",
+    );
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Document 1: take-home.md",
+    );
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Context note: document text trimmed for AI context limits.",
+    );
+    expect(context.selectedDocumentsSnapshot).not.toContain("skip.txt");
+    expect(context.selectedDocumentsSnapshot).not.toContain("A".repeat(6001));
   });
 
   it("throws not found for unknown job", async () => {

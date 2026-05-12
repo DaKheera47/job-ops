@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { normalizeGhostwriterSelectedDocumentIds } from "@shared/ghostwriter-document-context.js";
 import { normalizeGhostwriterSelectedEmailIds } from "@shared/ghostwriter-email-context.js";
 import { normalizeGhostwriterSelectedNoteIds } from "@shared/ghostwriter-note-context.js";
 import type {
@@ -38,6 +39,13 @@ function parseSelectedNoteIds(value: string | null): string[] {
 
 function parseSelectedEmailIds(value: string | null): string[] {
   return parseSelectedContextIds(value, normalizeGhostwriterSelectedEmailIds);
+}
+
+function parseSelectedDocumentIds(value: string | null): string[] {
+  return parseSelectedContextIds(
+    value,
+    normalizeGhostwriterSelectedDocumentIds,
+  );
 }
 
 function parseImageAttachments(value: string | null): JobChatImageAttachment[] {
@@ -88,6 +96,7 @@ function mapThread(row: typeof jobChatThreads.$inferSelect): JobChatThread {
     activeRootMessageId: row.activeRootMessageId,
     selectedNoteIds: parseSelectedNoteIds(row.selectedNoteIds),
     selectedEmailIds: parseSelectedEmailIds(row.selectedEmailIds),
+    selectedDocumentIds: parseSelectedDocumentIds(row.selectedDocumentIds),
   };
 }
 
@@ -213,6 +222,7 @@ export async function createThread(input: {
     lastMessageAt: null,
     selectedNoteIds: "[]",
     selectedEmailIds: "[]",
+    selectedDocumentIds: "[]",
   });
 
   const thread = await getThreadById(id);
@@ -254,6 +264,7 @@ export async function updateThreadContext(input: {
   threadId: string;
   selectedNoteIds?: string[];
   selectedEmailIds?: string[];
+  selectedDocumentIds?: string[];
 }): Promise<JobChatThread | null> {
   const now = new Date().toISOString();
   const tenantId = getActiveTenantId();
@@ -272,6 +283,15 @@ export async function updateThreadContext(input: {
         ? {
             selectedEmailIds: JSON.stringify(
               normalizeGhostwriterSelectedEmailIds(input.selectedEmailIds),
+            ),
+          }
+        : {}),
+      ...(input.selectedDocumentIds !== undefined
+        ? {
+            selectedDocumentIds: JSON.stringify(
+              normalizeGhostwriterSelectedDocumentIds(
+                input.selectedDocumentIds,
+              ),
             ),
           }
         : {}),

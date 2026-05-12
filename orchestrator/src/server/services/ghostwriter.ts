@@ -8,6 +8,10 @@ import {
 import { logger } from "@infra/logger";
 import { getRequestId } from "@infra/request-context";
 import {
+  GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED,
+  normalizeGhostwriterSelectedDocumentIds,
+} from "@shared/ghostwriter-document-context.js";
+import {
   GHOSTWRITER_EMAIL_CONTEXT_MAX_SELECTED,
   normalizeGhostwriterSelectedEmailIds,
 } from "@shared/ghostwriter-email-context.js";
@@ -22,8 +26,12 @@ import type {
   JobChatRun,
 } from "@shared/types";
 import * as jobChatRepo from "../repositories/ghostwriter";
+import * as jobDocumentsRepo from "../repositories/job-documents";
 import * as jobsRepo from "../repositories/jobs";
-import { buildJobChatPromptContext } from "./ghostwriter-context";
+import {
+  buildJobChatPromptContext,
+  canUseJobDocumentForGhostwriterContext,
+} from "./ghostwriter-context";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { resolveLlmRuntimeSettings as resolveRuntimeLlmSettings } from "./modelSelection";
@@ -421,25 +429,83 @@ async function validateSelectedEmailIdsForJob(
   });
 }
 
+async function validateSelectedDocumentIdsForJob(
+  jobId: string,
+  selectedDocumentIds: readonly string[],
+): Promise<string[]> {
+  const normalizedIds =
+    normalizeGhostwriterSelectedDocumentIds(selectedDocumentIds);
+
+  if (normalizedIds.length > GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED) {
+    throw badRequest(
+      `Select up to ${GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED} documents for Ghostwriter context`,
+      {
+        maxSelectedDocuments: GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED,
+        selectedCount: normalizedIds.length,
+      },
+    );
+  }
+
+  if (normalizedIds.length === 0) return [];
+
+  const documents = await jobDocumentsRepo.listJobDocumentsByIds(
+    jobId,
+    normalizedIds,
+  );
+  const documentsById = new Map(
+    documents.map((document) => [document.id, document]),
+  );
+  const invalidDocumentIds = normalizedIds.filter(
+    (documentId) => !documentsById.has(documentId),
+  );
+  if (invalidDocumentIds.length > 0) {
+    throw badRequest("Selected documents must belong to this job", {
+      invalidDocumentIds,
+    });
+  }
+
+  const unsupportedDocumentIds = normalizedIds.filter((documentId) => {
+    const document = documentsById.get(documentId);
+    return document ? !canUseJobDocumentForGhostwriterContext(document) : false;
+  });
+  if (unsupportedDocumentIds.length > 0) {
+    throw badRequest(
+      "Selected documents must be PDFs or text-like files for Ghostwriter context",
+      { unsupportedDocumentIds },
+    );
+  }
+
+  return normalizedIds;
+}
+
 async function updateThreadContext(input: {
   jobId: string;
   threadId: string;
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
 }) {
-  const [selectedNoteIds, selectedEmailIds] = await Promise.all([
-    input.selectedNoteIds === undefined
-      ? Promise.resolve(undefined)
-      : validateSelectedNoteIdsForJob(input.jobId, input.selectedNoteIds),
-    input.selectedEmailIds === undefined
-      ? Promise.resolve(undefined)
-      : validateSelectedEmailIdsForJob(input.jobId, input.selectedEmailIds),
-  ]);
+  const [selectedNoteIds, selectedEmailIds, selectedDocumentIds] =
+    await Promise.all([
+      input.selectedNoteIds === undefined
+        ? Promise.resolve(undefined)
+        : validateSelectedNoteIdsForJob(input.jobId, input.selectedNoteIds),
+      input.selectedEmailIds === undefined
+        ? Promise.resolve(undefined)
+        : validateSelectedEmailIdsForJob(input.jobId, input.selectedEmailIds),
+      input.selectedDocumentIds === undefined
+        ? Promise.resolve(undefined)
+        : validateSelectedDocumentIdsForJob(
+            input.jobId,
+            input.selectedDocumentIds,
+          ),
+    ]);
   const thread = await jobChatRepo.updateThreadContext({
     jobId: input.jobId,
     threadId: input.threadId,
     selectedNoteIds,
     selectedEmailIds,
+    selectedDocumentIds,
   });
 
   if (!thread) {
@@ -465,6 +531,7 @@ export async function updateContextForJob(input: {
   jobId: string;
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
 }) {
   const thread = await ensureJobThread(input.jobId);
   const updatedThread = await updateThreadContext({
@@ -472,11 +539,13 @@ export async function updateContextForJob(input: {
     threadId: thread.id,
     selectedNoteIds: input.selectedNoteIds,
     selectedEmailIds: input.selectedEmailIds,
+    selectedDocumentIds: input.selectedDocumentIds,
   });
 
   return {
     selectedNoteIds: updatedThread.selectedNoteIds,
     selectedEmailIds: updatedThread.selectedEmailIds,
+    selectedDocumentIds: updatedThread.selectedDocumentIds,
   };
 }
 
@@ -524,6 +593,7 @@ export async function listMessagesForJob(input: {
   branches: BranchInfo[];
   selectedNoteIds: string[];
   selectedEmailIds: string[];
+  selectedDocumentIds: string[];
 }> {
   const thread = await ensureJobThread(input.jobId);
   const messages = await jobChatRepo.getActivePathFromRoot(thread.id);
@@ -533,6 +603,7 @@ export async function listMessagesForJob(input: {
     branches,
     selectedNoteIds: thread.selectedNoteIds,
     selectedEmailIds: thread.selectedEmailIds,
+    selectedDocumentIds: thread.selectedDocumentIds,
   };
 }
 
@@ -557,6 +628,7 @@ async function runAssistantReply(
       options.jobId,
       thread.selectedNoteIds,
       thread.selectedEmailIds,
+      thread.selectedDocumentIds,
     ),
     options.llmConfig ?? resolveLlmRuntimeSettings(),
     buildConversationMessages(options.threadId, options.parentMessageId),
@@ -648,6 +720,14 @@ async function runAssistantReply(
               {
                 role: "system" as const,
                 content: context.selectedEmailsSnapshot,
+              },
+            ]
+          : []),
+        ...(context.selectedDocumentsSnapshot
+          ? [
+              {
+                role: "system" as const,
+                content: context.selectedDocumentsSnapshot,
               },
             ]
           : []),
@@ -786,6 +866,7 @@ export async function sendMessage(input: {
   attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const content = input.content.trim();
@@ -799,13 +880,15 @@ export async function sendMessage(input: {
   }
   if (
     input.selectedNoteIds !== undefined ||
-    input.selectedEmailIds !== undefined
+    input.selectedEmailIds !== undefined ||
+    input.selectedDocumentIds !== undefined
   ) {
     await updateThreadContext({
       jobId: input.jobId,
       threadId: input.threadId,
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
     });
   }
   const llmConfig = await resolveAndValidateImageInput(input.attachments);
@@ -862,6 +945,7 @@ export async function sendMessageForJob(input: {
   attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const thread = await ensureJobThread(input.jobId);
@@ -872,6 +956,7 @@ export async function sendMessageForJob(input: {
     attachments: input.attachments,
     selectedNoteIds: input.selectedNoteIds,
     selectedEmailIds: input.selectedEmailIds,
+    selectedDocumentIds: input.selectedDocumentIds,
     stream: input.stream,
   });
 }
@@ -882,6 +967,7 @@ export async function regenerateMessage(input: {
   assistantMessageId: string;
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const thread = await jobChatRepo.getThreadForJob(input.jobId, input.threadId);
@@ -890,13 +976,15 @@ export async function regenerateMessage(input: {
   }
   if (
     input.selectedNoteIds !== undefined ||
-    input.selectedEmailIds !== undefined
+    input.selectedEmailIds !== undefined ||
+    input.selectedDocumentIds !== undefined
   ) {
     await updateThreadContext({
       jobId: input.jobId,
       threadId: input.threadId,
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
     });
   }
 
@@ -970,6 +1058,7 @@ export async function regenerateMessageForJob(input: {
   assistantMessageId: string;
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const thread = await ensureJobThread(input.jobId);
@@ -979,6 +1068,7 @@ export async function regenerateMessageForJob(input: {
     assistantMessageId: input.assistantMessageId,
     selectedNoteIds: input.selectedNoteIds,
     selectedEmailIds: input.selectedEmailIds,
+    selectedDocumentIds: input.selectedDocumentIds,
     stream: input.stream,
   });
 }
@@ -991,6 +1081,7 @@ export async function editMessage(input: {
   attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const content = input.content.trim();
@@ -1004,13 +1095,15 @@ export async function editMessage(input: {
   }
   if (
     input.selectedNoteIds !== undefined ||
-    input.selectedEmailIds !== undefined
+    input.selectedEmailIds !== undefined ||
+    input.selectedDocumentIds !== undefined
   ) {
     await updateThreadContext({
       jobId: input.jobId,
       threadId: input.threadId,
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
     });
   }
   const llmConfig = await resolveAndValidateImageInput(input.attachments);
@@ -1078,6 +1171,7 @@ export async function editMessageForJob(input: {
   attachments?: readonly JobChatImageAttachment[];
   selectedNoteIds?: readonly string[];
   selectedEmailIds?: readonly string[];
+  selectedDocumentIds?: readonly string[];
   stream?: GenerateReplyOptions["stream"];
 }) {
   const thread = await ensureJobThread(input.jobId);
@@ -1089,6 +1183,7 @@ export async function editMessageForJob(input: {
     attachments: input.attachments,
     selectedNoteIds: input.selectedNoteIds,
     selectedEmailIds: input.selectedEmailIds,
+    selectedDocumentIds: input.selectedDocumentIds,
     stream: input.stream,
   });
 }

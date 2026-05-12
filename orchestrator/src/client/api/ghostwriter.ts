@@ -10,11 +10,13 @@ import { fetchApi, streamSseEvents, withQuery } from "./core";
 type GhostwriterContextSelectionInput = {
   selectedNoteIds?: string[];
   selectedEmailIds?: string[];
+  selectedDocumentIds?: string[];
 };
 
 type GhostwriterContextSelectionResult = {
   selectedNoteIds: string[];
   selectedEmailIds: string[];
+  selectedDocumentIds: string[];
 };
 
 type GhostwriterMessageContextInput = GhostwriterContextSelectionInput & {
@@ -147,6 +149,7 @@ export async function streamJobGhostwriterMessage(
       content: input.content,
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
       attachments: input.attachments,
       stream: true,
     },
@@ -221,6 +224,7 @@ export async function streamRegenerateJobChatMessage(
     {
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
       stream: true,
     },
     {
@@ -243,6 +247,7 @@ export async function streamRegenerateJobGhostwriterMessage(
     {
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
       stream: true,
     },
     {
@@ -269,6 +274,7 @@ export async function editJobGhostwriterMessage(
       content: input.content,
       selectedNoteIds: input.selectedNoteIds,
       selectedEmailIds: input.selectedEmailIds,
+      selectedDocumentIds: input.selectedDocumentIds,
       attachments: input.attachments,
       stream: true,
     },

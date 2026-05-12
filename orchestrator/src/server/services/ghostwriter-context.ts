@@ -1,6 +1,11 @@
+import { readFile } from "node:fs/promises";
 import { badRequest, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import {
+  buildGhostwriterDocumentContextItems,
+  normalizeGhostwriterSelectedDocumentIds,
+} from "@shared/ghostwriter-document-context.js";
 import {
   buildGhostwriterEmailContextItems,
   normalizeGhostwriterSelectedEmailIds,
@@ -10,7 +15,8 @@ import {
   normalizeGhostwriterSelectedNoteIds,
 } from "@shared/ghostwriter-note-context.js";
 import { settingsRegistry } from "@shared/settings-registry";
-import type { Job, ResumeProfile } from "@shared/types";
+import type { Job, JobDocument, ResumeProfile } from "@shared/types";
+import * as jobDocumentsRepo from "../repositories/job-documents";
 import * as jobsRepo from "../repositories/jobs";
 import * as settingsRepo from "../repositories/settings";
 import {
@@ -36,6 +42,7 @@ export type JobChatPromptContext = {
   profileSnapshot: string;
   selectedNotesSnapshot: string;
   selectedEmailsSnapshot: string;
+  selectedDocumentsSnapshot: string;
 };
 
 const MAX_JOB_DESCRIPTION = 4000;
@@ -44,6 +51,25 @@ const MAX_SKILLS = 18;
 const MAX_PROJECTS = 6;
 const MAX_EXPERIENCE = 5;
 const MAX_ITEM_TEXT = 320;
+const MAX_DOCUMENT_READ_BYTES = 2 * 1024 * 1024;
+const TEXT_DOCUMENT_EXTENSIONS = new Set([
+  "txt",
+  "md",
+  "markdown",
+  "csv",
+  "tsv",
+  "json",
+  "log",
+]);
+const TEXT_DOCUMENT_MEDIA_TYPES = new Set([
+  "application/json",
+  "application/x-ndjson",
+  "application/xml",
+  "text/csv",
+  "text/markdown",
+  "text/plain",
+  "text/tab-separated-values",
+]);
 
 const STOP_SLOP_GHOSTWRITER_PROMPT = `
 Stop Slop revision rules for Ghostwriter prose:
@@ -69,6 +95,35 @@ function truncate(value: string | null | undefined, max: number): string {
 
 function compactJoin(parts: Array<string | null | undefined>): string {
   return parts.filter(Boolean).join("\n");
+}
+
+function getDocumentExtension(fileName: string): string {
+  const extension = fileName.split(".").pop()?.trim().toLowerCase() ?? "";
+  return extension === fileName.toLowerCase() ? "" : extension;
+}
+
+function isPdfDocument(document: Pick<JobDocument, "fileName" | "mediaType">) {
+  return (
+    document.mediaType?.toLowerCase() === "application/pdf" ||
+    getDocumentExtension(document.fileName) === "pdf"
+  );
+}
+
+function isTextLikeDocument(
+  document: Pick<JobDocument, "fileName" | "mediaType">,
+) {
+  const mediaType = document.mediaType?.toLowerCase() ?? "";
+  return (
+    mediaType.startsWith("text/") ||
+    TEXT_DOCUMENT_MEDIA_TYPES.has(mediaType) ||
+    TEXT_DOCUMENT_EXTENSIONS.has(getDocumentExtension(document.fileName))
+  );
+}
+
+export function canUseJobDocumentForGhostwriterContext(
+  document: Pick<JobDocument, "fileName" | "mediaType">,
+): boolean {
+  return isPdfDocument(document) || isTextLikeDocument(document);
 }
 
 function buildJobSnapshot(job: Job): string {
@@ -220,6 +275,78 @@ async function buildSelectedEmailsSnapshot(
   ]);
 }
 
+async function extractDocumentText(
+  document: jobDocumentsRepo.JobDocumentWithStorage,
+): Promise<string> {
+  const buffer = await readFile(document.storagePath);
+  const limitedBuffer =
+    buffer.byteLength > MAX_DOCUMENT_READ_BYTES
+      ? buffer.subarray(0, MAX_DOCUMENT_READ_BYTES)
+      : buffer;
+
+  if (isPdfDocument(document)) {
+    try {
+      const { default: pdfParse } = await import("pdf-parse");
+      const result = await pdfParse(limitedBuffer);
+      return (result.text ?? "").trim();
+    } catch (error) {
+      logger.warn("Failed to extract Ghostwriter document PDF text", {
+        jobId: document.jobId,
+        documentId: document.id,
+        error: sanitizeUnknown(error),
+      });
+      return "";
+    }
+  }
+
+  if (isTextLikeDocument(document)) {
+    return limitedBuffer.toString("utf8").trim();
+  }
+
+  return "";
+}
+
+async function buildSelectedDocumentsSnapshot(
+  jobId: string,
+  selectedDocumentIds: readonly string[],
+): Promise<string> {
+  const selectedDocuments = await listSelectedContextItems({
+    selectedIds: selectedDocumentIds,
+    normalize: normalizeGhostwriterSelectedDocumentIds,
+    listItems: (normalizedDocumentIds) =>
+      jobDocumentsRepo.listJobDocumentsByIds(jobId, normalizedDocumentIds),
+    getId: (document) => document.id,
+  });
+
+  if (selectedDocuments.length === 0) return "";
+
+  const documentsWithContent = await Promise.all(
+    selectedDocuments
+      .filter(canUseJobDocumentForGhostwriterContext)
+      .map(async (document) => ({
+        ...document,
+        content: await extractDocumentText(document),
+      })),
+  );
+  const context = buildGhostwriterDocumentContextItems(documentsWithContent);
+  if (context.items.length === 0) return "";
+
+  return compactJoin([
+    "Selected Job Documents:",
+    ...context.items.map((document, index) =>
+      compactJoin([
+        `Document ${index + 1}: ${document.fileName}`,
+        document.mediaType ? `Type: ${document.mediaType}` : null,
+        `Uploaded: ${document.createdAt}`,
+        document.wasTrimmed
+          ? "Context note: document text trimmed for AI context limits."
+          : null,
+        document.content ? `Content:\n${document.content}` : "Content: [empty]",
+      ]),
+    ),
+  ]);
+}
+
 async function buildSystemPrompt(
   style: WritingStyle,
   profile: ResumeProfile,
@@ -261,6 +388,7 @@ export async function buildJobChatPromptContext(
   jobId: string,
   selectedNoteIds: readonly string[] = [],
   selectedEmailIds: readonly string[] = [],
+  selectedDocumentIds: readonly string[] = [],
 ): Promise<JobChatPromptContext> {
   const job = await jobsRepo.getJobById(jobId);
   if (!job) {
@@ -285,11 +413,13 @@ export async function buildJobChatPromptContext(
     stopSlopEnabled,
     selectedNotesSnapshot,
     selectedEmailsSnapshot,
+    selectedDocumentsSnapshot,
   ] = await Promise.all([
     buildSystemPrompt(style, profile),
     isStopSlopEnabled(),
     buildSelectedNotesSnapshot(jobId, selectedNoteIds),
     buildSelectedEmailsSnapshot(jobId, selectedEmailIds),
+    buildSelectedDocumentsSnapshot(jobId, selectedDocumentIds),
   ]);
   const systemPrompt = stopSlopEnabled
     ? `${baseSystemPrompt}\n\n${STOP_SLOP_GHOSTWRITER_PROMPT}`
@@ -309,10 +439,13 @@ export async function buildJobChatPromptContext(
       profileChars: profileSnapshot.length,
       selectedNotesChars: selectedNotesSnapshot.length,
       selectedEmailsChars: selectedEmailsSnapshot.length,
+      selectedDocumentsChars: selectedDocumentsSnapshot.length,
       selectedNoteCount:
         normalizeGhostwriterSelectedNoteIds(selectedNoteIds).length,
       selectedEmailCount:
         normalizeGhostwriterSelectedEmailIds(selectedEmailIds).length,
+      selectedDocumentCount:
+        normalizeGhostwriterSelectedDocumentIds(selectedDocumentIds).length,
     }),
   });
 
@@ -324,5 +457,6 @@ export async function buildJobChatPromptContext(
     profileSnapshot,
     selectedNotesSnapshot,
     selectedEmailsSnapshot,
+    selectedDocumentsSnapshot,
   };
 }

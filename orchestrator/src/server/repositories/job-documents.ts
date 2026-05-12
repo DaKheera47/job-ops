@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { JobDocument } from "@shared/types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import { getActiveTenantId } from "../tenancy/context";
 
@@ -92,6 +92,27 @@ export async function getJobDocumentForJob(
     );
 
   return row ? mapRowToJobDocument(row) : null;
+}
+
+export async function listJobDocumentsByIds(
+  jobId: string,
+  documentIds: readonly string[],
+): Promise<JobDocumentWithStorage[]> {
+  if (documentIds.length === 0) return [];
+
+  const tenantId = getActiveTenantId();
+  const rows = await db
+    .select()
+    .from(jobDocuments)
+    .where(
+      and(
+        eq(jobDocuments.tenantId, tenantId),
+        eq(jobDocuments.jobId, jobId),
+        inArray(jobDocuments.id, [...documentIds]),
+      ),
+    );
+
+  return rows.map(mapRowToJobDocument);
 }
 
 export async function deleteJobDocumentForJob(
