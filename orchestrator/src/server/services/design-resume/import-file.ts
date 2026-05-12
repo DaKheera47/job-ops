@@ -7,6 +7,10 @@ import {
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { getRequestId } from "@server/infra/request-context";
+import {
+  DocxTextExtractionError,
+  extractDocxText,
+} from "@server/services/document-text-extraction";
 import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
@@ -15,9 +19,9 @@ import {
   getResumeSchemaValidationMessage,
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema";
+import { DOCX_MIME } from "@shared/job-document-classification.js";
 import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
 import { jsonrepair } from "jsonrepair";
-import JSZip from "jszip";
 import { buildHeaders, getResponseDetail, joinUrl } from "../llm/utils/http";
 import { parseErrorMessage, truncate } from "../llm/utils/string";
 import { replaceCurrentDesignResumeDocument } from "./index";
@@ -66,8 +70,6 @@ const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
 const OPENAI_DEFAULT_TIMEOUT_MS = 60_000;
 const OPENROUTER_DEFAULT_TIMEOUT_MS = 90_000;
 const GEMINI_DEFAULT_TIMEOUT_MS = 90_000;
-const DOCX_MIME =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
   string,
@@ -526,49 +528,6 @@ ${JSON.stringify(template, null, 2)}
 `.trim();
 }
 
-function decodeXmlEntities(value: string): string {
-  return value.replace(
-    /&(?:#x([0-9a-fA-F]+)|#([0-9]+)|amp|lt|gt|quot|apos);/g,
-    (match, hex, dec) => {
-      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
-      if (dec) return String.fromCodePoint(Number.parseInt(dec, 10));
-      switch (match) {
-        case "&amp;":
-          return "&";
-        case "&lt;":
-          return "<";
-        case "&gt;":
-          return ">";
-        case "&quot;":
-          return '"';
-        case "&apos;":
-          return "'";
-        default:
-          return match;
-      }
-    },
-  );
-}
-
-function normalizeDocxXmlText(xml: string): string {
-  return decodeXmlEntities(
-    xml
-      .replace(/<w:tab\b[^>]*\/>/g, "\t")
-      .replace(/<w:br\b[^>]*\/>/g, "\n")
-      .replace(/<w:cr\b[^>]*\/>/g, "\n")
-      .replace(/<\/w:p>/g, "\n")
-      .replace(/<\/w:tr>/g, "\n")
-      .replace(/<\/w:tc>/g, "\t")
-      .replace(/<w:t\b[^>]*>/g, "")
-      .replace(/<\/w:t>/g, "")
-      .replace(/<[^>]+>/g, ""),
-  )
-    .replace(/\r\n?/g, "\n")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-}
-
 async function extractPdfText(decoded: Buffer): Promise<string> {
   try {
     const { default: pdfParse } = await import("pdf-parse");
@@ -586,21 +545,20 @@ async function extractPdfText(decoded: Buffer): Promise<string> {
   }
 }
 
-async function extractDocxText(decoded: Buffer): Promise<string> {
-  let zip: JSZip;
+async function extractResumeDocxText(decoded: Buffer): Promise<string> {
+  let text: string;
   try {
-    zip = await JSZip.loadAsync(decoded);
-  } catch {
+    text = await extractDocxText(decoded);
+  } catch (error) {
+    if (
+      error instanceof DocxTextExtractionError &&
+      error.code === "MISSING_DOCUMENT"
+    ) {
+      throw badRequest("Resume DOCX file is missing document content.");
+    }
     throw badRequest("Resume DOCX file could not be read.");
   }
 
-  const documentXml = zip.file("word/document.xml");
-  if (!documentXml) {
-    throw badRequest("Resume DOCX file is missing document content.");
-  }
-
-  const xml = await documentXml.async("string");
-  const text = normalizeDocxXmlText(xml);
   if (!text) {
     throw badRequest("Resume DOCX file did not contain readable text.");
   }
@@ -1253,7 +1211,7 @@ export async function importDesignResumeFromFile(
 
   try {
     let documentText: string | null =
-      mediaType === DOCX_MIME ? await extractDocxText(decoded) : null;
+      mediaType === DOCX_MIME ? await extractResumeDocxText(decoded) : null;
     if (isGeminiCli && mediaType === "application/pdf") {
       documentText = await extractPdfText(decoded);
     }

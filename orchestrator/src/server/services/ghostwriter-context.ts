@@ -14,11 +14,18 @@ import {
   buildGhostwriterNoteContextItems,
   normalizeGhostwriterSelectedNoteIds,
 } from "@shared/ghostwriter-note-context.js";
+import {
+  canUseJobDocumentForTextContext,
+  isJobDocumentDocx,
+  isJobDocumentPdf,
+  isJobDocumentTextLike,
+} from "@shared/job-document-classification.js";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { Job, JobDocument, ResumeProfile } from "@shared/types";
 import * as jobDocumentsRepo from "../repositories/job-documents";
 import * as jobsRepo from "../repositories/jobs";
 import * as settingsRepo from "../repositories/settings";
+import { extractDocxText } from "./document-text-extraction";
 import {
   getWritingLanguageLabel,
   resolveWritingOutputLanguage,
@@ -52,24 +59,6 @@ const MAX_PROJECTS = 6;
 const MAX_EXPERIENCE = 5;
 const MAX_ITEM_TEXT = 320;
 const MAX_DOCUMENT_READ_BYTES = 2 * 1024 * 1024;
-const TEXT_DOCUMENT_EXTENSIONS = new Set([
-  "txt",
-  "md",
-  "markdown",
-  "csv",
-  "tsv",
-  "json",
-  "log",
-]);
-const TEXT_DOCUMENT_MEDIA_TYPES = new Set([
-  "application/json",
-  "application/x-ndjson",
-  "application/xml",
-  "text/csv",
-  "text/markdown",
-  "text/plain",
-  "text/tab-separated-values",
-]);
 
 const STOP_SLOP_GHOSTWRITER_PROMPT = `
 Stop Slop revision rules for Ghostwriter prose:
@@ -97,33 +86,10 @@ function compactJoin(parts: Array<string | null | undefined>): string {
   return parts.filter(Boolean).join("\n");
 }
 
-function getDocumentExtension(fileName: string): string {
-  const extension = fileName.split(".").pop()?.trim().toLowerCase() ?? "";
-  return extension === fileName.toLowerCase() ? "" : extension;
-}
-
-function isPdfDocument(document: Pick<JobDocument, "fileName" | "mediaType">) {
-  return (
-    document.mediaType?.toLowerCase() === "application/pdf" ||
-    getDocumentExtension(document.fileName) === "pdf"
-  );
-}
-
-function isTextLikeDocument(
-  document: Pick<JobDocument, "fileName" | "mediaType">,
-) {
-  const mediaType = document.mediaType?.toLowerCase() ?? "";
-  return (
-    mediaType.startsWith("text/") ||
-    TEXT_DOCUMENT_MEDIA_TYPES.has(mediaType) ||
-    TEXT_DOCUMENT_EXTENSIONS.has(getDocumentExtension(document.fileName))
-  );
-}
-
 export function canUseJobDocumentForGhostwriterContext(
   document: Pick<JobDocument, "fileName" | "mediaType">,
 ): boolean {
-  return isPdfDocument(document) || isTextLikeDocument(document);
+  return canUseJobDocumentForTextContext(document);
 }
 
 function buildJobSnapshot(job: Job): string {
@@ -284,7 +250,7 @@ async function extractDocumentText(
       ? buffer.subarray(0, MAX_DOCUMENT_READ_BYTES)
       : buffer;
 
-  if (isPdfDocument(document)) {
+  if (isJobDocumentPdf(document)) {
     try {
       const { default: pdfParse } = await import("pdf-parse");
       const result = await pdfParse(limitedBuffer);
@@ -299,7 +265,20 @@ async function extractDocumentText(
     }
   }
 
-  if (isTextLikeDocument(document)) {
+  if (isJobDocumentDocx(document)) {
+    try {
+      return await extractDocxText(limitedBuffer);
+    } catch (error) {
+      logger.warn("Failed to extract Ghostwriter document DOCX text", {
+        jobId: document.jobId,
+        documentId: document.id,
+        error: sanitizeUnknown(error),
+      });
+      return "";
+    }
+  }
+
+  if (isJobDocumentTextLike(document)) {
     return limitedBuffer.toString("utf8").trim();
   }
 

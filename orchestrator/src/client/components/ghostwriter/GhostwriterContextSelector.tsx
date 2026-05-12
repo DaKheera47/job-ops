@@ -35,6 +35,11 @@ import {
 } from "@/components/ui/popover";
 import { cn, formatDateTime } from "@/lib/utils";
 
+const APPROX_CHARS_PER_TOKEN = 4;
+const tokenCountFormatter = new Intl.NumberFormat("en", {
+  maximumFractionDigits: 1,
+});
+
 type GhostwriterContextSelectorProps = {
   notes: JobNote[];
   emails: PostApplicationJobEmailItem[];
@@ -76,6 +81,16 @@ type ContextGroupProps<TItem> = {
   onChange: (selectedIds: string[]) => void;
 };
 
+function estimateTokensFromChars(chars: number): number {
+  if (chars <= 0) return 0;
+  return Math.ceil(chars / APPROX_CHARS_PER_TOKEN);
+}
+
+function formatTokenEstimate(tokens: number): string {
+  if (tokens < 1000) return `${tokens}`;
+  return `${tokenCountFormatter.format(tokens / 1000)}k`;
+}
+
 function getSelectedItems<TItem>(
   items: TItem[],
   selectedIds: string[],
@@ -85,6 +100,35 @@ function getSelectedItems<TItem>(
   return selectedIds
     .map((itemId) => itemsById.get(itemId))
     .filter((item): item is TItem => Boolean(item));
+}
+
+function estimateSelectedContextTokens<TItem>(input: {
+  items: TItem[];
+  selectedIds: string[];
+  maxItemChars: number;
+  maxTotalChars: number;
+  getId: (item: TItem) => string;
+  getContentLength: (item: TItem) => number;
+  filterItem?: (item: TItem) => boolean;
+}): { selectedContentChars: number; estimatedTokens: number } {
+  const selectedContentChars = getSelectedItems(
+    input.items,
+    input.selectedIds,
+    input.getId,
+  )
+    .filter((item) => input.filterItem?.(item) ?? true)
+    .reduce(
+      (total, item) =>
+        total + Math.min(input.getContentLength(item), input.maxItemChars),
+      0,
+    );
+
+  return {
+    selectedContentChars,
+    estimatedTokens: estimateTokensFromChars(
+      Math.min(selectedContentChars, input.maxTotalChars),
+    ),
+  };
 }
 
 function getSenderLabel(email: PostApplicationJobEmailItem): string {
@@ -135,11 +179,15 @@ function ContextGroup<TItem>({
   getUnavailableReason,
   onChange,
 }: ContextGroupProps<TItem>) {
-  const selectedItems = getSelectedItems(items, selectedIds, getId);
-  const selectedContentChars = selectedItems.reduce(
-    (total, item) => total + Math.min(getContentLength(item), maxItemChars),
-    0,
-  );
+  const { selectedContentChars, estimatedTokens } =
+    estimateSelectedContextTokens({
+      items,
+      selectedIds,
+      maxItemChars,
+      maxTotalChars,
+      getId,
+      getContentLength,
+    });
   const hasTotalOverflow = selectedContentChars > maxTotalChars;
   const isAtSelectionLimit = selectedIds.length >= maxSelected;
 
@@ -160,11 +208,18 @@ function ContextGroup<TItem>({
           <Icon className="h-3.5 w-3.5" />
           <span>{title}</span>
         </div>
-        {selectedIds.length > 0 && (
-          <Badge variant="secondary" className="text-[10px]">
-            {selectedIds.length}/{maxSelected}
-          </Badge>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {estimatedTokens > 0 && (
+            <Badge variant="outline" className="text-[10px]">
+              ≈{formatTokenEstimate(estimatedTokens)} tokens
+            </Badge>
+          )}
+          {selectedIds.length > 0 && (
+            <Badge variant="secondary" className="text-[10px]">
+              {selectedIds.length}/{maxSelected}
+            </Badge>
+          )}
+        </div>
       </div>
 
       <div className="py-1">
@@ -272,6 +327,32 @@ export const GhostwriterContextSelector: React.FC<
     selectedNoteIds.length +
     selectedEmailIds.length +
     selectedDocumentIds.length;
+  const estimatedContextTokens =
+    estimateSelectedContextTokens({
+      items: notes,
+      selectedIds: selectedNoteIds,
+      maxItemChars: GHOSTWRITER_NOTE_CONTEXT_MAX_NOTE_CHARS,
+      maxTotalChars: GHOSTWRITER_NOTE_CONTEXT_MAX_TOTAL_CHARS,
+      getId: (note) => note.id,
+      getContentLength: (note) => note.content.trim().length,
+    }).estimatedTokens +
+    estimateSelectedContextTokens({
+      items: documents,
+      selectedIds: selectedDocumentIds,
+      maxItemChars: GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS,
+      maxTotalChars: GHOSTWRITER_DOCUMENT_CONTEXT_MAX_TOTAL_CHARS,
+      getId: (document) => document.id,
+      getContentLength: (document) => document.byteSize,
+      filterItem: canUseDocumentForGhostwriter,
+    }).estimatedTokens +
+    estimateSelectedContextTokens({
+      items: emails,
+      selectedIds: selectedEmailIds,
+      maxItemChars: GHOSTWRITER_EMAIL_CONTEXT_MAX_SNIPPET_CHARS,
+      maxTotalChars: GHOSTWRITER_EMAIL_CONTEXT_MAX_TOTAL_CHARS,
+      getId: (email) => email.message.id,
+      getContentLength: (email) => email.message.snippet.trim().length,
+    }).estimatedTokens;
   const triggerLabel =
     selectedCount > 0 ? `${selectedCount} context` : "Context";
 
@@ -297,11 +378,18 @@ export const GhostwriterContextSelector: React.FC<
         <div className="border-b px-3 py-2.5">
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm font-medium">Ghostwriter context</div>
-            {selectedCount > 0 && (
-              <Badge variant="secondary" className="text-[10px]">
-                {selectedCount} selected
-              </Badge>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {estimatedContextTokens > 0 && (
+                <Badge variant="outline" className="text-[10px]">
+                  ≈{formatTokenEstimate(estimatedContextTokens)} tokens
+                </Badge>
+              )}
+              {selectedCount > 0 && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {selectedCount} selected
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 

@@ -123,6 +123,39 @@ describe("GhostwriterContextSelector", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows estimated token counts for selected context", () => {
+    renderSelector({
+      notes: [
+        makeNote({
+          id: "note-1",
+          content: "A".repeat(400),
+        }),
+      ],
+      documents: [
+        makeDocument({
+          id: "doc-1",
+          byteSize: 800,
+        }),
+      ],
+      emails: [
+        makeEmail({
+          id: "email-1",
+          snippet: "A".repeat(200),
+        }),
+      ],
+      selectedNoteIds: ["note-1"],
+      selectedEmailIds: ["email-1"],
+      selectedDocumentIds: ["doc-1"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /3 context/i }));
+
+    expect(screen.getByText("≈350 tokens")).toBeInTheDocument();
+    expect(screen.getByText("≈100 tokens")).toBeInTheDocument();
+    expect(screen.getByText("≈200 tokens")).toBeInTheDocument();
+    expect(screen.getByText("≈50 tokens")).toBeInTheDocument();
+  });
+
   it("shows independent limits and trimming feedback per group", () => {
     const selectedNoteIds = Array.from(
       { length: 8 },
@@ -182,5 +215,25 @@ describe("GhostwriterContextSelector", () => {
 
     expect(screen.getByLabelText(/archive.zip/)).toBeDisabled();
     expect(screen.getByText("PDF or text-like files only")).toBeInTheDocument();
+  });
+
+  it("allows DOCX documents", () => {
+    const onDocumentsChange = vi.fn();
+    renderSelector({
+      documents: [
+        makeDocument({
+          id: "doc-docx",
+          fileName: "interview-pack.docx",
+          mediaType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }),
+      ],
+      onDocumentsChange,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /context/i }));
+    fireEvent.click(screen.getByLabelText(/interview-pack.docx/));
+
+    expect(onDocumentsChange).toHaveBeenCalledWith(["doc-docx"]);
   });
 });

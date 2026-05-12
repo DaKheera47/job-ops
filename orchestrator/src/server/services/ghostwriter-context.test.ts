@@ -1,5 +1,6 @@
 import type { AppError } from "@infra/errors";
 import { createJob } from "@shared/testing/factories";
+import JSZip from "jszip";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
 
@@ -434,6 +435,56 @@ describe("buildJobChatPromptContext", () => {
     );
     expect(context.selectedDocumentsSnapshot).not.toContain("skip.txt");
     expect(context.selectedDocumentsSnapshot).not.toContain("A".repeat(6001));
+  });
+
+  it("extracts DOCX documents for selected job document context", async () => {
+    const job = createJob({ id: "job-ctx-docx" });
+    const zip = new JSZip();
+    zip.file(
+      "word/document.xml",
+      `
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p><w:r><w:t>Interview pack</w:t></w:r></w:p>
+            <w:p><w:r><w:t>Discuss reliability &amp; incident response.</w:t></w:r></w:p>
+          </w:body>
+        </w:document>
+      `,
+    );
+
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(listJobDocumentsByIds).mockResolvedValue([
+      {
+        id: "doc-docx",
+        jobId: job.id,
+        fileName: "interview-pack.docx",
+        mediaType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        byteSize: 2048,
+        storagePath: "/tmp/interview-pack.docx",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    mocks.readFile.mockResolvedValue(
+      await zip.generateAsync({ type: "nodebuffer" }),
+    );
+
+    const context = await buildJobChatPromptContext(
+      job.id,
+      [],
+      [],
+      ["doc-docx"],
+    );
+
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Document 1: interview-pack.docx",
+    );
+    expect(context.selectedDocumentsSnapshot).toContain("Interview pack");
+    expect(context.selectedDocumentsSnapshot).toContain(
+      "Discuss reliability & incident response.",
+    );
   });
 
   it("throws not found for unknown job", async () => {
