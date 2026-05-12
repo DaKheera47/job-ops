@@ -1,4 +1,4 @@
-import { LlmModelConfiguration } from "@client/components/LlmModelConfiguration";
+import { LlmModelConfiguration } from "@client/components/llmmodelconfiguration/LlmModelConfiguration";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { ModelValues } from "@client/pages/settings/types";
 import {

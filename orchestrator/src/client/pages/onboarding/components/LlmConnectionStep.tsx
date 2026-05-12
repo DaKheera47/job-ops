@@ -1,4 +1,4 @@
-import { LlmModelConfiguration } from "@client/components/LlmModelConfiguration";
+import { LlmModelConfiguration } from "@client/components/llmmodelconfiguration/LlmModelConfiguration";
 import {
   getLlmProviderConfig,
   type LlmProviderId,
