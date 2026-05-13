@@ -11,7 +11,7 @@ import type {
 } from "@shared/types";
 import { Check, Sparkles, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,10 @@ type PendingSuggestion = {
   messageId: string;
   value: FieldValue;
   valueType: DesignResumeAiFieldValueType;
+};
+
+type FieldAssistantMessage = AiAssistMessage & {
+  suggestion?: PendingSuggestion;
 };
 
 type DesignResumeFieldAssistantProps = {
@@ -47,14 +51,50 @@ function isEmptyValue(value: FieldValue): boolean {
   return value.replace(/<[^>]*>/g, "").trim().length === 0;
 }
 
-function formatSuggestion(value: FieldValue): string {
-  return Array.isArray(value) ? value.join(", ") : value;
+function renderResumeHtmlNodes(value: string): React.ReactNode {
+  if (typeof document === "undefined") return value;
+
+  const template = document.createElement("template");
+  template.innerHTML = value;
+
+  const renderNode = (node: Node, key: string): React.ReactNode => {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
+
+    const element = node as HTMLElement;
+    const children = Array.from(element.childNodes).map((child, index) =>
+      renderNode(child, `${key}-${index}`),
+    );
+
+    switch (element.tagName) {
+      case "P":
+        return <p key={key}>{children}</p>;
+      case "UL":
+        return <ul key={key}>{children}</ul>;
+      case "OL":
+        return <ol key={key}>{children}</ol>;
+      case "LI":
+        return <li key={key}>{children}</li>;
+      case "STRONG":
+        return <strong key={key}>{children}</strong>;
+      case "EM":
+        return <em key={key}>{children}</em>;
+      case "BR":
+        return <br key={key} />;
+      default:
+        return <Fragment key={key}>{children}</Fragment>;
+    }
+  };
+
+  return Array.from(template.content.childNodes).map((node, index) =>
+    renderNode(node, String(index)),
+  );
 }
 
 function makeMessage(
   role: AiAssistMessage["role"],
   content: string,
-): AiAssistMessage {
+): FieldAssistantMessage {
   return {
     id: `${role}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     role,
@@ -62,6 +102,42 @@ function makeMessage(
     status: "complete",
     attachments: [],
   };
+}
+
+function SuggestionPreview({ suggestion }: { suggestion: PendingSuggestion }) {
+  const previewClassName =
+    "mt-3 rounded-md border border-border/60 bg-muted/20 p-3 text-sm leading-relaxed text-foreground";
+
+  if (suggestion.valueType === "html" && typeof suggestion.value === "string") {
+    return (
+      <div
+        className={`${previewClassName} [&_em]:italic [&_li]:my-1 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-2 [&_strong]:font-semibold [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5`}
+      >
+        {renderResumeHtmlNodes(suggestion.value)}
+      </div>
+    );
+  }
+
+  if (
+    suggestion.valueType === "string_list" &&
+    Array.isArray(suggestion.value)
+  ) {
+    return (
+      <ul className={`${previewClassName} list-disc space-y-1 pl-7`}>
+        {suggestion.value.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <div className={`${previewClassName} whitespace-pre-wrap`}>
+      {Array.isArray(suggestion.value)
+        ? suggestion.value.join(", ")
+        : suggestion.value}
+    </div>
+  );
 }
 
 export const DesignResumeFieldAssistant: React.FC<
@@ -78,7 +154,7 @@ export const DesignResumeFieldAssistant: React.FC<
   onApply,
 }) => {
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<AiAssistMessage[]>([]);
+  const [messages, setMessages] = useState<FieldAssistantMessage[]>([]);
   const [pendingSuggestion, setPendingSuggestion] =
     useState<PendingSuggestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -131,10 +207,13 @@ export const DesignResumeFieldAssistant: React.FC<
         signal: controller.signal,
       });
 
-      const assistantMessage = makeMessage(
-        "assistant",
-        `${result.message}\n\n${formatSuggestion(result.suggestion)}`,
-      );
+      const assistantMessage = makeMessage("assistant", result.message);
+      const suggestion = {
+        messageId: assistantMessage.id,
+        value: result.suggestion,
+        valueType: result.valueType,
+      };
+      assistantMessage.suggestion = suggestion;
       setMessages((current) => [...current, assistantMessage]);
 
       if (wasEmptyAtStart && isEmptyValue(currentValueRef.current)) {
@@ -143,11 +222,7 @@ export const DesignResumeFieldAssistant: React.FC<
         return;
       }
 
-      setPendingSuggestion({
-        messageId: assistantMessage.id,
-        value: result.suggestion,
-        valueType: result.valueType,
-      });
+      setPendingSuggestion(suggestion);
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return;
       showErrorToast(error, "AI field edit failed");
@@ -231,20 +306,30 @@ export const DesignResumeFieldAssistant: React.FC<
               isStreaming={isGenerating}
               streamingMessageId={null}
               assistantLabel="Resume AI"
-              renderAssistantActions={(message) =>
-                pendingSuggestion?.messageId === message.id ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    onClick={() => applySuggestion(pendingSuggestion)}
-                  >
-                    <Check className="mr-2 h-3.5 w-3.5" />
-                    Apply
-                  </Button>
-                ) : null
-              }
+              renderAssistantActions={(message) => {
+                const isPending = pendingSuggestion?.messageId === message.id;
+                if (!message.suggestion && !isPending) return null;
+
+                return (
+                  <div className="space-y-2">
+                    {message.suggestion ? (
+                      <SuggestionPreview suggestion={message.suggestion} />
+                    ) : null}
+                    {isPending ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => applySuggestion(pendingSuggestion)}
+                      >
+                        <Check className="mr-2 h-3.5 w-3.5" />
+                        Apply
+                      </Button>
+                    ) : null}
+                  </div>
+                );
+              }}
             />
           </div>
         ) : null}
