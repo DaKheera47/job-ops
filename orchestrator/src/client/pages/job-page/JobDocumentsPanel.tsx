@@ -24,8 +24,8 @@ import {
   canPreviewJobDocumentAsObject,
   canPreviewJobDocumentAsText,
   formatJobDocumentByteSize,
-  isJobDocumentImage,
   isJobDocumentPdf,
+  isJobDocumentSafeInlineImage,
   isJobDocumentTextLike,
 } from "@/client/lib/job-documents";
 import {
@@ -69,7 +69,7 @@ function DocumentIcon({
   if (isJobDocumentPdf(document) || isJobDocumentTextLike(document)) {
     return <FileText className="h-3.5 w-3.5 text-sky-400/80" />;
   }
-  if (isJobDocumentImage(document)) {
+  if (isJobDocumentSafeInlineImage(document)) {
     return <ImageIcon className="h-3.5 w-3.5 text-emerald-400/80" />;
   }
   return <File className="h-3.5 w-3.5 text-muted-foreground" />;
@@ -131,7 +131,7 @@ const DocumentPreview: React.FC<{
   }
 
   if (canPreviewAsObject && objectUrl) {
-    return isJobDocumentImage(document) ? (
+    return isJobDocumentSafeInlineImage(document) ? (
       <div className="max-h-[560px] overflow-auto rounded-md border border-border/50 bg-background/40 p-3">
         <img
           src={objectUrl}
@@ -418,9 +418,8 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
                       size="sm"
                       variant="ghost"
                       onClick={() =>
-                        void openJobDocument(job.id, document.id).catch(
-                          (error) =>
-                            showErrorToast(error, "Could not open document"),
+                        void openJobDocument(job.id, document).catch((error) =>
+                          showErrorToast(error, "Could not open document"),
                         )
                       }
                     >

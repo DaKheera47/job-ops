@@ -1,4 +1,8 @@
 import * as api from "@/client/api";
+import {
+  canOpenJobDocumentInline,
+  type JobDocumentTypeTarget,
+} from "@/client/lib/job-documents";
 
 function openBlob(blob: Blob, filename?: string): void {
   const url = URL.createObjectURL(blob);
@@ -36,9 +40,16 @@ export async function createJobPdfObjectUrl(jobId: string): Promise<string> {
 
 export async function openJobDocument(
   jobId: string,
-  documentId: string,
+  document: JobDocumentTypeTarget & { id: string },
 ): Promise<void> {
-  openBlob(await api.getJobDocumentBlob(jobId, documentId));
+  if (!canOpenJobDocumentInline(document)) {
+    openBlob(
+      await api.getJobDocumentBlob(jobId, document.id),
+      document.fileName,
+    );
+    return;
+  }
+  openBlob(await api.getJobDocumentBlob(jobId, document.id));
 }
 
 export async function downloadJobDocument(

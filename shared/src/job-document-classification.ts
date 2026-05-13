@@ -26,6 +26,31 @@ const TEXT_DOCUMENT_MEDIA_TYPES = new Set([
   "text/tab-separated-values",
 ]);
 
+const RAW_TEXT_PREVIEW_EXTENSIONS = new Set(
+  [...TEXT_DOCUMENT_EXTENSIONS].filter((extension) => extension !== "docx"),
+);
+
+const RAW_TEXT_PREVIEW_MEDIA_TYPES = new Set(
+  [...TEXT_DOCUMENT_MEDIA_TYPES].filter((mediaType) => mediaType !== DOCX_MIME),
+);
+
+const SAFE_INLINE_IMAGE_MEDIA_TYPES = new Set([
+  "image/avif",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
+
+const SAFE_INLINE_IMAGE_EXTENSIONS_TO_MEDIA_TYPE = new Map([
+  ["avif", "image/avif"],
+  ["gif", "image/gif"],
+  ["jpeg", "image/jpeg"],
+  ["jpg", "image/jpeg"],
+  ["png", "image/png"],
+  ["webp", "image/webp"],
+]);
+
 export type JobDocumentTypeTarget = Pick<JobDocument, "fileName" | "mediaType">;
 
 export function getJobDocumentFileExtension(fileName: string): string {
@@ -51,6 +76,24 @@ export function isJobDocumentImage(document: JobDocumentTypeTarget): boolean {
   return Boolean(document.mediaType?.toLowerCase().startsWith("image/"));
 }
 
+export function getSafeInlineJobDocumentImageMediaType(
+  document: JobDocumentTypeTarget,
+): string | null {
+  const mediaType = document.mediaType?.toLowerCase() ?? "";
+  if (SAFE_INLINE_IMAGE_MEDIA_TYPES.has(mediaType)) return mediaType;
+  return (
+    SAFE_INLINE_IMAGE_EXTENSIONS_TO_MEDIA_TYPE.get(
+      getJobDocumentFileExtension(document.fileName),
+    ) ?? null
+  );
+}
+
+export function isJobDocumentSafeInlineImage(
+  document: JobDocumentTypeTarget,
+): boolean {
+  return Boolean(getSafeInlineJobDocumentImageMediaType(document));
+}
+
 export function isJobDocumentTextLike(
   document: JobDocumentTypeTarget,
 ): boolean {
@@ -66,4 +109,32 @@ export function canUseJobDocumentForTextContext(
   document: JobDocumentTypeTarget,
 ): boolean {
   return isJobDocumentPdf(document) || isJobDocumentTextLike(document);
+}
+
+export function canPreviewJobDocumentAsRawText(
+  document: JobDocumentTypeTarget,
+): boolean {
+  const mediaType = document.mediaType?.toLowerCase() ?? "";
+  return (
+    RAW_TEXT_PREVIEW_MEDIA_TYPES.has(mediaType) ||
+    RAW_TEXT_PREVIEW_EXTENSIONS.has(
+      getJobDocumentFileExtension(document.fileName),
+    )
+  );
+}
+
+export function getSafeInlineJobDocumentMediaType(
+  document: JobDocumentTypeTarget,
+): string | null {
+  if (isJobDocumentPdf(document)) return "application/pdf";
+  const imageMediaType = getSafeInlineJobDocumentImageMediaType(document);
+  if (imageMediaType) return imageMediaType;
+  if (canPreviewJobDocumentAsRawText(document)) return "text/plain";
+  return null;
+}
+
+export function canOpenJobDocumentInline(
+  document: JobDocumentTypeTarget,
+): boolean {
+  return Boolean(getSafeInlineJobDocumentMediaType(document));
 }

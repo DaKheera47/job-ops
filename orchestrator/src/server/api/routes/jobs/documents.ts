@@ -16,6 +16,7 @@ import {
   storeJobDocument,
 } from "@server/services/job-document-storage";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
+import { getSafeInlineJobDocumentMediaType } from "@shared/job-document-classification.js";
 import { type Request, type Response, Router } from "express";
 import {
   appErrorFromPipelineFailure,
@@ -31,6 +32,41 @@ export const jobsDocumentsRouter = Router();
 
 const tailoringGenerateFields = ["summary", "headline", "skills"] as const;
 type TailoringGenerateField = (typeof tailoringGenerateFields)[number];
+
+function contentDispositionAttachment(fileName: string): string {
+  const fallbackFileName =
+    fileName
+      .replace(/["\\\r\n]/g, "_")
+      .replace(/[^\x20-\x7E]/g, "_")
+      .trim() || "document";
+  return `attachment; filename="${fallbackFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+function setJobDocumentContentHeaders(
+  res: Response,
+  document: { fileName: string; mediaType: string | null },
+): void {
+  const safeInlineMediaType = getSafeInlineJobDocumentMediaType(document);
+
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  if (!safeInlineMediaType) {
+    res.setHeader(
+      "Content-Disposition",
+      contentDispositionAttachment(document.fileName),
+    );
+    res.type("application/octet-stream");
+    return;
+  }
+
+  res.setHeader("Content-Disposition", "inline");
+  if (safeInlineMediaType === "text/plain") {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    return;
+  }
+  res.type(safeInlineMediaType);
+}
 
 const parseTailoringGenerateFields = (
   raw: string | undefined,
@@ -257,11 +293,7 @@ jobsDocumentsRouter.get(
         });
       }
 
-      res.setHeader("Cache-Control", "no-store");
-      res.setHeader("X-Content-Type-Options", "nosniff");
-      if (document.mediaType) {
-        res.type(document.mediaType);
-      }
+      setJobDocumentContentHeaders(res, document);
       res.sendFile(document.storagePath, (error) => {
         if (error && !res.headersSent) {
           fail(

@@ -722,6 +722,8 @@ describe.sequential("Jobs API routes", () => {
     );
     expect(contentRes.status).toBe(200);
     expect(contentRes.headers.get("cache-control")).toBe("no-store");
+    expect(contentRes.headers.get("content-disposition")).toBe("inline");
+    expect(contentRes.headers.get("content-type")).toMatch(/^text\/plain/);
     expect(content).toBe("cover letter draft");
 
     const deleteRes = await fetch(
@@ -735,6 +737,41 @@ describe.sequential("Jobs API routes", () => {
     const emptyListRes = await fetch(`${baseUrl}/api/jobs/${job.id}/documents`);
     const emptyListBody = await emptyListRes.json();
     expect(emptyListBody.data).toEqual([]);
+  });
+
+  it("serves unsafe uploaded document types as attachments", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Unsafe Document Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/unsafe-document",
+      jobDescription: "Unsafe document description",
+    });
+
+    const uploadRes = await fetch(`${baseUrl}/api/jobs/${job.id}/documents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fileName: "payload.html",
+        mediaType: "text/html",
+        dataBase64: Buffer.from("<script>alert(1)</script>").toString("base64"),
+      }),
+    });
+    const uploadBody = await uploadRes.json();
+
+    const contentRes = await fetch(
+      `${baseUrl}/api/jobs/${job.id}/documents/${uploadBody.data.id}/content`,
+    );
+
+    expect(contentRes.status).toBe(200);
+    expect(contentRes.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(contentRes.headers.get("content-type")).toMatch(
+      /^application\/octet-stream/,
+    );
+    expect(contentRes.headers.get("content-disposition")).toContain(
+      "attachment",
+    );
   });
 
   it("rejects uploaded job documents with invalid base64", async () => {

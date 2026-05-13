@@ -21,9 +21,8 @@ import type {
 import { ChevronDown, FileText, Info, Mail, Paperclip } from "lucide-react";
 import type React from "react";
 import {
+  canUseJobDocumentForTextContext,
   formatJobDocumentByteSize,
-  isJobDocumentPdf,
-  isJobDocumentTextLike,
 } from "@/client/lib/job-documents";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +68,7 @@ type ContextGroupProps<TItem> = {
   maxSelected: number;
   maxItemChars: number;
   maxTotalChars: number;
+  showTokenEstimate?: boolean;
   disabled?: boolean;
   isLoading?: boolean;
   isSaving?: boolean;
@@ -146,7 +146,7 @@ function getEmailMeta(email: PostApplicationJobEmailItem): string {
 }
 
 function canUseDocumentForGhostwriter(document: JobDocument): boolean {
-  return isJobDocumentPdf(document) || isJobDocumentTextLike(document);
+  return canUseJobDocumentForTextContext(document);
 }
 
 function getDocumentMeta(document: JobDocument): string {
@@ -168,6 +168,7 @@ function ContextGroup<TItem>({
   maxSelected,
   maxItemChars,
   maxTotalChars,
+  showTokenEstimate = true,
   disabled,
   isLoading,
   isSaving,
@@ -179,16 +180,18 @@ function ContextGroup<TItem>({
   getUnavailableReason,
   onChange,
 }: ContextGroupProps<TItem>) {
-  const { selectedContentChars, estimatedTokens } =
-    estimateSelectedContextTokens({
-      items,
-      selectedIds,
-      maxItemChars,
-      maxTotalChars,
-      getId,
-      getContentLength,
-    });
-  const hasTotalOverflow = selectedContentChars > maxTotalChars;
+  const { selectedContentChars, estimatedTokens } = showTokenEstimate
+    ? estimateSelectedContextTokens({
+        items,
+        selectedIds,
+        maxItemChars,
+        maxTotalChars,
+        getId,
+        getContentLength,
+      })
+    : { selectedContentChars: 0, estimatedTokens: 0 };
+  const hasTotalOverflow =
+    showTokenEstimate && selectedContentChars > maxTotalChars;
   const isAtSelectionLimit = selectedIds.length >= maxSelected;
 
   const toggleItem = (itemId: string) => {
@@ -235,7 +238,8 @@ function ContextGroup<TItem>({
           items.map((item) => {
             const itemId = getId(item);
             const isSelected = selectedIds.includes(itemId);
-            const isTrimmed = getContentLength(item) > maxItemChars;
+            const isTrimmed =
+              showTokenEstimate && getContentLength(item) > maxItemChars;
             const unavailableReason = getUnavailableReason?.(item) ?? null;
             const isUnavailable =
               !isSelected && (isAtSelectionLimit || Boolean(unavailableReason));
@@ -337,15 +341,6 @@ export const GhostwriterContextSelector: React.FC<
       getContentLength: (note) => note.content.trim().length,
     }).estimatedTokens +
     estimateSelectedContextTokens({
-      items: documents,
-      selectedIds: selectedDocumentIds,
-      maxItemChars: GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS,
-      maxTotalChars: GHOSTWRITER_DOCUMENT_CONTEXT_MAX_TOTAL_CHARS,
-      getId: (document) => document.id,
-      getContentLength: (document) => document.byteSize,
-      filterItem: canUseDocumentForGhostwriter,
-    }).estimatedTokens +
-    estimateSelectedContextTokens({
       items: emails,
       selectedIds: selectedEmailIds,
       maxItemChars: GHOSTWRITER_EMAIL_CONTEXT_MAX_SNIPPET_CHARS,
@@ -435,13 +430,14 @@ export const GhostwriterContextSelector: React.FC<
             maxSelected={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_SELECTED}
             maxItemChars={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_DOCUMENT_CHARS}
             maxTotalChars={GHOSTWRITER_DOCUMENT_CONTEXT_MAX_TOTAL_CHARS}
+            showTokenEstimate={false}
             disabled={disabled}
             isLoading={areDocumentsLoading}
             isSaving={isSaving}
             getId={(document) => document.id}
             getTitle={(document) => document.fileName}
             getMeta={getDocumentMeta}
-            getContentLength={(document) => document.byteSize}
+            getContentLength={() => 0}
             getCheckboxId={(document) =>
               `ghostwriter-document-context-${document.id}`
             }

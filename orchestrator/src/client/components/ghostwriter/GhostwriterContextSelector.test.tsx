@@ -150,10 +150,30 @@ describe("GhostwriterContextSelector", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /3 context/i }));
 
-    expect(screen.getByText("≈350 tokens")).toBeInTheDocument();
+    expect(screen.getByText("≈150 tokens")).toBeInTheDocument();
     expect(screen.getByText("≈100 tokens")).toBeInTheDocument();
-    expect(screen.getByText("≈200 tokens")).toBeInTheDocument();
     expect(screen.getByText("≈50 tokens")).toBeInTheDocument();
+    expect(screen.queryByText("≈200 tokens")).not.toBeInTheDocument();
+  });
+
+  it("does not show document byte sizes as token estimates or trim badges", () => {
+    renderSelector({
+      documents: [
+        makeDocument({
+          id: "doc-1",
+          fileName: "large-brief.pdf",
+          mediaType: "application/pdf",
+          byteSize: 500_000,
+        }),
+      ],
+      selectedDocumentIds: ["doc-1"],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /1 context/i }));
+
+    expect(screen.queryByText(/tokens/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Trimmed for AI")).not.toBeInTheDocument();
+    expect(screen.getByText(/488.3 KB/)).toBeInTheDocument();
   });
 
   it("shows independent limits and trimming feedback per group", () => {
