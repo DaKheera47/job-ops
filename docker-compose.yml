@@ -73,6 +73,9 @@ services:
         - path: ./extractors/naukri
           target: /app/extractors/naukri
           action: sync+restart
+        - path: ./extractors/wazzuf
+          target: /app/extractors/wazzuf
+          action: sync+restart
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
