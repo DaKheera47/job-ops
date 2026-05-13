@@ -151,7 +151,7 @@ const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
   {
     id: "summary",
     label: "Summary",
-    description: "Short intro shown near the top of your resume.",
+    description: "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
     searchTerms: ["intro", "profile", "overview"],
   },
   {
@@ -195,7 +195,7 @@ const DESIGN_RESUME_ICON_GROUPS: DesignResumeNavGroup[] = [
       {
         id: "summary",
         label: "Summary",
-        description: "Short intro shown near the top of your resume.",
+        description: "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
         icon: FileText,
       },
       {
