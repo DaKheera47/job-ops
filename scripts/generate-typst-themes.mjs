@@ -157,12 +157,17 @@ function buildGeneratedSource(manifests) {
     manifests.map((manifest) => [manifest.id, manifest.kind]),
   );
   const formatArray = (items) =>
-    `[${items.map((item) => JSON.stringify(item)).join(", ")}]`;
+    `[\n${items.map((item) => `  ${JSON.stringify(item)},`).join("\n")}\n]`;
   const formatKey = (key) =>
     /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key);
   const formatRecord = (record) => {
     const entries = Object.entries(record)
-      .map(([key, value]) => `  ${formatKey(key)}: ${JSON.stringify(value)},`)
+      .map(([key, value]) => {
+        const keyText = formatKey(key);
+        const valueText = JSON.stringify(value);
+        const line = `  ${keyText}: ${valueText},`;
+        return line.length > 80 ? `  ${keyText}:\n    ${valueText},` : line;
+      })
       .join("\n");
     return `{\n${entries}\n}`;
   };

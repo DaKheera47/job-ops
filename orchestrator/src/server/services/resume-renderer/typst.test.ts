@@ -16,6 +16,8 @@ import {
   type TypstThemeTokens,
 } from "./typst";
 
+const nativeThemes = new Set(["classic", "compact"]);
+
 const baseDocument: LatexResumeDocument = {
   name: "Jane Doe",
   headline: "Senior Software Engineer",
@@ -87,7 +89,12 @@ describe("typst resume renderer", () => {
       const manifest = await readTypstThemeManifest(theme);
       expect(manifest.id).toBe(theme);
       expect(manifest.entrypoint).toBe("main.typ");
-      expect(manifest.kind).toBe("native");
+      expect(["native", "adapted"]).toContain(manifest.kind);
+      if (nativeThemes.has(theme)) {
+        expect(manifest.tokens).toBeDefined();
+      } else {
+        expect(manifest.tokens).toBeUndefined();
+      }
       expect(getTypstTemplatePath(theme)).toContain(
         `typst-themes/${theme}/main.typ`,
       );

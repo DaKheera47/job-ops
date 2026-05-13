@@ -1,0 +1,7 @@
+{
+  "id": "clean-print-cv",
+  "label": "Clean Print CV",
+  "description": "A print-friendly adapted theme powered by @preview/clean-print-cv.",
+  "kind": "adapted",
+  "entrypoint": "main.typ"
+}
