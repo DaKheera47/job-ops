@@ -1,3 +1,4 @@
+import { resolveSearchCities } from "job-ops-shared/search-cities";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
@@ -36,22 +37,25 @@ export const manifest: ExtractorManifest = {
   id: "upwork",
   displayName: "Upwork",
   providesSources: ["upwork"],
+  requiredEnvVars: ["APIFY_TOKEN"],
   async run(context) {
     if (context.shouldCancel?.()) {
       return { success: true, jobs: [] };
     }
 
-    const parsedMaxJobsPerTerm = context.settings.upworkMaxJobsPerTerm
-      ? Number.parseInt(context.settings.upworkMaxJobsPerTerm, 10)
-      : context.settings.jobspyResultsWanted
-        ? Number.parseInt(context.settings.jobspyResultsWanted, 10)
-        : Number.NaN;
+    const maxJobsPerTerm = context.settings.upworkMaxJobsPerTerm
+      ? parseInt(context.settings.upworkMaxJobsPerTerm, 10)
+      : 50;
+
+    const cities = resolveSearchCities({
+      single: context.settings.searchCities ?? context.settings.jobspyLocation,
+    });
+    const location = cities[0] ?? context.selectedCountry;
 
     const result = await runUpwork({
       searchTerms: context.searchTerms,
-      maxJobsPerTerm: Number.isFinite(parsedMaxJobsPerTerm)
-        ? parsedMaxJobsPerTerm
-        : undefined,
+      location,
+      maxJobsPerTerm,
       shouldCancel: context.shouldCancel,
       onProgress: (event) => {
         if (context.shouldCancel?.()) return;

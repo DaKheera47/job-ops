@@ -1,82 +1,84 @@
 import { describe, expect, it, vi } from "vitest";
-import { buildUpworkRssUrl } from "../src/fetcher";
+import {
+  buildUpworkApifyInput,
+  DEFAULT_UPWORK_APIFY_ACTOR_ID,
+} from "../src/fetcher";
 import { runUpwork } from "../src/run";
+import type { UpworkApifyClient, UpworkApifyItem } from "../src/types";
 
-function createTextResponse(
-  body: string,
-  init: Partial<Response> = {},
-): Response {
+function createApifyClient(items: UpworkApifyItem[] = []) {
+  const call = vi.fn().mockResolvedValue({ defaultDatasetId: "dataset-id" });
+  const listItems = vi.fn().mockResolvedValue({ items });
+  const actor = vi.fn().mockReturnValue({ call });
+  const dataset = vi.fn().mockReturnValue({ listItems });
+
   return {
-    ok: init.ok ?? true,
-    status: init.status ?? 200,
-    statusText: init.statusText ?? "OK",
-    text: async () => body,
-  } as Response;
+    client: { actor, dataset } as UpworkApifyClient,
+    actor,
+    call,
+    dataset,
+    listItems,
+  };
 }
 
 describe("runUpwork", () => {
-  it("fetches one RSS URL per term and returns parsed jobs", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      createTextResponse(`
-        <rss>
-          <channel>
-            <item>
-              <title>Backend Engineer</title>
-              <link>https://www.upwork.com/jobs/~backend</link>
-              <description>Budget: $300 Posted On: today</description>
-            </item>
-          </channel>
-        </rss>
-      `),
-    );
+  it("calls the Apify actor once per term and returns parsed jobs", async () => {
+    const apify = createApifyClient([
+      {
+        id: "backend",
+        title: "Backend Engineer",
+        url: "https://www.upwork.com/jobs/~backend",
+        budget: { amount: 300, currency: "USD" },
+      },
+    ]);
 
     const result = await runUpwork({
       searchTerms: ["backend engineer"],
-      fetchImpl: fetchMock,
+      location: "United States",
+      maxJobsPerTerm: 10,
+      apifyClient: apify.client,
     });
 
     expect(result.success).toBe(true);
     expect(result.jobs).toHaveLength(1);
-    expect(fetchMock).toHaveBeenCalledWith(
-      buildUpworkRssUrl("backend engineer", 10),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
-        }),
+    expect(apify.actor).toHaveBeenCalledWith(DEFAULT_UPWORK_APIFY_ACTOR_ID);
+    expect(apify.call).toHaveBeenCalledWith(
+      buildUpworkApifyInput({
+        query: "backend engineer",
+        location: "United States",
+        maxJobsPerTerm: 10,
       }),
     );
+    expect(apify.dataset).toHaveBeenCalledWith("dataset-id");
+    expect(apify.listItems).toHaveBeenCalledWith({ limit: 10 });
   });
 
-  it("returns a descriptive error when RSS probing fails", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      createTextResponse("", {
-        ok: false,
-        status: 410,
-        statusText: "Gone",
-      }),
-    );
+  it("returns a descriptive error when the Apify actor fails", async () => {
+    const apify = createApifyClient();
+    apify.call.mockRejectedValue(new Error("Actor call failed with 429"));
 
     const result = await runUpwork({
       searchTerms: ["backend"],
-      fetchImpl: fetchMock,
+      apifyClient: apify.client,
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("410 Gone");
-    expect(result.error).toContain("https://www.upwork.com/ab/feed/jobs/rss");
+    expect(result.error).toContain(DEFAULT_UPWORK_APIFY_ACTOR_ID);
+    expect(result.error).toContain("backend");
+    expect(result.error).toContain("429");
   });
 
-  it("does not fetch when cancellation is already requested", async () => {
-    const fetchMock = vi.fn();
+  it("does not call Apify when cancellation is already requested", async () => {
+    const apify = createApifyClient();
 
     const result = await runUpwork({
       searchTerms: ["backend"],
-      fetchImpl: fetchMock,
+      apifyClient: apify.client,
       shouldCancel: () => true,
     });
 
     expect(result.success).toBe(true);
     expect(result.jobs).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(apify.actor).not.toHaveBeenCalled();
   });
 });

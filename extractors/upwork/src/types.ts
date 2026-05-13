@@ -1,17 +1,28 @@
-export interface UpworkRssItem {
-  title?: unknown;
-  link?: unknown;
-  pubDate?: unknown;
-  description?: unknown;
-  guid?: unknown;
+export interface UpworkApifyInput {
+  query: string;
+  location?: string[];
+  maxResults: number;
+  sort: "recency";
+  enrichDetails: false;
 }
 
-export interface UpworkRssPayload {
-  rss?: {
-    channel?: {
-      item?: UpworkRssItem | UpworkRssItem[];
-    };
-  };
+export type UpworkApifyItem = Record<string, unknown>;
+
+export interface UpworkApifyRun {
+  defaultDatasetId: string;
+}
+
+export interface UpworkApifyActor {
+  call(input: UpworkApifyInput): Promise<UpworkApifyRun>;
+}
+
+export interface UpworkApifyDataset {
+  listItems(options?: { limit?: number }): Promise<{ items: unknown[] }>;
+}
+
+export interface UpworkApifyClient {
+  actor(actorId: string): UpworkApifyActor;
+  dataset(datasetId: string): UpworkApifyDataset;
 }
 
 export type UpworkProgressEvent =
@@ -31,8 +42,10 @@ export type UpworkProgressEvent =
 
 export interface RunUpworkOptions {
   searchTerms?: string[];
+  location?: string;
   maxJobsPerTerm?: number;
-  fetchImpl?: typeof fetch;
+  actorId?: string;
+  apifyClient?: UpworkApifyClient;
   shouldCancel?: () => boolean;
   onProgress?: (event: UpworkProgressEvent) => void;
 }
