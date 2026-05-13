@@ -138,7 +138,8 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     key: "projects",
     title: "Projects",
     singularTitle: "Project",
-    description: "The projects JobOps will use for tailoring.",
+    description:
+      "The project pool JobOps can use during runtime tailoring. AI can choose allowed projects per job, but cannot invent projects or rewrite these baseline details.",
     primaryField: "name",
     secondaryField: "period",
     fields: [

@@ -1,4 +1,14 @@
-import type { DesignResumeDocument, DesignResumeJson } from "@shared/types";
+import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
+import { useSettings } from "@client/hooks/useSettings";
+import {
+  toggleAiSelectable,
+  toggleMustInclude,
+} from "@client/pages/settings/resume-projects-state";
+import type {
+  DesignResumeDocument,
+  DesignResumeJson,
+  ResumeProjectsSettings,
+} from "@shared/types";
 import { Accordion } from "@/components/ui/accordion";
 import {
   BasicsCustomFieldsSection,
@@ -9,10 +19,11 @@ import {
 import {
   DesignResumeListSection,
   DesignResumeListSectionContent,
+  type ProjectTailoringMode,
 } from "./DesignResumeListSection";
 import { DesignResumeSection } from "./DesignResumeSection";
 import { ITEM_DEFINITIONS, type ItemDefinition } from "./definitions";
-import { asArray, asRecord, setByPath } from "./utils";
+import { asArray, asRecord, setByPath, toBoolean, toText } from "./utils";
 
 type DesignResumeRailProps = {
   draft: DesignResumeDocument;
@@ -28,6 +39,101 @@ type DesignResumeRailProps = {
   activeSectionId?: string | null;
 };
 
+function normalizeResumeProjectsForDesignItems(
+  items: Record<string, unknown>[],
+  current: ResumeProjectsSettings | null | undefined,
+): ResumeProjectsSettings {
+  const allowedIds = items.map((item) => toText(item.id)).filter(Boolean);
+  const allowed = new Set(allowedIds);
+  const hasCurrentProjectIds = Boolean(
+    current &&
+      [...current.lockedProjectIds, ...current.aiSelectableProjectIds].some(
+        (id) => allowed.has(id),
+      ),
+  );
+  const defaultSettings: ResumeProjectsSettings = {
+    maxProjects:
+      items.length === 0
+        ? 0
+        : Math.min(
+            items.length,
+            Math.max(
+              3,
+              items.filter((item) => !toBoolean(item.hidden, false)).length,
+            ),
+          ),
+    lockedProjectIds: items
+      .filter((item) => !toBoolean(item.hidden, false))
+      .map((item) => toText(item.id))
+      .filter(Boolean),
+    aiSelectableProjectIds: items
+      .filter((item) => toBoolean(item.hidden, false))
+      .map((item) => toText(item.id))
+      .filter(Boolean),
+  };
+  const base: ResumeProjectsSettings =
+    hasCurrentProjectIds && current ? current : defaultSettings;
+
+  const lockedProjectIds = base.lockedProjectIds.filter((id) =>
+    allowed.has(id),
+  );
+  const locked = new Set(lockedProjectIds);
+  const aiSelectableProjectIds = base.aiSelectableProjectIds
+    .filter((id) => allowed.has(id))
+    .filter((id) => !locked.has(id));
+  const maxProjectsRaw = Number.isFinite(base.maxProjects)
+    ? base.maxProjects
+    : 0;
+  const maxProjects = Math.min(
+    items.length,
+    Math.max(lockedProjectIds.length, Math.floor(maxProjectsRaw)),
+  );
+
+  return { maxProjects, lockedProjectIds, aiSelectableProjectIds };
+}
+
+function getProjectTailoringMode(
+  settings: ResumeProjectsSettings,
+  projectId: string,
+): ProjectTailoringMode {
+  if (settings.lockedProjectIds.includes(projectId)) return "must-include";
+  if (settings.aiSelectableProjectIds.includes(projectId))
+    return "ai-selectable";
+  return "manual";
+}
+
+function setProjectTailoringMode(args: {
+  settings: ResumeProjectsSettings;
+  projectId: string;
+  mode: ProjectTailoringMode;
+  maxProjectsTotal: number;
+}): ResumeProjectsSettings {
+  const { settings, projectId, mode, maxProjectsTotal } = args;
+  const unlockedSettings = settings.lockedProjectIds.includes(projectId)
+    ? toggleMustInclude({
+        settings,
+        projectId,
+        checked: false,
+        maxProjectsTotal,
+      })
+    : settings;
+
+  if (mode === "must-include") {
+    return toggleMustInclude({
+      settings: unlockedSettings,
+      projectId,
+      checked: true,
+      maxProjectsTotal,
+    });
+  }
+
+  return toggleAiSelectable({
+    settings: unlockedSettings,
+    projectId,
+    checked: mode === "ai-selectable",
+  });
+}
+
 export function DesignResumeRail({
   draft,
   onUpdateResumeJson,
@@ -39,6 +145,8 @@ export function DesignResumeRail({
   pictureDisabledReason,
   activeSectionId = null,
 }: DesignResumeRailProps) {
+  const { settings } = useSettings();
+  const updateSettingsMutation = useUpdateSettingsMutation();
   const resumeJson = draft.resumeJson as Record<string, unknown>;
   const basics = (asRecord(resumeJson.basics) ?? {}) as Record<string, unknown>;
   const picture = (asRecord(resumeJson.picture) ?? {}) as Record<
@@ -158,6 +266,35 @@ export function DesignResumeRail({
       onEdit: (index: number) => onOpenDialog(definition, index),
       onUpdateItems: (nextItems: Record<string, unknown>[]) =>
         updateSectionItems(definition.key, nextItems),
+      projectPolicy:
+        definition.key === "projects"
+          ? {
+              getMode: (projectId: string) =>
+                getProjectTailoringMode(
+                  normalizeResumeProjectsForDesignItems(
+                    items,
+                    settings?.resumeProjects?.value ?? null,
+                  ),
+                  projectId,
+                ),
+              onModeChange: (projectId: string, mode: ProjectTailoringMode) => {
+                const current = normalizeResumeProjectsForDesignItems(
+                  items,
+                  settings?.resumeProjects?.value ?? null,
+                );
+                updateSettingsMutation.mutate({
+                  resumeProjects: setProjectTailoringMode({
+                    settings: current,
+                    projectId,
+                    mode,
+                    maxProjectsTotal: items.length,
+                  }),
+                });
+              },
+              disabled: !settings || updateSettingsMutation.isPending,
+              isSaving: updateSettingsMutation.isPending,
+            }
+          : undefined,
     };
   };
 
