@@ -1,6 +1,4 @@
 import {
-  ArrowDown,
-  ArrowUp,
   Bot,
   Eye,
   EyeOff,
@@ -81,13 +79,11 @@ type DesignResumeListItemCardProps = {
   definition: ItemDefinition;
   item: Record<string, unknown>;
   index: number;
-  itemCount: number;
   isDragging: boolean;
   isDragTarget: boolean;
   cardRef: (element: HTMLLIElement | null) => void;
   onEdit: (index: number) => void;
   onToggleHidden: (index: number) => void;
-  onMove: (fromIndex: number, toIndex: number) => void;
   onRemove: (index: number) => void;
   onDragStart: (event: DragEvent<HTMLButtonElement>, index: number) => void;
   onDragEnd: () => void;
@@ -116,29 +112,33 @@ const projectModeOptions: Array<{
   shortLabel: string;
   tooltip: string;
   icon: typeof EyeOff;
+  activeClassName: string;
 }> = [
   {
     mode: "manual",
-    label: "Never include",
-    shortLabel: "Never",
+    label: "Don't select",
+    shortLabel: "Don't select",
     tooltip:
-      "Do not show this project and do not let runtime tailoring select it.",
+      "Do not select this project, meaning it'll never show in tailored resumes",
     icon: EyeOff,
+    activeClassName: "border-border/70 bg-muted/55 text-muted-foreground",
   },
   {
     mode: "ai-selectable",
-    label: "Let AI choose",
-    shortLabel: "AI choose",
+    label: "AI can select",
+    shortLabel: "AI can select",
     tooltip:
-      "Keep it out of the baseline resume, but let runtime tailoring select it when it matches a job.",
+      "Let Job Tailoring select it when relevant to the job description",
     icon: Bot,
+    activeClassName: "border-sky-400/35 bg-sky-500/12 text-sky-300",
   },
   {
     mode: "must-include",
-    label: "Always include",
+    label: "Always selected",
     shortLabel: "Always",
-    tooltip: "Show this project and include it in every tailored resume.",
+    tooltip: "Always include this project in tailored resumes, regardless of the job description",
     icon: LockKeyhole,
+    activeClassName: "border-amber-200/35 bg-amber-300/12 text-amber-200",
   },
 ];
 
@@ -157,9 +157,8 @@ function ProjectTailoringModeControls({
 }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-muted-foreground">Include in resume?</span>
       <TooltipProvider delayDuration={150}>
-        <div className="inline-flex max-w-full rounded-md border border-border/50 bg-background/35 p-0.5">
+        <div className="flex max-w-full flex-wrap gap-1.5">
           {projectModeOptions.map((option) => {
             const Icon = option.icon;
             const active = selectedMode === option.mode;
@@ -173,10 +172,10 @@ function ProjectTailoringModeControls({
                     aria-label={`Set ${projectName} inclusion to ${option.label}`}
                     disabled={disabled}
                     className={cn(
-                      "inline-flex h-7 min-w-0 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      "inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                       active
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                        ? option.activeClassName
+                        : "border-border/45 bg-background/35 text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
                     )}
                     onClick={() => onModeChange(option.mode)}
                   >
@@ -205,13 +204,11 @@ function DesignResumeListItemCard({
   definition,
   item,
   index,
-  itemCount,
   isDragging,
   isDragTarget,
   cardRef,
   onEdit,
   onToggleHidden,
-  onMove,
   onRemove,
   onDragStart,
   onDragEnd,
@@ -241,6 +238,9 @@ function DesignResumeListItemCard({
         : isHidden
           ? "manual"
           : "must-include";
+  const shouldDimCard =
+    isHidden &&
+    (definition.key !== "projects" || projectSelectedMode === "manual");
   const showVisibilityPill = definition.key !== "projects";
   const showHideAction = definition.key !== "projects";
 
@@ -249,7 +249,7 @@ function DesignResumeListItemCard({
       ref={cardRef}
       className={cn(
         "group rounded-xl border border-border/60 bg-background/60 px-4 py-4 shadow-sm transition-[border-color,background-color,opacity] hover:border-border focus-within:opacity-100",
-        isHidden && "opacity-55 hover:opacity-100",
+        shouldDimCard && "opacity-55 hover:opacity-100",
         isDragging && "opacity-55",
         isDragTarget && "border-primary/50 bg-primary/5",
       )}
@@ -344,31 +344,6 @@ function DesignResumeListItemCard({
               <Button
                 type="button"
                 variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                disabled={index === 0}
-                aria-label={`Move ${primaryLabel} up`}
-                title="Move up"
-                onClick={() => onMove(index, index - 1)}
-              >
-                <ArrowUp className="h-4 w-4" />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                disabled={index === itemCount - 1}
-                aria-label={`Move ${primaryLabel} down`}
-                title="Move down"
-                onClick={() => onMove(index, index + 1)}
-              >
-                <ArrowDown className="h-4 w-4" />
-              </Button>
-              <div className="h-5 w-px bg-border/70" />
-              <Button
-                type="button"
-                variant="ghost"
                 className="h-8 gap-2 rounded-md px-2 text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 2xl:px-3"
                 onClick={() => onRemove(index)}
               >
@@ -424,11 +399,6 @@ export function DesignResumeListSectionContent({
       hidden: !toBoolean(nextItems[index].hidden, false),
     };
     onUpdateItems(nextItems);
-  };
-
-  const moveItem = (fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= items.length) return;
-    onUpdateItems(reorderItems(items, fromIndex, toIndex));
   };
 
   const updateProjectInclusionMode = (
@@ -510,8 +480,8 @@ export function DesignResumeListSectionContent({
           <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
             Choose how each project should be used when tailoring resumes:
             exclude it, let AI include it when relevant, or always include it.
-            The AI cannot invent projects or rewrite the bullet points in project's
-            detail.
+            The AI cannot invent projects or rewrite the bullet points in
+            project's detail.
           </div>
         ) : null}
 
@@ -528,7 +498,6 @@ export function DesignResumeListSectionContent({
                   definition={definition}
                   item={item}
                   index={index}
-                  itemCount={items.length}
                   isDragging={draggingIndex === index}
                   isDragTarget={
                     dragOverIndex === index && draggingIndex !== index
@@ -538,7 +507,6 @@ export function DesignResumeListSectionContent({
                   }}
                   onEdit={onEdit}
                   onToggleHidden={toggleItemHidden}
-                  onMove={moveItem}
                   onRemove={setPendingRemovalIndex}
                   onDragStart={handleDragStart}
                   onDragEnd={resetDragState}
