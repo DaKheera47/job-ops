@@ -1,12 +1,12 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { copyFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
-import type { TypstTheme } from "@shared/types";
+import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
 import { getLatexResumeSectionTitles } from "./document";
 import type {
   LatexResumeContactItem,
@@ -15,16 +15,45 @@ import type {
   ResumeRenderer,
 } from "./types";
 
-function resolveTemplatePath(): string {
+const TYPST_TIMEOUT_MS = 120_000;
+const OUTPUT_FILENAME = "resume.pdf";
+const RESUME_DATA_FILENAME = "resume-data.json";
+const THEME_MANIFEST_FILENAME = "theme.json";
+
+const REQUIRED_NATIVE_TOKEN_KEYS = [
+  "pageMargin",
+  "bodySize",
+  "parLeading",
+  "sectionTop",
+  "sectionBottom",
+  "sectionSize",
+  "lineWidth",
+  "nameSize",
+  "headlineSize",
+  "contactSize",
+  "entryMetaSize",
+  "accent",
+] as const;
+
+export type TypstThemeTokens = Record<
+  (typeof REQUIRED_NATIVE_TOKEN_KEYS)[number],
+  string
+>;
+
+export interface TypstThemeManifest {
+  id: TypstTheme;
+  label: string;
+  description: string;
+  kind: "native" | "adapted";
+  entrypoint: string;
+  tokens?: TypstThemeTokens;
+}
+
+function resolveThemesRoot(): string {
   try {
     if (import.meta.url.startsWith("file:")) {
       const modulePath = fileURLToPath(import.meta.url);
-      const moduleRelativePath = join(
-        modulePath,
-        "..",
-        "templates",
-        "jake-resume.typ",
-      );
+      const moduleRelativePath = join(modulePath, "..", "typst-themes");
       if (existsSync(moduleRelativePath)) {
         return moduleRelativePath;
       }
@@ -35,67 +64,117 @@ function resolveTemplatePath(): string {
 
   const cwd = process.cwd();
   if (cwd.endsWith("/orchestrator")) {
-    return join(
-      cwd,
-      "src/server/services/resume-renderer/templates/jake-resume.typ",
-    );
+    return join(cwd, "src/server/services/resume-renderer/typst-themes");
   }
   return join(
     cwd,
-    "orchestrator/src/server/services/resume-renderer/templates/jake-resume.typ",
+    "orchestrator/src/server/services/resume-renderer/typst-themes",
   );
 }
 
-const TEMPLATE_PATH = resolveTemplatePath();
-const TYPST_TIMEOUT_MS = 120_000;
-const OUTPUT_FILENAME = "resume.pdf";
+const THEMES_ROOT = resolveThemesRoot();
 
-const THEME_TOKENS: Record<
-  TypstTheme,
-  {
-    pageMargin: string;
-    bodySize: string;
-    parLeading: string;
-    sectionTop: string;
-    sectionBottom: string;
-    sectionSize: string;
-    lineWidth: string;
-    nameSize: string;
-    headlineSize: string;
-    contactSize: string;
-    entryMetaSize: string;
-    accent: string;
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function assertSupportedTheme(theme: TypstTheme): void {
+  if (!TYPST_THEME_VALUES.includes(theme)) {
+    throw new Error(`Unsupported Typst theme: ${theme}`);
   }
-> = {
-  classic: {
-    pageMargin: "(x: 0.65in, y: 0.58in)",
-    bodySize: "10pt",
-    parLeading: "0.56em",
-    sectionTop: "9pt",
-    sectionBottom: "4pt",
-    sectionSize: "11pt",
-    lineWidth: "0.55pt",
-    nameSize: "20pt",
-    headlineSize: "9.5pt",
-    contactSize: "8.8pt",
-    entryMetaSize: "9pt",
-    accent: "#202020",
-  },
-  compact: {
-    pageMargin: "(x: 0.48in, y: 0.45in)",
-    bodySize: "9pt",
-    parLeading: "0.42em",
-    sectionTop: "6pt",
-    sectionBottom: "2pt",
-    sectionSize: "10pt",
-    lineWidth: "0.45pt",
-    nameSize: "18pt",
-    headlineSize: "8.5pt",
-    contactSize: "8pt",
-    entryMetaSize: "8pt",
-    accent: "#111111",
-  },
-};
+}
+
+function assertSafeThemePath(value: string, field: string): void {
+  if (!value.trim()) {
+    throw new Error(`Typst theme ${field} is required`);
+  }
+  const normalized = normalize(value);
+  if (
+    normalized.startsWith("..") ||
+    normalized.includes("/../") ||
+    normalized.includes("\\..\\") ||
+    normalized.startsWith("/") ||
+    /^[a-zA-Z]:/.test(normalized)
+  ) {
+    throw new Error(
+      `Typst theme ${field} must stay inside its theme directory`,
+    );
+  }
+}
+
+function parseThemeTokens(theme: TypstTheme, value: unknown): TypstThemeTokens {
+  if (!isPlainObject(value)) {
+    throw new Error(`Typst theme ${theme} requires a tokens object`);
+  }
+
+  const tokens: Partial<TypstThemeTokens> = {};
+  for (const key of REQUIRED_NATIVE_TOKEN_KEYS) {
+    const token = value[key];
+    if (typeof token !== "string" || token.trim().length === 0) {
+      throw new Error(`Typst theme ${theme} is missing tokens.${key}`);
+    }
+    tokens[key] = token;
+  }
+
+  return tokens as TypstThemeTokens;
+}
+
+function parseThemeManifest(
+  theme: TypstTheme,
+  value: unknown,
+): TypstThemeManifest {
+  if (!isPlainObject(value)) {
+    throw new Error(`Typst theme ${theme} manifest must be an object`);
+  }
+  if (value.id !== theme) {
+    throw new Error(`Typst theme ${theme} manifest id must match the folder`);
+  }
+  if (typeof value.label !== "string" || value.label.trim().length === 0) {
+    throw new Error(`Typst theme ${theme} manifest requires a label`);
+  }
+  if (
+    typeof value.description !== "string" ||
+    value.description.trim().length === 0
+  ) {
+    throw new Error(`Typst theme ${theme} manifest requires a description`);
+  }
+  if (value.kind !== "native" && value.kind !== "adapted") {
+    throw new Error(
+      `Typst theme ${theme} manifest kind must be "native" or "adapted"`,
+    );
+  }
+  if (typeof value.entrypoint !== "string") {
+    throw new Error(`Typst theme ${theme} manifest requires an entrypoint`);
+  }
+  assertSafeThemePath(value.entrypoint, "entrypoint");
+
+  return {
+    id: theme,
+    label: value.label,
+    description: value.description,
+    kind: value.kind,
+    entrypoint: value.entrypoint,
+    tokens:
+      value.kind === "native"
+        ? parseThemeTokens(theme, value.tokens)
+        : undefined,
+  };
+}
+
+function getTypstThemeDir(theme: TypstTheme): string {
+  assertSupportedTheme(theme);
+  return join(THEMES_ROOT, theme);
+}
+
+function getTypstThemeManifestPath(theme: TypstTheme): string {
+  return join(getTypstThemeDir(theme), THEME_MANIFEST_FILENAME);
+}
+
+export function getTypstTemplatePath(theme: TypstTheme = "classic"): string {
+  const raw = readFileSync(getTypstThemeManifestPath(theme), "utf8");
+  const manifest = parseThemeManifest(theme, JSON.parse(raw));
+  return join(getTypstThemeDir(theme), manifest.entrypoint);
+}
 
 function normalizeText(value: string): string {
   return value
@@ -220,16 +299,49 @@ function renderSkillsSection(document: LatexResumeDocument): string {
   return [`= ${escapeTypstText(titles.skills)}`, items].join("\n\n");
 }
 
-async function loadTemplate(): Promise<string> {
-  return await readFile(TEMPLATE_PATH, "utf8");
+export async function readTypstThemeManifest(
+  theme: TypstTheme = "classic",
+): Promise<TypstThemeManifest> {
+  const raw = await readFile(getTypstThemeManifestPath(theme), "utf8");
+  return parseThemeManifest(theme, JSON.parse(raw));
+}
+
+export async function readTypstTheme(theme: TypstTheme = "classic"): Promise<{
+  manifest: TypstThemeManifest;
+  template: string;
+  tokens?: TypstThemeTokens;
+}> {
+  const manifest = await readTypstThemeManifest(theme);
+  const templatePath = join(getTypstThemeDir(theme), manifest.entrypoint);
+  const template = await readFile(templatePath, "utf8");
+  return { manifest, template, tokens: manifest.tokens };
+}
+
+async function loadTemplate(theme: TypstTheme): Promise<{
+  manifest: TypstThemeManifest;
+  template: string;
+  tokens?: TypstThemeTokens;
+}> {
+  const { manifest, template, tokens } = await readTypstTheme(theme);
+  return { manifest, template, tokens };
+}
+
+function replaceSharedTypstPlaceholders(template: string): string {
+  return template.replaceAll(
+    "__RESUME_DATA_PATH__",
+    JSON.stringify(RESUME_DATA_FILENAME),
+  );
+}
+
+function buildAdaptedTypstDocument(template: string): string {
+  return replaceSharedTypstPlaceholders(template);
 }
 
 export function buildTypstDocument(
   document: LatexResumeDocument,
   template: string,
-  theme: TypstTheme = "classic",
+  tokens: TypstThemeTokens,
 ): string {
-  const tokens = THEME_TOKENS[theme];
   const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `  #text(size: ${tokens.headlineSize})[${escapeTypstText(document.headline)}] \\\n`
@@ -263,7 +375,7 @@ export function buildTypstDocument(
     .filter(Boolean)
     .join("\n\n");
 
-  return template
+  return replaceSharedTypstPlaceholders(template)
     .replace("__PAGE_MARGIN__", tokens.pageMargin)
     .replace("__BODY_SIZE__", tokens.bodySize)
     .replace("__PAR_LEADING__", tokens.parLeading)
@@ -366,12 +478,24 @@ export const typstResumeRenderer: ResumeRenderer = {
       join(tmpdir(), `job-ops-resume-render-${jobId}-`),
     );
     const typPath = join(tempDir, "resume.typ");
+    const resumeDataPath = join(tempDir, RESUME_DATA_FILENAME);
     const compiledPdfPath = join(tempDir, OUTPUT_FILENAME);
 
     try {
-      const template = await loadTemplate();
-      const typst = buildTypstDocument(document, template, typstTheme);
+      const { manifest, template, tokens } = await loadTemplate(typstTheme);
+      let typst: string;
+      if (manifest.kind === "native") {
+        if (!tokens) {
+          throw new Error(
+            `Typst theme ${typstTheme} is missing native tokens.`,
+          );
+        }
+        typst = buildTypstDocument(document, template, tokens);
+      } else {
+        typst = buildAdaptedTypstDocument(template);
+      }
 
+      await writeFile(resumeDataPath, JSON.stringify(document), "utf8");
       await writeFile(typPath, typst, "utf8");
       await runTypst({
         cwd: tempDir,
@@ -425,14 +549,12 @@ export async function renderTypstPdf(args: {
   await typstResumeRenderer.render(args);
 }
 
-export function getTypstTemplatePath(): string {
-  return TEMPLATE_PATH;
-}
-
 export function getTypstBinary(): string {
   return process.env.TYPST_BIN?.trim() || "typst";
 }
 
-export async function readTypstTemplate(): Promise<string> {
-  return await loadTemplate();
+export async function readTypstTemplate(
+  theme: TypstTheme = "classic",
+): Promise<string> {
+  return (await readTypstTheme(theme)).template;
 }

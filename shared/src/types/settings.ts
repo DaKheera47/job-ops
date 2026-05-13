@@ -1,7 +1,13 @@
+import {
+  TYPST_THEME_LABELS,
+  TYPST_THEME_VALUES,
+} from "../generated/typst-themes";
 import type {
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
+
+export { TYPST_THEME_LABELS, TYPST_THEME_VALUES };
 
 export interface ResumeProjectCatalogItem {
   id: string;
@@ -57,12 +63,7 @@ export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
   typst: "Local Typst",
 };
 
-export const TYPST_THEME_VALUES = ["classic", "compact"] as const;
 export type TypstTheme = (typeof TYPST_THEME_VALUES)[number];
-export const TYPST_THEME_LABELS: Record<TypstTheme, string> = {
-  classic: "Classic",
-  compact: "Compact",
-};
 
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
   "manual",

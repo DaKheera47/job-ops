@@ -1,0 +1,21 @@
+{
+  "id": "classic",
+  "label": "Classic",
+  "description": "A balanced Jake-style resume layout with moderate spacing.",
+  "kind": "native",
+  "entrypoint": "main.typ",
+  "tokens": {
+    "pageMargin": "(x: 0.65in, y: 0.58in)",
+    "bodySize": "10pt",
+    "parLeading": "0.56em",
+    "sectionTop": "9pt",
+    "sectionBottom": "4pt",
+    "sectionSize": "11pt",
+    "lineWidth": "0.55pt",
+    "nameSize": "20pt",
+    "headlineSize": "9.5pt",
+    "contactSize": "8.8pt",
+    "entryMetaSize": "9pt",
+    "accent": "#202020"
+  }
+}

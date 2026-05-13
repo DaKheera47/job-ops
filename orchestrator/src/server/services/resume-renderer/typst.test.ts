@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { TYPST_THEME_VALUES, type TypstTheme } from "@shared/types";
 import { afterEach, describe, expect, it } from "vitest";
 import type { LatexResumeDocument } from "./types";
 import {
@@ -9,7 +10,10 @@ import {
   getTypstBinary,
   getTypstTemplatePath,
   readTypstTemplate,
+  readTypstTheme,
+  readTypstThemeManifest,
   renderTypstPdf,
+  type TypstThemeTokens,
 } from "./typst";
 
 const baseDocument: LatexResumeDocument = {
@@ -50,6 +54,16 @@ function typstAvailable(): boolean {
   return result.status === 0;
 }
 
+async function readNativeThemeTokens(
+  theme: TypstTheme,
+): Promise<TypstThemeTokens> {
+  const loadedTheme = await readTypstTheme(theme);
+  if (!loadedTheme.tokens) {
+    throw new Error(`Expected ${theme} to be a native Typst theme`);
+  }
+  return loadedTheme.tokens;
+}
+
 describe("typst resume renderer", () => {
   const tempDirs: string[] = [];
 
@@ -62,10 +76,22 @@ describe("typst resume renderer", () => {
   });
 
   it("exposes the bundled Typst template", async () => {
-    expect(getTypstTemplatePath()).toContain("jake-resume.typ");
+    expect(getTypstTemplatePath()).toContain("typst-themes/classic/main.typ");
     const template = await readTypstTemplate();
     expect(template).toContain("#set page");
     expect(template).toContain("__BODY__");
+  });
+
+  it("loads every generated Typst theme manifest", async () => {
+    for (const theme of TYPST_THEME_VALUES) {
+      const manifest = await readTypstThemeManifest(theme);
+      expect(manifest.id).toBe(theme);
+      expect(manifest.entrypoint).toBe("main.typ");
+      expect(manifest.kind).toBe("native");
+      expect(getTypstTemplatePath(theme)).toContain(
+        `typst-themes/${theme}/main.typ`,
+      );
+    }
   });
 
   it("uses the TYPST_BIN override when present", () => {
@@ -79,14 +105,15 @@ describe("typst resume renderer", () => {
     }
   });
 
-  it("renders the classic theme tokens and English section titles", () => {
+  it("renders the classic theme tokens and English section titles", async () => {
+    const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(
       {
         ...baseDocument,
         sectionTitles: undefined,
       },
       "__PAGE_MARGIN__\n__BODY_SIZE__\n__NAME__\n__BODY__",
-      "classic",
+      tokens,
     );
 
     expect(typst).toContain("(x: 0.65in, y: 0.58in)");
@@ -97,7 +124,8 @@ describe("typst resume renderer", () => {
     expect(typst).toContain("= Technical Skills");
   });
 
-  it("renders compact theme tokens and localized section titles", () => {
+  it("renders compact theme tokens and localized section titles", async () => {
+    const tokens = await readNativeThemeTokens("compact");
     const typst = buildTypstDocument(
       {
         ...baseDocument,
@@ -110,7 +138,7 @@ describe("typst resume renderer", () => {
         },
       },
       "__PAGE_MARGIN__\n__BODY_SIZE__\n__NAME__\n__BODY__",
-      "compact",
+      tokens,
     );
 
     expect(typst).toContain("(x: 0.48in, y: 0.45in)");
@@ -120,7 +148,19 @@ describe("typst resume renderer", () => {
     expect(typst).toContain("= Habilidades técnicas");
   });
 
-  it("escapes Typst markup characters in resume content", () => {
+  it("exposes a stable resume data path for package-backed themes", async () => {
+    const tokens = await readNativeThemeTokens("classic");
+    const typst = buildTypstDocument(
+      baseDocument,
+      "#let resume = json(__RESUME_DATA_PATH__)\n__NAME__",
+      tokens,
+    );
+
+    expect(typst).toContain('#let resume = json("resume-data.json")');
+  });
+
+  it("escapes Typst markup characters in resume content", async () => {
+    const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(
       {
         ...baseDocument,
@@ -128,6 +168,7 @@ describe("typst resume renderer", () => {
         summary: "Uses #hashes, *stars*, and [brackets].",
       },
       "__NAME__\n__BODY__",
+      tokens,
     );
 
     expect(typst).toContain("Jane \\#1 \\[Platform\\]");

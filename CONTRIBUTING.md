@@ -21,6 +21,7 @@ Use the path that matches your change:
 | Docs/content | `docs-site/docs` | `npm run docs:dev` | [Docs style guide](https://jobops.dakheera47.com/docs/next/reference/documentation-style-guide), [FAQ](https://jobops.dakheera47.com/docs/next/reference/faq) |
 | App/UI/API | `orchestrator`, `shared` | `npm --workspace orchestrator run dev` | [Self-hosting](https://jobops.dakheera47.com/docs/getting-started/self-hosting), [Troubleshooting](https://jobops.dakheera47.com/docs/next/troubleshooting/common-problems) |
 | Extractors | `extractors/*`, sometimes `shared` | Relevant type checks + tests | [Add an extractor](https://jobops.dakheera47.com/docs/next/workflows/add-an-extractor), [Extractors overview](https://jobops.dakheera47.com/docs/extractors/overview) |
+| Typst resume themes | `orchestrator/src/server/services/resume-renderer/typst-themes` | `npm run typst-theme:validate` | [Reactive Resume](https://jobops.dakheera47.com/docs/features/reactive-resume) |
 
 ## Local Setup (Minimal)
 
@@ -62,6 +63,19 @@ Local URLs:
 3. If the change is user-visible, update docs (or link the relevant docs update in the same PR).
 4. Include screenshots or short clips for UI changes when helpful.
 5. Mention any tradeoffs or follow-up work in the PR description.
+
+## Adding a Typst Resume Theme
+
+Typst themes are folder-based so a theme PR can stay small:
+
+1. Copy an existing folder under `orchestrator/src/server/services/resume-renderer/typst-themes`.
+2. Rename the folder and set the same kebab-case value in `theme.json` as `id`.
+3. Update `label`, `description`, `entrypoint`, and native `tokens`.
+4. Edit the Typst entrypoint, usually `main.typ`.
+5. Run `npm run typst-theme:generate` to refresh shared theme metadata.
+6. Run `npm run typst-theme:validate`.
+
+Native themes use the JobOps resume document model and token placeholders. Adapted themes can read the normalized resume document from `json(__RESUME_DATA_PATH__)` inside their Typst entrypoint, which is the recommended path for Typst Universe packages with their own layout APIs.
 
 ## Releases
 

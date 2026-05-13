@@ -1,0 +1,21 @@
+{
+  "id": "compact",
+  "label": "Compact",
+  "description": "A denser Jake-style resume layout for fitting more content.",
+  "kind": "native",
+  "entrypoint": "main.typ",
+  "tokens": {
+    "pageMargin": "(x: 0.48in, y: 0.45in)",
+    "bodySize": "9pt",
+    "parLeading": "0.42em",
+    "sectionTop": "6pt",
+    "sectionBottom": "2pt",
+    "sectionSize": "10pt",
+    "lineWidth": "0.45pt",
+    "nameSize": "18pt",
+    "headlineSize": "8.5pt",
+    "contactSize": "8pt",
+    "entryMetaSize": "8pt",
+    "accent": "#111111"
+  }
+}

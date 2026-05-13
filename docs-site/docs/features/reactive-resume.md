@@ -150,6 +150,7 @@ High-level flow:
 6. Render the PDF with the configured renderer:
    - RxResume export
    - Local LaTeX with `tectonic`
+   - Local Typst with `typst`
 
 ### Resume-data caching
 
@@ -198,6 +199,26 @@ Notes:
 - In Docker deployments, `tectonic` and `typst` are bundled into the image for local rendering.
 - In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed when using the LaTeX option.
 - In non-Docker local environments, install `typst` and optionally set `TYPST_BIN` if needed when using the Typst option.
+
+### Typst themes
+
+Typst themes are defined as folders under `orchestrator/src/server/services/resume-renderer/typst-themes`.
+
+Each theme folder contains:
+
+- `theme.json`: id, label, description, renderer kind, entrypoint, and native theme tokens
+- `main.typ`: the Typst template used by the native renderer
+
+After adding or changing a theme, run:
+
+```bash
+npm run typst-theme:generate
+npm run typst-theme:validate
+```
+
+The generated shared metadata powers the settings dropdowns, so theme PRs do not need hand-written UI enum changes.
+
+For package-backed themes, set `kind` to `adapted` and read the normalized resume document with `json(__RESUME_DATA_PATH__)` from the Typst entrypoint.
 
 ## Common problems
 
