@@ -152,6 +152,14 @@ Contributions are welcome. Whether it's code, docs, or new extractors, start wit
 
 ---
 
+## Special Thanks
+
+Open-source tools and communities that make JobOps possible:
+
+- [jobspy](https://github.com/Bunsly/JobSpy) — Python-based multi-source job scraping library powering the jobspy extractor
+
+---
+
 ## Star History
 
 <div align="center">
