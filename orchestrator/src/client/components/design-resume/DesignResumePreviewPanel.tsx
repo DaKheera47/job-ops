@@ -33,13 +33,7 @@ export function DesignResumePreviewPanel({
     <section
       className={cn("flex min-h-0 min-w-0 flex-col overflow-hidden", className)}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4 py-4">
-        <label
-          htmlFor="design-resume-template"
-          className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
-        >
-          Template
-        </label>
+      <div className="flex flex-wrap items-start justify-end gap-4 py-4">
         <Select
           value={pdfRenderer}
           onValueChange={(value) =>
