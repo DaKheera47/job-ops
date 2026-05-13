@@ -69,6 +69,43 @@ describe("PDF freshness", () => {
     ).toBe("stale");
   });
 
+  it("ignores Typst theme changes for non-Typst renderers", () => {
+    const job = createJob({
+      pdfPath: "data/pdfs/generated.pdf",
+      pdfSource: "generated",
+      tailoredSummary: "Summary",
+    });
+
+    expect(createJobPdfFingerprint(job, context)).toBe(
+      createJobPdfFingerprint(job, {
+        ...context,
+        typstTheme: "compact",
+      }),
+    );
+  });
+
+  it("includes Typst theme changes for Typst renderers", () => {
+    const job = createJob({
+      pdfPath: "data/pdfs/generated.pdf",
+      pdfSource: "generated",
+      tailoredSummary: "Summary",
+    });
+
+    expect(
+      createJobPdfFingerprint(job, {
+        ...context,
+        pdfRenderer: "typst",
+        typstTheme: "classic",
+      }),
+    ).not.toBe(
+      createJobPdfFingerprint(job, {
+        ...context,
+        pdfRenderer: "typst",
+        typstTheme: "compact",
+      }),
+    );
+  });
+
   it("treats legacy PDFs without a source as generated for freshness", () => {
     expect(
       getJobPdfFreshness(

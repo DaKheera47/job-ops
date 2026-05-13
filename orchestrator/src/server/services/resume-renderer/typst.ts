@@ -474,9 +474,7 @@ async function runTypst(args: {
 
 export const typstResumeRenderer: ResumeRenderer = {
   async render({ document, outputPath, jobId, typstTheme = "classic" }) {
-    const tempDir = await mkdtemp(
-      join(tmpdir(), `job-ops-resume-render-${jobId}-`),
-    );
+    const tempDir = await mkdtemp(join(tmpdir(), "job-ops-resume-render-"));
     const typPath = join(tempDir, "resume.typ");
     const resumeDataPath = join(tempDir, RESUME_DATA_FILENAME);
     const compiledPdfPath = join(tempDir, OUTPUT_FILENAME);

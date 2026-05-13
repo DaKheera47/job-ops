@@ -1,11 +1,8 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { dirname, join, normalize, relative } from "node:path";
+import { dirname, join, normalize, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const repoRoot = dirname(fileURLToPath(import.meta.url)).replace(
-  /\/scripts$/,
-  "",
-);
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const themesDir = join(
   repoRoot,
   "orchestrator/src/server/services/resume-renderer/typst-themes",

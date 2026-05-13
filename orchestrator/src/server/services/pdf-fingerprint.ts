@@ -69,7 +69,9 @@ export function createJobPdfFingerprint(
   const payload = {
     version: context.version,
     renderer: context.pdfRenderer,
-    typstTheme: context.typstTheme,
+    ...(context.pdfRenderer === "typst"
+      ? { typstTheme: context.typstTheme }
+      : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,
     designResumeDocumentId: context.designResumeDocumentId,
     designResumeRevision: context.designResumeRevision,

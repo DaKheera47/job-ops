@@ -28,7 +28,15 @@ vi.mock("@server/tenancy/context", () => ({
 }));
 
 vi.mock("./pdf-fingerprint", () => ({
-  resolvePdfFingerprintContext: vi.fn().mockResolvedValue({}),
+  resolvePdfFingerprintContext: vi.fn().mockResolvedValue({
+    version: "v1",
+    designResumeDocumentId: null,
+    designResumeRevision: null,
+    designResumeUpdatedAt: null,
+    pdfRenderer: "latex",
+    typstTheme: "classic",
+    rxresumeBaseResumeId: null,
+  }),
   getJobPdfFreshness: vi.fn((job: { pdfFingerprint?: string | null }) =>
     job.pdfFingerprint === "fresh" ? "current" : "stale",
   ),
@@ -38,6 +46,7 @@ import {
   enqueueAutoPdfRegenerationForSettingsChanges,
   shouldEnqueueTailoringAutoPdfRegeneration,
 } from "./auto-pdf-regeneration";
+import { resolvePdfFingerprintContext } from "./pdf-fingerprint";
 
 describe("auto PDF regeneration", () => {
   beforeEach(() => {
@@ -52,6 +61,15 @@ describe("auto PDF regeneration", () => {
     mocks.acknowledge.mockResolvedValue(undefined);
     mocks.reject.mockResolvedValue(undefined);
     mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([]);
+    vi.mocked(resolvePdfFingerprintContext).mockResolvedValue({
+      version: "v1",
+      designResumeDocumentId: null,
+      designResumeRevision: null,
+      designResumeUpdatedAt: null,
+      pdfRenderer: "latex",
+      typstTheme: "classic",
+      rxresumeBaseResumeId: null,
+    });
   });
 
   it("skips enqueue for non-PDF-impacting setting changes", async () => {
@@ -144,6 +162,50 @@ describe("auto PDF regeneration", () => {
       "auto_pdf_regeneration",
       expect.objectContaining({ jobId: "job-stale" }),
       { dedupeKey: "tenant-test:job-stale" },
+    );
+  });
+
+  it("skips Typst theme-only setting changes when Typst is not active", async () => {
+    const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
+      updatedSettingKeys: ["typstTheme"],
+      requestedBy: "user",
+    });
+
+    expect(enqueued).toBe(0);
+    expect(mocks.getReadyJobsWithGeneratedPdfs).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("enqueues Typst theme-only setting changes when Typst is active", async () => {
+    vi.mocked(resolvePdfFingerprintContext).mockResolvedValue({
+      version: "v1",
+      designResumeDocumentId: null,
+      designResumeRevision: null,
+      designResumeUpdatedAt: null,
+      pdfRenderer: "typst",
+      typstTheme: "compact",
+      rxresumeBaseResumeId: null,
+    });
+    mocks.getReadyJobsWithGeneratedPdfs.mockResolvedValue([
+      createJob({
+        id: "job-typst",
+        status: "ready",
+        pdfPath: "data/pdfs/job-typst.pdf",
+        pdfSource: "generated",
+        pdfFingerprint: "stale",
+      }),
+    ]);
+
+    const enqueued = await enqueueAutoPdfRegenerationForSettingsChanges({
+      updatedSettingKeys: ["typstTheme"],
+      requestedBy: "user",
+    });
+
+    expect(enqueued).toBe(1);
+    expect(mocks.enqueue).toHaveBeenCalledWith(
+      "auto_pdf_regeneration",
+      expect.objectContaining({ jobId: "job-typst" }),
+      { dedupeKey: "tenant-test:job-typst" },
     );
   });
 
