@@ -6,7 +6,6 @@ import {
   EyeOff,
   GripVertical,
   LockKeyhole,
-  MousePointer2,
   Pencil,
   Plus,
   Trash2,
@@ -24,6 +23,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { DesignResumeSection } from "./DesignResumeSection";
 import type { ItemDefinition } from "./definitions";
@@ -88,6 +93,11 @@ type DesignResumeListItemCardProps = {
   onDragEnd: () => void;
   onDragOver: (event: DragEvent<HTMLLIElement>, index: number) => void;
   onDrop: (event: DragEvent<HTMLElement>, index: number) => void;
+  onProjectModeChange: (
+    index: number,
+    projectId: string,
+    mode: ProjectTailoringMode,
+  ) => void;
   projectPolicy?: ProjectPolicyConfig;
 };
 
@@ -103,86 +113,89 @@ export type ProjectPolicyConfig = {
 const projectModeOptions: Array<{
   mode: ProjectTailoringMode;
   label: string;
-  description: string;
-  icon: typeof MousePointer2;
+  shortLabel: string;
+  tooltip: string;
+  icon: typeof EyeOff;
 }> = [
   {
     mode: "manual",
-    label: "Manual only",
-    description: "Use only when you explicitly pick it.",
-    icon: MousePointer2,
+    label: "Never include",
+    shortLabel: "Never",
+    tooltip:
+      "Do not show this project and do not let runtime tailoring select it.",
+    icon: EyeOff,
   },
   {
     mode: "ai-selectable",
-    label: "AI can choose",
-    description: "The job-tailoring run may select this project.",
+    label: "Let AI choose",
+    shortLabel: "AI choose",
+    tooltip:
+      "Keep it out of the baseline resume, but let runtime tailoring select it when it matches a job.",
     icon: Bot,
   },
   {
     mode: "must-include",
     label: "Always include",
-    description: "Every tailored resume includes this project.",
+    shortLabel: "Always",
+    tooltip: "Show this project and include it in every tailored resume.",
     icon: LockKeyhole,
   },
 ];
 
 function ProjectTailoringModeControls({
-  projectId,
   projectName,
-  policy,
+  disabled,
+  isSaving,
+  onModeChange,
+  selectedMode,
 }: {
-  projectId: string;
   projectName: string;
-  policy: ProjectPolicyConfig;
+  disabled?: boolean;
+  isSaving?: boolean;
+  onModeChange: (mode: ProjectTailoringMode) => void;
+  selectedMode: ProjectTailoringMode;
 }) {
-  const selectedMode = policy.getMode(projectId);
-
   return (
-    <div className="mt-4 rounded-lg border border-border/50 bg-muted/15 px-3 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <div className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
-            Runtime tailoring
-          </div>
-          <div className="mt-1 text-xs text-muted-foreground">
-            Per job, AI can only pick from allowed projects. Must-include skips
-            selection.
-          </div>
-        </div>
-        {policy.isSaving ? (
-          <div className="text-xs text-muted-foreground">Saving...</div>
-        ) : null}
-      </div>
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        {projectModeOptions.map((option) => {
-          const Icon = option.icon;
-          const active = selectedMode === option.mode;
+    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-muted-foreground">Include in resume?</span>
+      <TooltipProvider delayDuration={150}>
+        <div className="inline-flex max-w-full rounded-md border border-border/50 bg-background/35 p-0.5">
+          {projectModeOptions.map((option) => {
+            const Icon = option.icon;
+            const active = selectedMode === option.mode;
 
-          return (
-            <button
-              key={option.mode}
-              type="button"
-              aria-pressed={active}
-              aria-label={`Set ${projectName} tailoring mode to ${option.label}`}
-              disabled={policy.disabled}
-              className={cn(
-                "min-w-0 rounded-md border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                active
-                  ? "border-primary/60 bg-primary/10 text-primary"
-                  : "border-border/60 bg-background/40 text-muted-foreground hover:border-border hover:bg-accent/40 hover:text-foreground",
-              )}
-              onClick={() => policy.onModeChange(projectId, option.mode)}
-            >
-              <span className="flex min-w-0 items-center gap-2 text-xs font-medium">
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{option.label}</span>
-              </span>
-              <span className="mt-1 block text-[11px] leading-4 text-muted-foreground">
-                {option.description}
-              </span>
-            </button>
-          );
-        })}
+            return (
+              <Tooltip key={option.mode}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    aria-label={`Set ${projectName} inclusion to ${option.label}`}
+                    disabled={disabled}
+                    className={cn(
+                      "inline-flex h-7 min-w-0 items-center gap-1.5 rounded px-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                      active
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
+                    )}
+                    onClick={() => onModeChange(option.mode)}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span>{option.shortLabel}</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-60 text-center" side="top">
+                  {option.tooltip}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+      <div className="min-h-4">
+        {isSaving ? (
+          <span className="text-[11px] text-muted-foreground">Saving...</span>
+        ) : null}
       </div>
     </div>
   );
@@ -204,6 +217,7 @@ function DesignResumeListItemCard({
   onDragEnd,
   onDragOver,
   onDrop,
+  onProjectModeChange,
   projectPolicy,
 }: DesignResumeListItemCardProps) {
   const isHidden = toBoolean(item.hidden, false);
@@ -215,6 +229,20 @@ function DesignResumeListItemCard({
   const itemId = toText(item.id);
   const canShowProjectPolicy =
     definition.key === "projects" && projectPolicy && itemId;
+  const projectSettingsMode =
+    canShowProjectPolicy && projectPolicy
+      ? projectPolicy.getMode(itemId)
+      : null;
+  const projectSelectedMode: ProjectTailoringMode | null =
+    projectSettingsMode === "must-include"
+      ? "must-include"
+      : projectSettingsMode === "ai-selectable"
+        ? "ai-selectable"
+        : isHidden
+          ? "manual"
+          : "must-include";
+  const showVisibilityPill = definition.key !== "projects";
+  const showHideAction = definition.key !== "projects";
 
   return (
     <li
@@ -251,29 +279,33 @@ function DesignResumeListItemCard({
                 </div>
               ) : null}
             </div>
-            <button
-              type="button"
-              className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${
-                isHidden
-                  ? "border-border/70 bg-muted/20 text-muted-foreground hover:bg-muted/30"
-                  : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
-              }`}
-              onClick={() => onToggleHidden(index)}
-            >
-              {isHidden ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
-              {isHidden ? "Hidden" : "Visible"}
-            </button>
+            {showVisibilityPill ? (
+              <button
+                type="button"
+                className={`inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors ${
+                  isHidden
+                    ? "border-border/70 bg-muted/20 text-muted-foreground hover:bg-muted/30"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/15"
+                }`}
+                onClick={() => onToggleHidden(index)}
+              >
+                {isHidden ? (
+                  <EyeOff className="h-3.5 w-3.5" />
+                ) : (
+                  <Eye className="h-3.5 w-3.5" />
+                )}
+                {isHidden ? "Hidden" : "Visible"}
+              </button>
+            ) : null}
           </div>
 
-          {canShowProjectPolicy ? (
+          {canShowProjectPolicy && projectSelectedMode ? (
             <ProjectTailoringModeControls
-              projectId={itemId}
               projectName={primaryLabel}
-              policy={projectPolicy}
+              disabled={projectPolicy.disabled}
+              isSaving={projectPolicy.isSaving}
+              onModeChange={(mode) => onProjectModeChange(index, itemId, mode)}
+              selectedMode={projectSelectedMode}
             />
           ) : null}
 
@@ -288,22 +320,26 @@ function DesignResumeListItemCard({
                 <Pencil className="h-4 w-4 text-blue-400" />
                 <span className={itemActionLabelClassName}>Edit</span>
               </Button>
-              <div className="h-5 w-px bg-border/70" />
-              <Button
-                type="button"
-                variant="ghost"
-                className={itemActionClassName}
-                onClick={() => onToggleHidden(index)}
-              >
-                {isHidden ? (
-                  <Eye className="h-4 w-4" />
-                ) : (
-                  <EyeOff className="h-4 w-4" />
-                )}
-                <span className={itemActionLabelClassName}>
-                  {isHidden ? "Show" : "Hide"}
-                </span>
-              </Button>
+              {showHideAction ? (
+                <>
+                  <div className="h-5 w-px bg-border/70" />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={itemActionClassName}
+                    onClick={() => onToggleHidden(index)}
+                  >
+                    {isHidden ? (
+                      <Eye className="h-4 w-4" />
+                    ) : (
+                      <EyeOff className="h-4 w-4" />
+                    )}
+                    <span className={itemActionLabelClassName}>
+                      {isHidden ? "Show" : "Hide"}
+                    </span>
+                  </Button>
+                </>
+              ) : null}
               <div className="h-5 w-px bg-border/70" />
               <Button
                 type="button"
@@ -395,6 +431,21 @@ export function DesignResumeListSectionContent({
     onUpdateItems(reorderItems(items, fromIndex, toIndex));
   };
 
+  const updateProjectInclusionMode = (
+    index: number,
+    projectId: string,
+    mode: ProjectTailoringMode,
+  ) => {
+    if (!projectPolicy) return;
+    const nextItems = [...items];
+    nextItems[index] = {
+      ...nextItems[index],
+      hidden: mode !== "must-include",
+    };
+    onUpdateItems(nextItems);
+    projectPolicy.onModeChange(projectId, mode);
+  };
+
   const resetDragState = () => {
     setDraggingIndex(null);
     setDragOverIndex(null);
@@ -444,8 +495,9 @@ export function DesignResumeListSectionContent({
               {items.length} item{items.length === 1 ? "" : "s"}
             </div>
             <div className="text-xs text-muted-foreground">
-              Add entries, reorder them, or hide the ones you do not want to
-              show.
+              {definition.key === "projects"
+                ? "Add entries, reorder them, or choose when each one appears."
+                : "Add entries, reorder them, or hide the ones you do not want to show."}
             </div>
           </div>
           <Button type="button" variant="outline" onClick={onAdd}>
@@ -456,9 +508,11 @@ export function DesignResumeListSectionContent({
 
         {definition.key === "projects" ? (
           <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
-            Runtime tailoring can choose only from projects marked{" "}
-            <span className="font-medium text-foreground">AI can choose</span>{" "}
-            and will always include{" "}
+            Runtime tailoring never uses{" "}
+            <span className="font-medium text-foreground">Never</span> projects,
+            can pick from{" "}
+            <span className="font-medium text-foreground">AI choose</span>{" "}
+            projects per job, and always includes{" "}
             <span className="font-medium text-foreground">Always include</span>{" "}
             projects. It cannot invent projects or rewrite these baseline
             project details.
@@ -499,6 +553,7 @@ export function DesignResumeListSectionContent({
                     setDragOverIndex(dragOverIndex);
                   }}
                   onDrop={handleDrop}
+                  onProjectModeChange={updateProjectInclusionMode}
                   projectPolicy={projectPolicy}
                 />
               );
