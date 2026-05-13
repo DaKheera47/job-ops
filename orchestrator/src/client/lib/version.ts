@@ -1,6 +1,6 @@
 declare const __APP_VERSION__: string;
 
-const GITHUB_REPO = "DaKheera47/job-ops";
+export const GITHUB_REPO = "DaKheera47/job-ops";
 const STORAGE_KEY = "jobops_version_check";
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -33,16 +33,20 @@ export function parseVersion(rawVersion: string): string {
   return normalized || "unknown";
 }
 
+export function getCurrentAppVersion(): string {
+  const currentRaw =
+    typeof __APP_VERSION__ !== "undefined"
+      ? (__APP_VERSION__ as string)
+      : "unknown";
+  return parseVersion(currentRaw);
+}
+
 /**
  * Check for updates against GitHub releases API.
  * Results are cached for 24 hours to avoid rate limits.
  */
 export async function checkForUpdate(): Promise<VersionCheckResult> {
-  const currentRaw =
-    typeof __APP_VERSION__ !== "undefined"
-      ? (__APP_VERSION__ as string)
-      : "unknown";
-  const currentVersion = parseVersion(currentRaw);
+  const currentVersion = getCurrentAppVersion();
 
   // Check cached result
   const cached = canUseStorage() ? localStorage.getItem(STORAGE_KEY) : null;
