@@ -227,6 +227,9 @@ function DesignResumeIconRail({
     "h-10 w-10 justify-center gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,padding,color,background-color,border-color,gap] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-hover/rail:justify-start group-hover/rail:gap-3 group-hover/rail:px-3 group-focus-within/rail:w-44 group-focus-within/rail:justify-start group-focus-within/rail:gap-3 group-focus-within/rail:px-3";
   const navLabelClassName =
     "max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
+  const preventMouseFocus = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  };
 
   return (
     <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
@@ -239,6 +242,7 @@ function DesignResumeIconRail({
           variant="ghost"
           aria-current={activeSectionId == null ? "page" : undefined}
           aria-label="Live preview"
+          onMouseDown={preventMouseFocus}
           className={cn(
             navItemClassName,
             activeSectionId == null &&
@@ -265,6 +269,7 @@ function DesignResumeIconRail({
                   variant="ghost"
                   aria-current={isActive ? "page" : undefined}
                   aria-label={item.label}
+                  onMouseDown={preventMouseFocus}
                   className={cn(
                     navItemClassName,
                     isActive &&
