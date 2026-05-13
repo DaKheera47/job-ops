@@ -414,6 +414,11 @@ export function SummarySection({
         />
       </div>
       <div className="grid gap-2">
+        <RichTextEditor
+          value={toText(summary.content)}
+          onChange={(next) => onUpdateSummary("content", next)}
+          placeholder="Summarize the story your resume should tell."
+        />
         <div className="flex items-center justify-end">
           <DesignResumeFieldAssistant
             resumeJson={resumeJson}
@@ -425,11 +430,6 @@ export function SummarySection({
             onApply={(next) => onUpdateSummary("content", next)}
           />
         </div>
-        <RichTextEditor
-          value={toText(summary.content)}
-          onChange={(next) => onUpdateSummary("content", next)}
-          placeholder="Summarize the story your resume should tell."
-        />
       </div>
     </div>
   );

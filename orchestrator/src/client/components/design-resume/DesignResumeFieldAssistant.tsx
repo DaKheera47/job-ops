@@ -15,6 +15,11 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type FieldValue = string | string[];
 
@@ -155,82 +160,97 @@ export const DesignResumeFieldAssistant: React.FC<
     toast.success(`${label} updated.`);
   };
 
-  if (!open) {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 text-muted-foreground hover:text-foreground"
-        onClick={() => setOpen(true)}
-        aria-label={`Open AI assistant for ${label}`}
-        title={`Improve ${label} with AI`}
-      >
-        <Sparkles className="h-3.5 w-3.5" />
-      </Button>
-    );
-  }
-
   return (
-    <div className="rounded-md border border-border/60 bg-background/80 p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold text-foreground">
-            AI edit: {label}
-          </div>
-          <div className="text-[11px] text-muted-foreground">
-            Draft a focused replacement for this field.
-          </div>
-        </div>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          setOpen(true);
+          return;
+        }
+        closeSession();
+      }}
+    >
+      <PopoverTrigger asChild>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
-          onClick={closeSession}
-          aria-label="Close AI assistant"
-          title="Close"
+          className="h-7 w-7 text-muted-foreground transition-transform duration-150 hover:-translate-y-0.5 hover:text-foreground data-[state=open]:-translate-y-0.5 data-[state=open]:bg-primary/15 data-[state=open]:text-primary"
+          aria-label={`Open AI assistant for ${label}`}
+          title={`Improve ${label} with AI`}
         >
-          <X className="h-3.5 w-3.5" />
+          <Sparkles className="h-3.5 w-3.5" />
         </Button>
-      </div>
+      </PopoverTrigger>
 
-      {messages.length > 0 ? (
-        <div className="mb-3 max-h-72 overflow-y-auto pr-1">
-          <AiAssistMessageList
-            messages={messages}
-            isStreaming={isGenerating}
-            streamingMessageId={null}
-            assistantLabel="Resume AI"
-            renderAssistantActions={(message) =>
-              pendingSuggestion?.messageId === message.id ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => applySuggestion(pendingSuggestion)}
-                >
-                  <Check className="mr-2 h-3.5 w-3.5" />
-                  Apply
-                </Button>
-              ) : null
-            }
-          />
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={10}
+        collisionPadding={16}
+        className="relative z-[80] w-[min(26rem,calc(100vw-2rem))] origin-[--radix-popover-content-transform-origin] rounded-xl border border-border/70 bg-popover/95 p-3 shadow-2xl shadow-black/30 backdrop-blur data-[state=open]:zoom-in-90 data-[state=open]:slide-in-from-top-1"
+      >
+        <div className="-top-1.5 right-4 absolute h-3 w-3 rotate-45 border-l border-t border-border/70 bg-popover/95" />
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold text-foreground">
+              AI edit: {label}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Draft a focused replacement for this field.
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={closeSession}
+            aria-label="Close AI assistant"
+            title="Close"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
         </div>
-      ) : null}
 
-      <AiAssistComposer
-        disabled={isGenerating}
-        isStreaming={isGenerating}
-        placeholder="Ask for a concise rewrite, stronger bullets, or clearer keywords..."
-        onStop={async () => {
-          abortRef.current?.abort();
-          abortRef.current = null;
-          setIsGenerating(false);
-        }}
-        onSend={sendPrompt}
-      />
-    </div>
+        {messages.length > 0 ? (
+          <div className="mb-3 max-h-72 overflow-y-auto pr-1">
+            <AiAssistMessageList
+              messages={messages}
+              isStreaming={isGenerating}
+              streamingMessageId={null}
+              assistantLabel="Resume AI"
+              renderAssistantActions={(message) =>
+                pendingSuggestion?.messageId === message.id ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => applySuggestion(pendingSuggestion)}
+                  >
+                    <Check className="mr-2 h-3.5 w-3.5" />
+                    Apply
+                  </Button>
+                ) : null
+              }
+            />
+          </div>
+        ) : null}
+
+        <AiAssistComposer
+          disabled={isGenerating}
+          isStreaming={isGenerating}
+          placeholder="Ask for a concise rewrite, stronger bullets, or clearer keywords..."
+          onStop={async () => {
+            abortRef.current?.abort();
+            abortRef.current = null;
+            setIsGenerating(false);
+          }}
+          onSend={sendPrompt}
+        />
+      </PopoverContent>
+    </Popover>
   );
 };
