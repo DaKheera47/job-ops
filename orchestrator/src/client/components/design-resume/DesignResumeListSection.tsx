@@ -476,15 +476,6 @@ export function DesignResumeListSectionContent({
           </Button>
         </div>
 
-        {definition.key === "projects" ? (
-          <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
-            Choose how each project should be used when tailoring resumes:
-            exclude it, let AI include it when relevant, or always include it.
-            The AI cannot invent projects or rewrite the bullet points in
-            project's detail.
-          </div>
-        ) : null}
-
         {items.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
             No items yet.

@@ -74,6 +74,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -111,6 +118,7 @@ type DesignResumeNavGroup = {
   label: string;
   items: DesignResumeNavItem[];
 };
+type DesignResumeMobileView = "edit" | "preview";
 
 const DESIGN_RESUME_PAGE_MAIN_CLASS_NAME =
   "flex min-h-0 flex-1 flex-col space-y-0 overflow-hidden py-3 pb-3";
@@ -244,6 +252,18 @@ const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
 const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
+const DESIGN_RESUME_ICON_ITEM_BY_SECTION_ID = new Map(
+  DESIGN_RESUME_ICON_GROUPS.flatMap((group) =>
+    group.items.map((item) => [
+      item.sectionId === undefined ? item.id : item.sectionId,
+      item,
+    ]),
+  ),
+);
+
+function getDesignResumeSectionIcon(sectionId: DesignResumeSectionId) {
+  return DESIGN_RESUME_ICON_ITEM_BY_SECTION_ID.get(sectionId)?.icon ?? BookOpen;
+}
 
 const useDockItemSize = (
   mouseY: MotionValue<number>,
@@ -485,6 +505,9 @@ export const DesignResumePage: React.FC = () => {
   const [pictureUploading, setPictureUploading] = useState(false);
   const [resumeImporting, setResumeImporting] = useState(false);
   const [showReimportConfirm, setShowReimportConfirm] = useState(false);
+  const [mobileSectionPickerOpen, setMobileSectionPickerOpen] = useState(false);
+  const [mobileWorkspaceView, setMobileWorkspaceView] =
+    useState<DesignResumeMobileView>(() => (sectionParam ? "edit" : "preview"));
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [rendererUpdating, setRendererUpdating] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -511,6 +534,11 @@ export const DesignResumePage: React.FC = () => {
   const activeSectionIsValid =
     activeSection == null ||
     allDesignResumeSections.some((item) => item.id === activeSection);
+
+  useEffect(() => {
+    setMobileWorkspaceView(sectionParam ? "edit" : "preview");
+    setMobileSectionPickerOpen(false);
+  }, [sectionParam]);
 
   useEffect(() => {
     if (!document) return;
@@ -842,6 +870,12 @@ export const DesignResumePage: React.FC = () => {
       )
     : null;
 
+  const handleMobileSectionSelect = (sectionId: DesignResumeSectionId) => {
+    setMobileWorkspaceView("edit");
+    setMobileSectionPickerOpen(false);
+    navigate(`/design-resume/${sectionId}`);
+  };
+
   const getDesignResumeSectionBadge = useCallback(
     (sectionId: DesignResumeSectionId): SectionWorkspaceBadge | null => {
       if (!draft) return null;
@@ -1093,69 +1127,228 @@ export const DesignResumePage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div
-            className={
-              activeSection
-                ? "grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-6 overflow-hidden xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
-                : "grid min-h-0 min-w-0 flex-1 grid-cols-[70px_minmax(0,1fr)] gap-3 overflow-hidden"
-            }
-          >
-            {activeSection && activeGroup && activeSectionMeta ? (
-              <div className="grid min-h-0 min-w-0 gap-3 sm:grid-cols-[70px_minmax(0,1fr)]">
-                <DesignResumeDock
-                  activeSectionId={activeSection}
-                  className="h-full self-start"
-                  onSectionSelect={(sectionId) =>
-                    navigate(
-                      sectionId
-                        ? `/design-resume/${sectionId}`
-                        : "/design-resume",
-                    )
-                  }
-                />
-
-                <SectionWorkspacePanel
-                  groupLabel={activeGroup.label}
-                  sectionLabel={activeSectionMeta.label}
-                  sectionDescription={activeSectionMeta.description}
-                  badge={getDesignResumeSectionBadge(activeSection)}
-                  secondaryBadge={
-                    dirty
-                      ? { label: "Autosaving", variant: "secondary" }
-                      : saveState === "saved"
-                        ? { label: "Autosaved", variant: "outline" }
-                        : null
-                  }
-                  scrollable
+          <>
+            <div
+              className="mb-3 grid h-11 shrink-0 grid-cols-2 rounded-lg bg-muted p-1 text-sm text-muted-foreground sm:hidden"
+              role="tablist"
+              aria-label="Design Resume mobile workspace"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileWorkspaceView === "edit"}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md px-3 font-medium transition-colors",
+                  mobileWorkspaceView === "edit"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "hover:text-foreground",
+                )}
+                onClick={() => setMobileWorkspaceView("edit")}
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mobileWorkspaceView === "preview"}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-md px-3 font-medium transition-colors",
+                  mobileWorkspaceView === "preview"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "hover:text-foreground",
+                )}
+                onClick={() => setMobileWorkspaceView("preview")}
+              >
+                Preview
+              </button>
+            </div>
+            <div
+              className={
+                activeSection
+                  ? "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-6 xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
+                  : "flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden sm:grid sm:grid-cols-[70px_minmax(0,1fr)]"
+              }
+            >
+              {activeSection && activeGroup && activeSectionMeta ? (
+                <div
+                  className={cn(
+                    "min-h-0 min-w-0",
+                    mobileWorkspaceView === "edit"
+                      ? "flex flex-1 flex-col"
+                      : "hidden",
+                    "sm:grid sm:grid-cols-[70px_minmax(0,1fr)] sm:gap-3",
+                  )}
                 >
-                  {rail}
-                </SectionWorkspacePanel>
-              </div>
-            ) : (
-              <DesignResumeDock
-                activeSectionId={null}
-                className="h-full self-start"
-                onSectionSelect={(sectionId) =>
-                  navigate(
-                    sectionId
-                      ? `/design-resume/${sectionId}`
-                      : "/design-resume",
-                  )
-                }
-              />
-            )}
+                  <DesignResumeDock
+                    activeSectionId={activeSection}
+                    className="hidden h-full self-start sm:flex"
+                    onSectionSelect={(sectionId) =>
+                      navigate(
+                        sectionId
+                          ? `/design-resume/${sectionId}`
+                          : "/design-resume",
+                      )
+                    }
+                  />
 
-            <DesignResumePreviewPanel
-              draft={draft}
-              pdfRenderer={pdfRenderer}
-              isUpdatingRenderer={rendererUpdating || settingsLoading}
-              isDirty={dirty}
-              saveState={saveState}
-              onPdfRendererChange={handlePdfRendererChange}
-            />
-          </div>
+                  <SectionWorkspacePanel
+                    groupLabel={activeGroup.label}
+                    sectionLabel={activeSectionMeta.label}
+                    sectionDescription={activeSectionMeta.description}
+                    badge={getDesignResumeSectionBadge(activeSection)}
+                    secondaryBadge={
+                      dirty
+                        ? { label: "Autosaving", variant: "secondary" }
+                        : saveState === "saved"
+                          ? { label: "Autosaved", variant: "outline" }
+                          : null
+                    }
+                    actions={
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-9 gap-2 sm:hidden"
+                        onClick={() => setMobileSectionPickerOpen(true)}
+                      >
+                        <ListPlus className="h-4 w-4" />
+                        Sections
+                      </Button>
+                    }
+                    scrollable
+                  >
+                    {rail}
+                  </SectionWorkspacePanel>
+                </div>
+              ) : (
+                <>
+                  <div
+                    className={cn(
+                      "min-h-0 flex-1 flex-col items-center justify-center rounded-2xl border border-border/70 bg-card px-6 text-center",
+                      mobileWorkspaceView === "edit" ? "flex" : "hidden",
+                      "sm:hidden",
+                    )}
+                  >
+                    <div className="max-w-sm space-y-4">
+                      <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-muted/25 text-muted-foreground">
+                        <ListPlus className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-2">
+                        <h2 className="text-xl font-semibold tracking-tight">
+                          Choose a section to edit
+                        </h2>
+                        <p className="text-sm leading-6 text-muted-foreground">
+                          Pick a resume section, then edit it full-screen while
+                          the preview stays one tap away.
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => setMobileSectionPickerOpen(true)}
+                      >
+                        <ListPlus className="mr-2 h-4 w-4" />
+                        Choose section
+                      </Button>
+                    </div>
+                  </div>
+                  <DesignResumeDock
+                    activeSectionId={null}
+                    className="hidden h-full self-start sm:flex"
+                    onSectionSelect={(sectionId) =>
+                      navigate(
+                        sectionId
+                          ? `/design-resume/${sectionId}`
+                          : "/design-resume",
+                      )
+                    }
+                  />
+                </>
+              )}
+
+              <DesignResumePreviewPanel
+                className={cn(
+                  mobileWorkspaceView === "preview" ? "flex flex-1" : "hidden",
+                  "sm:flex",
+                )}
+                draft={draft}
+                pdfRenderer={pdfRenderer}
+                isUpdatingRenderer={rendererUpdating || settingsLoading}
+                isDirty={dirty}
+                saveState={saveState}
+                onPdfRendererChange={handlePdfRendererChange}
+              />
+            </div>
+          </>
         )}
       </PageMain>
+
+      {draft ? (
+        <Sheet
+          open={mobileSectionPickerOpen}
+          onOpenChange={setMobileSectionPickerOpen}
+        >
+          <SheetContent
+            side="bottom"
+            className="flex max-h-[86dvh] flex-col overflow-hidden p-0 sm:hidden"
+          >
+            <SheetHeader className="shrink-0 border-b border-border/70 px-5 py-4 text-left">
+              <SheetTitle>Choose section</SheetTitle>
+              <SheetDescription>
+                Switch the mobile editor to a resume section.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
+              <div className="space-y-4">
+                {DESIGN_RESUME_NAV_GROUPS.map((group) => (
+                  <section key={group.id} className="space-y-2">
+                    <div className="px-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {group.label}
+                    </div>
+                    <div className="space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = getDesignResumeSectionIcon(item.id);
+                        const isActive = activeSection === item.id;
+                        const badge = getDesignResumeSectionBadge(item.id);
+
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            aria-current={isActive ? "page" : undefined}
+                            className={cn(
+                              "flex min-h-12 w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors",
+                              isActive
+                                ? "border-primary/45 bg-primary/12 text-foreground"
+                                : "border-transparent text-muted-foreground hover:border-border/70 hover:bg-accent/45 hover:text-foreground",
+                            )}
+                            onClick={() => handleMobileSectionSelect(item.id)}
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border/60 bg-background/70">
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium">
+                                {item.label}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                                {item.description}
+                              </span>
+                            </span>
+                            {badge ? (
+                              <span className="shrink-0 rounded-full border border-border/60 px-2 py-0.5 text-[11px] text-muted-foreground">
+                                {badge.label}
+                              </span>
+                            ) : null}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : null}
 
       {dialogState && draft ? (
         <ItemDialog

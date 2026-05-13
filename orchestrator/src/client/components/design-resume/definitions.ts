@@ -139,7 +139,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     title: "Projects",
     singularTitle: "Project",
     description:
-      "Choose whether each project is never included, selected by AI per job, or always included.",
+      "Choose how each project should be used when tailoring resumes: exclude it, let AI include it when relevant, or always include it.",
     primaryField: "name",
     secondaryField: "period",
     fields: [
