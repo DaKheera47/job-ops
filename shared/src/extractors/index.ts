@@ -14,6 +14,7 @@ export const EXTRACTOR_SOURCE_IDS = [
   "jobindex",
   "seek",
   "naukri",
+  "upwork",
   "manual",
 ] as const;
 
@@ -81,7 +82,8 @@ export const EXTRACTOR_SOURCE_METADATA: Record<
     order: 107,
     category: "pipeline",
   },
-  manual: { label: "Manual", order: 110, category: "manual" },
+  upwork: { label: "Upwork", order: 108, category: "pipeline" },
+  manual: { label: "Manual", order: 120, category: "manual" },
 };
 
 export const PIPELINE_EXTRACTOR_SOURCE_IDS = EXTRACTOR_SOURCE_IDS.filter(
