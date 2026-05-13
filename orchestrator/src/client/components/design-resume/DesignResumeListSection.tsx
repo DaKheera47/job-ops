@@ -160,7 +160,8 @@ export function DesignResumeListSectionContent({
                     cardRefs.current[index] = element;
                   }}
                   className={cn(
-                    "group rounded-xl border border-border/60 bg-background/60 px-4 py-4 shadow-sm transition-colors hover:border-border",
+                    "group rounded-xl border border-border/60 bg-background/60 px-4 py-4 shadow-sm transition-[border-color,background-color,opacity] hover:border-border focus-within:opacity-100",
+                    isHidden && "opacity-55 hover:opacity-100",
                     draggingIndex === index && "opacity-55",
                     dragOverIndex === index &&
                       draggingIndex !== index &&
@@ -258,8 +259,11 @@ export function DesignResumeListSectionContent({
                           <Button
                             type="button"
                             variant="ghost"
-                            className={itemActionClassName}
+                            size="icon"
+                            className="h-8 w-8 rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                             disabled={index === 0}
+                            aria-label={`Move ${primaryLabel} up`}
+                            title="Move up"
                             onClick={() => {
                               if (index === 0) return;
                               const nextItems = [...items];
@@ -269,13 +273,15 @@ export function DesignResumeListSectionContent({
                             }}
                           >
                             <ArrowUp className="h-4 w-4" />
-                            Up
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
-                            className={itemActionClassName}
+                            size="icon"
+                            className="h-8 w-8 rounded-md text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                             disabled={index === items.length - 1}
+                            aria-label={`Move ${primaryLabel} down`}
+                            title="Move down"
                             onClick={() => {
                               if (index === items.length - 1) return;
                               const nextItems = [...items];
@@ -285,7 +291,6 @@ export function DesignResumeListSectionContent({
                             }}
                           >
                             <ArrowDown className="h-4 w-4" />
-                            Down
                           </Button>
                           <div className="h-5 w-px bg-border/70" />
                           <Button
