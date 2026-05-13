@@ -1,9 +1,19 @@
+import * as api from "@client/api";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Accordion } from "@/components/ui/accordion";
 import { EnvironmentSettingsSection } from "./EnvironmentSettingsSection";
+
+vi.mock("@client/api", () => ({
+  createWorkspaceUser: vi.fn(),
+  getCurrentAuthUser: vi.fn(),
+  listWorkspaceUsers: vi.fn(),
+  resetWorkspaceUserPassword: vi.fn(),
+  setWorkspaceUserDisabled: vi.fn(),
+}));
 
 const EnvironmentSettingsHarness = () => {
   const queryClient = new QueryClient({
@@ -55,6 +65,33 @@ const EnvironmentSettingsHarness = () => {
 };
 
 describe("EnvironmentSettingsSection", () => {
+  beforeEach(() => {
+    vi.mocked(api.getCurrentAuthUser).mockResolvedValue({
+      id: "admin-user",
+      username: "admin",
+      displayName: "Admin User",
+      isSystemAdmin: true,
+      isDisabled: false,
+      workspaceId: "tenant-admin",
+      workspaceName: "Admin Workspace",
+      createdAt: "2026-05-13T00:00:00.000Z",
+      updatedAt: "2026-05-13T00:00:00.000Z",
+    });
+    vi.mocked(api.listWorkspaceUsers).mockResolvedValue([
+      {
+        id: "workspace-user",
+        username: "member",
+        displayName: "Member User",
+        isSystemAdmin: false,
+        isDisabled: false,
+        workspaceId: "tenant-member",
+        workspaceName: "Member Workspace",
+        createdAt: "2026-05-13T00:00:00.000Z",
+        updatedAt: "2026-05-13T00:00:00.000Z",
+      },
+    ]);
+  });
+
   it("renders values grouped logically and masks private secrets with hints", () => {
     render(<EnvironmentSettingsHarness />);
 
@@ -72,5 +109,18 @@ describe("EnvironmentSettingsSection", () => {
     expect(screen.getByText("Service Accounts")).toBeInTheDocument();
     expect(screen.getByText("Security")).toBeInTheDocument();
     expect(screen.queryByText("RxResume")).not.toBeInTheDocument();
+  });
+
+  it("updates a workspace user's reset password without crashing", async () => {
+    render(<EnvironmentSettingsHarness />);
+
+    const resetPasswordInput =
+      await screen.findByPlaceholderText("New password");
+
+    fireEvent.change(resetPasswordInput, {
+      target: { value: "new-password" },
+    });
+
+    expect(resetPasswordInput).toHaveValue("new-password");
   });
 });

@@ -175,12 +175,13 @@ function AccountManagementSection() {
               <div className="flex gap-2">
                 <Input
                   value={resetPassword}
-                  onChange={(event) =>
+                  onChange={(event) => {
+                    const value = event.currentTarget.value;
                     setResetPasswordByUserId((current) => ({
                       ...current,
-                      [user.id]: event.currentTarget.value,
-                    }))
-                  }
+                      [user.id]: value,
+                    }));
+                  }}
                   placeholder="New password"
                   type="password"
                   autoComplete="new-password"
