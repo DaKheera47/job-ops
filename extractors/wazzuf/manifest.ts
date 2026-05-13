@@ -1,3 +1,4 @@
+import { normalizeCountryKey } from "job-ops-shared/location-support";
 import type {
   ExtractorManifest,
   ExtractorProgressEvent,
@@ -38,6 +39,10 @@ export const manifest: ExtractorManifest = {
   providesSources: ["wazzuf"],
   async run(context) {
     if (context.shouldCancel?.()) {
+      return { success: true, jobs: [] };
+    }
+
+    if (normalizeCountryKey(context.selectedCountry) !== "egypt") {
       return { success: true, jobs: [] };
     }
 
