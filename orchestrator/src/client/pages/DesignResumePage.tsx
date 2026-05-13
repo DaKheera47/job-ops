@@ -6,9 +6,7 @@ import { PageHeader, PageMain } from "@client/components/layout";
 import {
   type SectionWorkspaceBadge,
   type SectionWorkspaceGroup,
-  SectionWorkspaceNav,
   SectionWorkspacePanel,
-  sectionWorkspaceItemMatchesSearch,
 } from "@client/components/section-workspace/SectionWorkspace";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useSettings } from "@client/hooks/useSettings";
@@ -20,11 +18,30 @@ import type {
 } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  Award,
+  BookOpen,
+  BriefcaseBusiness,
   Download,
+  Eye,
   FileDown,
+  FileText,
+  Folder,
+  GraduationCap,
+  HeartHandshake,
+  ImageIcon,
   Import,
+  Languages,
+  Link2,
+  ListPlus,
+  type LucideIcon,
   MoreHorizontal,
   PenSquare,
+  Quote,
+  ScrollText,
+  Sparkles,
+  Trophy,
+  UserRound,
+  Wrench,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -50,6 +67,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import {
   ITEM_DEFINITIONS,
   type ItemDefinition,
 } from "../components/design-resume/definitions";
@@ -67,6 +91,32 @@ import { queryKeys } from "../lib/queryKeys";
 
 type DesignResumeSectionId = string;
 type DesignResumeGroupId = "profile" | "sections";
+type DesignResumeNavItem = {
+  id: DesignResumeSectionId;
+  label: string;
+  description: string;
+  icon: LucideIcon;
+};
+type DesignResumeNavGroup = {
+  id: DesignResumeGroupId;
+  label: string;
+  items: DesignResumeNavItem[];
+};
+
+const SECTION_ICON_BY_ID: Record<string, LucideIcon> = {
+  profiles: Link2,
+  experience: BriefcaseBusiness,
+  education: GraduationCap,
+  projects: Folder,
+  skills: Wrench,
+  languages: Languages,
+  interests: Sparkles,
+  awards: Trophy,
+  certifications: Award,
+  publications: ScrollText,
+  volunteer: HeartHandshake,
+  references: Quote,
+};
 
 const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
   DesignResumeGroupId,
@@ -98,6 +148,49 @@ const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
   },
 ];
 
+const DESIGN_RESUME_ICON_GROUPS: DesignResumeNavGroup[] = [
+  {
+    id: "profile",
+    label: "Profile",
+    items: [
+      {
+        id: "basics",
+        label: "Contact",
+        description: "Name, headline, and contact details.",
+        icon: UserRound,
+      },
+      {
+        id: "summary",
+        label: "Summary",
+        description: "Short intro shown near the top of your resume.",
+        icon: FileText,
+      },
+      {
+        id: "picture",
+        label: "Picture",
+        description: "Resume photo and picture presentation.",
+        icon: ImageIcon,
+      },
+      {
+        id: "basics-custom-fields",
+        label: "Custom Fields",
+        description: "Extra links or short details near your contact info.",
+        icon: ListPlus,
+      },
+    ],
+  },
+  {
+    id: "sections",
+    label: "Resume Sections",
+    items: ITEM_DEFINITIONS.map((definition) => ({
+      id: definition.key,
+      label: definition.title,
+      description: definition.description,
+      icon: SECTION_ICON_BY_ID[definition.key] ?? BookOpen,
+    })),
+  },
+];
+
 const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
   DesignResumeGroupId,
   DesignResumeSectionId
@@ -126,6 +219,88 @@ const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
 const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
+
+type DesignResumeIconRailProps = {
+  activeSectionId: DesignResumeSectionId | null;
+  onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
+};
+
+function DesignResumeIconRail({
+  activeSectionId,
+  onSectionSelect,
+}: DesignResumeIconRailProps) {
+  return (
+    <TooltipProvider>
+      <aside className="sticky top-6 self-start">
+        <nav
+          aria-label="Design Resume sections"
+          className="flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-sm backdrop-blur"
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Live preview"
+                className={cn(
+                  "h-10 w-10 rounded-lg text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                  activeSectionId == null &&
+                    "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+                )}
+                onClick={() => onSectionSelect(null)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Live preview</TooltipContent>
+          </Tooltip>
+
+          {DESIGN_RESUME_ICON_GROUPS.map((group) => (
+            <div
+              key={group.id}
+              className="mt-3 flex w-full flex-col items-center gap-2 border-t border-border/60 pt-3 first:mt-3"
+            >
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.id === activeSectionId;
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={item.label}
+                        className={cn(
+                          "h-10 w-10 rounded-lg text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground",
+                          isActive &&
+                            "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+                        )}
+                        onClick={() => onSectionSelect(item.id)}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <div className="max-w-56">
+                        <div className="text-xs font-medium">{item.label}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {item.description}
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      </aside>
+    </TooltipProvider>
+  );
+}
+
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -142,10 +317,6 @@ export const DesignResumePage: React.FC = () => {
     index: number | null;
     seed: Record<string, unknown> | null;
   } | null>(null);
-  const [sectionSearch, setSectionSearch] = useState("");
-  const [openSectionGroups, setOpenSectionGroups] = useState<
-    DesignResumeGroupId[]
-  >(["profile", "sections"]);
   const [pictureUploading, setPictureUploading] = useState(false);
   const [resumeImporting, setResumeImporting] = useState(false);
   const [showReimportConfirm, setShowReimportConfirm] = useState(false);
@@ -497,38 +668,6 @@ export const DesignResumePage: React.FC = () => {
     }
   };
 
-  const filteredSectionGroups = useMemo(
-    () =>
-      DESIGN_RESUME_NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter((item) =>
-          sectionWorkspaceItemMatchesSearch(sectionSearch, item),
-        ),
-      })).filter((group) => group.items.length > 0),
-    [sectionSearch],
-  );
-
-  const visibleSectionIds = useMemo(
-    () =>
-      filteredSectionGroups.flatMap((group) =>
-        group.items.map((item) => item.id),
-      ),
-    [filteredSectionGroups],
-  );
-
-  useEffect(() => {
-    if (
-      activeSection == null ||
-      !activeSectionIsValid ||
-      visibleSectionIds.length === 0
-    ) {
-      return;
-    }
-    if (!visibleSectionIds.includes(activeSection)) {
-      navigate(`/design-resume/${visibleSectionIds[0]}`, { replace: true });
-    }
-  }, [activeSection, activeSectionIsValid, navigate, visibleSectionIds]);
-
   const activeSectionMeta = activeSection
     ? allDesignResumeSections.find((item) => item.id === activeSection)
     : null;
@@ -754,7 +893,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain>
+      <PageMain className="max-w-none">
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
@@ -792,23 +931,17 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid gap-6 xl:grid-cols-[300px_minmax(420px,0.9fr)_minmax(0,1.1fr)]"
-                : "grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]"
+                ? "grid gap-6 lg:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
+                : "grid gap-6 lg:grid-cols-[4rem_minmax(0,1fr)]"
             }
           >
-            <SectionWorkspaceNav
-              groups={filteredSectionGroups}
+            <DesignResumeIconRail
               activeSectionId={activeSection}
-              openGroupIds={openSectionGroups}
-              onOpenGroupIdsChange={setOpenSectionGroups}
               onSectionSelect={(sectionId) =>
-                navigate(`/design-resume/${sectionId}`)
+                navigate(
+                  sectionId ? `/design-resume/${sectionId}` : "/design-resume",
+                )
               }
-              searchValue={sectionSearch}
-              onSearchValueChange={setSectionSearch}
-              searchPlaceholder="Search resume sections"
-              searchEmptyLabel="No resume sections matched"
-              getItemBadge={getDesignResumeSectionBadge}
             />
 
             {activeSection && activeGroup && activeSectionMeta ? (
