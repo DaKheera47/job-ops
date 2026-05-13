@@ -279,7 +279,14 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
       <div className="rounded-md border border-border bg-card px-3 py-2 font-bold text-muted-foreground">
         Start sign-in to generate a one-time code. After approval in your
         browser, click{" "}
-        <span className="font-medium text-foreground">Check Status</span>. <a href="https://developers.openai.com/codex/auth#preferred-device-code-authentication-beta" target="_blank" rel="noopener noreferrer">Learn more</a>
+        <span className="font-medium text-foreground">Check Status</span>.{" "}
+        <a
+          href="https://developers.openai.com/codex/auth#preferred-device-code-authentication-beta"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Learn more
+        </a>
       </div>
 
       <div className="space-y-1 text-xs text-muted-foreground">
