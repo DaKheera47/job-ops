@@ -112,6 +112,9 @@ type DesignResumeNavGroup = {
   items: DesignResumeNavItem[];
 };
 
+const DESIGN_RESUME_PAGE_MAIN_CLASS_NAME =
+  "flex min-h-0 flex-1 flex-col space-y-0 overflow-hidden py-3 pb-3";
+
 const SECTION_ICON_BY_ID: Record<string, LucideIcon> = {
   profiles: Link2,
   experience: BriefcaseBusiness,
@@ -436,7 +439,7 @@ function DesignResumeDock({
           }}
           onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
           onWheel={handleWheel}
-          className="pointer-events-auto relative h-[calc(100vh-8rem)] w-[70px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
+          className="pointer-events-auto relative h-full min-h-0 w-[70px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Design Resume sections"
         >
@@ -887,18 +890,18 @@ export const DesignResumePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <>
+      <div className="flex h-dvh flex-col overflow-hidden">
         <PageHeader
           icon={PenSquare}
           title="Design Resume"
           subtitle="Loading your resume"
         />
-        <PageMain>
+        <PageMain className={DESIGN_RESUME_PAGE_MAIN_CLASS_NAME}>
           <div className="rounded-2xl border border-border/70 bg-card px-6 py-20 text-center text-sm text-muted-foreground">
             Loading Design Resume...
           </div>
         </PageMain>
-      </>
+      </div>
     );
   }
 
@@ -926,7 +929,7 @@ export const DesignResumePage: React.FC = () => {
   ) : null;
 
   return (
-    <>
+    <div className="flex h-dvh flex-col overflow-hidden">
       <input
         ref={fileInputRef}
         type="file"
@@ -1055,7 +1058,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain>
+      <PageMain className={DESIGN_RESUME_PAGE_MAIN_CLASS_NAME}>
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
@@ -1093,15 +1096,15 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid min-w-0 gap-6 overflow-x-visible xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)]"
-                : "grid min-w-0 gap-6 overflow-x-clip"
+                ? "grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-6 overflow-hidden xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
+                : "grid min-h-0 min-w-0 flex-1 gap-6 overflow-hidden"
             }
           >
             {activeSection && activeGroup && activeSectionMeta ? (
-              <div className="grid min-w-0 gap-3 sm:grid-cols-[70px_minmax(0,1fr)]">
+              <div className="grid min-h-0 min-w-0 gap-3 sm:grid-cols-[70px_minmax(0,1fr)]">
                 <DesignResumeDock
                   activeSectionId={activeSection}
-                  className="sticky top-24 self-start"
+                  className="h-full self-start"
                   onSectionSelect={(sectionId) =>
                     navigate(
                       sectionId
@@ -1123,6 +1126,7 @@ export const DesignResumePage: React.FC = () => {
                         ? { label: "Autosaved", variant: "outline" }
                         : null
                   }
+                  scrollable
                 >
                   {rail}
                 </SectionWorkspacePanel>
@@ -1251,6 +1255,6 @@ export const DesignResumePage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 };

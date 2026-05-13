@@ -508,14 +508,10 @@ export function DesignResumeListSectionContent({
 
         {definition.key === "projects" ? (
           <div className="rounded-lg border border-border/50 bg-background/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
-            Runtime tailoring never uses{" "}
-            <span className="font-medium text-foreground">Never</span> projects,
-            can pick from{" "}
-            <span className="font-medium text-foreground">AI choose</span>{" "}
-            projects per job, and always includes{" "}
-            <span className="font-medium text-foreground">Always include</span>{" "}
-            projects. It cannot invent projects or rewrite these baseline
-            project details.
+            Choose how each project should be used when tailoring resumes:
+            exclude it, let AI include it when relevant, or always include it.
+            The AI cannot invent projects or rewrite the bullet points in project's
+            detail.
           </div>
         ) : null}
 

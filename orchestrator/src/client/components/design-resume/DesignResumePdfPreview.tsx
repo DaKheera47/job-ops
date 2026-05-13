@@ -105,7 +105,7 @@ export function DesignResumePdfPreview({
 
   return (
     <div className="relative flex h-full min-h-0 items-center justify-center overflow-hidden bg-card">
-      <div className="relative h-full min-h-[720px] w-full overflow-hidden border border-border/70 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+      <div className="relative h-full min-h-0 w-full overflow-hidden border border-border/70 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
         {pdfUrl ? (
           <iframe
             key={pdfUrl}

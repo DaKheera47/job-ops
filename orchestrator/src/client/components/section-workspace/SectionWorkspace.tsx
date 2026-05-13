@@ -171,6 +171,7 @@ type SectionWorkspacePanelProps = {
   actions?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  scrollable?: boolean;
 };
 
 export function SectionWorkspacePanel({
@@ -182,49 +183,75 @@ export function SectionWorkspacePanel({
   actions,
   children,
   footer,
+  scrollable = false,
 }: SectionWorkspacePanelProps) {
-  return (
-    <section className="h-fit space-y-4 rounded-2xl border border-border/70 bg-card p-6">
-      <header className="space-y-4 border-b border-border/70 pb-5">
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-          <span>{groupLabel}</span>
-          <span>/</span>
-          <span>{sectionLabel}</span>
-        </div>
+  const header = (
+    <header
+      className={cn(
+        "space-y-4 border-b border-border/70 pb-5",
+        scrollable && "sticky top-0 z-10 shrink-0 bg-card px-6 pt-6",
+      )}
+    >
+      <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+        <span>{groupLabel}</span>
+        <span>/</span>
+        <span>{sectionLabel}</span>
+      </div>
 
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-2xl font-semibold tracking-tight">
-                {sectionLabel}
-              </h2>
-              {badge ? (
-                <Badge variant={badge.variant ?? "secondary"}>
-                  {badge.label}
-                </Badge>
-              ) : null}
-              {secondaryBadge ? (
-                <Badge variant={secondaryBadge.variant ?? "secondary"}>
-                  {secondaryBadge.label}
-                </Badge>
-              ) : null}
-            </div>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              {sectionDescription}
-            </p>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              {sectionLabel}
+            </h2>
+            {badge ? (
+              <Badge variant={badge.variant ?? "secondary"}>
+                {badge.label}
+              </Badge>
+            ) : null}
+            {secondaryBadge ? (
+              <Badge variant={secondaryBadge.variant ?? "secondary"}>
+                {secondaryBadge.label}
+              </Badge>
+            ) : null}
           </div>
-
-          {actions ? (
-            <div className="flex shrink-0 flex-nowrap gap-2 self-start">
-              {actions}
-            </div>
-          ) : null}
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            {sectionDescription}
+          </p>
         </div>
-      </header>
 
-      {children}
+        {actions ? (
+          <div className="flex shrink-0 flex-nowrap gap-2 self-start">
+            {actions}
+          </div>
+        ) : null}
+      </div>
+    </header>
+  );
 
-      {footer}
+  if (!scrollable) {
+    return (
+      <section className="h-fit space-y-4 rounded-2xl border border-border/70 bg-card p-6">
+        {header}
+
+        {children}
+
+        {footer}
+      </section>
+    );
+  }
+
+  return (
+    <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-card">
+      {header}
+
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        <div className="space-y-4">
+          {children}
+
+          {footer}
+        </div>
+      </div>
     </section>
   );
 }
