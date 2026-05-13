@@ -519,6 +519,7 @@ const normalizePrivateInput = (value: string | null | undefined) => {
 
 const normalizePurposeOverrides = (
   value: UpdateSettingsInput["llmPurposeOverrides"],
+  options: { dropInheritedProviderOverrides?: boolean } = {},
 ) => {
   if (!value) return null;
   const out: NonNullable<UpdateSettingsInput["llmPurposeOverrides"]> = {};
@@ -530,6 +531,9 @@ const normalizePurposeOverrides = (
     const provider = normalizeLlmProviderValue(override.provider ?? null);
     const baseUrl = normalizeString(override.baseUrl ?? null);
     const model = normalizeString(override.model ?? null);
+    if (options.dropInheritedProviderOverrides && !provider) {
+      continue;
+    }
     if (provider || baseUrl || model) {
       out[purpose] = {
         ...(provider ? { provider } : {}),
@@ -1173,6 +1177,10 @@ export const SettingsPage: React.FC = () => {
               modelScorer: null,
               modelTailoring: null,
               modelProjectSelection: null,
+              llmPurposeOverrides: normalizePurposeOverrides(
+                data.llmPurposeOverrides,
+                { dropInheritedProviderOverrides: true },
+              ),
             }
           : {}),
         ...(dirtyFields.llmPurposeOverrides

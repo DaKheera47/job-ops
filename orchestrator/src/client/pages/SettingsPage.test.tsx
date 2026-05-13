@@ -512,6 +512,25 @@ describe("SettingsPage", () => {
           override: null,
         },
         llmProvider: { value: "gemini", default: "gemini", override: "gemini" },
+        llmPurposeOverrides: {
+          value: {
+            scoring: { model: "google/gemini-3-flash-preview" },
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+            projectSelection: {
+              baseUrl: "https://generativelanguage.googleapis.com",
+              model: "google/gemini-3-flash-preview",
+            },
+          },
+          default: {},
+          override: {
+            scoring: { model: "google/gemini-3-flash-preview" },
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+            projectSelection: {
+              baseUrl: "https://generativelanguage.googleapis.com",
+              model: "google/gemini-3-flash-preview",
+            },
+          },
+        },
       }),
     );
     vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
@@ -534,6 +553,9 @@ describe("SettingsPage", () => {
         modelScorer: null,
         modelTailoring: null,
         modelProjectSelection: null,
+        llmPurposeOverrides: {
+          tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+        },
       }),
     );
   });
