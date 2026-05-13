@@ -18,6 +18,13 @@ import type {
 } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  type MotionValue,
+  motion,
+  useMotionValue,
+  useSpring,
+  useTransform,
+} from "framer-motion";
+import {
   Award,
   BookOpen,
   BriefcaseBusiness,
@@ -66,6 +73,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   ITEM_DEFINITIONS,
@@ -229,99 +242,178 @@ const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
 
-const RailIcon = ({
-  item,
-  sectionId,
-  isActive,
-  onSectionSelect,
-  navItemClassName,
-  navLabelClassName,
-  preventMouseFocus,
-  Icon,
-}: {
-  item: DesignResumeNavItem;
-  sectionId: DesignResumeSectionId | null;
-  isActive: boolean;
-  onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
-  navItemClassName: string;
-  navLabelClassName: string;
-  preventMouseFocus: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  Icon: LucideIcon;
-}) => {
-  return (
-    <Button
-      key={item.id}
-      type="button"
-      variant="ghost"
-      aria-current={isActive ? "page" : undefined}
-      aria-label={item.label}
-      onMouseDown={preventMouseFocus}
-      className={cn(
-        navItemClassName,
-        isActive &&
-          "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-      )}
-      onClick={() => onSectionSelect(sectionId)}
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-        <Icon />
-      </div>
-      <span className={navLabelClassName}>{item.label}</span>
-    </Button>
+const useDockItemSize = (
+  mouseX: MotionValue<number>,
+  baseItemSize: number,
+  magnification: number,
+  distance: number,
+  ref: React.RefObject<HTMLButtonElement | null>,
+  spring: { mass: number; stiffness: number; damping: number },
+) => {
+  const mouseDistance = useTransform(mouseX, (value) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return 0;
+    const rect = ref.current?.getBoundingClientRect() ?? {
+      x: 0,
+      width: baseItemSize,
+    };
+    return value - rect.x - baseItemSize / 2;
+  });
+
+  const targetSize = useTransform(
+    mouseDistance,
+    [-distance, 0, distance],
+    [baseItemSize, magnification, baseItemSize],
   );
+
+  return useSpring(targetSize, spring);
 };
+
+type DesignResumeDockItem = {
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  badgeCount?: number;
+};
+
+type DesignResumeDockButtonProps = DesignResumeDockItem & {
+  mouseX: MotionValue<number>;
+  baseItemSize: number;
+  magnification: number;
+  distance: number;
+  spring: { mass: number; stiffness: number; damping: number };
+};
+
+function DesignResumeDockButton({
+  icon,
+  label,
+  active,
+  onClick,
+  mouseX,
+  baseItemSize,
+  magnification,
+  distance,
+  spring,
+  badgeCount,
+}: DesignResumeDockButtonProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const size = useDockItemSize(
+    mouseX,
+    baseItemSize,
+    magnification,
+    distance,
+    ref,
+    spring,
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <motion.button
+          ref={ref}
+          type="button"
+          style={{ width: size, height: size }}
+          onClick={onClick}
+          className={cn(
+            "relative inline-flex shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            active
+              ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
+              : "border-border/70 hover:border-border hover:bg-accent/70",
+          )}
+          aria-current={active ? "page" : undefined}
+          aria-label={label}
+        >
+          <span className="[&_svg]:h-5 [&_svg]:w-5">{icon}</span>
+          {badgeCount !== undefined && badgeCount > 0 ? (
+            <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-primary-foreground">
+              {badgeCount > 99 ? "99+" : badgeCount}
+            </span>
+          ) : null}
+        </motion.button>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        sideOffset={10}
+        className="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
+      >
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 type DesignResumeIconRailProps = {
   activeSectionId: DesignResumeSectionId | null;
   onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
 };
 
-function DesignResumeIconRail({
+function DesignResumeDock({
   activeSectionId,
   onSectionSelect,
 }: DesignResumeIconRailProps) {
-  const navItemClassName =
-    "flex justify-start gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,color,background-color,border-color] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-48 group-focus-within/rail:w-48 size-10";
-  const navLabelClassName =
-    "ml-3 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
-  const preventMouseFocus = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-  };
+  const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
+  const isHovered = useMotionValue(0);
+  const spring = { mass: 0.1, stiffness: 150, damping: 12 };
+  const panelHeight = 86;
+  const dockHeight = 132;
+  const magnification = 70;
+  const baseItemSize = 46;
+  const distance = 200;
+  const animatedHeight = useSpring(
+    useTransform(isHovered, [0, 1], [panelHeight, dockHeight]),
+    spring,
+  );
+
+  const items = DESIGN_RESUME_ICON_GROUPS.flatMap((group) =>
+    group.items.map((item) => {
+      const Icon = item.icon;
+      const sectionId = item.sectionId === undefined ? item.id : item.sectionId;
+      return {
+        id: item.id,
+        icon: <Icon aria-hidden="true" />,
+        label: item.label,
+        active: sectionId === activeSectionId,
+        onClick: () => onSectionSelect(sectionId),
+      };
+    }),
+  );
 
   return (
-    <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
-      <nav
-        aria-label="Design Resume sections"
-        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-start overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-border/70 bg-card px-2 py-3 shadow-lg backdrop-blur transition-[width,box-shadow,border-color] duration-200 hover:w-52 hover:border-border hover:shadow-[18px_0_44px_rgba(0,0,0,0.42)] focus-within:w-52 focus-within:border-border focus-within:shadow-[18px_0_44px_rgba(0,0,0,0.42)]"
-      >
-        {DESIGN_RESUME_ICON_GROUPS.map((group) => (
-          <div
-            key={group.id}
-            className="mt-3 flex w-full flex-col items-start gap-2 border-t border-border/60 pt-3 first:mt-0 first:border-t-0 first:pt-0"
-          >
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              const sectionId =
-                item.sectionId === undefined ? item.id : item.sectionId;
-              const isActive = sectionId === activeSectionId;
-              return (
-                <RailIcon
-                  key={item.id}
-                  item={item}
-                  sectionId={sectionId}
-                  isActive={isActive}
-                  onSectionSelect={onSectionSelect}
-                  navItemClassName={navItemClassName}
-                  navLabelClassName={navLabelClassName}
-                  preventMouseFocus={preventMouseFocus}
-                  Icon={Icon}
-                />
-              );
-            })}
-          </div>
-        ))}
-      </nav>
-    </aside>
+    <motion.div
+      style={{ height: animatedHeight }}
+      className="pointer-events-none fixed inset-x-0 bottom-4 z-50 mx-auto flex max-w-full items-end justify-center px-2"
+    >
+      <TooltipProvider delayDuration={0} skipDelayDuration={80}>
+        <motion.nav
+          onMouseMove={({ clientX }) => {
+            isHovered.set(1);
+            mouseX.set(clientX);
+          }}
+          onMouseLeave={() => {
+            isHovered.set(0);
+            mouseX.set(Number.POSITIVE_INFINITY);
+          }}
+          onFocus={() => isHovered.set(1)}
+          onBlur={() => isHovered.set(0)}
+          className="pointer-events-auto max-h-4 !overflow-visible flex max-w-[calc(100vw-1rem)] items-end gap-2 overflow-x-auto rounded-2xl border border-border/80 bg-card/95 px-3 py-2 shadow-2xl shadow-background/50 backdrop-blur [scrollbar-width:none] supports-[backdrop-filter]:bg-card/85 sm:gap-3 sm:px-4 [&::-webkit-scrollbar]:hidden"
+          role="toolbar"
+          aria-label="Design Resume sections"
+        >
+          {items.map((item) => (
+            <DesignResumeDockButton
+              key={item.id}
+              {...item}
+              mouseX={mouseX}
+              baseItemSize={baseItemSize}
+              magnification={magnification}
+              distance={distance}
+              spring={spring}
+            />
+          ))}
+        </motion.nav>
+      </TooltipProvider>
+    </motion.div>
   );
 }
 
@@ -917,7 +1009,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain>
+      <PageMain className={draft ? "pb-32" : undefined}>
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
@@ -955,19 +1047,10 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid min-w-0 gap-6 overflow-x-clip lg:grid-cols-[4rem_minmax(0,1fr)] xl:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
-                : "grid min-w-0 gap-6 overflow-x-clip lg:grid-cols-[4rem_minmax(0,1fr)]"
+                ? "grid min-w-0 gap-6 overflow-x-clip xl:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]"
+                : "grid min-w-0 gap-6 overflow-x-clip"
             }
           >
-            <DesignResumeIconRail
-              activeSectionId={activeSection}
-              onSectionSelect={(sectionId) =>
-                navigate(
-                  sectionId ? `/design-resume/${sectionId}` : "/design-resume",
-                )
-              }
-            />
-
             {activeSection && activeGroup && activeSectionMeta ? (
               <SectionWorkspacePanel
                 groupLabel={activeGroup.label}
@@ -993,8 +1076,14 @@ export const DesignResumePage: React.FC = () => {
               isDirty={dirty}
               saveState={saveState}
               onPdfRendererChange={handlePdfRendererChange}
-              className={
-                activeSection ? "lg:col-start-2 xl:col-start-auto" : undefined
+            />
+
+            <DesignResumeDock
+              activeSectionId={activeSection}
+              onSectionSelect={(sectionId) =>
+                navigate(
+                  sectionId ? `/design-resume/${sectionId}` : "/design-resume",
+                )
               }
             />
           </div>
