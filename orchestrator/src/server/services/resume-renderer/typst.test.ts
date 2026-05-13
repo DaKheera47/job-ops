@@ -166,6 +166,16 @@ describe("typst resume renderer", () => {
     expect(typst).toContain('#let resume = json("resume-data.json")');
   });
 
+  it("keeps links in the clean-print-cv adapter", async () => {
+    const template = await readTypstTemplate("clean-print-cv");
+
+    expect(template).toContain("link-or-text");
+    expect(template).toContain("contact-label-matching(is-linkedin)");
+    expect(template).toContain("contact-label-matching(is-github)");
+    expect(template).toContain("linked-entry-label(entry");
+    expect(template).toContain("linked-url-label(entry)");
+  });
+
   it("escapes Typst markup characters in resume content", async () => {
     const tokens = await readNativeThemeTokens("classic");
     const typst = buildTypstDocument(
