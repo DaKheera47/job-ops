@@ -1,5 +1,11 @@
 import * as api from "@client/api";
 import { PageHeader } from "@client/components/layout";
+import {
+  type SectionWorkspaceBadge,
+  SectionWorkspaceNav,
+  SectionWorkspacePanel,
+  sectionWorkspaceItemMatchesSearch,
+} from "@client/components/section-workspace/SectionWorkspace";
 import { useUpdateSettingsMutation } from "@client/hooks/queries/useSettingsMutation";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
@@ -42,7 +48,7 @@ import type {
   ValidationResult,
 } from "@shared/types.js";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Search, Settings } from "lucide-react";
+import { Settings } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -57,16 +63,7 @@ import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
 import { formatUserFacingError } from "@/client/lib/error-format";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   model: "",
@@ -350,12 +347,7 @@ function matchesSettingsSearch(
   searchTerm: string,
   item: SettingsSectionDescriptor,
 ): boolean {
-  if (!searchTerm) return true;
-  const normalized = searchTerm.toLowerCase();
-  const haystack = [item.label, item.description, ...item.searchTerms].join(
-    " ",
-  );
-  return haystack.toLowerCase().includes(normalized);
+  return sectionWorkspaceItemMatchesSearch(searchTerm, item);
 }
 
 const getRxResumeValidationFields = (): Array<keyof UpdateSettingsInput> => [
@@ -1480,7 +1472,9 @@ export const SettingsPage: React.FC = () => {
   const sectionHasErrors = (sectionId: SettingsSectionId) =>
     SECTION_FIELD_MAP[sectionId].some((field) => Boolean(errors[field]));
 
-  const getSectionBadge = (sectionId: SettingsSectionId) => {
+  const getSectionBadge = (
+    sectionId: SettingsSectionId,
+  ): SectionWorkspaceBadge | null => {
     if (sectionId === "danger-zone") {
       return { label: "Sensitive", variant: "destructive" as const };
     }
@@ -1703,150 +1697,73 @@ export const SettingsPage: React.FC = () => {
 
       <main className="container mx-auto px-4 py-6 pb-12">
         <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="lg:sticky lg:top-6 lg:self-start">
-            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
-              <div className="border-b px-4 py-4">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={settingsSearch}
-                    onChange={(event) => setSettingsSearch(event.target.value)}
-                    placeholder="Search settings"
-                    className="pl-9"
-                    aria-label="Search settings"
-                  />
-                </div>
-              </div>
-              <div className="p-2">
-                {filteredNavGroups.length > 0 ? (
-                  <Accordion
-                    type="multiple"
-                    value={
-                      settingsSearch.trim()
-                        ? filteredNavGroups.map((group) => group.id)
-                        : openGroups
-                    }
-                    onValueChange={(value) =>
-                      setOpenGroups(value as SettingsGroupId[])
-                    }
-                    className="space-y-1"
-                  >
-                    {filteredNavGroups.map((group) => (
-                      <AccordionItem
-                        key={group.id}
-                        value={group.id}
-                        className="border-b border-border/60 px-2 last:border-b-0"
-                      >
-                        <AccordionTrigger className="py-3 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground hover:no-underline">
-                          {group.label}
-                        </AccordionTrigger>
-                        <AccordionContent className="pb-3">
-                          <div className="space-y-1">
-                            {group.items.map((item) => {
-                              const isActive = item.id === activeSection;
-                              return (
-                                <Button
-                                  key={item.id}
-                                  type="button"
-                                  variant="ghost"
-                                  className={cn(
-                                    "h-9 w-full justify-start rounded-md px-3 text-left text-sm font-medium",
-                                    isActive
-                                      ? "border border-primary/40 bg-primary/12 text-white hover:bg-primary/18"
-                                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
-                                  )}
-                                  onClick={() => setActiveSection(item.id)}
-                                >
-                                  {item.label}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                ) : (
-                  <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
-                    No settings matched “{settingsSearch.trim()}”.
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
+          <SectionWorkspaceNav
+            groups={filteredNavGroups}
+            activeSectionId={activeSection}
+            openGroupIds={openGroups}
+            onOpenGroupIdsChange={setOpenGroups}
+            onSectionSelect={setActiveSection}
+            searchValue={settingsSearch}
+            onSearchValueChange={setSettingsSearch}
+            searchPlaceholder="Search settings"
+            searchEmptyLabel="No settings matched"
+          />
 
-          <section className="space-y-4 border border-border/70 rounded-2xl bg-card p-6 h-fit">
-            <header className="space-y-4 border-b border-border/70 pb-5">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                <span>{activeGroup.label}</span>
-                <span>/</span>
-                <span>{activeSectionMeta.label}</span>
-              </div>
-
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-2xl font-semibold tracking-tight">
-                      {activeSectionMeta.label}
-                    </h2>
-                    {selectedSectionBadge ? (
-                      <Badge variant={selectedSectionBadge.variant}>
-                        {selectedSectionBadge.label}
-                      </Badge>
-                    ) : null}
-                    {dirtySectionCount > 0 ? (
-                      <Badge variant="secondary">
-                        {dirtySectionCount} unsaved section
-                        {dirtySectionCount !== 1 ? "s" : ""}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-                    {activeSectionMeta.description}
-                  </p>
-                </div>
-
-                <div className="flex shrink-0 flex-nowrap gap-2 self-start">
-                  {activeSectionIsDirty ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="whitespace-nowrap"
-                      onClick={handleDiscardChanges}
-                      disabled={isLoading || isSaving || !isDirty}
-                    >
-                      Discard changes
-                    </Button>
-                  ) : null}
+          <SectionWorkspacePanel
+            groupLabel={activeGroup.label}
+            sectionLabel={activeSectionMeta.label}
+            sectionDescription={activeSectionMeta.description}
+            badge={selectedSectionBadge}
+            secondaryBadge={
+              dirtySectionCount > 0
+                ? {
+                    label: `${dirtySectionCount} unsaved section${dirtySectionCount !== 1 ? "s" : ""}`,
+                    variant: "secondary",
+                  }
+                : null
+            }
+            actions={
+              <>
+                {activeSectionIsDirty ? (
                   <Button
                     type="button"
                     variant="outline"
                     className="whitespace-nowrap"
-                    onClick={handleReset}
-                    disabled={isLoading || isSaving || !settings}
+                    onClick={handleDiscardChanges}
+                    disabled={isLoading || isSaving || !isDirty}
                   >
-                    Reset to defaults
+                    Discard changes
                   </Button>
-                  <Button
-                    type="button"
-                    className="whitespace-nowrap"
-                    onClick={handleSubmit(onSave)}
-                    disabled={isLoading || isSaving || !canSave}
-                  >
-                    {isSaving ? "Saving..." : "Save changes"}
-                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="whitespace-nowrap"
+                  onClick={handleReset}
+                  disabled={isLoading || isSaving || !settings}
+                >
+                  Reset to defaults
+                </Button>
+                <Button
+                  type="button"
+                  className="whitespace-nowrap"
+                  onClick={handleSubmit(onSave)}
+                  disabled={isLoading || isSaving || !canSave}
+                >
+                  {isSaving ? "Saving..." : "Save changes"}
+                </Button>
+              </>
+            }
+            footer={
+              Object.keys(errors).length > 0 ? (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/[0.03] px-4 py-3 text-sm text-destructive">
+                  Please fix the highlighted errors before saving.
                 </div>
-              </div>
-            </header>
-
+              ) : null
+            }
+          >
             {activeSectionContent}
-
-            {Object.keys(errors).length > 0 && (
-              <div className="rounded-xl border border-destructive/30 bg-destructive/[0.03] px-4 py-3 text-sm text-destructive">
-                Please fix the highlighted errors before saving.
-              </div>
-            )}
-          </section>
+          </SectionWorkspacePanel>
         </div>
       </main>
     </FormProvider>

@@ -6,7 +6,10 @@ import {
   PictureSection,
   SummarySection,
 } from "./DesignResumeInlineSections";
-import { DesignResumeListSection } from "./DesignResumeListSection";
+import {
+  DesignResumeListSection,
+  DesignResumeListSectionContent,
+} from "./DesignResumeListSection";
 import { DesignResumeSection } from "./DesignResumeSection";
 import { ITEM_DEFINITIONS, type ItemDefinition } from "./definitions";
 import { asArray, asRecord, setByPath } from "./utils";
@@ -22,6 +25,7 @@ type DesignResumeRailProps = {
   pictureUploading: boolean;
   pictureEnabled: boolean;
   pictureDisabledReason?: string | null;
+  activeSectionId?: string | null;
 };
 
 export function DesignResumeRail({
@@ -33,6 +37,7 @@ export function DesignResumeRail({
   pictureUploading,
   pictureEnabled,
   pictureDisabledReason,
+  activeSectionId = null,
 }: DesignResumeRailProps) {
   const resumeJson = draft.resumeJson as Record<string, unknown>;
   const basics = (asRecord(resumeJson.basics) ?? {}) as Record<string, unknown>;
@@ -137,6 +142,79 @@ export function DesignResumeRail({
     });
   };
 
+  const getListSectionProps = (definition: ItemDefinition) => {
+    const section = (asRecord(sections[definition.key]) ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const items = asArray(section.items).map(
+      (item) => asRecord(item) ?? {},
+    ) as Record<string, unknown>[];
+
+    return {
+      definition,
+      items,
+      onAdd: () => onOpenDialog(definition, null),
+      onEdit: (index: number) => onOpenDialog(definition, index),
+      onUpdateItems: (nextItems: Record<string, unknown>[]) =>
+        updateSectionItems(definition.key, nextItems),
+    };
+  };
+
+  const renderActiveSection = () => {
+    switch (activeSectionId) {
+      case "picture":
+        return (
+          <PictureSection
+            picture={picture}
+            pictureUploading={pictureUploading}
+            pictureEnabled={pictureEnabled}
+            pictureDisabledReason={pictureDisabledReason}
+            onUploadPicture={onUploadPicture}
+            onDeletePicture={onDeletePicture}
+            onUpdatePicture={updatePicture}
+          />
+        );
+      case "basics":
+        return (
+          <BasicsSection
+            resumeJson={draft.resumeJson}
+            basics={basics}
+            onUpdateBasics={updateBasics}
+          />
+        );
+      case "basics-custom-fields":
+        return (
+          <BasicsCustomFieldsSection
+            customFields={customFields}
+            onChange={updateCustomFields}
+          />
+        );
+      case "summary":
+        return (
+          <SummarySection
+            resumeJson={draft.resumeJson}
+            summary={summary}
+            onUpdateSummary={updateSummary}
+          />
+        );
+      default: {
+        const definition = ITEM_DEFINITIONS.find(
+          (item) => item.key === activeSectionId,
+        );
+        return definition ? (
+          <DesignResumeListSectionContent
+            {...getListSectionProps(definition)}
+          />
+        ) : null;
+      }
+    }
+  };
+
+  if (activeSectionId) {
+    return <div className="space-y-4">{renderActiveSection()}</div>;
+  }
+
   return (
     <Accordion type="multiple" defaultValue={[]} className="space-y-3">
       <DesignResumeSection
@@ -191,28 +269,12 @@ export function DesignResumeRail({
         />
       </DesignResumeSection>
 
-      {ITEM_DEFINITIONS.map((definition) => {
-        const section = (asRecord(sections[definition.key]) ?? {}) as Record<
-          string,
-          unknown
-        >;
-        const items = asArray(section.items).map(
-          (item) => asRecord(item) ?? {},
-        ) as Record<string, unknown>[];
-
-        return (
-          <DesignResumeListSection
-            key={definition.key}
-            definition={definition}
-            items={items}
-            onAdd={() => onOpenDialog(definition, null)}
-            onEdit={(index) => onOpenDialog(definition, index)}
-            onUpdateItems={(nextItems) =>
-              updateSectionItems(definition.key, nextItems)
-            }
-          />
-        );
-      })}
+      {ITEM_DEFINITIONS.map((definition) => (
+        <DesignResumeListSection
+          key={definition.key}
+          {...getListSectionProps(definition)}
+        />
+      ))}
     </Accordion>
   );
 }

@@ -23,7 +23,7 @@ type DesignResumeListSectionProps = {
   onUpdateItems: (nextItems: Record<string, unknown>[]) => void;
 };
 
-export function DesignResumeListSection({
+export function DesignResumeListSectionContent({
   definition,
   items,
   onAdd,
@@ -54,12 +54,7 @@ export function DesignResumeListSection({
   };
 
   return (
-    <DesignResumeSection
-      value={definition.key}
-      title={definition.title}
-      subtitle={definition.description}
-      badge={items.length === 0 ? "Empty" : `${items.length}`}
-    >
+    <>
       <div className="space-y-3">
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
           <div>
@@ -195,6 +190,19 @@ export function DesignResumeListSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </>
+  );
+}
+
+export function DesignResumeListSection(props: DesignResumeListSectionProps) {
+  return (
+    <DesignResumeSection
+      value={props.definition.key}
+      title={props.definition.title}
+      subtitle={props.definition.description}
+      badge={props.items.length === 0 ? "Empty" : `${props.items.length}`}
+    >
+      <DesignResumeListSectionContent {...props} />
     </DesignResumeSection>
   );
 }

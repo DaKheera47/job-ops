@@ -3,6 +3,13 @@ import { DesignResumePreviewPanel } from "@client/components/design-resume/Desig
 import { DesignResumeRail } from "@client/components/design-resume/DesignResumeRail";
 import { ItemDialog } from "@client/components/design-resume/ItemDialog";
 import { PageHeader, PageMain } from "@client/components/layout";
+import {
+  type SectionWorkspaceBadge,
+  type SectionWorkspaceGroup,
+  SectionWorkspaceNav,
+  SectionWorkspacePanel,
+  sectionWorkspaceItemMatchesSearch,
+} from "@client/components/section-workspace/SectionWorkspace";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useSettings } from "@client/hooks/useSettings";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
@@ -17,11 +24,11 @@ import {
   FileDown,
   Import,
   MoreHorizontal,
-  PanelLeft,
   PenSquare,
 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { showErrorToast } from "@/client/lib/error-toast";
 import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
@@ -43,13 +50,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import type { ItemDefinition } from "../components/design-resume/definitions";
+  ITEM_DEFINITIONS,
+  type ItemDefinition,
+} from "../components/design-resume/definitions";
 import {
   asArray,
   asRecord,
@@ -62,8 +65,73 @@ import {
 import { formatUserFacingError } from "../lib/error-format";
 import { queryKeys } from "../lib/queryKeys";
 
+type DesignResumeSectionId = string;
+type DesignResumeGroupId = "profile" | "sections";
+
+const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
+  DesignResumeGroupId,
+  DesignResumeSectionId
+>["items"] = [
+  {
+    id: "basics",
+    label: "Contact",
+    description: "Name, headline, and contact details.",
+    searchTerms: ["basics", "headline", "email", "phone", "location"],
+  },
+  {
+    id: "summary",
+    label: "Summary",
+    description: "Short intro shown near the top of your resume.",
+    searchTerms: ["intro", "profile", "overview"],
+  },
+  {
+    id: "picture",
+    label: "Picture",
+    description: "Resume photo and picture presentation.",
+    searchTerms: ["photo", "avatar", "image"],
+  },
+  {
+    id: "basics-custom-fields",
+    label: "Custom Fields",
+    description: "Extra links or short details near your contact info.",
+    searchTerms: ["links", "custom", "details"],
+  },
+];
+
+const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
+  DesignResumeGroupId,
+  DesignResumeSectionId
+>[] = [
+  {
+    id: "profile",
+    label: "Profile",
+    items: DESIGN_RESUME_PROFILE_SECTIONS,
+  },
+  {
+    id: "sections",
+    label: "Resume Sections",
+    items: ITEM_DEFINITIONS.map((definition) => ({
+      id: definition.key,
+      label: definition.title,
+      description: definition.description,
+      searchTerms: [
+        definition.singularTitle,
+        definition.primaryField,
+        definition.secondaryField ?? "",
+      ].filter(Boolean),
+    })),
+  },
+];
+
+const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
+  (group) => group.items,
+);
+const DEFAULT_DESIGN_RESUME_SECTION = "summary";
+
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { section: sectionParam } = useParams<{ section?: string }>();
   const { document, status, isLoading, error } = useDesignResume();
   const { settings, isLoading: settingsLoading } = useSettings();
   const { readiness: tracerReadiness } = useTracerReadiness();
@@ -76,7 +144,10 @@ export const DesignResumePage: React.FC = () => {
     index: number | null;
     seed: Record<string, unknown> | null;
   } | null>(null);
-  const [mobileRailOpen, setMobileRailOpen] = useState(false);
+  const [sectionSearch, setSectionSearch] = useState("");
+  const [openSectionGroups, setOpenSectionGroups] = useState<
+    DesignResumeGroupId[]
+  >(["profile", "sections"]);
   const [pictureUploading, setPictureUploading] = useState(false);
   const [resumeImporting, setResumeImporting] = useState(false);
   const [showReimportConfirm, setShowReimportConfirm] = useState(false);
@@ -102,6 +173,10 @@ export const DesignResumePage: React.FC = () => {
   const pictureDisabledReason =
     tracerReadiness?.reason ??
     "Pictures require JobOps to be reachable at a public URL.";
+  const activeSection = sectionParam ?? DEFAULT_DESIGN_RESUME_SECTION;
+  const activeSectionIsValid = allDesignResumeSections.some(
+    (item) => item.id === activeSection,
+  );
 
   useEffect(() => {
     if (!document) return;
@@ -424,6 +499,94 @@ export const DesignResumePage: React.FC = () => {
     }
   };
 
+  const filteredSectionGroups = useMemo(
+    () =>
+      DESIGN_RESUME_NAV_GROUPS.map((group) => ({
+        ...group,
+        items: group.items.filter((item) =>
+          sectionWorkspaceItemMatchesSearch(sectionSearch, item),
+        ),
+      })).filter((group) => group.items.length > 0),
+    [sectionSearch],
+  );
+
+  const visibleSectionIds = useMemo(
+    () =>
+      filteredSectionGroups.flatMap((group) =>
+        group.items.map((item) => item.id),
+      ),
+    [filteredSectionGroups],
+  );
+
+  useEffect(() => {
+    if (!activeSectionIsValid || visibleSectionIds.length === 0) return;
+    if (!visibleSectionIds.includes(activeSection)) {
+      navigate(`/design-resume/${visibleSectionIds[0]}`, { replace: true });
+    }
+  }, [activeSection, activeSectionIsValid, navigate, visibleSectionIds]);
+
+  const activeSectionMeta =
+    allDesignResumeSections.find((item) => item.id === activeSection) ??
+    allDesignResumeSections.find(
+      (item) => item.id === DEFAULT_DESIGN_RESUME_SECTION,
+    ) ??
+    allDesignResumeSections[0];
+  const activeGroup =
+    DESIGN_RESUME_NAV_GROUPS.find((group) =>
+      group.items.some((item) => item.id === activeSection),
+    ) ?? DESIGN_RESUME_NAV_GROUPS[0];
+
+  const getDesignResumeSectionBadge = useCallback(
+    (sectionId: DesignResumeSectionId): SectionWorkspaceBadge | null => {
+      if (!draft) return null;
+      const resumeJson = draft.resumeJson as Record<string, unknown>;
+      if (sectionId === "basics") {
+        const basics = asRecord(resumeJson.basics) ?? {};
+        return toText(basics.name) || toText(basics.headline)
+          ? { label: "Ready", variant: "outline" }
+          : { label: "Empty", variant: "secondary" };
+      }
+      if (sectionId === "summary") {
+        const summary = asRecord(resumeJson.summary) ?? {};
+        return toText(summary.content)
+          ? { label: "Ready", variant: "outline" }
+          : { label: "Empty", variant: "secondary" };
+      }
+      if (sectionId === "picture") {
+        const picture = asRecord(resumeJson.picture) ?? {};
+        return toText(picture.url)
+          ? { label: "Uploaded", variant: "outline" }
+          : { label: "Optional", variant: "secondary" };
+      }
+      if (sectionId === "basics-custom-fields") {
+        const basics = asRecord(resumeJson.basics) ?? {};
+        const count = asArray(basics.customFields).length;
+        return {
+          label: count === 0 ? "Empty" : `${count}`,
+          variant: "secondary",
+        };
+      }
+
+      const sections = asRecord(resumeJson.sections) ?? {};
+      const section = asRecord(sections[sectionId]) ?? {};
+      const count = asArray(section.items).length;
+      return {
+        label: count === 0 ? "Empty" : `${count}`,
+        variant: count === 0 ? "secondary" : "outline",
+      };
+    },
+    [draft],
+  );
+
+  if (!activeSectionIsValid) {
+    return (
+      <Navigate
+        to={`/design-resume/${DEFAULT_DESIGN_RESUME_SECTION}`}
+        replace
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <>
@@ -460,6 +623,7 @@ export const DesignResumePage: React.FC = () => {
       pictureUploading={pictureUploading}
       pictureEnabled={pictureEnabled}
       pictureDisabledReason={pictureDisabledReason}
+      activeSectionId={activeSection}
     />
   ) : null;
 
@@ -496,24 +660,6 @@ export const DesignResumePage: React.FC = () => {
         subtitle="Edit your resume details"
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
-            <Sheet open={mobileRailOpen} onOpenChange={setMobileRailOpen}>
-              <SheetTrigger asChild>
-                <Button type="button" variant="outline" className="lg:hidden">
-                  <PanelLeft className="mr-2 h-4 w-4" />
-                  Edit
-                </Button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="w-full max-w-[28rem] overflow-y-auto"
-              >
-                <SheetHeader>
-                  <SheetTitle>Design Resume</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6">{rail}</div>
-              </SheetContent>
-            </Sheet>
-
             <div className="hidden items-center gap-2 sm:flex">
               <Button
                 type="button"
@@ -611,7 +757,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain className="h-[calc(100dvh-5rem)] overflow-hidden">
+      <PageMain>
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
@@ -646,20 +792,37 @@ export const DesignResumePage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[500px_minmax(0,1fr)]">
-            <aside className="hidden min-h-0 lg:block">
-              <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
-                <div className="border-b border-border/70 px-4 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    Design Resume
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Update your resume details here. Changes save automatically.
-                  </p>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">{rail}</div>
-              </div>
-            </aside>
+          <div className="grid gap-6 xl:grid-cols-[300px_minmax(420px,0.9fr)_minmax(0,1.1fr)]">
+            <SectionWorkspaceNav
+              groups={filteredSectionGroups}
+              activeSectionId={activeSection}
+              openGroupIds={openSectionGroups}
+              onOpenGroupIdsChange={setOpenSectionGroups}
+              onSectionSelect={(sectionId) =>
+                navigate(`/design-resume/${sectionId}`)
+              }
+              searchValue={sectionSearch}
+              onSearchValueChange={setSectionSearch}
+              searchPlaceholder="Search resume sections"
+              searchEmptyLabel="No resume sections matched"
+              getItemBadge={getDesignResumeSectionBadge}
+            />
+
+            <SectionWorkspacePanel
+              groupLabel={activeGroup.label}
+              sectionLabel={activeSectionMeta.label}
+              sectionDescription={activeSectionMeta.description}
+              badge={getDesignResumeSectionBadge(activeSection)}
+              secondaryBadge={
+                dirty
+                  ? { label: "Autosaving", variant: "secondary" }
+                  : saveState === "saved"
+                    ? { label: "Autosaved", variant: "outline" }
+                    : null
+              }
+            >
+              {rail}
+            </SectionWorkspacePanel>
 
             <DesignResumePreviewPanel
               draft={draft}

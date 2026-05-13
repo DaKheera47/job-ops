@@ -50,6 +50,10 @@ vi.mock("./pages/SettingsPage", () => ({
   SettingsPage: () => null,
 }));
 
+vi.mock("./pages/DesignResumePage", () => ({
+  DesignResumePage: () => <div>design-resume-page</div>,
+}));
+
 vi.mock("./pages/SignInPage", () => ({
   SignInPage: () => <div>sign-in</div>,
 }));
@@ -147,5 +151,24 @@ describe("App demo banner", () => {
     expect(localStorage.getItem("jobops.demoWaitlistBannerDismissed")).toBe(
       "1",
     );
+  });
+
+  it("redirects the base Design Resume route to the summary section", () => {
+    vi.mocked(useDemoInfo).mockReturnValue({
+      demoMode: false,
+      resetCadenceHours: 6,
+      lastResetAt: null,
+      nextResetAt: null,
+      baselineVersion: null,
+      baselineName: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/design-resume"]}>
+        <App />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("design-resume-page")).toBeInTheDocument();
   });
 });
