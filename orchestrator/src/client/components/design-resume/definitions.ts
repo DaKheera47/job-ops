@@ -60,7 +60,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     fields: [
       { key: "company", label: "Company", type: "text" },
       { key: "location", label: "Location", type: "text" },
-      { key: "position", label: "Position", type: "text" },
+      { key: "position", label: "Position", type: "text", aiAssist: true },
       { key: "period", label: "Period", type: "text" },
       {
         key: "website.url",
@@ -73,7 +73,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -108,7 +113,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -132,7 +142,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "name",
     secondaryField: "period",
     fields: [
-      { key: "name", label: "Name", type: "text" },
+      { key: "name", label: "Name", type: "text", aiAssist: true },
       { key: "period", label: "Period", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
       {
@@ -140,7 +150,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -172,10 +187,11 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         type: "text",
         required: true,
         placeholder: "e.g. Python, or Programming Languages",
+        aiAssist: true,
       },
       { key: "proficiency", label: "Proficiency", type: "text" },
       { key: "level", label: "Level", type: "number", min: 0, step: 1 },
-      { key: "keywords", label: "Keywords", type: "tags" },
+      { key: "keywords", label: "Keywords", type: "tags", aiAssist: true },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -221,8 +237,8 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         type: "text",
         placeholder: "e.g. tabler:brand-python (Iconify icon name)",
       },
-      { key: "name", label: "Name", type: "text" },
-      { key: "keywords", label: "Keywords", type: "tags" },
+      { key: "name", label: "Name", type: "text", aiAssist: true },
+      { key: "keywords", label: "Keywords", type: "tags", aiAssist: true },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -240,7 +256,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "title",
     secondaryField: "awarder",
     fields: [
-      { key: "title", label: "Title", type: "text" },
+      { key: "title", label: "Title", type: "text", aiAssist: true },
       { key: "awarder", label: "Awarder", type: "text" },
       { key: "date", label: "Date", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
@@ -249,7 +265,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -270,7 +291,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "title",
     secondaryField: "issuer",
     fields: [
-      { key: "title", label: "Title", type: "text" },
+      { key: "title", label: "Title", type: "text", aiAssist: true },
       { key: "issuer", label: "Issuer", type: "text" },
       { key: "date", label: "Date", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
@@ -279,7 +300,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -300,7 +326,7 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "title",
     secondaryField: "publisher",
     fields: [
-      { key: "title", label: "Title", type: "text" },
+      { key: "title", label: "Title", type: "text", aiAssist: true },
       { key: "publisher", label: "Publisher", type: "text" },
       { key: "date", label: "Date", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
@@ -309,7 +335,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -330,7 +361,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "organization",
     secondaryField: "period",
     fields: [
-      { key: "organization", label: "Organization", type: "text" },
+      {
+        key: "organization",
+        label: "Organization",
+        type: "text",
+        aiAssist: true,
+      },
       { key: "location", label: "Location", type: "text" },
       { key: "period", label: "Period", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
@@ -339,7 +375,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),
@@ -360,8 +401,8 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
     primaryField: "name",
     secondaryField: "position",
     fields: [
-      { key: "name", label: "Name", type: "text" },
-      { key: "position", label: "Position", type: "text" },
+      { key: "name", label: "Name", type: "text", aiAssist: true },
+      { key: "position", label: "Position", type: "text", aiAssist: true },
       { key: "phone", label: "Phone", type: "text" },
       { key: "website.url", label: "Website", type: "text" },
       {
@@ -369,7 +410,12 @@ export const ITEM_DEFINITIONS: ItemDefinition[] = [
         label: "Show link in title",
         type: "toggle",
       },
-      { key: "description", label: "Description", type: "richtext" },
+      {
+        key: "description",
+        label: "Description",
+        type: "richtext",
+        aiAssist: true,
+      },
     ],
     createItem: () => ({
       id: crypto.randomUUID(),

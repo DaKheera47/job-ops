@@ -160,7 +160,11 @@ export function DesignResumeRail({
         title="Basics"
         subtitle="Edit your name, headline, and contact details."
       >
-        <BasicsSection basics={basics} onUpdateBasics={updateBasics} />
+        <BasicsSection
+          resumeJson={draft.resumeJson}
+          basics={basics}
+          onUpdateBasics={updateBasics}
+        />
       </DesignResumeSection>
 
       <DesignResumeSection
@@ -180,7 +184,11 @@ export function DesignResumeRail({
         title="Summary"
         subtitle="Write the short intro that appears near the top of your resume."
       >
-        <SummarySection summary={summary} onUpdateSummary={updateSummary} />
+        <SummarySection
+          resumeJson={draft.resumeJson}
+          summary={summary}
+          onUpdateSummary={updateSummary}
+        />
       </DesignResumeSection>
 
       {ITEM_DEFINITIONS.map((definition) => {

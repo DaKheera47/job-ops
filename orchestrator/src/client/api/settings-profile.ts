@@ -1,6 +1,8 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema";
 import type {
   AppSettings,
+  DesignResumeAiFieldSuggestionRequest,
+  DesignResumeAiFieldSuggestionResponse,
   DesignResumeDocument,
   DesignResumeExportResponse,
   DesignResumeJson,
@@ -127,6 +129,20 @@ export async function generateDesignResumePdf(): Promise<DesignResumePdfResponse
   return fetchApi<DesignResumePdfResponse>("/design-resume/generate-pdf", {
     method: "POST",
   });
+}
+
+export async function generateDesignResumeFieldSuggestion(
+  input: DesignResumeAiFieldSuggestionRequest & { signal?: AbortSignal },
+): Promise<DesignResumeAiFieldSuggestionResponse> {
+  const { signal, ...body } = input;
+  return fetchApi<DesignResumeAiFieldSuggestionResponse>(
+    "/design-resume/ai/field-suggestion",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+      signal,
+    },
+  );
 }
 
 export async function getDesignResumePdfBlob(pdfUrl?: string): Promise<Blob> {

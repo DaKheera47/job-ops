@@ -13,10 +13,12 @@ import {
   uploadDesignResumePicture,
   uploadDesignResumePictureFile,
 } from "@server/services/design-resume";
+import { generateDesignResumeFieldSuggestion } from "@server/services/design-resume/ai-field-suggestion";
 import { importDesignResumeFromFile } from "@server/services/design-resume/import-file";
 import { generateDesignResumePdf } from "@server/services/pdf";
 import { getTenantDesignResumePdfPath } from "@server/services/pdf-storage";
 import { clearProfileCache } from "@server/services/profile";
+import { parseV5ResumeData } from "@server/services/rxresume/schema/v5";
 import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
 import type { DesignResumeJson, DesignResumePatchRequest } from "@shared/types";
 import { type Request, type Response, Router } from "express";
@@ -203,10 +205,30 @@ const importFileSchema = z.object({
   dataBase64: z.string().trim().min(1),
 });
 
+export const designResumeAiFieldSuggestionSchema = z.object({
+  document: z.unknown(),
+  field: z.object({
+    path: z.string().trim().min(1).max(500),
+    label: z.string().trim().min(1).max(120),
+    value: z.union([
+      z.string().max(20000),
+      z.array(z.string().max(500)).max(100),
+    ]),
+    valueType: z.enum(["plain_text", "html", "string_list"]),
+    section: z.string().trim().max(120).nullable().optional(),
+    itemLabel: z.string().trim().max(240).nullable().optional(),
+  }),
+  prompt: z.string().trim().min(1).max(3000),
+});
+
 function asDesignResumeJson(value: unknown): DesignResumeJson | undefined {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as DesignResumeJson)
     : undefined;
+}
+
+function parseDesignResumeJson(value: unknown): DesignResumeJson {
+  return parseV5ResumeData(value) as DesignResumeJson;
 }
 
 function queueDesignResumeAutoPdfRegeneration(route: string): void {
@@ -266,6 +288,22 @@ designResumeRouter.post(
     clearProfileCache();
     ok(res, document, 201);
     queueDesignResumeAutoPdfRegeneration("POST /api/design-resume/import/file");
+  }),
+);
+
+designResumeRouter.post(
+  "/ai/field-suggestion",
+  asyncRoute(async (req: Request, res: Response) => {
+    const input = designResumeAiFieldSuggestionSchema.parse(req.body);
+    const document = parseDesignResumeJson(input.document);
+    ok(
+      res,
+      await generateDesignResumeFieldSuggestion({
+        document,
+        field: input.field,
+        prompt: input.prompt,
+      }),
+    );
   }),
 );
 

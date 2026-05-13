@@ -1,5 +1,9 @@
 import { TokenizedInput } from "@client/pages/orchestrator/TokenizedInput";
 import { createId } from "@paralleldrive/cuid2";
+import type {
+  DesignResumeAiFieldValueType,
+  DesignResumeJson,
+} from "@shared/types";
 import { Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { DesignResumeFieldAssistant } from "./DesignResumeFieldAssistant";
 import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
 
@@ -36,6 +41,7 @@ export type ItemFieldConfig = {
   step?: number;
   /** When true on an icon field, render it inline to the left of the next field with no separate label */
   groupWithNext?: boolean;
+  aiAssist?: boolean;
 };
 
 type ItemDialogProps = {
@@ -44,9 +50,20 @@ type ItemDialogProps = {
   description: string;
   item: Record<string, unknown> | null;
   fields: ItemFieldConfig[];
+  resumeJson?: DesignResumeJson;
+  aiSection?: string;
+  aiItemLabel?: string | null;
+  aiPathPrefix?: string;
   onOpenChange: (open: boolean) => void;
   onSave: (item: Record<string, unknown>) => void;
   onDelete?: () => void;
+};
+
+type ItemDialogAiContext = {
+  resumeJson: DesignResumeJson;
+  section: string;
+  itemLabel?: string | null;
+  pathPrefix: string;
 };
 
 function getValue(source: Record<string, unknown>, path: string): unknown {
@@ -132,6 +149,7 @@ function renderTextField(
   setFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>,
   fieldId: string,
   iconPrefix?: React.ReactNode,
+  assistant?: React.ReactNode,
 ) {
   return (
     <div key={field.key} className="grid gap-2">
@@ -213,6 +231,49 @@ function renderTextField(
       {fieldErrors[field.key] ? (
         <p className="text-xs text-rose-400">{fieldErrors[field.key]}</p>
       ) : null}
+      {assistant}
+    </div>
+  );
+}
+
+function aiValueTypeForField(
+  field: ItemFieldConfig,
+): DesignResumeAiFieldValueType {
+  if (field.type === "richtext") return "html";
+  if (field.type === "tags") return "string_list";
+  return "plain_text";
+}
+
+function renderAiAssistant(
+  field: ItemFieldConfig,
+  value: unknown,
+  updateField: (path: string, value: unknown) => void,
+  aiContext?: ItemDialogAiContext,
+) {
+  if (!aiContext || !field.aiAssist) return null;
+
+  const valueType = aiValueTypeForField(field);
+  const normalizedValue =
+    valueType === "string_list"
+      ? Array.isArray(value)
+        ? value.map((entry) => String(entry))
+        : []
+      : typeof value === "string"
+        ? value
+        : "";
+
+  return (
+    <div className="flex justify-end">
+      <DesignResumeFieldAssistant
+        resumeJson={aiContext.resumeJson}
+        fieldPath={`${aiContext.pathPrefix}.${field.key}`}
+        label={field.label}
+        value={normalizedValue}
+        valueType={valueType}
+        section={aiContext.section}
+        itemLabel={aiContext.itemLabel}
+        onApply={(next) => updateField(field.key, next)}
+      />
     </div>
   );
 }
@@ -225,6 +286,7 @@ function renderFields(
   updateField: (path: string, value: unknown) => void,
   setTagDrafts: React.Dispatch<React.SetStateAction<Record<string, string>>>,
   setFieldErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>,
+  aiContext?: ItemDialogAiContext,
 ): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
   let i = 0;
@@ -237,7 +299,10 @@ function renderFields(
     if (field.type === "richtext") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <span className="text-sm font-medium">{field.label}</span>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium">{field.label}</span>
+            {renderAiAssistant(field, value, updateField, aiContext)}
+          </div>
           <RichTextEditor
             value={value as string}
             onChange={(next) => updateField(field.key, next)}
@@ -252,9 +317,12 @@ function renderFields(
     if (field.type === "textarea") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <label className="text-sm font-medium" htmlFor={fieldId}>
-            {field.label}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-sm font-medium" htmlFor={fieldId}>
+              {field.label}
+            </label>
+            {renderAiAssistant(field, value, updateField, aiContext)}
+          </div>
           <Textarea
             id={fieldId}
             value={value as string}
@@ -273,9 +341,12 @@ function renderFields(
     if (field.type === "tags") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <label className="text-sm font-medium" htmlFor={fieldId}>
-            {field.label}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className="text-sm font-medium" htmlFor={fieldId}>
+              {field.label}
+            </label>
+            {renderAiAssistant(field, value, updateField, aiContext)}
+          </div>
           <TokenizedInput
             id={fieldId}
             values={value as string[]}
@@ -343,6 +414,7 @@ function renderFields(
             setFieldErrors,
             nextFieldId,
             iconNode,
+            renderAiAssistant(nextField, nextValue, updateField, aiContext),
           ),
         );
         i += 2;
@@ -376,6 +448,8 @@ function renderFields(
         updateField,
         setFieldErrors,
         fieldId,
+        undefined,
+        renderAiAssistant(field, value, updateField, aiContext),
       ),
     );
     i++;
@@ -389,6 +463,10 @@ export function ItemDialog({
   description,
   item,
   fields,
+  resumeJson,
+  aiSection,
+  aiItemLabel,
+  aiPathPrefix,
   onOpenChange,
   onSave,
   onDelete,
@@ -417,6 +495,15 @@ export function ItemDialog({
   const updateField = (path: string, value: unknown) => {
     setDraft((current) => setValue(current, path, value));
   };
+  const aiContext =
+    resumeJson && aiSection && aiPathPrefix
+      ? {
+          resumeJson,
+          section: aiSection,
+          itemLabel: aiItemLabel,
+          pathPrefix: aiPathPrefix,
+        }
+      : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -435,6 +522,7 @@ export function ItemDialog({
             updateField,
             setTagDrafts,
             setFieldErrors,
+            aiContext,
           )}
         </div>
 

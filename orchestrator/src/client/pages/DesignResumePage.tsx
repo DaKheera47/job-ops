@@ -54,8 +54,10 @@ import {
   asArray,
   asRecord,
   fileToDataUrl,
+  getByPath,
   getDesignResumeDialogItem,
   makeDownload,
+  toText,
 } from "../components/design-resume/utils";
 import { formatUserFacingError } from "../lib/error-format";
 import { queryKeys } from "../lib/queryKeys";
@@ -678,6 +680,15 @@ export const DesignResumePage: React.FC = () => {
           description={dialogState.definition.description}
           item={activeDialogItem}
           fields={dialogState.definition.fields}
+          resumeJson={draft.resumeJson}
+          aiSection={dialogState.definition.title}
+          aiItemLabel={toText(
+            getByPath(
+              (activeDialogItem ?? {}) as Record<string, unknown>,
+              dialogState.definition.primaryField,
+            ),
+          )}
+          aiPathPrefix={`sections.${dialogState.definition.key}.items.${dialogState.index ?? "new"}`}
           onOpenChange={(open) => {
             if (!open) setDialogState(null);
           }}

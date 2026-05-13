@@ -386,3 +386,27 @@ export interface DesignResumePdfResponse {
   pdfUrl: string;
   generatedAt: string;
 }
+
+export type DesignResumeAiFieldValueType =
+  | "plain_text"
+  | "html"
+  | "string_list";
+
+export interface DesignResumeAiFieldSuggestionRequest {
+  document: DesignResumeJson;
+  field: {
+    path: string;
+    label: string;
+    value: string | string[];
+    valueType: DesignResumeAiFieldValueType;
+    section?: string | null;
+    itemLabel?: string | null;
+  };
+  prompt: string;
+}
+
+export interface DesignResumeAiFieldSuggestionResponse {
+  message: string;
+  suggestion: string | string[];
+  valueType: DesignResumeAiFieldValueType;
+}

@@ -1,8 +1,10 @@
+import type { DesignResumeJson } from "@shared/types";
 import { FileImage, ImagePlus, Plus, Trash2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { DesignResumeFieldAssistant } from "./DesignResumeFieldAssistant";
 import { RichTextEditor } from "./RichTextEditor";
 import { fieldId, getByPath, toBoolean, toNumber, toText } from "./utils";
 
@@ -222,25 +224,43 @@ export function PictureSection({
 }
 
 type BasicsSectionProps = {
+  resumeJson: DesignResumeJson;
   basics: Record<string, unknown>;
   onUpdateBasics: (path: string, value: unknown) => void;
 };
 
-export function BasicsSection({ basics, onUpdateBasics }: BasicsSectionProps) {
+export function BasicsSection({
+  resumeJson,
+  basics,
+  onUpdateBasics,
+}: BasicsSectionProps) {
   return (
     <div className="grid gap-3">
       {[
-        ["name", "Name"],
-        ["headline", "Headline"],
-        ["email", "Email"],
-        ["phone", "Phone"],
-        ["location", "Location"],
-        ["website.url", "Website"],
-      ].map(([path, label]) => (
+        { path: "name", label: "Name", ai: false },
+        { path: "headline", label: "Headline", ai: true },
+        { path: "email", label: "Email", ai: false },
+        { path: "phone", label: "Phone", ai: false },
+        { path: "location", label: "Location", ai: false },
+        { path: "website.url", label: "Website", ai: false },
+      ].map(({ path, label, ai }) => (
         <div key={path} className="grid gap-2">
-          <label className={labelClassName} htmlFor={fieldId("basics", path)}>
-            {label}
-          </label>
+          <div className="flex items-center justify-between gap-2">
+            <label className={labelClassName} htmlFor={fieldId("basics", path)}>
+              {label}
+            </label>
+            {ai ? (
+              <DesignResumeFieldAssistant
+                resumeJson={resumeJson}
+                fieldPath={`basics.${path}`}
+                label={label}
+                value={toText(getByPath(basics, path))}
+                valueType="plain_text"
+                section="Basics"
+                onApply={(next) => onUpdateBasics(path, next)}
+              />
+            ) : null}
+          </div>
           <Input
             id={fieldId("basics", path)}
             value={toText(getByPath(basics, path))}
@@ -365,11 +385,13 @@ export function BasicsCustomFieldsSection({
 }
 
 type SummarySectionProps = {
+  resumeJson: DesignResumeJson;
   summary: Record<string, unknown>;
   onUpdateSummary: (key: string, value: unknown) => void;
 };
 
 export function SummarySection({
+  resumeJson,
   summary,
   onUpdateSummary,
 }: SummarySectionProps) {
@@ -391,11 +413,24 @@ export function SummarySection({
           onCheckedChange={(checked) => onUpdateSummary("hidden", !checked)}
         />
       </div>
-      <RichTextEditor
-        value={toText(summary.content)}
-        onChange={(next) => onUpdateSummary("content", next)}
-        placeholder="Summarize the story your resume should tell."
-      />
+      <div className="grid gap-2">
+        <div className="flex items-center justify-end">
+          <DesignResumeFieldAssistant
+            resumeJson={resumeJson}
+            fieldPath="summary.content"
+            label="Summary"
+            value={toText(summary.content)}
+            valueType="html"
+            section="Summary"
+            onApply={(next) => onUpdateSummary("content", next)}
+          />
+        </div>
+        <RichTextEditor
+          value={toText(summary.content)}
+          onChange={(next) => onUpdateSummary("content", next)}
+          placeholder="Summarize the story your resume should tell."
+        />
+      </div>
     </div>
   );
 }
