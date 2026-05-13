@@ -221,7 +221,11 @@ export const DesignResumeFieldAssistant: React.FC<
         </div>
 
         {messages.length > 0 ? (
-          <div className="mb-3 max-h-72 overflow-y-auto pr-1">
+          <div
+            className="mb-3 max-h-72 overflow-y-auto overscroll-contain pr-1"
+            onWheelCapture={(event) => event.stopPropagation()}
+            onTouchMoveCapture={(event) => event.stopPropagation()}
+          >
             <AiAssistMessageList
               messages={messages}
               isStreaming={isGenerating}
