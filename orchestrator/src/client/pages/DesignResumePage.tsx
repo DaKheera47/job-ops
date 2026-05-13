@@ -66,12 +66,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   ITEM_DEFINITIONS,
@@ -229,80 +223,64 @@ function DesignResumeIconRail({
   activeSectionId,
   onSectionSelect,
 }: DesignResumeIconRailProps) {
-  return (
-    <TooltipProvider>
-      <aside className="sticky top-6 self-start">
-        <nav
-          aria-label="Design Resume sections"
-          className="flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-sm backdrop-blur"
-        >
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Live preview"
-                className={cn(
-                  "h-10 w-10 rounded-lg text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                  activeSectionId == null &&
-                    "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-                )}
-                onClick={() => onSectionSelect(null)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="right"
-              sideOffset={10}
-              className="rounded-lg border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg"
-            >
-              Live preview
-            </TooltipContent>
-          </Tooltip>
+  const navItemClassName =
+    "h-10 w-10 justify-center gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,padding,color,background-color,border-color,gap] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-hover/rail:justify-start group-hover/rail:gap-3 group-hover/rail:px-3 group-focus-within/rail:w-44 group-focus-within/rail:justify-start group-focus-within/rail:gap-3 group-focus-within/rail:px-3";
+  const navLabelClassName =
+    "max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
 
-          {DESIGN_RESUME_ICON_GROUPS.map((group) => (
-            <div
-              key={group.id}
-              className="mt-3 flex w-full flex-col items-center gap-2 border-t border-border/60 pt-3 first:mt-3"
-            >
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.id === activeSectionId;
-                return (
-                  <Tooltip key={item.id}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={item.label}
-                        className={cn(
-                          "h-10 w-10 rounded-lg text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground",
-                          isActive &&
-                            "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-                        )}
-                        onClick={() => onSectionSelect(item.id)}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="right"
-                      sideOffset={10}
-                      className="rounded-lg border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg"
-                    >
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-      </aside>
-    </TooltipProvider>
+  return (
+    <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
+      <nav
+        aria-label="Design Resume sections"
+        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-sm backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          aria-current={activeSectionId == null ? "page" : undefined}
+          aria-label="Live preview"
+          className={cn(
+            navItemClassName,
+            activeSectionId == null &&
+              "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+          )}
+          onClick={() => onSectionSelect(null)}
+        >
+          <Eye className="h-4 w-4 shrink-0" />
+          <span className={navLabelClassName}>Live preview</span>
+        </Button>
+
+        {DESIGN_RESUME_ICON_GROUPS.map((group) => (
+          <div
+            key={group.id}
+            className="mt-3 flex w-full flex-col items-center gap-2 border-t border-border/60 pt-3 first:mt-3"
+          >
+            {group.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = item.id === activeSectionId;
+              return (
+                <Button
+                  key={item.id}
+                  type="button"
+                  variant="ghost"
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={item.label}
+                  className={cn(
+                    navItemClassName,
+                    isActive &&
+                      "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+                  )}
+                  onClick={() => onSectionSelect(item.id)}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className={navLabelClassName}>{item.label}</span>
+                </Button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+    </aside>
   );
 }
 
