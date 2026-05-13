@@ -354,18 +354,17 @@ function DesignResumeDock({
   onSectionSelect,
   className,
 }: DesignResumeIconRailProps) {
+  const railRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const mouseY = useMotionValue(Number.POSITIVE_INFINITY);
-  const isHovered = useMotionValue(0);
   const spring = { mass: 0.1, stiffness: 150, damping: 12 };
   const panelWidth = 70;
-  const dockWidth = 112;
   const magnification = 70;
   const baseItemSize = 46;
   const distance = 200;
-  const animatedWidth = useSpring(
-    useTransform(isHovered, [0, 1], [panelWidth, dockWidth]),
-    spring,
-  );
+  const [scrollOffset, setScrollOffset] = useState(0);
+  const [railHeight, setRailHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
 
   const items = DESIGN_RESUME_ICON_GROUPS.flatMap((group) =>
     group.items.map((item) => {
@@ -381,9 +380,42 @@ function DesignResumeDock({
     }),
   );
 
+  const maxScrollOffset = Math.max(0, contentHeight - railHeight);
+
+  useEffect(() => {
+    const rail = railRef.current;
+    const content = contentRef.current;
+    if (!rail || !content) return;
+
+    const updateRailHeight = () => setRailHeight(rail.clientHeight);
+    const updateContentHeight = () => setContentHeight(content.scrollHeight);
+    updateRailHeight();
+    updateContentHeight();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateRailHeight();
+      updateContentHeight();
+    });
+    resizeObserver.observe(rail);
+    resizeObserver.observe(content);
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setScrollOffset((current) => Math.min(current, maxScrollOffset));
+  }, [maxScrollOffset]);
+
+  const handleWheel = (event: React.WheelEvent<HTMLElement>) => {
+    if (maxScrollOffset <= 0) return;
+    event.preventDefault();
+    setScrollOffset((current) =>
+      Math.min(Math.max(current + event.deltaY, 0), maxScrollOffset),
+    );
+  };
+
   return (
-    <motion.div
-      style={{ width: animatedWidth }}
+    <div
+      style={{ width: panelWidth }}
       className={cn(
         "pointer-events-none z-30 flex items-start justify-end justify-self-end",
         className,
@@ -391,34 +423,39 @@ function DesignResumeDock({
     >
       <TooltipProvider delayDuration={0} skipDelayDuration={80}>
         <motion.nav
+          ref={railRef}
           onMouseMove={({ clientY }) => {
-            isHovered.set(1);
             mouseY.set(clientY);
           }}
           onMouseLeave={() => {
-            isHovered.set(0);
             mouseY.set(Number.POSITIVE_INFINITY);
           }}
-          onFocus={() => isHovered.set(1)}
-          onBlur={() => isHovered.set(0)}
-          className="pointer-events-auto flex max-h-[calc(100vh-8rem)] flex-col items-end gap-2 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-2xl shadow-background/50 backdrop-blur overflow-scroll supports-[backdrop-filter]:bg-card/85"
+          onBlur={() => mouseY.set(Number.POSITIVE_INFINITY)}
+          onWheel={handleWheel}
+          className="pointer-events-auto relative h-[calc(100vh-8rem)] w-[70px] overflow-visible rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Design Resume sections"
         >
-          {items.map((item) => (
-            <DesignResumeDockButton
-              key={item.id}
-              {...item}
-              mouseY={mouseY}
-              baseItemSize={baseItemSize}
-              magnification={magnification}
-              distance={distance}
-              spring={spring}
-            />
-          ))}
+          <motion.div
+            ref={contentRef}
+            className="absolute right-3 top-3 flex flex-col items-end gap-2"
+            style={{ y: -scrollOffset }}
+          >
+            {items.map((item) => (
+              <DesignResumeDockButton
+                key={item.id}
+                {...item}
+                mouseY={mouseY}
+                baseItemSize={baseItemSize}
+                magnification={magnification}
+                distance={distance}
+                spring={spring}
+              />
+            ))}
+          </motion.div>
         </motion.nav>
       </TooltipProvider>
-    </motion.div>
+    </div>
   );
 }
 
@@ -1052,7 +1089,7 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid min-w-0 gap-6 overflow-x-clip xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)]"
+                ? "grid min-w-0 gap-6 overflow-x-visible xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)]"
                 : "grid min-w-0 gap-6 overflow-x-clip"
             }
           >
