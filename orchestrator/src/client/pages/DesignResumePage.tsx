@@ -90,9 +90,11 @@ type DesignResumeNavItem = {
   label: string;
   description: string;
   icon: LucideIcon;
+  sectionId?: DesignResumeSectionId | null;
 };
+type DesignResumeIconGroupId = "preview" | DesignResumeGroupId;
 type DesignResumeNavGroup = {
-  id: DesignResumeGroupId;
+  id: DesignResumeIconGroupId;
   label: string;
   items: DesignResumeNavItem[];
 };
@@ -143,6 +145,19 @@ const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
 ];
 
 const DESIGN_RESUME_ICON_GROUPS: DesignResumeNavGroup[] = [
+  {
+    id: "preview",
+    label: "Preview",
+    items: [
+      {
+        id: "live-preview",
+        label: "Live preview",
+        description: "See a preview of your resume as you edit it.",
+        icon: Eye,
+        sectionId: null,
+      },
+    ],
+  },
   {
     id: "profile",
     label: "Profile",
@@ -247,7 +262,6 @@ const RailIcon = ({
           "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
       )}
       onClick={() => onSectionSelect(sectionId)}
-      // style={{ width: "100%" }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
         <Icon />
@@ -278,37 +292,23 @@ function DesignResumeIconRail({
     <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
       <nav
         aria-label="Design Resume sections"
-        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-start overflow-y-auto rounded-2xl border border-border/70 bg-card px-2 py-3 shadow-lg backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
+        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-start overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-border/70 bg-card px-2 py-3 shadow-lg backdrop-blur transition-[width,box-shadow,border-color] duration-200 hover:w-52 hover:border-border hover:shadow-[18px_0_44px_rgba(0,0,0,0.42)] focus-within:w-52 focus-within:border-border focus-within:shadow-[18px_0_44px_rgba(0,0,0,0.42)]"
       >
-        <RailIcon
-          item={{
-            id: "live-preview",
-            label: "Live preview",
-            description: "See a preview of your resume as you edit it.",
-            icon: Eye,
-          }}
-          sectionId={null}
-          isActive={activeSectionId == null}
-          onSectionSelect={onSectionSelect}
-          navItemClassName={navItemClassName}
-          navLabelClassName={navLabelClassName}
-          preventMouseFocus={preventMouseFocus}
-          Icon={Eye}
-        />
-
         {DESIGN_RESUME_ICON_GROUPS.map((group) => (
           <div
             key={group.id}
-            className="mt-3 flex w-full flex-col items-start gap-2 border-t border-border/60 pt-3 first:mt-3"
+            className="mt-3 flex w-full flex-col items-start gap-2 border-t border-border/60 pt-3 first:mt-0 first:border-t-0 first:pt-0"
           >
             {group.items.map((item) => {
               const Icon = item.icon;
-              const isActive = item.id === activeSectionId;
+              const sectionId =
+                item.sectionId === undefined ? item.id : item.sectionId;
+              const isActive = sectionId === activeSectionId;
               return (
                 <RailIcon
                   key={item.id}
                   item={item}
-                  sectionId={item.id}
+                  sectionId={sectionId}
                   isActive={isActive}
                   onSectionSelect={onSectionSelect}
                   navItemClassName={navItemClassName}
@@ -955,8 +955,8 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid gap-6 lg:grid-cols-[4rem_minmax(0,1fr)] xl:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
-                : "grid gap-6 lg:grid-cols-[4rem_minmax(0,1fr)]"
+                ? "grid min-w-0 gap-6 overflow-x-clip lg:grid-cols-[4rem_minmax(0,1fr)] xl:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
+                : "grid min-w-0 gap-6 overflow-x-clip lg:grid-cols-[4rem_minmax(0,1fr)]"
             }
           >
             <DesignResumeIconRail
