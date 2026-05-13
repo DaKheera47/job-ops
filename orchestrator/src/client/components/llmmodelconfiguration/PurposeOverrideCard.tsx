@@ -79,7 +79,12 @@ export default function PurposeOverrideCard({
   const purposeProviderDefaultModel = hasProviderOverride
     ? getDefaultModelForProvider(selectedProvider)
     : defaultModel;
-  const effectiveBaseUrl = baseUrlValue || defaultBaseUrl;
+  const providerDefaultBaseUrl = providerConfig.showBaseUrl
+    ? providerConfig.baseUrlPlaceholder
+    : "";
+  const effectiveBaseUrl =
+    baseUrlValue ||
+    (hasProviderOverride ? providerDefaultBaseUrl : defaultBaseUrl);
   const hasSavedKey = Boolean(apiKeyHint || defaultApiKeyHint);
   const keyHint = apiKeyHint
     ? formatSecretHint(apiKeyHint)

@@ -279,6 +279,52 @@ describe("Model Selection Logic", () => {
       expect(body.model).toBe("gpt-5.4-mini");
     });
 
+    it("ignores malformed stored purpose API keys", async () => {
+      vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+        llmApiKey: "sk-global",
+        llmPurposeApiKeys: JSON.stringify({ tailoring: 123 }),
+      });
+      vi.mocked(getEffectiveSettings).mockResolvedValue({
+        model: {
+          value: "llama3.2",
+          default: "llama3.2",
+          override: "llama3.2",
+        },
+        modelScorer: { value: "llama3.2", override: null },
+        modelTailoring: {
+          value: "gpt-5.4-mini",
+          override: "gpt-5.4-mini",
+        },
+        modelProjectSelection: { value: "llama3.2", override: null },
+        llmProvider: {
+          value: "ollama",
+          default: "ollama",
+          override: "ollama",
+        },
+        llmBaseUrl: {
+          value: "http://localhost:11434",
+          default: "http://localhost:11434",
+          override: null,
+        },
+        llmPurposeOverrides: {
+          value: {
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+          },
+          default: {},
+          override: {
+            tailoring: { provider: "openai", model: "gpt-5.4-mini" },
+          },
+        },
+      } as any);
+
+      await expect(
+        resolveLlmRuntimeSettings("tailoring"),
+      ).resolves.toMatchObject({
+        apiKey: "sk-global",
+        provider: "openai",
+      });
+    });
+
     it("should not inherit the global model when tailoring uses Codex with no model override", async () => {
       vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({});
       vi.mocked(getEffectiveSettings).mockResolvedValue({

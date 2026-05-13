@@ -2,7 +2,10 @@ import * as settingsRepo from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { LlmService } from "@server/services/llm/service";
 import { getEffectiveSettings } from "@server/services/settings";
-import { getDefaultModelForProvider } from "@shared/settings-registry";
+import {
+  getDefaultModelForProvider,
+  settingsRegistry,
+} from "@shared/settings-registry";
 import { LLM_PURPOSE_VALUES, type LlmPurpose } from "@shared/types";
 
 export type LlmModelPurpose = "default" | LlmPurpose;
@@ -84,15 +87,7 @@ function getDefaultBaseUrlForProvider(
 }
 
 function readPurposeApiKeys(raw: string | null | undefined) {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Partial<Record<LlmPurpose, string | null>>)
-      : {};
-  } catch {
-    return {};
-  }
+  return settingsRegistry.llmPurposeApiKeys.parse(raw ?? undefined) ?? {};
 }
 
 export async function resolveLlmModel(

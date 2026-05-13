@@ -148,7 +148,11 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
 
 const llmPurposeOverrideSchema = z.object({
-  provider: z.enum(LLM_PROVIDER_VALUES).nullable().optional(),
+  provider: z.preprocess(
+    (value) =>
+      typeof value === "string" ? normalizeLlmProviderOrNull(value) : value,
+    z.enum(LLM_PROVIDER_VALUES).nullable().optional(),
+  ),
   baseUrl: z.preprocess(
     (value) => (value === "" ? null : value),
     z.string().trim().url().max(2000).nullable().optional(),
@@ -194,6 +198,26 @@ function parseJsonObjectOrNull<T>(raw: string | undefined): T | null {
   } catch {
     return null;
   }
+}
+
+function parseLlmPurposeOverrides(
+  raw: string | undefined,
+): LlmPurposeOverrides | null {
+  const parsed = parseJsonObjectOrNull<unknown>(raw);
+  if (!parsed) return null;
+
+  const result = llmPurposeOverridesSchema.safeParse(parsed);
+  return result.success ? normalizeLlmPurposeOverrides(result.data) : null;
+}
+
+function parseLlmPurposeApiKeys(
+  raw: string | undefined,
+): LlmPurposeApiKeys | null {
+  const parsed = parseJsonObjectOrNull<unknown>(raw);
+  if (!parsed) return null;
+
+  const result = llmPurposeApiKeysSchema.safeParse(parsed);
+  return result.success ? result.data : null;
 }
 
 function normalizeLlmPurposeOverrides(
@@ -280,9 +304,7 @@ export const settingsRegistry = {
     schema: llmPurposeOverridesSchema,
     default: (): LlmPurposeOverrides => ({}),
     parse: (raw: string | undefined): LlmPurposeOverrides | null =>
-      normalizeLlmPurposeOverrides(
-        parseJsonObjectOrNull<LlmPurposeOverrides>(raw),
-      ),
+      parseLlmPurposeOverrides(raw),
     serialize: (
       value: LlmPurposeOverrides | null | undefined,
     ): string | null => {
@@ -771,7 +793,7 @@ export const settingsRegistry = {
     kind: "secret" as const,
     schema: llmPurposeApiKeysSchema,
     parse: (raw: string | undefined): LlmPurposeApiKeys | null =>
-      parseJsonObjectOrNull<LlmPurposeApiKeys>(raw),
+      parseLlmPurposeApiKeys(raw),
     serialize: (value: LlmPurposeApiKeys | null | undefined): string | null =>
       value ? JSON.stringify(value) : null,
   },

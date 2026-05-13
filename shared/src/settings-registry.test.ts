@@ -361,7 +361,7 @@ describe("settingsRegistry helpers", () => {
       const raw = JSON.stringify({
         scoring: { model: "  llama3.2  " },
         tailoring: {
-          provider: "openai",
+          provider: "openai-compatible",
           baseUrl: "https://api.openai.com",
           model: "gpt-5.4-mini",
         },
@@ -371,11 +371,37 @@ describe("settingsRegistry helpers", () => {
       expect(settingsRegistry.llmPurposeOverrides.parse(raw)).toEqual({
         scoring: { model: "llama3.2" },
         tailoring: {
-          provider: "openai",
+          provider: "openai_compatible",
           baseUrl: "https://api.openai.com",
           model: "gpt-5.4-mini",
         },
       });
+    });
+
+    it("returns null for malformed stored purpose overrides", () => {
+      expect(
+        settingsRegistry.llmPurposeOverrides.parse(
+          JSON.stringify({ tailoring: { baseUrl: 123 } }),
+        ),
+      ).toBeNull();
+      expect(
+        settingsRegistry.llmPurposeOverrides.parse(
+          JSON.stringify({ tailoring: { provider: "unknown" } }),
+        ),
+      ).toBeNull();
+    });
+
+    it("returns null for malformed stored purpose API keys", () => {
+      expect(
+        settingsRegistry.llmPurposeApiKeys.parse(
+          JSON.stringify({ tailoring: 123 }),
+        ),
+      ).toBeNull();
+      expect(
+        settingsRegistry.llmPurposeApiKeys.parse(
+          JSON.stringify({ tailoring: "sk-test", extra: "sk-extra" }),
+        ),
+      ).toBeNull();
     });
 
     it("serializes empty purpose overrides as null", () => {

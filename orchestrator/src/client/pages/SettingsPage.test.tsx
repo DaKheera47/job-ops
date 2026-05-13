@@ -419,6 +419,34 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("shows the selected purpose provider base URL as current", async () => {
+    const localSettings = createAppSettings({
+      llmProvider: {
+        value: "ollama",
+        default: "ollama",
+        override: "ollama",
+      },
+      llmBaseUrl: {
+        value: "http://localhost:11434",
+        default: "http://localhost:11434",
+        override: null,
+      },
+    });
+    vi.mocked(api.getSettings).mockResolvedValue(localSettings);
+
+    renderPage();
+    await openModelSection();
+    await clickLastButtonByName(/tailoring/i);
+
+    const providerSelectors = await screen.findAllByRole("combobox", {
+      name: /provider/i,
+    });
+    fireEvent.click(providerSelectors.at(-1) as HTMLElement);
+    fireEvent.click(await screen.findByText("LM Studio"));
+
+    expect(await screen.findByText("http://localhost:1234")).toBeVisible();
+  });
+
   it("clears stale model overrides when the provider changes", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(
       createAppSettings({
