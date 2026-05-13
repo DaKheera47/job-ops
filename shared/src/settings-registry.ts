@@ -217,7 +217,23 @@ function parseLlmPurposeApiKeys(
   if (!parsed) return null;
 
   const result = llmPurposeApiKeysSchema.safeParse(parsed);
-  return result.success ? result.data : null;
+  return result.success ? normalizeLlmPurposeApiKeys(result.data) : null;
+}
+
+function normalizeLlmPurposeApiKeys(
+  value: LlmPurposeApiKeys | null | undefined,
+): LlmPurposeApiKeys | null {
+  if (!value) return null;
+
+  const out: LlmPurposeApiKeys = {};
+  for (const purpose of LLM_PURPOSE_VALUES) {
+    const apiKey = value[purpose]?.trim();
+    if (apiKey) {
+      out[purpose] = apiKey;
+    }
+  }
+
+  return Object.keys(out).length > 0 ? out : null;
 }
 
 function normalizeLlmPurposeOverrides(
@@ -794,8 +810,10 @@ export const settingsRegistry = {
     schema: llmPurposeApiKeysSchema,
     parse: (raw: string | undefined): LlmPurposeApiKeys | null =>
       parseLlmPurposeApiKeys(raw),
-    serialize: (value: LlmPurposeApiKeys | null | undefined): string | null =>
-      value ? JSON.stringify(value) : null,
+    serialize: (value: LlmPurposeApiKeys | null | undefined): string | null => {
+      const normalized = normalizeLlmPurposeApiKeys(value);
+      return normalized ? JSON.stringify(normalized) : null;
+    },
   },
   rxresumeApiKey: {
     kind: "secret" as const,

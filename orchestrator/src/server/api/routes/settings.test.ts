@@ -51,6 +51,21 @@ vi.mock("@server/services/rxresume", () => ({
   },
 }));
 
+const { listModelsMock } = vi.hoisted(() => ({
+  listModelsMock: vi.fn().mockResolvedValue(["model-a"]),
+}));
+
+vi.mock("@server/services/llm/service", () => ({
+  LlmService: vi.fn().mockImplementation(function MockLlmService(
+    this: { options: unknown; listModels: typeof listModelsMock },
+    options,
+  ) {
+    this.options = options;
+    this.listModels = listModelsMock;
+  }),
+}));
+
+import { LlmService } from "@server/services/llm/service";
 import {
   extractProjectsFromResume,
   getResume,
@@ -269,6 +284,31 @@ describe.sequential("Settings API routes", () => {
     expect(patchBody.data.basicAuthPassword).toBe("letmein");
     expect(patchBody.data.ghostwriterSystemPromptTemplate.override).toBe(
       "Custom Ghostwriter {{tone}}",
+    );
+  });
+
+  it("ignores malformed stored purpose API keys when listing models", async () => {
+    const { setSetting } = await import("@server/repositories/settings");
+    await setSetting("llmPurposeApiKeys", JSON.stringify({ tailoring: 123 }));
+
+    const res = await fetch(`${baseUrl}/api/settings/llm-models`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        provider: "openai",
+        purpose: "tailoring",
+      }),
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.models).toEqual(["model-a"]);
+    expect(LlmService).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apiKey: "secret-key",
+        provider: "openai",
+      }),
     );
   });
 

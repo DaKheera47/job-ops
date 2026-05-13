@@ -33,6 +33,7 @@ import {
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
+import { settingsRegistry } from "@shared/settings-registry";
 import {
   type UpdateSettingsInput,
   updateSettingsSchema,
@@ -186,7 +187,10 @@ async function resolveLlmConfig(input: {
       getSetting("llmBaseUrl"),
       getSetting("llmPurposeApiKeys"),
     ]);
-  const purposeApiKeys = parsePurposeApiKeys(storedPurposeApiKeys);
+  const purposeApiKeys =
+    settingsRegistry.llmPurposeApiKeys.parse(
+      storedPurposeApiKeys ?? undefined,
+    ) ?? {};
   const storedPurposeApiKey = input.purpose
     ? purposeApiKeys[input.purpose]?.trim()
     : null;
@@ -220,20 +224,6 @@ async function resolveLlmConfig(input: {
       null,
     baseUrl,
   };
-}
-
-function parsePurposeApiKeys(
-  raw: string | null | undefined,
-): Partial<Record<LlmPurpose, string | null>> {
-  if (!raw) return {};
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-      ? (parsed as Partial<Record<LlmPurpose, string | null>>)
-      : {};
-  } catch {
-    return {};
-  }
 }
 
 function parseLlmPurpose(value: unknown): LlmPurpose | null {

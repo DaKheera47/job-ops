@@ -404,6 +404,21 @@ describe("settingsRegistry helpers", () => {
       ).toBeNull();
     });
 
+    it("normalizes purpose API keys and serializes empty keys as null", () => {
+      expect(
+        settingsRegistry.llmPurposeApiKeys.parse(
+          JSON.stringify({ tailoring: "  sk-test  ", scoring: "" }),
+        ),
+      ).toEqual({ tailoring: "sk-test" });
+      expect(settingsRegistry.llmPurposeApiKeys.serialize({})).toBeNull();
+      expect(
+        settingsRegistry.llmPurposeApiKeys.serialize({
+          tailoring: "",
+          scoring: null,
+        }),
+      ).toBeNull();
+    });
+
     it("serializes empty purpose overrides as null", () => {
       expect(settingsRegistry.llmPurposeOverrides.serialize({})).toBeNull();
       expect(

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { SettingsInput } from "@/client/pages/settings/components/SettingsInput";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 
@@ -22,7 +23,7 @@ function ModelField({
   supportsModelSuggestions: boolean;
   options: Array<{ value: string; label: string; searchText: string }>;
   placeholder: string;
-  helper?: React.ReactNode;
+  helper?: ReactNode;
   current: string;
   disabled: boolean;
 }) {
