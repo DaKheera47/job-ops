@@ -18,6 +18,31 @@ const setupSchema = loginSchema.extend({
   displayName: z.string().trim().min(1).max(120).optional(),
 });
 
+function toSetupValidationMessage(error: z.ZodError): string {
+  const issue = error.issues[0];
+  const path = issue?.path.join(".");
+
+  if (path === "password") {
+    if (issue?.code === "too_small") {
+      return `Password must be at least ${issue.minimum} characters.`;
+    }
+    if (issue?.code === "too_big") {
+      return `Password must be ${issue.maximum} characters or fewer.`;
+    }
+    return "Enter a valid password.";
+  }
+
+  if (path === "username") {
+    return "Enter a username.";
+  }
+
+  if (path === "displayName") {
+    return "Enter a name or leave the field blank.";
+  }
+
+  return "Invalid request body";
+}
+
 export const authRouter = Router();
 
 authRouter.post(
@@ -107,7 +132,13 @@ authRouter.post(
 
     const parsed = setupSchema.safeParse(req.body);
     if (!parsed.success) {
-      fail(res, badRequest("Invalid request body", parsed.error.flatten()));
+      fail(
+        res,
+        badRequest(
+          toSetupValidationMessage(parsed.error),
+          parsed.error.flatten(),
+        ),
+      );
       return;
     }
 

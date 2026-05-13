@@ -2,6 +2,7 @@ type ZodLikeIssue = {
   code?: string;
   format?: string;
   minimum?: number;
+  maximum?: number;
   expected?: string;
   received?: string;
   type?: string;
@@ -57,6 +58,25 @@ function toSentenceCase(input: string): string {
   return input.charAt(0).toUpperCase() + input.slice(1);
 }
 
+function extractNumericConstraint(
+  message: string | undefined,
+  kind: "minimum" | "maximum",
+): number | null {
+  if (!message) return null;
+  const patterns =
+    kind === "minimum"
+      ? [/at least\s+(\d+)/i, />=\s*(\d+)/, /minimum(?:\s+of)?\s+(\d+)/i]
+      : [/at most\s+(\d+)/i, /<=\s*(\d+)/, /maximum(?:\s+of)?\s+(\d+)/i];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(message);
+    const value = match?.[1] ? Number.parseInt(match[1], 10) : Number.NaN;
+    if (Number.isFinite(value)) return value;
+  }
+
+  return null;
+}
+
 function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
   const path = toIssuePath(issue.path);
   const label = toFriendlyFieldLabel(path);
@@ -82,6 +102,25 @@ function toFriendlyIssueMessage(issue: ZodLikeIssue): string | null {
     return label
       ? `Please enter a valid ${label}.`
       : "Please enter a valid URL.";
+  }
+
+  if (path === "password") {
+    const minimum =
+      issue.minimum ?? extractNumericConstraint(issue.message, "minimum");
+    if (issue.code === "too_small" || minimum !== null) {
+      if (minimum === null || minimum <= 1) {
+        return "Please enter a password before continuing.";
+      }
+      return `Password must be at least ${minimum} characters.`;
+    }
+
+    const maximum =
+      issue.maximum ?? extractNumericConstraint(issue.message, "maximum");
+    if (issue.code === "too_big" || maximum !== null) {
+      return maximum === null
+        ? "Password is too long."
+        : `Password must be ${maximum} characters or fewer.`;
+    }
   }
 
   if (

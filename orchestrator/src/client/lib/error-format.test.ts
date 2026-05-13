@@ -144,6 +144,22 @@ describe("error-format", () => {
     expect(formatUserFacingError(error)).toBe("Please enter a valid job URL.");
   });
 
+  it("maps flattened password length errors to a friendly message", () => {
+    const error = {
+      message: "Invalid request body",
+      details: {
+        formErrors: [],
+        fieldErrors: {
+          password: ["String must contain at least 8 character(s)"],
+        },
+      },
+    };
+
+    expect(formatUserFacingError(error)).toBe(
+      "Password must be at least 8 characters.",
+    );
+  });
+
   it("falls back to generic message for unparseable JSON errors", () => {
     expect(formatUserFacingError(new Error("[not-valid-json]"))).toBe(
       "Something went wrong. Please try again.",

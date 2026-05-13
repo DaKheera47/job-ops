@@ -145,6 +145,12 @@ describe.sequential("Auth routes", () => {
       });
 
       expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.ok).toBe(false);
+      expect(body.error.message).toBe(
+        "Password must be at least 8 characters.",
+      );
+      expect(body.error.details.fieldErrors.password).toBe("[REDACTED]");
     });
   });
 
