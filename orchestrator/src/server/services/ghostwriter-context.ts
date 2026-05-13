@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { badRequest, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
@@ -241,19 +241,29 @@ async function buildSelectedEmailsSnapshot(
   ]);
 }
 
+async function readFilePrefix(path: string, maxBytes: number): Promise<Buffer> {
+  const file = await open(path, "r");
+  try {
+    const buffer = Buffer.alloc(maxBytes);
+    const { bytesRead } = await file.read(buffer, 0, maxBytes, 0);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await file.close();
+  }
+}
+
 async function extractDocumentText(
   document: jobDocumentsRepo.JobDocumentWithStorage,
 ): Promise<string> {
-  const buffer = await readFile(document.storagePath);
-  const limitedBuffer =
-    buffer.byteLength > MAX_DOCUMENT_READ_BYTES
-      ? buffer.subarray(0, MAX_DOCUMENT_READ_BYTES)
-      : buffer;
+  const buffer = await readFilePrefix(
+    document.storagePath,
+    MAX_DOCUMENT_READ_BYTES,
+  );
 
   if (isJobDocumentPdf(document)) {
     try {
       const { default: pdfParse } = await import("pdf-parse");
-      const result = await pdfParse(limitedBuffer);
+      const result = await pdfParse(buffer);
       return (result.text ?? "").trim();
     } catch (error) {
       logger.warn("Failed to extract Ghostwriter document PDF text", {
@@ -267,7 +277,7 @@ async function extractDocumentText(
 
   if (isJobDocumentDocx(document)) {
     try {
-      return await extractDocxText(limitedBuffer);
+      return await extractDocxText(buffer);
     } catch (error) {
       logger.warn("Failed to extract Ghostwriter document DOCX text", {
         jobId: document.jobId,
@@ -279,7 +289,7 @@ async function extractDocumentText(
   }
 
   if (isJobDocumentTextLike(document)) {
-    return limitedBuffer.toString("utf8").trim();
+    return buffer.toString("utf8").trim();
   }
 
   return "";

@@ -5,7 +5,7 @@ import {
   AlertTriangle,
   Download,
   ExternalLink,
-  File,
+  File as FileIcon,
   FileText,
   ImageIcon,
   Loader2,
@@ -72,7 +72,7 @@ function DocumentIcon({
   if (isJobDocumentSafeInlineImage(document)) {
     return <ImageIcon className="h-3.5 w-3.5 text-emerald-400/80" />;
   }
-  return <File className="h-3.5 w-3.5 text-muted-foreground" />;
+  return <FileIcon className="h-3.5 w-3.5 text-muted-foreground" />;
 }
 
 const DocumentPreview: React.FC<{
@@ -235,7 +235,7 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
     });
   };
 
-  const handleUploadDocument = async (file: File) => {
+  const handleUploadDocument = async (file: globalThis.File) => {
     try {
       setIsUploadingDocument(true);
       await uploadJobDocumentFromFile(job.id, file);

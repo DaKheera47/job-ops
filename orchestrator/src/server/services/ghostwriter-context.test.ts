@@ -5,14 +5,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJobChatPromptContext } from "./ghostwriter-context";
 
 const mocks = vi.hoisted(() => ({
-  readFile: vi.fn(),
+  open: vi.fn(),
 }));
 
 vi.mock("node:fs/promises", () => ({
   default: {
-    readFile: mocks.readFile,
+    open: mocks.open,
   },
-  readFile: mocks.readFile,
+  open: mocks.open,
 }));
 
 vi.mock("../repositories/jobs", () => ({
@@ -52,12 +52,36 @@ import { listJobPostApplicationEmailsByIds } from "./post-application/job-emails
 import { getProfile } from "./profile";
 import { getWritingStyle } from "./writing-style";
 
+function mockDocumentFile(buffer: Buffer) {
+  const read = vi.fn(
+    async (
+      target: Buffer,
+      offset: number,
+      length: number,
+      position: number,
+    ) => {
+      const start = position ?? 0;
+      const bytesRead = buffer.copy(
+        target,
+        offset,
+        start,
+        Math.min(buffer.byteLength, start + length),
+      );
+      return { bytesRead, buffer: target };
+    },
+  );
+  const close = vi.fn(async () => undefined);
+
+  mocks.open.mockResolvedValue({ read, close });
+  return { read, close };
+}
+
 describe("buildJobChatPromptContext", () => {
   beforeEach(() => {
     vi.resetAllMocks();
     vi.mocked(listJobNotesByIds).mockResolvedValue([]);
     vi.mocked(listJobDocumentsByIds).mockResolvedValue([]);
-    mocks.readFile.mockResolvedValue(Buffer.from(""));
+    mockDocumentFile(Buffer.from(""));
     vi.mocked(listJobPostApplicationEmailsByIds).mockResolvedValue([]);
     vi.mocked(getSetting).mockResolvedValue(null);
     vi.mocked(getWritingStyle).mockResolvedValue({
@@ -418,12 +442,12 @@ describe("buildJobChatPromptContext", () => {
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ]);
-    mocks.readFile.mockResolvedValue(Buffer.from("A".repeat(7000)));
+    mockDocumentFile(Buffer.from("A".repeat(7000)));
 
     const context = await buildJobChatPromptContext(job.id, [], [], ["doc-1"]);
 
     expect(listJobDocumentsByIds).toHaveBeenCalledWith(job.id, ["doc-1"]);
-    expect(mocks.readFile).toHaveBeenCalledWith("/tmp/take-home.md");
+    expect(mocks.open).toHaveBeenCalledWith("/tmp/take-home.md", "r");
     expect(context.selectedDocumentsSnapshot).toContain(
       "Selected Job Documents:",
     );
@@ -467,9 +491,7 @@ describe("buildJobChatPromptContext", () => {
         updatedAt: "2026-01-02T00:00:00.000Z",
       },
     ]);
-    mocks.readFile.mockResolvedValue(
-      await zip.generateAsync({ type: "nodebuffer" }),
-    );
+    mockDocumentFile(await zip.generateAsync({ type: "nodebuffer" }));
 
     const context = await buildJobChatPromptContext(
       job.id,
@@ -485,6 +507,36 @@ describe("buildJobChatPromptContext", () => {
     expect(context.selectedDocumentsSnapshot).toContain(
       "Discuss reliability & incident response.",
     );
+  });
+
+  it("reads only the configured document prefix for Ghostwriter context", async () => {
+    const job = createJob({ id: "job-ctx-document-prefix" });
+    vi.mocked(getJobById).mockResolvedValue(job);
+    vi.mocked(getProfile).mockResolvedValue({});
+    vi.mocked(listJobDocumentsByIds).mockResolvedValue([
+      {
+        id: "doc-large",
+        jobId: job.id,
+        fileName: "large.txt",
+        mediaType: "text/plain",
+        byteSize: 10 * 1024 * 1024,
+        storagePath: "/tmp/large.txt",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        updatedAt: "2026-01-02T00:00:00.000Z",
+      },
+    ]);
+    const { read, close } = mockDocumentFile(Buffer.from("A".repeat(7000)));
+
+    await buildJobChatPromptContext(job.id, [], [], ["doc-large"]);
+
+    expect(mocks.open).toHaveBeenCalledWith("/tmp/large.txt", "r");
+    expect(read).toHaveBeenCalledWith(
+      expect.any(Buffer),
+      0,
+      2 * 1024 * 1024,
+      0,
+    );
+    expect(close).toHaveBeenCalled();
   });
 
   it("throws not found for unknown job", async () => {
