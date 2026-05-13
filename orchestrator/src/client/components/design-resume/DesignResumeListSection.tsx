@@ -27,7 +27,8 @@ import type { ItemDefinition } from "./definitions";
 import { getByPath, toBoolean, toText } from "./utils";
 
 const itemActionClassName =
-  "h-8 gap-2 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground";
+  "h-8 gap-2 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground 2xl:px-3";
+const itemActionLabelClassName = "xl:hidden 2xl:inline";
 
 function reorderItems<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   if (fromIndex === toIndex) return items;
@@ -251,7 +252,9 @@ export function DesignResumeListSectionContent({
                             onClick={() => onEdit(index)}
                           >
                             <Pencil className="h-4 w-4 text-blue-400" />
-                            Edit
+                            <span className={itemActionLabelClassName}>
+                              Edit
+                            </span>
                           </Button>
                           <div className="h-5 w-px bg-border/70" />
                           <Button
@@ -272,7 +275,9 @@ export function DesignResumeListSectionContent({
                             ) : (
                               <EyeOff className="h-4 w-4" />
                             )}
-                            {isHidden ? "Show" : "Hide"}
+                            <span className={itemActionLabelClassName}>
+                              {isHidden ? "Show" : "Hide"}
+                            </span>
                           </Button>
                           <div className="h-5 w-px bg-border/70" />
                           <Button
@@ -315,11 +320,13 @@ export function DesignResumeListSectionContent({
                           <Button
                             type="button"
                             variant="ghost"
-                            className="h-8 gap-2 rounded-md px-3 text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                            className="h-8 gap-2 rounded-md px-2 text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 2xl:px-3"
                             onClick={() => setPendingRemovalIndex(index)}
                           >
                             <Trash2 className="h-4 w-4" />
-                            Remove
+                            <span className={itemActionLabelClassName}>
+                              Remove
+                            </span>
                           </Button>
                         </div>
                       </div>

@@ -955,7 +955,7 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid gap-6 lg:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
+                ? "grid gap-6 lg:grid-cols-[4rem_minmax(0,1fr)] xl:grid-cols-[4rem_minmax(360px,0.78fr)_minmax(0,1.22fr)]"
                 : "grid gap-6 lg:grid-cols-[4rem_minmax(0,1fr)]"
             }
           >
@@ -993,6 +993,9 @@ export const DesignResumePage: React.FC = () => {
               isDirty={dirty}
               saveState={saveState}
               onPdfRendererChange={handlePdfRendererChange}
+              className={
+                activeSection ? "lg:col-start-2 xl:col-start-auto" : undefined
+              }
             />
           </div>
         )}
