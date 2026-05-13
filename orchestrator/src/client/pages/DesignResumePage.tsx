@@ -243,20 +243,20 @@ const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
 );
 
 const useDockItemSize = (
-  mouseX: MotionValue<number>,
+  mouseY: MotionValue<number>,
   baseItemSize: number,
   magnification: number,
   distance: number,
   ref: React.RefObject<HTMLButtonElement | null>,
   spring: { mass: number; stiffness: number; damping: number },
 ) => {
-  const mouseDistance = useTransform(mouseX, (value) => {
+  const mouseDistance = useTransform(mouseY, (value) => {
     if (typeof value !== "number" || Number.isNaN(value)) return 0;
     const rect = ref.current?.getBoundingClientRect() ?? {
-      x: 0,
-      width: baseItemSize,
+      y: 0,
+      height: baseItemSize,
     };
-    return value - rect.x - baseItemSize / 2;
+    return value - rect.y - baseItemSize / 2;
   });
 
   const targetSize = useTransform(
@@ -278,7 +278,7 @@ type DesignResumeDockItem = {
 };
 
 type DesignResumeDockButtonProps = DesignResumeDockItem & {
-  mouseX: MotionValue<number>;
+  mouseY: MotionValue<number>;
   baseItemSize: number;
   magnification: number;
   distance: number;
@@ -290,7 +290,7 @@ function DesignResumeDockButton({
   label,
   active,
   onClick,
-  mouseX,
+  mouseY,
   baseItemSize,
   magnification,
   distance,
@@ -299,7 +299,7 @@ function DesignResumeDockButton({
 }: DesignResumeDockButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const size = useDockItemSize(
-    mouseX,
+    mouseY,
     baseItemSize,
     magnification,
     distance,
@@ -316,7 +316,7 @@ function DesignResumeDockButton({
           style={{ width: size, height: size }}
           onClick={onClick}
           className={cn(
-            "relative inline-flex shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "relative inline-flex cursor-pointer shrink-0 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-md outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
             active
               ? "border-primary/50 bg-primary/12 text-primary shadow-primary/20"
               : "border-border/70 hover:border-border hover:bg-accent/70",
@@ -333,8 +333,8 @@ function DesignResumeDockButton({
         </motion.button>
       </TooltipTrigger>
       <TooltipContent
-        side="top"
-        sideOffset={10}
+        side="left"
+        sideOffset={12}
         className="border border-border/70 bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-lg"
       >
         {label}
@@ -346,22 +346,24 @@ function DesignResumeDockButton({
 type DesignResumeIconRailProps = {
   activeSectionId: DesignResumeSectionId | null;
   onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
+  className?: string;
 };
 
 function DesignResumeDock({
   activeSectionId,
   onSectionSelect,
+  className,
 }: DesignResumeIconRailProps) {
-  const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
+  const mouseY = useMotionValue(Number.POSITIVE_INFINITY);
   const isHovered = useMotionValue(0);
   const spring = { mass: 0.1, stiffness: 150, damping: 12 };
-  const panelHeight = 86;
-  const dockHeight = 132;
+  const panelWidth = 70;
+  const dockWidth = 112;
   const magnification = 70;
   const baseItemSize = 46;
   const distance = 200;
-  const animatedHeight = useSpring(
-    useTransform(isHovered, [0, 1], [panelHeight, dockHeight]),
+  const animatedWidth = useSpring(
+    useTransform(isHovered, [0, 1], [panelWidth, dockWidth]),
     spring,
   );
 
@@ -381,22 +383,25 @@ function DesignResumeDock({
 
   return (
     <motion.div
-      style={{ height: animatedHeight }}
-      className="pointer-events-none fixed inset-x-0 bottom-4 z-50 mx-auto flex max-w-full items-end justify-center px-2"
+      style={{ width: animatedWidth }}
+      className={cn(
+        "pointer-events-none z-30 flex items-start justify-end justify-self-end",
+        className,
+      )}
     >
       <TooltipProvider delayDuration={0} skipDelayDuration={80}>
         <motion.nav
-          onMouseMove={({ clientX }) => {
+          onMouseMove={({ clientY }) => {
             isHovered.set(1);
-            mouseX.set(clientX);
+            mouseY.set(clientY);
           }}
           onMouseLeave={() => {
             isHovered.set(0);
-            mouseX.set(Number.POSITIVE_INFINITY);
+            mouseY.set(Number.POSITIVE_INFINITY);
           }}
           onFocus={() => isHovered.set(1)}
           onBlur={() => isHovered.set(0)}
-          className="pointer-events-auto max-h-4 !overflow-visible flex max-w-[calc(100vw-1rem)] items-end gap-2 overflow-x-auto rounded-2xl border border-border/80 bg-card/95 px-3 py-2 shadow-2xl shadow-background/50 backdrop-blur [scrollbar-width:none] supports-[backdrop-filter]:bg-card/85 sm:gap-3 sm:px-4 [&::-webkit-scrollbar]:hidden"
+          className="pointer-events-auto flex max-h-[calc(100vh-8rem)] flex-col items-end gap-2 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-2xl shadow-background/50 backdrop-blur overflow-scroll supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
           aria-label="Design Resume sections"
         >
@@ -404,7 +409,7 @@ function DesignResumeDock({
             <DesignResumeDockButton
               key={item.id}
               {...item}
-              mouseX={mouseX}
+              mouseY={mouseY}
               baseItemSize={baseItemSize}
               magnification={magnification}
               distance={distance}
@@ -1009,7 +1014,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain className={draft ? "pb-32" : undefined}>
+      <PageMain>
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
@@ -1047,26 +1052,40 @@ export const DesignResumePage: React.FC = () => {
           <div
             className={
               activeSection
-                ? "grid min-w-0 gap-6 overflow-x-clip xl:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]"
+                ? "grid min-w-0 gap-6 overflow-x-clip xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)]"
                 : "grid min-w-0 gap-6 overflow-x-clip"
             }
           >
             {activeSection && activeGroup && activeSectionMeta ? (
-              <SectionWorkspacePanel
-                groupLabel={activeGroup.label}
-                sectionLabel={activeSectionMeta.label}
-                sectionDescription={activeSectionMeta.description}
-                badge={getDesignResumeSectionBadge(activeSection)}
-                secondaryBadge={
-                  dirty
-                    ? { label: "Autosaving", variant: "secondary" }
-                    : saveState === "saved"
-                      ? { label: "Autosaved", variant: "outline" }
-                      : null
-                }
-              >
-                {rail}
-              </SectionWorkspacePanel>
+              <div className="grid min-w-0 gap-3 sm:grid-cols-[70px_minmax(0,1fr)]">
+                <DesignResumeDock
+                  activeSectionId={activeSection}
+                  className="sticky top-24 self-start"
+                  onSectionSelect={(sectionId) =>
+                    navigate(
+                      sectionId
+                        ? `/design-resume/${sectionId}`
+                        : "/design-resume",
+                    )
+                  }
+                />
+
+                <SectionWorkspacePanel
+                  groupLabel={activeGroup.label}
+                  sectionLabel={activeSectionMeta.label}
+                  sectionDescription={activeSectionMeta.description}
+                  badge={getDesignResumeSectionBadge(activeSection)}
+                  secondaryBadge={
+                    dirty
+                      ? { label: "Autosaving", variant: "secondary" }
+                      : saveState === "saved"
+                        ? { label: "Autosaved", variant: "outline" }
+                        : null
+                  }
+                >
+                  {rail}
+                </SectionWorkspacePanel>
+              </div>
             ) : null}
 
             <DesignResumePreviewPanel
@@ -1076,15 +1095,6 @@ export const DesignResumePage: React.FC = () => {
               isDirty={dirty}
               saveState={saveState}
               onPdfRendererChange={handlePdfRendererChange}
-            />
-
-            <DesignResumeDock
-              activeSectionId={activeSection}
-              onSectionSelect={(sectionId) =>
-                navigate(
-                  sectionId ? `/design-resume/${sectionId}` : "/design-resume",
-                )
-              }
             />
           </div>
         )}
