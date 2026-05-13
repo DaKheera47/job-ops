@@ -50,6 +50,15 @@ export const manifest: ExtractorManifest = {
           return;
         }
 
+        if (event.type === "source_error") {
+          context.onProgress?.({
+            phase: "list",
+            currentUrl: event.searchTerm,
+            detail: `JobSpy: ${event.source} failed for ${event.searchTerm}`,
+          });
+          return;
+        }
+
         context.onProgress?.({
           phase: "list",
           termsProcessed: event.termIndex,
@@ -71,6 +80,7 @@ export const manifest: ExtractorManifest = {
     return {
       success: true,
       jobs: result.jobs,
+      sourceErrors: result.sourceErrors,
     };
   },
 };

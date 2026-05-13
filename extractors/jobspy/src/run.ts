@@ -34,6 +34,12 @@ export type JobSpyProgressEvent =
       termTotal: number;
       searchTerm: string;
       jobsFoundTerm: number;
+    }
+  | {
+      type: "source_error";
+      source: string;
+      searchTerm: string;
+      error: string;
     };
 
 export function parseJobSpyProgressLine(
@@ -53,7 +59,20 @@ export function parseJobSpyProgressLine(
   const termTotal = toNumberOrNull(parsed.termTotal);
   const searchTerm = toStringOrNull(parsed.searchTerm) ?? "";
 
-  if (!eventName || termIndex === null || termTotal === null) return null;
+  if (!eventName) return null;
+  if (eventName === "source_error") {
+    const source = toStringOrNull(parsed.source);
+    const error = toStringOrNull(parsed.error);
+    if (!source || !error) return null;
+    return {
+      type: "source_error",
+      source,
+      searchTerm,
+      error,
+    };
+  }
+
+  if (termIndex === null || termTotal === null) return null;
   if (eventName === "term_start") {
     return { type: "term_start", termIndex, termTotal, searchTerm };
   }
@@ -155,6 +174,7 @@ export interface JobSpyResult {
   success: boolean;
   jobs: CreateJobInput[];
   error?: string;
+  sourceErrors?: string[];
 }
 
 function normalizeOptionalString(
@@ -236,6 +256,7 @@ export async function runJobSpy(
 
   try {
     const jobs: CreateJobInput[] = [];
+    const sourceErrors: string[] = [];
     const seenJobUrls = new Set<string>();
     const totalRuns = searchTerms.length * runLocations.length;
     let runIndex = 0;
@@ -320,6 +341,11 @@ export async function runJobSpy(
           const handleLine = (line: string, stream: NodeJS.WriteStream) => {
             const event = parseJobSpyProgressLine(line);
             if (event) {
+              if (event.type === "source_error") {
+                sourceErrors.push(
+                  `${event.source}: ${event.error} (term: ${event.searchTerm})`,
+                );
+              }
               options.onProgress?.(event);
               return;
             }
@@ -364,7 +390,7 @@ export async function runJobSpy(
       }
     }
 
-    return { success: true, jobs };
+    return { success: true, jobs, sourceErrors };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     return { success: false, jobs: [], error: message };

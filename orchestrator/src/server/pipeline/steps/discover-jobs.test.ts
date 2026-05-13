@@ -138,6 +138,51 @@ describe("discoverJobsStep", () => {
     );
   });
 
+  it("keeps non-fatal source errors when an extractor succeeds with no jobs", async () => {
+    const settingsRepo = await import("@server/repositories/settings");
+    const registryModule = await import("@server/extractors/registry");
+
+    const jobspyManifest = {
+      id: "jobspy",
+      displayName: "JobSpy",
+      providesSources: ["indeed", "linkedin", "glassdoor"],
+      run: vi.fn().mockResolvedValue({
+        success: true,
+        jobs: [],
+        sourceErrors: [
+          "linkedin: ValueError: Invalid country string: eswatini (term: forecasting)",
+        ],
+      }),
+    };
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["forecasting"]),
+      jobspyCountryIndeed: "netherlands",
+    } as any);
+
+    vi.mocked(registryModule.getExtractorRegistry).mockResolvedValue({
+      manifests: new Map([["jobspy", jobspyManifest as any]]),
+      manifestBySource: new Map([
+        ["indeed", jobspyManifest as any],
+        ["linkedin", jobspyManifest as any],
+        ["glassdoor", jobspyManifest as any],
+      ]),
+      availableSources: ["indeed", "linkedin", "glassdoor"],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...baseConfig,
+        sources: ["indeed", "linkedin"],
+      },
+    });
+
+    expect(result.discoveredJobs).toEqual([]);
+    expect(result.sourceErrors).toEqual([
+      "linkedin: ValueError: Invalid country string: eswatini (term: forecasting)",
+    ]);
+  });
+
   it("throws when all requested sources are incompatible for country", async () => {
     const settingsRepo = await import("@server/repositories/settings");
     const registryModule = await import("@server/extractors/registry");

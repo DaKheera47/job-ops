@@ -35,6 +35,19 @@ describe("parseJobSpyProgressLine", () => {
     });
   });
 
+  it("parses source_error progress lines", () => {
+    const event = parseJobSpyProgressLine(
+      'JOBOPS_PROGRESS {"event":"source_error","source":"linkedin","searchTerm":"forecasting","error":"ValueError: Invalid country string: eswatini"}',
+    );
+
+    expect(event).toEqual({
+      type: "source_error",
+      source: "linkedin",
+      searchTerm: "forecasting",
+      error: "ValueError: Invalid country string: eswatini",
+    });
+  });
+
   it("returns null for malformed payloads", () => {
     expect(parseJobSpyProgressLine("JOBOPS_PROGRESS {bad json")).toBeNull();
     expect(parseJobSpyProgressLine("JOBOPS_PROGRESS {}")).toBeNull();

@@ -28,6 +28,7 @@ type DiscoveryTaskResult = {
   discoveredJobs: CreateJobInput[];
   sourceErrors: string[];
   challenge?: PendingChallenge;
+  fatal?: boolean;
 };
 
 type DiscoverySourceTask = {
@@ -277,6 +278,7 @@ export async function discoverJobsStep(args: {
             sourceErrors: [
               `${manifest.displayName || manifest.id}: ${result.error ?? "unknown error"} (sources: ${grouped.sources.join(",")})`,
             ],
+            fatal: true,
             challenge: result.challengeRequired
               ? {
                   extractorId: manifest.id,
@@ -290,7 +292,7 @@ export async function discoverJobsStep(args: {
 
         return {
           discoveredJobs: result.jobs,
-          sourceErrors: [],
+          sourceErrors: result.sourceErrors ?? [],
         };
       },
     });
@@ -338,6 +340,7 @@ export async function discoverJobsStep(args: {
           sourceErrors: [
             `${sourceTask.source}: ${error instanceof Error ? error.message : "unknown error"}`,
           ],
+          fatal: true,
         };
       }
     },
@@ -432,9 +435,13 @@ export async function discoverJobsStep(args: {
   // Don't throw "all sources failed" when challenges are pending — the
   // orchestrator will pause, let the user solve them, then re-run those
   // extractors.  Jobs from non-challenged extractors (if any) are kept.
+  const fatalSourceFailures = sourceResults.filter(
+    (sourceResult) => sourceResult.fatal,
+  ).length;
   if (
     filteredDiscoveredJobs.length === 0 &&
-    sourceErrors.length > 0 &&
+    sourceResults.length > 0 &&
+    fatalSourceFailures === sourceResults.length &&
     pendingChallenges.length === 0
   ) {
     throw new Error(`All sources failed: ${sourceErrors.join("; ")}`);

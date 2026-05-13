@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -113,6 +114,59 @@ def _scrape_for_sites(
     return scrape_jobs(**kwargs)
 
 
+def _format_source_error(error: Exception) -> str:
+    message = str(error).strip() or error.__class__.__name__
+    message = " ".join(message.split())
+    if len(message) > 500:
+        message = f"{message[:497]}..."
+    return f"{error.__class__.__name__}: {message}"
+
+
+def _append_site_frame(
+    *,
+    frames: list[pd.DataFrame],
+    source_errors: list[str],
+    site: str,
+    search_term: str,
+    location: str | None,
+    results_wanted: int,
+    hours_old: int,
+    country_indeed: str,
+    linkedin_fetch_description: bool,
+    is_remote: bool,
+) -> None:
+    try:
+        frames.append(
+            _scrape_for_sites(
+                sites=[site],
+                search_term=search_term,
+                location=location,
+                results_wanted=results_wanted,
+                hours_old=hours_old,
+                country_indeed=country_indeed,
+                linkedin_fetch_description=linkedin_fetch_description,
+                is_remote=is_remote,
+            )
+        )
+    except Exception as error:
+        formatted_error = _format_source_error(error)
+        source_errors.append(f"{site}: {formatted_error}")
+        _emit_progress(
+            "source_error",
+            {
+                "source": site,
+                "searchTerm": search_term,
+                "error": formatted_error,
+            },
+        )
+        print(
+            f"jobspy: Source {site} failed; continuing with remaining sources. "
+            f"{formatted_error}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+
 def main() -> int:
     sites = _parse_sites(_env_str("JOBSPY_SITES", "indeed,linkedin"))
     search_term = _env_str("JOBSPY_SEARCH_TERM", "web developer")
@@ -146,6 +200,7 @@ def main() -> int:
         },
     )
     frames: list[pd.DataFrame] = []
+    source_errors: list[str] = []
     # JobSpy's site-level geo filters are inconsistent:
     # - LinkedIn only respects `location`.
     # - Indeed/Glassdoor respect `country_indeed`, and `location` is optional
@@ -153,31 +208,31 @@ def main() -> int:
     # Run them separately so "country with no city" does not become a global
     # LinkedIn search, and so we do not inject synthetic locations into Indeed.
     if "linkedin" in sites:
-        frames.append(
-            _scrape_for_sites(
-                sites=["linkedin"],
-                search_term=search_term,
-                location=linkedin_location,
-                results_wanted=results_wanted,
-                hours_old=hours_old,
-                country_indeed="",
-                linkedin_fetch_description=linkedin_fetch_description,
-                is_remote=is_remote,
-            )
+        _append_site_frame(
+            frames=frames,
+            source_errors=source_errors,
+            site="linkedin",
+            search_term=search_term,
+            location=linkedin_location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed="",
+            linkedin_fetch_description=linkedin_fetch_description,
+            is_remote=is_remote,
         )
 
     if "indeed" in sites:
-        frames.append(
-            _scrape_for_sites(
-                sites=["indeed"],
-                search_term=search_term,
-                location=indeed_location,
-                results_wanted=results_wanted,
-                hours_old=hours_old,
-                country_indeed=country_indeed,
-                linkedin_fetch_description=linkedin_fetch_description,
-                is_remote=is_remote,
-            )
+        _append_site_frame(
+            frames=frames,
+            source_errors=source_errors,
+            site="indeed",
+            search_term=search_term,
+            location=indeed_location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed=country_indeed,
+            linkedin_fetch_description=linkedin_fetch_description,
+            is_remote=is_remote,
         )
 
     if "glassdoor" in sites:
@@ -195,18 +250,26 @@ def main() -> int:
                 print(
                     "jobspy: Glassdoor location matched country; keeping original location"
                 )
-        frames.append(
-            _scrape_for_sites(
-                sites=["glassdoor"],
-                search_term=search_term,
-                location=effective_glassdoor_location,
-                results_wanted=results_wanted,
-                hours_old=hours_old,
-                country_indeed=country_indeed,
-                linkedin_fetch_description=linkedin_fetch_description,
-                is_remote=is_remote,
-            )
+        _append_site_frame(
+            frames=frames,
+            source_errors=source_errors,
+            site="glassdoor",
+            search_term=search_term,
+            location=effective_glassdoor_location,
+            results_wanted=results_wanted,
+            hours_old=hours_old,
+            country_indeed=country_indeed,
+            linkedin_fetch_description=linkedin_fetch_description,
+            is_remote=is_remote,
         )
+
+    if source_errors and not frames:
+        print(
+            f"jobspy: All requested sources failed: {'; '.join(source_errors)}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return 1
 
     jobs = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
