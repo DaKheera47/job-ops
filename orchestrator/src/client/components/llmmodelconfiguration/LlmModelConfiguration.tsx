@@ -290,9 +290,9 @@ export function LlmModelConfiguration({
                 </p>
               ) : null}
               <p className={providerHintClass}>{providerConfig.providerHint}</p>
-              {isCodexProvider ? <CodexAuthPanel isBusy={disabled} /> : null}
-              {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
             </div>
+            {isCodexProvider ? <CodexAuthPanel isBusy={disabled} /> : null}
+            {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
             {showBaseUrl ? (
               <SettingsInput
                 label={mode === "compact" ? "Base URL" : "LLM base URL"}

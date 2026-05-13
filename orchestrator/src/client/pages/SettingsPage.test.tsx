@@ -257,6 +257,45 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("hides stale codex device code after login completes", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        llmProvider: {
+          value: "codex",
+          default: "codex",
+          override: "codex",
+        },
+      }),
+    );
+    vi.mocked(api.getCodexAuthStatus).mockResolvedValueOnce({
+      authenticated: false,
+      username: null,
+      validationMessage:
+        "Codex is not authenticated in this container. Run `codex login` and try again.",
+      flowStatus: "completed",
+      loginInProgress: false,
+      verificationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-EFGH",
+      startedAt: "2026-04-14T16:00:00.000Z",
+      expiresAt: "2026-04-14T16:15:00.000Z",
+      flowMessage: "Codex login completed.",
+    });
+
+    renderPage();
+    await openModelSection();
+
+    expect(
+      await screen.findByText("Codex login completed."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/ABCD-EFGH/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /check status/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /start sign-in/i }),
+    ).toBeInTheDocument();
+  });
+
   it("shows validation error for too long model override", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
 

@@ -159,7 +159,7 @@ export default function PurposeOverrideCard({
       : modelsError
         ? modelsError
         : "Leave blank to inherit the purpose default."
-    : `Type the exact model name, or leave blank to use ${providerConfig.label}.`;
+    : `Type the exact model name, or leave blank to use the default from ${providerConfig.label}.`;
 
   return (
     <div className="space-y-2">
