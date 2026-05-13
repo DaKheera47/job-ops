@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 type FieldValue = string | string[];
 
@@ -37,6 +38,7 @@ type DesignResumeFieldAssistantProps = {
   valueType: DesignResumeAiFieldValueType;
   section?: string | null;
   itemLabel?: string | null;
+  triggerClassName?: string;
   onApply: (value: FieldValue) => void;
 };
 
@@ -72,6 +74,7 @@ export const DesignResumeFieldAssistant: React.FC<
   valueType,
   section = null,
   itemLabel = null,
+  triggerClassName,
   onApply,
 }) => {
   const [open, setOpen] = useState(false);
@@ -176,7 +179,10 @@ export const DesignResumeFieldAssistant: React.FC<
           type="button"
           variant="ghost"
           size="icon"
-          className="h-7 w-7 text-muted-foreground transition-transform duration-150 hover:-translate-y-0.5 hover:text-foreground data-[state=open]:-translate-y-0.5 data-[state=open]:bg-primary/15 data-[state=open]:text-primary"
+          className={cn(
+            "h-7 w-7 text-muted-foreground transition-transform duration-150 hover:-translate-y-0.5 hover:text-foreground data-[state=open]:-translate-y-0.5 data-[state=open]:bg-primary/15 data-[state=open]:text-primary",
+            triggerClassName,
+          )}
           aria-label={`Open AI assistant for ${label}`}
           title={`Improve ${label} with AI`}
         >
@@ -185,17 +191,17 @@ export const DesignResumeFieldAssistant: React.FC<
       </PopoverTrigger>
 
       <PopoverContent
-        side="bottom"
-        align="end"
-        sideOffset={10}
+        side="right"
+        align="start"
+        sideOffset={8}
         collisionPadding={16}
-        className="relative z-[80] w-[min(26rem,calc(100vw-2rem))] origin-[--radix-popover-content-transform-origin] rounded-xl border border-border/70 bg-popover/95 p-3 shadow-2xl shadow-black/30 backdrop-blur data-[state=open]:zoom-in-90 data-[state=open]:slide-in-from-top-1"
+        className="relative z-[80] w-[min(26rem,calc(100vw-2rem))] origin-[--radix-popover-content-transform-origin] rounded-xl border border-border/70 bg-popover/95 p-3 shadow-2xl shadow-black/30 backdrop-blur data-[state=open]:slide-in-from-left-1 data-[state=open]:zoom-in-90"
       >
-        <div className="-top-1.5 right-4 absolute h-3 w-3 rotate-45 border-l border-t border-border/70 bg-popover/95" />
+        <div className="-left-1.5 absolute top-3 h-3 w-3 rotate-45 border-b border-l border-border/70 bg-popover/95" />
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-xs font-semibold text-foreground">
-              AI edit: {label}
+              Ghostwriter: {label}
             </div>
             <div className="text-[11px] text-muted-foreground">
               Draft a focused replacement for this field.

@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { DesignResumeFieldAssistant } from "./DesignResumeFieldAssistant";
 import { RichTextEditor } from "./RichTextEditor";
 import { fieldId, getByPath, toBoolean, toNumber, toText } from "./utils";
@@ -245,30 +246,33 @@ export function BasicsSection({
         { path: "website.url", label: "Website", ai: false },
       ].map(({ path, label, ai }) => (
         <div key={path} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <label className={labelClassName} htmlFor={fieldId("basics", path)}>
-              {label}
-            </label>
+          <label className={labelClassName} htmlFor={fieldId("basics", path)}>
+            {label}
+          </label>
+          <div className="relative">
+            <Input
+              id={fieldId("basics", path)}
+              value={toText(getByPath(basics, path))}
+              onChange={(event) =>
+                onUpdateBasics(path, event.currentTarget.value)
+              }
+              className={cn(fieldClassName, ai && "pr-11")}
+            />
             {ai ? (
-              <DesignResumeFieldAssistant
-                resumeJson={resumeJson}
-                fieldPath={`basics.${path}`}
-                label={label}
-                value={toText(getByPath(basics, path))}
-                valueType="plain_text"
-                section="Basics"
-                onApply={(next) => onUpdateBasics(path, next)}
-              />
+              <div className="-translate-y-1/2 absolute right-1.5 top-1/2">
+                <DesignResumeFieldAssistant
+                  resumeJson={resumeJson}
+                  fieldPath={`basics.${path}`}
+                  label={label}
+                  value={toText(getByPath(basics, path))}
+                  valueType="plain_text"
+                  section="Basics"
+                  onApply={(next) => onUpdateBasics(path, next)}
+                  triggerClassName="bg-background/80 hover:bg-accent"
+                />
+              </div>
             ) : null}
           </div>
-          <Input
-            id={fieldId("basics", path)}
-            value={toText(getByPath(basics, path))}
-            onChange={(event) =>
-              onUpdateBasics(path, event.currentTarget.value)
-            }
-            className={fieldClassName}
-          />
         </div>
       ))}
     </div>
@@ -418,18 +422,19 @@ export function SummarySection({
           value={toText(summary.content)}
           onChange={(next) => onUpdateSummary("content", next)}
           placeholder="Summarize the story your resume should tell."
+          toolbarEnd={
+            <DesignResumeFieldAssistant
+              resumeJson={resumeJson}
+              fieldPath="summary.content"
+              label="Summary"
+              value={toText(summary.content)}
+              valueType="html"
+              section="Summary"
+              onApply={(next) => onUpdateSummary("content", next)}
+              triggerClassName="bg-background/80 hover:bg-accent"
+            />
+          }
         />
-        <div className="flex items-center justify-end">
-          <DesignResumeFieldAssistant
-            resumeJson={resumeJson}
-            fieldPath="summary.content"
-            label="Summary"
-            value={toText(summary.content)}
-            valueType="html"
-            section="Summary"
-            onApply={(next) => onUpdateSummary("content", next)}
-          />
-        </div>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 interface TokenizedInputProps {
   id: string;
@@ -17,6 +18,7 @@ interface TokenizedInputProps {
   removeLabelPrefix: string;
   collapsedTextLimit?: number;
   disabled?: boolean;
+  inputClassName?: string;
 }
 
 const TOKEN_PILL_CLASS_NAME =
@@ -46,6 +48,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
   removeLabelPrefix,
   collapsedTextLimit = 5,
   disabled = false,
+  inputClassName,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const tokensRef = useRef<HTMLDivElement | null>(null);
@@ -124,6 +127,7 @@ export const TokenizedInput: React.FC<TokenizedInputProps> = ({
         }}
         placeholder={placeholder}
         disabled={disabled}
+        className={cn(inputClassName)}
       />
       {helperText ? (
         <p className="text-xs text-muted-foreground">{helperText}</p>

@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { DesignResumeFieldAssistant } from "./DesignResumeFieldAssistant";
 import { IconPickerField } from "./IconPickerField";
 import { RichTextEditor } from "./RichTextEditor";
@@ -151,6 +152,10 @@ function renderTextField(
   iconPrefix?: React.ReactNode,
   assistant?: React.ReactNode,
 ) {
+  const assistantSlot = assistant ? (
+    <div className="flex shrink-0 items-center pr-1">{assistant}</div>
+  ) : null;
+
   return (
     <div key={field.key} className="grid gap-2">
       <label className="text-sm font-medium" htmlFor={fieldId}>
@@ -193,45 +198,53 @@ function renderTextField(
             }}
             className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted-foreground"
           />
+          {assistantSlot}
         </div>
       ) : (
-        <Input
-          id={fieldId}
-          type={field.type === "number" ? "number" : "text"}
-          value={
-            field.type === "number"
-              ? String(value as number)
-              : (value as string)
-          }
-          min={field.min}
-          step={field.step}
-          placeholder={field.placeholder}
-          onChange={(event) => {
-            if (fieldErrors[field.key]) {
-              setFieldErrors((current) => {
-                const next = { ...current };
-                delete next[field.key];
-                return next;
-              });
-            }
-            updateField(
-              field.key,
+        <div className="relative">
+          <Input
+            id={fieldId}
+            type={field.type === "number" ? "number" : "text"}
+            value={
               field.type === "number"
-                ? Number(event.currentTarget.value || 0)
-                : event.currentTarget.value,
-            );
-          }}
-          className={
-            fieldErrors[field.key]
-              ? "border-rose-500 bg-background/60"
-              : "bg-background/60"
-          }
-        />
+                ? String(value as number)
+                : (value as string)
+            }
+            min={field.min}
+            step={field.step}
+            placeholder={field.placeholder}
+            onChange={(event) => {
+              if (fieldErrors[field.key]) {
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next[field.key];
+                  return next;
+                });
+              }
+              updateField(
+                field.key,
+                field.type === "number"
+                  ? Number(event.currentTarget.value || 0)
+                  : event.currentTarget.value,
+              );
+            }}
+            className={cn(
+              fieldErrors[field.key]
+                ? "border-rose-500 bg-background/60"
+                : "bg-background/60",
+              assistant && "pr-11",
+            )}
+          />
+          {assistant ? (
+            <div className="-translate-y-1/2 absolute right-1.5 top-1/2">
+              {assistant}
+            </div>
+          ) : null}
+        </div>
       )}
       {fieldErrors[field.key] ? (
         <p className="text-xs text-rose-400">{fieldErrors[field.key]}</p>
       ) : null}
-      {assistant}
     </div>
   );
 }
@@ -263,18 +276,17 @@ function renderAiAssistant(
         : "";
 
   return (
-    <div className="flex justify-end">
-      <DesignResumeFieldAssistant
-        resumeJson={aiContext.resumeJson}
-        fieldPath={`${aiContext.pathPrefix}.${field.key}`}
-        label={field.label}
-        value={normalizedValue}
-        valueType={valueType}
-        section={aiContext.section}
-        itemLabel={aiContext.itemLabel}
-        onApply={(next) => updateField(field.key, next)}
-      />
-    </div>
+    <DesignResumeFieldAssistant
+      resumeJson={aiContext.resumeJson}
+      fieldPath={`${aiContext.pathPrefix}.${field.key}`}
+      label={field.label}
+      value={normalizedValue}
+      valueType={valueType}
+      section={aiContext.section}
+      itemLabel={aiContext.itemLabel}
+      onApply={(next) => updateField(field.key, next)}
+      triggerClassName="bg-background/80 hover:bg-accent"
+    />
   );
 }
 
@@ -295,18 +307,17 @@ function renderFields(
     if (!field) break;
     const value = coerceDraftValue(field, getValue(draft, field.key));
     const fieldId = fieldIdForPath(field.key);
+    const assistant = renderAiAssistant(field, value, updateField, aiContext);
 
     if (field.type === "richtext") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium">{field.label}</span>
-            {renderAiAssistant(field, value, updateField, aiContext)}
-          </div>
+          <span className="text-sm font-medium">{field.label}</span>
           <RichTextEditor
             value={value as string}
             onChange={(next) => updateField(field.key, next)}
             placeholder={field.placeholder}
+            toolbarEnd={assistant}
           />
         </div>,
       );
@@ -317,21 +328,26 @@ function renderFields(
     if (field.type === "textarea") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-sm font-medium" htmlFor={fieldId}>
-              {field.label}
-            </label>
-            {renderAiAssistant(field, value, updateField, aiContext)}
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <div className="relative">
+            <Textarea
+              id={fieldId}
+              value={value as string}
+              placeholder={field.placeholder}
+              onChange={(event) =>
+                updateField(field.key, event.currentTarget.value)
+              }
+              className={cn(
+                "min-h-[110px] bg-background/60",
+                assistant && "pr-11",
+              )}
+            />
+            {assistant ? (
+              <div className="absolute right-2 top-2">{assistant}</div>
+            ) : null}
           </div>
-          <Textarea
-            id={fieldId}
-            value={value as string}
-            placeholder={field.placeholder}
-            onChange={(event) =>
-              updateField(field.key, event.currentTarget.value)
-            }
-            className="min-h-[110px] bg-background/60"
-          />
         </div>,
       );
       i++;
@@ -341,25 +357,28 @@ function renderFields(
     if (field.type === "tags") {
       nodes.push(
         <div key={field.key} className="grid gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <label className="text-sm font-medium" htmlFor={fieldId}>
-              {field.label}
-            </label>
-            {renderAiAssistant(field, value, updateField, aiContext)}
+          <label className="text-sm font-medium" htmlFor={fieldId}>
+            {field.label}
+          </label>
+          <div className="relative">
+            <TokenizedInput
+              id={fieldId}
+              values={value as string[]}
+              draft={tagDrafts[field.key] ?? ""}
+              parseInput={parseTagInput}
+              onDraftChange={(next) =>
+                setTagDrafts((current) => ({ ...current, [field.key]: next }))
+              }
+              onValuesChange={(next) => updateField(field.key, next)}
+              placeholder={field.placeholder ?? "Add a value"}
+              helperText="Press Enter, comma, or paste a list to add items."
+              removeLabelPrefix="Remove tag"
+              inputClassName={assistant ? "pr-11" : undefined}
+            />
+            {assistant ? (
+              <div className="absolute right-1.5 top-1.5">{assistant}</div>
+            ) : null}
           </div>
-          <TokenizedInput
-            id={fieldId}
-            values={value as string[]}
-            draft={tagDrafts[field.key] ?? ""}
-            parseInput={parseTagInput}
-            onDraftChange={(next) =>
-              setTagDrafts((current) => ({ ...current, [field.key]: next }))
-            }
-            onValuesChange={(next) => updateField(field.key, next)}
-            placeholder={field.placeholder ?? "Add a value"}
-            helperText="Press Enter, comma, or paste a list to add items."
-            removeLabelPrefix="Remove tag"
-          />
         </div>,
       );
       i++;
@@ -449,7 +468,7 @@ function renderFields(
         setFieldErrors,
         fieldId,
         undefined,
-        renderAiAssistant(field, value, updateField, aiContext),
+        assistant,
       ),
     );
     i++;

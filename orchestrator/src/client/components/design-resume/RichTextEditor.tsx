@@ -13,6 +13,7 @@ type RichTextEditorProps = {
   className?: string;
   editorClassName?: string;
   formatLabel?: string | null;
+  toolbarEnd?: React.ReactNode;
 };
 
 export function RichTextEditor({
@@ -22,6 +23,7 @@ export function RichTextEditor({
   className,
   editorClassName,
   formatLabel = "HTML",
+  toolbarEnd,
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -154,6 +156,11 @@ export function RichTextEditor({
         {formatLabel ? (
           <div className="ml-auto px-2 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
             {formatLabel}
+          </div>
+        ) : null}
+        {toolbarEnd ? (
+          <div className={cn("flex items-center", !formatLabel && "ml-auto")}>
+            {toolbarEnd}
           </div>
         ) : null}
       </div>
