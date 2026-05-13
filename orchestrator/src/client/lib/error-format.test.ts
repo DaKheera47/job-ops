@@ -33,7 +33,7 @@ describe("error-format", () => {
 
   it("maps design-resume skill name validation paths to a friendly message", () => {
     const raw =
-      'Design Resume must be a valid Reactive Resume v5 document. Resume schema validation failed at "sections.skills.items.7.name": String must contain at least 1 character(s)';
+      'Resume Studio must be a valid Reactive Resume v5 document. Resume schema validation failed at "sections.skills.items.7.name": String must contain at least 1 character(s)';
 
     expect(formatUserFacingError(new Error(raw))).toBe(
       "Please enter a skill (e.g., Python, SQL).",

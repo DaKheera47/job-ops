@@ -151,7 +151,8 @@ const DESIGN_RESUME_PROFILE_SECTIONS: SectionWorkspaceGroup<
   {
     id: "summary",
     label: "Summary",
-    description: "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
+    description:
+      "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
     searchTerms: ["intro", "profile", "overview"],
   },
   {
@@ -195,7 +196,8 @@ const DESIGN_RESUME_ICON_GROUPS: DesignResumeNavGroup[] = [
       {
         id: "summary",
         label: "Summary",
-        description: "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
+        description:
+          "Short intro shown near the top of your resume. Rewritten during Job Tailoring for each application.",
         icon: FileText,
       },
       {
@@ -461,7 +463,7 @@ function DesignResumeDock({
           onWheel={handleWheel}
           className="pointer-events-auto relative h-full min-h-0 w-[70px] overflow-hidden overscroll-contain rounded-2xl border border-border/80 bg-card/95 shadow-2xl shadow-background/50 backdrop-blur supports-[backdrop-filter]:bg-card/85"
           role="toolbar"
-          aria-label="Design Resume sections"
+          aria-label="Resume Studio sections"
         >
           <motion.div
             ref={contentRef}
@@ -595,7 +597,7 @@ export const DesignResumePage: React.FC = () => {
         setSaveState("idle");
       } catch (saveError) {
         setSaveState("error");
-        showErrorToast(saveError, "Failed to save Design Resume.");
+        showErrorToast(saveError, "Failed to save Resume Studio.");
       }
     }, 700);
 
@@ -619,7 +621,7 @@ export const DesignResumePage: React.FC = () => {
       if (!dirty) return draft;
       if (saveState === "saving") {
         throw new Error(
-          "Design Resume is still saving. Try again in a moment.",
+          "Resume Studio is still saving. Try again in a moment.",
         );
       }
 
@@ -746,7 +748,7 @@ export const DesignResumePage: React.FC = () => {
       makeDownload(exported.fileName, exported.document);
       toast.success("Exported your resume JSON.");
     } catch (exportError) {
-      showErrorToast(exportError, "Failed to export Design Resume.");
+      showErrorToast(exportError, "Failed to export Resume Studio.");
     }
   };
 
@@ -927,12 +929,12 @@ export const DesignResumePage: React.FC = () => {
       <div className="flex h-dvh flex-col overflow-hidden">
         <PageHeader
           icon={PenSquare}
-          title="Design Resume"
+          title="Resume Studio"
           subtitle="Loading your resume"
         />
         <PageMain className={DESIGN_RESUME_PAGE_MAIN_CLASS_NAME}>
           <div className="rounded-2xl border border-border/70 bg-card px-6 py-20 text-center text-sm text-muted-foreground">
-            Loading Design Resume...
+            Loading Resume Studio...
           </div>
         </PageMain>
       </div>
@@ -991,7 +993,7 @@ export const DesignResumePage: React.FC = () => {
 
       <PageHeader
         icon={PenSquare}
-        title="Design Resume"
+        title="Resume Studio"
         subtitle="Edit your resume details"
         actions={
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap sm:justify-end">
@@ -1097,7 +1099,7 @@ export const DesignResumePage: React.FC = () => {
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
               <div className="inline-flex rounded-full border border-border/70 bg-muted/20 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                Design Resume
+                Resume Studio
               </div>
               <h2 className="text-3xl font-semibold tracking-tight text-foreground">
                 Import your resume to start editing it here.
@@ -1119,7 +1121,7 @@ export const DesignResumePage: React.FC = () => {
                   <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
                     {formatUserFacingError(
                       error,
-                      "Unable to load Design Resume.",
+                      "Unable to load Resume Studio.",
                     )}
                   </div>
                 ) : null}
@@ -1131,7 +1133,7 @@ export const DesignResumePage: React.FC = () => {
             <div
               className="mb-3 grid h-11 shrink-0 grid-cols-2 rounded-lg bg-muted p-1 text-sm text-muted-foreground sm:hidden"
               role="tablist"
-              aria-label="Design Resume mobile workspace"
+              aria-label="Resume Studio mobile workspace"
             >
               <button
                 type="button"
@@ -1440,7 +1442,7 @@ export const DesignResumePage: React.FC = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Re-import from RxResume?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will replace your current Design Resume with the latest data
+              This will replace your current Resume Studio with the latest data
               from RxResume. Any edits you've made here will be permanently
               overwritten and cannot be undone.
             </AlertDialogDescription>

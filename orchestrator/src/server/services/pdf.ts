@@ -213,7 +213,7 @@ async function resolveDesignResumeForRenderer(args: {
 }> {
   const designResume = await getCurrentDesignResume();
   if (!designResume?.resumeJson) {
-    throw notFound("Design Resume has not been imported yet.");
+    throw notFound("Resume Studio has not been imported yet.");
   }
 
   const localDocument = parseV5ResumeData(
@@ -303,7 +303,7 @@ async function loadBaseResumeSource(args: {
   const { resumeId: baseResumeId } = await getConfiguredRxResumeBaseResumeId();
   if (!baseResumeId) {
     throw new Error(
-      "No Design Resume found, and no Reactive Resume base resume is configured. Import a Design Resume or select a base resume in Settings.",
+      "No Resume Studio document found, and no Reactive Resume base resume is configured. Import a resume into Resume Studio or select a base resume in Settings.",
     );
   }
 

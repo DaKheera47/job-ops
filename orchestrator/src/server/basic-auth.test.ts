@@ -99,7 +99,7 @@ describe.sequential("Auth read-only enforcement", () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it("allows Design Resume asset content without auth for PDF rendering", async () => {
+  it("allows Resume Studio asset content without auth for PDF rendering", async () => {
     vi.mocked(countUsers).mockResolvedValue(1);
 
     const { middleware } = createAuthGuard();

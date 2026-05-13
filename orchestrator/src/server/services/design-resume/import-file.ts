@@ -764,7 +764,7 @@ function sanitizeNormalizedResume(input: unknown): DesignResumeJson {
   const parsed = safeParseV5ResumeData(normalized);
   if (!parsed.success) {
     throw badRequest(
-      `Imported resume could not be normalized into a valid Design Resume. ${getResumeSchemaValidationMessage(parsed.error)}`,
+      `Imported resume could not be normalized into a valid Resume Studio document. ${getResumeSchemaValidationMessage(parsed.error)}`,
     );
   }
 

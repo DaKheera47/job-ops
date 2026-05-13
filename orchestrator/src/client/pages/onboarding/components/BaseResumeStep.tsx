@@ -77,7 +77,7 @@ export const BaseResumeStep: React.FC<{
             value: "upload",
             title: "Upload a PDF or DOCX",
             description:
-              "Create a local Design Resume directly in Job Ops from your existing file.",
+              "Create a local Resume Studio document directly in Job Ops from your existing file.",
           },
           {
             value: "rxresume",

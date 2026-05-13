@@ -110,7 +110,7 @@ export function PictureSection({
         >
           <img
             src={toText(picture.url)}
-            alt="Design Resume profile"
+            alt="Resume Studio profile"
             className="h-16 w-16 rounded-lg border border-border/60 object-cover"
           />
           <div className="flex flex-wrap gap-2">

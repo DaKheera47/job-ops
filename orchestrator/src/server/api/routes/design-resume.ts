@@ -71,7 +71,7 @@ async function assertPictureSupportEnabled(req: Request): Promise<void> {
 
   throw conflict(
     availability.reason ??
-      "Design Resume pictures require JobOps to be reachable at a public URL.",
+      "Resume Studio pictures require JobOps to be reachable at a public URL.",
   );
 }
 
@@ -254,7 +254,7 @@ designResumeRouter.get(
   asyncRoute(async (_req: Request, res: Response) => {
     const document = await getCurrentDesignResume();
     if (!document) {
-      fail(res, notFound("Design Resume has not been imported yet."));
+      fail(res, notFound("Resume Studio has not been imported yet."));
       return;
     }
     ok(res, document);
@@ -415,7 +415,7 @@ designResumeRouter.get(
     res.setHeader("Cache-Control", "no-store");
     res.sendFile(pdfPath, (error) => {
       if (error) {
-        fail(res, notFound("Design Resume PDF not found"));
+        fail(res, notFound("Resume Studio PDF not found"));
       }
     });
   }),

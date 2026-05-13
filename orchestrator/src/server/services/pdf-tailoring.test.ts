@@ -638,7 +638,7 @@ describe("PDF Service Tailoring Logic", () => {
     }
   });
 
-  it("strips Design Resume pictures from RxResume export when JobOps is not hosted", async () => {
+  it("strips Resume Studio pictures from RxResume export when JobOps is not hosted", async () => {
     currentPdfRenderer.value = "rxresume";
     mockTracerLinks.resolveTracerPublicBaseUrl.mockReturnValue(
       "http://localhost:3005",
@@ -673,7 +673,7 @@ describe("PDF Service Tailoring Logic", () => {
     const designResume = await import("./design-resume");
     vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
       id: "design-resume-1",
-      title: "Design Resume",
+      title: "Resume Studio",
       sourceResumeId: null,
       sourceMode: "v5",
       importedAt: "2026-05-02T00:00:00.000Z",
@@ -697,7 +697,7 @@ describe("PDF Service Tailoring Logic", () => {
       });
 
       expect(rxresume.importResume).toHaveBeenCalledWith({
-        name: "Design Resume",
+        name: "Resume Studio",
         data: expect.objectContaining({
           picture: expect.objectContaining({
             hidden: true,
@@ -731,7 +731,7 @@ describe("PDF Service Tailoring Logic", () => {
     const designResume = await import("./design-resume");
     vi.mocked(designResume.getCurrentDesignResume).mockResolvedValueOnce({
       id: "design-resume-1",
-      title: "Design Resume",
+      title: "Resume Studio",
       sourceResumeId: null,
       sourceMode: "v5",
       importedAt: "2026-05-02T00:00:00.000Z",
@@ -755,7 +755,7 @@ describe("PDF Service Tailoring Logic", () => {
       });
 
       expect(rxresume.importResume).toHaveBeenCalledWith({
-        name: "Design Resume",
+        name: "Resume Studio",
         data: expect.objectContaining({
           picture: expect.objectContaining({
             hidden: false,

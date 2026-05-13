@@ -9,9 +9,9 @@ sidebar_position: 4
 
 Reactive Resume is now an optional integration in JobOps.
 
-The primary editing surface is **Design Resume**, which stores a local resume document inside JobOps. Reactive Resume is used for:
+The primary editing surface is **Resume Studio**, which stores a local resume document inside JobOps. Reactive Resume is used for:
 
-- importing an existing resume into Design Resume
+- importing an existing resume into Resume Studio
 - exporting JobOps resume JSON back out
 - optional upstream PDF export when the `rxresume` PDF renderer is selected
 
@@ -23,7 +23,7 @@ Most users need a repeatable resume pipeline:
 - controlled project inclusion rules
 - per-job tailored output without manual copy/paste
 
-Reactive Resume still matters because many users already maintain a strong resume there, and its JSON model is compatible with JobOps. Importing that data into Design Resume avoids re-entry while reducing day-to-day dependence on the upstream service.
+Reactive Resume still matters because many users already maintain a strong resume there, and its JSON model is compatible with JobOps. Importing that data into Resume Studio avoids re-entry while reducing day-to-day dependence on the upstream service.
 
 ### Where it fits now
 
@@ -35,15 +35,15 @@ Key reasons:
 - It can still power PDF export if you prefer the upstream renderer.
 - Its JSON schema remains a stable interchange format for JobOps.
 
-For everyday editing inside JobOps, use [Design Resume](./design-resume).
+For everyday editing inside JobOps, use [Resume Studio](./design-resume).
 
 ## Core concepts
 
 ### Import source
 
-Your configured **base resume** in Reactive Resume is used as the import source for Design Resume when you choose **Import from Reactive Resume**.
+Your configured **base resume** in Reactive Resume is used as the import source for Resume Studio when you choose **Import from Reactive Resume**.
 
-After import, JobOps uses the local Design Resume for:
+After import, JobOps uses the local Resume Studio document for:
 
 - profile extraction
 - project catalog extraction
@@ -55,7 +55,7 @@ If you use the `rxresume` PDF renderer, JobOps can still send the tailored JSON 
 
 ### Project catalog
 
-JobOps reads projects from `sections.projects.items` in the local Design Resume document.
+JobOps reads projects from `sections.projects.items` in the local Resume Studio document.
 
 Each project is identified by:
 
@@ -119,11 +119,11 @@ In **Settings → Reactive Resume**:
 2. Select the template/base resume.
 3. Save settings.
 
-### 3) Import into Design Resume
+### 3) Import into Resume Studio
 
-1. Open **Design Resume** in the left navigation.
+1. Open **Resume Studio** in the left navigation.
 2. Click **Import from Reactive Resume**.
-3. Wait for JobOps to create the local Design Resume document.
+3. Wait for JobOps to create the local Resume Studio document.
 
 After that import, JobOps reads resume context locally by default.
 
@@ -142,7 +142,7 @@ In **Settings → Reactive Resume**:
 
 High-level flow:
 
-1. Load the local Design Resume document.
+1. Load the local Resume Studio document.
 2. Apply tailored summary/headline/skills.
 3. Compute final visible projects from your selection rules.
 4. Optionally rewrite outbound links to tracer links (per-job toggle).
@@ -192,7 +192,7 @@ JobOps can generate the final PDF in 2 ways:
 
 Notes:
 
-- Design Resume supplies the structured base resume and project data by default.
+- Resume Studio supplies the structured base resume and project data by default.
 - Reactive Resume is only required at render time when you choose the `rxresume` PDF renderer.
 - In Docker deployments, `tectonic` is bundled into the image for the LaTeX option.
 - In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed when using the LaTeX option.
@@ -201,8 +201,8 @@ Notes:
 
 - Import fails:
   Check that Reactive Resume credentials, mode, URL, and selected base resume are valid in **Settings**.
-- Design Resume is empty:
-  Open **Design Resume** and run **Import from Reactive Resume** once.
+- Resume Studio is empty:
+  Open **Resume Studio** and run **Import from Reactive Resume** once.
 - PDF export still calls Reactive Resume:
   Switch the PDF renderer to `latex` if you want the full flow to stay local.
 - Project lists look stale:
@@ -210,7 +210,7 @@ Notes:
 
 ## Related pages
 
-- [Design Resume](./design-resume)
+- [Resume Studio](./design-resume)
 - [Settings](./settings)
 - [Tracer Links](./tracer-links)
 

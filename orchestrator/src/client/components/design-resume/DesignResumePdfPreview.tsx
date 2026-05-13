@@ -110,7 +110,7 @@ export function DesignResumePdfPreview({
           <iframe
             key={pdfUrl}
             src={pdfUrl}
-            title="Design Resume PDF preview"
+            title="Resume Studio PDF preview"
             className="h-full w-full"
             onLoad={() => {
               setIsFrameLoading(false);

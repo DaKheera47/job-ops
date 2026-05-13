@@ -681,8 +681,8 @@ export function useOnboardingFlow() {
         toast.success("Resume uploaded", {
           description:
             settings?.pdfRenderer?.value === "latex"
-              ? "Your local Design Resume is ready."
-              : "Your local Design Resume is ready and PDF rendering was switched to LaTeX.",
+              ? "Your local Resume Studio document is ready."
+              : "Your local Resume Studio document is ready and PDF rendering was switched to LaTeX.",
         });
         markSearchTermsStale();
       } catch (error) {

@@ -61,7 +61,7 @@ describe("getProfile", () => {
     );
   });
 
-  it("should prefer the local Design Resume when available", async () => {
+  it("should prefer the local Resume Studio document when available", async () => {
     const localProfile = { basics: { name: "Local User" } };
     vi.mocked(designResumeToProfile).mockResolvedValue(localProfile as any);
 
@@ -73,7 +73,7 @@ describe("getProfile", () => {
     expect(profile).toEqual(localProfile);
   });
 
-  it("should cache the local Design Resume profile", async () => {
+  it("should cache the local Resume Studio profile", async () => {
     const localProfile = { basics: { name: "Local User" } };
     vi.mocked(designResumeToProfile).mockResolvedValue(localProfile as any);
 
@@ -85,7 +85,7 @@ describe("getProfile", () => {
     expect(getResume).not.toHaveBeenCalled();
   });
 
-  it("should keep local Design Resume profiles scoped by tenant", async () => {
+  it("should keep local Resume Studio profiles scoped by tenant", async () => {
     vi.mocked(designResumeToProfile)
       .mockResolvedValueOnce({ basics: { name: "Tenant One" } } as any)
       .mockResolvedValueOnce({ basics: { name: "Tenant Two" } } as any);
@@ -161,7 +161,7 @@ describe("getProfile", () => {
     expect(profile).toEqual(mockResumeData);
   });
 
-  it("should fall back to Reactive Resume when the local Design Resume is legacy", async () => {
+  it("should fall back to Reactive Resume when the local Resume Studio document is legacy", async () => {
     const mockResumeData = { basics: { name: "Fallback User" } };
     const legacyError = new Error("legacy design resume");
     vi.mocked(designResumeToProfile).mockRejectedValue(legacyError);

@@ -153,7 +153,7 @@ describe("App demo banner", () => {
     );
   });
 
-  it("renders the neutral Design Resume route", () => {
+  it("renders the neutral Resume Studio route", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: false,
       resetCadenceHours: 6,

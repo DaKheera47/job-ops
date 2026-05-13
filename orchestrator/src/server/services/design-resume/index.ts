@@ -35,9 +35,9 @@ const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_PICTURE_FETCH_REDIRECTS = 3;
 const LEGACY_REIMPORT_MESSAGE =
-  "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
+  "Stored Resume Studio document is no longer compatible. Re-import from Reactive Resume v5 to continue.";
 const INVALID_V5_PREFIX =
-  "Design Resume must be a valid Reactive Resume v5 document.";
+  "Resume Studio must be a valid Reactive Resume v5 document.";
 
 function buildTenantScopedDesignResumeDocumentId(): string {
   return `${DESIGN_RESUME_DEFAULT_ID}_${getActiveTenantId()}`;
@@ -102,7 +102,7 @@ export function isLegacyDesignResumeError(error: unknown): boolean {
 function buildDocumentTitle(document: DesignResumeJson): string {
   const basics = asRecord(document.basics);
   const name = toText(basics?.name).trim();
-  return name ? `${name} Resume` : "Design Resume";
+  return name ? `${name} Resume` : "Resume Studio";
 }
 
 function contentUrlForAsset(assetId: string): string {
@@ -229,18 +229,18 @@ function parsePublicPictureUrl(value: string): URL {
   try {
     parsed = new URL(value);
   } catch {
-    throw badRequest("Design Resume pictures must use a valid absolute URL.");
+    throw badRequest("Resume Studio pictures must use a valid absolute URL.");
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw badRequest("Design Resume pictures must use HTTP or HTTPS URLs.");
+    throw badRequest("Resume Studio pictures must use HTTP or HTTPS URLs.");
   }
   if (parsed.username || parsed.password) {
-    throw badRequest("Design Resume picture URLs cannot include credentials.");
+    throw badRequest("Resume Studio picture URLs cannot include credentials.");
   }
   if (isLocalOrPrivateHostname(parsed.hostname)) {
     throw badRequest(
-      "Design Resume picture URLs must point to a publicly reachable host.",
+      "Resume Studio picture URLs must point to a publicly reachable host.",
     );
   }
 
@@ -658,7 +658,7 @@ export async function getCurrentDesignResumeOrNullOnLegacy(): Promise<DesignResu
 export async function requireCurrentDesignResume(): Promise<DesignResumeDocument> {
   const document = await getCurrentDesignResume();
   if (!document) {
-    throw notFound("Design Resume has not been imported yet.");
+    throw notFound("Resume Studio has not been imported yet.");
   }
   return document;
 }
@@ -764,7 +764,7 @@ export async function updateCurrentDesignResume(
 ): Promise<DesignResumeDocument> {
   const current = await requireCurrentDesignResume();
   if (current.revision !== input.baseRevision) {
-    throw conflict("Design Resume has changed. Refresh and try again.");
+    throw conflict("Resume Studio has changed. Refresh and try again.");
   }
 
   let nextDocument: DesignResumeJson;
@@ -783,7 +783,7 @@ export async function updateCurrentDesignResume(
     nextDocument = validatePatchedDocument(nextDocumentRecord);
   } else {
     throw badRequest(
-      "Design Resume update requires a document or patch operations.",
+      "Resume Studio update requires a document or patch operations.",
     );
   }
 
@@ -989,7 +989,7 @@ export async function readDesignResumeAssetContent(
     ? await designResumeRepo.getDesignResumeAssetByIdAnyTenant(assetId)
     : await designResumeRepo.getDesignResumeAssetById(assetId);
   if (!row) {
-    throw notFound("Design Resume asset not found.");
+    throw notFound("Resume Studio asset not found.");
   }
 
   const content = await readFile(row.storagePath);
@@ -1120,7 +1120,7 @@ export async function getDesignResumeProjectProfile(): Promise<ResumeProfile | n
 
 export async function statDesignResumeAssetFile(assetId: string) {
   const asset = await designResumeRepo.getDesignResumeAssetById(assetId);
-  if (!asset) throw notFound("Design Resume asset not found.");
+  if (!asset) throw notFound("Resume Studio asset not found.");
   const info = await stat(asset.storagePath);
   return { asset: toDesignResumeAsset(asset), info };
 }

@@ -83,7 +83,7 @@ describe("getEffectiveSettings", () => {
     );
   });
 
-  it("uses extractProjectsFromProfile for a local Design Resume projection", async () => {
+  it("uses extractProjectsFromProfile for a local Resume Studio projection", async () => {
     const settings = await getEffectiveSettings();
 
     expect(extractProjectsFromProfile).toHaveBeenCalledTimes(1);
@@ -93,7 +93,7 @@ describe("getEffectiveSettings", () => {
     ]);
   });
 
-  it("falls back when no compatible local Design Resume is available", async () => {
+  it("falls back when no compatible local Resume Studio document is available", async () => {
     vi.mocked(getCurrentDesignResumeOrNullOnLegacy).mockResolvedValue(null);
 
     await expect(getEffectiveSettings()).resolves.toBeTruthy();

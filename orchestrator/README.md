@@ -38,7 +38,7 @@ orchestrator/
 
    After the server starts, use the onboarding page to connect your LLM provider, configure Reactive Resume if you want import support, select or import your resume, review the generated job-title search terms, and decide whether to enable basic auth.
 
-   Then open **Design Resume** in the app and import your base resume once. JobOps will use that local Design Resume document as the primary resume context for tailoring, scoring, and PDF generation.
+   Then open **Resume Studio** in the app and import your base resume once. JobOps will use that local Resume Studio document as the primary resume context for tailoring, scoring, and PDF generation.
 
 
    OpenRouter is the default LLM provider, but OpenAI, LM Studio, Ollama, `openai-compatible` endpoints, and Gemini are also supported.

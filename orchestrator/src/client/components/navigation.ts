@@ -37,7 +37,7 @@ export const NAV_LINKS: NavLink[] = [
   },
   {
     to: "/design-resume",
-    label: "Design Resume",
+    label: "Resume Studio",
     icon: FilePenLine,
     activePaths: ["/design-resume"],
   },

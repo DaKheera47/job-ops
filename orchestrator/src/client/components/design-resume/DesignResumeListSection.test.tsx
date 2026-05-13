@@ -50,7 +50,7 @@ describe("DesignResumeListSection", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "This will remove Apollo from your Design Resume. You can add it again later, but this change will be saved.",
+        "This will remove Apollo from your Resume Studio. You can add it again later, but this change will be saved.",
       ),
     ).toBeInTheDocument();
     expect(onUpdateItems).not.toHaveBeenCalled();

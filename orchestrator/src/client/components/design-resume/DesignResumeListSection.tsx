@@ -529,7 +529,7 @@ export function DesignResumeListSectionContent({
               Remove {definition.singularTitle.toLowerCase()}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove {pendingRemovalLabel} from your Design Resume.
+              This will remove {pendingRemovalLabel} from your Resume Studio.
               You can add it again later, but this change will be saved.
             </AlertDialogDescription>
           </AlertDialogHeader>
