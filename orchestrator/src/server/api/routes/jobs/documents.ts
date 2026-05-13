@@ -33,13 +33,27 @@ export const jobsDocumentsRouter = Router();
 const tailoringGenerateFields = ["summary", "headline", "skills"] as const;
 type TailoringGenerateField = (typeof tailoringGenerateFields)[number];
 
+function encodeContentDispositionFileName(value: string): string {
+  return encodeURIComponent(value).replace(
+    /[!'()*~]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+}
+
 function contentDispositionAttachment(fileName: string): string {
   const fallbackFileName =
     fileName
       .replace(/["\\\r\n]/g, "_")
       .replace(/[^\x20-\x7E]/g, "_")
       .trim() || "document";
-  return `attachment; filename="${fallbackFileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+  return `attachment; filename="${fallbackFileName}"; filename*=UTF-8''${encodeContentDispositionFileName(fileName)}`;
+}
+
+function removeJobDocumentContentHeaders(res: Response): void {
+  res.removeHeader("Cache-Control");
+  res.removeHeader("Content-Disposition");
+  res.removeHeader("Content-Type");
+  res.removeHeader("X-Content-Type-Options");
 }
 
 function setJobDocumentContentHeaders(
@@ -296,6 +310,7 @@ jobsDocumentsRouter.get(
       setJobDocumentContentHeaders(res, document);
       res.sendFile(document.storagePath, (error) => {
         if (error && !res.headersSent) {
+          removeJobDocumentContentHeaders(res);
           fail(
             res,
             new AppError({

@@ -510,9 +510,7 @@ export const JobPage: React.FC = () => {
       job.title,
     )}-resume.pdf`;
     await downloadJobPdf(job.id, filename).catch((error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Could not download PDF",
-      );
+      showErrorToast(error, "Could not download PDF");
     });
   };
 

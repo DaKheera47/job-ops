@@ -753,7 +753,7 @@ describe.sequential("Jobs API routes", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        fileName: "payload.html",
+        fileName: "payload's (test)!*.html",
         mediaType: "text/html",
         dataBase64: Buffer.from("<script>alert(1)</script>").toString("base64"),
       }),
@@ -772,6 +772,43 @@ describe.sequential("Jobs API routes", () => {
     expect(contentRes.headers.get("content-disposition")).toContain(
       "attachment",
     );
+    expect(contentRes.headers.get("content-disposition")).toContain(
+      "filename*=UTF-8''payload%27s%20%28test%29%21%2A.html",
+    );
+  });
+
+  it("returns a JSON error when a stored job document file is missing", async () => {
+    const { createJob } = await import("@server/repositories/jobs");
+    const { createJobDocument } = await import(
+      "@server/repositories/job-documents"
+    );
+    const job = await createJob({
+      source: "manual",
+      title: "Missing Document File Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/job/missing-document-file",
+      jobDescription: "Missing document file description",
+    });
+    const document = await createJobDocument({
+      jobId: job.id,
+      fileName: "missing.html",
+      mediaType: "text/html",
+      byteSize: 100,
+      storagePath: "/definitely/missing/job-document.html",
+    });
+
+    const res = await fetch(
+      `${baseUrl}/api/jobs/${job.id}/documents/${document.id}/content`,
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
+    expect(body.error.code).toBe("NOT_FOUND");
+    expect(res.headers.get("content-disposition")).toBeNull();
+    expect(res.headers.get("cache-control")).toBeNull();
+    expect(res.headers.get("x-content-type-options")).toBeNull();
+    expect(res.headers.get("content-type")).toMatch(/^application\/json/);
   });
 
   it("rejects uploaded job documents with invalid base64", async () => {
