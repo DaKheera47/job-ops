@@ -126,8 +126,6 @@ const DESIGN_RESUME_NAV_GROUPS: SectionWorkspaceGroup<
 const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
-const DEFAULT_DESIGN_RESUME_SECTION = "summary";
-
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -173,10 +171,10 @@ export const DesignResumePage: React.FC = () => {
   const pictureDisabledReason =
     tracerReadiness?.reason ??
     "Pictures require JobOps to be reachable at a public URL.";
-  const activeSection = sectionParam ?? DEFAULT_DESIGN_RESUME_SECTION;
-  const activeSectionIsValid = allDesignResumeSections.some(
-    (item) => item.id === activeSection,
-  );
+  const activeSection = sectionParam ?? null;
+  const activeSectionIsValid =
+    activeSection == null ||
+    allDesignResumeSections.some((item) => item.id === activeSection);
 
   useEffect(() => {
     if (!document) return;
@@ -519,22 +517,26 @@ export const DesignResumePage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (!activeSectionIsValid || visibleSectionIds.length === 0) return;
+    if (
+      activeSection == null ||
+      !activeSectionIsValid ||
+      visibleSectionIds.length === 0
+    ) {
+      return;
+    }
     if (!visibleSectionIds.includes(activeSection)) {
       navigate(`/design-resume/${visibleSectionIds[0]}`, { replace: true });
     }
   }, [activeSection, activeSectionIsValid, navigate, visibleSectionIds]);
 
-  const activeSectionMeta =
-    allDesignResumeSections.find((item) => item.id === activeSection) ??
-    allDesignResumeSections.find(
-      (item) => item.id === DEFAULT_DESIGN_RESUME_SECTION,
-    ) ??
-    allDesignResumeSections[0];
-  const activeGroup =
-    DESIGN_RESUME_NAV_GROUPS.find((group) =>
-      group.items.some((item) => item.id === activeSection),
-    ) ?? DESIGN_RESUME_NAV_GROUPS[0];
+  const activeSectionMeta = activeSection
+    ? allDesignResumeSections.find((item) => item.id === activeSection)
+    : null;
+  const activeGroup = activeSection
+    ? DESIGN_RESUME_NAV_GROUPS.find((group) =>
+        group.items.some((item) => item.id === activeSection),
+      )
+    : null;
 
   const getDesignResumeSectionBadge = useCallback(
     (sectionId: DesignResumeSectionId): SectionWorkspaceBadge | null => {
@@ -579,12 +581,7 @@ export const DesignResumePage: React.FC = () => {
   );
 
   if (!activeSectionIsValid) {
-    return (
-      <Navigate
-        to={`/design-resume/${DEFAULT_DESIGN_RESUME_SECTION}`}
-        replace
-      />
-    );
+    return <Navigate to="/design-resume" replace />;
   }
 
   if (isLoading) {
@@ -792,7 +789,13 @@ export const DesignResumePage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[300px_minmax(420px,0.9fr)_minmax(0,1.1fr)]">
+          <div
+            className={
+              activeSection
+                ? "grid gap-6 xl:grid-cols-[300px_minmax(420px,0.9fr)_minmax(0,1.1fr)]"
+                : "grid gap-6 xl:grid-cols-[300px_minmax(0,1fr)]"
+            }
+          >
             <SectionWorkspaceNav
               groups={filteredSectionGroups}
               activeSectionId={activeSection}
@@ -808,21 +811,23 @@ export const DesignResumePage: React.FC = () => {
               getItemBadge={getDesignResumeSectionBadge}
             />
 
-            <SectionWorkspacePanel
-              groupLabel={activeGroup.label}
-              sectionLabel={activeSectionMeta.label}
-              sectionDescription={activeSectionMeta.description}
-              badge={getDesignResumeSectionBadge(activeSection)}
-              secondaryBadge={
-                dirty
-                  ? { label: "Autosaving", variant: "secondary" }
-                  : saveState === "saved"
-                    ? { label: "Autosaved", variant: "outline" }
-                    : null
-              }
-            >
-              {rail}
-            </SectionWorkspacePanel>
+            {activeSection && activeGroup && activeSectionMeta ? (
+              <SectionWorkspacePanel
+                groupLabel={activeGroup.label}
+                sectionLabel={activeSectionMeta.label}
+                sectionDescription={activeSectionMeta.description}
+                badge={getDesignResumeSectionBadge(activeSection)}
+                secondaryBadge={
+                  dirty
+                    ? { label: "Autosaving", variant: "secondary" }
+                    : saveState === "saved"
+                      ? { label: "Autosaved", variant: "outline" }
+                      : null
+                }
+              >
+                {rail}
+              </SectionWorkspacePanel>
+            ) : null}
 
             <DesignResumePreviewPanel
               draft={draft}

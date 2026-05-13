@@ -37,7 +37,7 @@ type SectionWorkspaceNavProps<
   TSectionId extends string = string,
 > = {
   groups: SectionWorkspaceGroup<TGroupId, TSectionId>[];
-  activeSectionId: TSectionId;
+  activeSectionId?: TSectionId | null;
   openGroupIds: TGroupId[];
   onOpenGroupIdsChange: (value: TGroupId[]) => void;
   onSectionSelect: (sectionId: TSectionId) => void;

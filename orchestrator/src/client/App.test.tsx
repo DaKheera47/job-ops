@@ -153,7 +153,7 @@ describe("App demo banner", () => {
     );
   });
 
-  it("redirects the base Design Resume route to the summary section", () => {
+  it("renders the neutral Design Resume route", () => {
     vi.mocked(useDemoInfo).mockReturnValue({
       demoMode: false,
       resetCadenceHours: 6,

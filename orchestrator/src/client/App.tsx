@@ -180,10 +180,7 @@ export const App: React.FC = () => {
                   path="/applications/in-progress"
                   element={<InProgressBoardPage />}
                 />
-                <Route
-                  path="/design-resume"
-                  element={<Navigate to="/design-resume/summary" replace />}
-                />
+                <Route path="/design-resume" element={<DesignResumePage />} />
                 <Route
                   path="/design-resume/:section"
                   element={<DesignResumePage />}
