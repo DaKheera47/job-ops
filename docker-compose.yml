@@ -73,6 +73,9 @@ services:
         - path: ./extractors/naukri
           target: /app/extractors/naukri
           action: sync+restart
+        - path: ./extractors/fiveamsat
+          target: /app/extractors/fiveamsat
+          action: sync+restart
         - path: ./extractors/wazzuf
           target: /app/extractors/wazzuf
           action: sync+restart
