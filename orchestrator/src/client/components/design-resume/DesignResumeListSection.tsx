@@ -38,6 +38,27 @@ function reorderItems<T>(items: T[], fromIndex: number, toIndex: number): T[] {
   return nextItems;
 }
 
+function getItemPreview(
+  item: Record<string, unknown>,
+  definition: ItemDefinition,
+): string {
+  const secondaryValue = definition.secondaryField
+    ? toText(getByPath(item, definition.secondaryField))
+    : "";
+  if (secondaryValue) return secondaryValue;
+
+  const tagField = definition.fields.find((field) => field.type === "tags");
+  if (!tagField) return "";
+
+  const value = getByPath(item, tagField.key);
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .map((entry) => toText(entry))
+    .filter(Boolean)
+    .join(", ");
+}
+
 type DesignResumeListSectionProps = {
   definition: ItemDefinition;
   items: Record<string, unknown>[];
@@ -150,9 +171,7 @@ export function DesignResumeListSectionContent({
                 getByPath(item, definition.primaryField),
                 "Untitled",
               );
-              const secondaryLabel = definition.secondaryField
-                ? toText(getByPath(item, definition.secondaryField))
-                : "";
+              const secondaryLabel = getItemPreview(item, definition);
               return (
                 <li
                   key={toText(item.id, `${definition.key}-${index}`)}
