@@ -40,6 +40,20 @@ function makeResumeJson(): DesignResumeJson {
   } as unknown as DesignResumeJson;
 }
 
+function dispatchPointerEvent(
+  element: Element,
+  type: string,
+  init: MouseEventInit & { pointerId: number },
+) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    ...init,
+  });
+  Object.defineProperty(event, "pointerId", { value: init.pointerId });
+  fireEvent(element, event);
+}
+
 describe("DesignResumeFieldAssistant", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -123,5 +137,41 @@ describe("DesignResumeFieldAssistant", () => {
 
     fireEvent.click(applyButton);
     expect(onApply).toHaveBeenCalledWith("Senior Platform Engineer");
+  });
+
+  it("lets the AI assistant popover be dragged away from the trigger", () => {
+    render(
+      <DesignResumeFieldAssistant
+        resumeJson={makeResumeJson()}
+        fieldPath="basics.headline"
+        label="Headline"
+        value="Platform Engineer"
+        valueType="plain_text"
+        section="Basics"
+        onApply={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /open ai assistant for headline/i }),
+    );
+
+    const handle = screen.getByTestId("design-resume-ai-assistant-drag-handle");
+    dispatchPointerEvent(handle, "pointerdown", {
+      button: 0,
+      clientX: 100,
+      clientY: 120,
+      pointerId: 1,
+    });
+    dispatchPointerEvent(handle, "pointermove", {
+      clientX: 140,
+      clientY: 150,
+      pointerId: 1,
+    });
+    dispatchPointerEvent(handle, "pointerup", { pointerId: 1 });
+
+    expect(
+      screen.getByTestId("design-resume-ai-assistant-popover"),
+    ).toHaveStyle({ translate: "40px 30px" });
   });
 });

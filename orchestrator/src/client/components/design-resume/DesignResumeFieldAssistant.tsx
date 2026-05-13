@@ -9,7 +9,7 @@ import type {
   DesignResumeJson,
   JobChatImageAttachment,
 } from "@shared/types";
-import { Check, Sparkles, X } from "lucide-react";
+import { Check, GripHorizontal, Sparkles, X } from "lucide-react";
 import type React from "react";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -34,6 +34,22 @@ type FieldAssistantMessage = AiAssistMessage & {
   suggestion?: PendingSuggestion;
 };
 
+type DragOffset = {
+  x: number;
+  y: number;
+};
+
+type DragSession = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  startOffset: DragOffset;
+  baseLeft: number;
+  baseTop: number;
+  width: number;
+  height: number;
+};
+
 type DesignResumeFieldAssistantProps = {
   resumeJson: DesignResumeJson;
   fieldPath: string;
@@ -46,9 +62,52 @@ type DesignResumeFieldAssistantProps = {
   onApply: (value: FieldValue) => void;
 };
 
+const ASSISTANT_VIEWPORT_PADDING = 12;
+
 function isEmptyValue(value: FieldValue): boolean {
   if (Array.isArray(value)) return value.length === 0;
   return value.replace(/<[^>]*>/g, "").trim().length === 0;
+}
+
+function clampAxis(value: number, min: number, max: number): number {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function clampDragOffset(
+  offset: DragOffset,
+  session: Pick<DragSession, "baseLeft" | "baseTop" | "width" | "height">,
+): DragOffset {
+  if (typeof window === "undefined") return offset;
+
+  return {
+    x: clampAxis(
+      offset.x,
+      ASSISTANT_VIEWPORT_PADDING - session.baseLeft,
+      window.innerWidth -
+        ASSISTANT_VIEWPORT_PADDING -
+        session.baseLeft -
+        session.width,
+    ),
+    y: clampAxis(
+      offset.y,
+      ASSISTANT_VIEWPORT_PADDING - session.baseTop,
+      window.innerHeight -
+        ASSISTANT_VIEWPORT_PADDING -
+        session.baseTop -
+        session.height,
+    ),
+  };
+}
+
+function getPointerClientPoint(
+  event: React.PointerEvent<HTMLDivElement>,
+): DragOffset | null {
+  if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
+    return null;
+  }
+
+  return { x: event.clientX, y: event.clientY };
 }
 
 function renderResumeHtmlNodes(value: string): React.ReactNode {
@@ -158,7 +217,11 @@ export const DesignResumeFieldAssistant: React.FC<
   const [pendingSuggestion, setPendingSuggestion] =
     useState<PendingSuggestion | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dragOffset, setDragOffset] = useState<DragOffset>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const dragSessionRef = useRef<DragSession | null>(null);
   const currentValueRef = useRef(value);
   currentValueRef.current = value;
 
@@ -172,6 +235,9 @@ export const DesignResumeFieldAssistant: React.FC<
     setMessages([]);
     setPendingSuggestion(null);
     setIsGenerating(false);
+    setDragOffset({ x: 0, y: 0 });
+    setIsDragging(false);
+    dragSessionRef.current = null;
   };
 
   const closeSession = () => {
@@ -238,11 +304,63 @@ export const DesignResumeFieldAssistant: React.FC<
     toast.success(`${label} updated.`);
   };
 
+  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (typeof event.button === "number" && event.button !== 0) return;
+
+    const point = getPointerClientPoint(event);
+    const contentRect = contentRef.current?.getBoundingClientRect();
+    if (!point || !contentRect) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    dragSessionRef.current = {
+      pointerId: event.pointerId,
+      startClientX: point.x,
+      startClientY: point.y,
+      startOffset: dragOffset,
+      baseLeft: contentRect.left - dragOffset.x,
+      baseTop: contentRect.top - dragOffset.y,
+      width: contentRect.width,
+      height: contentRect.height,
+    };
+    setIsDragging(true);
+  };
+
+  const drag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const session = dragSessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+
+    const point = getPointerClientPoint(event);
+    if (!point) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nextOffset = {
+      x: session.startOffset.x + point.x - session.startClientX,
+      y: session.startOffset.y + point.y - session.startClientY,
+    };
+
+    setDragOffset(clampDragOffset(nextOffset, session));
+  };
+
+  const stopDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const session = dragSessionRef.current;
+    if (session && session.pointerId === event.pointerId) {
+      event.currentTarget.releasePointerCapture?.(event.pointerId);
+    }
+    dragSessionRef.current = null;
+    setIsDragging(false);
+  };
+
   return (
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
         if (nextOpen) {
+          setDragOffset({ x: 0, y: 0 });
           setOpen(true);
           return;
         }
@@ -266,20 +384,42 @@ export const DesignResumeFieldAssistant: React.FC<
       </PopoverTrigger>
 
       <PopoverContent
+        ref={contentRef}
         side="right"
         align="start"
         sideOffset={8}
         collisionPadding={16}
         className="relative z-[80] w-[min(26rem,calc(100vw-2rem))] origin-[--radix-popover-content-transform-origin] rounded-xl border border-border/70 bg-popover/95 p-3 shadow-2xl shadow-black/30 backdrop-blur data-[state=open]:slide-in-from-left-1 data-[state=open]:zoom-in-90"
+        data-testid="design-resume-ai-assistant-popover"
+        style={{
+          translate: `${dragOffset.x}px ${dragOffset.y}px`,
+        }}
       >
         <div className="-left-1.5 absolute top-3 h-3 w-3 rotate-45 border-b border-l border-border/70 bg-popover/95" />
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-xs font-semibold text-foreground">
-              Ghostwriter: {label}
-            </div>
-            <div className="text-[11px] text-muted-foreground">
-              Draft a focused replacement for this field.
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 cursor-grab touch-none select-none items-start gap-2 rounded-md px-1 py-0.5 text-left active:cursor-grabbing",
+              isDragging && "cursor-grabbing bg-muted/30",
+            )}
+            data-testid="design-resume-ai-assistant-drag-handle"
+            title="Drag AI assistant"
+            onPointerDown={startDrag}
+            onPointerMove={drag}
+            onPointerUp={stopDrag}
+            onPointerCancel={stopDrag}
+          >
+            <GripHorizontal
+              aria-hidden="true"
+              className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground"
+            />
+            <div className="min-w-0">
+              <div className="truncate text-xs font-semibold text-foreground">
+                Ghostwriter: {label}
+              </div>
+              <div className="truncate text-[11px] text-muted-foreground">
+                Draft a focused replacement for this field.
+              </div>
             </div>
           </div>
           <Button
@@ -305,7 +445,7 @@ export const DesignResumeFieldAssistant: React.FC<
               messages={messages}
               isStreaming={isGenerating}
               streamingMessageId={null}
-              assistantLabel="Resume AI"
+              assistantLabel="Ghostwriter"
               renderAssistantActions={(message) => {
                 const isPending = pendingSuggestion?.messageId === message.id;
                 if (!message.suggestion && !isPending) return null;

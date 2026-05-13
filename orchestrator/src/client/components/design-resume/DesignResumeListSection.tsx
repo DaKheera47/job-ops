@@ -127,8 +127,7 @@ const projectModeOptions: Array<{
     mode: "ai-selectable",
     label: "AI can select",
     shortLabel: "AI can select",
-    tooltip:
-      "Let Job Tailoring select it when relevant to the job description",
+    tooltip: "Let Job Tailoring select it when relevant to the job description",
     icon: Bot,
     activeClassName: "border-sky-400/35 bg-sky-500/12 text-sky-300",
   },
@@ -136,7 +135,8 @@ const projectModeOptions: Array<{
     mode: "must-include",
     label: "Always selected",
     shortLabel: "Always",
-    tooltip: "Always include this project in tailored resumes, regardless of the job description",
+    tooltip:
+      "Always include this project in tailored resumes, regardless of the job description",
     icon: LockKeyhole,
     activeClassName: "border-amber-200/35 bg-amber-300/12 text-amber-200",
   },
