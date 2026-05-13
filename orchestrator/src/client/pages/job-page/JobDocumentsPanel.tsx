@@ -224,8 +224,8 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
   });
 
   const defaultAccordionValues = useMemo(() => {
-    const values = ["job-description"];
-    if (job.pdfPath) values.unshift("resume-pdf");
+    const values: string[] = [];
+    if (job.pdfPath) values.push("resume-pdf");
     return values;
   }, [job.pdfPath]);
 
