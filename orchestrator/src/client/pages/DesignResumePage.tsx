@@ -247,6 +247,7 @@ const RailIcon = ({
           "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
       )}
       onClick={() => onSectionSelect(sectionId)}
+      // style={{ width: "100%" }}
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
         <Icon />
@@ -266,7 +267,7 @@ function DesignResumeIconRail({
   onSectionSelect,
 }: DesignResumeIconRailProps) {
   const navItemClassName =
-    "flex h-10 w-10 justify-start gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,color,background-color,border-color] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-focus-within/rail:w-44";
+    "flex justify-start gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,color,background-color,border-color] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-48 group-focus-within/rail:w-48 size-10";
   const navLabelClassName =
     "ml-3 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
   const preventMouseFocus = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -277,7 +278,7 @@ function DesignResumeIconRail({
     <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
       <nav
         aria-label="Design Resume sections"
-        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-lg backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
+        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-start overflow-y-auto rounded-2xl border border-border/70 bg-card px-2 py-3 shadow-lg backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
       >
         <RailIcon
           item={{
@@ -298,7 +299,7 @@ function DesignResumeIconRail({
         {DESIGN_RESUME_ICON_GROUPS.map((group) => (
           <div
             key={group.id}
-            className="mt-3 flex w-full flex-col items-center gap-2 border-t border-border/60 pt-3 first:mt-3"
+            className="mt-3 flex w-full flex-col items-start gap-2 border-t border-border/60 pt-3 first:mt-3"
           >
             {group.items.map((item) => {
               const Icon = item.icon;
@@ -755,7 +756,7 @@ export const DesignResumePage: React.FC = () => {
           subtitle="Loading your resume"
         />
         <PageMain>
-          <div className="rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center text-sm text-muted-foreground">
+          <div className="rounded-2xl border border-border/70 bg-card px-6 py-20 text-center text-sm text-muted-foreground">
             Loading Design Resume...
           </div>
         </PageMain>
@@ -918,7 +919,7 @@ export const DesignResumePage: React.FC = () => {
 
       <PageMain>
         {!draft ? (
-          <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center">
+          <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
               <div className="inline-flex rounded-full border border-border/70 bg-muted/20 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                 Design Resume

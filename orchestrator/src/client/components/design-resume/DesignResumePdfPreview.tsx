@@ -104,14 +104,14 @@ export function DesignResumePdfPreview({
     isFrameLoading;
 
   return (
-    <div className="relative flex h-full min-h-0 items-center justify-center overflow-hidden bg-muted/10">
+    <div className="relative flex h-full min-h-0 items-center justify-center overflow-hidden bg-card">
       <div className="relative h-full min-h-[720px] w-full overflow-hidden border border-border/70 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
         {pdfUrl ? (
           <iframe
             key={pdfUrl}
             src={pdfUrl}
             title="Design Resume PDF preview"
-            className="h-full w-full bg-white"
+            className="h-full w-full"
             onLoad={() => {
               setIsFrameLoading(false);
               setPreviewState("ready");
@@ -120,8 +120,8 @@ export function DesignResumePdfPreview({
         ) : null}
 
         {showLoader ? (
-          <div className="absolute inset-0 grid place-items-center bg-background/70 backdrop-blur-[2px]">
-            <div className="flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-background/95 px-6 py-5 text-center shadow-lg">
+          <div className="absolute inset-0 grid place-items-center bg-card backdrop-blur-[2px]">
+            <div className="flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-border/70 bg-card px-6 py-5 text-center shadow-lg">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               <div className="text-sm font-medium text-foreground">
                 {isUpdatingRenderer
@@ -135,7 +135,7 @@ export function DesignResumePdfPreview({
         ) : null}
 
         {previewState === "error" ? (
-          <div className="absolute inset-0 grid place-items-center bg-background/80">
+          <div className="absolute inset-0 grid place-items-center bg-card backdrop-blur-[2px]">
             <div className="flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-6 py-5 text-center">
               <FileText className="h-6 w-6 text-rose-300" />
               <div className="text-sm font-medium text-rose-200">
