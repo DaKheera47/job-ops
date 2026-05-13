@@ -253,7 +253,13 @@ function DesignResumeIconRail({
                 <Eye className="h-4 w-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="right">Live preview</TooltipContent>
+            <TooltipContent
+              side="right"
+              sideOffset={10}
+              className="rounded-lg border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg"
+            >
+              Live preview
+            </TooltipContent>
           </Tooltip>
 
           {DESIGN_RESUME_ICON_GROUPS.map((group) => (
@@ -282,13 +288,12 @@ function DesignResumeIconRail({
                         <Icon className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <div className="max-w-56">
-                        <div className="text-xs font-medium">{item.label}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {item.description}
-                        </div>
-                      </div>
+                    <TooltipContent
+                      side="right"
+                      sideOffset={10}
+                      className="rounded-lg border border-border bg-popover px-2 py-1 text-xs text-popover-foreground shadow-lg"
+                    >
+                      {item.label}
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -893,7 +898,7 @@ export const DesignResumePage: React.FC = () => {
         }
       />
 
-      <PageMain className="max-w-none">
+      <PageMain>
         {!draft ? (
           <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center">
             <div className="mx-auto max-w-xl space-y-4">
