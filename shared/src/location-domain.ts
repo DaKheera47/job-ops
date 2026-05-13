@@ -313,6 +313,7 @@ function createDefaultSupportedCountryKeys(
       return ["india"];
     case "jobindex":
       return ["denmark"];
+    case "fiveamsat":
     case "wazzuf":
       return ["egypt"];
     case "glassdoor":

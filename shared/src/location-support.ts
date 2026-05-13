@@ -109,6 +109,9 @@ const NAUKRI_SUPPORTED_COUNTRIES = new Set(["india"].map(normalizeCountryKey));
 const JOBINDEX_SUPPORTED_COUNTRIES = new Set(
   ["denmark"].map(normalizeCountryKey),
 );
+const FIVEAMSAT_SUPPORTED_COUNTRIES = new Set(
+  ["egypt"].map(normalizeCountryKey),
+);
 const WAZZUF_SUPPORTED_COUNTRIES = new Set(["egypt"].map(normalizeCountryKey));
 const GLASSDOOR_SUPPORTED_COUNTRIES = new Set(
   [
@@ -203,6 +206,8 @@ export function isSourceAllowedForCountry(
     return NAUKRI_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   if (source === "jobindex")
     return JOBINDEX_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
+  if (source === "fiveamsat")
+    return FIVEAMSAT_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   if (source === "wazzuf")
     return WAZZUF_SUPPORTED_COUNTRIES.has(normalizeCountryKey(country));
   if (source === "glassdoor") return isGlassdoorCountry(country);
