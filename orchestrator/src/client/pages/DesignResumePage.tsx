@@ -1097,7 +1097,7 @@ export const DesignResumePage: React.FC = () => {
             className={
               activeSection
                 ? "grid min-h-0 min-w-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-6 overflow-hidden xl:grid-cols-[minmax(442px,0.78fr)_minmax(0,1.22fr)] xl:grid-rows-none"
-                : "grid min-h-0 min-w-0 flex-1 gap-6 overflow-hidden"
+                : "grid min-h-0 min-w-0 flex-1 grid-cols-[70px_minmax(0,1fr)] gap-3 overflow-hidden"
             }
           >
             {activeSection && activeGroup && activeSectionMeta ? (
@@ -1131,7 +1131,19 @@ export const DesignResumePage: React.FC = () => {
                   {rail}
                 </SectionWorkspacePanel>
               </div>
-            ) : null}
+            ) : (
+              <DesignResumeDock
+                activeSectionId={null}
+                className="h-full self-start"
+                onSectionSelect={(sectionId) =>
+                  navigate(
+                    sectionId
+                      ? `/design-resume/${sectionId}`
+                      : "/design-resume",
+                  )
+                }
+              />
+            )}
 
             <DesignResumePreviewPanel
               draft={draft}
