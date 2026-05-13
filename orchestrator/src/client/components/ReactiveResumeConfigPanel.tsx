@@ -7,8 +7,12 @@ import {
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import {
   PDF_RENDERER_LABELS,
+  PDF_RENDERER_VALUES,
   type PdfRenderer,
   type ResumeProjectCatalogItem,
+  TYPST_THEME_LABELS,
+  TYPST_THEME_VALUES,
+  type TypstTheme,
 } from "@shared/types.js";
 import { AlertCircle, AlertTriangle } from "lucide-react";
 import type React from "react";
@@ -58,6 +62,9 @@ type ReactiveResumeConfigPanelProps = {
   pdfRenderer: PdfRenderer;
   onPdfRendererChange: (renderer: PdfRenderer) => void;
   pdfRendererError?: string;
+  typstTheme: TypstTheme;
+  onTypstThemeChange: (theme: TypstTheme) => void;
+  typstThemeError?: string;
   disabled?: boolean;
   hasRxResumeAccess?: boolean;
   showValidationStatus?: boolean;
@@ -119,6 +126,9 @@ export const ReactiveResumeConfigPanel: React.FC<
   pdfRenderer,
   onPdfRendererChange,
   pdfRendererError,
+  typstTheme,
+  onTypstThemeChange,
+  typstThemeError,
   disabled = false,
   hasRxResumeAccess = false,
   showValidationStatus = false,
@@ -141,7 +151,13 @@ export const ReactiveResumeConfigPanel: React.FC<
     showInlineValidationAlert &&
     isAvailabilityWarning(selectedValidationStatus);
 
-  const latexSelected = pdfRenderer === "latex";
+  const rendererHelperText: Record<PdfRenderer, string> = {
+    rxresume:
+      "RxResume export uses the upstream print/export endpoint for the final PDF.",
+    latex:
+      "LaTeX renders PDFs locally with Jake's template and requires tectonic on the JobOps host.",
+    typst: "Typst renders PDFs locally and supports selectable resume themes.",
+  };
 
   return (
     <div className="space-y-4">
@@ -160,30 +176,58 @@ export const ReactiveResumeConfigPanel: React.FC<
         </label>
         <Select
           value={pdfRenderer}
-          onValueChange={(value) =>
-            onPdfRendererChange(value === "latex" ? "latex" : "rxresume")
-          }
+          onValueChange={(value) => onPdfRendererChange(value as PdfRenderer)}
           disabled={disabled}
         >
           <SelectTrigger id="pdfRenderer">
             <SelectValue placeholder="Choose PDF renderer" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="rxresume">
-              {PDF_RENDERER_LABELS.rxresume}
-            </SelectItem>
-            <SelectItem value="latex">{PDF_RENDERER_LABELS.latex}</SelectItem>
+            {PDF_RENDERER_VALUES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {PDF_RENDERER_LABELS[value]}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {pdfRendererError ? (
           <p className="text-xs text-destructive">{pdfRendererError}</p>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          {latexSelected
-            ? "LaTeX renders PDFs locally with Jake's template and requires tectonic on the JobOps host."
-            : "RxResume export uses the upstream print/export endpoint for the final PDF."}
+          {rendererHelperText[pdfRenderer]}
         </p>
       </div>
+
+      {pdfRenderer === "typst" ? (
+        <div className="space-y-2">
+          <label htmlFor="typstTheme" className="text-sm font-medium">
+            Typst theme
+          </label>
+          <Select
+            value={typstTheme}
+            onValueChange={(value) => onTypstThemeChange(value as TypstTheme)}
+            disabled={disabled}
+          >
+            <SelectTrigger id="typstTheme">
+              <SelectValue placeholder="Choose Typst theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPST_THEME_VALUES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {TYPST_THEME_LABELS[value]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {typstThemeError ? (
+            <p className="text-xs text-destructive">{typstThemeError}</p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Classic mirrors the current resume density; Compact fits more
+            content on the page.
+          </p>
+        </div>
+      ) : null}
 
       {showValidationStatus && selectedValidationStatus ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">

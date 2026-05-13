@@ -212,7 +212,7 @@ const {
       mode: "manual" as "manual" | "match-resume",
       manual: "english" as "english" | "german" | "french" | "spanish",
     },
-    currentPdfRenderer: { value: "latex" as "latex" | "rxresume" },
+    currentPdfRenderer: { value: "latex" as "latex" | "rxresume" | "typst" },
     mockProfile: profile,
     mocks: {
       readFile: vi.fn(),
@@ -601,6 +601,20 @@ describe("PDF Service Tailoring Logic", () => {
       expect.objectContaining({
         jobId: "job-french-latex",
         language: "french",
+      }),
+    );
+  });
+
+  it("uses the local Typst renderer with the default theme", async () => {
+    currentPdfRenderer.value = "typst";
+
+    await generatePdf("job-typst", {}, "desc");
+
+    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
+      expect.objectContaining({
+        jobId: "job-typst",
+        renderer: "typst",
+        typstTheme: "classic",
       }),
     );
   });

@@ -79,7 +79,15 @@ async function resolvePdfRenderer(): Promise<PdfRenderer> {
   );
 }
 
-async function resolveLatexResumeLanguage(resumeJson: Record<string, unknown>) {
+async function resolveTypstTheme() {
+  const storedValue = await getSetting("typstTheme");
+  return (
+    settingsRegistry.typstTheme.parse(storedValue ?? undefined) ??
+    settingsRegistry.typstTheme.default()
+  );
+}
+
+async function resolveLocalResumeLanguage(resumeJson: Record<string, unknown>) {
   const writingStyle = await getWritingStyle();
   return resolveWritingOutputLanguageForResumeJson({
     style: writingStyle,
@@ -373,13 +381,18 @@ export async function generatePdf(
     }
 
     const outputPath = getTenantJobPdfPath(jobId);
-    if (renderer === "latex") {
-      const language = await resolveLatexResumeLanguage(preparedResume.data);
+    if (renderer !== "rxresume") {
+      const [language, typstTheme] = await Promise.all([
+        resolveLocalResumeLanguage(preparedResume.data),
+        renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
+      ]);
       await renderResumePdf({
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
         language,
+        renderer,
+        typstTheme,
       });
     } else {
       await renderRxResumePdf({
@@ -427,13 +440,18 @@ export async function generateDesignResumePdf(options?: {
     documentId: designResume.documentId,
   });
 
-  if (renderer === "latex") {
-    const language = await resolveLatexResumeLanguage(designResume.data);
+  if (renderer !== "rxresume") {
+    const [language, typstTheme] = await Promise.all([
+      resolveLocalResumeLanguage(designResume.data),
+      renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
+    ]);
     await renderResumePdf({
       resumeJson: designResume.data,
       outputPath,
       jobId: "design-resume",
       language,
+      renderer,
+      typstTheme,
     });
   } else {
     await renderRxResumePdf({

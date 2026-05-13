@@ -9,6 +9,7 @@ const context: PdfFingerprintContext = {
   designResumeRevision: 2,
   designResumeUpdatedAt: "2026-05-01T10:00:00.000Z",
   pdfRenderer: "latex",
+  typstTheme: "classic",
   rxresumeBaseResumeId: "rxresume-base-1",
 };
 

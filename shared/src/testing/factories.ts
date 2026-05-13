@@ -164,6 +164,11 @@ export const createAppSettings = (
     default: "rxresume",
     override: null,
   },
+  typstTheme: {
+    value: "classic",
+    default: "classic",
+    override: null,
+  },
   rxresumeBaseResumeId: null,
   onboardingBasicAuthDecision: null,
   ukvisajobsMaxJobs: { value: 50, default: 50, override: null },

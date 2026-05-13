@@ -15,7 +15,9 @@ import type {
   DesignResumeDocument,
   DesignResumeJson,
   PdfRenderer,
+  TypstTheme,
 } from "@shared/types";
+import { PDF_RENDERER_LABELS, TYPST_THEME_LABELS } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   type MotionValue,
@@ -527,6 +529,7 @@ export const DesignResumePage: React.FC = () => {
   }, []);
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
+  const typstTheme = settings?.typstTheme?.value ?? "classic";
   const canDownloadPdf = status?.exists && !pdfDownloading;
   const pictureEnabled = Boolean(tracerReadiness?.isPubliclyAvailable);
   const pictureDisabledReason =
@@ -850,14 +853,28 @@ export const DesignResumePage: React.FC = () => {
         pdfRenderer: nextRenderer,
       });
       queryClient.setQueryData(queryKeys.settings.current(), updatedSettings);
-      toast.success(
-        nextRenderer === "latex"
-          ? "Jake's template is now active."
-          : "React Resume Renderer is now active.",
-      );
+      toast.success(`${PDF_RENDERER_LABELS[nextRenderer]} is now active.`);
       notifyReadyPdfRefresh();
     } catch (updateError) {
       showErrorToast(updateError, "Failed to update the resume template.");
+    } finally {
+      setRendererUpdating(false);
+    }
+  };
+
+  const handleTypstThemeChange = async (nextTheme: TypstTheme) => {
+    if (settingsLoading || nextTheme === typstTheme) return;
+
+    try {
+      setRendererUpdating(true);
+      const updatedSettings = await api.updateSettings({
+        typstTheme: nextTheme,
+      });
+      queryClient.setQueryData(queryKeys.settings.current(), updatedSettings);
+      toast.success(`${TYPST_THEME_LABELS[nextTheme]} Typst theme is active.`);
+      notifyReadyPdfRefresh();
+    } catch (updateError) {
+      showErrorToast(updateError, "Failed to update the Typst theme.");
     } finally {
       setRendererUpdating(false);
     }
@@ -1273,10 +1290,12 @@ export const DesignResumePage: React.FC = () => {
                 )}
                 draft={draft}
                 pdfRenderer={pdfRenderer}
+                typstTheme={typstTheme}
                 isUpdatingRenderer={rendererUpdating || settingsLoading}
                 isDirty={dirty}
                 saveState={saveState}
                 onPdfRendererChange={handlePdfRendererChange}
+                onTypstThemeChange={handleTypstThemeChange}
               />
             </div>
           </>

@@ -1,12 +1,17 @@
 import * as api from "@client/api";
 import { createDesignResumePdfObjectUrl } from "@client/lib/private-pdf";
-import type { DesignResumeDocument, PdfRenderer } from "@shared/types";
+import type {
+  DesignResumeDocument,
+  PdfRenderer,
+  TypstTheme,
+} from "@shared/types";
 import { FileText, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type DesignResumePdfPreviewProps = {
   draft: DesignResumeDocument;
   pdfRenderer: PdfRenderer;
+  typstTheme: TypstTheme;
   isUpdatingRenderer: boolean;
   isDirty: boolean;
   saveState: "idle" | "saving" | "saved" | "error";
@@ -17,6 +22,7 @@ type PreviewState = "idle" | "waiting-for-save" | "loading" | "ready" | "error";
 export function DesignResumePdfPreview({
   draft,
   pdfRenderer,
+  typstTheme,
   isUpdatingRenderer,
   isDirty,
   saveState,
@@ -30,8 +36,8 @@ export function DesignResumePdfPreview({
   const pdfObjectUrlRef = useRef<string | null>(null);
 
   const revisionKey = useMemo(
-    () => `${draft.id}:${draft.revision}:${pdfRenderer}`,
-    [draft.id, draft.revision, pdfRenderer],
+    () => `${draft.id}:${draft.revision}:${pdfRenderer}:${typstTheme}`,
+    [draft.id, draft.revision, pdfRenderer, typstTheme],
   );
 
   useEffect(() => {

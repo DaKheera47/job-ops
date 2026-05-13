@@ -79,6 +79,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   jobCompleteWebhookUrl: "",
   resumeProjects: null,
   pdfRenderer: "rxresume",
+  typstTheme: "classic",
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -408,6 +409,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   jobCompleteWebhookUrl: null,
   resumeProjects: null,
   pdfRenderer: null,
+  typstTheme: null,
   rxresumeBaseResumeId: null,
   showSponsorInfo: null,
   renderMarkdownInJobDescriptions: null,
@@ -460,6 +462,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   jobCompleteWebhookUrl: data.jobCompleteWebhookUrl.override ?? "",
   resumeProjects: data.resumeProjects.override,
   pdfRenderer: data.pdfRenderer.override ?? data.pdfRenderer.value,
+  typstTheme: data.typstTheme.override ?? data.typstTheme.value,
   rxresumeBaseResumeId: data.rxresumeBaseResumeId,
   showSponsorInfo: data.showSponsorInfo.override,
   renderMarkdownInJobDescriptions:
@@ -624,6 +627,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       pdfRenderer: {
         effective: settings?.pdfRenderer?.value ?? "rxresume",
         default: settings?.pdfRenderer?.default ?? "rxresume",
+      },
+      typstTheme: {
+        effective: settings?.typstTheme?.value ?? "classic",
+        default: settings?.typstTheme?.default ?? "classic",
       },
     },
     display: {
@@ -1198,6 +1205,10 @@ export const SettingsPage: React.FC = () => {
         pdfRenderer: nullIfSame(
           data.pdfRenderer,
           reactiveResume.pdfRenderer.default,
+        ),
+        typstTheme: nullIfSame(
+          data.typstTheme,
+          reactiveResume.typstTheme.default,
         ),
         ...(dirtyFields.rxresumeBaseResumeId
           ? { rxresumeBaseResumeId: normalizeString(data.rxresumeBaseResumeId) }

@@ -17,6 +17,8 @@ import {
   PDF_RENDERER_VALUES,
   type PdfRenderer,
   type ResumeProjectsSettings,
+  TYPST_THEME_VALUES,
+  type TypstTheme,
 } from "./types/settings";
 
 function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
@@ -146,6 +148,7 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
 );
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
+const parseTypstThemeOrNull = createEnumParser(TYPST_THEME_VALUES);
 
 const llmPurposeOverrideSchema = z.object({
   provider: z.preprocess(
@@ -379,6 +382,14 @@ export const settingsRegistry = {
     default: (): PdfRenderer => "rxresume",
     parse: parsePdfRendererOrNull,
     serialize: (value: PdfRenderer | null | undefined): string | null =>
+      value ?? null,
+  },
+  typstTheme: {
+    kind: "typed" as const,
+    schema: z.enum(TYPST_THEME_VALUES),
+    default: (): TypstTheme => "classic",
+    parse: parseTypstThemeOrNull,
+    serialize: (value: TypstTheme | null | undefined): string | null =>
       value ?? null,
   },
   ukvisajobsMaxJobs: {

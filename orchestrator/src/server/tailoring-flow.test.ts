@@ -15,6 +15,7 @@ vi.mock("./services/pdf-fingerprint", () => ({
     designResumeRevision: null,
     designResumeUpdatedAt: null,
     pdfRenderer: "latex",
+    typstTheme: "classic",
     rxresumeBaseResumeId: null,
   }),
 }));
@@ -31,6 +32,7 @@ describe("Tailoring Flow", () => {
       designResumeRevision: null,
       designResumeUpdatedAt: null,
       pdfRenderer: "latex",
+      typstTheme: "classic",
       rxresumeBaseResumeId: null,
     });
     vi.mocked(jobsRepo.finalizeGeneratedPdfIfCurrent).mockResolvedValue(

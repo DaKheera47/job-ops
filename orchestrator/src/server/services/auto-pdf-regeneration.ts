@@ -17,6 +17,7 @@ const AUTO_PDF_REGEN_RETRY_DELAY_MS = 5000;
 
 const SETTINGS_INVALIDATION_KEYS = new Set<SettingKey>([
   "pdfRenderer",
+  "typstTheme",
   "rxresumeBaseResumeId",
   "rxresumeUrl",
   "rxresumeApiKey",

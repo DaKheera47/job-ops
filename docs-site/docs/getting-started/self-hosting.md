@@ -152,16 +152,18 @@ If you self-host Reactive Resume, set:
 
 
 
-## Local LaTeX PDF rendering
+## Local PDF rendering
 
-JobOps supports 2 PDF renderers:
+JobOps supports 3 PDF renderers:
 
 - `rxresume`: export the final PDF through RxResume
 - `latex`: render locally from tailored resume data using LaTeX and `tectonic`
+- `typst`: render locally from tailored resume data using Typst and a selectable theme
 
-When using the LaTeX renderer:
+When using local renderers:
 
-- The Docker image installs `tectonic` for you.
+- The Docker image installs `tectonic` and `typst` for you.
 - For non-Docker local runs, install `tectonic` yourself and optionally set `TECTONIC_BIN` if it is not on your `PATH`.
+- For non-Docker local runs with Typst, install `typst` yourself and optionally set `TYPST_BIN` if it is not on your `PATH`.
 
-RxResume remains the source of truth for base resume data, project visibility, and tailoring inputs in both modes.
+RxResume remains the source of truth for base resume data, project visibility, and tailoring inputs when importing from Reactive Resume. Local renderers use the structured Design Resume data at render time.

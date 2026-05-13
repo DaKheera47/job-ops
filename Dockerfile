@@ -164,6 +164,29 @@ RUN set -eux; \
     install -m 0755 "/tmp/tectonic" /usr/local/bin/tectonic; \
     rm -f /tmp/tectonic.tar.gz /tmp/tectonic
 
+FROM runtime-base AS typst
+
+ARG TARGETARCH
+ENV TYPST_VERSION=0.14.2
+
+# Install Typst for local themeable resume rendering.
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) typst_arch="x86_64-unknown-linux-musl" ;; \
+        arm64) typst_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "Unsupported TARGETARCH for Typst: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    typst_asset="typst-${typst_arch}.tar.xz"; \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/${typst_asset}" \
+        -o /tmp/typst.tar.xz; \
+    mkdir -p /tmp/typst; \
+    tar -xJf /tmp/typst.tar.xz -C /tmp/typst --strip-components=1; \
+    install -m 0755 "/tmp/typst/typst" /usr/local/bin/typst; \
+    rm -rf /tmp/typst.tar.xz /tmp/typst
+
 # ============================================================================
 # PRODUCTION STAGE
 # ============================================================================
@@ -171,6 +194,7 @@ FROM runtime-node-deps AS production
 
 # Copy production-only runtime assets from sibling stages.
 COPY --from=tectonic /usr/local/bin/tectonic /usr/local/bin/tectonic
+COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 COPY --from=python-deps /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
 COPY --from=python-deps /ms-playwright /ms-playwright
 COPY --from=node-deps /root/.cache/camoufox /root/.cache/camoufox

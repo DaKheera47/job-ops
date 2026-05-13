@@ -1,4 +1,4 @@
-import type { ChatStyleManualLanguage } from "@shared/types";
+import type { ChatStyleManualLanguage, TypstTheme } from "@shared/types";
 
 export interface LatexResumeContactItem {
   text: string;
@@ -45,6 +45,7 @@ export interface RenderResumePdfArgs {
   document: LatexResumeDocument;
   outputPath: string;
   jobId: string;
+  typstTheme?: TypstTheme;
 }
 
 export interface ResumeRenderer {

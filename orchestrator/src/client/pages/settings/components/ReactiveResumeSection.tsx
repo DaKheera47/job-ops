@@ -1,7 +1,11 @@
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { PdfRenderer, ResumeProjectCatalogItem } from "@shared/types.js";
+import type {
+  PdfRenderer,
+  ResumeProjectCatalogItem,
+  TypstTheme,
+} from "@shared/types.js";
 import type React from "react";
 import {
   type Path,
@@ -56,6 +60,10 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
     control,
     name: "pdfRenderer",
   }) ?? "rxresume") as PdfRenderer;
+  const typstThemeValue = (useWatch({
+    control,
+    name: "typstTheme",
+  }) ?? "classic") as TypstTheme;
   const rxresumeApiKeyValue =
     useWatch({ control, name: "rxresumeApiKey" }) ?? "";
   const rxresumeUrlValue = useWatch({ control, name: "rxresumeUrl" }) ?? "";
@@ -86,6 +94,11 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
           setDirtyTouchedValue("pdfRenderer", value)
         }
         pdfRendererError={errors.pdfRenderer?.message as string | undefined}
+        typstTheme={typstThemeValue}
+        onTypstThemeChange={(value) =>
+          setDirtyTouchedValue("typstTheme", value)
+        }
+        typstThemeError={errors.typstTheme?.message as string | undefined}
         disabled={isLoading || isSaving}
         hasRxResumeAccess={hasRxResumeAccess}
         showValidationStatus={Boolean(validationStatus)}

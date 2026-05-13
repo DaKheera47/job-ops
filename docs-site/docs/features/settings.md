@@ -153,10 +153,14 @@ Defaults and constraints:
 - Choose the PDF renderer:
   - RxResume export
   - Local LaTeX renderer
-- JobOps uses the selected RxResume resume as the source of truth in both modes
+  - Local Typst renderer
+- When Typst is selected, choose a Typst theme:
+  - Classic
+  - Compact
+- JobOps uses the selected RxResume resume as the source of truth for import and project data
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
-- Changing PDF-affecting settings (`pdfRenderer`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
+- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
 - Select a template/base resume
 - Configure project selection behavior:
   - Max projects

@@ -13,6 +13,14 @@ describe("updateSettingsSchema", () => {
 
     expect(
       updateSettingsSchema.parse({
+        pdfRenderer: "typst",
+      }),
+    ).toEqual({
+      pdfRenderer: "typst",
+    });
+
+    expect(
+      updateSettingsSchema.parse({
         pdfRenderer: null,
       }),
     ).toEqual({
@@ -29,6 +37,35 @@ describe("updateSettingsSchema", () => {
     }
 
     expect(result.error.flatten().fieldErrors.pdfRenderer).toBeDefined();
+  });
+
+  it("accepts supported Typst theme values and rejects unsupported ones", () => {
+    expect(
+      updateSettingsSchema.parse({
+        typstTheme: "compact",
+      }),
+    ).toEqual({
+      typstTheme: "compact",
+    });
+
+    expect(
+      updateSettingsSchema.parse({
+        typstTheme: null,
+      }),
+    ).toEqual({
+      typstTheme: null,
+    });
+
+    const result = updateSettingsSchema.safeParse({
+      typstTheme: "ornate",
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      return;
+    }
+
+    expect(result.error.flatten().fieldErrors.typstTheme).toBeDefined();
   });
 
   it("accepts supported language mode and manual language values", () => {

@@ -39,7 +39,7 @@ const { currentPdfRenderer, mocks, mockProfile, mockResumeRenderer } =
     };
 
     return {
-      currentPdfRenderer: { value: "latex" as "latex" | "rxresume" },
+      currentPdfRenderer: { value: "latex" as "latex" | "rxresume" | "typst" },
       mockProfile: profile,
       mocks: {
         readFile: vi.fn(),

@@ -185,17 +185,19 @@ Current AI-driven edits are intentionally scoped:
 
 ### Local renderer dependency
 
-JobOps can generate the final PDF in 2 ways:
+JobOps can generate the final PDF in 3 ways:
 
 - `rxresume`: use the upstream RxResume print/export endpoint
 - `latex`: render locally with the Jake Gutierrez-based LaTeX template
+- `typst`: render locally with Typst and the selected Typst theme
 
 Notes:
 
 - Resume Studio supplies the structured base resume and project data by default.
 - Reactive Resume is only required at render time when you choose the `rxresume` PDF renderer.
-- In Docker deployments, `tectonic` is bundled into the image for the LaTeX option.
+- In Docker deployments, `tectonic` and `typst` are bundled into the image for local rendering.
 - In non-Docker local environments, install `tectonic` and optionally set `TECTONIC_BIN` if needed when using the LaTeX option.
+- In non-Docker local environments, install `typst` and optionally set `TYPST_BIN` if needed when using the Typst option.
 
 ## Common problems
 
@@ -204,7 +206,7 @@ Notes:
 - Resume Studio is empty:
   Open **Resume Studio** and run **Import from Reactive Resume** once.
 - PDF export still calls Reactive Resume:
-  Switch the PDF renderer to `latex` if you want the full flow to stay local.
+  Switch the PDF renderer to `latex` or `typst` if you want the full flow to stay local.
 - Project lists look stale:
   Re-import from Reactive Resume if you intentionally changed the upstream base resume and want those changes copied into JobOps.
 
@@ -285,6 +287,8 @@ curl -X POST "http://localhost:3001/api/jobs/<jobId>/generate-pdf"
 
 - Ensure `tectonic` is installed on the machine running JobOps.
 - If the binary is installed outside your normal shell `PATH`, set `TECTONIC_BIN` to the executable path.
+- Ensure `typst` is installed when using the Typst renderer.
+- If the Typst binary is installed outside your normal shell `PATH`, set `TYPST_BIN` to the executable path.
 - Re-run PDF generation after fixing the local renderer dependency.
 
 ## Best practices
