@@ -216,6 +216,7 @@ const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
 
 const RailIcon = ({
   item,
+  sectionId,
   isActive,
   onSectionSelect,
   navItemClassName,
@@ -224,6 +225,7 @@ const RailIcon = ({
   Icon,
 }: {
   item: DesignResumeNavItem;
+  sectionId: DesignResumeSectionId | null;
   isActive: boolean;
   onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
   navItemClassName: string;
@@ -244,9 +246,9 @@ const RailIcon = ({
         isActive &&
           "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
       )}
-      onClick={() => onSectionSelect(item.id)}
+      onClick={() => onSectionSelect(sectionId)}
     >
-      <div className="flex items-center justify-center rounded-lg">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
         <Icon />
       </div>
       <span className={navLabelClassName}>{item.label}</span>
@@ -264,9 +266,9 @@ function DesignResumeIconRail({
   onSectionSelect,
 }: DesignResumeIconRailProps) {
   const navItemClassName =
-    "flex h-10 w-10 justify-center gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,padding,color,background-color,border-color,gap] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-hover/rail:gap-3 group-hover/rail:px-3 group-focus-within/rail:w-44 group-focus-within/rail:gap-3 group-focus-within/rail:px-3 group-hover/rail:justify-start";
+    "flex h-10 w-10 justify-start gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,color,background-color,border-color] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-focus-within/rail:w-44";
   const navLabelClassName =
-    "max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
+    "ml-3 max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
   const preventMouseFocus = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
   };
@@ -284,6 +286,7 @@ function DesignResumeIconRail({
             description: "See a preview of your resume as you edit it.",
             icon: Eye,
           }}
+          sectionId={null}
           isActive={activeSectionId == null}
           onSectionSelect={onSectionSelect}
           navItemClassName={navItemClassName}
@@ -304,6 +307,7 @@ function DesignResumeIconRail({
                 <RailIcon
                   key={item.id}
                   item={item}
+                  sectionId={item.id}
                   isActive={isActive}
                   onSectionSelect={onSectionSelect}
                   navItemClassName={navItemClassName}
