@@ -214,6 +214,46 @@ const allDesignResumeSections = DESIGN_RESUME_NAV_GROUPS.flatMap(
   (group) => group.items,
 );
 
+const RailIcon = ({
+  item,
+  isActive,
+  onSectionSelect,
+  navItemClassName,
+  navLabelClassName,
+  preventMouseFocus,
+  Icon,
+}: {
+  item: DesignResumeNavItem;
+  isActive: boolean;
+  onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
+  navItemClassName: string;
+  navLabelClassName: string;
+  preventMouseFocus: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  Icon: LucideIcon;
+}) => {
+  return (
+    <Button
+      key={item.id}
+      type="button"
+      variant="ghost"
+      aria-current={isActive ? "page" : undefined}
+      aria-label={item.label}
+      onMouseDown={preventMouseFocus}
+      className={cn(
+        navItemClassName,
+        isActive &&
+          "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
+      )}
+      onClick={() => onSectionSelect(item.id)}
+    >
+      <div className="flex items-center justify-center rounded-lg">
+        <Icon />
+      </div>
+      <span className={navLabelClassName}>{item.label}</span>
+    </Button>
+  );
+};
+
 type DesignResumeIconRailProps = {
   activeSectionId: DesignResumeSectionId | null;
   onSectionSelect: (sectionId: DesignResumeSectionId | null) => void;
@@ -224,7 +264,7 @@ function DesignResumeIconRail({
   onSectionSelect,
 }: DesignResumeIconRailProps) {
   const navItemClassName =
-    "h-10 w-10 justify-center gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,padding,color,background-color,border-color,gap] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-hover/rail:justify-start group-hover/rail:gap-3 group-hover/rail:px-3 group-focus-within/rail:w-44 group-focus-within/rail:justify-start group-focus-within/rail:gap-3 group-focus-within/rail:px-3";
+    "flex h-10 w-10 justify-center gap-0 overflow-hidden rounded-lg px-0 text-muted-foreground transition-[width,padding,color,background-color,border-color,gap] duration-200 hover:bg-accent/60 hover:text-foreground group-hover/rail:w-44 group-hover/rail:gap-3 group-hover/rail:px-3 group-focus-within/rail:w-44 group-focus-within/rail:gap-3 group-focus-within/rail:px-3 group-hover/rail:justify-start";
   const navLabelClassName =
     "max-w-0 overflow-hidden whitespace-nowrap text-sm opacity-0 transition-[max-width,opacity] duration-200 group-hover/rail:max-w-32 group-hover/rail:opacity-100 group-focus-within/rail:max-w-32 group-focus-within/rail:opacity-100";
   const preventMouseFocus = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -235,24 +275,22 @@ function DesignResumeIconRail({
     <aside className="sticky top-6 z-20 w-14 self-start overflow-visible">
       <nav
         aria-label="Design Resume sections"
-        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-sm backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
+        className="group/rail flex h-[calc(100svh-8rem)] w-14 flex-col items-center overflow-y-auto rounded-2xl border border-border/70 bg-background/95 py-3 shadow-lg backdrop-blur transition-[width] duration-200 hover:w-52 focus-within:w-52"
       >
-        <Button
-          type="button"
-          variant="ghost"
-          aria-current={activeSectionId == null ? "page" : undefined}
-          aria-label="Live preview"
-          onMouseDown={preventMouseFocus}
-          className={cn(
-            navItemClassName,
-            activeSectionId == null &&
-              "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-          )}
-          onClick={() => onSectionSelect(null)}
-        >
-          <Eye className="h-4 w-4 shrink-0" />
-          <span className={navLabelClassName}>Live preview</span>
-        </Button>
+        <RailIcon
+          item={{
+            id: "live-preview",
+            label: "Live preview",
+            description: "See a preview of your resume as you edit it.",
+            icon: Eye,
+          }}
+          isActive={activeSectionId == null}
+          onSectionSelect={onSectionSelect}
+          navItemClassName={navItemClassName}
+          navLabelClassName={navLabelClassName}
+          preventMouseFocus={preventMouseFocus}
+          Icon={Eye}
+        />
 
         {DESIGN_RESUME_ICON_GROUPS.map((group) => (
           <div
@@ -263,23 +301,16 @@ function DesignResumeIconRail({
               const Icon = item.icon;
               const isActive = item.id === activeSectionId;
               return (
-                <Button
+                <RailIcon
                   key={item.id}
-                  type="button"
-                  variant="ghost"
-                  aria-current={isActive ? "page" : undefined}
-                  aria-label={item.label}
-                  onMouseDown={preventMouseFocus}
-                  className={cn(
-                    navItemClassName,
-                    isActive &&
-                      "border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-                  )}
-                  onClick={() => onSectionSelect(item.id)}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className={navLabelClassName}>{item.label}</span>
-                </Button>
+                  item={item}
+                  isActive={isActive}
+                  onSectionSelect={onSectionSelect}
+                  navItemClassName={navItemClassName}
+                  navLabelClassName={navLabelClassName}
+                  preventMouseFocus={preventMouseFocus}
+                  Icon={Icon}
+                />
               );
             })}
           </div>
